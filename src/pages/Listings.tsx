@@ -32,9 +32,9 @@ export default function Listings() {
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
-    propertyType: '',
-    suburb: '',
-    sourceHost: '',
+    propertyType: 'all',
+    suburb: 'all',
+    sourceHost: 'all',
     hasInspection: false,
     lowConfidence: false,
     priceMin: '',
@@ -45,7 +45,7 @@ export default function Listings() {
     bathsMax: '',
     carsMin: '',
     carsMax: '',
-    agencyName: '',
+    agencyName: 'all',
   });
   const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -163,17 +163,17 @@ export default function Listings() {
     }
 
     // Property type filter
-    if (filters.propertyType && listing.propertyType !== filters.propertyType) {
+    if (filters.propertyType && filters.propertyType !== 'all' && listing.propertyType !== filters.propertyType) {
       return false;
     }
 
     // Suburb filter
-    if (filters.suburb && listing.suburb !== filters.suburb) {
+    if (filters.suburb && filters.suburb !== 'all' && listing.suburb !== filters.suburb) {
       return false;
     }
 
     // Source host filter
-    if (filters.sourceHost && listing.sourceHost !== filters.sourceHost) {
+    if (filters.sourceHost && filters.sourceHost !== 'all' && listing.sourceHost !== filters.sourceHost) {
       return false;
     }
 
@@ -188,7 +188,7 @@ export default function Listings() {
     }
 
     // Agency filter
-    if (filters.agencyName && listing.agencyName !== filters.agencyName) {
+    if (filters.agencyName && filters.agencyName !== 'all' && listing.agencyName !== filters.agencyName) {
       return false;
     }
 

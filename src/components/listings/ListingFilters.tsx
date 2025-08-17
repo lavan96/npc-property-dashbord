@@ -41,14 +41,17 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (typeof value === 'boolean') return value;
+    if (key === 'propertyType' || key === 'suburb' || key === 'sourceHost' || key === 'agencyName') {
+      return value !== '' && value !== 'all';
+    }
     return value !== '';
   });
 
   const clearAllFilters = () => {
     setFilters({
-      propertyType: '',
-      suburb: '',
-      sourceHost: '',
+      propertyType: 'all',
+      suburb: 'all',
+      sourceHost: 'all',
       hasInspection: false,
       lowConfidence: false,
       priceMin: '',
@@ -59,12 +62,15 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
       bathsMax: '',
       carsMin: '',
       carsMax: '',
-      agencyName: '',
+      agencyName: 'all',
     });
   };
 
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
     if (typeof value === 'boolean') return value;
+    if (key === 'propertyType' || key === 'suburb' || key === 'sourceHost' || key === 'agencyName') {
+      return value !== '' && value !== 'all';
+    }
     return value !== '';
   }).length;
 
@@ -104,7 +110,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 <SelectValue placeholder="All types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All types</SelectItem>
+                <SelectItem value="all">All types</SelectItem>
                 {uniqueValues.propertyTypes.filter(type => type && type.trim() !== '').map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -125,7 +131,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 <SelectValue placeholder="All suburbs" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All suburbs</SelectItem>
+                <SelectItem value="all">All suburbs</SelectItem>
                 {uniqueValues.suburbs.filter(suburb => suburb && suburb.trim() !== '').map((suburb) => (
                   <SelectItem key={suburb} value={suburb}>
                     {suburb}
@@ -222,7 +228,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 <SelectValue placeholder="All agencies" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All agencies</SelectItem>
+                <SelectItem value="all">All agencies</SelectItem>
                 {uniqueValues.agencies.filter(agency => agency && agency.trim() !== '').map((agency) => (
                   <SelectItem key={agency} value={agency}>
                     {agency}
@@ -243,7 +249,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 <SelectValue placeholder="All sources" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All sources</SelectItem>
+                <SelectItem value="all">All sources</SelectItem>
                 {uniqueValues.sourceHosts.filter(source => source && source.trim() !== '').map((source) => (
                   <SelectItem key={source} value={source}>
                     {source}
