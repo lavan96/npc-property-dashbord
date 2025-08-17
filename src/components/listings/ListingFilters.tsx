@@ -223,7 +223,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All agencies</SelectItem>
-                {uniqueValues.agencies.map((agency) => (
+                {uniqueValues.agencies.filter(agency => agency && agency.trim() !== '').map((agency) => (
                   <SelectItem key={agency} value={agency}>
                     {agency}
                   </SelectItem>
