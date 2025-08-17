@@ -6,13 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock, Eye, EyeOff } from 'lucide-react';
 import { airtableService } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Settings() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
+  const [credentials, setCredentials] = useState({
+    token: '',
+    baseId: '',
+    tableName: ''
+  });
+  const [showToken, setShowToken] = useState(false);
   const [settings, setSettings] = useState({
     theme: 'light',
     timezone: 'Australia/Sydney',
@@ -48,6 +55,40 @@ export default function Settings() {
     }
   };
 
+  const saveCredentials = async () => {
+    try {
+      const { error: tokenError } = await supabase.functions.invoke('update-secret', {
+        body: { name: 'AIRTABLE_TOKEN', value: credentials.token }
+      });
+      
+      const { error: baseError } = await supabase.functions.invoke('update-secret', {
+        body: { name: 'AIRTABLE_BASE_ID', value: credentials.baseId }
+      });
+      
+      const { error: tableError } = await supabase.functions.invoke('update-secret', {
+        body: { name: 'AIRTABLE_TABLE_NAME', value: credentials.tableName }
+      });
+
+      if (tokenError || baseError || tableError) {
+        throw new Error('Failed to save credentials');
+      }
+
+      toast({
+        title: "Credentials Saved",
+        description: "Your Airtable credentials have been securely saved.",
+      });
+
+      // Reset the form
+      setCredentials({ token: '', baseId: '', tableName: '' });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save credentials. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
@@ -69,32 +110,72 @@ export default function Settings() {
             Airtable Configuration
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="base-id">Base ID</Label>
-              <Input
-                id="base-id"
-                value="NPC_Ingest"
-                readOnly
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Read-only: Configured via environment variables
-              </p>
-            </div>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium">API Credentials</h4>
+            <p className="text-xs text-muted-foreground">
+              Enter your Airtable credentials to connect to your database
+            </p>
             
-            <div className="space-y-2">
-              <Label htmlFor="table-name">Table Name</Label>
-              <Input
-                id="table-name"
-                value="Ingested_Content"
-                readOnly
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Read-only: Configured via environment variables
-              </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="token">Personal Access Token</Label>
+                <div className="relative">
+                  <Input
+                    id="token"
+                    type={showToken ? "text" : "password"}
+                    placeholder="Enter your Airtable personal access token"
+                    value={credentials.token}
+                    onChange={(e) => setCredentials(prev => ({ ...prev, token: e.target.value }))}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowToken(!showToken)}
+                  >
+                    {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Create a personal access token in your Airtable account settings
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="base-id">Base ID</Label>
+                <Input
+                  id="base-id"
+                  placeholder="Enter your Airtable base ID (e.g., appXXXXXXXXXXXXXX)"
+                  value={credentials.baseId}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, baseId: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Find this in your Airtable base URL or API documentation
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="table-name">Table Name</Label>
+                <Input
+                  id="table-name"
+                  placeholder="Enter your table name (e.g., Properties, Listings)"
+                  value={credentials.tableName}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, tableName: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The exact name of the table containing your property data
+                </p>
+              </div>
+
+              <Button 
+                onClick={saveCredentials}
+                disabled={!credentials.token || !credentials.baseId || !credentials.tableName}
+                className="w-full"
+              >
+                Save Credentials
+              </Button>
             </div>
           </div>
 
@@ -107,7 +188,7 @@ export default function Settings() {
                 {connectionStatus === 'success' && (
                   <>
                     <CheckCircle className="h-4 w-4 text-success" />
-                    <Badge variant="success">Connected</Badge>
+                    <Badge variant="default">Connected</Badge>
                   </>
                 )}
                 {connectionStatus === 'error' && (
