@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, ExternalLink, Copy, MoreHorizontal } from 'lucide-react';
+import { Search, Filter, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -322,12 +322,28 @@ export default function Listings() {
                   </TableCell>
                   
                   <TableCell>
-                    <div className="text-sm">
-                      {[
-                        listing.beds && `${listing.beds} bed${listing.beds !== 1 ? 's' : ''}`,
-                        listing.baths && `${listing.baths} bath${listing.baths !== 1 ? 's' : ''}`,
-                        listing.carSpaces && `${listing.carSpaces} car${listing.carSpaces !== 1 ? 's' : ''}`
-                      ].filter(Boolean).join(' • ') || '-'}
+                    <div className="flex items-center gap-3 text-sm">
+                      {listing.beds > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Bed className="h-3 w-3 text-muted-foreground" />
+                          <span>{listing.beds}</span>
+                        </div>
+                      )}
+                      {listing.baths > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Bath className="h-3 w-3 text-muted-foreground" />
+                          <span>{listing.baths}</span>
+                        </div>
+                      )}
+                      {listing.carSpaces > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Car className="h-3 w-3 text-muted-foreground" />
+                          <span>{listing.carSpaces}</span>
+                        </div>
+                      )}
+                      {!listing.beds && !listing.baths && !listing.carSpaces && (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </div>
                   </TableCell>
                   
