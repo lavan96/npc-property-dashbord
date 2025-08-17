@@ -122,12 +122,13 @@ Deno.serve(async (req) => {
       status: record.fields.Status || 'Available',
       confidence: record.fields['Confidence Score'] || record.fields.Confidence_Score || record.fields.Confidence || 0.85,
       source: record.fields.Source || record.fields.Data_Source || 'Airtable',
-      description: record.fields.Description || record.fields.Property_Description || '',
+      description: record.fields['Property Description'] || record.fields.Description || record.fields.Property_Description || '',
       images: record.fields.Images || record.fields.Property_Images || [],
       agent: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
       agencyName: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
       features: record.fields.Features || record.fields.Property_Features || [],
       carSpaces: record.fields['Car Spaces'] || record.fields.Car_Spaces || 0,
+      landSize: record.fields['Land Size'] || record.fields.Land_Size || record.fields.LandSize || null,
     }));
 
     return new Response(

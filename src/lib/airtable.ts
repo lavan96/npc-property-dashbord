@@ -31,6 +31,7 @@ export interface PropertyListing {
   beds?: number;
   baths?: number;
   carSpaces?: number;
+  landSize?: string;
   inspectionStart?: Date;
   inspectionEnd?: Date;
   inspectionNotes?: string;

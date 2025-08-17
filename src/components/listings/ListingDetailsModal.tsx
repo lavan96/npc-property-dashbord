@@ -102,6 +102,13 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                       {formatCurrency(listing.price)}
                     </div>
                   )}
+
+                  {listing.landSize && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm text-muted-foreground">Land Size:</span>
+                      <Badge variant="outline">{listing.landSize}</Badge>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -216,10 +223,10 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             </div>
           )}
 
-          {/* Description */}
+          {/* Property Description */}
           {listing.description && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Description</h3>
+              <h3 className="text-lg font-semibold mb-2">Property Description</h3>
               <p className="text-muted-foreground leading-relaxed">
                 {listing.description}
               </p>
