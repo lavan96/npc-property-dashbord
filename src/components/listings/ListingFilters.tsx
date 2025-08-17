@@ -105,7 +105,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All types</SelectItem>
-                {uniqueValues.propertyTypes.map((type) => (
+                {uniqueValues.propertyTypes.filter(type => type && type.trim() !== '').map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
                   </SelectItem>
@@ -126,7 +126,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All suburbs</SelectItem>
-                {uniqueValues.suburbs.map((suburb) => (
+                {uniqueValues.suburbs.filter(suburb => suburb && suburb.trim() !== '').map((suburb) => (
                   <SelectItem key={suburb} value={suburb}>
                     {suburb}
                   </SelectItem>
@@ -244,7 +244,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All sources</SelectItem>
-                {uniqueValues.sourceHosts.map((source) => (
+                {uniqueValues.sourceHosts.filter(source => source && source.trim() !== '').map((source) => (
                   <SelectItem key={source} value={source}>
                     {source}
                   </SelectItem>
