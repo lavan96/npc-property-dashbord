@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const pageSize = url.searchParams.get('pageSize') || '100';
     const offset = url.searchParams.get('offset') || '';
-    const sortField = url.searchParams.get('sortField') || 'Created';
+    const sortField = url.searchParams.get('sortField') || null;
     const sortDirection = url.searchParams.get('sortDirection') || 'desc';
 
     // Build Airtable API URL
@@ -67,8 +67,11 @@ Deno.serve(async (req) => {
     if (offset) {
       airtableUrl.searchParams.set('offset', offset);
     }
-    airtableUrl.searchParams.set('sort[0][field]', sortField);
-    airtableUrl.searchParams.set('sort[0][direction]', sortDirection);
+    // Only add sorting if sortField is specified
+    if (sortField) {
+      airtableUrl.searchParams.set('sort[0][field]', sortField);
+      airtableUrl.searchParams.set('sort[0][direction]', sortDirection);
+    }
 
     console.log('Making request to Airtable:', airtableUrl.toString());
 
@@ -81,11 +84,12 @@ Deno.serve(async (req) => {
     });
 
     if (!airtableResponse.ok) {
-      console.error('Airtable API error:', airtableResponse.status, await airtableResponse.text());
+      const errorText = await airtableResponse.text();
+      console.error('Airtable API error:', airtableResponse.status, errorText);
       return new Response(
         JSON.stringify({ 
           error: `Airtable API error: ${airtableResponse.status}`,
-          details: await airtableResponse.text()
+          details: errorText
         }),
         { 
           status: airtableResponse.status, 
