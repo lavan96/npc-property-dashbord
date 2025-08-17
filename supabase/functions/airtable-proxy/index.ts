@@ -106,21 +106,22 @@ Deno.serve(async (req) => {
       id: record.id,
       fields: record.fields,
       createdTime: record.createdTime,
-      // Transform to PropertyListing format
-      title: record.fields.Property_Title || record.fields.Title || 'Untitled Property',
+      // Transform to PropertyListing format with correct field mapping
+      title: record.fields.Address || record.fields.Property_Title || record.fields.Title || 'Untitled Property',
       price: record.fields.Price || record.fields.Asking_Price || 0,
-      location: record.fields.Location || record.fields.Address || 'Location not specified',
-      bedrooms: record.fields.Bedrooms || record.fields.Bedroom_Count || 0,
-      bathrooms: record.fields.Bathrooms || record.fields.Bathroom_Count || 0,
-      propertyType: record.fields.Property_Type || 'Unknown',
+      location: `${record.fields.Address || ''}, ${record.fields.Suburb || ''}`.replace(/^, |, $/, '') || 'Location not specified',
+      bedrooms: record.fields.Beds || record.fields.Bedrooms || record.fields.Bedroom_Count || 0,
+      bathrooms: record.fields.Baths || record.fields.Bathrooms || record.fields.Bathroom_Count || 0,
+      propertyType: record.fields['Property Type'] || record.fields.Property_Type || 'Unknown',
       listingDate: record.fields.Listed_Date || record.fields.Date_Listed || record.createdTime,
       status: record.fields.Status || 'Available',
       confidence: record.fields.Confidence_Score || record.fields.Confidence || 85,
       source: record.fields.Source || record.fields.Data_Source || 'Airtable',
       description: record.fields.Description || record.fields.Property_Description || '',
       images: record.fields.Images || record.fields.Property_Images || [],
-      agent: record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
+      agent: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
       features: record.fields.Features || record.fields.Property_Features || [],
+      carSpaces: record.fields['Car Spaces'] || record.fields.Car_Spaces || 0,
     }));
 
     return new Response(
