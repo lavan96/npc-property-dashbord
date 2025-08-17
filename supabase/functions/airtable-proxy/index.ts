@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
     console.log(`Successfully fetched ${data.records.length} records from Airtable`);
 
     // Transform the data to match the expected format
+    console.log('Transforming record example:', data.records[0]?.fields);
     const transformedRecords = data.records.map(record => ({
       id: record.id,
       fields: record.fields,
@@ -124,6 +125,7 @@ Deno.serve(async (req) => {
       description: record.fields.Description || record.fields.Property_Description || '',
       images: record.fields.Images || record.fields.Property_Images || [],
       agent: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
+      agencyName: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
       features: record.fields.Features || record.fields.Property_Features || [],
       carSpaces: record.fields['Car Spaces'] || record.fields.Car_Spaces || 0,
     }));
