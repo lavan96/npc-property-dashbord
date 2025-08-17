@@ -27,7 +27,15 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
     }).format(value);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown';
+    
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
+    if (isNaN(dateObj.getTime())) {
+      return 'Invalid date';
+    }
+    
     return new Intl.DateTimeFormat('en-AU', {
       weekday: 'long',
       month: 'long',
@@ -35,7 +43,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(date);
+    }).format(dateObj);
   };
 
   const copyToClipboard = async (text: string, label: string) => {
