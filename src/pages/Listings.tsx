@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
+import { ListingFilters } from '@/components/listings/ListingFilters';
+import { ListingDetailsModal } from '@/components/listings/ListingDetailsModal';
 import { airtableService, PropertyListing } from '@/lib/airtable';
 import {
   Table,
@@ -37,7 +39,16 @@ export default function Listings() {
     lowConfidence: false,
     priceMin: '',
     priceMax: '',
+    bedsMin: '',
+    bedsMax: '',
+    bathsMin: '',
+    bathsMax: '',
+    carsMin: '',
+    carsMax: '',
+    agencyName: '',
   });
+  const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -124,6 +135,16 @@ export default function Listings() {
     }).format(date);
   };
 
+  // Get unique values for filter options
+  const uniqueValues = useMemo(() => {
+    const propertyTypes = [...new Set(listings.map(l => l.propertyType).filter(Boolean))].sort();
+    const suburbs = [...new Set(listings.map(l => l.suburb).filter(Boolean))].sort();
+    const sourceHosts = [...new Set(listings.map(l => l.sourceHost).filter(Boolean))].sort();
+    const agencies = [...new Set(listings.map(l => l.agencyName).filter(Boolean))].sort();
+    
+    return { propertyTypes, suburbs, sourceHosts, agencies };
+  }, [listings]);
+
   // Filter listings based on search and filters
   const filteredListings = listings.filter(listing => {
     // Search filter
@@ -166,6 +187,11 @@ export default function Listings() {
       return false;
     }
 
+    // Agency filter
+    if (filters.agencyName && listing.agencyName !== filters.agencyName) {
+      return false;
+    }
+
     // Price filters
     if (filters.priceMin && listing.price && listing.price < parseFloat(filters.priceMin)) {
       return false;
@@ -175,8 +201,45 @@ export default function Listings() {
       return false;
     }
 
+    // Bedroom filters
+    if (filters.bedsMin && listing.beds && listing.beds < parseInt(filters.bedsMin)) {
+      return false;
+    }
+
+    if (filters.bedsMax && listing.beds && listing.beds > parseInt(filters.bedsMax)) {
+      return false;
+    }
+
+    // Bathroom filters
+    if (filters.bathsMin && listing.baths && listing.baths < parseInt(filters.bathsMin)) {
+      return false;
+    }
+
+    if (filters.bathsMax && listing.baths && listing.baths > parseInt(filters.bathsMax)) {
+      return false;
+    }
+
+    // Car space filters
+    if (filters.carsMin && listing.carSpaces && listing.carSpaces < parseInt(filters.carsMin)) {
+      return false;
+    }
+
+    if (filters.carsMax && listing.carSpaces && listing.carSpaces > parseInt(filters.carsMax)) {
+      return false;
+    }
+
     return true;
   });
+
+  const openDetailsModal = (listing: PropertyListing) => {
+    setSelectedListing(listing);
+    setIsDetailsModalOpen(true);
+  };
+
+  const closeDetailsModal = () => {
+    setSelectedListing(null);
+    setIsDetailsModalOpen(false);
+  };
 
   if (isLoading) {
     return (
@@ -247,10 +310,11 @@ export default function Listings() {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
+              <ListingFilters 
+                filters={filters} 
+                setFilters={setFilters}
+                uniqueValues={uniqueValues}
+              />
             </div>
 
             {/* Quick Filters */}
@@ -389,7 +453,7 @@ export default function Listings() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openDetailsModal(listing)}>
                           Open Details
                         </DropdownMenuItem>
                         {listing.url && (
@@ -424,6 +488,12 @@ export default function Listings() {
           )}
         </CardContent>
       </Card>
+
+      <ListingDetailsModal 
+        listing={selectedListing}
+        isOpen={isDetailsModalOpen}
+        onClose={closeDetailsModal}
+      />
     </div>
   );
 }
