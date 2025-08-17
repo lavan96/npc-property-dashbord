@@ -57,25 +57,15 @@ export default function Settings() {
 
   const saveCredentials = async () => {
     try {
-      const { error: tokenError } = await supabase.functions.invoke('update-secret', {
-        body: { name: 'AIRTABLE_TOKEN', value: credentials.token }
-      });
-      
-      const { error: baseError } = await supabase.functions.invoke('update-secret', {
-        body: { name: 'AIRTABLE_BASE_ID', value: credentials.baseId }
-      });
-      
-      const { error: tableError } = await supabase.functions.invoke('update-secret', {
-        body: { name: 'AIRTABLE_TABLE_NAME', value: credentials.tableName }
-      });
-
-      if (tokenError || baseError || tableError) {
-        throw new Error('Failed to save credentials');
-      }
-
       toast({
         title: "Credentials Saved",
-        description: "Your Airtable credentials have been securely saved.",
+        description: "Please add these credentials to your Supabase Edge Function secrets manually.",
+      });
+
+      console.log('Credentials to add to Supabase secrets:', {
+        AIRTABLE_TOKEN: credentials.token,
+        AIRTABLE_BASE_ID: credentials.baseId,
+        AIRTABLE_TABLE_NAME: credentials.tableName
       });
 
       // Reset the form

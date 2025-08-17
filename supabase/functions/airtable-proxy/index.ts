@@ -25,53 +25,28 @@ Deno.serve(async (req) => {
   try {
     console.log('Airtable proxy function called');
 
-    // Get secrets from Supabase
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // Get secrets from environment variables (managed by Supabase)
+    const token = Deno.env.get('AIRTABLE_TOKEN');
+    const baseId = Deno.env.get('AIRTABLE_BASE_ID');
+    const tableName = Deno.env.get('AIRTABLE_TABLE_NAME');
 
-    const { data: secrets, error: secretsError } = await supabaseClient
-      .from('vault.decrypted_secrets')
-      .select('name, decrypted_secret')
-      .in('name', ['AIRTABLE_TOKEN', 'AIRTABLE_BASE_ID', 'AIRTABLE_TABLE_NAME']);
-
-    if (secretsError) {
-      console.error('Error fetching secrets:', secretsError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch configuration' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    if (!secrets || secrets.length === 0) {
-      console.error('No secrets found');
-      return new Response(
-        JSON.stringify({ error: 'Airtable credentials not configured' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Extract credentials from secrets
-    const credentials: Record<string, string> = {};
-    secrets.forEach(secret => {
-      credentials[secret.name] = secret.decrypted_secret;
+    console.log('Environment check:', {
+      hasToken: !!token,
+      hasBaseId: !!baseId,
+      hasTableName: !!tableName
     });
-
-    const token = credentials.AIRTABLE_TOKEN;
-    const baseId = credentials.AIRTABLE_BASE_ID;
-    const tableName = credentials.AIRTABLE_TABLE_NAME;
 
     if (!token || !baseId || !tableName) {
       console.error('Missing required credentials');
       return new Response(
-        JSON.stringify({ error: 'Incomplete Airtable configuration' }),
+        JSON.stringify({ 
+          error: 'Airtable credentials not configured',
+          missing: {
+            token: !token,
+            baseId: !baseId,
+            tableName: !tableName
+          }
+        }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
