@@ -149,6 +149,15 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                       <span>{listing.agentName}</span>
                     </div>
                   )}
+                  
+                  {listing.agentPhone && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Phone:</span>
+                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(listing.agentPhone!, "Phone number")}>
+                        {listing.agentPhone}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -179,19 +188,29 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           <Separator />
 
           {/* Inspection Details */}
-          {listing.inspectionStart && (
+          {(listing.inspectionStart || listing.inspectionNotes) && (
             <div>
               <h3 className="text-lg font-semibold mb-2">Inspection</h3>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{formatDate(listing.inspectionStart)}</span>
-                {listing.inspectionEnd && (
-                  <span className="text-muted-foreground">
-                    - {new Intl.DateTimeFormat('en-AU', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }).format(listing.inspectionEnd)}
-                  </span>
+              <div className="space-y-2">
+                {listing.inspectionStart && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{formatDate(listing.inspectionStart)}</span>
+                    {listing.inspectionEnd && (
+                      <span className="text-muted-foreground">
+                        - {new Intl.DateTimeFormat('en-AU', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }).format(listing.inspectionEnd)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {listing.inspectionNotes && (
+                  <div>
+                    <span className="text-sm text-muted-foreground">Notes:</span>
+                    <p className="text-sm mt-1">{listing.inspectionNotes}</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -203,6 +222,26 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
               <h3 className="text-lg font-semibold mb-2">Description</h3>
               <p className="text-muted-foreground leading-relaxed">
                 {listing.description}
+              </p>
+            </div>
+          )}
+
+          {/* Property Summary */}
+          {listing.summary && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Property Summary</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                {listing.summary}
+              </p>
+            </div>
+          )}
+
+          {/* Key Entities */}
+          {listing.keyEntities && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Key Entities</h3>
+              <p className="text-sm text-muted-foreground">
+                {listing.keyEntities}
               </p>
             </div>
           )}
@@ -245,7 +284,53 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             </div>
           )}
 
+          {/* Floorplans */}
+          {listing.floorplans && listing.floorplans.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Floorplans</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {listing.floorplans.map((floorplan, index) => (
+                  <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
+                    <img 
+                      src={floorplan} 
+                      alt={`Floorplan ${index + 1}`}
+                      className="w-full h-full object-contain hover:scale-105 transition-transform cursor-pointer"
+                      onClick={() => window.open(floorplan, '_blank')}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Separator />
+
+          {/* Email Source Details */}
+          {(listing.emailSubject || listing.from || listing.messageId) && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Email Source</h3>
+              <div className="space-y-2 text-sm">
+                {listing.emailSubject && (
+                  <div>
+                    <span className="text-muted-foreground">Subject:</span>
+                    <div className="font-medium">{listing.emailSubject}</div>
+                  </div>
+                )}
+                {listing.from && (
+                  <div>
+                    <span className="text-muted-foreground">From:</span>
+                    <div>{listing.from}</div>
+                  </div>
+                )}
+                {listing.messageId && (
+                  <div>
+                    <span className="text-muted-foreground">Message ID:</span>
+                    <div className="font-mono text-xs">{listing.messageId}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Metadata */}
           <div>
@@ -262,6 +347,20 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                 <div>
                   <span className="text-muted-foreground">Created:</span>
                   <div>{formatDate(listing.createdTime)}</div>
+                </div>
+              )}
+              
+              {listing.hash && (
+                <div>
+                  <span className="text-muted-foreground">Hash:</span>
+                  <div className="font-mono text-xs">{listing.hash}</div>
+                </div>
+              )}
+              
+              {listing.category && (
+                <div>
+                  <span className="text-muted-foreground">Category:</span>
+                  <div>{listing.category}</div>
                 </div>
               )}
             </div>
