@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
-import { airtableService } from '@/lib/airtable';
-import { PropertyListing, DashboardKPIs } from '@/types/airtable';
+import { airtableService, PropertyListing } from '@/lib/airtable';
+import { DashboardKPIs } from '@/types/airtable';
 import { 
   BarChart, 
   Bar, 
@@ -49,10 +49,11 @@ export default function Overview() {
       // Get recent records
       const response = await airtableService.getRecords({
         pageSize: 100,
-        sort: [{ field: 'ReceivedAt', direction: 'desc' }]
+        sortField: 'ReceivedAt',
+        sortDirection: 'desc'
       });
 
-      const listings = response.records.map(record => airtableService.transformRecord(record));
+      const listings = response.records;
       
       // Calculate KPIs
       const now = new Date();

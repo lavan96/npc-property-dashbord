@@ -1,58 +1,95 @@
-import { AirtableRecord, AirtableResponse, PropertyListing } from '@/types/airtable';
+import { supabase } from '@/integrations/supabase/client';
 
-const AIRTABLE_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID || 'NPC_Ingest';
-const AIRTABLE_TABLE_NAME = import.meta.env.VITE_AIRTABLE_TABLE_NAME || 'Ingested_Content';
-const AIRTABLE_TOKEN = import.meta.env.VITE_AIRTABLE_TOKEN;
+export interface PropertyListing {
+  id: string;
+  title: string;
+  price: number;
+  location: string;
+  bedrooms: number;
+  bathrooms: number;
+  propertyType: string;
+  listingDate: string;
+  status: string;
+  confidence: number;
+  source: string;
+  description: string;
+  images: string[];
+  agent: string;
+  features: string[];
+  // Original Airtable fields for compatibility
+  recordId?: string;
+  url?: string;
+  sourceHost?: string;
+  hash?: string;
+  messageId?: string;
+  emailSubject?: string;
+  from?: string;
+  receivedAt?: Date;
+  address?: string;
+  suburb?: string;
+  category?: string;
+  beds?: number;
+  baths?: number;
+  carSpaces?: number;
+  inspectionStart?: Date;
+  inspectionEnd?: Date;
+  inspectionNotes?: string;
+  agencyName?: string;
+  agentName?: string;
+  agentPhone?: string;
+  floorplans?: string[];
+  summary?: string;
+  keyEntities?: string;
+  rawExtract?: string;
+  createdTime?: Date;
+}
 
-export class AirtableService {
-  private baseUrl: string;
-  private headers: HeadersInit;
+export interface AirtableGetRecordsOptions {
+  pageSize?: number;
+  offset?: string;
+  sortField?: string;
+  sortDirection?: 'asc' | 'desc';
+}
 
-  constructor() {
-    this.baseUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
-    this.headers = {
-      'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-      'Content-Type': 'application/json',
-    };
-  }
+export interface AirtableResponse {
+  records: PropertyListing[];
+  offset?: string;
+  total: number;
+}
 
-  async getRecords(options: {
-    pageSize?: number;
-    offset?: string;
-    sort?: { field: string; direction: 'asc' | 'desc' }[];
-    filterByFormula?: string;
-  } = {}): Promise<AirtableResponse> {
-    const params = new URLSearchParams();
-    
-    if (options.pageSize) {
-      params.append('pageSize', options.pageSize.toString());
-    }
-    
-    if (options.offset) {
-      params.append('offset', options.offset);
-    }
-    
-    if (options.sort) {
-      options.sort.forEach((sort, index) => {
-        params.append(`sort[${index}][field]`, sort.field);
-        params.append(`sort[${index}][direction]`, sort.direction);
-      });
-    }
-    
-    if (options.filterByFormula) {
-      params.append('filterByFormula', options.filterByFormula);
-    }
-
-    const url = `${this.baseUrl}?${params.toString()}`;
-    
+class AirtableService {
+  async getRecords(options: AirtableGetRecordsOptions = {}): Promise<AirtableResponse> {
     try {
-      const response = await fetch(url, { headers: this.headers });
+      const { pageSize = 100, offset, sortField = 'ReceivedAt', sortDirection = 'desc' } = options;
       
-      if (!response.ok) {
-        throw new Error(`Airtable API error: ${response.status} ${response.statusText}`);
+      // Call the Supabase edge function instead of direct Airtable API
+      const { data, error } = await supabase.functions.invoke('airtable-proxy', {
+        body: {
+          pageSize,
+          offset,
+          sortField,
+          sortDirection,
+        },
+      });
+
+      if (error) {
+        console.error('Error calling airtable-proxy function:', error);
+        throw new Error(`Failed to fetch Airtable records: ${error.message}`);
       }
-      
-      return await response.json();
+
+      if (!data) {
+        throw new Error('No data returned from airtable-proxy function');
+      }
+
+      if (data.error) {
+        throw new Error(`Airtable API error: ${data.error}`);
+      }
+
+      return {
+        records: data.records || [],
+        offset: data.offset,
+        total: data.total || 0,
+      };
     } catch (error) {
       console.error('Failed to fetch Airtable records:', error);
       throw error;
@@ -61,18 +98,34 @@ export class AirtableService {
 
   async testConnection(): Promise<boolean> {
     try {
-      await this.getRecords({ pageSize: 1 });
-      return true;
+      const response = await this.getRecords({ pageSize: 1 });
+      return response.records !== undefined;
     } catch (error) {
+      console.error('Connection test failed:', error);
       return false;
     }
   }
 
-  transformRecord(record: AirtableRecord): PropertyListing {
-    const fields = record.fields;
+  transformRecord(record: any): PropertyListing {
+    const fields = record.fields || {};
     
     return {
       id: record.id,
+      title: fields.Property_Title || fields.Title || 'Untitled Property',
+      price: fields.Price || fields.Asking_Price || 0,
+      location: fields.Location || fields.Address || fields.address || 'Location not specified',
+      bedrooms: fields.Bedrooms || fields.Bedroom_Count || fields.beds || 0,
+      bathrooms: fields.Bathrooms || fields.Bathroom_Count || fields.baths || 0,
+      propertyType: fields.Property_Type || fields['Property Type'] || 'Unknown',
+      listingDate: fields.Listed_Date || fields.Date_Listed || record.createdTime,
+      status: fields.Status || 'Available',
+      confidence: fields.Confidence_Score || fields.Confidence || fields.confidence || 85,
+      source: fields.Source || fields.Data_Source || 'Airtable',
+      description: fields.Description || fields.Property_Description || fields.summary || '',
+      images: fields.Images || fields.Property_Images || fields.images || [],
+      agent: fields.Agent || fields.Listing_Agent || fields['Agent Name'] || fields.agentName || 'Unknown Agent',
+      features: fields.Features || fields.Property_Features || [],
+      // Original fields for compatibility
       recordId: fields['Record ID'],
       url: fields['URL'],
       sourceHost: fields['Source Host'],
@@ -83,9 +136,7 @@ export class AirtableService {
       receivedAt: fields['ReceivedAt'] ? new Date(fields['ReceivedAt']) : undefined,
       address: fields['Address'],
       suburb: fields['Suburb'],
-      propertyType: fields['Property Type'],
       category: fields['Category'],
-      price: fields['Price'],
       beds: fields['Beds'],
       baths: fields['Baths'],
       carSpaces: fields['Car Spaces'],
@@ -95,13 +146,11 @@ export class AirtableService {
       agencyName: fields['Agency Name'],
       agentName: fields['Agent Name'],
       agentPhone: fields['Agent Phone'],
-      images: fields['Images'],
       floorplans: fields['Floorplans'],
       summary: fields['Summary'],
       keyEntities: fields['Key Entities'],
-      confidence: fields['Confidence'],
       rawExtract: fields['Raw Extract'],
-      createdTime: new Date(record.createdTime),
+      createdTime: record.createdTime ? new Date(record.createdTime) : undefined,
     };
   }
 }

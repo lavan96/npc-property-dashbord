@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
-import { airtableService } from '@/lib/airtable';
-import { PropertyListing } from '@/types/airtable';
+import { airtableService, PropertyListing } from '@/lib/airtable';
 import {
   Table,
   TableBody,
@@ -51,14 +50,11 @@ export default function Listings() {
       setIsLoading(true);
       const response = await airtableService.getRecords({
         pageSize: 100,
-        sort: [{ field: 'ReceivedAt', direction: 'desc' }]
+        sortField: 'ReceivedAt',
+        sortDirection: 'desc'
       });
-
-      const transformedListings = response.records.map(record => 
-        airtableService.transformRecord(record)
-      );
       
-      setListings(transformedListings);
+      setListings(response.records);
     } catch (error) {
       console.error('Failed to load listings:', error);
       toast({
