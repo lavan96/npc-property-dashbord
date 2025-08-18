@@ -382,31 +382,43 @@ export default function Listings() {
                   </TableCell>
                   
                   <TableCell>
-                    {listing.price ? formatCurrency(listing.price) : '-'}
+                    {listing.price && listing.price > 0 ? formatCurrency(listing.price) : '-'}
                   </TableCell>
                   
                   <TableCell>
                     <div className="flex items-center gap-3 text-sm">
-                      {listing.beds > 0 && (
+                      {listing.beds && listing.beds > 0 ? (
                         <div className="flex items-center gap-1">
                           <Bed className="h-3 w-3 text-muted-foreground" />
                           <span>{listing.beds}</span>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Bed className="h-3 w-3 text-muted-foreground" />
+                          <span>-</span>
+                        </div>
                       )}
-                      {listing.baths > 0 && (
+                      {listing.baths && listing.baths > 0 ? (
                         <div className="flex items-center gap-1">
                           <Bath className="h-3 w-3 text-muted-foreground" />
                           <span>{listing.baths}</span>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Bath className="h-3 w-3 text-muted-foreground" />
+                          <span>-</span>
+                        </div>
                       )}
-                      {listing.carSpaces > 0 && (
+                      {listing.carSpaces && listing.carSpaces > 0 ? (
                         <div className="flex items-center gap-1">
                           <Car className="h-3 w-3 text-muted-foreground" />
                           <span>{listing.carSpaces}</span>
                         </div>
-                      )}
-                      {!listing.beds && !listing.baths && !listing.carSpaces && (
-                        <span className="text-muted-foreground">-</span>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Car className="h-3 w-3 text-muted-foreground" />
+                          <span>-</span>
+                        </div>
                       )}
                     </div>
                   </TableCell>

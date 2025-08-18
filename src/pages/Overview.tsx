@@ -127,7 +127,7 @@ export default function Overview() {
       const withInspections = listings.filter(l => l.inspectionStart).length;
       
       const needsReview = listings.filter(l => 
-        l.confidence !== undefined && l.confidence < 0.7
+        l.confidence !== undefined && l.confidence !== null && l.confidence < 0.7
       ).length;
 
       const recentWithPrice = listings.filter(l => {
