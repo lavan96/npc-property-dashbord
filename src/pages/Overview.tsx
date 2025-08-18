@@ -49,8 +49,8 @@ export default function Overview() {
     emailSources: 0,
   });
 
-  // Helper functions
-  const safeParseDate = (date: Date | string | null | undefined): Date | null => {
+  // Helper functions (stable references)
+  const safeParseDate = useCallback((date: Date | string | null | undefined): Date | null => {
     if (!date) return null;
     
     try {
@@ -63,18 +63,18 @@ export default function Overview() {
       console.warn('Error parsing date:', date, error);
       return null;
     }
-  };
+  }, []);
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = useCallback((value: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
       currency: 'AUD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
-  };
+  }, []);
 
-  const formatDate = (date: Date | string | null | undefined) => {
+  const formatDate = useCallback((date: Date | string | null | undefined) => {
     if (!date) return 'Unknown Date';
     
     try {
@@ -93,10 +93,13 @@ export default function Overview() {
       console.warn('Error formatting date:', date, error);
       return 'Invalid Date';
     }
-  };
+  }, []);
 
   // Memoize the load function to prevent unnecessary re-renders
   const loadDashboardData = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (isLoading) return;
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -252,41 +255,32 @@ export default function Overview() {
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
-      throw error; // Re-throw for auto-refresh error handling
+      // Don't throw the error to prevent auto-refresh from stopping
     } finally {
       setIsLoading(false);
     }
-  }, [safeParseDate]);
+  }, [safeParseDate]); // Only depend on safeParseDate, which is stable
 
-  // Auto-refresh functionality
+  // Auto-refresh functionality - COMPLETELY DISABLED to prevent infinite loops
   const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh(loadDashboardData);
 
+  // Single effect for initial load only
   useEffect(() => {
-    // Initial load
-    loadDashboardData();
+    let mounted = true;
+    
+    const loadData = async () => {
+      if (mounted) {
+        await loadDashboardData();
+      }
+    };
+    
+    loadData();
 
-    // Temporarily disable auto-refresh to stop the error spam
-    // Load settings and start auto-refresh if enabled
-    // const savedSettings = localStorage.getItem('dashboard-settings');
-    // if (savedSettings) {
-    //   try {
-    //     const settings = JSON.parse(savedSettings);
-    //     if (settings.autoRefresh) {
-    //       startAutoRefresh({
-    //         autoRefresh: settings.autoRefresh,
-    //         refreshInterval: settings.refreshInterval || 5
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error('Failed to parse auto-refresh settings:', error);
-    //   }
-    // }
-
-    // Cleanup on unmount
     return () => {
+      mounted = false;
       stopAutoRefresh();
     };
-  }, [loadDashboardData, startAutoRefresh, stopAutoRefresh]);
+  }, []); // Empty dependency array - only run once
 
   // Show error state if there's an error
   if (error) {
