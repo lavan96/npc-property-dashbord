@@ -97,12 +97,11 @@ export default function Overview() {
 
   // Memoize the load function to prevent unnecessary re-renders
   const loadDashboardData = useCallback(async () => {
-    // Prevent multiple simultaneous calls
-    if (isLoading) return;
-    
     try {
       setIsLoading(true);
       setError(null);
+      
+      console.log('Loading dashboard data...');
       
       // Get recent records
       const response = await airtableService.getRecords({
@@ -111,6 +110,7 @@ export default function Overview() {
         sortDirection: 'desc'
       });
 
+      console.log('Got response:', response);
       const listings = response.records;
       
       // Calculate KPIs
@@ -266,17 +266,25 @@ export default function Overview() {
 
   // Single effect for initial load only
   useEffect(() => {
+    console.log('Overview useEffect running...');
     let mounted = true;
     
     const loadData = async () => {
+      console.log('loadData called, mounted:', mounted);
       if (mounted) {
-        await loadDashboardData();
+        try {
+          await loadDashboardData();
+          console.log('loadDashboardData completed');
+        } catch (error) {
+          console.error('Error in loadData:', error);
+        }
       }
     };
     
     loadData();
 
     return () => {
+      console.log('Overview component unmounting');
       mounted = false;
       stopAutoRefresh();
     };
