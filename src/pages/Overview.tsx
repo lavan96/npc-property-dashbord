@@ -378,7 +378,7 @@ export default function Overview() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
         <KPICard
           title="New This Week"
           value={kpis.newThisWeek}
@@ -409,7 +409,7 @@ export default function Overview() {
       </div>
 
       {/* Content Statistics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
         <KPICard
           title="With Prices"
           value={contentStats.withImages}
@@ -439,176 +439,236 @@ export default function Overview() {
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Listings by Suburb (Top 10)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={suburbData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="suburb" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--primary))" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {/* Charts Section */}
+      <div className="space-y-8">
+        {/* Primary Charts Row */}
+        <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
+          <Card className="lg:col-span-2 hover-scale">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Listings by Suburb (Top 10)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={suburbData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis 
+                    dataKey="suburb" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    fontSize={12}
+                  />
+                  <YAxis fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Property Types</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={propertyTypeData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ type, percent }) => 
-                    percent > 0.05 ? `${type} ${(percent * 100).toFixed(0)}%` : ''
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {propertyTypeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="hover-scale">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Property Types</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie
+                    data={propertyTypeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ type, percent }) => 
+                      percent > 0.05 ? `${type} ${(percent * 100).toFixed(0)}%` : ''
+                    }
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {propertyTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Property Status Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ status, percent }) => 
-                    percent > 0.05 ? `${status} ${(percent * 100).toFixed(0)}%` : ''
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Secondary Charts Row */}
+        <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
+          <Card className="hover-scale">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Daily Listings (Last 30 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}
+                    fontSize={11}
+                  />
+                  <YAxis fontSize={12} />
+                  <Tooltip 
+                    labelFormatter={(value) => new Date(value).toLocaleDateString('en-AU')}
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Agency Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={agencyData} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="agency" type="category" width={80} />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--chart-2))" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="lg:col-span-2 hover-scale">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Property Status Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ status, percent }) => 
+                      percent > 0.05 ? `${status} ${(percent * 100).toFixed(0)}%` : ''
+                    }
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Sender Email Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={sourceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="source" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--chart-3))" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Third Charts Row */}
+        <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
+          <Card className="lg:col-span-2 hover-scale">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Sender Email Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={sourceData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis 
+                    dataKey="source" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    fontSize={11}
+                  />
+                  <YAxis fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Listings (Last 30 Days)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}
-                />
-                <YAxis />
-                <Tooltip 
-                  labelFormatter={(value) => new Date(value).toLocaleDateString('en-AU')}
-                />
-                <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <Card className="hover-scale">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Agency Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={agencyData} layout="horizontal" margin={{ top: 20, right: 30, left: 80, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis type="number" fontSize={12} />
+                  <YAxis dataKey="agency" type="category" width={80} fontSize={10} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px'
+                    }}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Recent Activity */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Activity</CardTitle>
-          <Button variant="outline" size="sm">
+      <Card className="animate-fade-in hover-scale">
+        <CardHeader className="flex flex-row items-center justify-between pb-6">
+          <CardTitle className="text-xl">Recent Activity</CardTitle>
+          <Button variant="outline" size="sm" className="hover-scale">
             View All Listings
           </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentListings.map((listing) => (
-              <div key={listing.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+            {recentListings.map((listing, index) => (
+              <div 
+                key={listing.id} 
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-all duration-200 hover-scale"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium">{listing.address || 'Unknown Address'}</h4>
-                    <Badge variant="outline">{listing.propertyType || 'Unknown'}</Badge>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h4 className="font-medium text-base">{listing.address || 'Unknown Address'}</h4>
+                    <Badge variant="outline" className="text-xs">{listing.propertyType || 'Unknown'}</Badge>
                     {listing.status && listing.status !== 'Available' && (
-                      <Badge variant="secondary">{listing.status}</Badge>
+                      <Badge variant="secondary" className="text-xs">{listing.status}</Badge>
                     )}
                     {listing.confidence !== undefined && (
                       <ConfidenceBadge confidence={listing.confidence} />
                     )}
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                    <span>{listing.suburb || 'Unknown Suburb'}</span>
-                    {listing.price && listing.price > 0 && <span>{formatCurrency(listing.price)}</span>}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="font-medium">{listing.suburb || 'Unknown Suburb'}</span>
+                    {listing.price && listing.price > 0 && (
+                      <span className="font-semibold text-primary">{formatCurrency(listing.price)}</span>
+                    )}
                     {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
                     {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
                     {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
@@ -627,7 +687,7 @@ export default function Overview() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm font-medium text-foreground">
                     {formatDate(listing.createdAt || listing.createdTime || listing.receivedAt)}
                   </div>
                   <div className="text-xs text-muted-foreground">
