@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler } from 'lucide-react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +28,7 @@ import {
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 export default function Overview() {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kpis, setKpis] = useState<DashboardKPIs>({
@@ -641,7 +643,12 @@ export default function Overview() {
       <Card className="animate-fade-in hover-scale">
         <CardHeader className="flex flex-row items-center justify-between pb-6">
           <CardTitle className="text-xl">Recent Activity</CardTitle>
-          <Button variant="outline" size="sm" className="hover-scale">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="hover-scale"
+            onClick={() => navigate('/listings')}
+          >
             View All Listings
           </Button>
         </CardHeader>
