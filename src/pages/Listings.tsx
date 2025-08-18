@@ -58,19 +58,10 @@ export default function Listings() {
     loadListings();
   }, []);
 
-  // Sync global search with local search
+  // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
-    if (globalSearchQuery !== searchQuery) {
-      setSearchQuery(globalSearchQuery);
-    }
+    setSearchQuery(globalSearchQuery);
   }, [globalSearchQuery]);
-
-  // Update global search when local search changes
-  useEffect(() => {
-    if (searchQuery !== globalSearchQuery) {
-      setGlobalSearchQuery(searchQuery);
-    }
-  }, [searchQuery, setGlobalSearchQuery, globalSearchQuery]);
 
   const loadListings = async () => {
     try {
