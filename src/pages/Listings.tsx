@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearch } from '@/contexts/SearchContext';
 import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 export default function Listings() {
+  const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const [listings, setListings] = useState<PropertyListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
@@ -55,6 +57,20 @@ export default function Listings() {
   useEffect(() => {
     loadListings();
   }, []);
+
+  // Sync global search with local search
+  useEffect(() => {
+    if (globalSearchQuery !== searchQuery) {
+      setSearchQuery(globalSearchQuery);
+    }
+  }, [globalSearchQuery]);
+
+  // Update global search when local search changes
+  useEffect(() => {
+    if (searchQuery !== globalSearchQuery) {
+      setGlobalSearchQuery(searchQuery);
+    }
+  }, [searchQuery, setGlobalSearchQuery, globalSearchQuery]);
 
   const loadListings = async () => {
     try {

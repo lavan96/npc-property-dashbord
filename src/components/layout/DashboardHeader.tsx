@@ -1,7 +1,9 @@
 import { Bell, Search, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useSearch } from '@/contexts/SearchContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +15,20 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export function DashboardHeader() {
+  const navigate = useNavigate();
+  const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGlobalSearchQuery(e.target.value);
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && globalSearchQuery.trim()) {
+      // Navigate to listings page when user presses Enter
+      navigate('/listings');
+    }
+  };
+
   return (
     <header className="border-b border-border bg-card px-6 py-3">
       <div className="flex items-center justify-between">
@@ -24,6 +40,9 @@ export function DashboardHeader() {
             <Input
               placeholder="Search properties, addresses, suburbs..."
               className="pl-10"
+              value={globalSearchQuery}
+              onChange={handleSearchChange}
+              onKeyPress={handleSearchKeyPress}
             />
           </div>
         </div>
