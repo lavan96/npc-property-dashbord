@@ -216,13 +216,25 @@ export default function Overview() {
     }).format(value);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-AU', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown Date';
+    
+    try {
+      const validDate = date instanceof Date ? date : new Date(date);
+      if (isNaN(validDate.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      return new Intl.DateTimeFormat('en-AU', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(validDate);
+    } catch (error) {
+      console.warn('Error formatting date:', date, error);
+      return 'Invalid Date';
+    }
   };
 
   if (isLoading) {
@@ -526,7 +538,7 @@ export default function Overview() {
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-muted-foreground">
-                    {(listing.createdAt || listing.receivedAt) && formatDate(listing.createdAt || listing.receivedAt!)}
+                    {formatDate(listing.createdAt || listing.receivedAt)}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {listing.source || listing.sourceHost || 'Unknown Source'}
