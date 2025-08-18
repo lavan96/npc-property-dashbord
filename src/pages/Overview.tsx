@@ -70,8 +70,8 @@ export default function Overview() {
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       const newThisWeek = listings.filter(l => {
-        const createdDate = l.createdAt || l.receivedAt;
-        return createdDate && createdDate >= oneWeekAgo;
+        const createdDate = l.createdAt || l.createdTime || l.receivedAt;
+        return createdDate && new Date(createdDate) >= oneWeekAgo;
       }).length;
 
       const withInspections = listings.filter(l => l.inspectionStart).length;
@@ -81,8 +81,8 @@ export default function Overview() {
       ).length;
 
       const recentWithPrice = listings.filter(l => {
-        const createdDate = l.createdAt || l.receivedAt;
-        return l.price && createdDate && createdDate >= thirtyDaysAgo;
+        const createdDate = l.createdAt || l.createdTime || l.receivedAt;
+        return l.price && createdDate && new Date(createdDate) >= thirtyDaysAgo;
       });
       const averagePrice = recentWithPrice.length > 0 
         ? recentWithPrice.reduce((sum, l) => sum + (l.price || 0), 0) / recentWithPrice.length
@@ -133,9 +133,9 @@ export default function Overview() {
       }
 
       listings.forEach(listing => {
-        const createdDate = listing.createdAt || listing.receivedAt;
-        if (createdDate && createdDate >= thirtyDaysAgo) {
-          const dateStr = createdDate.toISOString().split('T')[0];
+        const createdDate = listing.createdAt || listing.createdTime || listing.receivedAt;
+        if (createdDate && new Date(createdDate) >= thirtyDaysAgo) {
+          const dateStr = new Date(createdDate).toISOString().split('T')[0];
           if (dailyCounts[dateStr] !== undefined) {
             dailyCounts[dateStr]++;
           }
@@ -186,10 +186,10 @@ export default function Overview() {
         emailSources: commercialProperties,
       });
 
-      // Calculate actual source distribution
+      // Calculate sender email distribution (source field)
       const sourceCounts = listings.reduce((acc, listing) => {
-        const source = listing.source || 'Unknown Source';
-        acc[source] = (acc[source] || 0) + 1;
+        const senderEmail = listing.source || 'Unknown Sender';
+        acc[senderEmail] = (acc[senderEmail] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
@@ -450,7 +450,7 @@ export default function Overview() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Source Distribution</CardTitle>
+            <CardTitle>Sender Email Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -538,10 +538,10 @@ export default function Overview() {
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-muted-foreground">
-                    {formatDate(listing.createdAt || listing.receivedAt)}
+                    {formatDate(listing.createdAt || listing.createdTime || listing.receivedAt)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {listing.source || listing.sourceHost || 'Unknown Source'}
+                    From: {listing.source || listing.sourceHost || 'Unknown Sender'}
                   </div>
                 </div>
               </div>
