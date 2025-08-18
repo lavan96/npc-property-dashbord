@@ -28,6 +28,7 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export default function Overview() {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [kpis, setKpis] = useState<DashboardKPIs>({
     newThisWeek: 0,
     withInspections: 0,
@@ -52,6 +53,7 @@ export default function Overview() {
   const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
       // Get recent records
       const response = await airtableService.getRecords({
@@ -203,6 +205,8 @@ export default function Overview() {
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
+      throw error; // Re-throw for auto-refresh error handling
     } finally {
       setIsLoading(false);
     }
@@ -281,6 +285,43 @@ export default function Overview() {
       return null;
     }
   };
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+          <p className="text-muted-foreground">
+            Property intake dashboard overview and key metrics
+          </p>
+        </div>
+
+        <Card className="border-destructive/50 bg-destructive/10">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive mb-2">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="font-semibold">Configuration Required</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Unable to load dashboard data. This usually means the Airtable integration needs to be configured.
+            </p>
+            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded">
+              <strong>Error:</strong> {error}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" onClick={() => window.location.href = '/settings'}>
+                Go to Settings
+              </Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

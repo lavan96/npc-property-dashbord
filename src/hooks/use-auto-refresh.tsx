@@ -8,6 +8,8 @@ interface AutoRefreshSettings {
 export const useAutoRefresh = (callback: () => void | Promise<void>) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const callbackRef = useRef(callback);
+  const errorCountRef = useRef(0);
+  const maxErrors = 3; // Stop auto-refresh after 3 consecutive errors
 
   // Update callback ref when callback changes
   useEffect(() => {
@@ -24,11 +26,26 @@ export const useAutoRefresh = (callback: () => void | Promise<void>) => {
       return;
     }
 
+    // Reset error count when starting fresh
+    errorCountRef.current = 0;
+
     // Convert minutes to milliseconds
     const intervalMs = settings.refreshInterval * 60 * 1000;
 
-    intervalRef.current = setInterval(() => {
-      callbackRef.current();
+    intervalRef.current = setInterval(async () => {
+      try {
+        await callbackRef.current();
+        errorCountRef.current = 0; // Reset error count on success
+      } catch (error) {
+        errorCountRef.current++;
+        console.warn(`Auto-refresh error ${errorCountRef.current}/${maxErrors}:`, error);
+        
+        // Stop auto-refresh if too many consecutive errors
+        if (errorCountRef.current >= maxErrors) {
+          console.error('Auto-refresh stopped due to repeated failures');
+          stopAutoRefresh();
+        }
+      }
     }, intervalMs);
   };
 
