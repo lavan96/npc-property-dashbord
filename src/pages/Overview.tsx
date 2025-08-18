@@ -71,7 +71,8 @@ export default function Overview() {
 
       const newThisWeek = listings.filter(l => {
         const createdDate = l.createdAt || l.createdTime || l.receivedAt;
-        return createdDate && new Date(createdDate) >= oneWeekAgo;
+        const parsedDate = safeParseDate(createdDate);
+        return parsedDate && parsedDate >= oneWeekAgo;
       }).length;
 
       const withInspections = listings.filter(l => l.inspectionStart).length;
@@ -82,7 +83,8 @@ export default function Overview() {
 
       const recentWithPrice = listings.filter(l => {
         const createdDate = l.createdAt || l.createdTime || l.receivedAt;
-        return l.price && createdDate && new Date(createdDate) >= thirtyDaysAgo;
+        const parsedDate = safeParseDate(createdDate);
+        return l.price && parsedDate && parsedDate >= thirtyDaysAgo;
       });
       const averagePrice = recentWithPrice.length > 0 
         ? recentWithPrice.reduce((sum, l) => sum + (l.price || 0), 0) / recentWithPrice.length
@@ -134,8 +136,9 @@ export default function Overview() {
 
       listings.forEach(listing => {
         const createdDate = listing.createdAt || listing.createdTime || listing.receivedAt;
-        if (createdDate && new Date(createdDate) >= thirtyDaysAgo) {
-          const dateStr = new Date(createdDate).toISOString().split('T')[0];
+        const parsedDate = safeParseDate(createdDate);
+        if (parsedDate && parsedDate >= thirtyDaysAgo) {
+          const dateStr = parsedDate.toISOString().split('T')[0];
           if (dailyCounts[dateStr] !== undefined) {
             dailyCounts[dateStr]++;
           }
@@ -234,6 +237,21 @@ export default function Overview() {
     } catch (error) {
       console.warn('Error formatting date:', date, error);
       return 'Invalid Date';
+    }
+  };
+
+  const safeParseDate = (date: Date | string | null | undefined): Date | null => {
+    if (!date) return null;
+    
+    try {
+      const validDate = date instanceof Date ? date : new Date(date);
+      if (isNaN(validDate.getTime())) {
+        return null;
+      }
+      return validDate;
+    } catch (error) {
+      console.warn('Error parsing date:', date, error);
+      return null;
     }
   };
 
