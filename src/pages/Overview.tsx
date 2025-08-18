@@ -510,7 +510,7 @@ export default function Overview() {
 
         {/* Secondary Charts Row */}
         <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
-          <Card className="hover-scale">
+          <Card className="lg:col-span-2 hover-scale">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Daily Listings (Last 30 Days)</CardTitle>
             </CardHeader>
@@ -545,7 +545,7 @@ export default function Overview() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 hover-scale">
+          <Card className="hover-scale">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Property Status Distribution</CardTitle>
             </CardHeader>
