@@ -49,6 +49,52 @@ export default function Overview() {
     emailSources: 0,
   });
 
+  // Helper functions
+  const safeParseDate = (date: Date | string | null | undefined): Date | null => {
+    if (!date) return null;
+    
+    try {
+      const validDate = date instanceof Date ? date : new Date(date);
+      if (isNaN(validDate.getTime())) {
+        return null;
+      }
+      return validDate;
+    } catch (error) {
+      console.warn('Error parsing date:', date, error);
+      return null;
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown Date';
+    
+    try {
+      const validDate = date instanceof Date ? date : new Date(date);
+      if (isNaN(validDate.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      return new Intl.DateTimeFormat('en-AU', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(validDate);
+    } catch (error) {
+      console.warn('Error formatting date:', date, error);
+      return 'Invalid Date';
+    }
+  };
+
   // Memoize the load function to prevent unnecessary re-renders
   const loadDashboardData = useCallback(async () => {
     try {
@@ -210,7 +256,7 @@ export default function Overview() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [safeParseDate]);
 
   // Auto-refresh functionality
   const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh(loadDashboardData);
@@ -219,72 +265,28 @@ export default function Overview() {
     // Initial load
     loadDashboardData();
 
+    // Temporarily disable auto-refresh to stop the error spam
     // Load settings and start auto-refresh if enabled
-    const savedSettings = localStorage.getItem('dashboard-settings');
-    if (savedSettings) {
-      try {
-        const settings = JSON.parse(savedSettings);
-        if (settings.autoRefresh) {
-          startAutoRefresh({
-            autoRefresh: settings.autoRefresh,
-            refreshInterval: settings.refreshInterval || 5
-          });
-        }
-      } catch (error) {
-        console.error('Failed to parse auto-refresh settings:', error);
-      }
-    }
+    // const savedSettings = localStorage.getItem('dashboard-settings');
+    // if (savedSettings) {
+    //   try {
+    //     const settings = JSON.parse(savedSettings);
+    //     if (settings.autoRefresh) {
+    //       startAutoRefresh({
+    //         autoRefresh: settings.autoRefresh,
+    //         refreshInterval: settings.refreshInterval || 5
+    //       });
+    //     }
+    //   } catch (error) {
+    //     console.error('Failed to parse auto-refresh settings:', error);
+    //   }
+    // }
 
     // Cleanup on unmount
     return () => {
       stopAutoRefresh();
     };
   }, [loadDashboardData, startAutoRefresh, stopAutoRefresh]);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const formatDate = (date: Date | string | null | undefined) => {
-    if (!date) return 'Unknown Date';
-    
-    try {
-      const validDate = date instanceof Date ? date : new Date(date);
-      if (isNaN(validDate.getTime())) {
-        return 'Invalid Date';
-      }
-      
-      return new Intl.DateTimeFormat('en-AU', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(validDate);
-    } catch (error) {
-      console.warn('Error formatting date:', date, error);
-      return 'Invalid Date';
-    }
-  };
-
-  const safeParseDate = (date: Date | string | null | undefined): Date | null => {
-    if (!date) return null;
-    
-    try {
-      const validDate = date instanceof Date ? date : new Date(date);
-      if (isNaN(validDate.getTime())) {
-        return null;
-      }
-      return validDate;
-    } catch (error) {
-      console.warn('Error parsing date:', date, error);
-      return null;
-    }
-  };
 
   // Show error state if there's an error
   if (error) {
