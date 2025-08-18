@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Mail, ExternalLink, Image, FileText, Tag } from 'lucide-react';
+import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler } from 'lucide-react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export default function Overview() {
   const [suburbData, setSuburbData] = useState<{ suburb: string; count: number }[]>([]);
   const [propertyTypeData, setPropertyTypeData] = useState<{ type: string; count: number }[]>([]);
   const [dailyData, setDailyData] = useState<{ date: string; count: number }[]>([]);
-  const [categoryData, setCategoryData] = useState<{ category: string; count: number }[]>([]);
+  const [categoryData, setCategoryData] = useState<{ status: string; count: number }[]>([]);
   const [sourceData, setSourceData] = useState<{ source: string; count: number }[]>([]);
   const [agencyData, setAgencyData] = useState<{ agency: string; count: number }[]>([]);
   const [contentStats, setContentStats] = useState({
@@ -144,17 +144,17 @@ export default function Overview() {
 
       setDailyData(dailyChartData);
 
-      // Calculate category distribution
-      const categoryCounts = listings.reduce((acc, listing) => {
-        const category = listing.category || 'Unknown';
-        acc[category] = (acc[category] || 0) + 1;
+      // Calculate property status distribution
+      const statusCounts = listings.reduce((acc, listing) => {
+        const status = listing.status || 'Unknown';
+        acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      const categoryChartData = Object.entries(categoryCounts)
-        .map(([category, count]) => ({ category, count }));
+      const statusData = Object.entries(statusCounts)
+        .map(([status, count]) => ({ status, count }));
 
-      setCategoryData(categoryChartData);
+      setCategoryData(statusData);
 
       // Calculate source host distribution (top 10)
       const sourceCounts = listings.reduce((acc, listing) => {
@@ -184,17 +184,17 @@ export default function Overview() {
 
       setAgencyData(topAgencies);
 
-      // Calculate content statistics
+      // Calculate property content statistics  
       const withImages = listings.filter(l => l.images && l.images.length > 0).length;
       const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
-      const withKeyEntities = listings.filter(l => l.keyEntities).length;
-      const emailSources = listings.filter(l => l.emailSubject || l.from).length;
+      const withFeatures = listings.filter(l => l.features && l.features.length > 0).length;
+      const withLandSize = listings.filter(l => l.landSize).length;
 
       setContentStats({
         withImages,
         withFloorplans,
-        withKeyEntities,
-        emailSources,
+        withKeyEntities: withFeatures,
+        emailSources: withLandSize,
       });
 
     } catch (error) {
@@ -313,24 +313,24 @@ export default function Overview() {
         />
         
         <KPICard
-          title="With Floorplans"
+          title="With Floorplans" 
           value={contentStats.withFloorplans}
           icon={<FileText className="h-4 w-4" />}
           description="Properties with floorplan attachments"
         />
         
         <KPICard
-          title="Email Sources"
-          value={contentStats.emailSources}
-          icon={<Mail className="h-4 w-4" />}
-          description="Properties received via email"
+          title="With Features"
+          value={contentStats.withKeyEntities}
+          icon={<Tag className="h-4 w-4" />}
+          description="Properties with feature lists"
         />
         
         <KPICard
-          title="With Entities"
-          value={contentStats.withKeyEntities}
-          icon={<Tag className="h-4 w-4" />}
-          description="Properties with extracted entities"
+          title="With Land Size"
+          value={contentStats.emailSources}
+          icon={<Ruler className="h-4 w-4" />}
+          description="Properties with land size data"
         />
       </div>
 
@@ -389,7 +389,7 @@ export default function Overview() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Content Categories</CardTitle>
+            <CardTitle>Property Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -399,8 +399,8 @@ export default function Overview() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ category, percent }) => 
-                    percent > 0.05 ? `${category} ${(percent * 100).toFixed(0)}%` : ''
+                  label={({ status, percent }) => 
+                    percent > 0.05 ? `${status} ${(percent * 100).toFixed(0)}%` : ''
                   }
                   outerRadius={80}
                   fill="#8884d8"
@@ -494,8 +494,8 @@ export default function Overview() {
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium">{listing.address || 'Unknown Address'}</h4>
                     <Badge variant="outline">{listing.propertyType || 'Unknown'}</Badge>
-                    {listing.category && listing.category !== 'listing' && (
-                      <Badge variant="secondary">{listing.category}</Badge>
+                    {listing.status && listing.status !== 'Available' && (
+                      <Badge variant="secondary">{listing.status}</Badge>
                     )}
                     {listing.confidence !== undefined && (
                       <ConfidenceBadge confidence={listing.confidence} />
@@ -507,16 +507,17 @@ export default function Overview() {
                     {listing.beds && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
                     {listing.baths && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
                     {listing.carSpaces && <span>{listing.carSpaces} car</span>}
+                    {listing.landSize && <span>{listing.landSize}</span>}
                     {listing.images && listing.images.length > 0 && (
                       <div className="flex items-center gap-1">
                         <Image className="h-3 w-3" />
                         <span>{listing.images.length}</span>
                       </div>
                     )}
-                    {listing.emailSubject && (
+                    {listing.features && listing.features.length > 0 && (
                       <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        <span>Email</span>
+                        <Tag className="h-3 w-3" />
+                        <span>{listing.features.length} features</span>
                       </div>
                     )}
                   </div>
@@ -528,16 +529,6 @@ export default function Overview() {
                   <div className="text-xs text-muted-foreground">
                     {listing.sourceHost || 'Unknown Source'}
                   </div>
-                  {listing.url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 mt-1"
-                      onClick={() => window.open(listing.url, '_blank')}
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  )}
                 </div>
               </div>
             ))}
