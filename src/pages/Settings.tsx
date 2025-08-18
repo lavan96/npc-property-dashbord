@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock, Eye,
 import { airtableService } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useTheme } from 'next-themes';
 
 export default function Settings() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -21,14 +22,28 @@ export default function Settings() {
   });
   const [showToken, setShowToken] = useState(false);
   const [settings, setSettings] = useState({
-    theme: 'light',
     timezone: 'Australia/Sydney',
     notifications: true,
     autoRefresh: true,
     refreshInterval: 5,
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
+
+  // Load settings from localStorage on component mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('dashboard-settings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.error('Failed to parse saved settings:', error);
+      }
+    }
+  }, []);
 
   const testConnection = async () => {
     setIsTestingConnection(true);
@@ -81,6 +96,34 @@ export default function Settings() {
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const saveAllSettings = async () => {
+    setIsSaving(true);
+    try {
+      // Save settings to localStorage
+      localStorage.setItem('dashboard-settings', JSON.stringify(settings));
+      
+      // Apply notification settings
+      if (settings.notifications && 'Notification' in window) {
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+      }
+
+      toast({
+        title: "Settings Saved",
+        description: "Your preferences have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -265,23 +308,23 @@ export default function Settings() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant={settings.theme === 'light' ? 'default' : 'outline'}
+                  variant={theme === 'light' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => handleSettingChange('theme', 'light')}
+                  onClick={() => setTheme('light')}
                 >
                   Light
                 </Button>
                 <Button
-                  variant={settings.theme === 'dark' ? 'default' : 'outline'}
+                  variant={theme === 'dark' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => handleSettingChange('theme', 'dark')}
+                  onClick={() => setTheme('dark')}
                 >
                   Dark
                 </Button>
                 <Button
-                  variant={settings.theme === 'system' ? 'default' : 'outline'}
+                  variant={theme === 'system' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => handleSettingChange('theme', 'system')}
+                  onClick={() => setTheme('system')}
                 >
                   System
                 </Button>
@@ -373,7 +416,8 @@ export default function Settings() {
 
       {/* Save Settings */}
       <div className="flex justify-end">
-        <Button>
+        <Button onClick={saveAllSettings} disabled={isSaving}>
+          {isSaving && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
           Save Settings
         </Button>
       </div>
