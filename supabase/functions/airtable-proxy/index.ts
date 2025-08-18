@@ -128,7 +128,8 @@ Deno.serve(async (req) => {
       agencyName: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
       features: record.fields.Features || record.fields.Property_Features || [],
       carSpaces: record.fields['Car Spaces'] || record.fields.Car_Spaces || 0,
-      landSize: record.fields['Land Size'] || record.fields.Land_Size || record.fields.LandSize || null,
+      landSize: record.fields['Square Feet'] || record.fields['Land Size'] || record.fields.Land_Size || record.fields.LandSize || null,
+      lotNumber: record.fields['Lot Number'] || null,
     }));
 
     return new Response(

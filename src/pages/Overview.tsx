@@ -144,9 +144,9 @@ export default function Overview() {
 
       setDailyData(dailyChartData);
 
-      // Calculate property status distribution
+      // Calculate property status distribution (Available vs others)
       const statusCounts = listings.reduce((acc, listing) => {
-        const status = listing.status || 'Unknown';
+        const status = listing.status || 'Available';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -156,23 +156,9 @@ export default function Overview() {
 
       setCategoryData(statusData);
 
-      // Calculate source host distribution (top 10)
-      const sourceCounts = listings.reduce((acc, listing) => {
-        const source = listing.sourceHost || 'Unknown';
-        acc[source] = (acc[source] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const topSources = Object.entries(sourceCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 10)
-        .map(([source, count]) => ({ source, count }));
-
-      setSourceData(topSources);
-
-      // Calculate agency distribution (top 10)
+      // Calculate agency distribution (from actual data)
       const agencyCounts = listings.reduce((acc, listing) => {
-        const agency = listing.agencyName || 'Unknown';
+        const agency = listing.agencyName || 'Unknown Agency';
         acc[agency] = (acc[agency] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -184,18 +170,26 @@ export default function Overview() {
 
       setAgencyData(topAgencies);
 
-      // Calculate property content statistics  
-      const withImages = listings.filter(l => l.images && l.images.length > 0).length;
-      const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
-      const withFeatures = listings.filter(l => l.features && l.features.length > 0).length;
-      const withLandSize = listings.filter(l => l.landSize).length;
+      // Calculate actual property statistics from Properties table
+      const withPrices = listings.filter(l => l.price && l.price > 0).length;
+      const withLandSize = listings.filter(l => l.landSize && parseFloat(l.landSize) > 0).length;
+      const withLotNumbers = listings.filter(l => l.lotNumber).length;
+      const commercialProperties = listings.filter(l => l.propertyType === 'Other').length;
 
       setContentStats({
-        withImages,
-        withFloorplans,
-        withKeyEntities: withFeatures,
-        emailSources: withLandSize,
+        withImages: withPrices,
+        withFloorplans: withLandSize,
+        withKeyEntities: withLotNumbers,
+        emailSources: commercialProperties,
       });
+
+      // For source data, use property types as source insight
+      const sourceData = Object.entries(typeCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10)
+        .map(([source, count]) => ({ source, count }));
+
+      setSourceData(sourceData);
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -306,31 +300,31 @@ export default function Overview() {
       {/* Content Statistics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
-          title="With Images"
+          title="With Prices"
           value={contentStats.withImages}
-          icon={<Image className="h-4 w-4" />}
-          description="Properties with attached images"
+          icon={<DollarSign className="h-4 w-4" />}
+          description="Properties with price information"
         />
         
         <KPICard
-          title="With Floorplans" 
+          title="With Land Size" 
           value={contentStats.withFloorplans}
-          icon={<FileText className="h-4 w-4" />}
-          description="Properties with floorplan attachments"
+          icon={<Ruler className="h-4 w-4" />}
+          description="Properties with land/square footage"
         />
         
         <KPICard
-          title="With Features"
+          title="With Lot Numbers"
           value={contentStats.withKeyEntities}
           icon={<Tag className="h-4 w-4" />}
-          description="Properties with feature lists"
+          description="Properties with lot number data"
         />
         
         <KPICard
-          title="With Land Size"
+          title="Commercial Properties"
           value={contentStats.emailSources}
-          icon={<Ruler className="h-4 w-4" />}
-          description="Properties with land size data"
+          icon={<Building2 className="h-4 w-4" />}
+          description="Commercial/industrial properties"
         />
       </div>
 
@@ -418,7 +412,7 @@ export default function Overview() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top Agencies</CardTitle>
+            <CardTitle>Agency Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -435,7 +429,7 @@ export default function Overview() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Source Hosts (Top 10)</CardTitle>
+            <CardTitle>Property Type Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -503,21 +497,20 @@ export default function Overview() {
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                     <span>{listing.suburb || 'Unknown Suburb'}</span>
-                    {listing.price && <span>{formatCurrency(listing.price)}</span>}
-                    {listing.beds && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
-                    {listing.baths && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
-                    {listing.carSpaces && <span>{listing.carSpaces} car</span>}
-                    {listing.landSize && <span>{listing.landSize}</span>}
-                    {listing.images && listing.images.length > 0 && (
+                    {listing.price && listing.price > 0 && <span>{formatCurrency(listing.price)}</span>}
+                    {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
+                    {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
+                    {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
+                    {listing.landSize && parseFloat(listing.landSize) > 0 && (
                       <div className="flex items-center gap-1">
-                        <Image className="h-3 w-3" />
-                        <span>{listing.images.length}</span>
+                        <Ruler className="h-3 w-3" />
+                        <span>{listing.landSize} sqft</span>
                       </div>
                     )}
-                    {listing.features && listing.features.length > 0 && (
+                    {listing.lotNumber && (
                       <div className="flex items-center gap-1">
                         <Tag className="h-3 w-3" />
-                        <span>{listing.features.length} features</span>
+                        <span>Lot {listing.lotNumber}</span>
                       </div>
                     )}
                   </div>
