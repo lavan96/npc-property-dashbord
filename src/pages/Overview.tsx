@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
+import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Mail, ExternalLink, Image, FileText, Tag } from 'lucide-react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,15 @@ export default function Overview() {
   const [suburbData, setSuburbData] = useState<{ suburb: string; count: number }[]>([]);
   const [propertyTypeData, setPropertyTypeData] = useState<{ type: string; count: number }[]>([]);
   const [dailyData, setDailyData] = useState<{ date: string; count: number }[]>([]);
+  const [categoryData, setCategoryData] = useState<{ category: string; count: number }[]>([]);
+  const [sourceData, setSourceData] = useState<{ source: string; count: number }[]>([]);
+  const [agencyData, setAgencyData] = useState<{ agency: string; count: number }[]>([]);
+  const [contentStats, setContentStats] = useState({
+    withImages: 0,
+    withFloorplans: 0,
+    withKeyEntities: 0,
+    emailSources: 0,
+  });
 
   useEffect(() => {
     loadDashboardData();
@@ -134,6 +143,59 @@ export default function Overview() {
         .map(([date, count]) => ({ date, count }));
 
       setDailyData(dailyChartData);
+
+      // Calculate category distribution
+      const categoryCounts = listings.reduce((acc, listing) => {
+        const category = listing.category || 'Unknown';
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const categoryChartData = Object.entries(categoryCounts)
+        .map(([category, count]) => ({ category, count }));
+
+      setCategoryData(categoryChartData);
+
+      // Calculate source host distribution (top 10)
+      const sourceCounts = listings.reduce((acc, listing) => {
+        const source = listing.sourceHost || 'Unknown';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const topSources = Object.entries(sourceCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10)
+        .map(([source, count]) => ({ source, count }));
+
+      setSourceData(topSources);
+
+      // Calculate agency distribution (top 10)
+      const agencyCounts = listings.reduce((acc, listing) => {
+        const agency = listing.agencyName || 'Unknown';
+        acc[agency] = (acc[agency] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const topAgencies = Object.entries(agencyCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10)
+        .map(([agency, count]) => ({ agency, count }));
+
+      setAgencyData(topAgencies);
+
+      // Calculate content statistics
+      const withImages = listings.filter(l => l.images && l.images.length > 0).length;
+      const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
+      const withKeyEntities = listings.filter(l => l.keyEntities).length;
+      const emailSources = listings.filter(l => l.emailSubject || l.from).length;
+
+      setContentStats({
+        withImages,
+        withFloorplans,
+        withKeyEntities,
+        emailSources,
+      });
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -241,6 +303,37 @@ export default function Overview() {
         />
       </div>
 
+      {/* Content Statistics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          title="With Images"
+          value={contentStats.withImages}
+          icon={<Image className="h-4 w-4" />}
+          description="Properties with attached images"
+        />
+        
+        <KPICard
+          title="With Floorplans"
+          value={contentStats.withFloorplans}
+          icon={<FileText className="h-4 w-4" />}
+          description="Properties with floorplan attachments"
+        />
+        
+        <KPICard
+          title="Email Sources"
+          value={contentStats.emailSources}
+          icon={<Mail className="h-4 w-4" />}
+          description="Properties received via email"
+        />
+        
+        <KPICard
+          title="With Entities"
+          value={contentStats.withKeyEntities}
+          icon={<Tag className="h-4 w-4" />}
+          description="Properties with extracted entities"
+        />
+      </div>
+
       {/* Charts */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -294,7 +387,75 @@ export default function Overview() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Content Categories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ category, percent }) => 
+                    percent > 0.05 ? `${category} ${(percent * 100).toFixed(0)}%` : ''
+                  }
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="count"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Agencies</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={agencyData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="agency" type="category" width={80} />
+                <Tooltip />
+                <Bar dataKey="count" fill="hsl(var(--chart-2))" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Source Hosts (Top 10)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={sourceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="source" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="hsl(var(--chart-3))" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader>
             <CardTitle>Daily Listings (Last 30 Days)</CardTitle>
           </CardHeader>
@@ -333,6 +494,9 @@ export default function Overview() {
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium">{listing.address || 'Unknown Address'}</h4>
                     <Badge variant="outline">{listing.propertyType || 'Unknown'}</Badge>
+                    {listing.category && listing.category !== 'listing' && (
+                      <Badge variant="secondary">{listing.category}</Badge>
+                    )}
                     {listing.confidence !== undefined && (
                       <ConfidenceBadge confidence={listing.confidence} />
                     )}
@@ -343,6 +507,18 @@ export default function Overview() {
                     {listing.beds && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
                     {listing.baths && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
                     {listing.carSpaces && <span>{listing.carSpaces} car</span>}
+                    {listing.images && listing.images.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Image className="h-3 w-3" />
+                        <span>{listing.images.length}</span>
+                      </div>
+                    )}
+                    {listing.emailSubject && (
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        <span>Email</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -352,6 +528,16 @@ export default function Overview() {
                   <div className="text-xs text-muted-foreground">
                     {listing.sourceHost || 'Unknown Source'}
                   </div>
+                  {listing.url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 mt-1"
+                      onClick={() => window.open(listing.url, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
