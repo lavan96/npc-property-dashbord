@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler } from 'lucide-react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { airtableService, PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
+import { useAutoRefresh } from '@/hooks/use-auto-refresh';
 import { 
   BarChart, 
   Bar, 
@@ -47,11 +48,8 @@ export default function Overview() {
     emailSources: 0,
   });
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  // Memoize the load function to prevent unnecessary re-renders
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -208,7 +206,36 @@ export default function Overview() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Auto-refresh functionality
+  const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh(loadDashboardData);
+
+  useEffect(() => {
+    // Initial load
+    loadDashboardData();
+
+    // Load settings and start auto-refresh if enabled
+    const savedSettings = localStorage.getItem('dashboard-settings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.autoRefresh) {
+          startAutoRefresh({
+            autoRefresh: settings.autoRefresh,
+            refreshInterval: settings.refreshInterval || 5
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse auto-refresh settings:', error);
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      stopAutoRefresh();
+    };
+  }, [loadDashboardData, startAutoRefresh, stopAutoRefresh]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-AU', {
