@@ -69,9 +69,10 @@ export default function Overview() {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      const newThisWeek = listings.filter(l => 
-        l.receivedAt && l.receivedAt >= oneWeekAgo
-      ).length;
+      const newThisWeek = listings.filter(l => {
+        const createdDate = l.createdAt || l.receivedAt;
+        return createdDate && createdDate >= oneWeekAgo;
+      }).length;
 
       const withInspections = listings.filter(l => l.inspectionStart).length;
       
@@ -79,9 +80,10 @@ export default function Overview() {
         l.confidence !== undefined && l.confidence < 0.7
       ).length;
 
-      const recentWithPrice = listings.filter(l => 
-        l.price && l.receivedAt && l.receivedAt >= thirtyDaysAgo
-      );
+      const recentWithPrice = listings.filter(l => {
+        const createdDate = l.createdAt || l.receivedAt;
+        return l.price && createdDate && createdDate >= thirtyDaysAgo;
+      });
       const averagePrice = recentWithPrice.length > 0 
         ? recentWithPrice.reduce((sum, l) => sum + (l.price || 0), 0) / recentWithPrice.length
         : 0;
@@ -131,8 +133,9 @@ export default function Overview() {
       }
 
       listings.forEach(listing => {
-        if (listing.receivedAt && listing.receivedAt >= thirtyDaysAgo) {
-          const dateStr = listing.receivedAt.toISOString().split('T')[0];
+        const createdDate = listing.createdAt || listing.receivedAt;
+        if (createdDate && createdDate >= thirtyDaysAgo) {
+          const dateStr = createdDate.toISOString().split('T')[0];
           if (dailyCounts[dateStr] !== undefined) {
             dailyCounts[dateStr]++;
           }
@@ -183,8 +186,14 @@ export default function Overview() {
         emailSources: commercialProperties,
       });
 
-      // For source data, use property types as source insight
-      const sourceData = Object.entries(typeCounts)
+      // Calculate actual source distribution
+      const sourceCounts = listings.reduce((acc, listing) => {
+        const source = listing.source || 'Unknown Source';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const sourceData = Object.entries(sourceCounts)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 10)
         .map(([source, count]) => ({ source, count }));
@@ -429,7 +438,7 @@ export default function Overview() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Property Type Breakdown</CardTitle>
+            <CardTitle>Source Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -517,10 +526,10 @@ export default function Overview() {
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-muted-foreground">
-                    {listing.receivedAt && formatDate(listing.receivedAt)}
+                    {(listing.createdAt || listing.receivedAt) && formatDate(listing.createdAt || listing.receivedAt!)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {listing.sourceHost || 'Unknown Source'}
+                    {listing.source || listing.sourceHost || 'Unknown Source'}
                   </div>
                 </div>
               </div>

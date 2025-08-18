@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
       status: record.fields.Status || 'Available',
       confidence: record.fields['Confidence Score'] || record.fields.Confidence_Score || record.fields.Confidence || 0.85,
       source: record.fields.Source || record.fields.Data_Source || 'Airtable',
+      createdAt: record.fields['Created At'] || record.fields.Created_At || record.createdTime,
       description: record.fields['Property Description'] || record.fields.Description || record.fields.Property_Description || '',
       images: record.fields.Images || record.fields.Property_Images || [],
       agent: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',

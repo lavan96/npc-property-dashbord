@@ -40,6 +40,10 @@ export interface AirtableRecord {
     'Key Entities'?: string;
     'Confidence'?: number;
     'Raw Extract'?: string;
+    
+    // New fields
+    'Created At'?: string;
+    'Source'?: string;
   };
   createdTime: string;
 }
@@ -95,6 +99,8 @@ export interface PropertyListing {
   confidence?: number;
   rawExtract?: string;
   createdTime: Date;
+  createdAt?: Date;
+  source?: string;
 }
 
 export interface DashboardKPIs {

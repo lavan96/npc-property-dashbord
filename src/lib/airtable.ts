@@ -44,6 +44,7 @@ export interface PropertyListing {
   keyEntities?: string;
   rawExtract?: string;
   createdTime?: Date;
+  createdAt?: Date;
 }
 
 export interface AirtableGetRecordsOptions {
@@ -153,6 +154,7 @@ class AirtableService {
       keyEntities: fields['Key Entities'],
       rawExtract: fields['Raw Extract'],
       createdTime: record.createdTime ? new Date(record.createdTime) : undefined,
+      createdAt: fields['Created At'] ? new Date(fields['Created At']) : undefined,
     };
   }
 }
