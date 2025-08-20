@@ -118,8 +118,8 @@ export default function Sources() {
           
           if (existing) {
             existing.count++;
-            if (listing.agentName && !existing.agents.includes(listing.agentName)) {
-              existing.agents.push(listing.agentName);
+            if (listing.agent && !existing.agents.includes(listing.agent)) {
+              existing.agents.push(listing.agent);
             }
             if (createdDate > existing.latestListing) {
               existing.latestListing = createdDate;
@@ -128,15 +128,15 @@ export default function Sources() {
             agencyMap.set(listing.agencyName, {
               name: listing.agencyName,
               count: 1,
-              agents: listing.agentName ? [listing.agentName] : [],
+              agents: listing.agent ? [listing.agent] : [],
               latestListing: createdDate
             });
           }
         }
 
         // Agent sources
-        if (listing.agentName) {
-          const existing = agentMap.get(listing.agentName);
+        if (listing.agent) {
+          const existing = agentMap.get(listing.agent);
           const createdDate = ensureDate(listing.createdTime);
           
           if (existing) {
@@ -145,8 +145,8 @@ export default function Sources() {
               existing.latestListing = createdDate;
             }
           } else {
-            agentMap.set(listing.agentName, {
-              name: listing.agentName,
+            agentMap.set(listing.agent, {
+              name: listing.agent,
               phone: listing.agentPhone,
               agency: listing.agencyName,
               count: 1,
