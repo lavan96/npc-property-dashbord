@@ -61,7 +61,6 @@ export default function Sources() {
     try {
       setLoading(true);
       const response = await airtableService.getRecords({ pageSize: 500 });
-      console.log('Raw listings data:', response.records);
       setListings(response.records);
       
       // Process email sources
@@ -73,9 +72,6 @@ export default function Sources() {
       // Process agent sources
       const agentMap = new Map<string, AgentSource>();
 
-      // Debug: Log first few records to see field structure
-      console.log('First 3 records for debugging:', response.records.slice(0, 3));
-
       response.records.forEach(listing => {
         // Helper function to ensure we have a proper Date object
         const ensureDate = (dateValue: any): Date => {
@@ -84,43 +80,35 @@ export default function Sources() {
           return new Date();
         };
 
-        // Debug logging for field presence
-        console.log('Processing listing:', {
-          id: listing.id,
-          sourceHost: listing.sourceHost,
-          from: listing.from,
-          agencyName: listing.agencyName,
-          agentName: listing.agentName,
-          agentPhone: listing.agentPhone,
-          emailSubject: listing.emailSubject
-        });
+        // Extract domain from email source
+        const extractDomain = (email: string): string => {
+          if (!email || typeof email !== 'string') return '';
+          const match = email.match(/@(.+)/);
+          return match ? match[1] : email;
+        };
 
-        // Email sources
-        if (listing.sourceHost && listing.from) {
-          console.log('Found email source:', listing.sourceHost, listing.from);
-          const key = `${listing.sourceHost}-${listing.from}`;
+        // Email sources - use the 'source' field which contains email addresses
+        if (listing.source) {
+          const sourceEmail = listing.source;
+          const sourceDomain = extractDomain(sourceEmail);
+          const key = `${sourceDomain}-${sourceEmail}`;
           const existing = emailMap.get(key);
-          const receivedDate = ensureDate(listing.receivedAt);
+          const receivedDate = ensureDate(listing.createdAt || listing.createdTime);
           
           if (existing) {
             existing.count++;
             if (receivedDate > existing.latestReceived) {
               existing.latestReceived = receivedDate;
             }
-            if (listing.emailSubject && !existing.subjects.includes(listing.emailSubject)) {
-              existing.subjects.push(listing.emailSubject);
-            }
           } else {
             emailMap.set(key, {
-              host: listing.sourceHost,
-              from: listing.from,
+              host: sourceDomain,
+              from: sourceEmail,
               count: 1,
               latestReceived: receivedDate,
-              subjects: listing.emailSubject ? [listing.emailSubject] : []
+              subjects: [] // Email subjects aren't available in this dataset
             });
           }
-        } else {
-          console.log('No email source data for listing:', listing.id, 'sourceHost:', listing.sourceHost, 'from:', listing.from);
         }
 
         // Agency sources
@@ -168,10 +156,6 @@ export default function Sources() {
         }
       });
 
-      console.log('Email sources found:', emailMap.size);
-      console.log('Agency sources found:', agencyMap.size);
-      console.log('Agent sources found:', agentMap.size);
-      
       setEmailSources(Array.from(emailMap.values()).sort((a, b) => b.count - a.count));
       setAgencySources(Array.from(agencyMap.values()).sort((a, b) => b.count - a.count));
       setAgentSources(Array.from(agentMap.values()).sort((a, b) => b.count - a.count));
