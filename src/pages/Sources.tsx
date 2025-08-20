@@ -134,14 +134,10 @@ export default function Sources() {
           }
         }
 
-        // Agent sources - check both agent field and direct Airtable fields
+        // Agent sources - access phone from raw Airtable fields
         const agentName = listing.agent;
-        const agentPhone = listing.agentPhone;
-        
-        // Debug phone data
-        if (agentName) {
-          console.log('Agent processing:', { agentName, agentPhone, agencyName: listing.agencyName });
-        }
+        // Access phone from the original Airtable fields since transformation might not be working
+        const agentPhone = (listing as any).fields?.['Agent Phone'] || listing.agentPhone;
         
         if (agentName) {
           const existing = agentMap.get(agentName);
