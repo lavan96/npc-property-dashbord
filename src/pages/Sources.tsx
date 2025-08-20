@@ -55,14 +55,23 @@ export default function Sources() {
       const agentMap = new Map<string, AgentSource>();
 
       response.records.forEach(listing => {
+        // Helper function to ensure we have a proper Date object
+        const ensureDate = (dateValue: any): Date => {
+          if (dateValue instanceof Date) return dateValue;
+          if (typeof dateValue === 'string') return new Date(dateValue);
+          return new Date();
+        };
+
         // Email sources
         if (listing.sourceHost && listing.from) {
           const key = `${listing.sourceHost}-${listing.from}`;
           const existing = emailMap.get(key);
+          const receivedDate = ensureDate(listing.receivedAt);
+          
           if (existing) {
             existing.count++;
-            if (listing.receivedAt && listing.receivedAt > existing.latestReceived) {
-              existing.latestReceived = listing.receivedAt;
+            if (receivedDate > existing.latestReceived) {
+              existing.latestReceived = receivedDate;
             }
             if (listing.emailSubject && !existing.subjects.includes(listing.emailSubject)) {
               existing.subjects.push(listing.emailSubject);
@@ -72,7 +81,7 @@ export default function Sources() {
               host: listing.sourceHost,
               from: listing.from,
               count: 1,
-              latestReceived: listing.receivedAt || new Date(),
+              latestReceived: receivedDate,
               subjects: listing.emailSubject ? [listing.emailSubject] : []
             });
           }
@@ -81,20 +90,22 @@ export default function Sources() {
         // Agency sources
         if (listing.agencyName) {
           const existing = agencyMap.get(listing.agencyName);
+          const createdDate = ensureDate(listing.createdTime);
+          
           if (existing) {
             existing.count++;
             if (listing.agentName && !existing.agents.includes(listing.agentName)) {
               existing.agents.push(listing.agentName);
             }
-            if (listing.createdTime && listing.createdTime > existing.latestListing) {
-              existing.latestListing = listing.createdTime;
+            if (createdDate > existing.latestListing) {
+              existing.latestListing = createdDate;
             }
           } else {
             agencyMap.set(listing.agencyName, {
               name: listing.agencyName,
               count: 1,
               agents: listing.agentName ? [listing.agentName] : [],
-              latestListing: listing.createdTime || new Date()
+              latestListing: createdDate
             });
           }
         }
@@ -102,10 +113,12 @@ export default function Sources() {
         // Agent sources
         if (listing.agentName) {
           const existing = agentMap.get(listing.agentName);
+          const createdDate = ensureDate(listing.createdTime);
+          
           if (existing) {
             existing.count++;
-            if (listing.createdTime && listing.createdTime > existing.latestListing) {
-              existing.latestListing = listing.createdTime;
+            if (createdDate > existing.latestListing) {
+              existing.latestListing = createdDate;
             }
           } else {
             agentMap.set(listing.agentName, {
@@ -113,7 +126,7 @@ export default function Sources() {
               phone: listing.agentPhone,
               agency: listing.agencyName,
               count: 1,
-              latestListing: listing.createdTime || new Date()
+              latestListing: createdDate
             });
           }
         }
