@@ -138,6 +138,11 @@ export default function Sources() {
         const agentName = listing.agent;
         const agentPhone = listing.agentPhone;
         
+        // Debug phone data
+        if (agentName) {
+          console.log('Agent processing:', { agentName, agentPhone, agencyName: listing.agencyName });
+        }
+        
         if (agentName) {
           const existing = agentMap.get(agentName);
           const createdDate = ensureDate(listing.createdTime);
