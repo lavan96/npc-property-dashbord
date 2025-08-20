@@ -134,20 +134,27 @@ export default function Sources() {
           }
         }
 
-        // Agent sources
-        if (listing.agent) {
-          const existing = agentMap.get(listing.agent);
+        // Agent sources - check both agent field and direct Airtable fields
+        const agentName = listing.agent;
+        const agentPhone = listing.agentPhone;
+        
+        if (agentName) {
+          const existing = agentMap.get(agentName);
           const createdDate = ensureDate(listing.createdTime);
           
           if (existing) {
             existing.count++;
+            // Update phone if not already set
+            if (agentPhone && !existing.phone) {
+              existing.phone = agentPhone;
+            }
             if (createdDate > existing.latestListing) {
               existing.latestListing = createdDate;
             }
           } else {
-            agentMap.set(listing.agent, {
-              name: listing.agent,
-              phone: listing.agentPhone,
+            agentMap.set(agentName, {
+              name: agentName,
+              phone: agentPhone,
               agency: listing.agencyName,
               count: 1,
               latestListing: createdDate
