@@ -35,6 +35,24 @@ export default function Sources() {
   const [agencySources, setAgencySources] = useState<AgencySource[]>([]);
   const [agentSources, setAgentSources] = useState<AgentSource[]>([]);
 
+  // Helper function to safely format dates
+  const formatDate = (dateValue: any): string => {
+    try {
+      if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+        return dateValue.toLocaleDateString();
+      }
+      if (typeof dateValue === 'string') {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString();
+        }
+      }
+      return 'Unknown date';
+    } catch (error) {
+      return 'Unknown date';
+    }
+  };
+
   useEffect(() => {
     loadSources();
   }, []);
@@ -200,7 +218,7 @@ export default function Sources() {
                     <div>
                       <p className="text-sm font-medium">From: {source.from}</p>
                       <p className="text-xs text-muted-foreground">
-                        Latest: {source.latestReceived.toLocaleDateString()}
+                        Latest: {formatDate(source.latestReceived)}
                       </p>
                     </div>
                     {source.subjects.length > 0 && (
@@ -250,7 +268,7 @@ export default function Sources() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="text-xs text-muted-foreground">
-                      Latest listing: {agency.latestListing.toLocaleDateString()}
+                      Latest listing: {formatDate(agency.latestListing)}
                     </p>
                     {agency.agents.length > 0 && (
                       <div>
@@ -317,7 +335,7 @@ export default function Sources() {
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Latest listing: {agent.latestListing.toLocaleDateString()}
+                      Latest listing: {formatDate(agent.latestListing)}
                     </p>
                   </CardContent>
                 </Card>
