@@ -482,11 +482,11 @@ export default function Overview() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
-                <PieChart margin={{ top: 20, right: 20, bottom: 80, left: 20 }}>
+                <PieChart margin={{ top: 40, right: 20, bottom: 80, left: 20 }}>
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
-                    cy="40%"
+                    cy="45%"
                     labelLine={false}
                     label={({ count, percent }) => 
                       percent > 0.03 ? `${count}` : ''
