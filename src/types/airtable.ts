@@ -44,7 +44,7 @@ export interface AirtableRecord {
     // New fields
     'Created At'?: string;
     'Source'?: string;
-    'Web Links'?: string;
+    'Web Link'?: string;
   };
   createdTime: string;
 }

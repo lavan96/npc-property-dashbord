@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       carSpaces: record.fields['Car Spaces'] || record.fields.Car_Spaces || null,
       landSize: record.fields['Square Feet'] || record.fields['Land Size'] || record.fields.Land_Size || record.fields.LandSize || null,
       lotNumber: record.fields['Lot Number'] || null,
-      webLinks: record.fields['Web Links'] || null,
+      webLinks: record.fields['Web Link'] || null,
     }));
 
     return new Response(
