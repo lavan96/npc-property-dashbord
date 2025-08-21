@@ -442,7 +442,7 @@ export default function Listings() {
                   
                   <TableCell>
                     <div className="text-sm">
-                      {listing.sourceHost || 'Unknown'}
+                      {listing.agencyName || 'Unknown Agency'}
                     </div>
                   </TableCell>
                   
