@@ -72,6 +72,15 @@ export default function Listings() {
         sortDirection: 'desc'
       });
       
+      console.log('Raw listings response:', response);
+      console.log('First 3 records agency info:', response.records.slice(0, 3).map(r => ({
+        id: r.id,
+        agencyName: r.agencyName,
+        agent: r.agent,
+        sourceHost: r.sourceHost,
+        source: r.source
+      })));
+      
       setListings(response.records);
     } catch (error) {
       console.error('Failed to load listings:', error);
