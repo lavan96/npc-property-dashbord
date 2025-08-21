@@ -480,17 +480,17 @@ export default function Overview() {
               <CardTitle className="text-lg">Property Types</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart margin={{ top: 20, right: 80, bottom: 60, left: 80 }}>
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     labelLine={true}
                     label={({ type, count, percent }) => 
-                      percent > 0.03 ? `${type}: ${count} (${(percent * 100).toFixed(1)}%)` : ''
+                      percent > 0.02 ? `${type}: ${count}` : ''
                     }
-                    outerRadius={100}
+                    outerRadius={90}
                     fill="#8884d8"
                     dataKey="count"
                   >
@@ -512,8 +512,9 @@ export default function Overview() {
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={36}
-                    formatter={(value, entry) => {
+                    height={50}
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    formatter={(value) => {
                       const item = propertyTypeData.find(d => d.type === value);
                       return `${value} (${item?.count || 0})`;
                     }}
