@@ -444,22 +444,23 @@ export default function Overview() {
 
       {/* Charts Section */}
       <div className="space-y-8">
-        {/* Primary Charts Row */}
-        <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
-          <Card className="lg:col-span-2 hover-scale">
+        {/* Row 1: Suburbs and Property Types */}
+        <div className="grid gap-6 lg:grid-cols-2 animate-fade-in">
+          <Card className="hover-scale">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Listings by Suburb (Top 10)</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={suburbData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                <BarChart data={suburbData} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="suburb" 
                     angle={-45}
                     textAnchor="end"
-                    height={80}
+                    height={100}
                     fontSize={12}
+                    interval={0}
                   />
                   <YAxis fontSize={12} />
                   <Tooltip 
@@ -480,17 +481,14 @@ export default function Overview() {
               <CardTitle className="text-lg">Property Types</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <PieChart margin={{ top: 20, right: 80, bottom: 60, left: 80 }}>
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart margin={{ top: 20, right: 20, bottom: 80, left: 20 }}>
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
-                    cy="45%"
-                    labelLine={true}
-                    label={({ type, count, percent }) => 
-                      percent > 0.02 ? `${type}: ${count}` : ''
-                    }
-                    outerRadius={90}
+                    cy="40%"
+                    labelLine={false}
+                    outerRadius={110}
                     fill="#8884d8"
                     dataKey="count"
                   >
@@ -499,21 +497,18 @@ export default function Overview() {
                     ))}
                   </Pie>
                   <Tooltip 
+                    formatter={(value, name) => [value, name]}
+                    labelFormatter={(value) => `Property Type: ${value}`}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
-                    formatter={(value: number, name) => {
-                      const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
-                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                      return [`${value} properties (${percentage}%)`, name];
-                    }}
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={50}
-                    wrapperStyle={{ paddingTop: '20px' }}
+                    height={60}
+                    wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
                     formatter={(value) => {
                       const item = propertyTypeData.find(d => d.type === value);
                       return `${value} (${item?.count || 0})`;
@@ -525,24 +520,31 @@ export default function Overview() {
           </Card>
         </div>
 
-        {/* Secondary Charts Row */}
-        <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
-          <Card className="lg:col-span-2 hover-scale">
+        {/* Row 2: Daily Listings and Property Status */}
+        <div className="grid gap-6 lg:grid-cols-2 animate-fade-in">
+          <Card className="hover-scale">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Daily Listings (Last 30 Days)</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <LineChart data={dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
-                    dataKey="date" 
-                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}
-                    fontSize={11}
+                    dataKey="date"
+                    fontSize={12}
+                    tick={{ textAnchor: 'middle' }}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }}
                   />
                   <YAxis fontSize={12} />
                   <Tooltip 
-                    labelFormatter={(value) => new Date(value).toLocaleDateString('en-AU')}
+                    labelFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+                    }}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
@@ -564,18 +566,18 @@ export default function Overview() {
 
           <Card className="hover-scale">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Property Status Distribution</CardTitle>
+              <CardTitle className="text-lg">Property Status</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
+                <PieChart margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
                   <Pie
                     data={categoryData}
                     cx="50%"
-                    cy="50%"
+                    cy="40%"
                     labelLine={false}
                     label={({ status, percent }) => 
-                      percent > 0.05 ? `${status} ${(percent * 100).toFixed(0)}%` : ''
+                      percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''
                     }
                     outerRadius={90}
                     fill="#8884d8"
@@ -586,11 +588,18 @@ export default function Overview() {
                     ))}
                   </Pie>
                   <Tooltip 
+                    formatter={(value, name) => [value, name]}
+                    labelFormatter={(value) => `Status: ${value}`}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={40}
+                    wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -598,25 +607,28 @@ export default function Overview() {
           </Card>
         </div>
 
-        {/* Third Charts Row */}
-        <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
-          <Card className="lg:col-span-2 hover-scale">
+        {/* Row 3: Source and Agency Distribution */}
+        <div className="grid gap-6 lg:grid-cols-2 animate-fade-in">
+          <Card className="hover-scale">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Sender Email Distribution</CardTitle>
+              <CardTitle className="text-lg">Top Sender Emails</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={sourceData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={sourceData} margin={{ top: 20, right: 30, left: 20, bottom: 120 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="source" 
                     angle={-45}
                     textAnchor="end"
-                    height={80}
+                    height={120}
                     fontSize={11}
+                    interval={0}
                   />
                   <YAxis fontSize={12} />
                   <Tooltip 
+                    formatter={(value) => [value, 'Count']}
+                    labelFormatter={(value) => `Source: ${value}`}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
@@ -631,22 +643,31 @@ export default function Overview() {
 
           <Card className="hover-scale">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Agency Distribution</CardTitle>
+              <CardTitle className="text-lg">Top Agencies</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={agencyData} layout="horizontal" margin={{ top: 20, right: 30, left: 80, bottom: 20 }}>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={agencyData} margin={{ top: 20, right: 30, left: 20, bottom: 120 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis type="number" fontSize={12} />
-                  <YAxis dataKey="agency" type="category" width={80} fontSize={10} />
+                  <XAxis 
+                    dataKey="agency" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={120}
+                    fontSize={11}
+                    interval={0}
+                  />
+                  <YAxis fontSize={12} />
                   <Tooltip 
+                    formatter={(value) => [value, 'Count']}
+                    labelFormatter={(value) => `Agency: ${value}`}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
                   />
-                  <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
