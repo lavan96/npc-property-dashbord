@@ -45,6 +45,7 @@ export interface PropertyListing {
   rawExtract?: string;
   createdTime?: Date;
   createdAt?: Date;
+  webLinks?: string;
 }
 
 export interface AirtableGetRecordsOptions {

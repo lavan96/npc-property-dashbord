@@ -68,6 +68,12 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
     }
   };
 
+  const openWebLink = () => {
+    if (listing.webLinks) {
+      window.open(listing.webLinks, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -375,8 +381,15 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
 
           {/* Actions */}
           <div className="flex gap-2 pt-4">
+            {listing.webLinks && (
+              <Button onClick={openWebLink}>
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Listing
+              </Button>
+            )}
+            
             {listing.url && (
-              <Button onClick={openSourceUrl}>
+              <Button variant="outline" onClick={openSourceUrl}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 View Source
               </Button>
@@ -393,6 +406,13 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
               <Button variant="outline" onClick={() => copyToClipboard(listing.url!, "URL")}>
                 <Copy className="h-4 w-4 mr-2" />
                 Copy URL
+              </Button>
+            )}
+            
+            {listing.webLinks && (
+              <Button variant="outline" onClick={() => copyToClipboard(listing.webLinks!, "Listing URL")}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Listing URL
               </Button>
             )}
           </div>

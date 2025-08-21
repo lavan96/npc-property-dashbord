@@ -44,6 +44,7 @@ export interface AirtableRecord {
     // New fields
     'Created At'?: string;
     'Source'?: string;
+    'Web Links'?: string;
   };
   createdTime: string;
 }
@@ -101,6 +102,7 @@ export interface PropertyListing {
   createdTime: Date;
   createdAt?: Date;
   source?: string;
+  webLinks?: string;
 }
 
 export interface DashboardKPIs {
