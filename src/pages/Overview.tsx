@@ -486,12 +486,9 @@ export default function Overview() {
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
-                    cy="45%"
+                    cy="40%"
                     labelLine={false}
-                    label={({ count, percent }) => 
-                      percent > 0.03 ? `${count}` : ''
-                    }
-                    outerRadius={110}
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="count"
                   >
