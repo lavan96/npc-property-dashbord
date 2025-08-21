@@ -22,7 +22,8 @@ import {
   Cell, 
   LineChart, 
   Line,
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
@@ -485,9 +486,9 @@ export default function Overview() {
                     data={propertyTypeData}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ type, percent }) => 
-                      percent > 0.05 ? `${type} ${(percent * 100).toFixed(0)}%` : ''
+                    labelLine={true}
+                    label={({ type, count, percent }) => 
+                      percent > 0.03 ? `${type}: ${count} (${(percent * 100).toFixed(1)}%)` : ''
                     }
                     outerRadius={100}
                     fill="#8884d8"
@@ -502,6 +503,19 @@ export default function Overview() {
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
+                    }}
+                    formatter={(value: number, name) => {
+                      const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
+                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                      return [`${value} properties (${percentage}%)`, name];
+                    }}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value, entry) => {
+                      const item = propertyTypeData.find(d => d.type === value);
+                      return `${value} (${item?.count || 0})`;
                     }}
                   />
                 </PieChart>
