@@ -488,6 +488,9 @@ export default function Overview() {
                     cx="50%"
                     cy="40%"
                     labelLine={false}
+                    label={({ count, percent }) => 
+                      percent > 0.03 ? `${count}` : ''
+                    }
                     outerRadius={110}
                     fill="#8884d8"
                     dataKey="count"
@@ -497,8 +500,15 @@ export default function Overview() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    formatter={(value, name) => [value, name]}
-                    labelFormatter={(value) => `Property Type: ${value}`}
+                    formatter={(value: number) => {
+                      const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
+                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                      return [`${value} properties (${percentage}%)`];
+                    }}
+                    labelFormatter={(label, payload) => {
+                      const data = payload?.[0]?.payload;
+                      return data ? `Property Type: ${data.type}` : 'Property Type';
+                    }}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
@@ -509,9 +519,23 @@ export default function Overview() {
                     verticalAlign="bottom" 
                     height={60}
                     wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
-                    formatter={(value) => {
-                      const item = propertyTypeData.find(d => d.type === value);
-                      return `${value} (${item?.count || 0})`;
+                    content={(props) => {
+                      const { payload } = props;
+                      return (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {propertyTypeData.map((entry, index) => (
+                            <div key={entry.type} className="flex items-center gap-1">
+                              <div 
+                                className="w-3 h-3 rounded-sm" 
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {entry.type} ({entry.count})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
                     }}
                   />
                 </PieChart>
@@ -576,8 +600,8 @@ export default function Overview() {
                     cx="50%"
                     cy="40%"
                     labelLine={false}
-                    label={({ status, percent }) => 
-                      percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''
+                    label={({ count, percent }) => 
+                      percent > 0.05 ? `${count}` : ''
                     }
                     outerRadius={90}
                     fill="#8884d8"
@@ -588,8 +612,15 @@ export default function Overview() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    formatter={(value, name) => [value, name]}
-                    labelFormatter={(value) => `Status: ${value}`}
+                    formatter={(value: number) => {
+                      const total = categoryData.reduce((sum, item) => sum + item.count, 0);
+                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                      return [`${value} properties (${percentage}%)`];
+                    }}
+                    labelFormatter={(label, payload) => {
+                      const data = payload?.[0]?.payload;
+                      return data ? `Status: ${data.status}` : 'Status';
+                    }}
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
                       border: '1px solid hsl(var(--border))',
@@ -600,6 +631,23 @@ export default function Overview() {
                     verticalAlign="bottom" 
                     height={40}
                     wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                    content={(props) => {
+                      return (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {categoryData.map((entry, index) => (
+                            <div key={entry.status} className="flex items-center gap-1">
+                              <div 
+                                className="w-3 h-3 rounded-sm" 
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {entry.status} ({entry.count})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
