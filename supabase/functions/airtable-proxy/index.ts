@@ -134,11 +134,36 @@ Deno.serve(async (req) => {
       webLinks: record.fields['Web Link'] || null,
     }));
 
+    // Remove duplicates based on address, price, and property details
+    const deduplicatedRecords = [];
+    const seenListings = new Set();
+    
+    for (const record of transformedRecords) {
+      // Create a unique key based on core property characteristics
+      const duplicateKey = [
+        record.address?.toLowerCase().trim(),
+        record.price,
+        record.beds,
+        record.baths,
+        record.propertyType?.toLowerCase()
+      ].join('|');
+      
+      if (!seenListings.has(duplicateKey)) {
+        seenListings.add(duplicateKey);
+        deduplicatedRecords.push(record);
+      }
+    }
+    
+    const removedCount = transformedRecords.length - deduplicatedRecords.length;
+    if (removedCount > 0) {
+      console.log(`Removed ${removedCount} duplicate listings`);
+    }
+
     return new Response(
       JSON.stringify({
-        records: transformedRecords,
+        records: deduplicatedRecords,
         offset: data.offset,
-        total: transformedRecords.length
+        total: deduplicatedRecords.length
       }),
       { 
         status: 200, 
