@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,12 +7,22 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { airtableService } from '@/lib/airtable';
 import { PropertyListing } from '@/lib/airtable';
 import { KPICard } from '@/components/dashboard/KPICard';
+import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
+import { useReportGenerator } from '@/hooks/useReportGenerator';
 import { Building2, MapPin, DollarSign, Calendar } from 'lucide-react';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
 
 export default function Reports() {
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
+  const { generateReport, isGenerating } = useReportGenerator();
+  
+  // Chart refs for PDF generation
+  const kpisRef = useRef<HTMLDivElement>(null);
+  const suburbChartRef = useRef<HTMLDivElement>(null);
+  const propertyTypeChartRef = useRef<HTMLDivElement>(null);
+  const priceRangeChartRef = useRef<HTMLDivElement>(null);
+  const bedroomChartRef = useRef<HTMLDivElement>(null);
 
   const { data: listings, isLoading } = useQuery({
     queryKey: ['all-listings'],
@@ -149,15 +159,31 @@ export default function Reports() {
     );
   }
 
+  const handleGenerateReport = async (config: any) => {
+    await generateReport(config, allListings, {
+      kpis: kpisRef.current,
+      suburbChart: suburbChartRef.current,
+      propertyTypeChart: propertyTypeChartRef.current,
+      priceRangeChart: priceRangeChartRef.current,
+      bedroomChart: bedroomChartRef.current,
+    });
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Reports</h1>
-        <p className="text-muted-foreground">Quantitative analysis of your property listings</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Reports</h1>
+          <p className="text-muted-foreground">Quantitative analysis of your property listings</p>
+        </div>
+        <ReportConfigModal 
+          onGenerateReport={handleGenerateReport}
+          isGenerating={isGenerating}
+        />
       </div>
 
       {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div ref={kpisRef} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="Total Listings"
           value={totalListings.toLocaleString()}
@@ -200,7 +226,7 @@ export default function Reports() {
               <CardDescription>Top 10 suburbs by listing count</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-[400px]">
+              <ChartContainer ref={suburbChartRef} config={chartConfig} className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={suburbChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -228,7 +254,7 @@ export default function Reports() {
               <CardDescription>Breakdown by property category</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-[400px]">
+              <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -260,7 +286,7 @@ export default function Reports() {
               <CardDescription>Listings grouped by price brackets</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-[400px]">
+              <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={priceRangeChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -282,7 +308,7 @@ export default function Reports() {
               <CardDescription>Listings by number of bedrooms</CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-[400px]">
+              <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={bedroomChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
