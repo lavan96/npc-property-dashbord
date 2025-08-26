@@ -98,8 +98,8 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
 
   const chartConfig = {
     count: { label: "Listings", color: "hsl(var(--chart-1))" },
-    avgPrice: { label: "Avg Price", color: "hsl(var(--chart-2))" },
-    agentCount: { label: "Agents", color: "hsl(var(--chart-3))" },
+    avgPrice: { label: "Avg Price", color: "hsl(var(--chart-3))" },
+    agentCount: { label: "Agents", color: "hsl(var(--chart-5))" },
   };
 
   return (
@@ -215,7 +215,7 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
                   />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="agentCount" fill="hsl(var(--chart-3))" />
+                  <Bar dataKey="agentCount" fill="hsl(var(--chart-5))" />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>

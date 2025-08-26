@@ -60,8 +60,8 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
 
   const chartConfig = {
     count: { label: "Listings", color: "hsl(var(--chart-1))" },
-    avgPrice: { label: "Avg Price", color: "hsl(var(--chart-2))" },
-    avgConfidence: { label: "Confidence", color: "hsl(var(--chart-3))" },
+    avgPrice: { label: "Avg Price", color: "hsl(var(--chart-3))" },
+    avgConfidence: { label: "Confidence", color: "hsl(var(--chart-4))" },
   };
 
   return (
@@ -160,7 +160,7 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
                   />
                   <Scatter 
                     dataKey="avgPrice" 
-                    fill="hsl(var(--chart-2))"
+                    fill="hsl(var(--chart-3))"
                   />
                 </ScatterChart>
               </ResponsiveContainer>

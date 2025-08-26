@@ -16,7 +16,18 @@ import { AgentPerformance } from '@/components/reports/AgentPerformance';
 import { ExecutiveInsights } from '@/components/reports/ExecutiveInsights';
 import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb } from 'lucide-react';
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
+const COLORS = [
+  'hsl(var(--chart-1))', 
+  'hsl(var(--chart-2))', 
+  'hsl(var(--chart-3))', 
+  'hsl(var(--chart-4))', 
+  'hsl(var(--chart-5))',
+  'hsl(var(--chart-6))', 
+  'hsl(var(--chart-7))', 
+  'hsl(var(--chart-8))', 
+  'hsl(var(--chart-9))', 
+  'hsl(var(--chart-10))'
+];
 
 export default function Reports() {
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
@@ -149,7 +160,15 @@ export default function Reports() {
   const chartConfig = {
     count: {
       label: "Count",
-      color: "hsl(var(--primary))",
+      color: "hsl(var(--chart-1))",
+    },
+    listings: {
+      label: "Listings", 
+      color: "hsl(var(--chart-2))",
+    },
+    price: {
+      label: "Price",
+      color: "hsl(var(--chart-3))",
     },
   };
 
@@ -302,7 +321,7 @@ export default function Reports() {
                     />
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" />
+                    <Bar dataKey="count" fill="hsl(var(--chart-1))" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -357,7 +376,7 @@ export default function Reports() {
                     <XAxis dataKey="range" />
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="hsl(var(--secondary))" />
+                    <Bar dataKey="count" fill="hsl(var(--chart-3))" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -377,7 +396,7 @@ export default function Reports() {
                     <XAxis dataKey="beds" />
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="hsl(var(--accent))" />
+                    <Bar dataKey="count" fill="hsl(var(--chart-4))" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>

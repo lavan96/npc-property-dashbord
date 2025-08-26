@@ -51,12 +51,17 @@ Clean, modern admin dashboard with confidence-based color coding
     --destructive-foreground: 0 0% 100%;
     --destructive-light: 0 93% 97%;
 
-    /* Chart colors */
-    --chart-1: 222 47% 11%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 271 81% 56%;
-    --chart-5: 6 78% 57%;
+    /* Chart colors - Professional vibrant palette */
+    --chart-1: 222 47% 11%;          /* Deep navy */
+    --chart-2: 142 71% 45%;          /* Emerald green */
+    --chart-3: 38 92% 50%;           /* Vibrant orange */
+    --chart-4: 271 81% 56%;          /* Purple */
+    --chart-5: 6 78% 57%;            /* Coral red */
+    --chart-6: 200 98% 39%;          /* Sky blue */
+    --chart-7: 47 96% 53%;           /* Golden yellow */
+    --chart-8: 340 82% 52%;          /* Pink */
+    --chart-9: 168 76% 42%;          /* Teal */
+    --chart-10: 25 95% 53%;          /* Burnt orange */
 
     /* Borders and inputs */
     --border: 220 13% 91%;

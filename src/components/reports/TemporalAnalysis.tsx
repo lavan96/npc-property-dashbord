@@ -41,15 +41,15 @@ export function TemporalAnalysis({ listings }: TemporalAnalysisProps) {
   const chartConfig = {
     listings: {
       label: "Listings",
-      color: "hsl(var(--chart-1))",
+      color: "hsl(var(--chart-2))",
     },
     avgPrice: {
       label: "Avg Price",
-      color: "hsl(var(--chart-2))",
+      color: "hsl(var(--chart-3))",
     },
     confidenceScore: {
       label: "Confidence",
-      color: "hsl(var(--chart-3))",
+      color: "hsl(var(--chart-4))",
     },
   };
 
@@ -77,7 +77,7 @@ export function TemporalAnalysis({ listings }: TemporalAnalysisProps) {
                 <Line 
                   type="monotone" 
                   dataKey="listings" 
-                  stroke="hsl(var(--chart-1))" 
+                    stroke="hsl(var(--chart-2))"
                   strokeWidth={2}
                   dot={{ r: 4 }}
                 />
@@ -116,7 +116,7 @@ export function TemporalAnalysis({ listings }: TemporalAnalysisProps) {
                   <Line 
                     type="monotone" 
                     dataKey="avgPrice" 
-                    stroke="hsl(var(--chart-2))" 
+                    stroke="hsl(var(--chart-3))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />
@@ -152,7 +152,7 @@ export function TemporalAnalysis({ listings }: TemporalAnalysisProps) {
                   <Line 
                     type="monotone" 
                     dataKey="confidenceScore" 
-                    stroke="hsl(var(--chart-3))" 
+                    stroke="hsl(var(--chart-4))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />
