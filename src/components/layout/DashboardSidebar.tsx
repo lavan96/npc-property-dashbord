@@ -26,7 +26,7 @@ const navigationItems = [
   { title: 'Listings', url: '/listings', icon: Building2 },
   { title: 'Calendar', url: '/calendar', icon: Calendar },
   { title: 'Sources', url: '/sources', icon: Mail },
-  { title: 'Analytics', url: '/analytics', icon: BarChart3 },
+  { title: 'Reports', url: '/reports', icon: BarChart3 },
 ];
 
 const adminItems = [

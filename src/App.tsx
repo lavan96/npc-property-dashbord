@@ -10,6 +10,7 @@ import Overview from "./pages/Overview";
 import Listings from "./pages/Listings";
 import Calendar from "./pages/Calendar";
 import Sources from "./pages/Sources";
+import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -29,7 +30,7 @@ const App = () => (
               <Route path="listings" element={<Listings />} />
               <Route path="calendar" element={<Calendar />} />
               <Route path="sources" element={<Sources />} />
-              <Route path="analytics" element={<div className="p-6">Analytics coming soon...</div>} />
+              <Route path="reports" element={<Reports />} />
               <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
               <Route path="settings" element={<Settings />} />
             </Route>
