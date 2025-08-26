@@ -13,10 +13,15 @@ export function useReportGenerator() {
     allListings: PropertyListing[],
     chartRefs: {
       kpis?: HTMLElement | null;
+      advancedAnalytics?: HTMLElement | null;
+      temporalAnalysis?: HTMLElement | null;
       suburbChart?: HTMLElement | null;
       propertyTypeChart?: HTMLElement | null;
       priceRangeChart?: HTMLElement | null;
       bedroomChart?: HTMLElement | null;
+      geographicAnalysis?: HTMLElement | null;
+      agentPerformance?: HTMLElement | null;
+      executiveInsights?: HTMLElement | null;
     }
   ) => {
     setIsGenerating(true);
@@ -147,7 +152,28 @@ export function useReportGenerator() {
         }
       };
 
-      // Add charts based on configuration
+      // Add advanced analytics and insights
+      if (chartRefs.advancedAnalytics) {
+        await addChartToPDF(chartRefs.advancedAnalytics, 'Advanced Market Analytics');
+      }
+
+      if (chartRefs.executiveInsights) {
+        await addChartToPDF(chartRefs.executiveInsights, 'Executive Insights & Recommendations');
+      }
+
+      if (chartRefs.temporalAnalysis) {
+        await addChartToPDF(chartRefs.temporalAnalysis, 'Temporal Analysis');
+      }
+
+      if (chartRefs.geographicAnalysis) {
+        await addChartToPDF(chartRefs.geographicAnalysis, 'Geographic Analysis');
+      }
+
+      if (chartRefs.agentPerformance) {
+        await addChartToPDF(chartRefs.agentPerformance, 'Agent & Agency Performance');
+      }
+
+      // Add original charts based on configuration
       if (config.includeSuburbChart && chartRefs.suburbChart) {
         await addChartToPDF(chartRefs.suburbChart, 'Listings by Suburb');
       }

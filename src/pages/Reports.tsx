@@ -9,7 +9,12 @@ import { PropertyListing } from '@/lib/airtable';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
 import { useReportGenerator } from '@/hooks/useReportGenerator';
-import { Building2, MapPin, DollarSign, Calendar } from 'lucide-react';
+import { AdvancedAnalytics } from '@/components/reports/AdvancedAnalytics';
+import { TemporalAnalysis } from '@/components/reports/TemporalAnalysis';
+import { GeographicAnalysis } from '@/components/reports/GeographicAnalysis';
+import { AgentPerformance } from '@/components/reports/AgentPerformance';
+import { ExecutiveInsights } from '@/components/reports/ExecutiveInsights';
+import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb } from 'lucide-react';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))', 'hsl(var(--destructive))'];
 
@@ -19,10 +24,15 @@ export default function Reports() {
   
   // Chart refs for PDF generation
   const kpisRef = useRef<HTMLDivElement>(null);
+  const advancedAnalyticsRef = useRef<HTMLDivElement>(null);
+  const temporalAnalysisRef = useRef<HTMLDivElement>(null);
   const suburbChartRef = useRef<HTMLDivElement>(null);
   const propertyTypeChartRef = useRef<HTMLDivElement>(null);
   const priceRangeChartRef = useRef<HTMLDivElement>(null);
   const bedroomChartRef = useRef<HTMLDivElement>(null);
+  const geographicAnalysisRef = useRef<HTMLDivElement>(null);
+  const agentPerformanceRef = useRef<HTMLDivElement>(null);
+  const executiveInsightsRef = useRef<HTMLDivElement>(null);
 
   const { data: listings, isLoading } = useQuery({
     queryKey: ['all-listings'],
@@ -162,10 +172,15 @@ export default function Reports() {
   const handleGenerateReport = async (config: any) => {
     await generateReport(config, allListings, {
       kpis: kpisRef.current,
+      advancedAnalytics: advancedAnalyticsRef.current,
+      temporalAnalysis: temporalAnalysisRef.current,
       suburbChart: suburbChartRef.current,
       propertyTypeChart: propertyTypeChartRef.current,
       priceRangeChart: priceRangeChartRef.current,
       bedroomChart: bedroomChartRef.current,
+      geographicAnalysis: geographicAnalysisRef.current,
+      agentPerformance: agentPerformanceRef.current,
+      executiveInsights: executiveInsightsRef.current,
     });
   };
 
@@ -210,14 +225,62 @@ export default function Reports() {
         />
       </div>
 
-      {/* Charts */}
-      <Tabs defaultValue="suburbs" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="suburbs">By Suburb</TabsTrigger>
-          <TabsTrigger value="property-type">Property Type</TabsTrigger>
-          <TabsTrigger value="price-range">Price Range</TabsTrigger>
-          <TabsTrigger value="bedrooms">Bedrooms</TabsTrigger>
+      {/* Advanced Analytics */}
+      <div ref={advancedAnalyticsRef}>
+        <AdvancedAnalytics listings={allListings} />
+      </div>
+
+      {/* Executive Insights */}
+      <div ref={executiveInsightsRef}>
+        <ExecutiveInsights listings={allListings} />
+      </div>
+
+      {/* Charts and Analysis */}
+      <Tabs defaultValue="temporal" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="temporal" className="flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            Trends
+          </TabsTrigger>
+          <TabsTrigger value="geographic" className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            Geographic
+          </TabsTrigger>
+          <TabsTrigger value="agents" className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            Agents
+          </TabsTrigger>
+          <TabsTrigger value="suburbs" className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            Suburbs
+          </TabsTrigger>
+          <TabsTrigger value="property-type" className="flex items-center gap-1">
+            <Building2 className="h-3 w-3" />
+            Types
+          </TabsTrigger>
+          <TabsTrigger value="price-range" className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3" />
+            Pricing
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="temporal" className="space-y-4">
+          <div ref={temporalAnalysisRef}>
+            <TemporalAnalysis listings={allListings} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="geographic" className="space-y-4">
+          <div ref={geographicAnalysisRef}>
+            <GeographicAnalysis listings={allListings} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="agents" className="space-y-4">
+          <div ref={agentPerformanceRef}>
+            <AgentPerformance listings={allListings} />
+          </div>
+        </TabsContent>
 
         <TabsContent value="suburbs" className="space-y-4">
           <Card>
@@ -279,6 +342,7 @@ export default function Reports() {
           </Card>
         </TabsContent>
 
+
         <TabsContent value="price-range" className="space-y-4">
           <Card>
             <CardHeader>
@@ -299,9 +363,7 @@ export default function Reports() {
               </ChartContainer>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="bedrooms" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Bedroom Distribution</CardTitle>
