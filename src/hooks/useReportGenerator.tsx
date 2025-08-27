@@ -4,6 +4,8 @@ import html2canvas from 'html2canvas';
 import { PropertyListing } from '@/lib/airtable';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { quickChartService } from '@/lib/quickchart';
 
 export function useReportGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -86,7 +88,7 @@ export function useReportGenerator() {
       }).length;
 
       const suburbData = allListings.reduce((acc, listing) => {
-        const suburb = listing.suburb || listing.location || 'Unknown';
+        const suburb = listing.suburb || 'Unknown';
         acc[suburb] = (acc[suburb] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -213,6 +215,9 @@ export function useReportGenerator() {
       const fileName = `${config.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
 
+      // Generate dynamic QuickChart URLs
+      const chartUrls = await quickChartService.generateChartUrls(allListings);
+
       // Fire webhook notification
       try {
         // Calculate analytics data
@@ -306,8 +311,8 @@ export function useReportGenerator() {
           .map(l => ({
             address: l.address || '',
             suburb: l.suburb || '',
-            state: l.state || '',
-            postcode: l.zipCode || '',
+            state: 'WA', // Default as property doesn't exist
+            postcode: '', // Default as property doesn't exist
             property_type: l.propertyType || '',
             price: l.price || 0,
             beds: l.beds || 0,
@@ -363,20 +368,43 @@ export function useReportGenerator() {
               avg_price_url: "https://placeholder.com/avg.png",
               confidence_url: "https://placeholder.com/conf.png",
               suburb_matrix_url: "https://placeholder.com/matrix.png",
-              suburb_volume_url: "https://placeholder.com/suburbs.png",
+              suburb_volume_url: chartUrls.suburb_bar_url,
               price_volume_scatter_url: "https://placeholder.com/scatter.png",
               agency_size_url: "https://placeholder.com/agency.png",
               agent_volume_url: "https://placeholder.com/agent.png",
-              suburb_bar_url: "https://placeholder.com/suburb-bar.png",
-              property_type_pie_url: "https://placeholder.com/type-pie.png",
-              price_range_bar_url: "https://placeholder.com/price-bar.png",
-              bedroom_bar_url: "https://placeholder.com/beds-bar.png"
+              suburb_bar_url: chartUrls.suburb_bar_url,
+              property_type_pie_url: chartUrls.property_type_pie_url,
+              price_range_bar_url: chartUrls.price_range_bar_url,
+              bedroom_bar_url: chartUrls.bedroom_bar_url
             },
             listings: sampleListings,
             generated_at: new Date().toISOString()
           }
         };
 
+        // Store report in Supabase
+        const { data: reportData, error: reportError } = await supabase
+          .from('generated_reports')
+          .insert({
+            title: config.title,
+            description: config.description,
+            config: config,
+            kpis: webhookPayload.report.kpis,
+            analytics: webhookPayload.report.analytics,
+            insights: webhookPayload.report.insights,
+            chart_urls: webhookPayload.report.charts,
+            listing_count: totalListings,
+            webhook_url: 'https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86',
+            webhook_sent: false
+          })
+          .select()
+          .single();
+
+        if (reportError) {
+          console.error('Error storing report:', reportError);
+        }
+
+        // Send webhook
         await fetch('https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86', {
           method: 'POST',
           headers: {
@@ -384,6 +412,14 @@ export function useReportGenerator() {
           },
           body: JSON.stringify(webhookPayload),
         });
+
+        // Update webhook status if report was stored successfully
+        if (reportData) {
+          await supabase
+            .from('generated_reports')
+            .update({ webhook_sent: true })
+            .eq('id', reportData.id);
+        }
 
         console.log('Webhook notification sent successfully');
       } catch (webhookError) {
