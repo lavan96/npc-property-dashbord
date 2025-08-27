@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 interface FilterState {
   propertyType: string;
   suburb: string;
+  state: string;
+  zipCode: string;
   sourceHost: string;
   hasInspection: boolean;
   lowConfidence: boolean;
@@ -31,6 +33,8 @@ interface ListingFiltersProps {
   uniqueValues: {
     propertyTypes: string[];
     suburbs: string[];
+    states: string[];
+    zipCodes: string[];
     sourceHosts: string[];
     agencies: string[];
   };
@@ -41,7 +45,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (typeof value === 'boolean') return value;
-    if (key === 'propertyType' || key === 'suburb' || key === 'sourceHost' || key === 'agencyName') {
+    if (key === 'propertyType' || key === 'suburb' || key === 'state' || key === 'zipCode' || key === 'sourceHost' || key === 'agencyName') {
       return value !== '' && value !== 'all';
     }
     return value !== '';
@@ -51,6 +55,8 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
     setFilters({
       propertyType: 'all',
       suburb: 'all',
+      state: 'all',
+      zipCode: 'all',
       sourceHost: 'all',
       hasInspection: false,
       lowConfidence: false,
@@ -68,7 +74,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
 
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
     if (typeof value === 'boolean') return value;
-    if (key === 'propertyType' || key === 'suburb' || key === 'sourceHost' || key === 'agencyName') {
+    if (key === 'propertyType' || key === 'suburb' || key === 'state' || key === 'zipCode' || key === 'sourceHost' || key === 'agencyName') {
       return value !== '' && value !== 'all';
     }
     return value !== '';
@@ -135,6 +141,48 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 {uniqueValues.suburbs.filter(suburb => suburb && suburb.trim() !== '').map((suburb) => (
                   <SelectItem key={suburb} value={suburb}>
                     {suburb}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* State */}
+          <div className="space-y-2">
+            <Label>State</Label>
+            <Select
+              value={filters.state}
+              onValueChange={(value) => setFilters({ ...filters, state: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All states" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All states</SelectItem>
+                {uniqueValues.states.filter(state => state && state.trim() !== '').map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Zip Code */}
+          <div className="space-y-2">
+            <Label>Zip Code</Label>
+            <Select
+              value={filters.zipCode}
+              onValueChange={(value) => setFilters({ ...filters, zipCode: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All zip codes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All zip codes</SelectItem>
+                {uniqueValues.zipCodes.filter(zip => zip && zip.trim() !== '').map((zip) => (
+                  <SelectItem key={zip} value={zip}>
+                    {zip}
                   </SelectItem>
                 ))}
               </SelectContent>
