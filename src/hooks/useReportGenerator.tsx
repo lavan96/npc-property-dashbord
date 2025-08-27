@@ -215,21 +215,165 @@ export function useReportGenerator() {
 
       // Fire webhook notification
       try {
+        // Calculate analytics data
+        const now = new Date();
+        const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+        const recent30 = allListings.filter(l => l.receivedAt && new Date(l.receivedAt) >= last30Days);
+        const previous30 = allListings.filter(l => 
+          l.receivedAt && 
+          new Date(l.receivedAt) >= last60Days && 
+          new Date(l.receivedAt) < last30Days
+        );
+
+        const velocityChange = previous30.length > 0 
+          ? ((recent30.length - previous30.length) / previous30.length * 100) 
+          : 0;
+
+        // Price analytics
+        const pricesWithData = allListings.filter(l => l.price && l.price > 0).map(l => l.price!);
+        const sortedPrices = pricesWithData.sort((a, b) => a - b);
+        
+        const median = sortedPrices.length > 0 
+          ? sortedPrices[Math.floor(sortedPrices.length / 2)] 
+          : 0;
+        
+        const q1 = sortedPrices.length > 0 
+          ? sortedPrices[Math.floor(sortedPrices.length * 0.25)] 
+          : 0;
+        
+        const q3 = sortedPrices.length > 0 
+          ? sortedPrices[Math.floor(sortedPrices.length * 0.75)] 
+          : 0;
+
+        // Quality metrics
+        const withConfidence = allListings.filter(l => l.confidence && l.confidence > 0);
+        const avgConfidence = withConfidence.length > 0
+          ? withConfidence.reduce((sum, l) => sum + l.confidence!, 0) / withConfidence.length
+          : 0;
+
+        const dataCompleteness = allListings.length > 0 
+          ? allListings.reduce((sum, l) => {
+              let fields = 0;
+              let filledFields = 0;
+              
+              ['address', 'suburb', 'propertyType', 'price', 'beds', 'baths', 'agencyName'].forEach(field => {
+                fields++;
+                if (l[field as keyof PropertyListing]) filledFields++;
+              });
+              
+              return sum + (filledFields / fields);
+            }, 0) / allListings.length * 100
+          : 0;
+
+        // Market insights
+        const marketSaturation = Object.values(suburbData).reduce((sum, count) => {
+          return sum + (count > 10 ? 1 : 0);
+        }, 0);
+
+        // Generate insights
+        const insights = [];
+        if (velocityChange > 15) {
+          insights.push({
+            category: "positive",
+            priority: "high",
+            severity: "low",
+            text: `Strong market momentum with ${velocityChange.toFixed(1)}% increase in listings volume.`
+          });
+        } else if (velocityChange < -15) {
+          insights.push({
+            category: "warning",
+            priority: "medium",
+            severity: "medium",
+            text: `Market activity declining with ${Math.abs(velocityChange).toFixed(1)}% decrease in listings.`
+          });
+        }
+
+        if (avgConfidence < 0.6) {
+          insights.push({
+            category: "warning",
+            priority: "high",
+            severity: "medium",
+            text: `Data quality concerns detected - average confidence only ${(avgConfidence * 100).toFixed(1)}%.`
+          });
+        }
+
+        // Sample listings (first 5 with required fields)
+        const sampleListings = allListings
+          .filter(l => l.address && l.suburb && l.price)
+          .slice(0, 5)
+          .map(l => ({
+            address: l.address || '',
+            suburb: l.suburb || '',
+            state: l.state || '',
+            postcode: l.zipCode || '',
+            property_type: l.propertyType || '',
+            price: l.price || 0,
+            beds: l.beds || 0,
+            baths: l.baths || 0,
+            car: l.carSpaces || 0,
+            confidence: l.confidence || 0
+          }));
+
         const webhookPayload = {
-          event: "report_generated",
-          timestamp: new Date().toISOString(),
           report: {
-            title: config.title,
-            description: config.description,
-            author: config.authorName,
-            company: config.companyName,
-            fileName: fileName,
-            metrics: {
-              totalListings,
-              averagePrice: avgPrice,
-              recentListings,
-              uniqueSuburbs: Object.keys(suburbData).length
-            }
+            config: {
+              title: config.title,
+              description: config.description,
+              author_name: config.authorName,
+              company_name: config.companyName,
+              generation_date: new Date().toLocaleString(),
+              custom_notes: config.customNotes,
+              include_kpis: config.includeKPIs,
+              include_suburb_chart: config.includeSuburbChart,
+              include_property_type_chart: config.includePropertyTypeChart,
+              include_price_range_chart: config.includePriceRangeChart,
+              include_bedroom_chart: config.includeBedroomChart
+            },
+            kpis: {
+              total_listings: totalListings,
+              avg_price: avgPrice,
+              recent_30d: recentListings,
+              unique_suburbs: Object.keys(suburbData).length
+            },
+            analytics: {
+              velocity: {
+                label: velocityChange > 0 ? "Uptrend" : velocityChange < 0 ? "Downtrend" : "Stable",
+                delta: velocityChange
+              },
+              price: {
+                median: median,
+                q1: q1,
+                q3: q3,
+                iqr: q3 - q1
+              },
+              quality: {
+                avg_confidence: avgConfidence,
+                completeness: Math.round(dataCompleteness)
+              },
+              coverage: {
+                suburbs: Object.keys(suburbData).length,
+                saturation: marketSaturation > 5 ? "High" : marketSaturation > 2 ? "Medium" : "Low"
+              }
+            },
+            insights: insights,
+            charts: {
+              daily_activity_url: "https://placeholder.com/daily.png",
+              avg_price_url: "https://placeholder.com/avg.png",
+              confidence_url: "https://placeholder.com/conf.png",
+              suburb_matrix_url: "https://placeholder.com/matrix.png",
+              suburb_volume_url: "https://placeholder.com/suburbs.png",
+              price_volume_scatter_url: "https://placeholder.com/scatter.png",
+              agency_size_url: "https://placeholder.com/agency.png",
+              agent_volume_url: "https://placeholder.com/agent.png",
+              suburb_bar_url: "https://placeholder.com/suburb-bar.png",
+              property_type_pie_url: "https://placeholder.com/type-pie.png",
+              price_range_bar_url: "https://placeholder.com/price-bar.png",
+              bedroom_bar_url: "https://placeholder.com/beds-bar.png"
+            },
+            listings: sampleListings,
+            generated_at: new Date().toISOString()
           }
         };
 
