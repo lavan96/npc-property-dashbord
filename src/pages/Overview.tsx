@@ -298,13 +298,13 @@ export default function Overview() {
       const withPrices = listings.filter(l => l.price && l.price > 0).length;
       const withImages = listings.filter(l => l.images && l.images.length > 0).length;
       const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
-      const commercialProperties = listings.filter(l => l.propertyType === 'Other').length;
+      const withKeyEntities = listings.filter(l => l.keyEntities && l.keyEntities.trim() !== '').length;
 
       setContentStats({
         withImages: withPrices,
         withFloorplans: withImages,
         withKeyEntities: withFloorplans,
-        emailSources: commercialProperties,
+        emailSources: withKeyEntities,
       });
 
       // Calculate sender email distribution (source field)
@@ -508,10 +508,10 @@ export default function Overview() {
         />
         
         <KPICard
-          title="Commercial Properties"
+          title="With Key Entities"
           value={contentStats.emailSources}
-          icon={<Building2 className="h-4 w-4" />}
-          description="Commercial/industrial properties"
+          icon={<Tag className="h-4 w-4" />}
+          description="Properties with extracted entities"
         />
       </div>
 
