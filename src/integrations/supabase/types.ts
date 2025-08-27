@@ -14,7 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chart_configurations: {
+        Row: {
+          chart_type: string
+          created_at: string
+          default_styling: Json | null
+          id: string
+          quickchart_config: Json
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          chart_type: string
+          created_at?: string
+          default_styling?: Json | null
+          id?: string
+          quickchart_config: Json
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          chart_type?: string
+          created_at?: string
+          default_styling?: Json | null
+          id?: string
+          quickchart_config?: Json
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      generated_reports: {
+        Row: {
+          analytics: Json
+          chart_urls: Json
+          config: Json
+          created_at: string
+          description: string | null
+          generated_by: string | null
+          id: string
+          insights: Json
+          kpis: Json
+          listing_count: number
+          title: string
+          webhook_sent: boolean | null
+          webhook_url: string | null
+        }
+        Insert: {
+          analytics: Json
+          chart_urls: Json
+          config: Json
+          created_at?: string
+          description?: string | null
+          generated_by?: string | null
+          id?: string
+          insights: Json
+          kpis: Json
+          listing_count: number
+          title: string
+          webhook_sent?: boolean | null
+          webhook_url?: string | null
+        }
+        Update: {
+          analytics?: Json
+          chart_urls?: Json
+          config?: Json
+          created_at?: string
+          description?: string | null
+          generated_by?: string | null
+          id?: string
+          insights?: Json
+          kpis?: Json
+          listing_count?: number
+          title?: string
+          webhook_sent?: boolean | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      report_templates: {
+        Row: {
+          config: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          author_name: string | null
+          brand_colors: Json | null
+          chart_preferences: Json | null
+          company_name: string | null
+          created_at: string
+          default_template_id: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_name?: string | null
+          brand_colors?: Json | null
+          chart_preferences?: Json | null
+          company_name?: string | null
+          created_at?: string
+          default_template_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string | null
+          brand_colors?: Json | null
+          chart_preferences?: Json | null
+          company_name?: string | null
+          created_at?: string
+          default_template_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_default_template_id_fkey"
+            columns: ["default_template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
