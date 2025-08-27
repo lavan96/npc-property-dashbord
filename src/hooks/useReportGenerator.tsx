@@ -213,6 +213,40 @@ export function useReportGenerator() {
       const fileName = `${config.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
 
+      // Fire webhook notification
+      try {
+        const webhookPayload = {
+          event: "report_generated",
+          timestamp: new Date().toISOString(),
+          report: {
+            title: config.title,
+            description: config.description,
+            author: config.authorName,
+            company: config.companyName,
+            fileName: fileName,
+            metrics: {
+              totalListings,
+              averagePrice: avgPrice,
+              recentListings,
+              uniqueSuburbs: Object.keys(suburbData).length
+            }
+          }
+        };
+
+        await fetch('https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookPayload),
+        });
+
+        console.log('Webhook notification sent successfully');
+      } catch (webhookError) {
+        console.error('Failed to send webhook notification:', webhookError);
+        // Don't fail the report generation if webhook fails
+      }
+
       toast({
         title: "Report Generated",
         description: `${fileName} has been downloaded successfully.`,
