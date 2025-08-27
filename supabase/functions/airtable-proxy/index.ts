@@ -132,6 +132,8 @@ Deno.serve(async (req) => {
       landSize: record.fields['Square Feet'] || record.fields['Land Size'] || record.fields.Land_Size || record.fields.LandSize || null,
       lotNumber: record.fields['Lot Number'] || null,
       webLinks: record.fields['Web Link'] || null,
+      state: record.fields['State'] || null,
+      zipCode: record.fields['Zip Code'] || record.fields['Post Code'] || record.fields['Postcode'] || null,
     }));
 
     // Remove duplicates based on address, price, and property details

@@ -151,18 +151,9 @@ export default function Listings() {
     const sourceHosts = [...new Set(listings.map(l => l.sourceHost).filter(Boolean))].sort();
     const agencies = [...new Set(listings.map(l => l.agencyName).filter(Boolean))].sort();
     
-    // Extract states and zip codes from addresses
-    const states = [...new Set(listings.map(l => {
-      const address = l.address || '';
-      const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-      return match ? match[0].toUpperCase() : null;
-    }).filter(Boolean))].sort();
-    
-    const zipCodes = [...new Set(listings.map(l => {
-      const address = l.address || '';
-      const match = address.match(/\b(\d{4})\b/);
-      return match ? match[0] : null;
-    }).filter(Boolean))].sort();
+    // Get states and zip codes from actual fields
+    const states = [...new Set(listings.map(l => l.state).filter(Boolean))].sort();
+    const zipCodes = [...new Set(listings.map(l => l.zipCode).filter(Boolean))].sort();
     
     return { propertyTypes, suburbs, states, zipCodes, sourceHosts, agencies };
   }, [listings]);
@@ -195,23 +186,13 @@ export default function Listings() {
     }
 
     // State filter
-    if (filters.state && filters.state !== 'all') {
-      const address = listing.address || '';
-      const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-      const state = match ? match[0].toUpperCase() : null;
-      if (state !== filters.state) {
-        return false;
-      }
+    if (filters.state && filters.state !== 'all' && listing.state !== filters.state) {
+      return false;
     }
 
     // Zip code filter
-    if (filters.zipCode && filters.zipCode !== 'all') {
-      const address = listing.address || '';
-      const match = address.match(/\b(\d{4})\b/);
-      const zipCode = match ? match[0] : null;
-      if (zipCode !== filters.zipCode) {
-        return false;
-      }
+    if (filters.zipCode && filters.zipCode !== 'all' && listing.zipCode !== filters.zipCode) {
+      return false;
     }
 
     // Source host filter

@@ -46,6 +46,8 @@ export interface PropertyListing {
   createdTime?: Date;
   createdAt?: Date;
   webLinks?: string;
+  state?: string;
+  zipCode?: string;
 }
 
 export interface AirtableGetRecordsOptions {
@@ -156,6 +158,8 @@ class AirtableService {
       rawExtract: fields['Raw Extract'],
       createdTime: record.createdTime ? new Date(record.createdTime) : undefined,
       createdAt: fields['Created At'] ? new Date(fields['Created At']) : undefined,
+      state: fields['State'],
+      zipCode: fields['Zip Code'] || fields['Post Code'] || fields['Postcode'],
     };
   }
 }
