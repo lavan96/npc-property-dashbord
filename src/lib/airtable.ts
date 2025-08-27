@@ -159,7 +159,7 @@ class AirtableService {
       createdTime: record.createdTime ? new Date(record.createdTime) : undefined,
       createdAt: fields['Created At'] ? new Date(fields['Created At']) : undefined,
       state: fields['State'],
-      zipCode: fields['Zip Code'] || fields['Post Code'] || fields['Postcode'],
+      zipCode: fields['Zipcode'] || fields['Zip Code'] || fields['Post Code'] || fields['Postcode'],
     };
   }
 }

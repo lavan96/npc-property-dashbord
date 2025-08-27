@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { getFullStateName } from '@/lib/states';
 
 interface FilterState {
   propertyType: string;
@@ -161,7 +162,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 <SelectItem value="all">All states</SelectItem>
                 {uniqueValues.states.filter(state => state && state.trim() !== '').map((state) => (
                   <SelectItem key={state} value={state}>
-                    {state}
+                    {getFullStateName(state)}
                   </SelectItem>
                 ))}
               </SelectContent>
