@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
+import { OverviewFilters } from '@/components/overview/OverviewFilters';
 import { airtableService, PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
@@ -50,6 +51,21 @@ export default function Overview() {
     withFloorplans: 0,
     withKeyEntities: 0,
     emailSources: 0,
+  });
+
+  // Filters state
+  const [filters, setFilters] = useState({
+    state: 'all',
+    zipCode: 'all',
+    suburb: 'all',
+    propertyType: 'all',
+  });
+  
+  const [uniqueValues, setUniqueValues] = useState({
+    states: [] as string[],
+    zipCodes: [] as string[],
+    suburbs: [] as string[],
+    propertyTypes: [] as string[],
   });
 
   // Helper functions (stable references)
@@ -114,7 +130,57 @@ export default function Overview() {
       });
 
       console.log('Got response:', response);
-      const listings = response.records;
+      let listings = response.records;
+
+      // Extract unique values for filters
+      // Extract states and zip codes from addresses
+      const states = [...new Set(listings.map(l => {
+        const address = l.address || '';
+        // Extract state from address (assuming format like "123 Main St, Sydney NSW 2000")
+        const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
+        return match ? match[0].toUpperCase() : null;
+      }).filter(Boolean))];
+      
+      const zipCodes = [...new Set(listings.map(l => {
+        const address = l.address || '';
+        // Extract 4-digit postcodes from address
+        const match = address.match(/\b(\d{4})\b/);
+        return match ? match[0] : null;
+      }).filter(Boolean))];
+      
+      const suburbs = [...new Set(listings.map(l => l.suburb).filter(Boolean))];
+      const propertyTypes = [...new Set(listings.map(l => l.propertyType).filter(Boolean))];
+
+      setUniqueValues({
+        states: states.sort(),
+        zipCodes: zipCodes.sort(),
+        suburbs: suburbs.sort(),
+        propertyTypes: propertyTypes.sort(),
+      });
+
+      // Apply filters
+      if (filters.state !== 'all') {
+        listings = listings.filter(l => {
+          const address = l.address || '';
+          const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
+          const state = match ? match[0].toUpperCase() : null;
+          return state === filters.state;
+        });
+      }
+      if (filters.zipCode !== 'all') {
+        listings = listings.filter(l => {
+          const address = l.address || '';
+          const match = address.match(/\b(\d{4})\b/);
+          const zipCode = match ? match[0] : null;
+          return zipCode === filters.zipCode;
+        });
+      }
+      if (filters.suburb !== 'all') {
+        listings = listings.filter(l => l.suburb === filters.suburb);
+      }
+      if (filters.propertyType !== 'all') {
+        listings = listings.filter(l => l.propertyType === filters.propertyType);
+      }
       
       // Calculate KPIs
       const now = new Date();
@@ -230,14 +296,14 @@ export default function Overview() {
 
       // Calculate actual property statistics from Properties table
       const withPrices = listings.filter(l => l.price && l.price > 0).length;
-      const withLandSize = listings.filter(l => l.landSize && parseFloat(l.landSize) > 0).length;
-      const withLotNumbers = listings.filter(l => l.lotNumber).length;
+      const withImages = listings.filter(l => l.images && l.images.length > 0).length;
+      const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
       const commercialProperties = listings.filter(l => l.propertyType === 'Other').length;
 
       setContentStats({
         withImages: withPrices,
-        withFloorplans: withLandSize,
-        withKeyEntities: withLotNumbers,
+        withFloorplans: withImages,
+        withKeyEntities: withFloorplans,
         emailSources: commercialProperties,
       });
 
@@ -262,12 +328,12 @@ export default function Overview() {
     } finally {
       setIsLoading(false);
     }
-  }, [safeParseDate]); // Only depend on safeParseDate, which is stable
+  }, [safeParseDate, filters]); // Depend on filters to reload when they change
 
   // Auto-refresh functionality - COMPLETELY DISABLED to prevent infinite loops
   const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh(loadDashboardData);
 
-  // Single effect for initial load only
+  // Effect for initial load and filter changes
   useEffect(() => {
     console.log('Overview useEffect running...');
     let mounted = true;
@@ -291,7 +357,7 @@ export default function Overview() {
       mounted = false;
       stopAutoRefresh();
     };
-  }, []); // Empty dependency array - only run once
+  }, [loadDashboardData]); // Depend on loadDashboardData which includes filters
 
   // Show error state if there's an error
   if (error) {
@@ -373,11 +439,18 @@ export default function Overview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-        <p className="text-muted-foreground">
-          Property intake dashboard overview and key metrics
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+          <p className="text-muted-foreground">
+            Property intake dashboard overview and key metrics
+          </p>
+        </div>
+        <OverviewFilters 
+          filters={filters}
+          setFilters={setFilters}
+          uniqueValues={uniqueValues}
+        />
       </div>
 
       {/* KPI Cards */}
@@ -421,17 +494,17 @@ export default function Overview() {
         />
         
         <KPICard
-          title="With Land Size" 
+          title="With Images" 
           value={contentStats.withFloorplans}
-          icon={<Ruler className="h-4 w-4" />}
-          description="Properties with land/square footage"
+          icon={<Image className="h-4 w-4" />}
+          description="Properties with image attachments"
         />
         
         <KPICard
-          title="With Lot Numbers"
+          title="With Floorplans"
           value={contentStats.withKeyEntities}
-          icon={<Tag className="h-4 w-4" />}
-          description="Properties with lot number data"
+          icon={<FileText className="h-4 w-4" />}
+          description="Properties with floorplan documents"
         />
         
         <KPICard
@@ -760,16 +833,16 @@ export default function Overview() {
                     {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
                     {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
                     {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
-                    {listing.landSize && parseFloat(listing.landSize) > 0 && (
+                    {listing.images && listing.images.length > 0 && (
                       <div className="flex items-center gap-1">
-                        <Ruler className="h-3 w-3" />
-                        <span>{listing.landSize} sqft</span>
+                        <Image className="h-3 w-3" />
+                        <span>{listing.images.length} image{listing.images.length !== 1 ? 's' : ''}</span>
                       </div>
                     )}
-                    {listing.lotNumber && (
+                    {listing.floorplans && listing.floorplans.length > 0 && (
                       <div className="flex items-center gap-1">
-                        <Tag className="h-3 w-3" />
-                        <span>Lot {listing.lotNumber}</span>
+                        <FileText className="h-3 w-3" />
+                        <span>{listing.floorplans.length} floorplan{listing.floorplans.length !== 1 ? 's' : ''}</span>
                       </div>
                     )}
                   </div>
