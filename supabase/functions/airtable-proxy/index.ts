@@ -103,6 +103,7 @@ Deno.serve(async (req) => {
 
     // Transform the data to match the expected format
     console.log('Transforming record example:', data.records[0]?.fields);
+    console.log('Zipcode field value:', data.records[0]?.fields?.Zipcode);
     const transformedRecords = data.records.map(record => ({
       id: record.id,
       fields: record.fields,

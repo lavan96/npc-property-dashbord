@@ -74,6 +74,9 @@ export default function Listings() {
         sortDirection: 'desc'
       });
       
+      console.log('First listing zipCode:', response.records[0]?.zipCode);
+      console.log('First listing state:', response.records[0]?.state);
+      console.log('Sample listing fields:', response.records[0]);
       setListings(response.records);
     } catch (error) {
       console.error('Failed to load listings:', error);
