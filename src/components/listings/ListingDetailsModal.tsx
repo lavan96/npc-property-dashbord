@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
+import { getFullStateName } from '@/lib/states';
 import { PropertyListing } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
 
@@ -94,6 +95,12 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span>{listing.suburb || 'Unknown Suburb'}</span>
+                    {listing.state && (
+                      <Badge variant="outline">{getFullStateName(listing.state)}</Badge>
+                    )}
+                    {listing.zipCode && (
+                      <Badge variant="outline">{listing.zipCode}</Badge>
+                    )}
                   </div>
                   
                   {listing.propertyType && (
