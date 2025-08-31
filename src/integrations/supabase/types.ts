@@ -47,6 +47,7 @@ export type Database = {
       generated_reports: {
         Row: {
           analytics: Json
+          chart_images: Json | null
           chart_urls: Json
           config: Json
           created_at: string
@@ -62,6 +63,7 @@ export type Database = {
         }
         Insert: {
           analytics: Json
+          chart_images?: Json | null
           chart_urls: Json
           config: Json
           created_at?: string
@@ -77,6 +79,7 @@ export type Database = {
         }
         Update: {
           analytics?: Json
+          chart_images?: Json | null
           chart_urls?: Json
           config?: Json
           created_at?: string

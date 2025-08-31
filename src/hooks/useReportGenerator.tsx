@@ -5,7 +5,127 @@ import { PropertyListing } from '@/lib/airtable';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { quickChartService } from '@/lib/quickchart';
+
+interface ChartData {
+  type: 'bar' | 'pie' | 'line';
+  title: string;
+  data: Array<{ label: string; value: number; color?: string }>;
+  width?: number;
+  height?: number;
+}
+
+const generateChartImages = async (listings: PropertyListing[], config: ReportConfig) => {
+  const charts: ChartData[] = [];
+
+  // Process suburb data
+  if (config.includeSuburbChart) {
+    const suburbCounts = listings.reduce((acc, listing) => {
+      const suburb = listing.suburb || 'Unknown';
+      acc[suburb] = (acc[suburb] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const sortedSuburbs = Object.entries(suburbCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10);
+
+    charts.push({
+      type: 'bar',
+      title: 'Listings by Suburb',
+      data: sortedSuburbs.map(([suburb, count]) => ({
+        label: suburb,
+        value: count,
+        color: '#3b82f6'
+      }))
+    });
+  }
+
+  // Process property type data
+  if (config.includePropertyTypeChart) {
+    const typeCounts = listings.reduce((acc, listing) => {
+      const type = listing.propertyType || 'Unknown';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    charts.push({
+      type: 'pie',
+      title: 'Property Type Distribution',
+      data: Object.entries(typeCounts).map(([type, count], index) => ({
+        label: type,
+        value: count,
+        color: colors[index % colors.length]
+      }))
+    });
+  }
+
+  // Process price range data
+  if (config.includePriceRangeChart) {
+    const ranges = [
+      { label: 'Under $300k', min: 0, max: 300000 },
+      { label: '$300k-$500k', min: 300000, max: 500000 },
+      { label: '$500k-$750k', min: 500000, max: 750000 },
+      { label: '$750k-$1M', min: 750000, max: 1000000 },
+      { label: 'Over $1M', min: 1000000, max: Infinity }
+    ];
+
+    const rangeCounts = ranges.map(range => ({
+      label: range.label,
+      value: listings.filter(listing => {
+        const price = listing.price || 0;
+        return price >= range.min && price < range.max;
+      }).length,
+      color: '#10b981'
+    }));
+
+    charts.push({
+      type: 'bar',
+      title: 'Price Range Distribution',
+      data: rangeCounts
+    });
+  }
+
+  // Process bedroom data
+  if (config.includeBedroomChart) {
+    const bedroomCounts = listings.reduce((acc, listing) => {
+      const beds = listing.beds || 0;
+      const key = beds > 5 ? '5+' : beds.toString();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const sortedBedrooms = ['1', '2', '3', '4', '5', '5+']
+      .filter(key => bedroomCounts[key])
+      .map(key => ({
+        label: `${key} bedroom${key !== '1' ? 's' : ''}`,
+        value: bedroomCounts[key] || 0,
+        color: '#f59e0b'
+      }));
+
+    charts.push({
+      type: 'bar',
+      title: 'Bedroom Distribution',
+      data: sortedBedrooms
+    });
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('generate-chart-images', {
+      body: { charts }
+    });
+
+    if (error) {
+      console.error('Error generating chart images:', error);
+      return {};
+    }
+
+    return data.chartImages || {};
+  } catch (error) {
+    console.error('Error calling chart generation function:', error);
+    return {};
+  }
+};
 
 export function useReportGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -215,8 +335,8 @@ export function useReportGenerator() {
       const fileName = `${config.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
 
-      // Generate dynamic QuickChart URLs
-      const chartUrls = await quickChartService.generateChartUrls(allListings);
+      // Generate chart images using ChatGPT
+      const chartImages = await generateChartImages(allListings, config);
 
       // Fire webhook notification
       try {
@@ -363,20 +483,7 @@ export function useReportGenerator() {
               }
             },
             insights: insights,
-            charts: {
-              daily_activity_url: "https://placeholder.com/daily.png",
-              avg_price_url: "https://placeholder.com/avg.png",
-              confidence_url: "https://placeholder.com/conf.png",
-              suburb_matrix_url: "https://placeholder.com/matrix.png",
-              suburb_volume_url: chartUrls.suburb_bar_url,
-              price_volume_scatter_url: "https://placeholder.com/scatter.png",
-              agency_size_url: "https://placeholder.com/agency.png",
-              agent_volume_url: "https://placeholder.com/agent.png",
-              suburb_bar_url: chartUrls.suburb_bar_url,
-              property_type_pie_url: chartUrls.property_type_pie_url,
-              price_range_bar_url: chartUrls.price_range_bar_url,
-              bedroom_bar_url: chartUrls.bedroom_bar_url
-            },
+            charts: chartImages,
             listings: sampleListings,
             generated_at: new Date().toISOString()
           }
@@ -393,6 +500,7 @@ export function useReportGenerator() {
             analytics: webhookPayload.report.analytics,
             insights: webhookPayload.report.insights,
             chart_urls: webhookPayload.report.charts,
+            chart_images: chartImages,
             listing_count: totalListings,
             webhook_url: 'https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86',
             webhook_sent: false
