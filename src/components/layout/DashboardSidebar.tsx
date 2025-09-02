@@ -27,6 +27,7 @@ const navigationItems = [
   { title: 'Calendar', url: '/calendar', icon: Calendar },
   { title: 'Sources', url: '/sources', icon: Mail },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
+  { title: 'Charts', url: '/charts', icon: BarChart3 },
 ];
 
 const adminItems = [

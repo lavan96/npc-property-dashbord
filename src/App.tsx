@@ -11,6 +11,7 @@ import Listings from "./pages/Listings";
 import Calendar from "./pages/Calendar";
 import Sources from "./pages/Sources";
 import Reports from "./pages/Reports";
+import Charts from "./pages/Charts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="calendar" element={<Calendar />} />
               <Route path="sources" element={<Sources />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="charts" element={<Charts />} />
               <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
               <Route path="settings" element={<Settings />} />
             </Route>
