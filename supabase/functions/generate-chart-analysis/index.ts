@@ -54,7 +54,10 @@ function processChartData(chartData: any): ProcessedChartData {
   try {
     if (type === 'bar' || type === 'column') {
       // Process bar/column chart data
-      const values = data.map(item => typeof item.value === 'number' ? item.value : parseInt(item.value) || 0);
+      const values = data.map(item => {
+        const val = item.value || item.count || 0;
+        return typeof val === 'number' ? val : parseInt(val) || 0;
+      });
       const total = values.reduce((sum, val) => sum + val, 0);
       const max = Math.max(...values);
       const min = Math.min(...values);
@@ -65,10 +68,11 @@ function processChartData(chartData: any): ProcessedChartData {
       keyMetrics.push(`Range: ${min.toLocaleString()} - ${max.toLocaleString()}`);
       
       // Find top performers
-      const sortedData = [...data].sort((a, b) => (b.value || 0) - (a.value || 0));
+      const sortedData = [...data].sort((a, b) => (b.value || b.count || 0) - (a.value || a.count || 0));
       if (sortedData.length > 0) {
         const topItem = sortedData[0];
-        const topPercentage = ((topItem.value || 0) / total * 100).toFixed(1);
+        const topValue = topItem.value || topItem.count || 0;
+        const topPercentage = total > 0 ? (topValue / total * 100).toFixed(1) : '0';
         patterns.push(`${topItem.name || topItem.label} leads with ${topPercentage}% of total`);
       }
       
@@ -81,7 +85,10 @@ function processChartData(chartData: any): ProcessedChartData {
       
     } else if (type === 'pie' || type === 'doughnut') {
       // Process pie chart data
-      const values = data.map(item => typeof item.value === 'number' ? item.value : parseInt(item.value) || 0);
+      const values = data.map(item => {
+        const val = item.value || item.count || 0;
+        return typeof val === 'number' ? val : parseInt(val) || 0;
+      });
       const total = values.reduce((sum, val) => sum + val, 0);
       
       keyMetrics.push(`Total segments: ${data.length}`);
@@ -89,33 +96,103 @@ function processChartData(chartData: any): ProcessedChartData {
       
       // Calculate percentages and find dominant segments
       data.forEach(item => {
-        const percentage = ((item.value || 0) / total * 100);
+        const value = item.value || item.count || 0;
+        const percentage = total > 0 ? (value / total * 100) : 0;
         if (percentage > 25) {
           patterns.push(`${item.name || item.label} dominates at ${percentage.toFixed(1)}%`);
-        } else if (percentage < 5) {
+        } else if (percentage < 5 && percentage > 0) {
           patterns.push(`${item.name || item.label} represents small segment at ${percentage.toFixed(1)}%`);
         }
       });
       
     } else if (type === 'line') {
-      // Process line chart data
-      if (data[0] && data[0].data) {
-        const values = data[0].data.map(point => typeof point.y === 'number' ? point.y : parseInt(point.y) || 0);
+      // Process line chart data with improved structure handling
+      let values: number[] = [];
+      
+      if (data[0] && data[0].data && Array.isArray(data[0].data)) {
+        // Handle line chart with nested data structure
+        values = data[0].data.map(point => {
+          const val = point.y || point.value || 0;
+          return typeof val === 'number' ? val : parseInt(val) || 0;
+        });
+      } else if (data.every(item => item.x !== undefined && item.y !== undefined)) {
+        // Handle direct line chart data points
+        values = data.map(point => {
+          const val = point.y || point.value || 0;
+          return typeof val === 'number' ? val : parseInt(val) || 0;
+        });
+      }
+      
+      if (values.length > 0) {
         const trend = calculateTrend(values);
+        const max = Math.max(...values);
+        const min = Math.min(...values);
+        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
         
         keyMetrics.push(`Data points: ${values.length}`);
         keyMetrics.push(`Trend: ${trend.direction} (${trend.strength})`);
+        keyMetrics.push(`Range: ${min.toLocaleString()} - ${max.toLocaleString()}`);
+        keyMetrics.push(`Average: ${Math.round(avg).toLocaleString()}`);
         
         if (trend.direction === 'increasing') {
-          patterns.push('Positive upward trend observed');
+          patterns.push('Positive upward trend observed across the time period');
         } else if (trend.direction === 'decreasing') {
-          patterns.push('Declining trend identified');
+          patterns.push('Declining trend identified in the data series');
+        } else {
+          patterns.push('Stable trend with minimal fluctuation observed');
         }
+      }
+      
+    } else if (type === 'scatter') {
+      // Process scatter plot data
+      const xValues = data.map(item => item.x || item.volume || 0).filter(val => typeof val === 'number');
+      const yValues = data.map(item => item.y || item.price || item.value || 0).filter(val => typeof val === 'number');
+      
+      if (xValues.length > 0 && yValues.length > 0) {
+        const xMax = Math.max(...xValues);
+        const xMin = Math.min(...xValues);
+        const yMax = Math.max(...yValues);
+        const yMin = Math.min(...yValues);
+        
+        keyMetrics.push(`Data points: ${data.length}`);
+        keyMetrics.push(`X-axis range: ${xMin.toLocaleString()} - ${xMax.toLocaleString()}`);
+        keyMetrics.push(`Y-axis range: ${yMin.toLocaleString()} - ${yMax.toLocaleString()}`);
+        
+        // Find outliers in scatter data
+        const xAvg = xValues.reduce((sum, val) => sum + val, 0) / xValues.length;
+        const yAvg = yValues.reduce((sum, val) => sum + val, 0) / yValues.length;
+        
+        data.forEach(item => {
+          const x = item.x || item.volume || 0;
+          const y = item.y || item.price || item.value || 0;
+          if (x > xAvg * 2 || y > yAvg * 2) {
+            const label = item.label || item.suburb || 'data point';
+            outliers.push(`${label}: exceptional values detected`);
+          }
+        });
+        
+        patterns.push('Scatter distribution shows relationship between variables');
       }
     }
     
+    // Handle categorical/string data with numeric mapping
+    if (keyMetrics.length === 0 && data.some(item => item.category || typeof item.value === 'string')) {
+      keyMetrics.push(`Categories analyzed: ${data.length}`);
+      
+      // Convert string values to insights
+      data.forEach(item => {
+        if (item.category && item.value) {
+          patterns.push(`${item.label}: ${item.category} (Score: ${item.value})`);
+        }
+      });
+    }
+    
+    const summary = keyMetrics.length > 0 
+      ? `Chart contains ${data.length} data points with ${keyMetrics.length} key metrics identified`
+      : `Chart contains ${data.length} data elements ready for qualitative analysis`;
+    
     return {
-      summary: `Chart contains ${data.length} data points with ${keyMetrics.length} key metrics identified`,
+      summary,
       keyMetrics,
       patterns,
       outliers,

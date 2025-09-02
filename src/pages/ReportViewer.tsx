@@ -176,43 +176,54 @@ export default function ReportViewer() {
     const title = chartTitle.toLowerCase();
     
     if (title.includes('daily') || title.includes('listing activity')) {
-      return [
-        { label: 'Monday', value: 12 },
-        { label: 'Tuesday', value: 8 },
-        { label: 'Wednesday', value: 15 },
-        { label: 'Thursday', value: 10 },
-        { label: 'Friday', value: 18 },
-        { label: 'Saturday', value: 6 },
-        { label: 'Sunday', value: 4 }
-      ];
+      // Generate proper line chart data structure
+      return [{
+        data: [
+          { x: '2024-01-01', y: 12 },
+          { x: '2024-01-02', y: 8 },
+          { x: '2024-01-03', y: 15 },
+          { x: '2024-01-04', y: 10 },
+          { x: '2024-01-05', y: 18 },
+          { x: '2024-01-06', y: 6 },
+          { x: '2024-01-07', y: 4 }
+        ]
+      }];
     } else if (title.includes('pricing trends')) {
-      return [
-        { label: '<$500k', value: 44 },
-        { label: '$500k-$750k', value: 19 },
-        { label: '$750k-$1M', value: 5 },
-        { label: '>$1M', value: 5 }
-      ];
+      // Generate line chart data for pricing trends
+      return [{
+        data: [
+          { x: 'Jan', y: 650000 },
+          { x: 'Feb', y: 675000 },
+          { x: 'Mar', y: 680000 },
+          { x: 'Apr', y: 695000 },
+          { x: 'May', y: 710000 },
+          { x: 'Jun', y: 725000 }
+        ]
+      }];
     } else if (title.includes('confidence') || title.includes('data confidence')) {
+      // Generate distribution data with numeric values
       return [
-        { label: 'Low (0-0.5)', value: 5, percentage: '6.8' },
-        { label: 'Medium (0.5-0.7)', value: 12, percentage: '16.4' },
-        { label: 'High (0.7-0.9)', value: 25, percentage: '34.2' },
-        { label: 'Very High (0.9+)', value: 31, percentage: '42.5' }
+        { label: 'Low (0-0.5)', value: 5, range: '0-0.5', count: 5 },
+        { label: 'Medium (0.5-0.7)', value: 12, range: '0.5-0.7', count: 12 },
+        { label: 'High (0.7-0.9)', value: 25, range: '0.7-0.9', count: 25 },
+        { label: 'Very High (0.9+)', value: 31, range: '0.9+', count: 31 }
       ];
     } else if (title.includes('price') && title.includes('volume')) {
+      // Generate proper scatter plot data
       return [
-        { suburb: 'City Beach', averagePrice: 4800000, volume: 5, x: 5, y: 4800000 },
-        { suburb: 'Northam', averagePrice: 799500, volume: 2, x: 2, y: 799500 },
-        { suburb: 'Lockridge', averagePrice: 674000, volume: 2, x: 2, y: 674000 },
-        { suburb: 'Yokine', averagePrice: 674000, volume: 2, x: 2, y: 674000 },
-        { suburb: 'Dudley Park', averagePrice: 649000, volume: 1, x: 1, y: 649000 }
+        { x: 5, y: 4800000, label: 'City Beach', volume: 5, price: 4800000 },
+        { x: 2, y: 799500, label: 'Northam', volume: 2, price: 799500 },
+        { x: 2, y: 674000, label: 'Lockridge', volume: 2, price: 674000 },
+        { x: 2, y: 674000, label: 'Yokine', volume: 2, price: 674000 },
+        { x: 1, y: 649000, label: 'Dudley Park', volume: 1, price: 649000 }
       ];
     } else if (title.includes('executive') || title.includes('market insights')) {
+      // Convert string values to numeric equivalents for analysis
       return [
-        { label: 'Market Activity', value: 'High' },
-        { label: 'Price Trend', value: 'Stable' },
-        { label: 'Inventory Level', value: 'Limited' },
-        { label: 'Market Health', value: 'Good' }
+        { label: 'Market Activity Score', value: 85, category: 'High' },
+        { label: 'Price Stability Index', value: 75, category: 'Stable' },
+        { label: 'Inventory Availability', value: 35, category: 'Limited' },
+        { label: 'Market Health Rating', value: 80, category: 'Good' }
       ];
     }
     
