@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { OverviewFilters } from '@/components/overview/OverviewFilters';
+import { DataIntegrityPanel } from '@/components/debug/DataIntegrityPanel';
 import { PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
@@ -49,6 +50,7 @@ export default function Overview() {
   const [sourceData, setSourceData] = useState<{ source: string; count: number }[]>([]);
   const [agencyData, setAgencyData] = useState<{ agency: string; count: number }[]>([]);
   const [contentStats, setContentStats] = useState({
+    withPrices: 0,
     withImages: 0,
     withFloorplans: 0,
     withKeyEntities: 0,
@@ -263,12 +265,22 @@ export default function Overview() {
       const withImages = listings.filter(l => l.images && l.images.length > 0).length;
       const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
       const withKeyEntities = listings.filter(l => l.keyEntities && l.keyEntities.trim() !== '').length;
+      const emailSources = listings.filter(l => l.source && l.source.includes('@')).length;
+
+      console.log('Content Statistics (Corrected):', {
+        withPrices,
+        withImages,
+        withFloorplans,
+        withKeyEntities,
+        emailSources
+      });
 
       setContentStats({
-        withImages: withPrices,
-        withFloorplans: withImages,
-        withKeyEntities: withFloorplans,
-        emailSources: withKeyEntities,
+        withPrices,
+        withImages,
+        withFloorplans,
+        withKeyEntities,
+        emailSources,
       });
 
       // Use unified chart data service for consistent source data
@@ -442,35 +454,48 @@ export default function Overview() {
       </div>
 
       {/* Content Statistics */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 animate-fade-in">
         <KPICard
           title="With Prices"
-          value={contentStats.withImages}
+          value={contentStats.withPrices}
           icon={<DollarSign className="h-4 w-4" />}
           description="Properties with price information"
         />
         
         <KPICard
           title="With Images" 
-          value={contentStats.withFloorplans}
+          value={contentStats.withImages}
           icon={<Image className="h-4 w-4" />}
           description="Properties with image attachments"
         />
         
         <KPICard
           title="With Floorplans"
-          value={contentStats.withKeyEntities}
+          value={contentStats.withFloorplans}
           icon={<FileText className="h-4 w-4" />}
           description="Properties with floorplan documents"
         />
         
         <KPICard
           title="With Key Entities"
-          value={contentStats.emailSources}
+          value={contentStats.withKeyEntities}
           icon={<Tag className="h-4 w-4" />}
           description="Properties with extracted entities"
         />
+
+        <KPICard
+          title="Email Sources"
+          value={contentStats.emailSources}
+          icon={<Ruler className="h-4 w-4" />}
+          description="Properties from email sources"
+        />
       </div>
+
+      {/* Data Integrity Monitor */}
+      <DataIntegrityPanel 
+        dashboardData={recentListings} 
+        className="animate-fade-in"
+      />
 
       {/* Charts Section */}
       <div className="space-y-8">
