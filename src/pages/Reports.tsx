@@ -14,6 +14,7 @@ import { TemporalAnalysis } from '@/components/reports/TemporalAnalysis';
 import { GeographicAnalysis } from '@/components/reports/GeographicAnalysis';
 import { AgentPerformance } from '@/components/reports/AgentPerformance';
 import { ExecutiveInsights } from '@/components/reports/ExecutiveInsights';
+import { DataQualityAnalysis } from '@/components/reports/DataQualityAnalysis';
 import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb } from 'lucide-react';
 
 const COLORS = [
@@ -258,7 +259,7 @@ export default function Reports() {
 
       {/* Charts and Analysis */}
       <Tabs defaultValue="temporal" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="temporal" className="flex items-center gap-1">
             <TrendingUp className="h-3 w-3" />
             Trends
@@ -270,6 +271,10 @@ export default function Reports() {
           <TabsTrigger value="agents" className="flex items-center gap-1">
             <Users className="h-3 w-3" />
             Agents
+          </TabsTrigger>
+          <TabsTrigger value="data-quality" className="flex items-center gap-1">
+            <BarChart3 className="h-3 w-3" />
+            Quality
           </TabsTrigger>
           <TabsTrigger value="suburbs" className="flex items-center gap-1">
             <MapPin className="h-3 w-3" />
@@ -301,6 +306,10 @@ export default function Reports() {
           <div ref={agentPerformanceRef}>
             <AgentPerformance listings={allListings} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="data-quality" className="space-y-4">
+          <DataQualityAnalysis listings={allListings} />
         </TabsContent>
 
         <TabsContent value="suburbs" className="space-y-4">

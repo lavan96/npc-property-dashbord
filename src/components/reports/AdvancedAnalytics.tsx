@@ -12,17 +12,27 @@ export function AdvancedAnalytics({ listings }: AdvancedAnalyticsProps) {
   const analytics = useMemo(() => {
     if (!listings.length) return null;
 
-    // Calculate temporal metrics
+    // Enhanced temporal metrics with better date handling
     const now = new Date();
     const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-    const recent30 = listings.filter(l => l.receivedAt && new Date(l.receivedAt) >= last30Days);
-    const previous30 = listings.filter(l => 
-      l.receivedAt && 
-      new Date(l.receivedAt) >= last60Days && 
-      new Date(l.receivedAt) < last30Days
-    );
+    const getListingDate = (listing: PropertyListing): Date => {
+      const candidates = [listing.receivedAt, listing.createdTime, listing.createdAt, listing.listingDate];
+      for (const candidate of candidates) {
+        if (candidate) {
+          const date = new Date(candidate);
+          if (!isNaN(date.getTime())) return date;
+        }
+      }
+      return new Date();
+    };
+
+    const recent30 = listings.filter(l => getListingDate(l) >= last30Days);
+    const previous30 = listings.filter(l => {
+      const date = getListingDate(l);
+      return date >= last60Days && date < last30Days;
+    });
 
     const velocityChange = previous30.length > 0 
       ? ((recent30.length - previous30.length) / previous30.length * 100) 
@@ -44,24 +54,44 @@ export function AdvancedAnalytics({ listings }: AdvancedAnalyticsProps) {
       ? sortedPrices[Math.floor(sortedPrices.length * 0.75)] 
       : 0;
 
-    // Quality metrics
+    // Enhanced quality metrics with better validation
     const withConfidence = listings.filter(l => l.confidence && l.confidence > 0);
     const avgConfidence = withConfidence.length > 0
-      ? withConfidence.reduce((sum, l) => sum + l.confidence!, 0) / withConfidence.length
+      ? withConfidence.reduce((sum, l) => sum + (l.confidence || 0), 0) / withConfidence.length
       : 0;
 
+    // Enhanced data completeness calculation
     const dataCompleteness = listings.length > 0 
       ? listings.reduce((sum, l) => {
-          let fields = 0;
-          let filledFields = 0;
+          const requiredFields = [
+            { field: 'address', weight: 1.5 },
+            { field: 'suburb', weight: 1.5 },
+            { field: 'propertyType', weight: 1.0 },
+            { field: 'price', weight: 2.0 },
+            { field: 'beds', weight: 1.0 },
+            { field: 'baths', weight: 1.0 },
+            { field: 'agentName', weight: 1.0 },
+            { field: 'agencyName', weight: 1.0 }
+          ];
           
-          ['address', 'suburb', 'propertyType', 'price', 'beds', 'baths', 'agencyName'].forEach(field => {
-            fields++;
-            if (l[field as keyof PropertyListing]) filledFields++;
+          let totalWeight = 0;
+          let filledWeight = 0;
+          
+          requiredFields.forEach(({ field, weight }) => {
+            totalWeight += weight;
+            const value = l[field as keyof PropertyListing];
+            if (value && value !== 'Unknown' && value !== 'Unknown Agent' && value !== 'Unknown Agency') {
+              filledWeight += weight;
+            }
           });
           
-          return sum + (filledFields / fields);
+          return sum + (filledWeight / totalWeight);
         }, 0) / listings.length * 100
+      : 0;
+
+    // Additional quality metrics
+    const priceValidityRate = listings.length > 0 
+      ? (listings.filter(l => l.price && l.price > 0 && l.price < 50000000).length / listings.length) * 100
       : 0;
 
     // Market insights

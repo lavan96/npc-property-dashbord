@@ -3,20 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PropertyListing {
   id: string;
   title: string;
-  price: number;
+  price: number | null;
   location: string;
-  bedrooms: number;
-  bathrooms: number;
+  bedrooms: number | null;
+  bathrooms: number | null;
   propertyType: string;
   listingDate: string;
   status: string;
-  confidence: number;
+  confidence: number | null;
   source: string;
   description: string;
   images: string[];
   agent: string;
   features: string[];
-  // Original Airtable fields for compatibility
+  // Enhanced fields for better data handling
   recordId?: string;
   url?: string;
   sourceHost?: string;
@@ -24,17 +24,17 @@ export interface PropertyListing {
   messageId?: string;
   emailSubject?: string;
   from?: string;
-  receivedAt?: Date;
+  receivedAt?: Date | string;
   address?: string;
   suburb?: string;
   category?: string;
-  beds?: number;
-  baths?: number;
-  carSpaces?: number;
-  landSize?: string;
+  beds?: number | null;
+  baths?: number | null;
+  carSpaces?: number | null;
+  landSize?: string | number | null;
   lotNumber?: string;
-  inspectionStart?: Date;
-  inspectionEnd?: Date;
+  inspectionStart?: Date | string | null;
+  inspectionEnd?: Date | string | null;
   inspectionNotes?: string;
   agencyName?: string;
   agentName?: string;
@@ -43,11 +43,16 @@ export interface PropertyListing {
   summary?: string;
   keyEntities?: string;
   rawExtract?: string;
-  createdTime?: Date;
-  createdAt?: Date;
+  createdTime?: Date | string;
+  createdAt?: Date | string;
   webLinks?: string;
   state?: string;
   zipCode?: string;
+  // Enhanced analytics fields
+  dataQuality?: number;
+  isValidPrice?: boolean;
+  isValidLocation?: boolean;
+  completenessScore?: number;
 }
 
 export interface AirtableGetRecordsOptions {

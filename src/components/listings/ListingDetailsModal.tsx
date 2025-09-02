@@ -221,7 +221,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                         - {new Intl.DateTimeFormat('en-AU', {
                           hour: '2-digit',
                           minute: '2-digit',
-                        }).format(listing.inspectionEnd)}
+                        }).format(listing.inspectionEnd instanceof Date ? listing.inspectionEnd : new Date(listing.inspectionEnd))}
                       </span>
                     )}
                   </div>

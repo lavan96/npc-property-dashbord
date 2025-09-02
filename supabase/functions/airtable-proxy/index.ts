@@ -104,38 +104,122 @@ Deno.serve(async (req) => {
     // Transform the data to match the expected format
     console.log('Transforming record example:', data.records[0]?.fields);
     console.log('Zipcode field value:', data.records[0]?.fields?.Zipcode);
-    const transformedRecords = data.records.map(record => ({
-      id: record.id,
-      fields: record.fields,
-      createdTime: record.createdTime,
-      // Transform to PropertyListing format with correct field mapping
-      title: record.fields.Address || record.fields.Property_Title || record.fields.Title || 'Untitled Property',
-      price: record.fields.Price || record.fields.Asking_Price || null,
-      location: `${record.fields.Address || ''}, ${record.fields.Suburb || ''}`.replace(/^, |, $/, '') || 'Location not specified',
-      address: record.fields.Address || 'Unknown Address',
-      suburb: record.fields.Suburb || 'Unknown Suburb', 
-      beds: record.fields.Beds || record.fields.Bedrooms || record.fields.Bedroom_Count || null,
-      baths: record.fields.Baths || record.fields.Bathrooms || record.fields.Bathroom_Count || null,
-      bedrooms: record.fields.Beds || record.fields.Bedrooms || record.fields.Bedroom_Count || null,
-      bathrooms: record.fields.Baths || record.fields.Bathrooms || record.fields.Bathroom_Count || null,
-      propertyType: record.fields['Property Type'] || record.fields.Property_Type || 'Unknown',
-      listingDate: record.fields.Listed_Date || record.fields.Date_Listed || record.createdTime,
-      status: record.fields.Status || 'Available',
-      confidence: record.fields['Confidence Score'] || record.fields.Confidence_Score || record.fields.Confidence || null,
-      source: record.fields.Source || record.fields.Data_Source || 'Airtable',
-      createdAt: record.fields['Created At'] ? new Date(record.fields['Created At']).toISOString() : record.createdTime,
-      description: record.fields['Property Description'] || record.fields.Description || record.fields.Property_Description || '',
-      images: record.fields.Images || record.fields.Property_Images || [],
-      agent: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
-      agencyName: record.fields['Agency Name'] || record.fields.Agent || record.fields.Listing_Agent || 'Unknown Agent',
-      features: record.fields.Features || record.fields.Property_Features || [],
-      carSpaces: record.fields['Car Spaces'] || record.fields.Car_Spaces || null,
-      landSize: record.fields['Square Feet'] || record.fields['Land Size'] || record.fields.Land_Size || record.fields.LandSize || null,
-      lotNumber: record.fields['Lot Number'] || null,
-      webLinks: record.fields['Web Link'] || null,
-      state: record.fields['State'] || null,
-      zipCode: record.fields['Zipcode'] || record.fields['Zip Code'] || record.fields['Post Code'] || record.fields['Postcode'] || null,
-    }));
+    const transformedRecords = data.records.map(record => {
+      const fields = record.fields;
+      
+      // Enhanced data cleaning and normalization
+      const cleanPrice = (price: any): number | null => {
+        if (!price) return null;
+        const numPrice = typeof price === 'string' ? parseFloat(price.replace(/[^0-9.]/g, '')) : price;
+        return numPrice > 0 && numPrice < 50000000 ? numPrice : null; // Filter unrealistic prices
+      };
+
+      const normalizeConfidence = (confidence: any): number | null => {
+        if (!confidence) return null;
+        const numConf = typeof confidence === 'string' ? parseFloat(confidence) : confidence;
+        if (numConf >= 0 && numConf <= 1) return numConf; // Already normalized
+        if (numConf >= 0 && numConf <= 100) return numConf / 100; // Convert percentage
+        return null;
+      };
+
+      const standardizePropertyType = (type: string | undefined): string => {
+        if (!type) return 'Unknown';
+        const normalized = type.toLowerCase().trim();
+        if (normalized.includes('apartment') || normalized.includes('unit')) return 'Apartment';
+        if (normalized.includes('house') || normalized.includes('home')) return 'House';
+        if (normalized.includes('townhouse') || normalized.includes('town house')) return 'Townhouse';
+        if (normalized.includes('villa')) return 'Villa';
+        if (normalized.includes('duplex')) return 'Duplex';
+        if (normalized.includes('land')) return 'Land';
+        return type; // Return original if no match
+      };
+
+      const standardizeSuburb = (suburb: string | undefined): string => {
+        if (!suburb) return 'Unknown Suburb';
+        return suburb.split(',')[0].trim(); // Remove state/postcode if present
+      };
+
+      // Enhanced date handling with multiple fallback options
+      const getValidDate = (): string => {
+        const candidates = [
+          fields['ReceivedAt'],
+          fields['Created At'],
+          fields['Listed_Date'],
+          fields['Date_Listed'],
+          record.createdTime
+        ];
+        
+        for (const candidate of candidates) {
+          if (candidate) {
+            try {
+              const date = new Date(candidate);
+              if (!isNaN(date.getTime())) return date.toISOString();
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+        return new Date().toISOString(); // Fallback to now
+      };
+
+      return {
+        id: record.id,
+        fields: fields,
+        createdTime: getValidDate(),
+        
+        // Core property information with enhanced mapping
+        title: fields.Address || fields.Property_Title || fields.Title || 'Untitled Property',
+        price: cleanPrice(fields.Price || fields.Asking_Price),
+        location: `${fields.Address || ''}, ${standardizeSuburb(fields.Suburb)}`.replace(/^, |, $/, '') || 'Location not specified',
+        address: fields.Address || 'Unknown Address',
+        suburb: standardizeSuburb(fields.Suburb),
+        
+        // Property details with data validation
+        beds: Math.max(0, parseInt(String(fields.Beds || fields.Bedrooms || fields.Bedroom_Count || 0))) || null,
+        baths: Math.max(0, parseInt(String(fields.Baths || fields.Bathrooms || fields.Bathroom_Count || 0))) || null,
+        bedrooms: Math.max(0, parseInt(String(fields.Beds || fields.Bedrooms || fields.Bedroom_Count || 0))) || null,
+        bathrooms: Math.max(0, parseInt(String(fields.Baths || fields.Bathrooms || fields.Bathroom_Count || 0))) || null,
+        carSpaces: Math.max(0, parseInt(String(fields['Car Spaces'] || fields.Car_Spaces || 0))) || null,
+        
+        propertyType: standardizePropertyType(fields['Property Type'] || fields.Property_Type),
+        listingDate: getValidDate(),
+        status: fields.Status || 'Available',
+        
+        // Quality and confidence metrics
+        confidence: normalizeConfidence(fields['Confidence Score'] || fields.Confidence_Score || fields.Confidence),
+        source: fields.Source || fields.Data_Source || 'Airtable',
+        
+        // Agent and agency information - FIXED MAPPING
+        agent: fields['Agent Name'] || fields.Agent || fields.Listing_Agent || 'Unknown Agent',
+        agentName: fields['Agent Name'] || fields.Agent || fields.Listing_Agent || 'Unknown Agent',
+        agencyName: fields['Agency Name'] || fields.Agency || fields['Agent Agency'] || 'Unknown Agency',
+        agentPhone: fields['Agent Phone'] || null,
+        
+        // Additional details
+        createdAt: getValidDate(),
+        receivedAt: getValidDate(),
+        description: fields['Property Description'] || fields.Description || fields.Summary || '',
+        images: fields.Images || fields.Property_Images || [],
+        features: fields.Features || fields.Property_Features || [],
+        
+        // Location details
+        landSize: fields['Square Feet'] || fields['Land Size'] || fields.Land_Size || fields.LandSize || null,
+        lotNumber: fields['Lot Number'] || null,
+        webLinks: fields['Web Link'] || null,
+        state: fields['State'] || null,
+        zipCode: fields['Zipcode'] || fields['Zip Code'] || fields['Post Code'] || fields['Postcode'] || null,
+        
+        // Additional metadata
+        summary: fields.Summary || null,
+        keyEntities: fields['Key Entities'] || null,
+        rawExtract: fields['Raw Extract'] || null,
+        category: fields.Category || null,
+        inspectionStart: fields['Inspection Start'] ? new Date(fields['Inspection Start']) : null,
+        inspectionEnd: fields['Inspection End'] ? new Date(fields['Inspection End']) : null,
+        inspectionNotes: fields['Inspection Notes'] || null,
+        floorplans: fields.Floorplans || [],
+      };
+    });
 
     // Remove duplicates based on address, price, and property details
     const deduplicatedRecords = [];

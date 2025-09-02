@@ -13,7 +13,8 @@ interface AgentPerformanceProps {
 export function AgentPerformance({ listings }: AgentPerformanceProps) {
   const agentData = useMemo(() => {
     const agentStats = listings.reduce((acc, listing) => {
-      const agentName = listing.agentName || 'Unknown Agent';
+      // Enhanced agent/agency name extraction with better fallbacks
+      const agentName = listing.agentName || listing.agent || 'Unknown Agent';
       const agencyName = listing.agencyName || 'Unknown Agency';
       
       if (!acc[agentName]) {
