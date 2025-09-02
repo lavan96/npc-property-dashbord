@@ -114,6 +114,7 @@ export default function ReportViewer() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 20;
+      const contentWidth = pageWidth - 2 * margin;
       let yPosition = margin;
 
       // Add title
@@ -136,14 +137,14 @@ export default function ReportViewer() {
         pdf.text('Description:', margin, yPosition);
         yPosition += 8;
         pdf.setFontSize(10);
-        const splitDescription = pdf.splitTextToSize(report.description, pageWidth - 2 * margin);
+        const splitDescription = pdf.splitTextToSize(report.description, contentWidth);
         pdf.text(splitDescription, margin, yPosition);
         yPosition += splitDescription.length * 5 + 10;
       }
 
       // Add KPIs section
       if (report.kpis) {
-        if (yPosition > pageHeight - 50) {
+        if (yPosition > pageHeight - 60) {
           pdf.addPage();
           yPosition = margin;
         }
@@ -151,7 +152,7 @@ export default function ReportViewer() {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('Key Performance Indicators', margin, yPosition);
-        yPosition += 10;
+        yPosition += 15;
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
@@ -165,14 +166,14 @@ export default function ReportViewer() {
         
         kpiText.forEach(text => {
           pdf.text(text, margin, yPosition);
-          yPosition += 6;
+          yPosition += 7;
         });
-        yPosition += 10;
+        yPosition += 15;
       }
 
       // Add analytics section
       if (report.analytics) {
-        if (yPosition > pageHeight - 40) {
+        if (yPosition > pageHeight - 50) {
           pdf.addPage();
           yPosition = margin;
         }
@@ -180,29 +181,35 @@ export default function ReportViewer() {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('Analytics Summary', margin, yPosition);
-        yPosition += 10;
+        yPosition += 15;
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
         
         if (report.analytics.velocity) {
           pdf.text(`Market Velocity: ${report.analytics.velocity.label}`, margin, yPosition);
-          yPosition += 6;
+          yPosition += 7;
         }
         if (report.analytics.quality) {
           pdf.text(`Average Data Confidence: ${report.analytics.quality.avg_confidence?.toFixed(1) || 'N/A'}%`, margin, yPosition);
-          yPosition += 6;
+          yPosition += 7;
         }
         if (report.analytics.coverage) {
           pdf.text(`Market Coverage: ${report.analytics.coverage.saturation} saturation`, margin, yPosition);
-          yPosition += 6;
+          yPosition += 7;
         }
-        yPosition += 10;
+        yPosition += 15;
       }
 
-      // Add charts
-      for (const chart of charts) {
-        if (yPosition > pageHeight - 100) {
+      // Add charts with improved rendering
+      for (let i = 0; i < charts.length; i++) {
+        const chart = charts[i];
+        
+        // Calculate space needed for chart (title + image + margin)
+        const chartSpaceNeeded = 120; // Approximate space for chart title + image + margins
+        
+        // Check if we need a new page
+        if (yPosition > pageHeight - chartSpaceNeeded) {
           pdf.addPage();
           yPosition = margin;
         }
@@ -211,49 +218,100 @@ export default function ReportViewer() {
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
         pdf.text(chart.title, margin, yPosition);
-        yPosition += 10;
+        yPosition += 12;
 
-        // Add chart image
+        // Add chart image with improved sizing
         try {
           if (chart.image_data.startsWith('data:image/svg+xml;base64,')) {
-            // Create a temporary div to render the SVG
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.left = '-9999px';
-            tempDiv.style.width = '400px';
-            tempDiv.style.height = '300px';
-            document.body.appendChild(tempDiv);
-
-            const canvas = await html2canvas(tempDiv, {
-              backgroundColor: '#ffffff',
-              scale: 2
+            // Create a temporary container for the SVG
+            const tempContainer = document.createElement('div');
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.left = '-9999px';
+            tempContainer.style.top = '-9999px';
+            tempContainer.style.width = '800px';
+            tempContainer.style.height = '600px';
+            tempContainer.style.backgroundColor = '#ffffff';
+            tempContainer.style.padding = '20px';
+            tempContainer.style.boxSizing = 'border-box';
+            
+            // Decode and clean up SVG content
+            let svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
+            
+            // Ensure SVG has proper sizing attributes
+            svgContent = svgContent.replace(/<svg[^>]*>/, (match) => {
+              return '<svg width="760" height="560" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" style="background: white; display: block;">';
             });
             
-            document.body.removeChild(tempDiv);
+            tempContainer.innerHTML = svgContent;
+            document.body.appendChild(tempContainer);
+
+            // Give the SVG time to render
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Convert to canvas with high quality settings
+            const canvas = await html2canvas(tempContainer, {
+              backgroundColor: '#ffffff',
+              scale: 2,
+              width: 800,
+              height: 600,
+              useCORS: true,
+              allowTaint: true,
+              scrollX: 0,
+              scrollY: 0
+            });
             
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidth = pageWidth - 2 * margin;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            // Clean up
+            document.body.removeChild(tempContainer);
             
-            if (yPosition + imgHeight > pageHeight - margin) {
-              pdf.addPage();
-              yPosition = margin;
+            // Calculate optimal size for PDF
+            const maxWidth = contentWidth;
+            const maxHeight = 90; // Max height for chart in PDF
+            
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const aspectRatio = canvasWidth / canvasHeight;
+            
+            let pdfWidth = maxWidth;
+            let pdfHeight = pdfWidth / aspectRatio;
+            
+            // If height is too large, scale down based on height
+            if (pdfHeight > maxHeight) {
+              pdfHeight = maxHeight;
+              pdfWidth = pdfHeight * aspectRatio;
             }
             
-            pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
-            yPosition += imgHeight + 15;
+            // Center the image horizontally
+            const xPosition = margin + (contentWidth - pdfWidth) / 2;
+            
+            // Convert canvas to image and add to PDF
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            pdf.addImage(imgData, 'PNG', xPosition, yPosition, pdfWidth, pdfHeight);
+            yPosition += pdfHeight + 20;
+            
+          } else {
+            // Handle regular image data
+            const maxWidth = contentWidth;
+            const maxHeight = 90;
+            
+            // Add image with proper sizing
+            const xPosition = margin;
+            pdf.addImage(chart.image_data, 'PNG', xPosition, yPosition, maxWidth, maxHeight);
+            yPosition += maxHeight + 20;
           }
         } catch (error) {
           console.error('Error adding chart to PDF:', error);
+          pdf.setFontSize(10);
+          pdf.setTextColor(255, 0, 0);
           pdf.text('Chart could not be rendered', margin, yPosition);
-          yPosition += 10;
+          pdf.setTextColor(0, 0, 0);
+          yPosition += 15;
         }
       }
 
       // Add insights if available
       if (report.insights && Array.isArray(report.insights) && report.insights.length > 0) {
-        if (yPosition > pageHeight - 50) {
+        // Ensure we have space for the insights section
+        if (yPosition > pageHeight - 60) {
           pdf.addPage();
           yPosition = margin;
         }
@@ -261,21 +319,21 @@ export default function ReportViewer() {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('Key Insights', margin, yPosition);
-        yPosition += 10;
+        yPosition += 15;
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
         
         report.insights.forEach((insight: string, index: number) => {
-          if (yPosition > pageHeight - margin - 10) {
+          if (yPosition > pageHeight - margin - 15) {
             pdf.addPage();
             yPosition = margin;
           }
           
           const bulletText = `• ${insight}`;
-          const splitText = pdf.splitTextToSize(bulletText, pageWidth - 2 * margin);
+          const splitText = pdf.splitTextToSize(bulletText, contentWidth);
           pdf.text(splitText, margin, yPosition);
-          yPosition += splitText.length * 5 + 3;
+          yPosition += splitText.length * 5 + 5;
         });
       }
 
