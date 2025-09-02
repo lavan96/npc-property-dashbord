@@ -147,7 +147,7 @@ export default function Charts() {
                       {chart.chart_type} Chart
                     </h4>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border">
+                  <div className="bg-white p-2 rounded-lg border h-48 overflow-hidden flex items-center justify-center">
                     {chart.image_data ? (
                       <div 
                         dangerouslySetInnerHTML={{
@@ -157,19 +157,16 @@ export default function Charts() {
                               ? chart.image_data 
                               : ''
                         }}
-                        className="w-full h-48 overflow-hidden"
                         style={{ 
-                          maxHeight: '12rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                        onError={(e) => {
-                          console.error('SVG rendering error:', e);
+                          width: '100%',
+                          height: '100%',
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          objectFit: 'contain'
                         }}
                       />
                     ) : (
-                      <div className="h-48 flex items-center justify-center text-muted-foreground">
+                      <div className="text-muted-foreground">
                         No chart data available
                       </div>
                     )}
