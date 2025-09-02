@@ -111,6 +111,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
   }
 
   try {
+    console.log('Calling chart generation with charts:', charts);
+    
     const { data, error } = await supabase.functions.invoke('generate-chart-images', {
       body: { charts }
     });
@@ -120,6 +122,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       return {};
     }
 
+    console.log('Chart generation response:', data);
     return data.chartImages || {};
   } catch (error) {
     console.error('Error calling chart generation function:', error);

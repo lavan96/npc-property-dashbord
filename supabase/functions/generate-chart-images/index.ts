@@ -56,8 +56,7 @@ ${chart.type === 'line' ? '- Include data point markers' : ''}`;
           prompt: prompt,
           n: 1,
           size: '1024x1024',
-          quality: 'high',
-          response_format: 'b64_json'
+          quality: 'high'
         }),
       });
 
@@ -68,7 +67,14 @@ ${chart.type === 'line' ? '- Include data point markers' : ''}`;
       }
 
       const data = await response.json();
-      const base64Image = data.data[0].b64_json;
+      
+      // gpt-image-1 returns base64 data directly, not in b64_json format
+      const imageUrl = data.data[0].url;
+      
+      // Fetch the image and convert to base64
+      const imageResponse = await fetch(imageUrl);
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
       
       // Store with a clean key (remove spaces and special characters)
       const chartKey = chart.title.toLowerCase().replace(/[^a-z0-9]/g, '_');
