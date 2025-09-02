@@ -233,8 +233,11 @@ export default function ReportViewer() {
       for (let i = 0; i < charts.length; i++) {
         const chart = charts[i];
         
-        // Calculate space needed for chart (title + image + margin)
-        const chartSpaceNeeded = 120; // Approximate space for chart title + image + margins
+        // Calculate space needed for chart (title + image + analysis + margins)
+        const analysisText = chartAnalysis[chart.id];
+        const analysisLines = analysisText ? pdf.splitTextToSize(analysisText, contentWidth) : [];
+        const analysisHeight = analysisLines.length * 6 + (analysisLines.length > 0 ? 20 : 0);
+        const chartSpaceNeeded = 150 + analysisHeight; // Chart title + image + analysis + margins
         
         // Check if we need a new page
         if (yPosition > pageHeight - chartSpaceNeeded) {
@@ -246,7 +249,7 @@ export default function ReportViewer() {
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
         pdf.text(chart.title, margin, yPosition);
-        yPosition += 12;
+        yPosition += 15;
 
         // Add chart image with improved sizing
         try {
@@ -318,18 +321,36 @@ export default function ReportViewer() {
             
             // Add chart analysis if available
             if (chartAnalysis[chart.id]) {
-              pdf.setFontSize(9);
-              pdf.setFont('helvetica', 'italic');
+              // Add some space before analysis
+              yPosition += 5;
+              
+              // Add a subtle separator line
+              pdf.setDrawColor(200, 200, 200);
+              pdf.setLineWidth(0.3);
+              pdf.line(margin, yPosition, margin + contentWidth, yPosition);
+              yPosition += 8;
+              
+              // Add "Analysis:" label
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'bold');
+              pdf.setTextColor(80, 80, 80);
+              pdf.text('Analysis:', margin, yPosition);
+              yPosition += 8;
+              
+              // Add analysis text with better formatting
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'normal');
               pdf.setTextColor(60, 60, 60);
               
-              const analysisLines = pdf.splitTextToSize(chartAnalysis[chart.id], contentWidth);
-              pdf.text(analysisLines, margin, yPosition);
-              yPosition += analysisLines.length * 4 + 15;
+              const analysisLines = pdf.splitTextToSize(chartAnalysis[chart.id], contentWidth - 10);
+              pdf.text(analysisLines, margin + 5, yPosition);
+              yPosition += analysisLines.length * 6 + 15;
               
+              // Reset text color
               pdf.setTextColor(0, 0, 0);
               pdf.setFont('helvetica', 'normal');
             } else {
-              yPosition += 10;
+              yPosition += 15;
             }
             
           } else {
@@ -344,18 +365,36 @@ export default function ReportViewer() {
             
             // Add chart analysis if available
             if (chartAnalysis[chart.id]) {
-              pdf.setFontSize(9);
-              pdf.setFont('helvetica', 'italic');
+              // Add some space before analysis
+              yPosition += 5;
+              
+              // Add a subtle separator line
+              pdf.setDrawColor(200, 200, 200);
+              pdf.setLineWidth(0.3);
+              pdf.line(margin, yPosition, margin + contentWidth, yPosition);
+              yPosition += 8;
+              
+              // Add "Analysis:" label
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'bold');
+              pdf.setTextColor(80, 80, 80);
+              pdf.text('Analysis:', margin, yPosition);
+              yPosition += 8;
+              
+              // Add analysis text with better formatting
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'normal');
               pdf.setTextColor(60, 60, 60);
               
-              const analysisLines = pdf.splitTextToSize(chartAnalysis[chart.id], contentWidth);
-              pdf.text(analysisLines, margin, yPosition);
-              yPosition += analysisLines.length * 4 + 15;
+              const analysisLines = pdf.splitTextToSize(chartAnalysis[chart.id], contentWidth - 10);
+              pdf.text(analysisLines, margin + 5, yPosition);
+              yPosition += analysisLines.length * 6 + 15;
               
+              // Reset text color
               pdf.setTextColor(0, 0, 0);
               pdf.setFont('helvetica', 'normal');
             } else {
-              yPosition += 10;
+              yPosition += 15;
             }
           }
         } catch (error) {
