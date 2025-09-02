@@ -129,6 +129,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
 
 export function useReportGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('');
 
   const generateReport = async (
     config: ReportConfig, 
@@ -147,6 +149,8 @@ export function useReportGenerator() {
     }
   ) => {
     setIsGenerating(true);
+    setProgress(0);
+    setCurrentStep('Initializing report generation...');
     
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -162,6 +166,9 @@ export function useReportGenerator() {
           currentY = margin;
         }
       };
+
+      setProgress(10);
+      setCurrentStep('Creating PDF structure...');
 
       // Title Page
       pdf.setFontSize(24);
@@ -331,12 +338,21 @@ export function useReportGenerator() {
         });
       }
 
+      setProgress(50);
+      setCurrentStep('Saving PDF report...');
+      
       // Save the PDF
       const fileName = `${config.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
 
+      setProgress(60);
+      setCurrentStep('Generating AI-powered charts...');
+      
       // Generate chart images using ChatGPT
       const chartImages = await generateChartImages(allListings, config);
+
+      setProgress(80);
+      setCurrentStep('Processing analytics and insights...');
 
       // Fire webhook notification
       try {
@@ -535,9 +551,12 @@ export function useReportGenerator() {
         // Don't fail the report generation if webhook fails
       }
 
+      setProgress(100);
+      setCurrentStep('Report generation complete!');
+      
       toast({
-        title: "Report Generated",
-        description: `${fileName} has been downloaded successfully.`,
+        title: "Report Generated Successfully! 📊",
+        description: `${fileName} has been downloaded and charts are available in the Charts page.`,
       });
 
     } catch (error) {
@@ -555,5 +574,7 @@ export function useReportGenerator() {
   return {
     generateReport,
     isGenerating,
+    progress,
+    currentStep,
   };
 }

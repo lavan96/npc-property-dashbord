@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Download, FileText } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Download, FileText, BarChart3 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,10 +31,13 @@ export type ReportConfig = z.infer<typeof reportConfigSchema>;
 interface ReportConfigModalProps {
   onGenerateReport: (config: ReportConfig) => void;
   isGenerating: boolean;
+  progress?: number;
+  currentStep?: string;
 }
 
-export function ReportConfigModal({ onGenerateReport, isGenerating }: ReportConfigModalProps) {
+export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0, currentStep = '' }: ReportConfigModalProps) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const form = useForm<ReportConfig>({
     resolver: zodResolver(reportConfigSchema),
@@ -259,18 +264,44 @@ export function ReportConfigModal({ onGenerateReport, isGenerating }: ReportConf
               />
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setOpen(false)}
-                disabled={isGenerating}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isGenerating}>
-                {isGenerating ? 'Generating...' : 'Generate PDF Report'}
-              </Button>
+            {isGenerating && (
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                  {currentStep || 'Processing...'}
+                </div>
+                <Progress value={progress} className="w-full" />
+                <div className="text-xs text-muted-foreground">
+                  {progress}% Complete
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between gap-2">
+              {!isGenerating && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/charts')}
+                  className="gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  View Charts
+                </Button>
+              )}
+              <div className="flex gap-2 ml-auto">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setOpen(false)}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? 'Processing...' : 'Cancel'}
+                </Button>
+                <Button type="submit" disabled={isGenerating}>
+                  {isGenerating ? 'Generating...' : 'Generate PDF Report'}
+                </Button>
+              </div>
             </div>
           </form>
         </Form>

@@ -31,7 +31,7 @@ const COLORS = [
 
 export default function Reports() {
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
-  const { generateReport, isGenerating } = useReportGenerator();
+  const { generateReport, isGenerating, progress, currentStep } = useReportGenerator();
   
   // Chart refs for PDF generation
   const kpisRef = useRef<HTMLDivElement>(null);
@@ -213,6 +213,8 @@ export default function Reports() {
         <ReportConfigModal 
           onGenerateReport={handleGenerateReport}
           isGenerating={isGenerating}
+          progress={progress}
+          currentStep={currentStep}
         />
       </div>
 
