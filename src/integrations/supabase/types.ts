@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      chart_analysis: {
+        Row: {
+          analysis_text: string
+          chart_id: string
+          confidence_score: number | null
+          created_at: string
+          id: string
+          model_used: string | null
+          updated_at: string
+        }
+        Insert: {
+          analysis_text: string
+          chart_id: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          updated_at?: string
+        }
+        Update: {
+          analysis_text?: string
+          chart_id?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_analysis_chart_id_fkey"
+            columns: ["chart_id"]
+            isOneToOne: false
+            referencedRelation: "charts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chart_configurations: {
         Row: {
           chart_type: string
