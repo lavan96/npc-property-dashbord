@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-charts-python]
 verify_jwt = false
+
+[functions.generate-chart-analysis]
+verify_jwt = true

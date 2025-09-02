@@ -42,6 +42,7 @@ export default function ReportViewer() {
   
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [charts, setCharts] = useState<ChartData[]>([]);
+  const [chartAnalysis, setChartAnalysis] = useState<{[key: string]: string}>({});
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
@@ -91,6 +92,33 @@ export default function ReportViewer() {
         console.error('Error fetching charts:', chartsError);
       } else {
         setCharts(chartsData || []);
+        
+        // Fetch chart analysis for each chart
+        if (chartsData && chartsData.length > 0) {
+          const analysisPromises = chartsData.map(async (chart) => {
+            const { data: analysisData, error: analysisError } = await supabase
+              .from('chart_analysis')
+              .select('analysis_text')
+              .eq('chart_id', chart.id)
+              .single();
+            
+            if (!analysisError && analysisData) {
+              return { chartId: chart.id, analysis: analysisData.analysis_text };
+            }
+            return null;
+          });
+
+          const analysisResults = await Promise.all(analysisPromises);
+          const analysisMap: {[key: string]: string} = {};
+          
+          analysisResults.forEach(result => {
+            if (result) {
+              analysisMap[result.chartId] = result.analysis;
+            }
+          });
+          
+          setChartAnalysis(analysisMap);
+        }
       }
 
     } catch (error) {
@@ -286,7 +314,23 @@ export default function ReportViewer() {
             // Convert canvas to image and add to PDF
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', xPosition, yPosition, pdfWidth, pdfHeight);
-            yPosition += pdfHeight + 20;
+            yPosition += pdfHeight + 10;
+            
+            // Add chart analysis if available
+            if (chartAnalysis[chart.id]) {
+              pdf.setFontSize(9);
+              pdf.setFont('helvetica', 'italic');
+              pdf.setTextColor(60, 60, 60);
+              
+              const analysisLines = pdf.splitTextToSize(chartAnalysis[chart.id], contentWidth);
+              pdf.text(analysisLines, margin, yPosition);
+              yPosition += analysisLines.length * 4 + 15;
+              
+              pdf.setTextColor(0, 0, 0);
+              pdf.setFont('helvetica', 'normal');
+            } else {
+              yPosition += 10;
+            }
             
           } else {
             // Handle regular image data
@@ -296,7 +340,23 @@ export default function ReportViewer() {
             // Add image with proper sizing
             const xPosition = margin;
             pdf.addImage(chart.image_data, 'PNG', xPosition, yPosition, maxWidth, maxHeight);
-            yPosition += maxHeight + 20;
+            yPosition += maxHeight + 10;
+            
+            // Add chart analysis if available
+            if (chartAnalysis[chart.id]) {
+              pdf.setFontSize(9);
+              pdf.setFont('helvetica', 'italic');
+              pdf.setTextColor(60, 60, 60);
+              
+              const analysisLines = pdf.splitTextToSize(chartAnalysis[chart.id], contentWidth);
+              pdf.text(analysisLines, margin, yPosition);
+              yPosition += analysisLines.length * 4 + 15;
+              
+              pdf.setTextColor(0, 0, 0);
+              pdf.setFont('helvetica', 'normal');
+            } else {
+              yPosition += 10;
+            }
           }
         } catch (error) {
           console.error('Error adding chart to PDF:', error);
@@ -566,6 +626,13 @@ export default function ReportViewer() {
                           />
                         )}
                       </div>
+                      {chartAnalysis[chart.id] && (
+                        <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground italic">
+                            {chartAnalysis[chart.id]}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

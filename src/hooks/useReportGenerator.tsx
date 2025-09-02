@@ -885,15 +885,59 @@ export function useReportGenerator() {
 
           console.log('Chart records to insert:', chartRecords.length);
           
-          const { error: chartsError } = await supabase
+          const { data: insertedCharts, error: chartsError } = await supabase
             .from('charts')
-            .insert(chartRecords);
+            .insert(chartRecords)
+            .select();
 
           if (chartsError) {
             console.error('Error storing charts:', chartsError);
             // Don't fail the whole process if charts fail to store
           } else {
             console.log('Charts stored successfully!');
+            
+            // Generate qualitative analysis for each chart
+            setCurrentStep('Generating qualitative analysis...');
+            setProgress(90);
+            
+            if (insertedCharts && insertedCharts.length > 0) {
+              const analysisPromises = insertedCharts.map(async (chart) => {
+                try {
+                  const chartDataForAnalysis = {
+                    title: chart.title,
+                    type: chart.chart_type,
+                    data: { listings: allListings.length }, // Simplified data for analysis
+                    config: chart.chart_config
+                  };
+                  
+                  const reportContext = {
+                    title: config.title,
+                    description: config.description,
+                    listingCount: totalListings
+                  };
+
+                  const { data, error } = await supabase.functions.invoke('generate-chart-analysis', {
+                    body: {
+                      chartId: chart.id,
+                      chartData: chartDataForAnalysis,
+                      reportContext
+                    }
+                  });
+
+                  if (error) {
+                    console.error(`Error generating analysis for chart ${chart.id}:`, error);
+                  } else {
+                    console.log(`Analysis generated for chart ${chart.id}`);
+                  }
+                } catch (analysisError) {
+                  console.error(`Failed to generate analysis for chart ${chart.id}:`, analysisError);
+                }
+              });
+
+              // Wait for all analysis to complete
+              await Promise.all(analysisPromises);
+              console.log('All chart analyses generated');
+            }
           }
         } else {
           console.warn('No charts to store - either no report data or no chart images generated');
