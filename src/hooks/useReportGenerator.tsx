@@ -1181,48 +1181,64 @@ export function useReportGenerator() {
                     }));
                     chartDataForAnalysis.dataQuality = 'medium';
                     
-                  } else if (chartTitle.includes('daily') || chartTitle.includes('activity')) {
+                  } else if (chartTitle.toLowerCase().includes('daily') || chartTitle.toLowerCase().includes('listing activity')) {
+                    // Generate actual daily activity data from listings
                     const dailyCounts = allListings.reduce((acc, listing) => {
                       if (listing.receivedAt) {
-                        const date = new Date(listing.receivedAt).toDateString();
+                        const date = new Date(listing.receivedAt).toISOString().split('T')[0]; // YYYY-MM-DD format
                         acc[date] = (acc[date] || 0) + 1;
                       }
                       return acc;
                     }, {} as Record<string, number>);
+                    
                     const last30Days = Object.entries(dailyCounts)
                       .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
                       .slice(-30);
-                    chartDataForAnalysis.data = last30Days.map(([date, count]) => ({
+                    
+                    chartDataForAnalysis.data = last30Days.length > 0 ? last30Days.map(([date, count]) => ({
                       label: new Date(date).toLocaleDateString(),
                       value: count,
                       date: date
-                    }));
-                    chartDataForAnalysis.dataQuality = 'medium';
+                    })) : [
+                      { label: 'No data', value: 0, date: new Date().toISOString().split('T')[0] }
+                    ];
+                    chartDataForAnalysis.totalListings = allListings.length;
+                    chartDataForAnalysis.dataQuality = last30Days.length > 0 ? 'medium' : 'low';
                     
-                  } else if (chartTitle.includes('pricing trends')) {
-                    const monthlyPrices = allListings.reduce((acc, listing) => {
-                      if (listing.receivedAt && listing.price) {
-                        const month = new Date(listing.receivedAt).toISOString().slice(0, 7);
-                        if (!acc[month]) acc[month] = [];
-                        acc[month].push(listing.price);
-                      }
-                      return acc;
-                    }, {} as Record<string, number[]>);
+                  } else if (chartTitle.toLowerCase().includes('pricing trends')) {
+                    // Generate pricing trends by price ranges or time periods
+                    const priceRanges = [
+                      { label: '<$500k', min: 0, max: 500000 },
+                      { label: '$500k-$750k', min: 500000, max: 750000 },
+                      { label: '$750k-$1M', min: 750000, max: 1000000 },
+                      { label: '>$1M', min: 1000000, max: Infinity }
+                    ];
                     
-                    chartDataForAnalysis.data = Object.entries(monthlyPrices).map(([month, prices]) => ({
-                      label: month,
-                      value: Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length),
-                      count: prices.length
-                    })).sort((a, b) => a.label.localeCompare(b.label));
-                    chartDataForAnalysis.dataQuality = 'medium';
+                    chartDataForAnalysis.data = priceRanges.map(range => {
+                      const count = allListings.filter(l => 
+                        l.price && l.price >= range.min && l.price < range.max
+                      ).length;
+                      return {
+                        label: range.label,
+                        value: count,
+                        priceRange: range
+                      };
+                    }).filter(item => item.value > 0);
                     
-                  } else if (chartTitle.includes('confidence')) {
+                    if (chartDataForAnalysis.data.length === 0) {
+                      chartDataForAnalysis.data = [{ label: 'No pricing data available', value: 0 }];
+                    }
+                    chartDataForAnalysis.totalListings = allListings.length;
+                    chartDataForAnalysis.dataQuality = chartDataForAnalysis.data.some(d => d.value > 0) ? 'medium' : 'low';
+                    
+                  } else if (chartTitle.toLowerCase().includes('confidence') || chartTitle.toLowerCase().includes('data confidence')) {
                     const confidenceRanges = [
                       { label: 'Low (0-0.5)', min: 0, max: 0.5 },
                       { label: 'Medium (0.5-0.7)', min: 0.5, max: 0.7 },
                       { label: 'High (0.7-0.9)', min: 0.7, max: 0.9 },
                       { label: 'Very High (0.9+)', min: 0.9, max: 1.0 }
                     ];
+                    
                     chartDataForAnalysis.data = confidenceRanges.map(range => {
                       const count = allListings.filter(l => {
                         const conf = l.confidence || 0;
@@ -1234,9 +1250,12 @@ export function useReportGenerator() {
                         percentage: ((count / allListings.length) * 100).toFixed(1)
                       };
                     });
+                    
+                    const avgConfidence = allListings.reduce((sum, l) => sum + (l.confidence || 0), 0) / allListings.length;
+                    chartDataForAnalysis.totalListings = allListings.length;
                     chartDataForAnalysis.dataQuality = 'high';
                     
-                  } else if (chartTitle.includes('price') && chartTitle.includes('volume')) {
+                  } else if (chartTitle.toLowerCase().includes('price') && chartTitle.toLowerCase().includes('volume')) {
                     // Generate scatter plot data for price vs volume correlation
                     const suburbAnalysis = allListings.reduce((acc, listing) => {
                       const suburb = listing.suburb || 'Unknown';
@@ -1260,15 +1279,22 @@ export function useReportGenerator() {
                         y: Math.round(data.prices.reduce((sum, p) => sum + p, 0) / data.prices.length) // Price (y-axis)
                       }))
                       .slice(0, 10);
-                    chartDataForAnalysis.dataQuality = 'medium';
                     
-                  } else if (chartTitle.includes('advanced analytics')) {
+                    if (chartDataForAnalysis.data.length === 0) {
+                      chartDataForAnalysis.data = [{ suburb: 'No data', averagePrice: 0, volume: 0, x: 0, y: 0 }];
+                    }
+                    chartDataForAnalysis.totalListings = allListings.length;
+                    chartDataForAnalysis.dataQuality = chartDataForAnalysis.data.length > 1 ? 'high' : 'low';
+                    
+                  } else if (chartTitle.toLowerCase().includes('advanced analytics')) {
                     // Generate analytics overview data
                     const now = new Date();
                     const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
                     const recentCount = allListings.filter(l => l.receivedAt && new Date(l.receivedAt) >= last30Days).length;
-                    const avgPrice = allListings.filter(l => l.price).reduce((sum, l) => sum + (l.price || 0), 0) / allListings.filter(l => l.price).length;
-                    const avgConfidence = allListings.filter(l => l.confidence).reduce((sum, l) => sum + (l.confidence || 0), 0) / allListings.filter(l => l.confidence).length;
+                    const validPrices = allListings.filter(l => l.price && l.price > 0);
+                    const avgPrice = validPrices.length > 0 ? validPrices.reduce((sum, l) => sum + (l.price || 0), 0) / validPrices.length : 0;
+                    const validConfidence = allListings.filter(l => l.confidence && l.confidence > 0);
+                    const avgConfidence = validConfidence.length > 0 ? validConfidence.reduce((sum, l) => sum + (l.confidence || 0), 0) / validConfidence.length : 0;
                     
                     chartDataForAnalysis.data = [
                       { label: 'Total Listings', value: allListings.length },
@@ -1276,17 +1302,26 @@ export function useReportGenerator() {
                       { label: 'Avg Price', value: Math.round(avgPrice) },
                       { label: 'Avg Confidence', value: Math.round(avgConfidence * 100) }
                     ];
+                    chartDataForAnalysis.totalListings = allListings.length;
                     chartDataForAnalysis.dataQuality = 'high';
                     
-                  } else if (chartTitle.includes('executive') || chartTitle.includes('insights')) {
-                    // Generate executive market insights
+                  } else if (chartTitle.toLowerCase().includes('executive') || chartTitle.toLowerCase().includes('market insights')) {
+                    // Generate executive market insights with real data
+                    const validPrices = allListings.filter(l => l.price && l.price > 0);
+                    const avgPrice = validPrices.length > 0 ? validPrices.reduce((sum, l) => sum + (l.price || 0), 0) / validPrices.length : 0;
+                    const now = new Date();
+                    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    const recentCount = allListings.filter(l => l.receivedAt && new Date(l.receivedAt) >= last30Days).length;
+                    
                     const marketMetrics = [
                       { label: 'Market Activity', value: allListings.length > 50 ? 'High' : allListings.length > 20 ? 'Medium' : 'Low' },
-                      { label: 'Price Trend', value: 'Stable' }, // Could be calculated from temporal data
-                      { label: 'Inventory Level', value: allListings.length > 100 ? 'Abundant' : 'Limited' },
-                      { label: 'Market Health', value: 'Good' }
+                      { label: 'Price Trend', value: avgPrice > 500000 ? 'Premium' : avgPrice > 300000 ? 'Stable' : 'Affordable' },
+                      { label: 'Inventory Level', value: allListings.length > 100 ? 'Abundant' : allListings.length > 50 ? 'Moderate' : 'Limited' },
+                      { label: 'Market Health', value: recentCount > 20 ? 'Good' : recentCount > 10 ? 'Fair' : 'Slow' }
                     ];
+                    
                     chartDataForAnalysis.data = marketMetrics;
+                    chartDataForAnalysis.totalListings = allListings.length;
                     chartDataForAnalysis.dataQuality = 'medium';
                   }
                   
