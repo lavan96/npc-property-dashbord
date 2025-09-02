@@ -156,6 +156,12 @@ export function useReportGenerator() {
     setCurrentStep('Initializing report generation...');
     
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated. Please log in to generate reports.');
+      }
+      
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -520,6 +526,7 @@ export function useReportGenerator() {
             insights: webhookPayload.report.insights,
             chart_urls: webhookPayload.report.charts,
             listing_count: totalListings,
+            generated_by: (await supabase.auth.getUser()).data.user?.id,
             webhook_url: 'https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86',
             webhook_sent: false
           })

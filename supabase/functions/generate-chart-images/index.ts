@@ -67,14 +67,28 @@ ${chart.type === 'line' ? '- Include data point markers' : ''}`;
       }
 
       const data = await response.json();
+      console.log('OpenAI response:', JSON.stringify(data, null, 2));
       
-      // gpt-image-1 returns base64 data directly, not in b64_json format
-      const imageUrl = data.data[0].url;
-      
-      // Fetch the image and convert to base64
-      const imageResponse = await fetch(imageUrl);
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+      // Handle different response formats from OpenAI
+      let base64Image;
+      if (data.data && data.data[0]) {
+        if (data.data[0].b64_json) {
+          // Direct base64 response
+          base64Image = data.data[0].b64_json;
+        } else if (data.data[0].url) {
+          // URL response - need to fetch and convert
+          const imageResponse = await fetch(data.data[0].url);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image from URL: ${imageResponse.status}`);
+          }
+          const imageBuffer = await imageResponse.arrayBuffer();
+          base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+        } else {
+          throw new Error('No valid image data in OpenAI response');
+        }
+      } else {
+        throw new Error('Invalid OpenAI API response structure');
+      }
       
       // Store with a clean key (remove spaces and special characters)
       const chartKey = chart.title.toLowerCase().replace(/[^a-z0-9]/g, '_');
