@@ -26,10 +26,24 @@ serve(async (req) => {
 
   try {
     console.log('=== CHART GENERATION FUNCTION START ===');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
-    // Parse request body properly - only read once
-    const requestBody = await req.json();
-    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
+    // Get raw request text first to debug
+    const rawBody = await req.text();
+    console.log('Raw request body length:', rawBody.length);
+    console.log('Raw request body content:', rawBody);
+    
+    // Parse the JSON
+    let requestBody;
+    try {
+      requestBody = JSON.parse(rawBody);
+      console.log('Successfully parsed JSON:', JSON.stringify(requestBody, null, 2));
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Raw body that failed to parse:', rawBody);
+      throw new Error(`Failed to parse request body: ${parseError.message}`);
+    }
     
     const { charts } = requestBody;
 

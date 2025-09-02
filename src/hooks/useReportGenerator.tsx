@@ -134,10 +134,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
     
     // Call the chart generation function
     const { data, error } = await supabase.functions.invoke('generate-charts-python', {
-      body: { charts },
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      body: { charts }
     });
 
     if (error) {
