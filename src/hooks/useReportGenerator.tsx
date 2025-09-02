@@ -519,7 +519,6 @@ export function useReportGenerator() {
             analytics: webhookPayload.report.analytics,
             insights: webhookPayload.report.insights,
             chart_urls: webhookPayload.report.charts,
-            chart_images: chartImages,
             listing_count: totalListings,
             webhook_url: 'https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86',
             webhook_sent: false
@@ -529,6 +528,30 @@ export function useReportGenerator() {
 
         if (reportError) {
           console.error('Error storing report:', reportError);
+          throw new Error('Failed to store report in database');
+        }
+
+        // Store individual charts in the charts table
+        if (reportData && Object.keys(chartImages).length > 0) {
+          const chartRecords = Object.entries(chartImages).map(([chartType, imageData]) => ({
+            report_id: reportData.id,
+            chart_type: chartType.includes('pie') ? 'pie' : chartType.includes('line') ? 'line' : 'bar',
+            title: chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            image_data: imageData as string,
+            chart_config: {
+              type: chartType,
+              generated_at: new Date().toISOString()
+            }
+          }));
+
+          const { error: chartsError } = await supabase
+            .from('charts')
+            .insert(chartRecords);
+
+          if (chartsError) {
+            console.error('Error storing charts:', chartsError);
+            // Don't fail the whole process if charts fail to store
+          }
         }
 
         // Send webhook

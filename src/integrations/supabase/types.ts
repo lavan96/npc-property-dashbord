@@ -44,6 +44,47 @@ export type Database = {
         }
         Relationships: []
       }
+      charts: {
+        Row: {
+          chart_config: Json | null
+          chart_type: string
+          created_at: string
+          id: string
+          image_data: string
+          report_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          chart_config?: Json | null
+          chart_type: string
+          created_at?: string
+          id?: string
+          image_data: string
+          report_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          chart_config?: Json | null
+          chart_type?: string
+          created_at?: string
+          id?: string
+          image_data?: string
+          report_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charts_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "generated_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_reports: {
         Row: {
           analytics: Json

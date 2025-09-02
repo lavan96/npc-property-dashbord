@@ -6,9 +6,15 @@ import { format } from 'date-fns';
 
 interface ChartData {
   id: string;
+  chart_type: string;
   title: string;
+  image_data: string;
   created_at: string;
-  chart_images: any;
+  report: {
+    id: string;
+    title: string;
+    created_at: string;
+  };
 }
 
 export default function Charts() {
@@ -22,9 +28,19 @@ export default function Charts() {
   const fetchCharts = async () => {
     try {
       const { data, error } = await supabase
-        .from('generated_reports')
-        .select('id, title, created_at, chart_images')
-        .not('chart_images', 'is', null)
+        .from('charts')
+        .select(`
+          id,
+          chart_type,
+          title,
+          image_data,
+          created_at,
+          report:generated_reports!report_id (
+            id,
+            title,
+            created_at
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -72,7 +88,7 @@ export default function Charts() {
             Generated charts from all reports
           </p>
         </div>
-        <Badge variant="secondary">{charts.length} reports with charts</Badge>
+        <Badge variant="secondary">{charts.length} charts</Badge>
       </div>
 
       {charts.length === 0 ? (
@@ -89,33 +105,41 @@ export default function Charts() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {charts.map((report) => (
-            <Card key={report.id} className="overflow-hidden">
+          {charts.map((chart) => (
+            <Card key={chart.id} className="overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-lg">{report.title}</CardTitle>
+                <CardTitle className="text-lg">{chart.title}</CardTitle>
                 <CardDescription>
-                  Generated on {format(new Date(report.created_at), 'PPp')}
+                  From report: {chart.report.title}
+                </CardDescription>
+                <CardDescription className="text-xs">
+                  Generated on {format(new Date(chart.created_at), 'PPp')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {report.chart_images && typeof report.chart_images === 'object' && Object.entries(report.chart_images).map(([chartType, imageData]) => (
-                  <div key={chartType} className="space-y-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${
+                      chart.chart_type === 'bar' ? 'bg-blue-500' :
+                      chart.chart_type === 'pie' ? 'bg-green-500' :
+                      chart.chart_type === 'line' ? 'bg-purple-500' : 'bg-gray-500'
+                    }`} />
                     <h4 className="text-sm font-medium capitalize">
-                      {chartType.replace(/_/g, ' ')} Chart
+                      {chart.chart_type} Chart
                     </h4>
-                    <div className="bg-white p-2 rounded-lg border">
-                      <img
-                        src={imageData as string}
-                        alt={`${chartType} chart`}
-                        className="w-full h-auto rounded"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    </div>
                   </div>
-                ))}
+                  <div className="bg-white p-2 rounded-lg border">
+                    <img
+                      src={chart.image_data}
+                      alt={`${chart.title} chart`}
+                      className="w-full h-auto rounded"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}
