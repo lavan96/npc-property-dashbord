@@ -29,34 +29,41 @@ export default function Charts() {
   const fetchCharts = async () => {
     try {
       console.log('Fetching charts...');
-      const { data, error } = await supabase
+      
+      // First, get charts with a simpler query
+      const { data: chartsData, error: chartsError } = await supabase
         .from('charts')
-        .select(`
-          id,
-          chart_type,
-          title,
-          image_data,
-          created_at,
-          report_id,
-          generated_reports!charts_report_id_fkey (
-            id,
-            title,
-            created_at
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Charts query result:', { data, error });
-
-      if (error) {
-        console.error('Error fetching charts:', error);
+      if (chartsError) {
+        console.error('Error fetching charts:', chartsError);
         return;
       }
 
+      console.log('Charts data:', chartsData);
+
+      // Then get the reports separately if needed
+      const reportIds = [...new Set(chartsData?.map(chart => chart.report_id).filter(Boolean) || [])];
+      let reportsMap = new Map();
+
+      if (reportIds.length > 0) {
+        const { data: reportsData, error: reportsError } = await supabase
+          .from('generated_reports')
+          .select('id, title, created_at')
+          .in('id', reportIds);
+
+        if (!reportsError && reportsData) {
+          reportsData.forEach(report => {
+            reportsMap.set(report.id, report);
+          });
+        }
+      }
+
       // Transform the data to match our interface
-      const transformedData = (data || []).map(chart => ({
+      const transformedData = (chartsData || []).map(chart => ({
         ...chart,
-        generated_reports: chart.generated_reports || null
+        generated_reports: chart.report_id ? reportsMap.get(chart.report_id) || null : null
       }));
 
       console.log('Transformed data:', transformedData);
