@@ -2,6 +2,8 @@ import { useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PropertyListing } from '@/lib/airtable';
+import { propertyDataService } from '@/services/propertyDataService';
+import { chartDataService } from '@/services/chartDataService';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';

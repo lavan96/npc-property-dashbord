@@ -8,9 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { OverviewFilters } from '@/components/overview/OverviewFilters';
-import { airtableService, PropertyListing } from '@/lib/airtable';
+import { PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
+import { propertyDataService } from '@/services/propertyDataService';
+import { chartDataService } from '@/services/chartDataService';
 import { 
   BarChart, 
   Bar, 
@@ -122,15 +124,13 @@ export default function Overview() {
       
       console.log('Loading dashboard data...');
       
-      // Get recent records
-      const response = await airtableService.getRecords({
-        pageSize: 100,
-        sortField: 'ReceivedAt',
-        sortDirection: 'desc'
+      // Use the unified data service for consistent data fetching
+      const result = await propertyDataService.fetchAllListings({
+        includeDebugInfo: true
       });
 
-      console.log('Got response:', response);
-      let listings = response.records;
+      console.log('Got unified data:', result.debugInfo);
+      let listings = result.listings;
 
       // Extract unique values for filters
       // Extract states and zip codes from addresses
@@ -218,55 +218,26 @@ export default function Overview() {
       // Set recent listings (top 20)
       setRecentListings(listings.slice(0, 20));
 
-      // Calculate suburb distribution
-      const suburbCounts = listings.reduce((acc, listing) => {
-        const suburb = listing.suburb || 'Unknown';
-        acc[suburb] = (acc[suburb] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      // Use unified chart data service for consistent suburb data
+      const suburbChartData = chartDataService.generateSuburbData(listings, 10);
+      setSuburbData(suburbChartData.data.map(item => ({ 
+        suburb: item.label, 
+        count: item.value 
+      })));
 
-      const topSuburbs = Object.entries(suburbCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 10)
-        .map(([suburb, count]) => ({ suburb, count }));
+      // Use unified chart data service for consistent property type data
+      const propertyTypeChartData = chartDataService.generatePropertyTypeData(listings);
+      setPropertyTypeData(propertyTypeChartData.data.map(item => ({ 
+        type: item.label, 
+        count: item.value 
+      })));
 
-      setSuburbData(topSuburbs);
-
-      // Calculate property type distribution
-      const typeCounts = listings.reduce((acc, listing) => {
-        const type = listing.propertyType || 'Unknown';
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const typeData = Object.entries(typeCounts)
-        .map(([type, count]) => ({ type, count }));
-
-      setPropertyTypeData(typeData);
-
-      // Calculate daily data for last 30 days
-      const dailyCounts: Record<string, number> = {};
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        dailyCounts[dateStr] = 0;
-      }
-
-      listings.forEach(listing => {
-        const createdDate = listing.createdAt || listing.createdTime || listing.receivedAt;
-        const parsedDate = safeParseDate(createdDate);
-        if (parsedDate && parsedDate >= thirtyDaysAgo) {
-          const dateStr = parsedDate.toISOString().split('T')[0];
-          if (dailyCounts[dateStr] !== undefined) {
-            dailyCounts[dateStr]++;
-          }
-        }
-      });
-
-      const dailyChartData = Object.entries(dailyCounts)
-        .map(([date, count]) => ({ date, count }));
-
-      setDailyData(dailyChartData);
+      // Use unified chart data service for consistent daily activity data
+      const dailyActivityData = chartDataService.generateDailyActivityData(listings, 30);
+      setDailyData(dailyActivityData.data.map(item => ({ 
+        date: item.metadata?.fullDate || item.label,
+        count: item.value 
+      })));
 
       // Calculate property status distribution (Available vs others)
       const statusCounts = listings.reduce((acc, listing) => {
@@ -280,19 +251,12 @@ export default function Overview() {
 
       setCategoryData(statusData);
 
-      // Calculate agency distribution (from actual data)
-      const agencyCounts = listings.reduce((acc, listing) => {
-        const agency = listing.agencyName || 'Unknown Agency';
-        acc[agency] = (acc[agency] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const topAgencies = Object.entries(agencyCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 10)
-        .map(([agency, count]) => ({ agency, count }));
-
-      setAgencyData(topAgencies);
+      // Use unified chart data service for consistent agency data
+      const agencyChartData = chartDataService.generateAgencyData(listings, 10);
+      setAgencyData(agencyChartData.data.map(item => ({ 
+        agency: item.metadata?.fullName || item.label, 
+        count: item.value 
+      })));
 
       // Calculate actual property statistics from Properties table
       const withPrices = listings.filter(l => l.price && l.price > 0).length;
@@ -307,19 +271,12 @@ export default function Overview() {
         emailSources: withKeyEntities,
       });
 
-      // Calculate sender email distribution (source field)
-      const sourceCounts = listings.reduce((acc, listing) => {
-        const senderEmail = listing.source || 'Unknown Sender';
-        acc[senderEmail] = (acc[senderEmail] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const sourceData = Object.entries(sourceCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 10)
-        .map(([source, count]) => ({ source, count }));
-
-      setSourceData(sourceData);
+      // Use unified chart data service for consistent source data
+      const sourceChartData = chartDataService.generateSourceData(listings, 10);
+      setSourceData(sourceChartData.data.map(item => ({ 
+        source: item.label, 
+        count: item.value 
+      })));
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);

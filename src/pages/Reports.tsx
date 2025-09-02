@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { airtableService } from '@/lib/airtable';
 import { PropertyListing } from '@/lib/airtable';
+import { propertyDataService } from '@/services/propertyDataService';
+import { chartDataService } from '@/services/chartDataService';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
 import { useReportGenerator } from '@/hooks/useReportGenerator';
@@ -49,21 +50,13 @@ export default function Reports() {
   const { data: listings, isLoading } = useQuery({
     queryKey: ['all-listings'],
     queryFn: async () => {
-      let allRecords: PropertyListing[] = [];
-      let offset: string | undefined;
+      // Use unified data service for consistent data fetching
+      const result = await propertyDataService.fetchAllListings({
+        includeDebugInfo: true
+      });
       
-      do {
-        const response = await airtableService.getRecords({
-          pageSize: 100,
-          offset,
-          sortField: 'ReceivedAt',
-          sortDirection: 'desc'
-        });
-        allRecords = [...allRecords, ...response.records];
-        offset = response.offset;
-      } while (offset);
-      
-      return allRecords;
+      console.log('Reports data fetch:', result.debugInfo);
+      return result.listings;
     },
   });
 
@@ -79,75 +72,21 @@ export default function Reports() {
     ? Math.round(allListings.reduce((sum, listing) => sum + (listing.price || 0), 0) / allListings.length)
     : 0;
 
-  // Group by suburb
-  const suburbData = allListings.reduce((acc, listing) => {
-    const suburb = listing.suburb || listing.location || 'Unknown';
-    acc[suburb] = (acc[suburb] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Use unified chart data service for consistent suburb data
+  const suburbChartData = chartDataService.generateSuburbData(allListings, 10).data
+    .map(item => ({ suburb: item.label, count: item.value }));
 
-  const suburbChartData = Object.entries(suburbData)
-    .map(([suburb, count]) => ({ suburb, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
+  // Use unified chart data service for consistent property type data
+  const propertyTypeChartData = chartDataService.generatePropertyTypeData(allListings).data
+    .map(item => ({ type: item.label, count: item.value }));
 
-  // Group by property type
-  const propertyTypeData = allListings.reduce((acc, listing) => {
-    const type = listing.propertyType || listing.category || 'Unknown';
-    acc[type] = (acc[type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Use unified chart data service for consistent price range data
+  const priceRangeChartData = chartDataService.generatePriceRangeData(allListings).data
+    .map(item => ({ range: item.label, count: item.value }));
 
-  const propertyTypeChartData = Object.entries(propertyTypeData)
-    .map(([type, count]) => ({ type, count }))
-    .sort((a, b) => b.count - a.count);
-
-  // Group by price range
-  const priceRanges = {
-    '0-500k': 0,
-    '500k-750k': 0,
-    '750k-1M': 0,
-    '1M-1.5M': 0,
-    '1.5M+': 0,
-    'Unknown': 0
-  };
-
-  allListings.forEach(listing => {
-    const price = listing.price || 0;
-    if (price === 0) {
-      priceRanges['Unknown']++;
-    } else if (price < 500000) {
-      priceRanges['0-500k']++;
-    } else if (price < 750000) {
-      priceRanges['500k-750k']++;
-    } else if (price < 1000000) {
-      priceRanges['750k-1M']++;
-    } else if (price < 1500000) {
-      priceRanges['1M-1.5M']++;
-    } else {
-      priceRanges['1.5M+']++;
-    }
-  });
-
-  const priceRangeChartData = Object.entries(priceRanges)
-    .map(([range, count]) => ({ range, count }))
-    .filter(item => item.count > 0);
-
-  // Group by bedrooms
-  const bedroomData = allListings.reduce((acc, listing) => {
-    const beds = listing.beds || listing.bedrooms || 0;
-    const bedKey = beds === 0 ? 'Unknown' : `${beds} bed${beds !== 1 ? 's' : ''}`;
-    acc[bedKey] = (acc[bedKey] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const bedroomChartData = Object.entries(bedroomData)
-    .map(([beds, count]) => ({ beds, count }))
-    .sort((a, b) => {
-      if (a.beds === 'Unknown') return 1;
-      if (b.beds === 'Unknown') return -1;
-      return parseInt(a.beds) - parseInt(b.beds);
-    });
+  // Use unified chart data service for consistent bedroom data
+  const bedroomChartData = chartDataService.generateBedroomData(allListings).data
+    .map(item => ({ beds: item.label, count: item.value }));
 
   // Recent listings (last 30 days)
   const thirtyDaysAgo = new Date();
@@ -241,7 +180,7 @@ export default function Reports() {
         />
         <KPICard
           title="Unique Suburbs"
-          value={Object.keys(suburbData).length.toLocaleString()}
+          value={suburbChartData.length.toLocaleString()}
           icon={<MapPin className="h-4 w-4" />}
           description="Coverage areas"
         />
