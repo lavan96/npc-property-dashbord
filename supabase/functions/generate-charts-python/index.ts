@@ -22,14 +22,30 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.text();
-    console.log('Raw request body length:', body.length);
+    let body;
+    let charts: ChartData[];
     
-    if (!body) {
-      throw new Error('Empty request body');
+    try {
+      body = await req.json();
+      console.log('Parsed request as JSON:', body);
+      charts = body.charts;
+    } catch (jsonError) {
+      console.log('Failed to parse as JSON, trying text...');
+      const bodyText = await req.text();
+      console.log('Raw request body as text:', bodyText);
+      
+      if (!bodyText) {
+        throw new Error('Empty request body');
+      }
+      
+      const parsed = JSON.parse(bodyText);
+      charts = parsed.charts;
     }
     
-    const { charts }: { charts: ChartData[] } = JSON.parse(body);
+    if (!charts || !Array.isArray(charts)) {
+      throw new Error('Invalid charts data: charts must be an array');
+    }
+    
     console.log(`Generating ${charts.length} charts with JavaScript SVG`);
 
     const chartImages: Record<string, string> = {};

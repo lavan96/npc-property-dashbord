@@ -110,11 +110,29 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
     });
   }
 
+  console.log('=== CHART GENERATION DEBUG ===');
+  console.log('Listings count:', listings.length);
+  console.log('Config:', config);
+  console.log('Charts to generate:', charts.length);
+  
+  if (charts.length === 0) {
+    console.warn('No charts to generate - all chart options disabled');
+    return {};
+  }
+
+  charts.forEach((chart, index) => {
+    console.log(`Chart ${index + 1}:`, {
+      type: chart.type,
+      title: chart.title,
+      dataPoints: chart.data.length,
+      sampleData: chart.data.slice(0, 2)
+    });
+  });
+
   try {
-    console.log('Calling Python chart generation with charts:', charts);
-    console.log('Number of charts to generate:', charts.length);
+    console.log('Calling chart generation with payload:', JSON.stringify({ charts }, null, 2));
     
-    // Call the Python-based chart generation function
+    // Call the chart generation function
     const { data, error } = await supabase.functions.invoke('generate-charts-python', {
       body: { charts },
       headers: {
@@ -553,18 +571,29 @@ export function useReportGenerator() {
         }
 
         // Store individual charts in the charts table
+        console.log('=== CHART STORAGE DEBUG ===');
+        console.log('Report data:', reportData);
+        console.log('Chart images received:', Object.keys(chartImages));
+        console.log('Chart images count:', Object.keys(chartImages).length);
+        
         if (reportData && Object.keys(chartImages).length > 0) {
-          const chartRecords = Object.entries(chartImages).map(([chartType, imageData]) => ({
-            report_id: reportData.id,
-            chart_type: chartType.includes('pie') ? 'pie' : chartType.includes('line') ? 'line' : 'bar',
-            title: chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            image_data: imageData as string,
-            chart_config: {
-              type: chartType,
-              generated_at: new Date().toISOString()
-            }
-          }));
+          console.log('Storing charts in database...');
+          const chartRecords = Object.entries(chartImages).map(([chartType, imageData]) => {
+            console.log(`Processing chart: ${chartType}`);
+            return {
+              report_id: reportData.id,
+              chart_type: chartType.includes('pie') ? 'pie' : chartType.includes('line') ? 'line' : 'bar',
+              title: chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              image_data: imageData as string,
+              chart_config: {
+                type: chartType,
+                generated_at: new Date().toISOString()
+              }
+            };
+          });
 
+          console.log('Chart records to insert:', chartRecords.length);
+          
           const { error: chartsError } = await supabase
             .from('charts')
             .insert(chartRecords);
@@ -572,7 +601,11 @@ export function useReportGenerator() {
           if (chartsError) {
             console.error('Error storing charts:', chartsError);
             // Don't fail the whole process if charts fail to store
+          } else {
+            console.log('Charts stored successfully!');
           }
+        } else {
+          console.warn('No charts to store - either no report data or no chart images generated');
         }
 
         // Send webhook
