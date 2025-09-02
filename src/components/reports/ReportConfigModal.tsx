@@ -57,11 +57,16 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
 
   const handleSubmit = (config: ReportConfig) => {
     onGenerateReport(config);
-    setOpen(false);
+    // Don't close modal immediately - let it stay open to show progress
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Only allow closing if not generating
+      if (!isGenerating) {
+        setOpen(newOpen);
+      }
+    }}>
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Download className="h-4 w-4" />
@@ -296,10 +301,10 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
                   onClick={() => setOpen(false)}
                   disabled={isGenerating}
                 >
-                  {isGenerating ? 'Processing...' : 'Cancel'}
+                  {isGenerating ? 'Generating...' : 'Cancel'}
                 </Button>
                 <Button type="submit" disabled={isGenerating}>
-                  {isGenerating ? 'Generating...' : 'Generate PDF Report'}
+                  {isGenerating ? `Generating... (${progress}%)` : 'Generate PDF Report'}
                 </Button>
               </div>
             </div>

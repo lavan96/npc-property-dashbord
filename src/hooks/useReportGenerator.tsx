@@ -562,12 +562,14 @@ export function useReportGenerator() {
     } catch (error) {
       console.error('Error generating report:', error);
       toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
+        title: "Report Generation Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
+      setProgress(0);
+      setCurrentStep('');
     }
   };
 
