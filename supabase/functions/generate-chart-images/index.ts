@@ -97,8 +97,14 @@ ${chart.type === 'line' ? '- Include data point markers' : ''}`;
       console.log(`Generated chart: ${chartKey}`);
     }
 
+    console.log(`Returning ${Object.keys(chartImages).length} chart images`);
+    
     return new Response(JSON.stringify({ chartImages }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
     });
 
   } catch (error) {
