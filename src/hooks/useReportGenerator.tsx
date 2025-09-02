@@ -111,64 +111,35 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
   }
 
   try {
-    console.log('Calling chart generation with charts:', charts);
+    console.log('Calling Python chart generation with charts:', charts);
     console.log('Number of charts to generate:', charts.length);
     
-    // Add timeout and retry logic
-    const maxRetries = 2;
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Chart generation attempt ${attempt}/${maxRetries}`);
-        
-        const { data, error } = await supabase.functions.invoke('generate-chart-images', {
-          body: { charts },
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        if (error) {
-          console.error(`Attempt ${attempt} - Supabase function error:`, error);
-          lastError = error;
-          if (attempt < maxRetries) {
-            console.log(`Retrying in ${attempt * 2} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-            continue;
-          }
-        } else {
-          console.log('Chart generation response:', data);
-          console.log('Chart images keys:', Object.keys(data?.chartImages || {}));
-          console.log('Chart images count:', Object.keys(data?.chartImages || {}).length);
-          
-          // Validate response
-          if (!data || !data.chartImages || Object.keys(data.chartImages).length === 0) {
-            console.warn('Empty or invalid chart images response');
-            if (attempt < maxRetries) {
-              console.log('Retrying due to empty response...');
-              await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-              continue;
-            }
-          }
-          
-          return data?.chartImages || {};
-        }
-      } catch (networkError) {
-        console.error(`Attempt ${attempt} - Network error:`, networkError);
-        lastError = networkError;
-        if (attempt < maxRetries) {
-          console.log(`Retrying due to network error in ${attempt * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-          continue;
-        }
+    // Call the Python-based chart generation function
+    const { data, error } = await supabase.functions.invoke('generate-charts-python', {
+      body: { charts },
+      headers: {
+        'Content-Type': 'application/json',
       }
+    });
+
+    if (error) {
+      console.error('Supabase function error:', error);
+      return {};
+    }
+
+    console.log('Python chart generation response:', data);
+    console.log('Chart images keys:', Object.keys(data?.chartImages || {}));
+    console.log('Chart images count:', Object.keys(data?.chartImages || {}).length);
+    
+    // Validate response
+    if (!data || !data.chartImages || Object.keys(data.chartImages).length === 0) {
+      console.warn('Empty or invalid chart images response from Python generator');
+      return {};
     }
     
-    console.error('All chart generation attempts failed. Last error:', lastError);
-    return {};
+    return data.chartImages;
   } catch (error) {
-    console.error('Unexpected error in chart generation:', error);
+    console.error('Error calling Python chart generation function:', error);
     return {};
   }
 };
