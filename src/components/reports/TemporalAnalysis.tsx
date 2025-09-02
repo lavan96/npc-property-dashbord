@@ -14,10 +14,17 @@ export function TemporalAnalysis({ listings }: TemporalAnalysisProps) {
     const endDate = new Date();
     const startDate = subDays(endDate, 30);
     
+    console.log('TemporalAnalysis: Total listings:', listings.length);
+    console.log('TemporalAnalysis: Sample listing:', listings[0]);
+    console.log('TemporalAnalysis: Listings with receivedAt:', listings.filter(l => l.receivedAt).length);
+    
     const dailyData = eachDayOfInterval({ start: startDate, end: endDate }).map(date => {
       const dayListings = listings.filter(listing => {
-        if (!listing.receivedAt) return false;
-        const listingDate = new Date(listing.receivedAt);
+        // Try multiple date fields as fallback
+        const dateToCheck = listing.receivedAt || listing.createdTime || listing.listingDate;
+        if (!dateToCheck) return false;
+        
+        const listingDate = new Date(dateToCheck);
         return format(listingDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd');
       });
 
