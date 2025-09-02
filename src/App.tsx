@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import Overview from "./pages/Overview";
 import Listings from "./pages/Listings";
@@ -14,6 +15,7 @@ import Sources from "./pages/Sources";
 import Reports from "./pages/Reports";
 import Charts from "./pages/Charts";
 import Settings from "./pages/Settings";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,7 +30,12 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
           <Routes>
-            <Route path="/" element={<DashboardLayout />}>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }>
               <Route index element={<Overview />} />
               <Route path="listings" element={<Listings />} />
               <Route path="calendar" element={<Calendar />} />
