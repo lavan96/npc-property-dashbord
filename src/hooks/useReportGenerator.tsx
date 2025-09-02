@@ -254,21 +254,28 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
 
     data_confidence_trends: () => {
       if (!config.includeDataConfidence) return null;
+      
+      // Debug: log some confidence values to understand the range
+      const sampleConfidenceValues = listings.slice(0, 10).map(l => l.confidence);
+      console.log('Sample confidence values:', sampleConfidenceValues);
+      
       const confidenceRanges = [
-        { label: 'High (80-100%)', min: 0.8 },
-        { label: 'Medium (60-80%)', min: 0.6, max: 0.8 },
-        { label: 'Low (40-60%)', min: 0.4, max: 0.6 },
-        { label: 'Very Low (<40%)', max: 0.4 }
+        { label: 'High (80-100%)', min: 80 },
+        { label: 'Medium (60-80%)', min: 60, max: 80 },
+        { label: 'Low (40-60%)', min: 40, max: 60 },
+        { label: 'Very Low (<40%)', max: 40 }
       ];
 
       const confidenceData = confidenceRanges.map(range => ({
         label: range.label,
         value: listings.filter(l => {
-          const confidence = (l.confidence || 0) / 100;
+          const confidence = l.confidence || 0;
           return (!range.min || confidence >= range.min) && (!range.max || confidence < range.max);
         }).length,
         color: '#f59e0b'
       }));
+
+      console.log('Confidence distribution data:', confidenceData);
 
       return {
         type: 'pie' as const,
