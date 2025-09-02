@@ -148,15 +148,25 @@ export default function Charts() {
                     </h4>
                   </div>
                   <div className="bg-white p-2 rounded-lg border">
-                    <img
-                      src={chart.image_data}
-                      alt={`${chart.title} chart`}
-                      className="w-full h-auto rounded"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
+                    {chart.image_data ? (
+                      <div 
+                        dangerouslySetInnerHTML={{
+                          __html: chart.image_data.startsWith('data:image/svg+xml;base64,') 
+                            ? atob(chart.image_data.replace('data:image/svg+xml;base64,', ''))
+                            : chart.image_data.startsWith('<svg') 
+                              ? chart.image_data 
+                              : ''
+                        }}
+                        className="w-full"
+                        onError={(e) => {
+                          console.error('SVG rendering error:', e);
+                        }}
+                      />
+                    ) : (
+                      <div className="h-48 flex items-center justify-center text-muted-foreground">
+                        No chart data available
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
