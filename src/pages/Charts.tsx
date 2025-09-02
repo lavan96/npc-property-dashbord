@@ -148,15 +148,30 @@ export default function Charts() {
                     </h4>
                   </div>
                   <div className="bg-white p-2 rounded-lg border">
-                    <div className="w-full h-48 overflow-hidden flex items-center justify-center">
+                    <div className="w-full h-48 overflow-hidden">
                       {chart.image_data ? (
                         chart.image_data.startsWith('data:image/svg+xml;base64,') ? (
                           <div 
                             dangerouslySetInnerHTML={{
                               __html: (() => {
                                 try {
-                                  const svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
+                                  let svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
                                   if (svgContent.includes('<svg') && svgContent.includes('</svg>')) {
+                                    // Force the SVG to fit within container by modifying its attributes
+                                    svgContent = svgContent
+                                      .replace(/<svg[^>]*>/, (match) => {
+                                        // Extract viewBox if it exists, otherwise create one based on width/height
+                                        const widthMatch = match.match(/width=["'](\d+)["']/);
+                                        const heightMatch = match.match(/height=["'](\d+)["']/);
+                                        const viewBoxMatch = match.match(/viewBox=["']([^"']*)["']/);
+                                        
+                                        let viewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 800 600';
+                                        if (!viewBoxMatch && widthMatch && heightMatch) {
+                                          viewBox = `0 0 ${widthMatch[1]} ${heightMatch[1]}`;
+                                        }
+                                        
+                                        return `<svg viewBox="${viewBox}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="max-width: 100%; max-height: 100%;">`;
+                                      });
                                     return svgContent;
                                   }
                                   throw new Error('Invalid SVG content');
@@ -166,25 +181,13 @@ export default function Charts() {
                                 }
                               })()
                             }}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              maxWidth: '100%',
-                              maxHeight: '100%'
-                            }}
-                            className="[&>svg]:!w-full [&>svg]:!h-full [&>svg]:!max-w-full [&>svg]:!max-h-full"
+                            className="w-full h-full"
                           />
                         ) : (
                           <img
                             src={chart.image_data}
                             alt={`${chart.title} chart`}
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              width: 'auto',
-                              height: 'auto',
-                              objectFit: 'contain'
-                            }}
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               console.error('Chart image load error:', e);
                               const target = e.target as HTMLImageElement;
@@ -193,7 +196,7 @@ export default function Charts() {
                           />
                         )
                       ) : (
-                        <div className="text-muted-foreground">
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                           No chart data available
                         </div>
                       )}
