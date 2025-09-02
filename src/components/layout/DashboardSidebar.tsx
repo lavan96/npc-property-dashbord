@@ -7,7 +7,8 @@ import {
   AlertTriangle, 
   Settings,
   Database,
-  BarChart3
+  BarChart3,
+  FileText
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,6 +28,7 @@ const navigationItems = [
   { title: 'Calendar', url: '/calendar', icon: Calendar },
   { title: 'Sources', url: '/sources', icon: Mail },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
+  { title: 'Generated Reports', url: '/generated-reports', icon: FileText },
   { title: 'Charts', url: '/charts', icon: BarChart3 },
 ];
 

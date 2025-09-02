@@ -14,6 +14,8 @@ import Calendar from "./pages/Calendar";
 import Sources from "./pages/Sources";
 import Reports from "./pages/Reports";
 import Charts from "./pages/Charts";
+import GeneratedReports from "./pages/GeneratedReports";
+import ReportViewer from "./pages/ReportViewer";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -42,6 +44,8 @@ const App = () => (
               <Route path="sources" element={<Sources />} />
               <Route path="reports" element={<Reports />} />
               <Route path="charts" element={<Charts />} />
+              <Route path="generated-reports" element={<GeneratedReports />} />
+              <Route path="generated-reports/:reportId" element={<ReportViewer />} />
               <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
               <Route path="settings" element={<Settings />} />
             </Route>
