@@ -147,49 +147,57 @@ export default function Charts() {
                       {chart.chart_type} Chart
                     </h4>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border h-48 overflow-hidden">
-                    {chart.image_data ? (
-                      chart.image_data.startsWith('data:image/svg+xml;base64,') ? (
-                        <div 
-                          dangerouslySetInnerHTML={{
-                            __html: (() => {
-                              try {
-                                let svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
-                                // Basic validation to check if it's valid SVG
-                                if (svgContent.includes('<svg') && svgContent.includes('</svg>')) {
-                                  // Force SVG to be responsive by removing fixed width/height and adding viewBox
-                                  svgContent = svgContent
-                                    .replace(/width=["'][^"']*["']/g, '')
-                                    .replace(/height=["'][^"']*["']/g, '')
-                                    .replace(/<svg/, '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet"');
-                                  return svgContent;
+                  <div className="bg-white p-2 rounded-lg border">
+                    <div className="w-full h-48 overflow-hidden flex items-center justify-center">
+                      {chart.image_data ? (
+                        chart.image_data.startsWith('data:image/svg+xml;base64,') ? (
+                          <div 
+                            dangerouslySetInnerHTML={{
+                              __html: (() => {
+                                try {
+                                  const svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
+                                  if (svgContent.includes('<svg') && svgContent.includes('</svg>')) {
+                                    return svgContent;
+                                  }
+                                  throw new Error('Invalid SVG content');
+                                } catch (error) {
+                                  console.error('SVG parsing error for chart:', chart.title, error);
+                                  return '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #ef4444;">Chart rendering error</div>';
                                 }
-                                throw new Error('Invalid SVG content');
-                              } catch (error) {
-                                console.error('SVG parsing error for chart:', chart.title, error);
-                                return '<div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #ef4444;">Chart rendering error</div>';
-                              }
-                            })()
-                          }}
-                          className="w-full h-full flex items-center justify-center"
-                        />
+                              })()
+                            }}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              maxWidth: '100%',
+                              maxHeight: '100%'
+                            }}
+                            className="[&>svg]:!w-full [&>svg]:!h-full [&>svg]:!max-w-full [&>svg]:!max-h-full"
+                          />
+                        ) : (
+                          <img
+                            src={chart.image_data}
+                            alt={`${chart.title} chart`}
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              width: 'auto',
+                              height: 'auto',
+                              objectFit: 'contain'
+                            }}
+                            onError={(e) => {
+                              console.error('Chart image load error:', e);
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        )
                       ) : (
-                        <img
-                          src={chart.image_data}
-                          alt={`${chart.title} chart`}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            console.error('Chart image load error:', e);
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      )
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-muted-foreground">
-                        No chart data available
-                      </div>
-                    )}
+                        <div className="text-muted-foreground">
+                          No chart data available
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
