@@ -119,13 +119,17 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
 
     if (error) {
       console.error('Error generating chart images:', error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
       return {};
     }
 
     console.log('Chart generation response:', data);
-    return data.chartImages || {};
+    console.log('Chart images keys:', Object.keys(data?.chartImages || {}));
+    console.log('Chart images count:', Object.keys(data?.chartImages || {}).length);
+    return data?.chartImages || {};
   } catch (error) {
     console.error('Error calling chart generation function:', error);
+    console.error('Full error details:', JSON.stringify(error, null, 2));
     return {};
   }
 };
