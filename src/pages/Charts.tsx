@@ -157,7 +157,13 @@ export default function Charts() {
                               ? chart.image_data 
                               : ''
                         }}
-                        className="w-full"
+                        className="w-full h-48 overflow-hidden"
+                        style={{ 
+                          maxHeight: '12rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
                         onError={(e) => {
                           console.error('SVG rendering error:', e);
                         }}
