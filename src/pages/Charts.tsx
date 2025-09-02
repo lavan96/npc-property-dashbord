@@ -28,6 +28,7 @@ export default function Charts() {
 
   const fetchCharts = async () => {
     try {
+      console.log('Fetching charts...');
       const { data, error } = await supabase
         .from('charts')
         .select(`
@@ -45,12 +46,21 @@ export default function Charts() {
         `)
         .order('created_at', { ascending: false });
 
+      console.log('Charts query result:', { data, error });
+
       if (error) {
         console.error('Error fetching charts:', error);
         return;
       }
 
-      setCharts(data || []);
+      // Transform the data to match our interface
+      const transformedData = (data || []).map(chart => ({
+        ...chart,
+        generated_reports: chart.generated_reports || null
+      }));
+
+      console.log('Transformed data:', transformedData);
+      setCharts(transformedData);
     } catch (error) {
       console.error('Error:', error);
     } finally {
