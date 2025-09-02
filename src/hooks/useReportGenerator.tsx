@@ -128,7 +128,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       const totalListings = listings.length;
       const avgPrice = listings.reduce((sum, l) => sum + (l.price || 0), 0) / totalListings;
       const recentListings = listings.filter(l => {
-        const listingDate = l.createdTime || l.receivedAt || new Date();
+        const rawDate = l.createdTime || l.receivedAt || new Date();
+        const listingDate = rawDate instanceof Date ? rawDate : new Date(rawDate);
         const daysDiff = (Date.now() - listingDate.getTime()) / (1000 * 60 * 60 * 24);
         return daysDiff <= 30;
       }).length;
@@ -148,7 +149,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
     temporal_analysis: () => {
       if (!config.includeTemporalAnalysis) return null;
       const monthlyData = listings.reduce((acc, listing) => {
-        const date = listing.createdTime || listing.receivedAt || new Date();
+        const rawDate = listing.createdTime || listing.receivedAt || new Date();
+        const date = rawDate instanceof Date ? rawDate : new Date(rawDate);
         const month = date.toLocaleDateString('en-US', { month: 'short' });
         acc[month] = (acc[month] || 0) + 1;
         return acc;
@@ -207,7 +209,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
     daily_listing_activity: () => {
       if (!config.includeDailyListingActivity) return null;
       const dailyData = listings.reduce((acc, listing) => {
-        const date = listing.createdTime || listing.receivedAt || new Date();
+        const rawDate = listing.createdTime || listing.receivedAt || new Date();
+        const date = rawDate instanceof Date ? rawDate : new Date(rawDate);
         const day = date.toLocaleDateString('en-US', { weekday: 'short' });
         acc[day] = (acc[day] || 0) + 1;
         return acc;
