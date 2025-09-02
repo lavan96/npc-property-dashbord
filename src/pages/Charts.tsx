@@ -147,26 +147,20 @@ export default function Charts() {
                       {chart.chart_type} Chart
                     </h4>
                   </div>
-                  <div className="bg-white p-2 rounded-lg border h-48 overflow-hidden flex items-center justify-center">
+                  <div className="bg-white p-2 rounded-lg border h-48 overflow-hidden">
                     {chart.image_data ? (
-                      <div 
-                        dangerouslySetInnerHTML={{
-                          __html: chart.image_data.startsWith('data:image/svg+xml;base64,') 
-                            ? atob(chart.image_data.replace('data:image/svg+xml;base64,', ''))
-                            : chart.image_data.startsWith('<svg') 
-                              ? chart.image_data 
-                              : ''
-                        }}
-                        style={{ 
-                          width: '100%',
-                          height: '100%',
-                          maxWidth: '100%',
-                          maxHeight: '100%',
-                          objectFit: 'contain'
+                      <img
+                        src={chart.image_data}
+                        alt={`${chart.title} chart`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error('Chart image load error:', e);
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
                         }}
                       />
                     ) : (
-                      <div className="text-muted-foreground">
+                      <div className="h-full flex items-center justify-center text-muted-foreground">
                         No chart data available
                       </div>
                     )}
