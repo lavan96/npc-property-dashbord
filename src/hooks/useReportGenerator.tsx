@@ -1084,14 +1084,54 @@ export function useReportGenerator() {
             setProgress(90);
             
             if (insertedCharts && insertedCharts.length > 0) {
+              // Regenerate chart data with actual values for analysis
+              const actualChartData = await generateChartImages(allListings, config);
+              
               const analysisPromises = insertedCharts.map(async (chart) => {
                 try {
-                  const chartDataForAnalysis = {
+                  // Try to find matching chart data from the original generation
+                  const chartKey = chart.title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                  
+                  // For analysis, we need to regenerate the actual chart data with values
+                  let chartDataForAnalysis = {
                     title: chart.title,
                     type: chart.chart_type,
-                    data: { listings: allListings.length }, // Simplified data for analysis
+                    data: [], // Default empty
                     config: chart.chart_config
                   };
+                  
+                  // Try to generate the actual data based on chart type
+                  if (chart.title.includes('Suburb')) {
+                    const suburbCounts = allListings.reduce((acc, listing) => {
+                      const suburb = listing.suburb || 'Unknown';
+                      acc[suburb] = (acc[suburb] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>);
+                    const topSuburbs = Object.entries(suburbCounts).sort(([,a], [,b]) => b - a).slice(0, 10);
+                    chartDataForAnalysis.data = topSuburbs.map(([suburb, count]) => ({ label: suburb, value: count }));
+                  } else if (chart.title.includes('Property Type')) {
+                    const typeCounts = allListings.reduce((acc, listing) => {
+                      const type = listing.propertyType || 'Unknown';
+                      acc[type] = (acc[type] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>);
+                    chartDataForAnalysis.data = Object.entries(typeCounts).map(([type, count]) => ({ label: type, value: count }));
+                  } else if (chart.title.includes('Price')) {
+                    const ranges = [
+                      { label: 'Under $300k', min: 0, max: 300000 },
+                      { label: '$300k-$500k', min: 300000, max: 500000 },
+                      { label: '$500k-$750k', min: 500000, max: 750000 },
+                      { label: '$750k-$1M', min: 750000, max: 1000000 },
+                      { label: 'Over $1M', min: 1000000, max: Infinity }
+                    ];
+                    chartDataForAnalysis.data = ranges.map(range => ({
+                      label: range.label,
+                      value: allListings.filter(l => {
+                        const price = l.price || 0;
+                        return price >= range.min && price < range.max;
+                      }).length
+                    }));
+                  }
                   
                   const reportContext = {
                     title: config.title,
