@@ -10,11 +10,12 @@ interface ChartData {
   title: string;
   image_data: string;
   created_at: string;
-  report: {
+  report_id: string;
+  generated_reports: {
     id: string;
     title: string;
     created_at: string;
-  };
+  } | null;
 }
 
 export default function Charts() {
@@ -35,7 +36,8 @@ export default function Charts() {
           title,
           image_data,
           created_at,
-          report:generated_reports!report_id (
+          report_id,
+          generated_reports!charts_report_id_fkey (
             id,
             title,
             created_at
@@ -110,7 +112,7 @@ export default function Charts() {
               <CardHeader>
                 <CardTitle className="text-lg">{chart.title}</CardTitle>
                 <CardDescription>
-                  From report: {chart.report.title}
+                  From report: {chart.generated_reports?.title || 'Unknown Report'}
                 </CardDescription>
                 <CardDescription className="text-xs">
                   Generated on {format(new Date(chart.created_at), 'PPp')}
