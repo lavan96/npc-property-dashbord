@@ -47,16 +47,27 @@ serve(async (req) => {
 
     const chartImages: Record<string, string> = {};
 
+    // Log each chart data that will be sent to ChatGPT
+    charts.forEach((chart, index) => {
+      console.log(`=== CHART ${index + 1} DATA ===`);
+      console.log(`Title: ${chart.title}`);
+      console.log(`Type: ${chart.type}`);
+      console.log(`Data points: ${chart.data.length}`);
+      console.log(`Sample data:`, chart.data.slice(0, 3));
+    });
+
     // Generate each chart using ChatGPT to create Python matplotlib code and then generate images
     for (const chart of charts) {
       console.log(`Generating chart: ${chart.title}`);
       
       try {
         // Step 1: Generate Python matplotlib code using ChatGPT
+        console.log(`Step 1: Generating Python code for "${chart.title}"`);
         const pythonCode = await generatePythonCode(chart);
-        console.log(`Generated Python code for ${chart.title}:`, pythonCode.substring(0, 200) + '...');
+        console.log(`Generated Python code length: ${pythonCode.length} characters`);
         
         // Step 2: Use the Python code to generate an actual chart image via OpenAI
+        console.log(`Step 2: Generating image for "${chart.title}"`);
         const chartImage = await generateChartImage(chart, pythonCode);
         
         // Store with a clean key
