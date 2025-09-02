@@ -25,13 +25,21 @@ serve(async (req) => {
   }
 
   try {
-    const { charts }: { charts: ChartData[] } = await req.json();
+    console.log('=== CHART GENERATION FUNCTION START ===');
+    
+    // Parse request body properly - only read once
+    const requestBody = await req.json();
+    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
+    
+    const { charts } = requestBody;
 
     if (!openAIApiKey) {
+      console.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
     if (!charts || !Array.isArray(charts)) {
+      console.error('Invalid charts data received:', charts);
       throw new Error('Invalid charts data: charts must be an array');
     }
     
