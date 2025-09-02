@@ -28,6 +28,12 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
     return {};
   }
 
+  // Create a map of chart types from configurations
+  const chartTypeMap = chartConfigs?.reduce((acc, config) => {
+    acc[config.template_name] = config.chart_type;
+    return acc;
+  }, {} as Record<string, string>) || {};
+
   // Chart generation mapping
   const chartGenerators: Record<string, () => ChartData | null> = {
     suburb_volume: () => {
@@ -43,7 +49,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
         .slice(0, 10);
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['suburb_volume'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Listings by Suburb',
         data: sortedSuburbs.map(([suburb, count]) => ({
           label: suburb,
@@ -63,7 +69,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
 
       const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
       return {
-        type: 'pie' as const,
+        type: (chartTypeMap['property_type'] || 'pie') as 'bar' | 'pie' | 'line',
         title: 'Property Type Distribution',
         data: Object.entries(typeCounts).map(([type, count], index) => ({
           label: type,
@@ -93,7 +99,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }));
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['price_range'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Price Range Distribution',
         data: rangeCounts
       };
@@ -117,7 +123,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
         }));
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['bedroom_count'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Bedroom Distribution',
         data: sortedBedrooms
       };
@@ -135,7 +141,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }).length;
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['advanced_analytics'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Advanced Analytics Overview',
         data: [
           { label: 'Market Velocity', value: Math.round((recentListings / totalListings) * 100), color: '#3b82f6' },
@@ -157,7 +163,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }, {} as Record<string, number>);
 
       return {
-        type: 'line' as const,
+        type: (chartTypeMap['temporal_analysis'] || 'line') as 'bar' | 'pie' | 'line',
         title: 'Monthly Listing Activity',
         data: Object.entries(monthlyData).map(([month, count]) => ({
           label: month,
@@ -177,7 +183,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }));
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['geographic_analysis'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Geographic Distribution',
         data: stateData
       };
@@ -196,7 +202,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
         .slice(0, 10);
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['agent_performance'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Top Agent Performance',
         data: topAgents.map(([agent, count]) => ({
           label: agent.substring(0, 20),
@@ -217,7 +223,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }, {} as Record<string, number>);
 
       return {
-        type: 'line' as const,
+        type: (chartTypeMap['daily_listing_activity'] || 'line') as 'bar' | 'pie' | 'line',
         title: 'Daily Listing Activity',
         data: Object.entries(dailyData).map(([day, count]) => ({
           label: day,
@@ -246,7 +252,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }));
 
       return {
-        type: 'line' as const,
+        type: (chartTypeMap['pricing_trends'] || 'line') as 'bar' | 'pie' | 'line',
         title: 'Pricing Trends',
         data: trendData
       };
@@ -278,7 +284,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       console.log('Confidence distribution data:', confidenceData);
 
       return {
-        type: 'pie' as const,
+        type: (chartTypeMap['data_confidence_trends'] || 'pie') as 'bar' | 'pie' | 'line',
         title: 'Data Confidence Distribution',
         data: confidenceData
       };
@@ -308,7 +314,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       }));
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['suburb_volume_distribution'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Suburb Volume Distribution',
         data: volumeData
       };
@@ -324,7 +330,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       ];
 
       return {
-        type: 'pie' as const,
+        type: (chartTypeMap['price_vs_volume_analysis'] || 'pie') as 'bar' | 'pie' | 'line',
         title: 'Price vs Volume Analysis',
         data: analysis
       };
@@ -343,7 +349,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
         .slice(0, 8);
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['agent_listing_volume'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Agent Listing Volume',
         data: topAgents.map(([agent, count]) => ({
           label: agent.substring(0, 15),
@@ -366,7 +372,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
         .slice(0, 8);
 
       return {
-        type: 'pie' as const,
+        type: (chartTypeMap['agency_distribution'] || 'pie') as 'bar' | 'pie' | 'line',
         title: 'Agency Distribution',
         data: topAgencies.map(([agency, count]) => ({
           label: agency.substring(0, 20),
@@ -386,7 +392,7 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
       ];
 
       return {
-        type: 'bar' as const,
+        type: (chartTypeMap['executive_insights'] || 'bar') as 'bar' | 'pie' | 'line',
         title: 'Executive Market Insights',
         data: insights
       };
@@ -484,6 +490,154 @@ export function useReportGenerator() {
       if (!user) {
         throw new Error('User not authenticated. Please log in to generate reports.');
       }
+      
+      // Fetch chart configurations for correct type mapping
+      const { data: chartConfigs, error: configError } = await supabase
+        .from('chart_configurations')
+        .select('*')
+        .order('template_name');
+
+      if (configError) {
+        console.error('Error fetching chart configurations:', configError);
+      }
+
+      // Create a map of chart types from configurations
+      const chartTypeMap = chartConfigs?.reduce((acc, config) => {
+        acc[config.template_name] = config.chart_type;
+        return acc;
+      }, {} as Record<string, string>) || {};
+      
+      // Create chart generators for type mapping
+      const chartGenerators: Record<string, () => ChartData | null> = {
+        suburb_volume: () => {
+          if (!config.includeSuburbChart) return null;
+          return {
+            type: (chartTypeMap['suburb_volume'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Listings by Suburb',
+            data: []
+          };
+        },
+        property_type: () => {
+          if (!config.includePropertyTypeChart) return null;
+          return {
+            type: (chartTypeMap['property_type'] || 'pie') as 'bar' | 'pie' | 'line',
+            title: 'Property Type Distribution',
+            data: []
+          };
+        },
+        price_range: () => {
+          if (!config.includePriceRangeChart) return null;
+          return {
+            type: (chartTypeMap['price_range'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Price Range Distribution',
+            data: []
+          };
+        },
+        bedroom_count: () => {
+          if (!config.includeBedroomChart) return null;
+          return {
+            type: (chartTypeMap['bedroom_count'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Bedroom Distribution',
+            data: []
+          };
+        },
+        advanced_analytics: () => {
+          if (!config.includeAdvancedAnalytics) return null;
+          return {
+            type: (chartTypeMap['advanced_analytics'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Advanced Analytics Overview',
+            data: []
+          };
+        },
+        temporal_analysis: () => {
+          if (!config.includeTemporalAnalysis) return null;
+          return {
+            type: (chartTypeMap['temporal_analysis'] || 'line') as 'bar' | 'pie' | 'line',
+            title: 'Monthly Listing Activity',
+            data: []
+          };
+        },
+        geographic_analysis: () => {
+          if (!config.includeGeographicAnalysis) return null;
+          return {
+            type: (chartTypeMap['geographic_analysis'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Geographic Distribution',
+            data: []
+          };
+        },
+        agent_performance: () => {
+          if (!config.includeAgentPerformance) return null;
+          return {
+            type: (chartTypeMap['agent_performance'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Top Agent Performance',
+            data: []
+          };
+        },
+        daily_listing_activity: () => {
+          if (!config.includeDailyListingActivity) return null;
+          return {
+            type: (chartTypeMap['daily_listing_activity'] || 'line') as 'bar' | 'pie' | 'line',
+            title: 'Daily Listing Activity',
+            data: []
+          };
+        },
+        pricing_trends: () => {
+          if (!config.includePricingTrends) return null;
+          return {
+            type: (chartTypeMap['pricing_trends'] || 'line') as 'bar' | 'pie' | 'line',
+            title: 'Pricing Trends',
+            data: []
+          };
+        },
+        data_confidence_trends: () => {
+          if (!config.includeDataConfidence) return null;
+          return {
+            type: (chartTypeMap['data_confidence_trends'] || 'pie') as 'bar' | 'pie' | 'line',
+            title: 'Data Confidence Distribution',
+            data: []
+          };
+        },
+        suburb_volume_distribution: () => {
+          if (!config.includeSuburbVolumeDistribution) return null;
+          return {
+            type: (chartTypeMap['suburb_volume_distribution'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Suburb Volume Distribution',
+            data: []
+          };
+        },
+        price_vs_volume_analysis: () => {
+          if (!config.includePriceVsVolumeAnalysis) return null;
+          return {
+            type: (chartTypeMap['price_vs_volume_analysis'] || 'pie') as 'bar' | 'pie' | 'line',
+            title: 'Price vs Volume Analysis',
+            data: []
+          };
+        },
+        agent_listing_volume: () => {
+          if (!config.includeAgentListingVolume) return null;
+          return {
+            type: (chartTypeMap['agent_listing_volume'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Agent Listing Volume',
+            data: []
+          };
+        },
+        agency_distribution: () => {
+          if (!config.includeAgencyDistribution) return null;
+          return {
+            type: (chartTypeMap['agency_distribution'] || 'pie') as 'bar' | 'pie' | 'line',
+            title: 'Agency Distribution',
+            data: []
+          };
+        },
+        executive_insights: () => {
+          if (!config.includeExecutiveInsights) return null;
+          return {
+            type: (chartTypeMap['executive_insights'] || 'bar') as 'bar' | 'pie' | 'line',
+            title: 'Executive Market Insights',
+            data: []
+          };
+        }
+      };
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -869,15 +1023,44 @@ export function useReportGenerator() {
         
         if (reportData && Object.keys(chartImages).length > 0) {
           console.log('Storing charts in database...');
+          
+          // Get the original chart data with correct types
+          const originalCharts: ChartData[] = [];
+          for (const chartConfig of chartConfigs) {
+            const generator = chartGenerators[chartConfig.template_name];
+            if (generator) {
+              const chartData = generator();
+              if (chartData) {
+                originalCharts.push(chartData);
+              }
+            }
+          }
+          
+          // Create a map of chart names to their types
+          const chartTypeMapping = originalCharts.reduce((acc, chart) => {
+            const chartKey = chart.title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            acc[chartKey] = chart.type;
+            return acc;
+          }, {} as Record<string, string>);
+          
+          console.log('Chart type mapping:', chartTypeMapping);
+          
           const chartRecords = Object.entries(chartImages).map(([chartType, imageData]) => {
             console.log(`Processing chart: ${chartType}`);
+            
+            // Use the correct chart type from mapping, fallback to configuration, then crude string matching
+            const correctChartType = chartTypeMapping[chartType] || 
+                                   chartTypeMap[chartType] || 
+                                   (chartType.includes('pie') ? 'pie' : chartType.includes('line') ? 'line' : 'bar');
+            
             return {
               report_id: reportData.id,
-              chart_type: chartType.includes('pie') ? 'pie' : chartType.includes('line') ? 'line' : 'bar',
+              chart_type: correctChartType,
               title: chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
               image_data: imageData as string,
               chart_config: {
                 type: chartType,
+                chart_type: correctChartType, // Store the correct chart type here too
                 generated_at: new Date().toISOString()
               }
             };
