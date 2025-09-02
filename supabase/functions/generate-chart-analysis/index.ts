@@ -287,7 +287,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07', // Upgraded to GPT-5 for better analysis
+        model: 'gpt-4o-mini', // Using reliable model for better compatibility
         messages: [
           {
             role: 'system',
@@ -298,22 +298,30 @@ serve(async (req) => {
             content: prompt
           }
         ],
-        max_completion_tokens: 300, // More tokens for detailed analysis
+        max_tokens: 300, // Using max_tokens for gpt-4o-mini
+        temperature: 0.7, // Add temperature for better responses
       }),
     });
 
     if (!openAIResponse.ok) {
       const errorData = await openAIResponse.text();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+      console.error('OpenAI API error status:', openAIResponse.status);
+      console.error('OpenAI API error body:', errorData);
+      throw new Error(`OpenAI API error: ${openAIResponse.status} - ${errorData}`);
     }
 
     const openAIData = await openAIResponse.json();
-    const analysisText = openAIData.choices[0]?.message?.content;
+    console.log('OpenAI response structure:', JSON.stringify(openAIData, null, 2));
+    
+    const analysisText = openAIData.choices?.[0]?.message?.content;
 
-    if (!analysisText) {
-      throw new Error('No analysis generated from OpenAI');
+    if (!analysisText || analysisText.trim().length === 0) {
+      console.error('Empty or missing analysis text from OpenAI');
+      console.error('Full OpenAI response:', JSON.stringify(openAIData, null, 2));
+      throw new Error('No analysis generated from OpenAI - empty response');
     }
+
+    console.log('Analysis text generated successfully:', analysisText.substring(0, 100) + '...');
 
     // Store analysis in Supabase
     const { data, error } = await supabase
@@ -321,8 +329,8 @@ serve(async (req) => {
       .insert({
         chart_id: chartId,
         analysis_text: analysisText,
-        model_used: 'gpt-5-2025-08-07',
-        confidence_score: 0.90 // Higher confidence with GPT-5
+        model_used: 'gpt-4o-mini',
+        confidence_score: 0.85
       })
       .select()
       .single();
