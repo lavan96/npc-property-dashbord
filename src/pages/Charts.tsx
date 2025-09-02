@@ -154,19 +154,24 @@ export default function Charts() {
                           dangerouslySetInnerHTML={{
                             __html: (() => {
                               try {
-                                const svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
+                                let svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
                                 // Basic validation to check if it's valid SVG
                                 if (svgContent.includes('<svg') && svgContent.includes('</svg>')) {
+                                  // Force SVG to be responsive by removing fixed width/height and adding viewBox
+                                  svgContent = svgContent
+                                    .replace(/width=["'][^"']*["']/g, '')
+                                    .replace(/height=["'][^"']*["']/g, '')
+                                    .replace(/<svg/, '<svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet"');
                                   return svgContent;
                                 }
                                 throw new Error('Invalid SVG content');
                               } catch (error) {
                                 console.error('SVG parsing error for chart:', chart.title, error);
-                                return '<div class="h-full flex items-center justify-center text-red-500">Chart rendering error</div>';
+                                return '<div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #ef4444;">Chart rendering error</div>';
                               }
                             })()
                           }}
-                          className="w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
+                          className="w-full h-full flex items-center justify-center"
                         />
                       ) : (
                         <img
