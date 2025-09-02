@@ -149,16 +149,37 @@ export default function Charts() {
                   </div>
                   <div className="bg-white p-2 rounded-lg border h-48 overflow-hidden">
                     {chart.image_data ? (
-                      <img
-                        src={chart.image_data}
-                        alt={`${chart.title} chart`}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          console.error('Chart image load error:', e);
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
+                      chart.image_data.startsWith('data:image/svg+xml;base64,') ? (
+                        <div 
+                          dangerouslySetInnerHTML={{
+                            __html: (() => {
+                              try {
+                                const svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
+                                // Basic validation to check if it's valid SVG
+                                if (svgContent.includes('<svg') && svgContent.includes('</svg>')) {
+                                  return svgContent;
+                                }
+                                throw new Error('Invalid SVG content');
+                              } catch (error) {
+                                console.error('SVG parsing error for chart:', chart.title, error);
+                                return '<div class="h-full flex items-center justify-center text-red-500">Chart rendering error</div>';
+                              }
+                            })()
+                          }}
+                          className="w-full h-full [&>svg]:w-full [&>svg]:h-full [&>svg]:object-contain"
+                        />
+                      ) : (
+                        <img
+                          src={chart.image_data}
+                          alt={`${chart.title} chart`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            console.error('Chart image load error:', e);
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      )
                     ) : (
                       <div className="h-full flex items-center justify-center text-muted-foreground">
                         No chart data available
