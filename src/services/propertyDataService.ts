@@ -43,11 +43,12 @@ class PropertyDataService {
     const startTime = Date.now();
     const { maxRecords, includeDebugInfo = false } = options;
 
-    // FORCE FRESH DATA - DISABLE CACHE TEMPORARILY
-    console.log('FORCING FRESH DATA FETCH - CACHE DISABLED');
-    this.clearCache();
-    
+    // Check cache first
     const now = Date.now();
+    if (this.cache.data && (now - this.cache.timestamp) < this.cache.ttl) {
+      console.log('Using cached property data');
+      return this.buildResult(this.cache.data, startTime, includeDebugInfo);
+    }
 
     try {
       let allRecords: PropertyListing[] = [];
@@ -71,9 +72,6 @@ class PropertyDataService {
         pageCount++;
 
         console.log(`Fetched page ${pageCount}, total records: ${allRecords.length}`);
-        if (pageCount === 1) {
-          console.log('First raw record from airtableService:', allRecords[0]);
-        }
 
         // Break if we've reached max records limit
         if (maxRecords && allRecords.length >= maxRecords) {
@@ -89,11 +87,8 @@ class PropertyDataService {
 
       console.log(`Raw data fetched: ${allRecords.length} records`);
 
-      // TEMPORARY: Skip processing to debug data loss
-      console.log('Skipping data processing temporarily to debug data loss');
-      console.log('Raw records about to be processed:', allRecords.length);
-      console.log('Sample raw record:', allRecords[0]);
-      const processedListings = allRecords; // Skip processing for now
+      // Apply comprehensive deduplication and data cleaning
+      const processedListings = this.processAndDeduplicateListings(allRecords);
 
       // Update cache
       this.cache = {
@@ -103,7 +98,6 @@ class PropertyDataService {
       };
 
       console.log(`Processed data: ${processedListings.length} unique records`);
-      console.log('Sample processed listing:', processedListings[0]);
 
       return this.buildResult(processedListings, startTime, includeDebugInfo);
 
@@ -131,9 +125,7 @@ class PropertyDataService {
     console.log('Processing and deduplicating listings...');
 
     // First, standardize all listings
-    console.log('Before standardization, first listing:', rawListings[0]);
     const standardized = rawListings.map(listing => this.standardizeListing(listing));
-    console.log('After standardization, first listing:', standardized[0]);
 
     // Group potential duplicates by key characteristics
     const uniqueListings = new Map<string, PropertyListing>();
@@ -188,8 +180,9 @@ class PropertyDataService {
       beds: this.standardizeBedBath(listing.beds || listing.bedrooms),
       baths: this.standardizeBedBath(listing.baths || listing.bathrooms),
       
-      // Preserve original dates to avoid data corruption
-      receivedAt: listing.receivedAt || listing.createdAt || listing.createdTime,
+      // Standardize dates
+      receivedAt: this.standardizeDate(listing.receivedAt || listing.createdAt || listing.createdTime),
+      listingDate: this.standardizeDate(listing.listingDate),
       
       // Add data quality metrics
       dataQuality: this.calculateDataQualityScore(listing),
@@ -290,33 +283,16 @@ class PropertyDataService {
   }
 
   /**
-   * Standardize dates - minimal transformation to avoid data loss
+   * Standardize dates
    */
   private standardizeDate(date?: Date | string | null): string | null {
     if (!date) return null;
     
     try {
-      if (typeof date === 'string') {
-        // Validate string dates but keep them as strings
-        const testDate = new Date(date);
-        if (isNaN(testDate.getTime())) {
-          console.log('Invalid date string:', date);
-          return null;
-        }
-        return date; // Keep original string
-      }
-      
-      if (date instanceof Date) {
-        if (isNaN(date.getTime())) {
-          console.log('Invalid Date object:', date);
-          return null;
-        }
-        return date.toISOString(); // Convert Date to ISO string
-      }
-      
-      return null;
-    } catch (error) {
-      console.log('Date parsing error:', date, error);
+      const validDate = date instanceof Date ? date : new Date(date);
+      if (isNaN(validDate.getTime())) return null;
+      return validDate.toISOString();
+    } catch {
       return null;
     }
   }
