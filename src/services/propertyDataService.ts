@@ -124,48 +124,17 @@ class PropertyDataService {
   }
 
   /**
-   * Comprehensive listing processing and deduplication
+   * Minimal processing - server already handles deduplication
    */
   private processAndDeduplicateListings(rawListings: PropertyListing[]): PropertyListing[] {
-    console.log('Processing and deduplicating listings...');
-
-    // First, standardize all listings
-    console.log('Before standardization, first listing:', rawListings[0]);
+    console.log('Server-side deduplication already applied, using data as-is...');
+    
+    // Only standardize data format, no deduplication here since server handles it
     const standardized = rawListings.map(listing => this.standardizeListing(listing));
-    console.log('After standardization, first listing:', standardized[0]);
-
-    // Group potential duplicates by key characteristics
-    const uniqueListings = new Map<string, PropertyListing>();
-    const duplicateTracker = new Map<string, number>();
-
-    for (const listing of standardized) {
-      // Create a composite key for deduplication
-      const key = this.createDeduplicationKey(listing);
-
-      if (uniqueListings.has(key)) {
-        // Found duplicate - keep the one with better data quality
-        const existing = uniqueListings.get(key)!;
-        const current = listing;
-
-        const existingScore = this.calculateDataQualityScore(existing);
-        const currentScore = this.calculateDataQualityScore(current);
-
-        if (currentScore > existingScore) {
-          uniqueListings.set(key, current);
-        }
-
-        duplicateTracker.set(key, (duplicateTracker.get(key) || 1) + 1);
-      } else {
-        uniqueListings.set(key, listing);
-      }
-    }
-
-    const finalListings = Array.from(uniqueListings.values());
-
-    console.log(`Deduplication complete: ${rawListings.length} -> ${finalListings.length} listings`);
-    console.log(`Duplicates found: ${duplicateTracker.size} groups with ${Array.from(duplicateTracker.values()).reduce((sum, count) => sum + count - 1, 0)} duplicates`);
-
-    return finalListings;
+    
+    console.log(`Using server-deduplicated data: ${standardized.length} listings`);
+    
+    return standardized;
   }
 
   /**

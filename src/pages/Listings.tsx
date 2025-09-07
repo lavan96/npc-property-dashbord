@@ -10,7 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { ListingFilters } from '@/components/listings/ListingFilters';
 import { ListingDetailsModal } from '@/components/listings/ListingDetailsModal';
-import { airtableService, PropertyListing } from '@/lib/airtable';
+import { propertyDataService } from '@/services/propertyDataService';
+import { PropertyListing } from '@/lib/airtable';
 import {
   Table,
   TableBody,
@@ -69,18 +70,17 @@ export default function Listings() {
   const loadListings = async () => {
     try {
       setIsLoading(true);
-      const response = await airtableService.getRecords({
-        pageSize: 100,
-        sortField: 'Created',
-        sortDirection: 'desc'
+      // Use the centralized property data service which handles deduplication consistently
+      const result = await propertyDataService.fetchAllListings({
+        includeDebugInfo: true
       });
       
-      console.log('Fetched listings (already deduplicated server-side):', response.records.length);
-      console.log('First listing zipCode:', response.records[0]?.zipCode);
-      console.log('First listing state:', response.records[0]?.state);
-      console.log('Sample listing fields:', response.records[0]);
+      console.log(`Fetched listings (already deduplicated server-side): ${result.listings.length}`);
+      console.log('First listing zipCode:', result.listings[0]?.zipCode);
+      console.log('First listing state:', result.listings[0]?.state);
+      console.log('Sample listing fields:', result.listings[0]);
       
-      setListings(response.records);
+      setListings(result.listings);
     } catch (error) {
       console.error('Failed to load listings:', error);
       toast({
