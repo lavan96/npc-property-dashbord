@@ -289,40 +289,109 @@ Deno.serve(async (req) => {
       return Math.max(0, score); // Ensure non-negative score
     };
 
-    // Enhanced deduplication with fuzzy matching and better normalization
+    // Multi-strategy deduplication with fuzzy matching
     const normalizeForDuplication = (str: string | undefined | null): string => {
       if (!str) return 'unknown';
       return str.toLowerCase()
         .trim()
         .replace(/[^\w\s]/g, '') // Remove special characters
-        .replace(/\s+/g, ' '); // Normalize whitespace
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .replace(/\b(st|street|rd|road|ave|avenue|dr|drive|ln|lane|ct|court|pl|place)\b/g, '') // Remove street suffixes
+        .trim();
     };
 
-    const listingGroups = new Map();
-    
-    for (const record of transformedRecords) {
-      // Enhanced duplicate key with better normalization
-      const normalizedAddress = normalizeForDuplication(record.address);
-      const normalizedSuburb = normalizeForDuplication(record.suburb);
-      const normalizedPropertyType = normalizeForDuplication(record.propertyType);
-      
-      // Create a more robust duplicate key
-      const duplicateKey = [
-        normalizedAddress,
-        normalizedSuburb,
-        record.beds || 'unknown',
-        record.baths || 'unknown', 
-        normalizedPropertyType
-      ].join('|');
-      
-      const enrichmentScore = calculateEnrichmentScore(record);
-      record.enrichmentScore = enrichmentScore;
-      
-      if (!listingGroups.has(duplicateKey)) {
-        listingGroups.set(duplicateKey, [record]);
-      } else {
-        listingGroups.get(duplicateKey).push(record);
+    // Calculate Levenshtein distance for fuzzy matching
+    const levenshteinDistance = (str1: string, str2: string): number => {
+      const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+      for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+      for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+      for (let j = 1; j <= str2.length; j++) {
+        for (let i = 1; i <= str1.length; i++) {
+          const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+          matrix[j][i] = Math.min(
+            matrix[j][i - 1] + 1, // deletion
+            matrix[j - 1][i] + 1, // insertion
+            matrix[j - 1][i - 1] + indicator // substitution
+          );
+        }
       }
+      return matrix[str2.length][str1.length];
+    };
+
+    // Check if two addresses are similar (fuzzy match)
+    const areAddressesSimilar = (addr1: string, addr2: string): boolean => {
+      const norm1 = normalizeForDuplication(addr1);
+      const norm2 = normalizeForDuplication(addr2);
+      
+      if (norm1 === norm2) return true;
+      if (norm1 === 'unknown' || norm2 === 'unknown') return false;
+      
+      const distance = levenshteinDistance(norm1, norm2);
+      const maxLength = Math.max(norm1.length, norm2.length);
+      const similarity = 1 - (distance / maxLength);
+      
+      return similarity >= 0.85; // 85% similarity threshold
+    };
+
+    // Group listings using multiple strategies
+    const listingGroups = new Map();
+    const processedRecords = new Set();
+    
+    // First pass: Calculate enrichment scores
+    for (const record of transformedRecords) {
+      record.enrichmentScore = calculateEnrichmentScore(record);
+    }
+    
+    // Second pass: Group similar listings
+    for (let i = 0; i < transformedRecords.length; i++) {
+      if (processedRecords.has(i)) continue;
+      
+      const currentRecord = transformedRecords[i];
+      const group = [currentRecord];
+      processedRecords.add(i);
+      
+      // Look for similar listings
+      for (let j = i + 1; j < transformedRecords.length; j++) {
+        if (processedRecords.has(j)) continue;
+        
+        const compareRecord = transformedRecords[j];
+        let isDuplicate = false;
+        
+        // Strategy 1: Exact match on normalized address + suburb
+        const addr1 = normalizeForDuplication(currentRecord.address);
+        const addr2 = normalizeForDuplication(compareRecord.address);
+        const suburb1 = normalizeForDuplication(currentRecord.suburb);
+        const suburb2 = normalizeForDuplication(compareRecord.suburb);
+        
+        if (addr1 !== 'unknown' && addr2 !== 'unknown' && addr1 === addr2 && suburb1 === suburb2) {
+          isDuplicate = true;
+        }
+        
+        // Strategy 2: Fuzzy address match + same suburb
+        if (!isDuplicate && areAddressesSimilar(currentRecord.address, compareRecord.address) && suburb1 === suburb2) {
+          isDuplicate = true;
+        }
+        
+        // Strategy 3: Same zipcode + similar beds/baths + similar property type (for cases with poor address data)
+        if (!isDuplicate && 
+            currentRecord.zipCode && compareRecord.zipCode && 
+            currentRecord.zipCode === compareRecord.zipCode &&
+            currentRecord.beds === compareRecord.beds &&
+            currentRecord.baths === compareRecord.baths &&
+            normalizeForDuplication(currentRecord.propertyType) === normalizeForDuplication(compareRecord.propertyType) &&
+            currentRecord.propertyType !== 'Unknown') {
+          isDuplicate = true;
+        }
+        
+        if (isDuplicate) {
+          group.push(compareRecord);
+          processedRecords.add(j);
+        }
+      }
+      
+      // Create a key for this group (for logging purposes)
+      const groupKey = `${normalizeForDuplication(currentRecord.address)}|${normalizeForDuplication(currentRecord.suburb)}|${currentRecord.beds || 'unknown'}|${currentRecord.baths || 'unknown'}`;
+      listingGroups.set(groupKey, group);
     }
     
     // Select the best record from each group with enhanced selection logic
