@@ -65,90 +65,6 @@ export default function Listings() {
     setSearchQuery(globalSearchQuery);
   }, [globalSearchQuery]);
 
-  const calculateEnrichmentScore = (listing: PropertyListing): number => {
-    let score = 0;
-    
-    // Basic property info (high priority)
-    if (listing.price && listing.price > 0) score += 10;
-    if (listing.beds && listing.beds > 0) score += 8;
-    if (listing.baths && listing.baths > 0) score += 8;
-    if (listing.carSpaces && listing.carSpaces > 0) score += 6;
-    if (listing.suburb && listing.suburb.trim() !== '' && listing.suburb !== 'Unknown Suburb') score += 8;
-    if (listing.zipCode && listing.zipCode.trim() !== '') score += 6;
-    if (listing.propertyType && listing.propertyType !== 'Unknown') score += 5;
-    
-    // Location details
-    if (listing.address && listing.address.trim() !== '' && listing.address !== 'Unknown Address') score += 5;
-    if (listing.state && listing.state.trim() !== '') score += 4;
-    
-    // Agent and agency info
-    if (listing.agentName && listing.agentName !== 'Unknown Agent') score += 5;
-    if (listing.agencyName && listing.agencyName !== 'Unknown Agency') score += 5;
-    if (listing.agentPhone && listing.agentPhone.trim() !== '') score += 4;
-    
-    // Rich content
-    if (listing.description && listing.description.length > 50) score += 6;
-    if (listing.images && listing.images.length > 0) score += 4;
-    if (listing.inspectionStart) score += 4;
-    if (listing.confidence && listing.confidence > 0.7) score += 3;
-    
-    return score;
-  };
-
-  const deduplicateListings = (listings: PropertyListing[]): PropertyListing[] => {
-    const listingGroups = new Map<string, PropertyListing[]>();
-    
-    // Group listings by key characteristics
-    listings.forEach(listing => {
-      const key = [
-        listing.address?.toLowerCase().trim() || '',
-        listing.suburb?.toLowerCase().trim() || '',
-        listing.beds || 0,
-        listing.baths || 0,
-        listing.propertyType?.toLowerCase() || ''
-      ].join('|');
-      
-      if (!listingGroups.has(key)) {
-        listingGroups.set(key, []);
-      }
-      listingGroups.get(key)!.push(listing);
-    });
-    
-    // Select the best listing from each group
-    const deduplicatedListings: PropertyListing[] = [];
-    let totalDuplicatesRemoved = 0;
-    
-    listingGroups.forEach((group, key) => {
-      if (group.length > 1) {
-        totalDuplicatesRemoved += group.length - 1;
-        
-        // Sort by enrichment score (highest first), then by creation date (newest first)
-        group.sort((a, b) => {
-          const scoreA = calculateEnrichmentScore(a);
-          const scoreB = calculateEnrichmentScore(b);
-          
-          if (scoreB !== scoreA) {
-            return scoreB - scoreA; // Higher score first
-          }
-          
-          // If scores are equal, prefer newer listings
-          const dateA = new Date(a.createdTime || a.createdAt || 0).getTime();
-          const dateB = new Date(b.createdTime || b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
-        
-        console.log(`Duplicate group: ${group.length} listings, selected one with score ${calculateEnrichmentScore(group[0])}`);
-      }
-      
-      deduplicatedListings.push(group[0]);
-    });
-    
-    if (totalDuplicatesRemoved > 0) {
-      console.log(`Removed ${totalDuplicatesRemoved} duplicate listings, prioritizing enriched data`);
-    }
-    
-    return deduplicatedListings;
-  };
 
   const loadListings = async () => {
     try {
@@ -159,17 +75,12 @@ export default function Listings() {
         sortDirection: 'desc'
       });
       
-      console.log('Fetched listings:', response.records.length);
+      console.log('Fetched listings (already deduplicated server-side):', response.records.length);
+      console.log('First listing zipCode:', response.records[0]?.zipCode);
+      console.log('First listing state:', response.records[0]?.state);
+      console.log('Sample listing fields:', response.records[0]);
       
-      // Apply client-side deduplication with enrichment prioritization
-      const deduplicatedListings = deduplicateListings(response.records);
-      
-      console.log('After deduplication:', deduplicatedListings.length);
-      console.log('First listing zipCode:', deduplicatedListings[0]?.zipCode);
-      console.log('First listing state:', deduplicatedListings[0]?.state);
-      console.log('Sample listing fields:', deduplicatedListings[0]);
-      
-      setListings(deduplicatedListings);
+      setListings(response.records);
     } catch (error) {
       console.error('Failed to load listings:', error);
       toast({

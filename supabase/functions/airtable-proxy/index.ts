@@ -234,58 +234,86 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Enhanced deduplication with data enrichment scoring
+    // Enhanced scoring system with weighted fields and quality penalties
     const calculateEnrichmentScore = (record: any): number => {
       let score = 0;
       
-      // Basic property info (20 points max)
-      if (record.price && record.price > 0) score += 5;
-      if (record.beds && record.beds > 0) score += 3;
-      if (record.baths && record.baths > 0) score += 3;
-      if (record.carSpaces && record.carSpaces > 0) score += 2;
-      if (record.propertyType && record.propertyType !== 'Unknown') score += 2;
-      if (record.landSize) score += 2;
-      if (record.lotNumber) score += 1;
-      if (record.state) score += 1;
-      if (record.zipCode) score += 1;
+      // Critical property info (weighted higher) - 35 points max
+      if (record.price && record.price > 0) score += 10; // Most important
+      if (record.address && record.address !== 'Unknown Address') score += 8;
+      if (record.suburb && record.suburb !== 'Unknown Suburb') score += 7; 
+      if (record.beds && record.beds > 0) score += 5;
+      if (record.baths && record.baths > 0) score += 5;
       
-      // Agent and agency info (15 points max)
-      if (record.agentName && record.agentName !== 'Unknown Agent') score += 5;
+      // Property details - 20 points max
+      if (record.propertyType && record.propertyType !== 'Unknown') score += 4;
+      if (record.carSpaces && record.carSpaces > 0) score += 3;
+      if (record.landSize) score += 3;
+      if (record.state) score += 3;
+      if (record.zipCode) score += 3;
+      if (record.lotNumber) score += 2;
+      if (record.status && record.status !== 'Available') score += 2;
+      
+      // Agent and agency info - 15 points max
+      if (record.agentName && record.agentName !== 'Unknown Agent') score += 6;
       if (record.agencyName && record.agencyName !== 'Unknown Agency') score += 5;
-      if (record.agentPhone) score += 5;
+      if (record.agentPhone) score += 4;
       
-      // Rich content (25 points max)
-      if (record.description && record.description.length > 50) score += 8;
-      if (record.summary && record.summary.length > 20) score += 5;
-      if (record.keyEntities) score += 4;
+      // Rich content and media - 20 points max
+      if (record.description && record.description.length > 100) score += 6;
+      else if (record.description && record.description.length > 50) score += 3;
+      if (record.summary && record.summary.length > 50) score += 4;
       if (record.images && record.images.length > 0) score += 4;
-      if (record.floorplans && record.floorplans.length > 0) score += 4;
+      if (record.floorplans && record.floorplans.length > 0) score += 3;
+      if (record.keyEntities) score += 3;
       
-      // Inspection details (10 points max)
-      if (record.inspectionStart) score += 5;
+      // Inspection and timing details - 10 points max
+      if (record.inspectionStart) score += 4;
       if (record.inspectionEnd) score += 3;
-      if (record.inspectionNotes) score += 2;
+      if (record.inspectionNotes) score += 3;
       
-      // Additional metadata (10 points max)
-      if (record.webLinks) score += 3;
-      if (record.rawExtract && record.rawExtract.length > 100) score += 3;
-      if (record.confidence && record.confidence > 0.7) score += 4;
+      // Quality and confidence metrics - 10 points max
+      if (record.confidence && record.confidence > 0.8) score += 5;
+      else if (record.confidence && record.confidence > 0.6) score += 3;
+      else if (record.confidence && record.confidence > 0.4) score += 1;
+      if (record.webLinks) score += 2;
+      if (record.rawExtract && record.rawExtract.length > 200) score += 3;
       
-      return score;
+      // Quality penalties (subtract points for poor data)
+      if (record.address === 'Unknown Address') score -= 5;
+      if (record.suburb === 'Unknown Suburb') score -= 3;
+      if (record.agentName === 'Unknown Agent') score -= 2;
+      if (record.agencyName === 'Unknown Agency') score -= 2;
+      if (!record.price || record.price <= 0) score -= 8;
+      
+      return Math.max(0, score); // Ensure non-negative score
     };
 
-    // Group by duplicate key and keep the most enriched version
+    // Enhanced deduplication with fuzzy matching and better normalization
+    const normalizeForDuplication = (str: string | undefined | null): string => {
+      if (!str) return 'unknown';
+      return str.toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, '') // Remove special characters
+        .replace(/\s+/g, ' '); // Normalize whitespace
+    };
+
     const listingGroups = new Map();
     
     for (const record of transformedRecords) {
-      // Create a unique key for duplicate detection
+      // Enhanced duplicate key with better normalization
+      const normalizedAddress = normalizeForDuplication(record.address);
+      const normalizedSuburb = normalizeForDuplication(record.suburb);
+      const normalizedPropertyType = normalizeForDuplication(record.propertyType);
+      
+      // Create a more robust duplicate key
       const duplicateKey = [
-        record.address?.toLowerCase().trim(),
-        record.suburb?.toLowerCase().trim(),
-        record.beds,
-        record.baths,
-        record.propertyType?.toLowerCase()
-      ].filter(Boolean).join('|');
+        normalizedAddress,
+        normalizedSuburb,
+        record.beds || 'unknown',
+        record.baths || 'unknown', 
+        normalizedPropertyType
+      ].join('|');
       
       const enrichmentScore = calculateEnrichmentScore(record);
       record.enrichmentScore = enrichmentScore;
@@ -297,26 +325,40 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Select the best record from each group
+    // Select the best record from each group with enhanced selection logic
     const deduplicatedRecords = [];
     let duplicatesFound = 0;
+    let totalGroups = 0;
     
     for (const [key, records] of listingGroups.entries()) {
+      totalGroups++;
+      
       if (records.length > 1) {
         duplicatesFound += records.length - 1;
+        
         // Sort by enrichment score (highest first), then by creation date (newest first)
         records.sort((a, b) => {
           const scoreDiff = b.enrichmentScore - a.enrichmentScore;
           if (scoreDiff !== 0) return scoreDiff;
-          return new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime();
+          
+          // If scores are tied, prefer listings with more recent data
+          const dateA = new Date(a.createdTime).getTime();
+          const dateB = new Date(b.createdTime).getTime();
+          return dateB - dateA;
         });
-        console.log(`Duplicate group for "${key}": ${records.length} records, selected one with score ${records[0].enrichmentScore}`);
+        
+        const selected = records[0];
+        const scores = records.map(r => r.enrichmentScore).join(', ');
+        console.log(`Duplicate group "${key.substring(0, 50)}...": ${records.length} records (scores: ${scores}), selected score ${selected.enrichmentScore}`);
       }
+      
       deduplicatedRecords.push(records[0]);
     }
     
+    console.log(`Deduplication summary: ${totalGroups} unique groups, ${duplicatesFound} duplicates removed from ${transformedRecords.length} total records`);
+    
     if (duplicatesFound > 0) {
-      console.log(`Removed ${duplicatesFound} duplicate listings, prioritizing enriched data`);
+      console.log(`✅ Removed ${duplicatesFound} duplicate listings, prioritizing enriched data quality`);
     }
 
     return new Response(
