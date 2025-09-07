@@ -43,12 +43,11 @@ class PropertyDataService {
     const startTime = Date.now();
     const { maxRecords, includeDebugInfo = false } = options;
 
-    // Check cache first
+    // FORCE FRESH DATA - DISABLE CACHE TEMPORARILY
+    console.log('FORCING FRESH DATA FETCH - CACHE DISABLED');
+    this.clearCache();
+    
     const now = Date.now();
-    if (this.cache.data && (now - this.cache.timestamp) < this.cache.ttl) {
-      console.log('Using cached property data');
-      return this.buildResult(this.cache.data, startTime, includeDebugInfo);
-    }
 
     try {
       let allRecords: PropertyListing[] = [];
@@ -92,6 +91,8 @@ class PropertyDataService {
 
       // TEMPORARY: Skip processing to debug data loss
       console.log('Skipping data processing temporarily to debug data loss');
+      console.log('Raw records about to be processed:', allRecords.length);
+      console.log('Sample raw record:', allRecords[0]);
       const processedListings = allRecords; // Skip processing for now
 
       // Update cache
