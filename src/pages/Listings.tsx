@@ -70,7 +70,7 @@ export default function Listings() {
       setIsLoading(true);
       const response = await airtableService.getRecords({
         pageSize: 100,
-        sortField: 'ReceivedAt',
+        sortField: 'Created',
         sortDirection: 'desc'
       });
       

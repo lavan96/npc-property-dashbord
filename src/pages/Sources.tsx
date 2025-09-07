@@ -60,7 +60,7 @@ export default function Sources() {
   const loadSources = async () => {
     try {
       setLoading(true);
-      const response = await airtableService.getRecords({ pageSize: 500 });
+      const response = await airtableService.getRecords({ pageSize: 100 });
       setListings(response.records);
       
       // Process email sources
