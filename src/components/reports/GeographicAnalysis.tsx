@@ -54,7 +54,15 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
 
     return {
       topSuburbs: suburbAnalysis.slice(0, 12),
-      priceVsVolume: suburbAnalysis.filter(s => s.avgPrice > 0).slice(0, 20),
+      priceVsVolume: suburbAnalysis
+        .filter(s => s.avgPrice > 0 && s.count > 0)
+        .slice(0, 20)
+        .map(s => ({
+          x: s.count,
+          y: s.avgPrice,
+          suburb: s.suburb,
+          confidence: s.avgConfidence
+        })),
     };
   }, [listings]);
 
@@ -140,26 +148,32 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
                 <ScatterChart data={geoData.priceVsVolume}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
-                    dataKey="count" 
+                    dataKey="x" 
                     name="Listings"
                     type="number"
                   />
                   <YAxis 
-                    dataKey="avgPrice" 
+                    dataKey="y" 
                     name="Avg Price"
                     type="number"
                     tickFormatter={(value) => `$${Math.round(value / 1000)}k`}
                   />
                   <ChartTooltip 
                     content={<ChartTooltipContent 
-                      formatter={(value: any, name: string) => {
-                        if (name === 'avgPrice') return [`$${parseInt(value).toLocaleString()}`, 'Avg Price'];
-                        return [value, 'Listings'];
+                      formatter={(value: any, name: string, props: any) => {
+                        if (name === 'y') return [`$${parseInt(value).toLocaleString()}`, 'Avg Price'];
+                        if (name === 'x') return [value, 'Listings'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label: any, payload: any) => {
+                        if (payload && payload[0] && payload[0].payload) {
+                          return payload[0].payload.suburb;
+                        }
+                        return label;
                       }}
                     />} 
                   />
                   <Scatter 
-                    dataKey="avgPrice" 
                     fill="hsl(var(--chart-3))"
                   />
                 </ScatterChart>

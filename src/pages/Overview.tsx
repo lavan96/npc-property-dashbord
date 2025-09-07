@@ -132,6 +132,7 @@ export default function Overview() {
       });
 
       console.log('Got unified data:', result.debugInfo);
+      console.log('Overview listings count:', result.listings.length);
       let listings = result.listings;
 
       // Extract unique values for filters
