@@ -71,7 +71,7 @@ export interface AirtableResponse {
 class AirtableService {
   async getRecords(options: AirtableGetRecordsOptions = {}): Promise<AirtableResponse> {
     try {
-      const { pageSize = 100, offset, sortField = 'ReceivedAt', sortDirection = 'desc' } = options;
+      const { pageSize = 100, offset, sortField = 'Created', sortDirection = 'desc' } = options;
       
       // Call the Supabase edge function instead of direct Airtable API
       const { data, error } = await supabase.functions.invoke('airtable-proxy', {

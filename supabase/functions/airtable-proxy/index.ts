@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
       // Enhanced date handling with multiple fallback options
       const getValidDate = (): string => {
         const candidates = [
-          fields['ReceivedAt'],
+          fields['Created'], // Primary field name in Airtable
           fields['Created At'],
           fields['Listed_Date'],
           fields['Date_Listed'],

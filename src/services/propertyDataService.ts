@@ -62,7 +62,7 @@ class PropertyDataService {
         const response = await airtableService.getRecords({
           pageSize: 100,
           offset,
-          sortField: 'ReceivedAt',
+          sortField: 'Created', // Use 'Created' instead of 'ReceivedAt'
           sortDirection: 'desc'
         });
 
