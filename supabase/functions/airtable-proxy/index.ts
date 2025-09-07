@@ -234,29 +234,89 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Remove duplicates based on address, price, and property details
-    const deduplicatedRecords = [];
-    const seenListings = new Set();
+    // Enhanced deduplication with data enrichment scoring
+    const calculateEnrichmentScore = (record: any): number => {
+      let score = 0;
+      
+      // Basic property info (20 points max)
+      if (record.price && record.price > 0) score += 5;
+      if (record.beds && record.beds > 0) score += 3;
+      if (record.baths && record.baths > 0) score += 3;
+      if (record.carSpaces && record.carSpaces > 0) score += 2;
+      if (record.propertyType && record.propertyType !== 'Unknown') score += 2;
+      if (record.landSize) score += 2;
+      if (record.lotNumber) score += 1;
+      if (record.state) score += 1;
+      if (record.zipCode) score += 1;
+      
+      // Agent and agency info (15 points max)
+      if (record.agentName && record.agentName !== 'Unknown Agent') score += 5;
+      if (record.agencyName && record.agencyName !== 'Unknown Agency') score += 5;
+      if (record.agentPhone) score += 5;
+      
+      // Rich content (25 points max)
+      if (record.description && record.description.length > 50) score += 8;
+      if (record.summary && record.summary.length > 20) score += 5;
+      if (record.keyEntities) score += 4;
+      if (record.images && record.images.length > 0) score += 4;
+      if (record.floorplans && record.floorplans.length > 0) score += 4;
+      
+      // Inspection details (10 points max)
+      if (record.inspectionStart) score += 5;
+      if (record.inspectionEnd) score += 3;
+      if (record.inspectionNotes) score += 2;
+      
+      // Additional metadata (10 points max)
+      if (record.webLinks) score += 3;
+      if (record.rawExtract && record.rawExtract.length > 100) score += 3;
+      if (record.confidence && record.confidence > 0.7) score += 4;
+      
+      return score;
+    };
+
+    // Group by duplicate key and keep the most enriched version
+    const listingGroups = new Map();
     
     for (const record of transformedRecords) {
-      // Create a unique key based on core property characteristics
+      // Create a unique key for duplicate detection
       const duplicateKey = [
         record.address?.toLowerCase().trim(),
-        record.price,
+        record.suburb?.toLowerCase().trim(),
         record.beds,
         record.baths,
         record.propertyType?.toLowerCase()
-      ].join('|');
+      ].filter(Boolean).join('|');
       
-      if (!seenListings.has(duplicateKey)) {
-        seenListings.add(duplicateKey);
-        deduplicatedRecords.push(record);
+      const enrichmentScore = calculateEnrichmentScore(record);
+      record.enrichmentScore = enrichmentScore;
+      
+      if (!listingGroups.has(duplicateKey)) {
+        listingGroups.set(duplicateKey, [record]);
+      } else {
+        listingGroups.get(duplicateKey).push(record);
       }
     }
     
-    const removedCount = transformedRecords.length - deduplicatedRecords.length;
-    if (removedCount > 0) {
-      console.log(`Removed ${removedCount} duplicate listings`);
+    // Select the best record from each group
+    const deduplicatedRecords = [];
+    let duplicatesFound = 0;
+    
+    for (const [key, records] of listingGroups.entries()) {
+      if (records.length > 1) {
+        duplicatesFound += records.length - 1;
+        // Sort by enrichment score (highest first), then by creation date (newest first)
+        records.sort((a, b) => {
+          const scoreDiff = b.enrichmentScore - a.enrichmentScore;
+          if (scoreDiff !== 0) return scoreDiff;
+          return new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime();
+        });
+        console.log(`Duplicate group for "${key}": ${records.length} records, selected one with score ${records[0].enrichmentScore}`);
+      }
+      deduplicatedRecords.push(records[0]);
+    }
+    
+    if (duplicatesFound > 0) {
+      console.log(`Removed ${duplicatesFound} duplicate listings, prioritizing enriched data`);
     }
 
     return new Response(
