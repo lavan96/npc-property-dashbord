@@ -72,6 +72,9 @@ class PropertyDataService {
         pageCount++;
 
         console.log(`Fetched page ${pageCount}, total records: ${allRecords.length}`);
+        if (pageCount === 1) {
+          console.log('First raw record from airtableService:', allRecords[0]);
+        }
 
         // Break if we've reached max records limit
         if (maxRecords && allRecords.length >= maxRecords) {
@@ -87,8 +90,9 @@ class PropertyDataService {
 
       console.log(`Raw data fetched: ${allRecords.length} records`);
 
-      // Apply comprehensive deduplication and data cleaning
-      const processedListings = this.processAndDeduplicateListings(allRecords);
+      // TEMPORARY: Skip processing to debug data loss
+      console.log('Skipping data processing temporarily to debug data loss');
+      const processedListings = allRecords; // Skip processing for now
 
       // Update cache
       this.cache = {
@@ -98,6 +102,7 @@ class PropertyDataService {
       };
 
       console.log(`Processed data: ${processedListings.length} unique records`);
+      console.log('Sample processed listing:', processedListings[0]);
 
       return this.buildResult(processedListings, startTime, includeDebugInfo);
 
@@ -125,7 +130,9 @@ class PropertyDataService {
     console.log('Processing and deduplicating listings...');
 
     // First, standardize all listings
+    console.log('Before standardization, first listing:', rawListings[0]);
     const standardized = rawListings.map(listing => this.standardizeListing(listing));
+    console.log('After standardization, first listing:', standardized[0]);
 
     // Group potential duplicates by key characteristics
     const uniqueListings = new Map<string, PropertyListing>();
@@ -180,9 +187,8 @@ class PropertyDataService {
       beds: this.standardizeBedBath(listing.beds || listing.bedrooms),
       baths: this.standardizeBedBath(listing.baths || listing.bathrooms),
       
-      // Standardize dates
-      receivedAt: this.standardizeDate(listing.receivedAt || listing.createdAt || listing.createdTime),
-      listingDate: this.standardizeDate(listing.listingDate),
+      // Preserve original dates to avoid data corruption
+      receivedAt: listing.receivedAt || listing.createdAt || listing.createdTime,
       
       // Add data quality metrics
       dataQuality: this.calculateDataQualityScore(listing),
@@ -283,16 +289,33 @@ class PropertyDataService {
   }
 
   /**
-   * Standardize dates
+   * Standardize dates - minimal transformation to avoid data loss
    */
   private standardizeDate(date?: Date | string | null): string | null {
     if (!date) return null;
     
     try {
-      const validDate = date instanceof Date ? date : new Date(date);
-      if (isNaN(validDate.getTime())) return null;
-      return validDate.toISOString();
-    } catch {
+      if (typeof date === 'string') {
+        // Validate string dates but keep them as strings
+        const testDate = new Date(date);
+        if (isNaN(testDate.getTime())) {
+          console.log('Invalid date string:', date);
+          return null;
+        }
+        return date; // Keep original string
+      }
+      
+      if (date instanceof Date) {
+        if (isNaN(date.getTime())) {
+          console.log('Invalid Date object:', date);
+          return null;
+        }
+        return date.toISOString(); // Convert Date to ISO string
+      }
+      
+      return null;
+    } catch (error) {
+      console.log('Date parsing error:', date, error);
       return null;
     }
   }

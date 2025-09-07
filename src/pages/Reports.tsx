@@ -56,6 +56,7 @@ export default function Reports() {
       });
       
       console.log('Reports data fetch:', result.debugInfo);
+      console.log('Reports listings count:', result.listings.length);
       return result.listings;
     },
   });
