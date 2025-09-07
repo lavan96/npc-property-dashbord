@@ -89,11 +89,10 @@ class PropertyDataService {
 
       console.log(`Raw data fetched: ${allRecords.length} records`);
 
-      // TEMPORARY: Skip processing to debug data loss
-      console.log('Skipping data processing temporarily to debug data loss');
+      // Process and deduplicate the data for better quality
       console.log('Raw records about to be processed:', allRecords.length);
       console.log('Sample raw record:', allRecords[0]);
-      const processedListings = allRecords; // Skip processing for now
+      const processedListings = this.processAndDeduplicateListings(allRecords);
 
       // Update cache
       this.cache = {

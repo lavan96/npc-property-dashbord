@@ -54,12 +54,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse request parameters
-    const url = new URL(req.url);
-    const pageSize = url.searchParams.get('pageSize') || '100';
-    const offset = url.searchParams.get('offset') || '';
-    const sortField = url.searchParams.get('sortField') || null;
-    const sortDirection = url.searchParams.get('sortDirection') || 'desc';
+    // Parse request parameters from body (POST) or URL params (GET)
+    let pageSize = '100';
+    let offset = '';
+    let sortField = null;
+    let sortDirection = 'desc';
+
+    if (req.method === 'POST') {
+      const body = await req.json();
+      pageSize = body.pageSize?.toString() || '100';
+      offset = body.offset || '';
+      sortField = body.sortField || null;
+      sortDirection = body.sortDirection || 'desc';
+    } else {
+      const url = new URL(req.url);
+      pageSize = url.searchParams.get('pageSize') || '100';
+      offset = url.searchParams.get('offset') || '';
+      sortField = url.searchParams.get('sortField') || null;
+      sortDirection = url.searchParams.get('sortDirection') || 'desc';
+    }
 
     // Build Airtable API URL
     const airtableUrl = new URL(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`);

@@ -96,6 +96,8 @@ class AirtableService {
         throw new Error(`Airtable API error: ${data.error}`);
       }
 
+      // The airtable-proxy function already returns transformed data
+      // No need for additional transformation
       return {
         records: data.records || [],
         offset: data.offset,
