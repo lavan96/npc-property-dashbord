@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link } from 'lucide-react';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 
 interface InvestmentReport {
@@ -16,6 +17,7 @@ interface InvestmentReport {
   property_address: string;
   property_listing_id: string | null;
   report_content: string;
+  sources_content?: string | null;
   created_at: string;
 }
 
@@ -28,11 +30,19 @@ interface InvestmentReportViewerProps {
 
 export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate }: InvestmentReportViewerProps) {
   const [editorOpen, setEditorOpen] = useState(false);
+  const [includeSources, setIncludeSources] = useState(true);
 
   if (!report) return null;
 
   const handleDownload = () => {
-    const blob = new Blob([report.report_content], { type: 'text/plain' });
+    let content = report.report_content;
+    
+    // Include sources if toggle is enabled and sources exist
+    if (includeSources && report.sources_content) {
+      content += report.sources_content;
+    }
+    
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -187,15 +197,27 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Analysis Report</CardTitle>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleEdit}>
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit Report
-                    </Button>
-                    <Button variant="default" size="sm" onClick={handleDownload}>
-                      <Download className="h-3 w-3 mr-1" />
-                      Download
-                    </Button>
+                  <div className="flex items-center gap-4">
+                    {report.sources_content && (
+                      <div className="flex items-center gap-2">
+                        <Link className="h-3 w-3" />
+                        <span className="text-sm text-muted-foreground">Include sources in download</span>
+                        <Switch
+                          checked={includeSources}
+                          onCheckedChange={setIncludeSources}
+                        />
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={handleEdit}>
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit Report
+                      </Button>
+                      <Button variant="default" size="sm" onClick={handleDownload}>
+                        <Download className="h-3 w-3 mr-1" />
+                        Download
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -209,6 +231,18 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     >
                       {report.report_content}
                     </ReactMarkdown>
+                    
+                    {/* Show sources if they exist */}
+                    {report.sources_content && (
+                      <div className="mt-8 border-t pt-6">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={markdownComponents}
+                        >
+                          {report.sources_content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 </ScrollArea>
               </CardContent>

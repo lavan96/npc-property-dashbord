@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { Save, Eye, MapPin, Calendar, FileText, AlertCircle, CheckCircle, Type } from 'lucide-react';
+import { Save, Eye, MapPin, Calendar, FileText, AlertCircle, CheckCircle, Type, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface InvestmentReport {
@@ -20,6 +20,7 @@ interface InvestmentReport {
   property_address: string;
   property_listing_id: string | null;
   report_content: string;
+  sources_content?: string | null;
   created_at: string;
 }
 
@@ -31,14 +32,16 @@ interface InvestmentReportEditorProps {
 
 export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentReportEditorProps) {
   const [editedContent, setEditedContent] = useState('');
+  const [editedSources, setEditedSources] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [activeTab, setActiveTab] = useState('edit');
+  const [activeTab, setActiveTab] = useState('content');
   const { toast } = useToast();
 
   useEffect(() => {
     if (report) {
       setEditedContent(report.report_content);
+      setEditedSources(report.sources_content || '');
       setHasChanges(false);
     }
   }, [report]);
@@ -47,7 +50,12 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
 
   const handleContentChange = (value: string) => {
     setEditedContent(value);
-    setHasChanges(value !== report.report_content);
+    setHasChanges(value !== report.report_content || editedSources !== (report.sources_content || ''));
+  };
+
+  const handleSourcesChange = (value: string) => {
+    setEditedSources(value);
+    setHasChanges(editedContent !== report.report_content || value !== (report.sources_content || ''));
   };
 
   const handleSave = async () => {
@@ -65,6 +73,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
         .from('investment_reports')
         .update({ 
           report_content: editedContent,
+          sources_content: editedSources || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', report.id);
@@ -81,7 +90,10 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       setHasChanges(false);
       
       // Update the original report object
-      Object.assign(report, { report_content: editedContent });
+      Object.assign(report, { 
+        report_content: editedContent,
+        sources_content: editedSources 
+      });
       
     } catch (error) {
       console.error('Error saving report:', error);
@@ -99,6 +111,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
     if (hasChanges) {
       if (confirm("You have unsaved changes. Are you sure you want to close without saving?")) {
         setEditedContent(report.report_content);
+        setEditedSources(report.sources_content || '');
         setHasChanges(false);
         onClose();
       }
@@ -231,23 +244,27 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="edit" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="content" className="flex items-center gap-2">
                 <Type className="h-4 w-4" />
-                Edit Markdown
+                Edit Content
+              </TabsTrigger>
+              <TabsTrigger value="sources" className="flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                Edit Sources
               </TabsTrigger>
               <TabsTrigger value="preview" className="flex items-center gap-2">
                 <Eye className="h-4 w-4" />
-                Formatted Preview
+                Preview
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="edit" className="flex-1 overflow-hidden mt-0">
+            <TabsContent value="content" className="flex-1 overflow-hidden mt-0">
               <Card className="h-full flex flex-col">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Markdown Editor</CardTitle>
+                  <CardTitle className="text-base">Report Content Editor</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Edit the investment analysis report using markdown syntax. Use # for main headings, ## for subheadings, **text** for bold, *text* for italic, and - for bullet points.
+                    Edit the main investment analysis report using markdown syntax.
                   </p>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden p-0">
@@ -255,6 +272,25 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
                     value={editedContent}
                     onChange={(e) => handleContentChange(e.target.value)}
                     placeholder="Enter your investment analysis report content..."
+                    className="w-full h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Sources & Citations Editor</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Edit the sources and citations section that will be appended to the report.
+                  </p>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-hidden p-0">
+                  <Textarea
+                    value={editedSources}
+                    onChange={(e) => handleSourcesChange(e.target.value)}
+                    placeholder="Enter sources and citations here..."
                     className="w-full h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
                   />
                 </CardContent>
@@ -282,6 +318,17 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
                       >
                         {editedContent}
                       </ReactMarkdown>
+                      
+                      {editedSources && (
+                        <div className="mt-8 border-t pt-6">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={markdownComponents}
+                          >
+                            {editedSources}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
                 </CardContent>
@@ -304,7 +351,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </Badge>
             )}
             <span className="text-xs text-muted-foreground">
-              {editedContent.length} characters
+              Content: {editedContent.length} chars • Sources: {editedSources.length} chars
             </span>
           </div>
           

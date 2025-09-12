@@ -182,6 +182,7 @@ export type Database = {
           property_address: string
           property_listing_id: string | null
           report_content: string
+          sources_content: string | null
           updated_at: string
         }
         Insert: {
@@ -191,6 +192,7 @@ export type Database = {
           property_address: string
           property_listing_id?: string | null
           report_content: string
+          sources_content?: string | null
           updated_at?: string
         }
         Update: {
@@ -200,6 +202,7 @@ export type Database = {
           property_address?: string
           property_listing_id?: string | null
           report_content?: string
+          sources_content?: string | null
           updated_at?: string
         }
         Relationships: []
