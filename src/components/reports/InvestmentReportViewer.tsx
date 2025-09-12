@@ -169,7 +169,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               </CardHeader>
               <Separator />
               <CardContent className="p-0 flex-1 overflow-hidden">
-                <ScrollArea className="h-full max-h-[500px] p-6">
+                <ScrollArea className="h-[600px] p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
