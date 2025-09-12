@@ -23,10 +23,13 @@ export function InvestmentReportModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportContent, setReportContent] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
+  const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
   const { toast } = useToast();
 
   const generateReport = async () => {
     setIsGenerating(true);
+    setHasStartedGeneration(true);
+    
     try {
       const { data, error } = await supabase.functions.invoke('generate-investment-report', {
         body: {
@@ -38,6 +41,10 @@ export function InvestmentReportModal({
       if (error) {
         console.error('Error generating report:', error);
         throw new Error(error.message || 'Failed to generate investment report');
+      }
+
+      if (!data?.reportContent) {
+        throw new Error('No report content received');
       }
 
       setReportContent(data.reportContent);
@@ -52,6 +59,8 @@ export function InvestmentReportModal({
         description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
         variant: "destructive",
       });
+      // Reset states on error so user can try again
+      setHasStartedGeneration(false);
     } finally {
       setIsGenerating(false);
     }
@@ -124,14 +133,27 @@ export function InvestmentReportModal({
   };
 
   const handleClose = () => {
+    // Only allow closing if not currently generating
+    if (isGenerating) {
+      return;
+    }
+    
+    // Reset all states when closing
     setReportContent('');
     setIsGenerating(false);
+    setHasStartedGeneration(false);
+    setIsCopied(false);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" onPointerDownOutside={(e) => {
+        // Prevent closing modal when clicking outside during generation
+        if (isGenerating) {
+          e.preventDefault();
+        }
+      }}>
         <DialogHeader>
           <DialogTitle>Property Investment Analysis</DialogTitle>
           <DialogDescription>
@@ -140,7 +162,7 @@ export function InvestmentReportModal({
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0">
-          {!reportContent && !isGenerating && (
+          {!hasStartedGeneration && !reportContent && (
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-medium">Generate Investment Report</h3>
@@ -148,53 +170,78 @@ export function InvestmentReportModal({
                   Click below to generate a comprehensive property investment analysis 
                   including financial projections, market analysis, and growth potential.
                 </p>
-                <Button onClick={generateReport} size="lg">
+                <Button onClick={generateReport} size="lg" disabled={isGenerating}>
                   Generate Analysis
                 </Button>
               </div>
             </div>
           )}
 
-          {isGenerating && (
+          {(hasStartedGeneration && !reportContent) && (
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="text-center space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-                <h3 className="text-lg font-medium">Generating Investment Report</h3>
-                <p className="text-muted-foreground">
-                  Analyzing property data and market conditions...
-                </p>
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <h3 className="text-lg font-medium">Generating Investment Report</h3>
+                    <p className="text-muted-foreground">
+                      Analyzing property data and market conditions...
+                      <br />
+                      <span className="text-sm">This may take up to 30 seconds</span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium text-destructive">Generation Failed</h3>
+                    <p className="text-muted-foreground">
+                      There was an error generating your report. Please try again.
+                    </p>
+                    <Button onClick={generateReport} variant="outline" size="lg">
+                      Try Again
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           )}
 
           {reportContent && (
             <>
-              <div className="flex justify-end gap-2 mb-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    disabled={isCopied}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadPDF}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                </div>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={copyToClipboard}
-                  disabled={isCopied}
+                  onClick={handleClose}
                 >
-                  {isCopied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadPDF}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
+                  Close Report
                 </Button>
               </div>
 
