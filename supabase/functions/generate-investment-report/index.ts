@@ -63,45 +63,66 @@ serve(async (req) => {
       });
     }
 
-    // Create a focused prompt for investment analysis
-    const prompt = `Analyze this Australian property for investment potential:
+    // Create comprehensive prompt based on client requirements
+    const prompt = `Provide a comprehensive property investment analysis for this Australian property:
 
 PROPERTY: ${propertyAddress}
-${propertyDetails ? `DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
+${propertyDetails ? `CURRENT DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
 
-Please provide a comprehensive investment analysis covering:
+Please structure your analysis to include ALL of the following sections with specific data and calculations:
 
-1. FINANCIAL ANALYSIS
-- Current asking price vs local market comparison
-- Estimated weekly rental income
-- Gross and net rental yield calculations
-- Local vacancy rates and rental demand
+## 1. PROPERTY BASICS
+- Address (suburb, state, postcode)
+- Property type (house, townhouse, apartment, duplex, land)
+- Bedrooms, bathrooms, car spaces
+- Land size (sqm) and building size (sqm, if available)
+- Year built / condition assessment
+- Asking price / price guide vs current listing
 
-2. INVESTMENT POTENTIAL
-- Recent comparable sales (last 6 months)
-- Recent rental comparisons
-- Suburb growth trends and demographics
-- Future growth drivers and infrastructure
+## 2. FINANCIAL SNAPSHOT
+- Purchase price vs suburb median price comparison
+- Estimated rental income (weekly, based on property characteristics)
+- Gross rental yield (%) calculation
+- Net rental yield (%) calculation
+- Vacancy rate (suburb level)
+- Council rates & strata fees (if applicable)
+- Loan repayment estimate (if financed at 80% LVR)
+- Stamp duty estimate for the state
 
-3. LOCATION ASSESSMENT
-- Transport, schools, shopping proximity
-- Target tenant demographics
-- Historical price growth
-- Economic drivers
+## 3. INVESTMENT & GROWTH POTENTIAL
+- Suburb rental demand (average days on market)
+- Comparable rentals (median vs property's estimate)
+- Comparable sales (recent similar properties in last 6 months)
+- Suburb population growth & forecasts
+- Owner-occupier vs investor ratio in the suburb
+- Future capital growth potential (based on infrastructure & demand)
+- Development potential (zoning, granny flat, subdivision possibilities)
+- Tax benefits (e.g., depreciation schedule if new build)
 
-4. 10-YEAR PROJECTION
-Provide three scenarios (conservative, moderate, optimistic) with:
-- Annual property value growth estimates
-- Rental income growth projections
-- Total return on investment calculations
+## 4. LOCATION & SUBURB PROFILE
+- Suburb name & state with demographic overview
+- Proximity to transport, shops, schools, hospitals, universities
+- Local demographics (families, students, professionals, etc.)
+- Upcoming infrastructure projects (new rail, highways, shopping centres, etc.)
+- Suburb's historical capital growth rate (5-10 year trends)
 
-5. RECOMMENDATION
-- Investment grade (A-F) with reasoning
+## 5. CALCULATION & PROJECTION
+Using the above data, provide a 10-year compounding annual investment calculation including:
+- Year-by-year property value projections with compound growth
+- Annual rental income growth estimates
+- Estimated cashflow position over time (positive/negative)
+- Total return on investment calculation
+- Break-even analysis and cash-on-cash returns
+- Scenarios: Conservative (3-4% growth), Moderate (5-6% growth), Optimistic (7-8% growth)
+
+## 6. INVESTMENT SUMMARY & RECOMMENDATION
+- Overall investment grade (A-F rating with detailed justification)
 - Key risks and opportunities
-- Buy/wait/negotiate recommendation
-- Investor suitability assessment
+- Recommended action (buy, wait, negotiate, avoid) with specific reasoning
+- Suitability for different investor profiles (first-time, experienced, retiree)
+- Timeline recommendations and market timing considerations
 
-Focus on current Australian market conditions with specific data and numbers where possible.`;
+Please ensure all calculations use current Australian market data (2024-2025) and provide specific numbers, percentages, and dollar amounts wherever possible. Include data sources and methodology for all estimates and projections.`;
 
     console.log('Calling Perplexity API with sonar model...');
     console.log('Prompt length:', prompt.length);
@@ -120,7 +141,7 @@ Focus on current Australian market conditions with specific data and numbers whe
           messages: [
             {
               role: 'system',
-              content: 'You are an expert Australian property investment analyst. Provide detailed, accurate investment analysis with specific numbers and current market data.'
+              content: 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.'
             },
             {
               role: 'user',
