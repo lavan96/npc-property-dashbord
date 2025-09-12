@@ -241,7 +241,36 @@ Please ensure all calculations use current Australian market data (2024-2025) an
       .replace(/To provide[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
       .trim();
 
+    // Extract citations and sources from the response
+    const citations = data.citations || [];
+    const searchResults = data.search_results || [];
+    
+    // Format sources section
+    let sourcesContent = '';
+    if (citations.length > 0 || searchResults.length > 0) {
+      sourcesContent = '\n\n## SOURCES & REFERENCES\n\n';
+      
+      if (citations.length > 0) {
+        sourcesContent += '### Citations:\n';
+        citations.forEach((citation, index) => {
+          sourcesContent += `${index + 1}. ${citation.url || citation.title || citation}\n`;
+        });
+        sourcesContent += '\n';
+      }
+      
+      if (searchResults.length > 0) {
+        sourcesContent += '### Additional Sources:\n';
+        searchResults.forEach((result, index) => {
+          const title = result.title || 'Source';
+          const url = result.url || '';
+          sourcesContent += `${index + 1}. [${title}](${url})\n`;
+        });
+      }
+    }
+
     console.log('Report generated successfully, content length:', reportContent.length);
+    console.log('Citations found:', citations.length);
+    console.log('Search results found:', searchResults.length);
 
     // Try to save to database (optional, don't fail if this doesn't work)
     try {
@@ -273,6 +302,7 @@ Please ensure all calculations use current Australian market data (2024-2025) an
               property_address: propertyAddress,
               property_listing_id: propertyDetails?.id || null,
               report_content: reportContent,
+              sources_content: sourcesContent,
               generated_by: userId
             })
             .select()
@@ -292,6 +322,7 @@ Please ensure all calculations use current Australian market data (2024-2025) an
     // Return successful response
     const responseData = { 
       reportContent,
+      sourcesContent,
       propertyAddress,
       success: true
     };
