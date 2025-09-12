@@ -215,7 +215,7 @@ Please ensure all calculations use current Australian market data (2024-2025) an
       });
     }
     
-    const reportContent = data.choices[0].message.content;
+    let reportContent = data.choices[0].message.content;
     
     if (!reportContent) {
       console.error('No content in API response');
@@ -227,6 +227,19 @@ Please ensure all calculations use current Australian market data (2024-2025) an
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Filter out reasoning sections from Sonar Deep Research model
+    // Remove content between reasoning markers and thinking blocks
+    reportContent = reportContent
+      .replace(/```thinking[\s\S]*?```/gi, '')
+      .replace(/\*\*Reasoning:\*\*[\s\S]*?(?=\*\*|$)/gi, '')
+      .replace(/\*\*Analysis:\*\*[\s\S]*?(?=\*\*|$)/gi, '')
+      .replace(/\*\*Thought process:\*\*[\s\S]*?(?=\*\*|$)/gi, '')
+      .replace(/Let me analyze[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
+      .replace(/I need to[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
+      .replace(/First, I'll[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
+      .replace(/To provide[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
+      .trim();
 
     console.log('Report generated successfully, content length:', reportContent.length);
 

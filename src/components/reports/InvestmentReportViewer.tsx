@@ -75,19 +75,51 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
       </p>
     ),
     ul: ({ children }: any) => (
-      <ul className="mb-4 space-y-1">
+      <ul className="mb-4 space-y-2 list-disc list-inside">
         {children}
       </ul>
     ),
     ol: ({ children }: any) => (
-      <ol className="mb-4 space-y-1 list-decimal list-inside">
+      <ol className="mb-4 space-y-2 list-decimal list-inside">
         {children}
       </ol>
     ),
     li: ({ children }: any) => (
-      <li className="ml-4 text-foreground leading-relaxed">
+      <li className="text-foreground leading-relaxed pl-2">
         {children}
       </li>
+    ),
+    table: ({ children }: any) => (
+      <div className="overflow-x-auto my-6">
+        <table className="min-w-full border-collapse border border-border">
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }: any) => (
+      <thead className="bg-muted">
+        {children}
+      </thead>
+    ),
+    tbody: ({ children }: any) => (
+      <tbody>
+        {children}
+      </tbody>
+    ),
+    tr: ({ children }: any) => (
+      <tr className="border-b border-border">
+        {children}
+      </tr>
+    ),
+    th: ({ children }: any) => (
+      <th className="border border-border px-4 py-2 text-left font-semibold text-foreground">
+        {children}
+      </th>
+    ),
+    td: ({ children }: any) => (
+      <td className="border border-border px-4 py-2 text-foreground">
+        {children}
+      </td>
     ),
     strong: ({ children }: any) => (
       <strong className="font-semibold text-foreground">
