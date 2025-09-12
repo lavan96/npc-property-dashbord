@@ -8,124 +8,112 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('Function invoked with method:', req.method);
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Received request:', req.method);
+    console.log('Starting investment report generation...');
     
-    const requestBody = await req.json();
-    console.log('Request body:', requestBody);
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body parsed successfully');
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      throw new Error('Invalid JSON in request body');
+    }
     
     const { propertyAddress, propertyDetails } = requestBody;
+    console.log('Property address:', propertyAddress);
     
     if (!propertyAddress) {
       console.error('Property address is missing');
       throw new Error('Property address is required');
     }
 
+    // Check for Perplexity API key
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+    console.log('Perplexity API key configured:', !!perplexityApiKey);
+    console.log('API key length:', perplexityApiKey ? perplexityApiKey.length : 0);
+    
     if (!perplexityApiKey) {
       console.error('Perplexity API key not found in environment');
-      throw new Error('Perplexity API key not configured');
+      throw new Error('Perplexity API key not configured. Please set PERPLEXITY_API_KEY in Supabase secrets.');
     }
-    
-    console.log('Property address:', propertyAddress);
-    console.log('API key configured:', !!perplexityApiKey);
 
-    // Create comprehensive prompt for property investment analysis
-    const prompt = `Analyze this Australian property for investment potential:
+    // Create a simple test prompt first
+    const prompt = `Provide a brief property investment analysis for: ${propertyAddress}
 
-PROPERTY: ${propertyAddress}
-${propertyDetails ? `DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
+Please provide:
+1. Basic property overview
+2. Estimated rental yield range
+3. Brief market assessment
+4. Simple investment recommendation
 
-Provide a detailed investment analysis covering:
+Keep the response concise (under 1000 words).`;
 
-## 1. PROPERTY OVERVIEW
-- Current asking price vs local market prices
-- Property specifications and condition
-- Estimated market value range
+    console.log('Calling Perplexity API...');
+    console.log('Prompt length:', prompt.length);
 
-## 2. FINANCIAL ANALYSIS  
-- Estimated weekly rental income based on comparable properties
-- Gross rental yield calculation
-- Net rental yield (after expenses)
-- Local vacancy rates and rental demand
-- Estimated ongoing costs (rates, maintenance, etc.)
-
-## 3. INVESTMENT POTENTIAL
-- Recent comparable sales in the area (last 6 months)
-- Recent comparable rentals and average days on market
-- Suburb population and demographic trends
-- Future growth drivers and infrastructure projects
-- Development potential and zoning considerations
-
-## 4. LOCATION ASSESSMENT
-- Proximity to transport, schools, shopping, healthcare
-- Local demographics and target tenant profile
-- Historical price growth for the suburb
-- Economic drivers and employment centers
-
-## 5. 10-YEAR PROJECTION
-Provide three scenarios with specific numbers:
-- Conservative: Lower growth assumptions
-- Moderate: Market average expectations  
-- Optimistic: Above average growth potential
-
-Include year-by-year cashflow projections and total ROI for each scenario.
-
-## 6. INVESTMENT RECOMMENDATION
-- Overall investment grade (A-F) with reasoning
-- Key risks and opportunities
-- Recommended action (buy/wait/negotiate/avoid)
-- Suitability for different investor types
-
-Focus on current Australian market conditions (2024-2025) with specific data where possible.`;
-
-    console.log('Sending request to Perplexity API...');
-
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert property investment analyst with deep knowledge of Australian real estate markets. Provide detailed, accurate, and current market analysis based on the latest available data. Include specific numbers, calculations, and data sources where possible.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.2,
-        top_p: 0.9,
-        max_tokens: 4000,
-        return_images: false,
-        return_related_questions: false,
-        search_recency_filter: 'month',
-        frequency_penalty: 1,
-        presence_penalty: 0
-      }),
-    });
+    let response;
+    try {
+      response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${perplexityApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-sonar-small-128k-online', // Using smaller model for testing
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a property investment analyst. Provide concise, practical investment advice for Australian properties.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.3
+        }),
+      });
+    } catch (fetchError) {
+      console.error('Network error calling Perplexity API:', fetchError);
+      throw new Error(`Failed to connect to Perplexity API: ${fetchError.message}`);
+    }
 
     console.log('Perplexity API response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Perplexity API error response:', errorText);
-      console.error('Response status:', response.status);
-      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
-      throw new Error(`Perplexity API error: ${response.status} ${errorText}`);
+      
+      if (response.status === 401) {
+        throw new Error('Invalid Perplexity API key. Please check your PERPLEXITY_API_KEY secret.');
+      } else if (response.status === 429) {
+        throw new Error('Perplexity API rate limit exceeded. Please try again later.');
+      } else {
+        throw new Error(`Perplexity API error (${response.status}): ${errorText}`);
+      }
     }
 
-    const data = await response.json();
-    console.log('Perplexity API response data keys:', Object.keys(data));
+    let data;
+    try {
+      data = await response.json();
+      console.log('Response parsed successfully');
+      console.log('Response structure keys:', Object.keys(data));
+    } catch (jsonError) {
+      console.error('Error parsing JSON response:', jsonError);
+      throw new Error('Invalid JSON response from Perplexity API');
+    }
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Unexpected API response structure:', data);
@@ -139,60 +127,78 @@ Focus on current Australian market conditions (2024-2025) with specific data whe
       throw new Error('No report content received from Perplexity API');
     }
 
-    console.log('Report generated successfully, length:', reportContent.length);
+    console.log('Report generated successfully, content length:', reportContent.length);
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Try to save to database (optional, don't fail if this doesn't work)
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (supabaseUrl && supabaseKey) {
+        console.log('Attempting to save report to database...');
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user ID from the authorization header
-    const authHeader = req.headers.get('authorization');
-    let userId = null;
-    
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabase.auth.getUser(token);
-        userId = user?.id;
-      } catch (error) {
-        console.log('Could not get user from token:', error);
+        const authHeader = req.headers.get('authorization');
+        let userId = null;
+        
+        if (authHeader) {
+          try {
+            const token = authHeader.replace('Bearer ', '');
+            const { data: { user } } = await supabase.auth.getUser(token);
+            userId = user?.id;
+            console.log('User ID extracted:', !!userId);
+          } catch (authError) {
+            console.log('Could not get user from token:', authError);
+          }
+        }
+
+        if (userId) {
+          const { data: savedReport, error: saveError } = await supabase
+            .from('investment_reports')
+            .insert({
+              property_address: propertyAddress,
+              property_listing_id: propertyDetails?.id || null,
+              report_content: reportContent,
+              generated_by: userId
+            })
+            .select()
+            .single();
+
+          if (saveError) {
+            console.error('Error saving report to database:', saveError);
+          } else {
+            console.log('Report saved successfully with ID:', savedReport.id);
+          }
+        }
       }
+    } catch (dbError) {
+      console.error('Database save failed (continuing anyway):', dbError);
     }
 
-    // Save the report to the database
-    if (userId) {
-      const { data: savedReport, error: saveError } = await supabase
-        .from('investment_reports')
-        .insert({
-          property_address: propertyAddress,
-          property_listing_id: propertyDetails?.id || null,
-          report_content: reportContent,
-          generated_by: userId
-        })
-        .select()
-        .single();
-
-      if (saveError) {
-        console.error('Error saving report:', saveError);
-        // Continue anyway - return the report even if saving fails
-      } else {
-        console.log('Report saved successfully:', savedReport.id);
-      }
-    }
-
-    return new Response(JSON.stringify({ 
+    // Return successful response
+    const responseData = { 
       reportContent,
-      propertyAddress 
-    }), {
+      propertyAddress,
+      success: true
+    };
+
+    console.log('Returning successful response');
+    return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
     });
 
   } catch (error) {
     console.error('Error in generate-investment-report function:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message 
-    }), {
+    console.error('Error stack:', error.stack);
+    
+    const errorResponse = { 
+      error: error.message,
+      success: false,
+      timestamp: new Date().toISOString()
+    };
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
