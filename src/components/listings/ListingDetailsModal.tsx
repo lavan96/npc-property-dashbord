@@ -1,9 +1,11 @@
-import { ExternalLink, Copy, Bed, Bath, Car, Calendar, MapPin, Building, User, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, Copy, Bed, Bath, Car, Calendar, MapPin, Building, User, Eye, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
+import { InvestmentReportModal } from '@/components/listings/InvestmentReportModal';
 import { getFullStateName } from '@/lib/states';
 import { PropertyListing } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +18,7 @@ interface ListingDetailsModalProps {
 
 export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetailsModalProps) {
   const { toast } = useToast();
+  const [investmentModalOpen, setInvestmentModalOpen] = useState(false);
 
   if (!listing) return null;
 
@@ -388,8 +391,17 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
 
           {/* Actions */}
           <div className="flex gap-2 pt-4">
+            <Button 
+              variant="default" 
+              onClick={() => setInvestmentModalOpen(true)}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Investment Report
+            </Button>
+
             {listing.webLinks && (
-              <Button onClick={openWebLink}>
+              <Button variant="outline" onClick={openWebLink}>
                 <ExternalLink className="h-4 w-4 mr-2" />
                 View Listing
               </Button>
@@ -423,6 +435,23 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
               </Button>
             )}
           </div>
+          
+          <InvestmentReportModal
+            isOpen={investmentModalOpen}
+            onClose={() => setInvestmentModalOpen(false)}
+            propertyAddress={listing.location || listing.address || 'Unknown Address'}
+            propertyDetails={{
+              id: listing.id,
+              price: listing.price,
+              propertyType: listing.propertyType,
+              beds: listing.beds,
+              baths: listing.baths,
+              carSpaces: listing.carSpaces,
+              suburb: listing.suburb,
+              state: listing.state,
+              zipCode: listing.zipCode
+            }}
+          />
         </div>
       </DialogContent>
     </Dialog>

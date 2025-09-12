@@ -137,7 +137,7 @@ Please ensure all calculations use current Australian market data (2024-2025) an
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'sonar', // Basic sonar model as per official docs
+          model: 'sonar-reasoning', // Deep research model for comprehensive analysis
           messages: [
             {
               role: 'system',
