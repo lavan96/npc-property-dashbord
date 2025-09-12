@@ -13,84 +13,75 @@ serve(async (req) => {
   }
 
   try {
-    const { propertyAddress, propertyDetails } = await req.json();
+    console.log('Received request:', req.method);
+    
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
+    
+    const { propertyAddress, propertyDetails } = requestBody;
     
     if (!propertyAddress) {
+      console.error('Property address is missing');
       throw new Error('Property address is required');
     }
 
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
     if (!perplexityApiKey) {
+      console.error('Perplexity API key not found in environment');
       throw new Error('Perplexity API key not configured');
     }
+    
+    console.log('Property address:', propertyAddress);
+    console.log('API key configured:', !!perplexityApiKey);
 
     // Create comprehensive prompt for property investment analysis
-    const prompt = `Please provide a comprehensive property investment analysis for the following property:
+    const prompt = `Analyze this Australian property for investment potential:
 
-ADDRESS: ${propertyAddress}
-${propertyDetails ? `PROPERTY DETAILS: ${JSON.stringify(propertyDetails, null, 2)}` : ''}
+PROPERTY: ${propertyAddress}
+${propertyDetails ? `DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
 
-Please structure your analysis to include ALL of the following sections:
+Provide a detailed investment analysis covering:
 
-## 1. PROPERTY BASICS
-- Property type, bedrooms, bathrooms, car spaces
-- Land size and building size (if available)
-- Year built and condition assessment
-- Current asking price vs recent sales
+## 1. PROPERTY OVERVIEW
+- Current asking price vs local market prices
+- Property specifications and condition
+- Estimated market value range
 
-## 2. FINANCIAL SNAPSHOT
-- Purchase price comparison vs suburb median price
-- Estimated current rental income (weekly) based on comparable properties
-- Gross rental yield calculation (%)
-- Net rental yield estimation (%)
+## 2. FINANCIAL ANALYSIS  
+- Estimated weekly rental income based on comparable properties
+- Gross rental yield calculation
+- Net rental yield (after expenses)
 - Local vacancy rates and rental demand
-- Council rates and potential strata fees
-- Stamp duty estimate for this state
-- Loan repayment estimates for different loan scenarios
+- Estimated ongoing costs (rates, maintenance, etc.)
 
-## 3. INVESTMENT & GROWTH POTENTIAL
-- Average days on market for rentals in this suburb
-- Recent comparable rental properties (last 3-6 months)
-- Recent comparable sales (last 6 months, similar properties)
-- Suburb population growth trends and forecasts
-- Owner-occupier vs investor ratio in the area
-- Future capital growth potential based on:
-  - Planned infrastructure developments
-  - Zoning and development potential
-  - Economic drivers in the area
-- Development potential (granny flat, subdivision possibilities)
-- Tax benefits and depreciation opportunities
+## 3. INVESTMENT POTENTIAL
+- Recent comparable sales in the area (last 6 months)
+- Recent comparable rentals and average days on market
+- Suburb population and demographic trends
+- Future growth drivers and infrastructure projects
+- Development potential and zoning considerations
 
-## 4. LOCATION & SUBURB PROFILE
-- Suburb demographics (families, professionals, students, etc.)
-- Proximity analysis:
-  - Public transport (trains, buses)
-  - Schools (primary, secondary, universities)
-  - Shopping centers and amenities
-  - Hospitals and medical facilities
-- Upcoming infrastructure projects (new rail lines, highways, shopping centers)
-- Historical capital growth rates for this suburb (5-10 year trends)
+## 4. LOCATION ASSESSMENT
+- Proximity to transport, schools, shopping, healthcare
+- Local demographics and target tenant profile
+- Historical price growth for the suburb
+- Economic drivers and employment centers
 
-## 5. 10-YEAR INVESTMENT PROJECTION
-- Compound annual growth rate projections based on historical data
-- Detailed cashflow projections year by year including:
-  - Rental income growth assumptions
-  - Property value appreciation
-  - Ongoing costs escalation
-  - Net cashflow position over time
-- Provide THREE scenarios:
-  - Conservative (pessimistic): Lower growth rates
-  - Moderate (realistic): Market average growth
-  - Optimistic: Above-average growth
-- Total return on investment calculations for each scenario
+## 5. 10-YEAR PROJECTION
+Provide three scenarios with specific numbers:
+- Conservative: Lower growth assumptions
+- Moderate: Market average expectations  
+- Optimistic: Above average growth potential
 
-## 6. INVESTMENT SUMMARY & RECOMMENDATIONS
-- Overall investment grade (A-F rating with justification)
+Include year-by-year cashflow projections and total ROI for each scenario.
+
+## 6. INVESTMENT RECOMMENDATION
+- Overall investment grade (A-F) with reasoning
 - Key risks and opportunities
-- Suitability for different investor profiles (first-time, experienced, retiree)
-- Recommended action (buy, wait, negotiate, avoid) with reasoning
+- Recommended action (buy/wait/negotiate/avoid)
+- Suitability for different investor types
 
-Please ensure all data is current (2024/2025) and provide specific numbers, percentages, and dollar amounts wherever possible. Include data sources and assumptions made in your analysis.`;
+Focus on current Australian market conditions (2024-2025) with specific data where possible.`;
 
     console.log('Sending request to Perplexity API...');
 
@@ -123,16 +114,32 @@ Please ensure all data is current (2024/2025) and provide specific numbers, perc
       }),
     });
 
+    console.log('Perplexity API response status:', response.status);
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Perplexity API error:', errorText);
+      console.error('Perplexity API error response:', errorText);
+      console.error('Response status:', response.status);
+      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
       throw new Error(`Perplexity API error: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('Perplexity API response data keys:', Object.keys(data));
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Unexpected API response structure:', data);
+      throw new Error('Invalid response structure from Perplexity API');
+    }
+    
     const reportContent = data.choices[0].message.content;
+    
+    if (!reportContent) {
+      console.error('No content in API response');
+      throw new Error('No report content received from Perplexity API');
+    }
 
-    console.log('Report generated successfully');
+    console.log('Report generated successfully, length:', reportContent.length);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
