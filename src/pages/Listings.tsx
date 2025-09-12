@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearch } from '@/contexts/SearchContext';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, TrendingUp } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -522,7 +522,7 @@ export default function Listings() {
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
-                          <TrendingUp className="h-4 w-4 mr-2" />
+                          <BarChart3 className="h-4 w-4 mr-2" />
                           Investment Report
                         </DropdownMenuItem>
                       </DropdownMenuContent>
