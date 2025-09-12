@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { ListingFilters } from '@/components/listings/ListingFilters';
 import { ListingDetailsModal } from '@/components/listings/ListingDetailsModal';
+import { InvestmentReportButton } from '@/components/listings/InvestmentReportButton';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
 import {
@@ -513,6 +514,11 @@ export default function Listings() {
                             Copy Address
                           </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem asChild>
+                          <div className="w-full">
+                            <InvestmentReportButton property={listing} variant="ghost" size="sm" />
+                          </div>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

@@ -174,6 +174,36 @@ export type Database = {
         }
         Relationships: []
       }
+      investment_reports: {
+        Row: {
+          created_at: string
+          generated_by: string | null
+          id: string
+          property_address: string
+          property_listing_id: string | null
+          report_content: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          property_address: string
+          property_listing_id?: string | null
+          report_content: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          property_address?: string
+          property_listing_id?: string | null
+          report_content?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       report_templates: {
         Row: {
           config: Json
