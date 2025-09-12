@@ -43,7 +43,34 @@ export default function GeneratedReports() {
   useEffect(() => {
     fetchReports();
     fetchInvestmentReports();
-  }, []);
+
+    // Listen for custom event to open a specific report
+    const handleOpenReport = (event: CustomEvent) => {
+      const { reportId } = event.detail;
+      const report = investmentReports.find(r => r.id === reportId);
+      if (report) {
+        handleViewInvestmentReport(report);
+      }
+    };
+
+    // Check for report ID in localStorage (from navigation)
+    const openReportId = localStorage.getItem('openReportId');
+    if (openReportId) {
+      localStorage.removeItem('openReportId');
+      // Need to wait for reports to load first
+      setTimeout(() => {
+        const report = investmentReports.find(r => r.id === openReportId);
+        if (report) {
+          handleViewInvestmentReport(report);
+        }
+      }, 500);
+    }
+
+    window.addEventListener('openReport', handleOpenReport as EventListener);
+    return () => {
+      window.removeEventListener('openReport', handleOpenReport as EventListener);
+    };
+  }, [investmentReports]);
 
   const fetchReports = async () => {
     try {
