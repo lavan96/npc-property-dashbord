@@ -232,6 +232,7 @@ Please ensure all calculations use current Australian market data (2024-2025) an
     // Remove content between reasoning markers and thinking blocks
     reportContent = reportContent
       .replace(/```thinking[\s\S]*?```/gi, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
       .replace(/\*\*Reasoning:\*\*[\s\S]*?(?=\*\*|$)/gi, '')
       .replace(/\*\*Analysis:\*\*[\s\S]*?(?=\*\*|$)/gi, '')
       .replace(/\*\*Thought process:\*\*[\s\S]*?(?=\*\*|$)/gi, '')
