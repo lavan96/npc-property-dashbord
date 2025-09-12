@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log('Function invoked with method:', req.method);
+  console.log('Investment report function invoked with method:', req.method);
   
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight request');
@@ -25,7 +25,13 @@ serve(async (req) => {
       console.log('Request body parsed successfully');
     } catch (parseError) {
       console.error('Error parsing request body:', parseError);
-      throw new Error('Invalid JSON in request body');
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON in request body',
+        success: false 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
     const { propertyAddress, propertyDetails } = requestBody;
@@ -33,35 +39,76 @@ serve(async (req) => {
     
     if (!propertyAddress) {
       console.error('Property address is missing');
-      throw new Error('Property address is required');
+      return new Response(JSON.stringify({ 
+        error: 'Property address is required',
+        success: false 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Check for Perplexity API key
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
     console.log('Perplexity API key configured:', !!perplexityApiKey);
-    console.log('API key length:', perplexityApiKey ? perplexityApiKey.length : 0);
     
     if (!perplexityApiKey) {
       console.error('Perplexity API key not found in environment');
-      throw new Error('Perplexity API key not configured. Please set PERPLEXITY_API_KEY in Supabase secrets.');
+      return new Response(JSON.stringify({ 
+        error: 'Perplexity API key not configured. Please set PERPLEXITY_API_KEY in Supabase secrets.',
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Create a simple test prompt first
-    const prompt = `Provide a brief property investment analysis for: ${propertyAddress}
+    // Create a focused prompt for investment analysis
+    const prompt = `Analyze this Australian property for investment potential:
 
-Please provide:
-1. Basic property overview
-2. Estimated rental yield range
-3. Brief market assessment
-4. Simple investment recommendation
+PROPERTY: ${propertyAddress}
+${propertyDetails ? `DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
 
-Keep the response concise (under 1000 words).`;
+Please provide a comprehensive investment analysis covering:
 
-    console.log('Calling Perplexity API...');
+1. FINANCIAL ANALYSIS
+- Current asking price vs local market comparison
+- Estimated weekly rental income
+- Gross and net rental yield calculations
+- Local vacancy rates and rental demand
+
+2. INVESTMENT POTENTIAL
+- Recent comparable sales (last 6 months)
+- Recent rental comparisons
+- Suburb growth trends and demographics
+- Future growth drivers and infrastructure
+
+3. LOCATION ASSESSMENT
+- Transport, schools, shopping proximity
+- Target tenant demographics
+- Historical price growth
+- Economic drivers
+
+4. 10-YEAR PROJECTION
+Provide three scenarios (conservative, moderate, optimistic) with:
+- Annual property value growth estimates
+- Rental income growth projections
+- Total return on investment calculations
+
+5. RECOMMENDATION
+- Investment grade (A-F) with reasoning
+- Key risks and opportunities
+- Buy/wait/negotiate recommendation
+- Investor suitability assessment
+
+Focus on current Australian market conditions with specific data and numbers where possible.`;
+
+    console.log('Calling Perplexity API with sonar model...');
     console.log('Prompt length:', prompt.length);
 
     let response;
     try {
+      // Using the correct Perplexity API configuration based on their docs
       response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
@@ -69,24 +116,28 @@ Keep the response concise (under 1000 words).`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online', // Using smaller model for testing
+          model: 'sonar', // Basic sonar model as per official docs
           messages: [
             {
               role: 'system',
-              content: 'You are a property investment analyst. Provide concise, practical investment advice for Australian properties.'
+              content: 'You are an expert Australian property investment analyst. Provide detailed, accurate investment analysis with specific numbers and current market data.'
             },
             {
               role: 'user',
               content: prompt
             }
-          ],
-          max_tokens: 1500,
-          temperature: 0.3
+          ]
         }),
       });
     } catch (fetchError) {
       console.error('Network error calling Perplexity API:', fetchError);
-      throw new Error(`Failed to connect to Perplexity API: ${fetchError.message}`);
+      return new Response(JSON.stringify({ 
+        error: `Failed to connect to Perplexity API: ${fetchError.message}`,
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Perplexity API response status:', response.status);
@@ -96,13 +147,24 @@ Keep the response concise (under 1000 words).`;
       const errorText = await response.text();
       console.error('Perplexity API error response:', errorText);
       
+      let errorMessage;
       if (response.status === 401) {
-        throw new Error('Invalid Perplexity API key. Please check your PERPLEXITY_API_KEY secret.');
+        errorMessage = 'Invalid Perplexity API key. Please check your PERPLEXITY_API_KEY secret.';
       } else if (response.status === 429) {
-        throw new Error('Perplexity API rate limit exceeded. Please try again later.');
+        errorMessage = 'Perplexity API rate limit exceeded. Please try again later.';
+      } else if (response.status === 400) {
+        errorMessage = `Bad request to Perplexity API: ${errorText}`;
       } else {
-        throw new Error(`Perplexity API error (${response.status}): ${errorText}`);
+        errorMessage = `Perplexity API error (${response.status}): ${errorText}`;
       }
+      
+      return new Response(JSON.stringify({ 
+        error: errorMessage,
+        success: false 
+      }), {
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     let data;
@@ -112,19 +174,37 @@ Keep the response concise (under 1000 words).`;
       console.log('Response structure keys:', Object.keys(data));
     } catch (jsonError) {
       console.error('Error parsing JSON response:', jsonError);
-      throw new Error('Invalid JSON response from Perplexity API');
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON response from Perplexity API',
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Unexpected API response structure:', data);
-      throw new Error('Invalid response structure from Perplexity API');
+      return new Response(JSON.stringify({ 
+        error: 'Invalid response structure from Perplexity API',
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
     const reportContent = data.choices[0].message.content;
     
     if (!reportContent) {
       console.error('No content in API response');
-      throw new Error('No report content received from Perplexity API');
+      return new Response(JSON.stringify({ 
+        error: 'No report content received from Perplexity API',
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Report generated successfully, content length:', reportContent.length);
@@ -193,7 +273,7 @@ Keep the response concise (under 1000 words).`;
     console.error('Error stack:', error.stack);
     
     const errorResponse = { 
-      error: error.message,
+      error: error.message || 'An unexpected error occurred',
       success: false,
       timestamp: new Date().toISOString()
     };
