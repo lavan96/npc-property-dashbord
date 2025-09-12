@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearch } from '@/contexts/SearchContext';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { ListingFilters } from '@/components/listings/ListingFilters';
 import { ListingDetailsModal } from '@/components/listings/ListingDetailsModal';
-import { InvestmentReportButton } from '@/components/listings/InvestmentReportButton';
+import { InvestmentReportModal } from '@/components/listings/InvestmentReportModal';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
 import {
@@ -55,6 +55,8 @@ export default function Listings() {
   });
   const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [investmentReportListing, setInvestmentReportListing] = useState<PropertyListing | null>(null);
+  const [isInvestmentReportModalOpen, setIsInvestmentReportModalOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -268,6 +270,11 @@ export default function Listings() {
   const openDetailsModal = (listing: PropertyListing) => {
     setSelectedListing(listing);
     setIsDetailsModalOpen(true);
+  };
+
+  const openInvestmentReportModal = (listing: PropertyListing) => {
+    setInvestmentReportListing(listing);
+    setIsInvestmentReportModalOpen(true);
   };
 
   const closeDetailsModal = () => {
@@ -514,10 +521,9 @@ export default function Listings() {
                             Copy Address
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem asChild>
-                          <div className="w-full">
-                            <InvestmentReportButton property={listing} variant="ghost" size="sm" />
-                          </div>
+                        <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Investment Report
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -544,6 +550,13 @@ export default function Listings() {
         listing={selectedListing}
         isOpen={isDetailsModalOpen}
         onClose={closeDetailsModal}
+      />
+
+      <InvestmentReportModal
+        isOpen={isInvestmentReportModalOpen}
+        onClose={() => setIsInvestmentReportModalOpen(false)}
+        propertyAddress={investmentReportListing ? `${investmentReportListing.address || ''} ${investmentReportListing.suburb || ''} ${investmentReportListing.state || ''} ${investmentReportListing.zipCode || ''}`.trim() : ''}
+        propertyDetails={investmentReportListing}
       />
     </div>
   );
