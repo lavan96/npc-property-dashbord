@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { format } from 'date-fns';
 import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +34,8 @@ interface InvestmentReport {
 export default function GeneratedReports() {
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
+  const [selectedInvestmentReport, setSelectedInvestmentReport] = useState<InvestmentReport | null>(null);
+  const [investmentViewerOpen, setInvestmentViewerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -98,6 +101,16 @@ export default function GeneratedReports() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleViewInvestmentReport = (report: InvestmentReport) => {
+    setSelectedInvestmentReport(report);
+    setInvestmentViewerOpen(true);
+  };
+
+  const handleInvestmentReportUpdate = () => {
+    // Refresh the investment reports list
+    fetchInvestmentReports();
   };
 
   const handleViewReport = (reportId: string) => {
@@ -301,14 +314,7 @@ export default function GeneratedReports() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => {
-                          // Create a modal or navigate to view the full report
-                          toast({
-                            title: "Investment Report",
-                            description: "Opening investment report viewer...",
-                          });
-                          // TODO: Implement investment report viewer
-                        }}
+                        onClick={() => handleViewInvestmentReport(report)}
                         className="flex-1"
                       >
                         <Eye className="mr-1 h-3 w-3" />
@@ -342,6 +348,16 @@ export default function GeneratedReports() {
           )}
         </TabsContent>
       </Tabs>
+
+      <InvestmentReportViewer
+        report={selectedInvestmentReport}
+        isOpen={investmentViewerOpen}
+        onClose={() => {
+          setInvestmentViewerOpen(false);
+          setSelectedInvestmentReport(null);
+        }}
+        onReportUpdate={handleInvestmentReportUpdate}
+      />
     </div>
   );
 }
