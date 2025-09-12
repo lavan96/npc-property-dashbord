@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { Save, Eye, MapPin, Calendar, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { Save, Eye, MapPin, Calendar, FileText, AlertCircle, CheckCircle, Type } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface InvestmentReport {
@@ -105,46 +107,68 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
     }
   };
 
-  // Format the report content for preview
-  const formatReportContent = (content: string) => {
-    return content
-      .split('\n')
-      .map((line, index) => {
-        // Check if line is a heading (starts with ##)
-        if (line.startsWith('## ')) {
-          return (
-            <h3 key={index} className="text-lg font-semibold mt-6 mb-3 text-primary">
-              {line.replace('## ', '')}
-            </h3>
-          );
-        }
-        // Check if line is a subheading (starts with #)
-        if (line.startsWith('# ')) {
-          return (
-            <h2 key={index} className="text-xl font-bold mt-8 mb-4">
-              {line.replace('# ', '')}
-            </h2>
-          );
-        }
-        // Check if line starts with a bullet point
-        if (line.startsWith('- ')) {
-          return (
-            <li key={index} className="ml-4 mb-1">
-              {line.replace('- ', '')}
-            </li>
-          );
-        }
-        // Regular paragraph
-        if (line.trim()) {
-          return (
-            <p key={index} className="mb-3 leading-relaxed">
-              {line}
-            </p>
-          );
-        }
-        // Empty line
-        return <div key={index} className="mb-2" />;
-      });
+  // Custom markdown components for consistent styling with viewer
+  const markdownComponents = {
+    h1: ({ children }: any) => (
+      <h1 className="text-2xl font-bold mt-8 mb-4 text-foreground border-b pb-2">
+        {children}
+      </h1>
+    ),
+    h2: ({ children }: any) => (
+      <h2 className="text-xl font-semibold mt-6 mb-3 text-primary">
+        {children}
+      </h2>
+    ),
+    h3: ({ children }: any) => (
+      <h3 className="text-lg font-medium mt-4 mb-2 text-foreground">
+        {children}
+      </h3>
+    ),
+    p: ({ children }: any) => (
+      <p className="mb-4 leading-relaxed text-foreground">
+        {children}
+      </p>
+    ),
+    ul: ({ children }: any) => (
+      <ul className="mb-4 space-y-1">
+        {children}
+      </ul>
+    ),
+    ol: ({ children }: any) => (
+      <ol className="mb-4 space-y-1 list-decimal list-inside">
+        {children}
+      </ol>
+    ),
+    li: ({ children }: any) => (
+      <li className="ml-4 text-foreground leading-relaxed">
+        {children}
+      </li>
+    ),
+    strong: ({ children }: any) => (
+      <strong className="font-semibold text-foreground">
+        {children}
+      </strong>
+    ),
+    em: ({ children }: any) => (
+      <em className="italic text-muted-foreground">
+        {children}
+      </em>
+    ),
+    blockquote: ({ children }: any) => (
+      <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">
+        {children}
+      </blockquote>
+    ),
+    code: ({ children }: any) => (
+      <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">
+        {children}
+      </code>
+    ),
+    pre: ({ children }: any) => (
+      <pre className="bg-muted p-4 rounded-lg my-4 overflow-x-auto">
+        {children}
+      </pre>
+    ),
   };
 
   return (
@@ -177,21 +201,21 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="edit" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Edit Content
+                <Type className="h-4 w-4" />
+                Edit Markdown
               </TabsTrigger>
               <TabsTrigger value="preview" className="flex items-center gap-2">
                 <Eye className="h-4 w-4" />
-                Preview
+                Formatted Preview
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="edit" className="flex-1 overflow-hidden mt-0">
               <Card className="h-full flex flex-col">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Report Content Editor</CardTitle>
+                  <CardTitle className="text-base">Markdown Editor</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Edit the investment analysis report. Use markdown formatting for headings (# and ##) and bullet points (-).
+                    Edit the investment analysis report using markdown syntax. Use # for main headings, ## for subheadings, **text** for bold, *text* for italic, and - for bullet points.
                   </p>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden p-0">
@@ -210,17 +234,22 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Eye className="h-4 w-4" />
-                    Report Preview
+                    Formatted Preview
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Preview how your edited report will appear to viewers.
+                    See how your markdown will appear when rendered with proper formatting.
                   </p>
                 </CardHeader>
                 <Separator />
                 <CardContent className="flex-1 overflow-hidden p-0">
                   <ScrollArea className="h-full p-6">
-                    <div className="prose prose-sm max-w-none">
-                      {formatReportContent(editedContent)}
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                      >
+                        {editedContent}
+                      </ReactMarkdown>
                     </div>
                   </ScrollArea>
                 </CardContent>

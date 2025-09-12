@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,46 +52,68 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     onReportUpdate?.();
   };
 
-  // Format the report content for better display
-  const formatReportContent = (content: string) => {
-    return content
-      .split('\n')
-      .map((line, index) => {
-        // Check if line is a heading (starts with ##)
-        if (line.startsWith('## ')) {
-          return (
-            <h3 key={index} className="text-lg font-semibold mt-6 mb-3 text-primary">
-              {line.replace('## ', '')}
-            </h3>
-          );
-        }
-        // Check if line is a subheading (starts with #)
-        if (line.startsWith('# ')) {
-          return (
-            <h2 key={index} className="text-xl font-bold mt-8 mb-4">
-              {line.replace('# ', '')}
-            </h2>
-          );
-        }
-        // Check if line starts with a bullet point
-        if (line.startsWith('- ')) {
-          return (
-            <li key={index} className="ml-4 mb-1">
-              {line.replace('- ', '')}
-            </li>
-          );
-        }
-        // Regular paragraph
-        if (line.trim()) {
-          return (
-            <p key={index} className="mb-3 leading-relaxed">
-              {line}
-            </p>
-          );
-        }
-        // Empty line
-        return <div key={index} className="mb-2" />;
-      });
+  // Custom markdown components for better styling
+  const markdownComponents = {
+    h1: ({ children }: any) => (
+      <h1 className="text-2xl font-bold mt-8 mb-4 text-foreground border-b pb-2">
+        {children}
+      </h1>
+    ),
+    h2: ({ children }: any) => (
+      <h2 className="text-xl font-semibold mt-6 mb-3 text-primary">
+        {children}
+      </h2>
+    ),
+    h3: ({ children }: any) => (
+      <h3 className="text-lg font-medium mt-4 mb-2 text-foreground">
+        {children}
+      </h3>
+    ),
+    p: ({ children }: any) => (
+      <p className="mb-4 leading-relaxed text-foreground">
+        {children}
+      </p>
+    ),
+    ul: ({ children }: any) => (
+      <ul className="mb-4 space-y-1">
+        {children}
+      </ul>
+    ),
+    ol: ({ children }: any) => (
+      <ol className="mb-4 space-y-1 list-decimal list-inside">
+        {children}
+      </ol>
+    ),
+    li: ({ children }: any) => (
+      <li className="ml-4 text-foreground leading-relaxed">
+        {children}
+      </li>
+    ),
+    strong: ({ children }: any) => (
+      <strong className="font-semibold text-foreground">
+        {children}
+      </strong>
+    ),
+    em: ({ children }: any) => (
+      <em className="italic text-muted-foreground">
+        {children}
+      </em>
+    ),
+    blockquote: ({ children }: any) => (
+      <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">
+        {children}
+      </blockquote>
+    ),
+    code: ({ children }: any) => (
+      <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">
+        {children}
+      </code>
+    ),
+    pre: ({ children }: any) => (
+      <pre className="bg-muted p-4 rounded-lg my-4 overflow-x-auto">
+        {children}
+      </pre>
+    ),
   };
 
   return (
@@ -146,8 +170,13 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               <Separator />
               <CardContent className="p-0 flex-1 overflow-hidden">
                 <ScrollArea className="h-full max-h-[500px] p-6">
-                  <div className="prose prose-sm max-w-none">
-                    {formatReportContent(report.report_content)}
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {report.report_content}
+                    </ReactMarkdown>
                   </div>
                 </ScrollArea>
               </CardContent>
