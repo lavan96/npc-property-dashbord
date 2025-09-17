@@ -102,6 +102,7 @@ Please structure your analysis to include ALL of the following sections with spe
 - **Transport:** [Public transport options, major roads, accessibility]
 - **Health:** [Hospitals, medical centers, healthcare facilities]
 - **Air & Port:** [Proximity to airports, ports, major transport hubs]
+- **Schools & Universities:** [Primary schools, secondary schools, universities, educational facilities]
 - **Lifestyle:** [Parks, recreation, entertainment, dining, shopping facilities]
 
 ## 6. PROPERTY BASICS
