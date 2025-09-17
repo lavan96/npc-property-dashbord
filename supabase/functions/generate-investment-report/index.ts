@@ -71,7 +71,40 @@ ${propertyDetails ? `CURRENT DETAILS: Price: $${propertyDetails.price || 'Not sp
 
 Please structure your analysis to include ALL of the following sections with specific data and calculations:
 
-## 1. PROPERTY BASICS
+## 1. LOCATION
+- **Suburb / Area:** [Specific suburb/area name]
+- **State:** [Australian state]
+- **Profile:** [Brief suburb profile and character description]
+
+## 2. PROPERTY MARKET
+- **Median Unit Price:** [Current median price for units/apartments in the area]
+- **Median House Price (implied):** [Current median price for houses in the area]
+- **Median Weekly Rent:** [Current median weekly rental price]
+- **Gross Rental Yield:** [Calculated gross rental yield percentage]
+
+## 3. MARKET PERFORMANCE
+- **Annual Growth (1yr):** [Recent 12-month capital growth percentage]
+- **5-Year / 10-Year Growth:** [Historical growth rates over 5 and 10 year periods]
+- **Projected 10-Year Growth:** [Forecast future growth based on market analysis]
+- **Vacancy Rate:** [Current vacancy rate percentage for the area]
+- **Days on Market:** [Average days properties stay on market]
+- **Auction Clearance:** [Local auction clearance rate percentage]
+
+## 4. DEMOGRAPHICS
+- **Predominant Age Group:** [Most common age demographic in the area]
+- **Household Type:** [Most common household composition - families, couples, singles, etc.]
+- **Occupations:** [Common occupations/employment types in the area]
+- **Owner-Occupancy:** [Percentage of owner-occupiers vs renters]
+- **Population Growth:** [Recent and projected population growth rates]
+- **LGA Population:** [Local Government Area total population]
+
+## 5. INFRASTRUCTURE & AMENITIES
+- **Transport:** [Public transport options, major roads, accessibility]
+- **Health:** [Hospitals, medical centers, healthcare facilities]
+- **Air & Port:** [Proximity to airports, ports, major transport hubs]
+- **Lifestyle:** [Parks, recreation, entertainment, dining, shopping facilities]
+
+## 6. PROPERTY BASICS
 - Address (suburb, state, postcode)
 - Property type (house, townhouse, apartment, duplex, land)
 - Bedrooms, bathrooms, car spaces
@@ -79,7 +112,7 @@ Please structure your analysis to include ALL of the following sections with spe
 - Year built / condition assessment
 - Asking price / price guide vs current listing
 
-## 2. FINANCIAL SNAPSHOT
+## 7. FINANCIAL SNAPSHOT
 - Purchase price vs suburb median price comparison
 - Estimated rental income (weekly, based on property characteristics)
 - Gross rental yield (%) calculation
@@ -89,7 +122,7 @@ Please structure your analysis to include ALL of the following sections with spe
 - Loan repayment estimate (if financed at 80% LVR)
 - Stamp duty estimate for the state
 
-## 3. INVESTMENT & GROWTH POTENTIAL
+## 8. INVESTMENT & GROWTH POTENTIAL
 - Suburb rental demand (average days on market)
 - Comparable rentals (median vs property's estimate)
 - Comparable sales (recent similar properties in last 6 months)
@@ -99,14 +132,14 @@ Please structure your analysis to include ALL of the following sections with spe
 - Development potential (zoning, granny flat, subdivision possibilities)
 - Tax benefits (e.g., depreciation schedule if new build)
 
-## 4. LOCATION & SUBURB PROFILE
+## 9. LOCATION & SUBURB PROFILE
 - Suburb name & state with demographic overview
 - Proximity to transport, shops, schools, hospitals, universities
 - Local demographics (families, students, professionals, etc.)
 - Upcoming infrastructure projects (new rail, highways, shopping centres, etc.)
 - Suburb's historical capital growth rate (5-10 year trends)
 
-## 5. CALCULATION & PROJECTION
+## 10. CALCULATION & PROJECTION
 Using the above data, provide a 10-year compounding annual investment calculation including:
 - Year-by-year property value projections with compound growth
 - Annual rental income growth estimates
@@ -115,7 +148,7 @@ Using the above data, provide a 10-year compounding annual investment calculatio
 - Break-even analysis and cash-on-cash returns
 - Scenarios: Conservative (3-4% growth), Moderate (5-6% growth), Optimistic (7-8% growth)
 
-## 6. INVESTMENT SUMMARY & RECOMMENDATION
+## 11. INVESTMENT SUMMARY & RECOMMENDATION
 - Overall investment grade (A-F rating with detailed justification)
 - Key risks and opportunities
 - Recommended action (buy, wait, negotiate, avoid) with specific reasoning
