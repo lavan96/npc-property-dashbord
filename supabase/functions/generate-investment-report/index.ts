@@ -63,10 +63,42 @@ serve(async (req) => {
       });
     }
 
-    // Create comprehensive prompt based on client requirements
-    const prompt = `Provide a comprehensive property investment analysis for this Australian property:
+    // Enhanced ZIP code processing with geographical context
+    const isPostcodeQuery = /^\d{4}$/.test(propertyAddress.trim()) || 
+                           propertyAddress.toLowerCase().includes('properties in') ||
+                           /\b\d{4}\b/.test(propertyAddress);
 
-PROPERTY: ${propertyAddress}
+    let enhancedQuery = propertyAddress;
+    let contextualPrompt = '';
+
+    if (isPostcodeQuery) {
+      // Extract postcode if it's part of a larger query
+      const postcodeMatch = propertyAddress.match(/\b(\d{4})\b/);
+      const postcode = postcodeMatch ? postcodeMatch[1] : propertyAddress.trim();
+      
+      enhancedQuery = `postcode ${postcode} Australia property market analysis`;
+      contextualPrompt = `
+IMPORTANT CONTEXT FOR POSTCODE ${postcode} ANALYSIS:
+This analysis is for Australian postcode ${postcode}. Please research and provide comprehensive data by:
+
+1. **Geographic Context**: Identify the state, region, and all major suburbs/localities within postcode ${postcode}
+2. **Multi-Suburb Analysis**: Include property market data from multiple suburbs within this postcode, not just one area
+3. **Regional Perspective**: Consider the broader regional context and how this postcode fits within the larger metropolitan/regional area
+4. **Infrastructure Mapping**: Research transport, schools, hospitals, and amenities serving the entire postcode area
+5. **Demographic Aggregation**: Provide demographic data that represents the diverse communities within this postcode
+
+Focus on providing comprehensive, representative data across the entire postcode region. If data is limited for one suburb, research and include information from other suburbs within the same postcode.`;
+    }
+
+    console.log('Enhanced query:', enhancedQuery);
+    console.log('Is postcode query:', isPostcodeQuery);
+
+    // Create comprehensive prompt based on client requirements
+    const prompt = `You are an expert Australian property investment analyst. Provide a comprehensive property investment analysis for: ${enhancedQuery}
+
+${contextualPrompt}
+
+PROPERTY DETAILS: ${propertyAddress}
 ${propertyDetails ? `CURRENT DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
 
 Please structure your analysis to include ALL of the following sections with specific data and calculations:
