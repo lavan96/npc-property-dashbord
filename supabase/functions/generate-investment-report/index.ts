@@ -63,132 +63,281 @@ serve(async (req) => {
       });
     }
 
-    // Enhanced ZIP code processing with geographical context
-    const isPostcodeQuery = /^\d{4}$/.test(propertyAddress.trim()) || 
-                           propertyAddress.toLowerCase().includes('properties in') ||
-                           /\b\d{4}\b/.test(propertyAddress);
-
-    let enhancedQuery = propertyAddress;
-    let contextualPrompt = '';
-
-    if (isPostcodeQuery) {
-      // Extract postcode if it's part of a larger query
+    // Determine analysis mode and format input query
+    let analysisMode = 'address'; // Default mode
+    let formattedInput = propertyAddress;
+    
+    // Detect analysis mode
+    if (/^\d{4}$/.test(propertyAddress.trim()) || /postcode\s+\d{4}/i.test(propertyAddress)) {
+      analysisMode = 'postcode';
       const postcodeMatch = propertyAddress.match(/\b(\d{4})\b/);
-      const postcode = postcodeMatch ? postcodeMatch[1] : propertyAddress.trim();
-      
-      enhancedQuery = `postcode ${postcode} Australia property market analysis`;
-      contextualPrompt = `
-IMPORTANT CONTEXT FOR POSTCODE ${postcode} ANALYSIS:
-This analysis is for Australian postcode ${postcode}. Please research and provide comprehensive data by:
-
-1. **Geographic Context**: Identify the state, region, and all major suburbs/localities within postcode ${postcode}
-2. **Multi-Suburb Analysis**: Include property market data from multiple suburbs within this postcode, not just one area
-3. **Regional Perspective**: Consider the broader regional context and how this postcode fits within the larger metropolitan/regional area
-4. **Infrastructure Mapping**: Research transport, schools, hospitals, and amenities serving the entire postcode area
-5. **Demographic Aggregation**: Provide demographic data that represents the diverse communities within this postcode
-
-Focus on providing comprehensive, representative data across the entire postcode region. If data is limited for one suburb, research and include information from other suburbs within the same postcode.`;
+      if (postcodeMatch) {
+        formattedInput = `Postcode ${postcodeMatch[1]}, Australia`;
+      }
+    } else if (/(western australia|wa|new south wales|nsw|victoria|vic|queensland|qld|south australia|sa|tasmania|tas|northern territory|nt|australian capital territory|act)/i.test(propertyAddress)) {
+      analysisMode = 'state';
+      // Keep the state input as is
     }
 
-    console.log('Enhanced query:', enhancedQuery);
-    console.log('Is postcode query:', isPostcodeQuery);
+    console.log('Analysis mode:', analysisMode);
+    console.log('Formatted input:', formattedInput);
 
-    // Create comprehensive prompt based on client requirements
-    const prompt = `You are an expert Australian property investment analyst. Provide a comprehensive property investment analysis for: ${enhancedQuery}
+    // Create the new comprehensive prompt
+    const prompt = `You are an expert property analyst researching Australian property investment reports.
+Your goal is to generate a comprehensive, professional-grade investment report for the following input:
 
-${contextualPrompt}
+Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
 
-PROPERTY DETAILS: ${propertyAddress}
-${propertyDetails ? `CURRENT DETAILS: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
+Input: ${formattedInput}
+${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
 
-Please structure your analysis to include ALL of the following sections with specific data and calculations:
+---
 
-## 1. LOCATION
-- **Suburb / Area:** [Specific suburb/area name]
-- **State:** [Australian state]
-- **Profile:** [Brief suburb profile and character description]
+Instructions
 
-## 2. PROPERTY MARKET
-- **Median Unit Price:** [Current median price for units/apartments in the area]
-- **Median House Price (implied):** [Current median price for houses in the area]
-- **Median Weekly Rent:** [Current median weekly rental price]
-- **Gross Rental Yield:** [Calculated gross rental yield percentage]
+1. Use only Australian data and sources.
 
-## 3. MARKET PERFORMANCE
-- **Annual Growth (1yr):** [Recent 12-month capital growth percentage]
-- **5-Year / 10-Year Growth:** [Historical growth rates over 5 and 10 year periods]
-- **Projected 10-Year Growth:** [Forecast future growth based on market analysis]
-- **Vacancy Rate:** [Current vacancy rate percentage for the area]
-- **Days on Market:** [Average days properties stay on market]
-- **Auction Clearance:** [Local auction clearance rate percentage]
+2. Provide clear sections with proper headings and bullet points.
 
-## 4. DEMOGRAPHICS
-- **Predominant Age Group:** [Most common age demographic in the area]
-- **Household Type:** [Most common household composition - families, couples, singles, etc.]
-- **Occupations:** [Common occupations/employment types in the area]
-- **Owner-Occupancy:** [Percentage of owner-occupiers vs renters]
-- **Population Growth:** [Recent and projected population growth rates]
-- **LGA Population:** [Local Government Area total population]
+3. Cite the source name and date directly in the text for every statistic or metric.
 
-## 5. INFRASTRUCTURE & AMENITIES
-- **Transport:** [Public transport options, major roads, accessibility]
-- **Health:** [Hospitals, medical centers, healthcare facilities]
-- **Air & Port:** [Proximity to airports, ports, major transport hubs]
-- **Schools & Universities:** [Primary schools, secondary schools, universities, educational facilities]
-- **Lifestyle:** [Parks, recreation, entertainment, dining, shopping facilities]
+4. If a metric cannot be found because it is paywalled or proprietary (e.g., CoreLogic), clearly state that and explain why.
 
-## 6. PROPERTY BASICS
-- Address (suburb, state, postcode)
-- Property type (house, townhouse, apartment, duplex, land)
-- Bedrooms, bathrooms, car spaces
-- Land size (sqm) and building size (sqm, if available)
-- Year built / condition assessment
-- Asking price / price guide vs current listing
+5. Avoid filler text. Provide specific numbers, facts, and actionable insights.
 
-## 7. FINANCIAL SNAPSHOT
-- Purchase price vs suburb median price comparison
-- Estimated rental income (weekly, based on property characteristics)
-- Gross rental yield (%) calculation
-- Net rental yield (%) calculation
-- Vacancy rate (suburb level)
-- Council rates & strata fees (if applicable)
-- Loan repayment estimate (if financed at 80% LVR)
-- Stamp duty estimate for the state
+6. The output should be plain text, not JSON or code.
 
-## 8. INVESTMENT & GROWTH POTENTIAL
-- Suburb rental demand (average days on market)
-- Comparable rentals (median vs property's estimate)
-- Comparable sales (recent similar properties in last 6 months)
-- Suburb population growth & forecasts
-- Owner-occupier vs investor ratio in the suburb
-- Future capital growth potential (based on infrastructure & demand)
-- Development potential (zoning, granny flat, subdivision possibilities)
-- Tax benefits (e.g., depreciation schedule if new build)
+---
 
-## 9. LOCATION & SUBURB PROFILE
-- Suburb name & state with demographic overview
-- Proximity to transport, shops, schools, hospitals, universities
-- Local demographics (families, students, professionals, etc.)
-- Upcoming infrastructure projects (new rail, highways, shopping centres, etc.)
-- Suburb's historical capital growth rate (5-10 year trends)
+Sections to Include
 
-## 10. CALCULATION & PROJECTION
-Using the above data, provide a 10-year compounding annual investment calculation including:
-- Year-by-year property value projections with compound growth
-- Annual rental income growth estimates
-- Estimated cashflow position over time (positive/negative)
-- Total return on investment calculation
-- Break-even analysis and cash-on-cash returns
-- Scenarios: Conservative (3-4% growth), Moderate (5-6% growth), Optimistic (7-8% growth)
+1. Location Overview
 
-## 11. INVESTMENT SUMMARY & RECOMMENDATION
-- Overall investment grade (A-F rating with detailed justification)
-- Key risks and opportunities
-- Recommended action (buy, wait, negotiate, avoid) with specific reasoning
-- Suitability for different investor profiles (first-time, experienced, retiree)
-- Timeline recommendations and market timing considerations
+Suburb/area profile and character.
 
-Please ensure all calculations use current Australian market data (2024-2025) and provide specific numbers, percentages, and dollar amounts wherever possible. Include data sources and methodology for all estimates and projections.`;
+Distance to nearest major city or CBD.
+
+Key lifestyle attributes (parks, schools, shopping hubs, etc.).
+
+Identify the SA2, SA3, SA4, and LGA that this address/postcode/state belongs to.
+
+---
+
+2. Market KPIs
+
+Provide the latest data for the relevant geography:
+
+Median house price and median unit price (if available).
+
+Historical price growth: 1-year, 3-year, 5-year, and 10-year.
+
+Median weekly rent (house and unit separately).
+
+Historical rent growth: 1-year, 3-year, and 5-year.
+
+Gross rental yield and net rental yield (explain how net yield was calculated).
+
+Vacancy rate (suburb or SA2 level).
+
+Days on market (DOM).
+
+Annual sales volume or stock on market.
+
+If data is missing or only available via paid sources, state clearly that it is unavailable and why.
+
+---
+
+3. Demographics & Demand Drivers
+
+Total population and population growth trends (past 5 years).
+
+Median household income and key occupation breakdown.
+
+Predominant age group and household type (e.g., families, singles).
+
+Owner-occupier vs renter ratio (if available).
+
+Employment/unemployment rate and main local industries.
+
+---
+
+4. Infrastructure & Amenities
+
+Major transport hubs (train stations, highways, airports).
+
+Planned infrastructure projects that could influence capital growth.
+
+Health, education, and lifestyle facilities (schools, hospitals, parks, recreation).
+
+---
+
+5. Property-Level Information (Address Mode Only)
+
+Property type (house, townhouse, unit, etc.).
+
+Number of bedrooms, bathrooms, parking spaces.
+
+Land size and building size.
+
+Year built and overall condition.
+
+Asking price (if listed).
+
+Comparison to suburb median.
+
+---
+
+6. Costs for Investors
+
+Include calculations relevant to the specific state:
+
+Stamp duty for this purchase price.
+
+Land tax rules and thresholds.
+
+Typical council rates and how you estimated them.
+
+Property management fee assumption (% of rent).
+
+Typical strata fees (if applicable).
+
+Insurance and maintenance estimates.
+
+---
+
+7. Risk Assessment
+
+Provide a risk profile for the area:
+
+Flood risk (referencing official state data).
+
+Bushfire risk (official state data).
+
+Crime index (SA2 or LGA level if available).
+
+Market volatility (historical price fluctuations).
+
+---
+
+8. Comparable Market Evidence
+
+List 3–5 recent comparable sales within a 1.5 km radius over the past 6–12 months. Include:
+
+Address
+
+Sale price
+
+Date of sale
+
+Beds/baths/parking
+
+Distance from subject property
+
+List 3 comparable rental properties with weekly rent, location, and property type.
+
+If comparable data is only available through paid sources, explain that clearly.
+
+---
+
+9. Financial Analysis
+
+Gross yield and net yield calculations.
+
+Year-one cashflow estimate for both P&I and Interest-Only loans at the following assumptions:
+
+Deposit: 20%
+
+Interest rate: 6.5%
+
+Property management fee: 7% of rent
+
+Maintenance: 1% of property value annually
+
+Council rates and insurance: include estimated figures
+
+Sensitivity analysis: show effect of interest rates at +1% and -1%.
+
+---
+
+10. 10-Year Projection Scenarios
+
+Model three scenarios:
+
+Conservative: 2% annual price growth, 2% rent growth.
+
+Base: 4% annual price growth, 3% rent growth.
+
+Optimistic: 6% annual price growth, 4% rent growth.
+
+Show:
+
+Property value at year 10.
+
+Total rent received over 10 years.
+
+Cumulative cashflow over 10 years.
+
+Final Loan-to-Value Ratio (LVR).
+
+---
+
+11. Overall Investment Score
+
+Create a total score out of 100 with these weightings:
+
+Market momentum (25%)
+
+Yield and cashflow (30%)
+
+Risk factors (20%)
+
+Demand drivers (15%)
+
+Supply factors (10%)
+
+Explain each component and provide a final recommendation: Buy, Hold, Sell, or Wait/Negotiate.
+
+---
+
+12. Key Opportunities & Risks
+
+Summarize the 3–5 biggest opportunities and risks:
+
+Example opportunity: new transport infrastructure boosting capital growth.
+
+Example risk: property priced significantly above suburb median.
+
+---
+
+13. Sources & Data Transparency
+
+For each key metric, include:
+
+Source name
+
+URL (if available)
+
+"As of" date
+
+If data was estimated or inferred, explain the methodology.
+
+---
+
+Output Style
+
+Use clear section headings.
+
+Write in professional, concise, and data-driven language.
+
+Use bullet points or tables for clarity wherever appropriate.
+
+Keep everything plain text — no code blocks or JSON.
+
+---
+
+Final Output
+
+Produce a full investment report following the structure above, including detailed numbers, calculations, and references to primary Australian data sources such as ABS, RBA, state revenue offices, data.gov.au, SQM Research, and official hazard maps.`;
 
     console.log('Calling Perplexity API with sonar model...');
     console.log('Prompt length:', prompt.length);
