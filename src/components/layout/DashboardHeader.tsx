@@ -1,11 +1,9 @@
-import { Bell, Search, User } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Search, Bell, User, LogOut, Settings } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useSearch } from '@/contexts/SearchContext';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,83 +13,90 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useSearch } from '@/contexts/SearchContext';
+import { useAuth } from '@/hooks/useAuth';
 
 export function DashboardHeader() {
-  const navigate = useNavigate();
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const { user, signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
+  const navigate = useNavigate();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalSearchQuery(e.target.value);
   };
 
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && globalSearchQuery.trim()) {
-      // Navigate to listings page when user presses Enter
+    if (e.key === 'Enter') {
       navigate('/listings');
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      navigate('/auth', { replace: true });
+    } catch (error) {
+      console.error('Sign out error:', error);
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
   return (
     <header className="border-b border-border bg-card px-6 py-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1">
           <SidebarTrigger />
           
-          <div className="relative w-96 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search properties, addresses, suburbs..."
-              className="pl-10"
+              type="text"
+              placeholder="Search properties..."
               value={globalSearchQuery}
               onChange={handleSearchChange}
               onKeyPress={handleSearchKeyPress}
+              className="pl-10 pr-4"
             />
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="icon">
             <Bell className="h-4 w-4" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Button variant="ghost" className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>AD</AvatarFallback>
+                  <AvatarFallback>
+                    {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
+                  </AvatarFallback>
                 </Avatar>
+                <span className="text-sm font-medium">{user?.username || 'Admin'}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">User</p>
+                  <p className="text-sm font-medium leading-none">{user?.username || 'Admin'}</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email || 'user@example.com'}
+                    {user?.role || 'Administrator'}
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
+              <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut}>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>{isSigningOut ? 'Signing out...' : 'Sign out'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
