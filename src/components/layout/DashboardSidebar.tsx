@@ -8,7 +8,8 @@ import {
   Settings,
   Database,
   BarChart3,
-  FileText
+  FileText,
+  BookOpen
 } from 'lucide-react';
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const navigationItems = [
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Generated Reports', url: '/generated-reports', icon: FileText },
   { title: 'Charts', url: '/charts', icon: BarChart3 },
+  { title: 'User Guide', url: '/user-guide', icon: BookOpen },
 ];
 
 const adminItems = [
