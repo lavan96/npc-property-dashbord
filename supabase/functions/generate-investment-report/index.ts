@@ -82,7 +82,91 @@ serve(async (req) => {
     console.log('Analysis mode:', analysisMode);
     console.log('Formatted input:', formattedInput);
 
-    // Create the new comprehensive prompt
+    // Fetch enhanced data from multiple sources
+    console.log('Fetching enhanced data from multiple APIs...');
+    let enhancedData = {};
+    
+    try {
+      // Extract postcode and state from address for API calls
+      const postcodeMatch = formattedInput.match(/\b(\d{4})\b/);
+      const stateMatch = formattedInput.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
+      const postcode = postcodeMatch ? postcodeMatch[1] : null;
+      const state = stateMatch ? stateMatch[1].toUpperCase() : 'NSW';
+
+      // Fetch ABS demographic data
+      try {
+        const absResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-data-service`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+          },
+          body: JSON.stringify({ postcode, state })
+        });
+        
+        if (absResponse.ok) {
+          const absData = await absResponse.json();
+          enhancedData = { ...enhancedData, demographics: absData.data };
+          console.log('ABS data fetched successfully');
+        }
+      } catch (error) {
+        console.log('ABS data fetch failed, using estimates:', error.message);
+      }
+
+      // Fetch RBA economic data
+      try {
+        const rbaResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rba-data-service`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+          }
+        });
+        
+        if (rbaResponse.ok) {
+          const rbaData = await rbaResponse.json();
+          enhancedData = { ...enhancedData, economics: rbaData.data };
+          console.log('RBA data fetched successfully');
+        }
+      } catch (error) {
+        console.log('RBA data fetch failed, using estimates:', error.message);
+      }
+
+      // Calculate financial projections if property details available
+      if (propertyDetails?.price && propertyDetails?.weeklyRent) {
+        try {
+          const financialResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/financial-calculator-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({
+              propertyValue: propertyDetails.price,
+              deposit: propertyDetails.price * 0.2,
+              interestRate: 6.5,
+              loanTerm: 30,
+              weeklyRent: propertyDetails.weeklyRent || 500,
+              state: state,
+              propertyType: propertyDetails.propertyType || 'house'
+            })
+          });
+          
+          if (financialResponse.ok) {
+            const financialData = await financialResponse.json();
+            enhancedData = { ...enhancedData, financials: financialData.data };
+            console.log('Financial calculations completed successfully');
+          }
+        } catch (error) {
+          console.log('Financial calculations failed:', error.message);
+        }
+      }
+
+    } catch (error) {
+      console.log('Enhanced data fetch failed, proceeding with basic analysis:', error.message);
+    }
+
+    // Create enhanced prompt with additional data
     const prompt = `You are an expert property analyst researching Australian property investment reports.
 Your goal is to generate a comprehensive, professional-grade investment report for the following input:
 
@@ -90,6 +174,33 @@ Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
 
 Input: ${formattedInput}
 ${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
+
+${enhancedData.demographics ? `
+DEMOGRAPHIC DATA AVAILABLE:
+- Population: ${enhancedData.demographics.population?.total || 'N/A'}
+- Median Household Income: $${enhancedData.demographics.income?.medianHouseholdIncome || 'N/A'}
+- Unemployment Rate: ${enhancedData.demographics.income?.unemploymentRate || 'N/A'}%
+- Owner-Occupier Rate: ${enhancedData.demographics.housing?.ownerOccupierRate || 'N/A'}%
+- Labor Force Participation: ${enhancedData.demographics.employment?.laborForceParticipation || 'N/A'}%
+` : ''}
+
+${enhancedData.economics ? `
+ECONOMIC DATA AVAILABLE:
+- Current Cash Rate: ${enhancedData.economics.cashRate?.current || 'N/A'}%
+- Annual Inflation: ${enhancedData.economics.inflation?.annual || 'N/A'}%
+- GDP Growth: ${enhancedData.economics.indicators?.gdpGrowth || 'N/A'}%
+- National Unemployment: ${enhancedData.economics.indicators?.unemploymentRate || 'N/A'}%
+- House Price Growth: ${enhancedData.economics.indicators?.housePriceGrowth || 'N/A'}%
+` : ''}
+
+${enhancedData.financials ? `
+FINANCIAL CALCULATIONS AVAILABLE:
+- Gross Rental Yield: ${enhancedData.financials.keyMetrics?.grossRentalYield || 'N/A'}%
+- Net Rental Yield: ${enhancedData.financials.keyMetrics?.netRentalYield || 'N/A'}%
+- Weekly Net Cash Flow: $${enhancedData.financials.keyMetrics?.weeklyNet || 'N/A'}
+- Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics?.lvr || 'N/A'}%
+- Stamp Duty: $${enhancedData.financials.initialCosts?.stampDuty || 'N/A'}
+` : ''}
 
 ---
 
