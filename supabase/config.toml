@@ -88,3 +88,9 @@ verify_jwt = false
 
 [functions.financial-calculator-service]
 verify_jwt = false
+
+[functions.location-intelligence-service]
+verify_jwt = false
+
+[functions.investment-scoring-service]
+verify_jwt = false

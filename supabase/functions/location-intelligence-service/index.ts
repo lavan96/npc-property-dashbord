@@ -1,0 +1,419 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface LocationIntelligenceInput {
+  address: string;
+  suburb?: string;
+  postcode?: string;
+  state?: string;
+  lat?: number;
+  lng?: number;
+}
+
+interface AmenityScore {
+  category: string;
+  count: number;
+  nearest: string;
+  distance: number;
+  score: number;
+}
+
+serve(async (req) => {
+  console.log('Location intelligence service invoked with method:', req.method);
+  
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const input: LocationIntelligenceInput = await req.json();
+    console.log('Analyzing location intelligence for:', input.address);
+
+    const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    
+    if (!googleMapsApiKey) {
+      console.log('Google Maps API key not configured, using mock data');
+      const mockData = generateMockLocationData(input);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        data: mockData,
+        usingMockData: true 
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const locationData = await fetchLocationIntelligence(input, googleMapsApiKey);
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      data: locationData,
+      usingMockData: false 
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error in location intelligence service:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Failed to analyze location',
+      success: false 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKey: string) {
+  let coordinates = { lat: input.lat, lng: input.lng };
+
+  // Get coordinates from address if not provided
+  if (!coordinates.lat || !coordinates.lng) {
+    coordinates = await geocodeAddress(input.address, apiKey);
+  }
+
+  console.log('Coordinates:', coordinates);
+
+  // Fetch all location intelligence data in parallel
+  const [
+    transitData,
+    schoolsData,
+    healthcareData,
+    shoppingData,
+    recreationData,
+    restaurantsData
+  ] = await Promise.all([
+    fetchNearbyPlaces(coordinates, 'transit_station', apiKey),
+    fetchNearbyPlaces(coordinates, 'school', apiKey),
+    fetchNearbyPlaces(coordinates, 'hospital', apiKey),
+    fetchNearbyPlaces(coordinates, 'shopping_mall', apiKey),
+    fetchNearbyPlaces(coordinates, 'park', apiKey),
+    fetchNearbyPlaces(coordinates, 'restaurant', apiKey)
+  ]);
+
+  // Calculate CBD commute time (using Sydney as default)
+  const cbdCoordinates = getCBDCoordinates(input.state || 'NSW');
+  const commuteData = await calculateCommuteTime(coordinates, cbdCoordinates, apiKey);
+
+  // Calculate walk score and lifestyle score
+  const walkScore = calculateWalkScore({
+    transit: transitData,
+    schools: schoolsData,
+    healthcare: healthcareData,
+    shopping: shoppingData,
+    recreation: recreationData,
+    restaurants: restaurantsData
+  });
+
+  const amenityScores = calculateAmenityScores({
+    transit: transitData,
+    schools: schoolsData,
+    healthcare: healthcareData,
+    shopping: shoppingData,
+    recreation: recreationData,
+    restaurants: restaurantsData
+  });
+
+  return {
+    coordinates,
+    commute: commuteData,
+    walkScore,
+    amenities: amenityScores,
+    transport: {
+      nearestStation: transitData.results[0]?.name || 'N/A',
+      distanceToStation: transitData.results[0]?.distance || 0,
+      stationsWithin2km: transitData.count
+    },
+    schools: {
+      nearestSchool: schoolsData.results[0]?.name || 'N/A',
+      distanceToSchool: schoolsData.results[0]?.distance || 0,
+      schoolsWithin3km: schoolsData.count,
+      topSchools: schoolsData.results.slice(0, 5).map(s => ({
+        name: s.name,
+        distance: s.distance,
+        rating: s.rating
+      }))
+    },
+    healthcare: {
+      nearestHospital: healthcareData.results[0]?.name || 'N/A',
+      distanceToHospital: healthcareData.results[0]?.distance || 0,
+      facilitiesWithin5km: healthcareData.count
+    },
+    lifestyle: {
+      shoppingCenters: shoppingData.count,
+      parks: recreationData.count,
+      restaurants: restaurantsData.count,
+      nearestShopping: shoppingData.results[0]?.name || 'N/A',
+      nearestPark: recreationData.results[0]?.name || 'N/A'
+    }
+  };
+}
+
+async function geocodeAddress(address: string, apiKey: string) {
+  try {
+    const encodedAddress = encodeURIComponent(address);
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Geocoding failed');
+    }
+
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return { lat: location.lat, lng: location.lng };
+    }
+  } catch (error) {
+    console.error('Geocoding error:', error);
+  }
+
+  // Return default Sydney coordinates if geocoding fails
+  return { lat: -33.8688, lng: 151.2093 };
+}
+
+async function fetchNearbyPlaces(
+  coordinates: { lat: number; lng: number },
+  type: string,
+  apiKey: string
+) {
+  try {
+    const radius = type === 'school' ? 3000 : type === 'park' ? 2000 : 5000;
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${coordinates.lat},${coordinates.lng}&radius=${radius}&type=${type}&key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${type} data`);
+    }
+
+    const data = await response.json();
+    
+    const results = (data.results || []).slice(0, 10).map((place: any) => {
+      const distance = calculateDistance(
+        coordinates.lat,
+        coordinates.lng,
+        place.geometry.location.lat,
+        place.geometry.location.lng
+      );
+
+      return {
+        name: place.name,
+        address: place.vicinity,
+        rating: place.rating || 0,
+        distance: Math.round(distance * 100) / 100,
+        userRatingsTotal: place.user_ratings_total || 0
+      };
+    });
+
+    return {
+      count: results.length,
+      results: results.sort((a, b) => a.distance - b.distance)
+    };
+  } catch (error) {
+    console.error(`Error fetching ${type}:`, error);
+    return { count: 0, results: [] };
+  }
+}
+
+async function calculateCommuteTime(
+  origin: { lat: number; lng: number },
+  destination: { lat: number; lng: number },
+  apiKey: string
+) {
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&mode=transit&key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Distance matrix API failed');
+    }
+
+    const data = await response.json();
+    
+    if (data.rows && data.rows[0].elements && data.rows[0].elements[0].status === 'OK') {
+      const element = data.rows[0].elements[0];
+      return {
+        durationMinutes: Math.round(element.duration.value / 60),
+        distanceKm: Math.round(element.distance.value / 1000 * 10) / 10,
+        mode: 'public_transit'
+      };
+    }
+  } catch (error) {
+    console.error('Commute calculation error:', error);
+  }
+
+  // Return estimated data based on distance
+  const distance = calculateDistance(origin.lat, origin.lng, destination.lat, destination.lng);
+  return {
+    durationMinutes: Math.round(distance * 1.5), // Rough estimate
+    distanceKm: Math.round(distance * 10) / 10,
+    mode: 'estimated'
+  };
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(degrees: number): number {
+  return degrees * (Math.PI / 180);
+}
+
+function getCBDCoordinates(state: string) {
+  const cbdLocations: { [key: string]: { lat: number; lng: number } } = {
+    'NSW': { lat: -33.8688, lng: 151.2093 }, // Sydney
+    'VIC': { lat: -37.8136, lng: 144.9631 }, // Melbourne
+    'QLD': { lat: -27.4698, lng: 153.0251 }, // Brisbane
+    'WA': { lat: -31.9505, lng: 115.8605 }, // Perth
+    'SA': { lat: -34.9285, lng: 138.6007 }, // Adelaide
+    'TAS': { lat: -42.8821, lng: 147.3272 }, // Hobart
+    'NT': { lat: -12.4634, lng: 130.8456 }, // Darwin
+    'ACT': { lat: -35.2809, lng: 149.1300 }  // Canberra
+  };
+
+  return cbdLocations[state.toUpperCase()] || cbdLocations['NSW'];
+}
+
+function calculateWalkScore(amenities: any): number {
+  let score = 0;
+  
+  // Transit accessibility (max 30 points)
+  if (amenities.transit.count > 0) {
+    const nearestDistance = amenities.transit.results[0]?.distance || 999;
+    if (nearestDistance < 0.5) score += 30;
+    else if (nearestDistance < 1) score += 20;
+    else if (nearestDistance < 2) score += 10;
+  }
+
+  // Shopping & dining (max 25 points)
+  const commercialScore = Math.min(25, (amenities.shopping.count + amenities.restaurants.count / 2) * 2);
+  score += commercialScore;
+
+  // Schools & education (max 15 points)
+  if (amenities.schools.count > 0) {
+    score += Math.min(15, amenities.schools.count * 3);
+  }
+
+  // Healthcare (max 15 points)
+  if (amenities.healthcare.count > 0) {
+    score += Math.min(15, amenities.healthcare.count * 5);
+  }
+
+  // Recreation & parks (max 15 points)
+  if (amenities.recreation.count > 0) {
+    score += Math.min(15, amenities.recreation.count * 3);
+  }
+
+  return Math.min(100, Math.round(score));
+}
+
+function calculateAmenityScores(amenities: any): AmenityScore[] {
+  const scores: AmenityScore[] = [];
+
+  scores.push({
+    category: 'Public Transport',
+    count: amenities.transit.count,
+    nearest: amenities.transit.results[0]?.name || 'N/A',
+    distance: amenities.transit.results[0]?.distance || 0,
+    score: Math.min(100, amenities.transit.count * 20)
+  });
+
+  scores.push({
+    category: 'Schools',
+    count: amenities.schools.count,
+    nearest: amenities.schools.results[0]?.name || 'N/A',
+    distance: amenities.schools.results[0]?.distance || 0,
+    score: Math.min(100, amenities.schools.count * 10)
+  });
+
+  scores.push({
+    category: 'Healthcare',
+    count: amenities.healthcare.count,
+    nearest: amenities.healthcare.results[0]?.name || 'N/A',
+    distance: amenities.healthcare.results[0]?.distance || 0,
+    score: Math.min(100, amenities.healthcare.count * 15)
+  });
+
+  scores.push({
+    category: 'Shopping',
+    count: amenities.shopping.count,
+    nearest: amenities.shopping.results[0]?.name || 'N/A',
+    distance: amenities.shopping.results[0]?.distance || 0,
+    score: Math.min(100, amenities.shopping.count * 12)
+  });
+
+  scores.push({
+    category: 'Recreation',
+    count: amenities.recreation.count,
+    nearest: amenities.recreation.results[0]?.name || 'N/A',
+    distance: amenities.recreation.results[0]?.distance || 0,
+    score: Math.min(100, amenities.recreation.count * 8)
+  });
+
+  return scores;
+}
+
+function generateMockLocationData(input: LocationIntelligenceInput) {
+  return {
+    coordinates: { lat: -33.8688, lng: 151.2093 },
+    commute: {
+      durationMinutes: Math.floor(Math.random() * 30) + 20,
+      distanceKm: Math.floor(Math.random() * 20) + 5,
+      mode: 'estimated'
+    },
+    walkScore: Math.floor(Math.random() * 40) + 60,
+    amenities: [
+      { category: 'Public Transport', count: 3, nearest: 'Train Station', distance: 0.8, score: 85 },
+      { category: 'Schools', count: 5, nearest: 'Primary School', distance: 1.2, score: 80 },
+      { category: 'Healthcare', count: 2, nearest: 'Medical Centre', distance: 1.5, score: 70 },
+      { category: 'Shopping', count: 4, nearest: 'Shopping Centre', distance: 2.1, score: 75 },
+      { category: 'Recreation', count: 6, nearest: 'Park', distance: 0.5, score: 90 }
+    ],
+    transport: {
+      nearestStation: 'Central Station',
+      distanceToStation: 0.8,
+      stationsWithin2km: 3
+    },
+    schools: {
+      nearestSchool: 'Local Primary School',
+      distanceToSchool: 1.2,
+      schoolsWithin3km: 5,
+      topSchools: [
+        { name: 'Primary School A', distance: 1.2, rating: 4.5 },
+        { name: 'High School B', distance: 2.3, rating: 4.3 },
+        { name: 'Private College C', distance: 2.8, rating: 4.7 }
+      ]
+    },
+    healthcare: {
+      nearestHospital: 'Community Hospital',
+      distanceToHospital: 3.2,
+      facilitiesWithin5km: 2
+    },
+    lifestyle: {
+      shoppingCenters: 4,
+      parks: 6,
+      restaurants: 15,
+      nearestShopping: 'Local Shopping Centre',
+      nearestPark: 'Community Park'
+    }
+  };
+}
