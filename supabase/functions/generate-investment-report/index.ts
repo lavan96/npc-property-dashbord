@@ -162,6 +162,63 @@ serve(async (req) => {
         }
       }
 
+      // Fetch location intelligence data
+      try {
+        const locationResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/location-intelligence-service`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+          },
+          body: JSON.stringify({
+            address: formattedInput,
+            postcode: postcode,
+            state: state
+          })
+        });
+        
+        if (locationResponse.ok) {
+          const locationData = await locationResponse.json();
+          enhancedData = { ...enhancedData, locationIntelligence: locationData.data };
+          console.log('Location intelligence data fetched successfully');
+        }
+      } catch (error) {
+        console.log('Location intelligence fetch failed:', error.message);
+      }
+
+      // Calculate investment score
+      if (propertyDetails?.price) {
+        try {
+          const scoreResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/investment-scoring-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({
+              property: {
+                price: propertyDetails.price,
+                weeklyRent: propertyDetails.weeklyRent || 0,
+                propertyType: propertyDetails.propertyType || 'house',
+                bedrooms: propertyDetails.beds || 3,
+                bathrooms: propertyDetails.baths || 2
+              },
+              demographics: enhancedData.demographics,
+              locationIntelligence: enhancedData.locationIntelligence,
+              financials: enhancedData.financials
+            })
+          });
+          
+          if (scoreResponse.ok) {
+            const scoreData = await scoreResponse.json();
+            enhancedData = { ...enhancedData, investmentScore: scoreData.data };
+            console.log('Investment score calculated successfully');
+          }
+        } catch (error) {
+          console.log('Investment score calculation failed:', error.message);
+        }
+      }
+
     } catch (error) {
       console.log('Enhanced data fetch failed, proceeding with basic analysis:', error.message);
     }
@@ -630,7 +687,12 @@ Produce a full investment report following the structure above, including detail
               property_listing_id: propertyDetails?.id || null,
               report_content: reportContent,
               sources_content: sourcesContent,
-              generated_by: userId
+              generated_by: userId,
+              location_intelligence: enhancedData.locationIntelligence || null,
+              investment_score: enhancedData.investmentScore || null,
+              financial_calculations: enhancedData.financials || null,
+              demographics_data: enhancedData.demographics || null,
+              economic_data: enhancedData.economics || null
             })
             .select()
             .single();
@@ -651,7 +713,14 @@ Produce a full investment report following the structure above, including detail
       reportContent,
       sourcesContent,
       propertyAddress,
-      success: true
+      success: true,
+      enhancedData: {
+        locationIntelligence: enhancedData.locationIntelligence,
+        investmentScore: enhancedData.investmentScore,
+        financials: enhancedData.financials,
+        demographics: enhancedData.demographics,
+        economics: enhancedData.economics
+      }
     };
 
     console.log('Returning successful response');

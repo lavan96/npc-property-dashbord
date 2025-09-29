@@ -29,6 +29,7 @@ export function InvestmentReportModal({
   const [reportId, setReportId] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
   const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
+  const [enhancedData, setEnhancedData] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -55,6 +56,7 @@ export function InvestmentReportModal({
 
       setReportContent(data.reportContent);
       setSourcesContent(data.sourcesContent || '');
+      setEnhancedData(data.enhancedData || null);
       
       // Try to fetch the saved report ID for navigation
       try {
@@ -278,6 +280,7 @@ export function InvestmentReportModal({
     setReportContent('');
     setSourcesContent('');
     setReportId('');
+    setEnhancedData(null);
     setIsGenerating(false);
     setHasStartedGeneration(false);
     setIsCopied(false);

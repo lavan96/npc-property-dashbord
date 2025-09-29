@@ -207,8 +207,13 @@ export type Database = {
       investment_reports: {
         Row: {
           created_at: string
+          demographics_data: Json | null
+          economic_data: Json | null
+          financial_calculations: Json | null
           generated_by: string | null
           id: string
+          investment_score: Json | null
+          location_intelligence: Json | null
           property_address: string
           property_listing_id: string | null
           report_content: string
@@ -217,8 +222,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          demographics_data?: Json | null
+          economic_data?: Json | null
+          financial_calculations?: Json | null
           generated_by?: string | null
           id?: string
+          investment_score?: Json | null
+          location_intelligence?: Json | null
           property_address: string
           property_listing_id?: string | null
           report_content: string
@@ -227,8 +237,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          demographics_data?: Json | null
+          economic_data?: Json | null
+          financial_calculations?: Json | null
           generated_by?: string | null
           id?: string
+          investment_score?: Json | null
+          location_intelligence?: Json | null
           property_address?: string
           property_listing_id?: string | null
           report_content?: string
