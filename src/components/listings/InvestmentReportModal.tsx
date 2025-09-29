@@ -58,20 +58,37 @@ export function InvestmentReportModal({
       setSourcesContent(data.sourcesContent || '');
       setEnhancedData(data.enhancedData || null);
       
-      // Try to fetch the saved report ID for navigation
+      // Save report to database with enhanced data
       try {
-        const { data: reports } = await supabase
-          .from('investment_reports')
-          .select('id')
-          .eq('property_address', propertyAddress)
-          .order('created_at', { ascending: false })
-          .limit(1);
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data: savedReport, error: saveError } = await supabase
+            .from('investment_reports')
+            .insert({
+              property_address: propertyAddress,
+              property_listing_id: propertyDetails?.id || null,
+              report_content: data.reportContent,
+              sources_content: data.sourcesContent || '',
+              generated_by: user.id,
+              location_intelligence: data.enhancedData?.locationIntelligence || null,
+              investment_score: data.enhancedData?.investmentScore || null,
+              financial_calculations: data.enhancedData?.financials || null,
+              demographics_data: data.enhancedData?.demographics || null,
+              economic_data: data.enhancedData?.economics || null
+            })
+            .select()
+            .single();
           
-        if (reports && reports.length > 0) {
-          setReportId(reports[0].id);
+          if (!saveError && savedReport) {
+            setReportId(savedReport.id);
+            console.log('Report saved with ID:', savedReport.id);
+          } else if (saveError) {
+            console.error('Error saving report:', saveError);
+          }
         }
       } catch (error) {
-        console.log('Could not fetch report ID:', error);
+        console.log('Could not save report to database:', error);
       }
       
       toast({

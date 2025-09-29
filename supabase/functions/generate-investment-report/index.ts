@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +83,16 @@ serve(async (req) => {
 
     // Fetch enhanced data from multiple sources
     console.log('Fetching enhanced data from multiple APIs...');
-    let enhancedData = {};
+    
+    interface EnhancedData {
+      demographics?: any;
+      economics?: any;
+      financials?: any;
+      locationIntelligence?: any;
+      investmentScore?: any;
+    }
+    
+    let enhancedData: EnhancedData = {};
     
     try {
       // Extract postcode and state from address for API calls
@@ -109,8 +117,8 @@ serve(async (req) => {
           enhancedData = { ...enhancedData, demographics: absData.data };
           console.log('ABS data fetched successfully');
         }
-      } catch (error) {
-        console.log('ABS data fetch failed, using estimates:', error.message);
+      } catch (error: any) {
+        console.log('ABS data fetch failed, using estimates:', error?.message || 'Unknown error');
       }
 
       // Fetch RBA economic data
@@ -128,8 +136,8 @@ serve(async (req) => {
           enhancedData = { ...enhancedData, economics: rbaData.data };
           console.log('RBA data fetched successfully');
         }
-      } catch (error) {
-        console.log('RBA data fetch failed, using estimates:', error.message);
+      } catch (error: any) {
+        console.log('RBA data fetch failed, using estimates:', error?.message || 'Unknown error');
       }
 
       // Calculate financial projections if property details available
@@ -157,8 +165,8 @@ serve(async (req) => {
             enhancedData = { ...enhancedData, financials: financialData.data };
             console.log('Financial calculations completed successfully');
           }
-        } catch (error) {
-          console.log('Financial calculations failed:', error.message);
+        } catch (error: any) {
+          console.log('Financial calculations failed:', error?.message || 'Unknown error');
         }
       }
 
@@ -182,8 +190,8 @@ serve(async (req) => {
           enhancedData = { ...enhancedData, locationIntelligence: locationData.data };
           console.log('Location intelligence data fetched successfully');
         }
-      } catch (error) {
-        console.log('Location intelligence fetch failed:', error.message);
+      } catch (error: any) {
+        console.log('Location intelligence fetch failed:', error?.message || 'Unknown error');
       }
 
       // Calculate investment score
@@ -214,13 +222,13 @@ serve(async (req) => {
             enhancedData = { ...enhancedData, investmentScore: scoreData.data };
             console.log('Investment score calculated successfully');
           }
-        } catch (error) {
-          console.log('Investment score calculation failed:', error.message);
+        } catch (error: any) {
+          console.log('Investment score calculation failed:', error?.message || 'Unknown error');
         }
       }
 
-    } catch (error) {
-      console.log('Enhanced data fetch failed, proceeding with basic analysis:', error.message);
+    } catch (error: any) {
+      console.log('Enhanced data fetch failed, proceeding with basic analysis:', error?.message || 'Unknown error');
     }
 
     // Create enhanced prompt with additional data
@@ -533,10 +541,10 @@ Produce a full investment report following the structure above, including detail
           ]
         }),
       });
-    } catch (fetchError) {
+    } catch (fetchError: any) {
       console.error('Network error calling Perplexity API:', fetchError);
       return new Response(JSON.stringify({ 
-        error: `Failed to connect to Perplexity API: ${fetchError.message}`,
+        error: `Failed to connect to Perplexity API: ${fetchError?.message || 'Network error'}`,
         success: false 
       }), {
         status: 500,
@@ -636,7 +644,7 @@ Produce a full investment report following the structure above, including detail
       
       if (citations.length > 0) {
         sourcesContent += '### Citations:\n';
-        citations.forEach((citation, index) => {
+        citations.forEach((citation: any, index: number) => {
           sourcesContent += `${index + 1}. ${citation.url || citation.title || citation}\n`;
         });
         sourcesContent += '\n';
@@ -644,7 +652,7 @@ Produce a full investment report following the structure above, including detail
       
       if (searchResults.length > 0) {
         sourcesContent += '### Additional Sources:\n';
-        searchResults.forEach((result, index) => {
+        searchResults.forEach((result: any, index: number) => {
           const title = result.title || 'Source';
           const url = result.url || '';
           sourcesContent += `${index + 1}. [${title}](${url})\n`;
@@ -656,57 +664,8 @@ Produce a full investment report following the structure above, including detail
     console.log('Citations found:', citations.length);
     console.log('Search results found:', searchResults.length);
 
-    // Try to save to database (optional, don't fail if this doesn't work)
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      
-      if (supabaseUrl && supabaseKey) {
-        console.log('Attempting to save report to database...');
-        const supabase = createClient(supabaseUrl, supabaseKey);
-
-        const authHeader = req.headers.get('authorization');
-        let userId = null;
-        
-        if (authHeader) {
-          try {
-            const token = authHeader.replace('Bearer ', '');
-            const { data: { user } } = await supabase.auth.getUser(token);
-            userId = user?.id;
-            console.log('User ID extracted:', !!userId);
-          } catch (authError) {
-            console.log('Could not get user from token:', authError);
-          }
-        }
-
-        if (userId) {
-          const { data: savedReport, error: saveError } = await supabase
-            .from('investment_reports')
-            .insert({
-              property_address: propertyAddress,
-              property_listing_id: propertyDetails?.id || null,
-              report_content: reportContent,
-              sources_content: sourcesContent,
-              generated_by: userId,
-              location_intelligence: enhancedData.locationIntelligence || null,
-              investment_score: enhancedData.investmentScore || null,
-              financial_calculations: enhancedData.financials || null,
-              demographics_data: enhancedData.demographics || null,
-              economic_data: enhancedData.economics || null
-            })
-            .select()
-            .single();
-
-          if (saveError) {
-            console.error('Error saving report to database:', saveError);
-          } else {
-            console.log('Report saved successfully with ID:', savedReport.id);
-          }
-        }
-      }
-    } catch (dbError) {
-      console.error('Database save failed (continuing anyway):', dbError);
-    }
+    // Database save will be handled client-side
+    console.log('Report generation complete, returning response');
 
     // Return successful response
     const responseData = { 
@@ -729,12 +688,12 @@ Produce a full investment report following the structure above, including detail
       status: 200
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in generate-investment-report function:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Error stack:', error?.stack);
     
     const errorResponse = { 
-      error: error.message || 'An unexpected error occurred',
+      error: error?.message || 'An unexpected error occurred',
       success: false,
       timestamp: new Date().toISOString()
     };
