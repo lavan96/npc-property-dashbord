@@ -131,7 +131,8 @@ ${chart.type === 'line' ? 'Include data point markers and grid lines' : ''}`;
       } catch (imageError) {
         console.error(`Error processing image for chart "${chart.title}":`, imageError);
         // Create fallback
-        const fallbackText = `Chart: ${chart.title}\nError: ${imageError.message}`;
+        const errorMsg = imageError instanceof Error ? imageError.message : 'Unknown error';
+        const fallbackText = `Chart: ${chart.title}\nError: ${errorMsg}`;
         const encodedFallback = btoa(fallbackText);
         const chartKey = chart.title.toLowerCase().replace(/[^a-z0-9]/g, '_');
         chartImages[chartKey] = `data:text/plain;base64,${encodedFallback}`;
@@ -157,8 +158,9 @@ ${chart.type === 'line' ? 'Include data point markers and grid lines' : ''}`;
 
   } catch (error) {
     console.error('Error in generate-chart-images function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: errorMessage,
       details: 'Failed to generate chart images'
     }), {
       status: 500,

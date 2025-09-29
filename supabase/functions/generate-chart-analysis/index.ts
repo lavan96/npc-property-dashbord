@@ -111,7 +111,7 @@ function processChartData(chartData: any): ProcessedChartData {
       
       if (data[0] && data[0].data && Array.isArray(data[0].data)) {
         // Handle line chart with nested data structure
-        values = data[0].data.map(point => {
+        values = data[0].data.map((point: any) => {
           const val = point.y || point.value || 0;
           return typeof val === 'number' ? val : parseInt(val) || 0;
         });
@@ -429,8 +429,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in generate-chart-analysis function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: errorMessage,
       success: false 
     }), {
       status: 500,

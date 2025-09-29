@@ -28,8 +28,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in RBA data service:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch RBA data';
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to fetch RBA data',
+      error: errorMessage,
       success: false 
     }), {
       status: 500,

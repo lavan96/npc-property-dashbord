@@ -50,8 +50,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in financial calculator service:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to calculate financial projections';
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to calculate financial projections',
+      error: errorMessage,
       success: false 
     }), {
       status: 500,

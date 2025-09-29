@@ -62,8 +62,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in location intelligence service:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to analyze location';
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to analyze location',
+      error: errorMessage,
       success: false 
     }), {
       status: 500,
@@ -73,11 +74,13 @@ serve(async (req) => {
 });
 
 async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKey: string) {
-  let coordinates = { lat: input.lat, lng: input.lng };
+  let coordinates: { lat: number; lng: number };
 
   // Get coordinates from address if not provided
-  if (!coordinates.lat || !coordinates.lng) {
+  if (!input.lat || !input.lng) {
     coordinates = await geocodeAddress(input.address, apiKey);
+  } else {
+    coordinates = { lat: input.lat, lng: input.lng };
   }
 
   console.log('Coordinates:', coordinates);
@@ -136,7 +139,7 @@ async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKe
       nearestSchool: schoolsData.results[0]?.name || 'N/A',
       distanceToSchool: schoolsData.results[0]?.distance || 0,
       schoolsWithin3km: schoolsData.count,
-      topSchools: schoolsData.results.slice(0, 5).map(s => ({
+      topSchools: schoolsData.results.slice(0, 5).map((s: any) => ({
         name: s.name,
         distance: s.distance,
         rating: s.rating
@@ -218,7 +221,7 @@ async function fetchNearbyPlaces(
 
     return {
       count: results.length,
-      results: results.sort((a, b) => a.distance - b.distance)
+      results: results.sort((a: any, b: any) => a.distance - b.distance)
     };
   } catch (error) {
     console.error(`Error fetching ${type}:`, error);

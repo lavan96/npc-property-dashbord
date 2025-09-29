@@ -339,7 +339,7 @@ Deno.serve(async (req) => {
     
     // First pass: Calculate enrichment scores
     for (const record of transformedRecords) {
-      record.enrichmentScore = calculateEnrichmentScore(record);
+      (record as any).enrichmentScore = calculateEnrichmentScore(record);
     }
     
     // Second pass: Group similar listings
@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
         duplicatesFound += records.length - 1;
         
         // Sort by enrichment score (highest first), then by creation date (newest first)
-        records.sort((a, b) => {
+        records.sort((a: any, b: any) => {
           const scoreDiff = b.enrichmentScore - a.enrichmentScore;
           if (scoreDiff !== 0) return scoreDiff;
           
@@ -417,7 +417,7 @@ Deno.serve(async (req) => {
         });
         
         const selected = records[0];
-        const scores = records.map(r => r.enrichmentScore).join(', ');
+        const scores = records.map((r: any) => r.enrichmentScore).join(', ');
         console.log(`Duplicate group "${key.substring(0, 50)}...": ${records.length} records (scores: ${scores}), selected score ${selected.enrichmentScore}`);
       }
       
@@ -444,10 +444,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Unexpected error in airtable-proxy:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message 
+        details: errorMessage 
       }),
       { 
         status: 500, 
