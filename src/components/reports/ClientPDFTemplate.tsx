@@ -32,7 +32,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
     return (
       <div ref={ref} style={{ width: '210mm', background: 'white' }}>
         {/* Page 1: Cover */}
-        <div style={{
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -104,8 +104,8 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           </p>
         </div>
 
-        {/* Page 2: Location & Profile */}
-        <div style={{
+      {/* Page 2: Location & Profile */}
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -208,8 +208,8 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           }} />
         </div>
 
-        {/* Page 3: Property Market */}
-        <div style={{
+      {/* Page 3: Property Market */}
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -289,8 +289,8 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           </div>
         </div>
 
-        {/* Page 4: Market Performance */}
-        <div style={{
+      {/* Page 4: Market Performance */}
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -347,8 +347,8 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           </div>
         </div>
 
-        {/* Page 5: Demographics */}
-        <div style={{
+      {/* Page 5: Demographics */}
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -405,8 +405,8 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           </div>
         </div>
 
-        {/* Page 6: Infrastructure */}
-        <div style={{
+      {/* Page 6: Infrastructure */}
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -463,8 +463,8 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           </div>
         </div>
 
-        {/* Page 7: Investment Insights */}
-        <div style={{
+      {/* Page 7: Investment Insights */}
+      <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -543,7 +543,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
         </div>
 
         {/* Page 8: Contact */}
-        <div style={{
+        <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
           background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',

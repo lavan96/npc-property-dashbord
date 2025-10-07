@@ -165,17 +165,30 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
             investmentScore={report.investment_score?.score}
           />
         );
-        setTimeout(resolve, 1000); // Give time for rendering
+        setTimeout(resolve, 2000); // Give time for rendering
       });
 
       // Convert to PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pages = container.querySelectorAll('[style*="pageBreakAfter"]');
+      const pages = container.querySelectorAll('.pdf-page');
       
-      console.log(`Rendering ${pages.length} pages...`);
+      if (pages.length === 0) {
+        throw new Error('No PDF pages found in template');
+      }
+      
+      console.log(`Found ${pages.length} pages to render`);
+
+      // Make container visible for proper rendering
+      container.style.position = 'fixed';
+      container.style.left = '0';
+      container.style.top = '0';
+      container.style.opacity = '0';
+      container.style.zIndex = '-1';
 
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
+        
+        console.log(`Capturing page ${i + 1}...`);
         
         const canvas = await html2canvas(page, {
           scale: 2,
@@ -183,9 +196,16 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
           allowTaint: true,
           backgroundColor: '#1a1a1a',
           logging: false,
+          width: 794,
+          height: 1123,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        if (canvas.width === 0 || canvas.height === 0) {
+          console.error(`Canvas ${i + 1} has zero dimensions`);
+          continue;
+        }
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
         
         if (i > 0) {
           pdf.addPage();
@@ -193,9 +213,9 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
         
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
+        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
         
-        console.log(`Rendered page ${i + 1}/${pages.length}`);
+        console.log(`Page ${i + 1} rendered successfully`);
       }
 
       // Cleanup
