@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link } from 'lucide-react';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
+import { ClientPDFGenerator } from './ClientPDFGenerator';
 
 interface InvestmentReport {
   id: string;
@@ -222,7 +223,10 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                 </div>
               </CardHeader>
               <Separator />
-              <CardContent className="p-0 flex-1 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-4 border-b bg-muted/50">
+                  <ClientPDFGenerator report={report} />
+                </div>
                 <ScrollArea className="h-[600px] p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown 

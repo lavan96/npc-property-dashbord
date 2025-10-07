@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
+import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { format } from 'date-fns';
 import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -337,36 +338,39 @@ export default function GeneratedReports() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewInvestmentReport(report)}
-                        className="flex-1"
-                      >
-                        <Eye className="mr-1 h-3 w-3" />
-                        View
-                      </Button>
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        onClick={() => {
-                          // Download as text or PDF
-                          const blob = new Blob([report.report_content], { type: 'text/plain' });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `investment-report-${report.property_address.replace(/[^a-zA-Z0-9]/g, '-')}-${format(new Date(report.created_at), 'yyyy-MM-dd')}.txt`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
-                        }}
-                        className="flex-1"
-                      >
-                        <Download className="mr-1 h-3 w-3" />
-                        Download
-                      </Button>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleViewInvestmentReport(report)}
+                          className="flex-1"
+                        >
+                          <Eye className="mr-1 h-3 w-3" />
+                          View
+                        </Button>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          onClick={() => {
+                            // Download as text or PDF
+                            const blob = new Blob([report.report_content], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `investment-report-${report.property_address.replace(/[^a-zA-Z0-9]/g, '-')}-${format(new Date(report.created_at), 'yyyy-MM-dd')}.txt`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="flex-1"
+                        >
+                          <Download className="mr-1 h-3 w-3" />
+                          Download
+                        </Button>
+                      </div>
+                      <ClientPDFGenerator report={report} />
                     </div>
                   </CardContent>
                 </Card>
