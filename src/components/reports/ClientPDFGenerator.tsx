@@ -120,8 +120,12 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       yPos += 10;
 
       // Extract profile from report content
-      const profileText = sections['Property Overview'] || sections['Location Profile'] || 
-                         report.location_intelligence?.description || 'Profile data not available';
+      const profileText = String(
+        sections['Property Overview'] || 
+        sections['Location Profile'] || 
+        report.location_intelligence?.description || 
+        'Profile data not available'
+      );
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -175,8 +179,11 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       doc.text('MARKET PERFORMANCE', margin, yPos);
       yPos += 15;
 
-      const performanceText = sections['Market Analysis'] || sections['Investment Potential'] || 
-                             'Market performance data being collected from enhanced APIs';
+      const performanceText = String(
+        sections['Market Analysis'] || 
+        sections['Investment Potential'] || 
+        'Market performance data being collected from enhanced APIs'
+      );
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -195,10 +202,12 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       yPos += 15;
 
       const demographics = report.demographics_data || {};
-      const demoText = sections['Demographics'] || 
-                      `Population: ${demographics.population || 'N/A'}\n` +
-                      `Median Age: ${demographics.medianAge || 'N/A'}\n` +
-                      `Household Types: ${demographics.householdTypes || 'Data available via enhanced APIs'}`;
+      const demoText = String(
+        sections['Demographics'] || 
+        `Population: ${demographics.population || 'N/A'}\n` +
+        `Median Age: ${demographics.medianAge || 'N/A'}\n` +
+        `Household Types: ${demographics.householdTypes || 'Data available via enhanced APIs'}`
+      );
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -216,9 +225,14 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       doc.text('INFRASTRUCTURE & AMENITIES', margin, yPos);
       yPos += 15;
 
-      const infraText = sections['Infrastructure'] || sections['Location Profile'] ||
-                       report.location_intelligence?.amenities || 
-                       'Infrastructure details available in full report';
+      const infraText = String(
+        sections['Infrastructure'] || 
+        sections['Location Profile'] ||
+        (typeof report.location_intelligence?.amenities === 'string' 
+          ? report.location_intelligence.amenities 
+          : JSON.stringify(report.location_intelligence?.amenities || {})) ||
+        'Infrastructure details available in full report'
+      );
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
@@ -236,8 +250,11 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       doc.text('KEY INVESTOR INSIGHTS', margin, yPos);
       yPos += 15;
 
-      const insights = sections['Investment Recommendation'] || sections['Conclusion'] ||
-                      'Investment insights based on comprehensive market analysis';
+      const insights = String(
+        sections['Investment Recommendation'] || 
+        sections['Conclusion'] ||
+        'Investment insights based on comprehensive market analysis'
+      );
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
