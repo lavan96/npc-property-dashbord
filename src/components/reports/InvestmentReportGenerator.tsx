@@ -23,6 +23,14 @@ export function InvestmentReportGenerator() {
   const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<string>('');
+  
+  // Property details state
+  const [propertyPrice, setPropertyPrice] = useState('');
+  const [weeklyRent, setWeeklyRent] = useState('');
+  const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'townhouse'>('house');
+  const [beds, setBeds] = useState('');
+  const [baths, setBaths] = useState('');
+  
   const { toast } = useToast();
 
   const handleGenerate = async () => {
@@ -53,10 +61,23 @@ export function InvestmentReportGenerator() {
           break;
       }
 
+      // Build property details object
+      const propertyDetails: any = { 
+        queryType, 
+        originalQuery: query 
+      };
+      
+      // Add optional property details if provided
+      if (propertyPrice) propertyDetails.price = parseFloat(propertyPrice);
+      if (weeklyRent) propertyDetails.weeklyRent = parseFloat(weeklyRent);
+      if (propertyType) propertyDetails.propertyType = propertyType;
+      if (beds) propertyDetails.beds = parseInt(beds);
+      if (baths) propertyDetails.baths = parseInt(baths);
+
       const { data, error } = await supabase.functions.invoke('generate-investment-report', {
         body: {
           propertyAddress,
-          propertyDetails: { queryType, originalQuery: query }
+          propertyDetails
         }
       });
 
@@ -231,6 +252,83 @@ export function InvestmentReportGenerator() {
                   placeholder={getQueryTypePlaceholder()}
                   disabled={isGenerating}
                 />
+              </div>
+
+              <Separator />
+
+              {/* Property Details - Optional but Recommended */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Property Details (Optional)</Label>
+                  <Badge variant="outline" className="text-xs">Enhances Analysis</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Providing these details enables financial calculations, investment scoring, and location intelligence.
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyPrice">Property Price ($)</Label>
+                    <Input
+                      id="propertyPrice"
+                      type="number"
+                      value={propertyPrice}
+                      onChange={(e) => setPropertyPrice(e.target.value)}
+                      placeholder="e.g., 750000"
+                      disabled={isGenerating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="weeklyRent">Weekly Rent ($)</Label>
+                    <Input
+                      id="weeklyRent"
+                      type="number"
+                      value={weeklyRent}
+                      onChange={(e) => setWeeklyRent(e.target.value)}
+                      placeholder="e.g., 550"
+                      disabled={isGenerating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyType">Property Type</Label>
+                    <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="house">House</SelectItem>
+                        <SelectItem value="apartment">Apartment</SelectItem>
+                        <SelectItem value="townhouse">Townhouse</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="beds">Bedrooms</Label>
+                    <Input
+                      id="beds"
+                      type="number"
+                      value={beds}
+                      onChange={(e) => setBeds(e.target.value)}
+                      placeholder="e.g., 3"
+                      disabled={isGenerating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="baths">Bathrooms</Label>
+                    <Input
+                      id="baths"
+                      type="number"
+                      value={baths}
+                      onChange={(e) => setBaths(e.target.value)}
+                      placeholder="e.g., 2"
+                      disabled={isGenerating}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Info Box */}

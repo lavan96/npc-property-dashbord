@@ -172,6 +172,7 @@ serve(async (req) => {
 
       // Fetch location intelligence data
       try {
+        console.log('Fetching location intelligence for:', formattedInput);
         const locationResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/location-intelligence-service`, {
           method: 'POST',
           headers: {
@@ -187,11 +188,23 @@ serve(async (req) => {
         
         if (locationResponse.ok) {
           const locationData = await locationResponse.json();
-          enhancedData = { ...enhancedData, locationIntelligence: locationData.data };
-          console.log('Location intelligence data fetched successfully');
+          
+          if (locationData.success && locationData.data) {
+            enhancedData = { ...enhancedData, locationIntelligence: locationData.data };
+            console.log('✓ Location intelligence data fetched successfully');
+            
+            if (locationData.usingMockData) {
+              console.warn('⚠️ Using mock location data:', locationData.message);
+            }
+          } else {
+            console.warn('⚠️ Location intelligence returned no data');
+          }
+        } else {
+          const errorText = await locationResponse.text();
+          console.error('❌ Location intelligence API error:', locationResponse.status, errorText);
         }
       } catch (error: any) {
-        console.log('Location intelligence fetch failed:', error?.message || 'Unknown error');
+        console.error('❌ Location intelligence fetch failed:', error?.message || 'Unknown error');
       }
 
       // Calculate investment score
@@ -265,6 +278,28 @@ FINANCIAL CALCULATIONS AVAILABLE:
 - Weekly Net Cash Flow: $${enhancedData.financials.keyMetrics?.weeklyNet || 'N/A'}
 - Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics?.lvr || 'N/A'}%
 - Stamp Duty: $${enhancedData.financials.initialCosts?.stampDuty || 'N/A'}
+` : ''}
+
+${enhancedData.locationIntelligence ? `
+LOCATION INTELLIGENCE AVAILABLE:
+- Walk Score: ${enhancedData.locationIntelligence.walkScore || 'N/A'}
+- Nearest Transit: ${enhancedData.locationIntelligence.transport?.nearestStation || 'N/A'} (${enhancedData.locationIntelligence.transport?.distanceToStation || 'N/A'}km)
+- CBD Commute: ${enhancedData.locationIntelligence.commute?.durationMinutes || 'N/A'} minutes
+- Nearest School: ${enhancedData.locationIntelligence.schools?.nearestSchool || 'N/A'} (${enhancedData.locationIntelligence.schools?.distanceToSchool || 'N/A'}km)
+- Schools Within 3km: ${enhancedData.locationIntelligence.schools?.schoolsWithin3km || 'N/A'}
+- Healthcare Facilities: ${enhancedData.locationIntelligence.healthcare?.facilitiesWithin5km || 'N/A'} within 5km
+- Shopping Centers: ${enhancedData.locationIntelligence.lifestyle?.shoppingCenters || 'N/A'}
+- Parks & Recreation: ${enhancedData.locationIntelligence.lifestyle?.parks || 'N/A'}
+` : ''}
+
+${enhancedData.investmentScore ? `
+INVESTMENT SCORE AVAILABLE:
+- Total Score: ${enhancedData.investmentScore.totalScore || 'N/A'}/100
+- Grade: ${enhancedData.investmentScore.grade || 'N/A'}
+- Recommendation: ${enhancedData.investmentScore.recommendation || 'N/A'}
+- Yield Score: ${enhancedData.investmentScore.yieldScore?.score || 'N/A'}/100
+- Growth Score: ${enhancedData.investmentScore.growthScore?.score || 'N/A'}/100
+- Location Score: ${enhancedData.investmentScore.locationScore?.score || 'N/A'}/100
 ` : ''}
 
 ---

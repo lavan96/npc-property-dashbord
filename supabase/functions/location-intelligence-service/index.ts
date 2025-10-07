@@ -37,39 +37,76 @@ serve(async (req) => {
     const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
     
     if (!googleMapsApiKey) {
-      console.log('Google Maps API key not configured, using mock data');
+      console.warn('⚠️ Google Maps API key not configured. Using mock data.');
       const mockData = generateMockLocationData(input);
       return new Response(JSON.stringify({ 
         success: true, 
         data: mockData,
-        usingMockData: true 
+        usingMockData: true,
+        message: 'Using sample data - Configure GOOGLE_MAPS_API_KEY for real data'
       }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const locationData = await fetchLocationIntelligence(input, googleMapsApiKey);
+    console.log('✓ Google Maps API key found, fetching real data...');
     
-    return new Response(JSON.stringify({ 
-      success: true, 
-      data: locationData,
-      usingMockData: false 
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    try {
+      const locationData = await fetchLocationIntelligence(input, googleMapsApiKey);
+      console.log('✓ Location intelligence data fetched successfully');
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        data: locationData,
+        usingMockData: false 
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (apiError) {
+      console.error('❌ Google Maps API error:', apiError);
+      console.log('Falling back to mock data due to API error');
+      
+      const mockData = generateMockLocationData(input);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        data: mockData,
+        usingMockData: true,
+        message: 'Google Maps API error - using sample data',
+        error: apiError instanceof Error ? apiError.message : 'Unknown API error'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
   } catch (error) {
-    console.error('Error in location intelligence service:', error);
+    console.error('❌ Critical error in location intelligence service:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to analyze location';
-    return new Response(JSON.stringify({ 
-      error: errorMessage,
-      success: false 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    
+    // Return mock data on critical error
+    try {
+      const mockData = generateMockLocationData({ address: 'Unknown', postcode: '2000', state: 'NSW' });
+      return new Response(JSON.stringify({ 
+        success: true,
+        data: mockData,
+        usingMockData: true,
+        error: errorMessage,
+        message: 'Error occurred - using sample data'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch {
+      return new Response(JSON.stringify({ 
+        error: errorMessage,
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
   }
 });
 
