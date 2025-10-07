@@ -272,13 +272,20 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Calculate PDF dimensions based on the first page's actual rendered size
       const firstPage = pages[0] as HTMLElement;
-      const pageWidth = firstPage.offsetWidth;
-      const pageHeight = firstPage.offsetHeight;
+      let pageWidth = firstPage.offsetWidth;
+      let pageHeight = firstPage.offsetHeight;
+      
+      // Fallback to A4 size if dimensions are invalid
+      if (!pageWidth || !pageHeight || pageWidth <= 0 || pageHeight <= 0) {
+        console.warn('Invalid page dimensions, using A4 fallback');
+        pageWidth = 794;  // A4 width in pixels at 96 DPI
+        pageHeight = 1123; // A4 height in pixels at 96 DPI
+      }
       
       // Convert pixels to mm (assuming 96 DPI: 1 inch = 25.4mm, 96px = 25.4mm)
       const pxToMm = 25.4 / 96;
-      const pdfWidthMm = pageWidth * pxToMm;
-      const pdfHeightMm = pageHeight * pxToMm;
+      const pdfWidthMm = Math.max(pageWidth * pxToMm, 10); // Ensure minimum 10mm
+      const pdfHeightMm = Math.max(pageHeight * pxToMm, 10); // Ensure minimum 10mm
 
       // Create PDF with dimensions matching the template
       const pdf = new jsPDF({
