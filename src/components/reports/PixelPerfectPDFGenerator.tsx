@@ -190,11 +190,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const response = await fetch('/templates/npc_suburb_snapshot_pixel_perfect.html');
       const htmlContent = await response.text();
 
-      // Create a temporary container
+      // Create a temporary container with proper styling for rendering
       const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
+      container.style.position = 'fixed';
+      container.style.left = '0';
       container.style.top = '0';
+      container.style.width = 'auto';
+      container.style.height = 'auto';
+      container.style.zIndex = '-9999';
+      container.style.visibility = 'hidden';
+      container.style.pointerEvents = 'none';
       container.innerHTML = htmlContent;
       document.body.appendChild(container);
 
@@ -259,8 +264,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         }
       });
 
-      // Wait for any fonts/images to load
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for fonts, images, and layout to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Find all pages in the template - pdf2htmlEX uses .pf class for page frames
       const pages = container.querySelectorAll('.pf, .page, [data-page], .pdf-page');
@@ -272,8 +277,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Calculate PDF dimensions based on the first page's actual rendered size
       const firstPage = pages[0] as HTMLElement;
+      
+      // Force layout recalculation
+      firstPage.offsetHeight;
+      
       let pageWidth = firstPage.offsetWidth;
       let pageHeight = firstPage.offsetHeight;
+      
+      console.log('Page dimensions:', { pageWidth, pageHeight });
       
       // Fallback to A4 size if dimensions are invalid
       if (!pageWidth || !pageHeight || pageWidth <= 0 || pageHeight <= 0) {
@@ -286,6 +297,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const pxToMm = 25.4 / 96;
       const pdfWidthMm = Math.max(pageWidth * pxToMm, 10); // Ensure minimum 10mm
       const pdfHeightMm = Math.max(pageHeight * pxToMm, 10); // Ensure minimum 10mm
+
+      console.log('PDF dimensions (mm):', { pdfWidthMm, pdfHeightMm });
 
       // Create PDF with dimensions matching the template
       const pdf = new jsPDF({
