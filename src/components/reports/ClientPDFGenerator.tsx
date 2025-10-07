@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
-import { ClientPDFTemplate } from './ClientPDFTemplate';
+import { HybridPDFTemplate } from './HybridPDFTemplate';
 import { createRoot } from 'react-dom/client';
 
 interface InvestmentReportData {
@@ -176,7 +176,7 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       
       await new Promise<void>((resolve) => {
         root.render(
-          <ClientPDFTemplate
+          <HybridPDFTemplate
             suburb={suburb}
             state={state}
             profileContent={profileContent}
