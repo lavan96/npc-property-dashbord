@@ -159,10 +159,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       // Wait for any fonts/images to load
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Find all pages in the template
-      const pages = container.querySelectorAll('.page, [data-page], .pdf-page');
+      // Find all pages in the template - pdf2htmlEX uses .pf class for page frames
+      const pages = container.querySelectorAll('.pf, .page, [data-page], .pdf-page');
       
       if (pages.length === 0) {
+        console.error('No pages found. Available classes:', container.querySelector('*')?.className);
         throw new Error('No pages found in template');
       }
 
