@@ -68,6 +68,27 @@ export function InvestmentReportGenerator() {
         throw new Error('No report content received');
       }
 
+      // Save the report to the database
+      const { data: session } = await supabase.auth.getSession();
+      const { error: insertError } = await supabase
+        .from('investment_reports')
+        .insert({
+          property_address: propertyAddress,
+          report_content: data.reportContent,
+          sources_content: data.sourcesContent || null,
+          demographics_data: data.enhancedData?.demographics || null,
+          economic_data: data.enhancedData?.economics || null,
+          financial_calculations: data.enhancedData?.financial || null,
+          investment_score: data.enhancedData?.investmentScore || null,
+          location_intelligence: data.enhancedData?.location || null,
+          generated_by: session?.session?.user?.id || null,
+        });
+
+      if (insertError) {
+        console.error('Error saving report:', insertError);
+        throw new Error('Report generated but failed to save to database');
+      }
+
       setGeneratedReport(data.reportContent);
       setShowResults(true);
       
@@ -76,7 +97,7 @@ export function InvestmentReportGenerator() {
 
       toast({
         title: "Report Generated Successfully",
-        description: "Your investment analysis has been completed.",
+        description: "Your investment analysis has been completed and saved.",
       });
 
     } catch (error) {
