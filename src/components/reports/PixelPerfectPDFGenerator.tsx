@@ -44,11 +44,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     let currentContent: string[] = [];
 
     for (const line of lines) {
-      if (line.startsWith('##')) {
+      // Match markdown headers (## or #)
+      if (line.match(/^#{1,2}\s+/)) {
         if (currentSection && currentContent.length > 0) {
           sections[currentSection] = currentContent.join('\n').trim();
         }
-        currentSection = line.replace(/^##\s*/, '').trim();
+        // Extract section title, remove numbers like "1. ", "2. ", etc.
+        currentSection = line.replace(/^#{1,2}\s+/, '').replace(/^\d+\.\s+/, '').trim();
         currentContent = [];
       } else if (currentSection && line.trim()) {
         currentContent.push(line);
@@ -75,20 +77,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     return '';
   };
 
-  const extractMarketData = (enhancedData: any) => {
+  const extractMarketData = (sections: Record<string, string>, enhancedData: any) => {
     const domainData = enhancedData?.domainData || {};
     const financialData = enhancedData?.financialData || {};
     const investmentScore = enhancedData?.investmentScore || {};
     const absData = enhancedData?.absData || {};
     const locationData = enhancedData?.locationData || {};
 
+    // Extract data from Market KPIs section
+    const marketSection = findSection(sections, ['Market KPIs', 'Market Performance', 'Current Market Conditions']);
+    const medianPriceMatch = marketSection.match(/Median (?:House )?Price[:\s]+\$?([\d,]+)/i);
+    const rentalYieldMatch = marketSection.match(/Gross (?:Rental )?Yield[:\s]+(\d+\.?\d*)%/i);
+    const growthMatch = marketSection.match(/Annual (?:Capital )?Growth[:\s]+(-?\d+\.?\d*)%/i);
+    
+    // Extract demographics
+    const demoSection = findSection(sections, ['Demographics & Demand Drivers', 'Demographics', 'Population']);
+    const populationMatch = demoSection.match(/(?:Current )?Population[:\s]+(\d+)/i);
+    const incomeMatch = demoSection.match(/Median (?:Household )?Income[:\s]+\$?([\d,]+)/i);
+
     return {
-      medianPrice: domainData.medianPrice || financialData.propertyValue || 'N/A',
-      rentalYield: financialData.rentalYield || investmentScore.cashFlowScore || 'N/A',
-      growthRate: domainData.growthRate || investmentScore.capitalGrowthScore || 'N/A',
-      population: absData.population || domainData.population || 'N/A',
-      medianAge: absData.medianAge || domainData.medianAge || 'N/A',
-      medianIncome: absData.medianIncome || domainData.medianIncome || 'N/A',
+      medianPrice: medianPriceMatch ? medianPriceMatch[1] : (domainData.medianPrice || financialData.propertyValue || 'N/A'),
+      rentalYield: rentalYieldMatch ? rentalYieldMatch[1] : (financialData.rentalYield || investmentScore.cashFlowScore || 'N/A'),
+      growthRate: growthMatch ? growthMatch[1] : (domainData.growthRate || investmentScore.capitalGrowthScore || 'N/A'),
+      population: populationMatch ? populationMatch[1] : (absData.population || domainData.population || 'N/A'),
+      medianIncome: incomeMatch ? incomeMatch[1] : (absData.medianIncome || domainData.medianIncome || 'N/A'),
       demographics: absData.demographics || {},
       infrastructure: locationData.nearbyAmenities || locationData.infrastructure || {},
     };
@@ -119,9 +131,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     });
   };
 
-  const replaceContentSection = (container: HTMLElement, sectionMarker: string, content: string) => {
-    // Find elements that might contain the section content
-    // This will look for divs or text elements that contain section identifiers
+  const replaceContentSection = (container: HTMLElement, sectionIdentifiers: string[], content: string, maxLength = 800) => {
+    if (!content) return;
+
+    // Clean the content - remove markdown, bullets, excess whitespace
+    const cleanContent = content
+      .replace(/[#*•\-]/g, ' ')
+      .replace(/\n+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, maxLength);
+
     const walker = document.createTreeWalker(
       container,
       NodeFilter.SHOW_TEXT,
@@ -134,11 +154,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     while ((node = walker.nextNode())) {
       const textNode = node as Text;
       const text = textNode.nodeValue || '';
+      const lowerText = text.toLowerCase();
       
-      // Look for section markers or placeholder content
-      if (text.includes(sectionMarker) || text.includes('Lorem ipsum') || text.includes('Sample text')) {
-        // Replace with actual content, truncated to reasonable length
-        const cleanContent = content.substring(0, 500).replace(/[#*\n]/g, ' ').trim();
+      // Check if this text node contains any of our section identifiers
+      const hasIdentifier = sectionIdentifiers.some(id => lowerText.includes(id.toLowerCase()));
+      
+      // Also check for placeholder text patterns
+      const isPlaceholder = text.includes('Lorem ipsum') || 
+                           text.includes('Sample text') || 
+                           text.includes('placeholder') ||
+                           (text.length > 50 && text.includes('text'));
+      
+      if (hasIdentifier || isPlaceholder) {
         nodesToReplace.push({
           node: textNode,
           newValue: cleanContent
@@ -157,7 +184,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     try {
       const { suburb, state } = extractSuburbState(report.address);
       const sections = parseReportContent(report.content);
-      const marketData = extractMarketData(report.enhanced_data);
+      const marketData = extractMarketData(sections, report.enhanced_data);
 
       // Load the HTML template
       const response = await fetch('/templates/npc_suburb_snapshot_pixel_perfect.html');
@@ -175,44 +202,62 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       replaceTextInElement(container, 'NORTH ROTHBURY', suburb);
       replaceTextInElement(container, 'NSW', state);
       
-      // Replace market data if found
-      const marketDataReplacements = {
-        '$750,000': typeof marketData.medianPrice === 'number' 
-          ? `$${marketData.medianPrice.toLocaleString()}` 
-          : marketData.medianPrice,
-        '5.2%': typeof marketData.rentalYield === 'number'
-          ? `${marketData.rentalYield.toFixed(1)}%`
-          : marketData.rentalYield,
-        '12.5%': typeof marketData.growthRate === 'number'
-          ? `${marketData.growthRate.toFixed(1)}%`
-          : marketData.growthRate,
+      // Replace market data placeholders
+      const marketDataReplacements: Record<string, string> = {
+        '$750,000': marketData.medianPrice.toString().includes('$') 
+          ? marketData.medianPrice.toString()
+          : `$${marketData.medianPrice.toString()}`,
+        '5.2%': marketData.rentalYield.toString().includes('%')
+          ? marketData.rentalYield.toString()
+          : `${marketData.rentalYield}%`,
+        '12.5%': marketData.growthRate.toString().includes('%')
+          ? marketData.growthRate.toString()
+          : `${marketData.growthRate}%`,
+        '15,423': marketData.population.toString(),
+        '$82,500': marketData.medianIncome.toString().includes('$')
+          ? marketData.medianIncome.toString()
+          : `$${marketData.medianIncome.toString()}`,
       };
 
       Object.entries(marketDataReplacements).forEach(([placeholder, value]) => {
-        replaceTextInElement(container, placeholder, value);
+        if (value && value !== 'N/A') {
+          replaceTextInElement(container, placeholder, value);
+        }
       });
 
       // Replace content sections with actual report content
-      const locationOverview = findSection(sections, [
-        'Location Overview',
-        'Location Profile', 
-        'Suburb Overview',
-        'Area Overview'
-      ]);
-      
-      const marketPerformance = findSection(sections, [
-        'Market Performance',
-        'Market Analysis',
-        'Property Market'
-      ]);
+      const sectionMappings = [
+        {
+          identifiers: ['location overview', 'location profile', 'suburb overview'],
+          content: findSection(sections, ['Location Overview', 'Location Profile', 'Suburb Overview', 'Area Overview'])
+        },
+        {
+          identifiers: ['market performance', 'market kpis', 'market analysis'],
+          content: findSection(sections, ['Market KPIs', 'Market Performance', 'Market Analysis', 'Property Market', 'Current Market Conditions'])
+        },
+        {
+          identifiers: ['demographics', 'demand drivers', 'population'],
+          content: findSection(sections, ['Demographics & Demand Drivers', 'Demographics', 'Population Dynamics', 'Household Characteristics'])
+        },
+        {
+          identifiers: ['infrastructure', 'amenities', 'transport'],
+          content: findSection(sections, ['Infrastructure & Amenities', 'Transport Infrastructure', 'Education Facilities', 'Lifestyle & Recreation'])
+        },
+        {
+          identifiers: ['investment score', 'overall score', 'rating'],
+          content: findSection(sections, ['Overall Investment Score', 'Investment Score', 'Component Scores'])
+        },
+        {
+          identifiers: ['risks', 'opportunities', 'key risks'],
+          content: findSection(sections, ['Key Opportunities & Risks', 'Risk Assessment', 'Investment Risks'])
+        }
+      ];
 
-      if (locationOverview) {
-        replaceContentSection(container, 'Location', locationOverview);
-      }
-      
-      if (marketPerformance) {
-        replaceContentSection(container, 'Market', marketPerformance);
-      }
+      sectionMappings.forEach(({ identifiers, content }) => {
+        if (content) {
+          replaceContentSection(container, identifiers, content);
+        }
+      });
 
       // Wait for any fonts/images to load
       await new Promise(resolve => setTimeout(resolve, 500));
