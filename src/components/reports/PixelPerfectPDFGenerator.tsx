@@ -79,14 +79,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const domainData = enhancedData?.domainData || {};
     const financialData = enhancedData?.financialData || {};
     const investmentScore = enhancedData?.investmentScore || {};
+    const absData = enhancedData?.absData || {};
+    const locationData = enhancedData?.locationData || {};
 
     return {
       medianPrice: domainData.medianPrice || financialData.propertyValue || 'N/A',
       rentalYield: financialData.rentalYield || investmentScore.cashFlowScore || 'N/A',
       growthRate: domainData.growthRate || investmentScore.capitalGrowthScore || 'N/A',
-      population: domainData.population || 'N/A',
-      medianAge: domainData.medianAge || 'N/A',
-      medianIncome: domainData.medianIncome || 'N/A',
+      population: absData.population || domainData.population || 'N/A',
+      medianAge: absData.medianAge || domainData.medianAge || 'N/A',
+      medianIncome: absData.medianIncome || domainData.medianIncome || 'N/A',
+      demographics: absData.demographics || {},
+      infrastructure: locationData.nearbyAmenities || locationData.infrastructure || {},
     };
   };
 
@@ -106,6 +110,38 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         nodesToReplace.push({
           node: textNode,
           newValue: textNode.nodeValue.replace(new RegExp(placeholder, 'g'), value)
+        });
+      }
+    }
+
+    nodesToReplace.forEach(({ node, newValue }) => {
+      node.nodeValue = newValue;
+    });
+  };
+
+  const replaceContentSection = (container: HTMLElement, sectionMarker: string, content: string) => {
+    // Find elements that might contain the section content
+    // This will look for divs or text elements that contain section identifiers
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+
+    const nodesToReplace: { node: Text; newValue: string }[] = [];
+    let node;
+    
+    while ((node = walker.nextNode())) {
+      const textNode = node as Text;
+      const text = textNode.nodeValue || '';
+      
+      // Look for section markers or placeholder content
+      if (text.includes(sectionMarker) || text.includes('Lorem ipsum') || text.includes('Sample text')) {
+        // Replace with actual content, truncated to reasonable length
+        const cleanContent = content.substring(0, 500).replace(/[#*\n]/g, ' ').trim();
+        nodesToReplace.push({
+          node: textNode,
+          newValue: cleanContent
         });
       }
     }
@@ -156,6 +192,28 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         replaceTextInElement(container, placeholder, value);
       });
 
+      // Replace content sections with actual report content
+      const locationOverview = findSection(sections, [
+        'Location Overview',
+        'Location Profile', 
+        'Suburb Overview',
+        'Area Overview'
+      ]);
+      
+      const marketPerformance = findSection(sections, [
+        'Market Performance',
+        'Market Analysis',
+        'Property Market'
+      ]);
+
+      if (locationOverview) {
+        replaceContentSection(container, 'Location', locationOverview);
+      }
+      
+      if (marketPerformance) {
+        replaceContentSection(container, 'Market', marketPerformance);
+      }
+
       // Wait for any fonts/images to load
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -167,11 +225,21 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         throw new Error('No pages found in template');
       }
 
-      // Create PDF
+      // Calculate PDF dimensions based on the first page's actual rendered size
+      const firstPage = pages[0] as HTMLElement;
+      const pageWidth = firstPage.offsetWidth;
+      const pageHeight = firstPage.offsetHeight;
+      
+      // Convert pixels to mm (assuming 96 DPI: 1 inch = 25.4mm, 96px = 25.4mm)
+      const pxToMm = 25.4 / 96;
+      const pdfWidthMm = pageWidth * pxToMm;
+      const pdfHeightMm = pageHeight * pxToMm;
+
+      // Create PDF with dimensions matching the template
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: pdfWidthMm > pdfHeightMm ? 'landscape' : 'portrait',
         unit: 'mm',
-        format: 'a4',
+        format: [pdfWidthMm, pdfHeightMm],
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
