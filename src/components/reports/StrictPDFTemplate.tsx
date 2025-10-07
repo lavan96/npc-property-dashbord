@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from 'react';
+import { forwardRef } from 'react';
 
 interface StrictPDFTemplateProps {
   suburb: string;
@@ -18,31 +18,6 @@ interface StrictPDFTemplateProps {
 
 export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplateProps>(
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
-    
-    const [templateHTML, setTemplateHTML] = useState<string>('');
-
-    useEffect(() => {
-      // Load the HTML template
-      fetch('/templates/suburb-snapshot-template.html')
-        .then(response => response.text())
-        .then(html => {
-          // Replace dynamic content placeholders
-          let modifiedHTML = html;
-          
-          // Replace suburb name
-          modifiedHTML = modifiedHTML.replace(/NORTH ROTHBURY/gi, suburb.toUpperCase());
-          modifiedHTML = modifiedHTML.replace(/NORTH-ROTHBURY/gi, suburb.toUpperCase().replace(/ /g, '-'));
-          modifiedHTML = modifiedHTML.replace(/North Rothbury/gi, suburb);
-          
-          // Replace state
-          modifiedHTML = modifiedHTML.replace(/NSW/g, state.toUpperCase());
-          
-          setTemplateHTML(modifiedHTML);
-        })
-        .catch(error => {
-          console.error('Error loading template:', error);
-        });
-    }, [suburb, state]);
 
     const cleanText = (text: string) => {
       return text
@@ -67,18 +42,84 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
       ));
     };
 
-    if (!templateHTML) {
-      return <div ref={ref} style={{ padding: '20pt', fontSize: '14pt' }}>Loading template...</div>;
-    }
-
     return (
       <div ref={ref} style={{ width: '210mm', background: 'white' }}>
-        {/* Render the cover page from template */}
-        <div 
-          className="pdf-page" 
-          dangerouslySetInnerHTML={{ __html: templateHTML.split('<div id="pf')[1]?.split('</div>')[0] || '' }}
-          style={{ pageBreakAfter: 'always' }}
-        />
+        {/* COVER PAGE - NPC Services Branding */}
+        <div className="pdf-page" style={{
+          width: '210mm',
+          height: '297mm',
+          background: 'linear-gradient(180deg, #1E3A5F 0%, #2B4F7D 100%)',
+          position: 'relative',
+          padding: '40pt',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          color: 'white',
+          pageBreakAfter: 'always'
+        }}>
+          {/* Logo/Header */}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              fontSize: '18pt',
+              fontWeight: 'bold',
+              letterSpacing: '3pt',
+              color: '#C5A572',
+              fontFamily: 'Arial, sans-serif'
+            }}>
+              NPC SERVICES
+            </div>
+            <div style={{
+              fontSize: '10pt',
+              color: '#C5A572',
+              marginTop: '8pt',
+              letterSpacing: '2pt',
+              fontFamily: 'Arial, sans-serif'
+            }}>
+              PROPERTY INTELLIGENCE
+            </div>
+          </div>
+
+          {/* Main Title */}
+          <div style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{
+              fontSize: '60pt',
+              fontWeight: 'bold',
+              marginBottom: '15pt',
+              lineHeight: '1.1',
+              textTransform: 'uppercase',
+              letterSpacing: '2pt',
+              fontFamily: 'Arial, sans-serif',
+              color: '#FFFFFF'
+            }}>
+              {suburb}
+            </div>
+            <div style={{
+              fontSize: '42pt',
+              fontWeight: 'bold',
+              color: '#C5A572',
+              marginBottom: '25pt',
+              fontFamily: 'Arial, sans-serif'
+            }}>
+              {state}
+            </div>
+            <div style={{
+              fontSize: '20pt',
+              color: '#FFFFFF',
+              letterSpacing: '4pt',
+              textTransform: 'uppercase',
+              fontFamily: 'Arial, sans-serif',
+              opacity: 0.9
+            }}>
+              SUBURB SNAPSHOT
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ textAlign: 'center', fontSize: '9pt', color: 'rgba(255,255,255,0.7)', fontFamily: 'Arial, sans-serif' }}>
+            <div style={{ marginBottom: '5pt', letterSpacing: '1pt' }}>COMPREHENSIVE PROPERTY MARKET ANALYSIS</div>
+            <div>{new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          </div>
+        </div>
 
         {/* PAGE 2: Location Profile */}
         <div className="pdf-page" style={{
@@ -335,11 +376,79 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           </div>
         </div>
 
-        {/* Render the contact page from template */}
-        <div 
-          className="pdf-page"
-          dangerouslySetInnerHTML={{ __html: templateHTML.split('<div id="pf')[templateHTML.split('<div id="pf').length - 1]?.split('</body>')[0] || '' }}
-        />
+        {/* CONTACT PAGE - NPC Services Branding */}
+        <div className="pdf-page" style={{
+          width: '210mm',
+          height: '297mm',
+          background: 'linear-gradient(180deg, #1E3A5F 0%, #2B4F7D 100%)',
+          padding: '40pt',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          color: 'white',
+          fontFamily: 'Arial, sans-serif'
+        }}>
+          {/* Logo */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontSize: '28pt',
+              fontWeight: 'bold',
+              letterSpacing: '4pt',
+              color: '#C5A572',
+              marginBottom: '12pt'
+            }}>
+              NPC SERVICES
+            </div>
+            <div style={{
+              fontSize: '13pt',
+              color: '#C5A572',
+              letterSpacing: '2pt'
+            }}>
+              PROPERTY INTELLIGENCE & ADVISORY
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <h2 style={{ 
+              fontSize: '32pt', 
+              marginBottom: '30pt',
+              color: '#C5A572',
+              fontWeight: 'bold'
+            }}>
+              Contact Us
+            </h2>
+            
+            <div style={{ fontSize: '14pt', lineHeight: '2.2', color: 'rgba(255,255,255,0.9)' }}>
+              <div style={{ marginBottom: '18pt' }}>
+                <strong style={{ color: '#C5A572' }}>Email:</strong> info@npcservices.com.au
+              </div>
+              <div style={{ marginBottom: '18pt' }}>
+                <strong style={{ color: '#C5A572' }}>Phone:</strong> 1300 NPC SERVICES
+              </div>
+              <div style={{ marginBottom: '18pt' }}>
+                <strong style={{ color: '#C5A572' }}>Website:</strong> www.npcservices.com.au
+              </div>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div style={{ 
+            fontSize: '7pt', 
+            color: 'rgba(255,255,255,0.5)', 
+            textAlign: 'center',
+            borderTop: '1pt solid rgba(197,165,114,0.3)',
+            paddingTop: '15pt',
+            lineHeight: '1.4'
+          }}>
+            <p style={{ margin: '5pt 0' }}>
+              This report is for informational purposes only and should not be considered as financial or investment advice.
+            </p>
+            <p style={{ margin: '5pt 0' }}>
+              © {new Date().getFullYear()} NPC Services. All rights reserved.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
