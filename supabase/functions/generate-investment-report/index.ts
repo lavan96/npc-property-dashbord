@@ -90,16 +90,83 @@ serve(async (req) => {
       financials?: any;
       locationIntelligence?: any;
       investmentScore?: any;
+      domainData?: any;
+      riskAssessment?: any;
     }
     
     let enhancedData: EnhancedData = {};
     
     try {
-      // Extract postcode and state from address for API calls
+      // Extract postcode, state, and suburb from address for API calls
       const postcodeMatch = formattedInput.match(/\b(\d{4})\b/);
       const stateMatch = formattedInput.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
       const postcode = postcodeMatch ? postcodeMatch[1] : null;
       const state = stateMatch ? stateMatch[1].toUpperCase() : 'NSW';
+      
+      // Extract suburb from address (everything between street and state/postcode)
+      const suburbMatch = formattedInput.match(/,\s*([A-Za-z\s]+)(?:,|\s+(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT))/i);
+      const suburb = suburbMatch ? suburbMatch[1].trim().toLowerCase().replace(/\s+/g, '-') : null;
+
+      // Fetch Domain market data
+      if (suburb && state) {
+        try {
+          console.log('Fetching Domain market data for:', suburb, state);
+          const domainResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/domain-data-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              suburb: suburb,
+              state: state,
+              postcode: postcode,
+              propertyCategory: propertyDetails?.propertyType?.toLowerCase() === 'unit' ? 'unit' : 'house'
+            })
+          });
+          
+          if (domainResponse.ok) {
+            const domainData = await domainResponse.json();
+            if (domainData.success && domainData.data) {
+              enhancedData = { ...enhancedData, domainData: domainData.data };
+              console.log('✓ Domain market data fetched successfully');
+            } else {
+              console.log('⚠️ Domain data unavailable, will use estimates');
+            }
+          }
+        } catch (error: any) {
+          console.log('Domain data fetch failed:', error?.message || 'Unknown error');
+        }
+      }
+
+      // Fetch risk assessment data
+      if (postcode && state) {
+        try {
+          console.log('Fetching risk assessment for:', suburb, state, postcode);
+          const riskResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/risk-assessment-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              suburb: suburb || 'unknown',
+              state: state,
+              postcode: postcode
+            })
+          });
+          
+          if (riskResponse.ok) {
+            const riskData = await riskResponse.json();
+            if (riskData.success && riskData.data) {
+              enhancedData = { ...enhancedData, riskAssessment: riskData.data };
+              console.log('✓ Risk assessment data fetched successfully');
+            }
+          }
+        } catch (error: any) {
+          console.log('Risk assessment fetch failed:', error?.message || 'Unknown error');
+        }
+      }
 
       // Fetch ABS demographic data
       try {
@@ -328,6 +395,49 @@ Interest Rate -1% (${(parseFloat(propertyDetails?.interestRate || '6.5') - 1).to
 ` : 'Sensitivity analysis not available'}
 
 IMPORTANT: Use these exact calculated values in your "Financial Analysis" and "10-Year Projection Scenarios" sections. Do not recalculate - these are professionally calculated projections.
+` : ''}
+
+${enhancedData.domainData ? `
+DOMAIN MARKET DATA (FROM DOMAIN API - USE INSTEAD OF ESTIMATING):
+- Median House Price: $${enhancedData.domainData.medianSoldPrice?.toLocaleString() || 'Data unavailable'}
+- Number of Sales: ${enhancedData.domainData.numberSold || 'Data unavailable'}
+- Median Weekly Rent: $${enhancedData.domainData.medianRentListingPrice || 'Data unavailable'}
+- Days on Market: ${enhancedData.domainData.daysOnMarket || 'Data unavailable'} days
+- Auction Clearance Rate: ${enhancedData.domainData.auctionClearanceRate || 'Data unavailable'}%
+- Annual Price Growth: ${enhancedData.domainData.annualGrowth || 'Data unavailable'}%
+- Rental Yield: ${enhancedData.domainData.rentalYield?.toFixed(2) || 'Data unavailable'}%
+- Data Source: ${enhancedData.domainData.dataSource}
+- Last Updated: ${enhancedData.domainData.lastUpdated}
+
+CRITICAL: These are REAL MARKET VALUES from Domain API. Use them to replace any generic market data in your "Market KPIs" and "Comparable Market Evidence" sections. Do not make up comparable sales - state that specific comparable sales require further local agent research if not available.
+` : ''}
+
+${enhancedData.riskAssessment ? `
+RISK ASSESSMENT DATA:
+${enhancedData.riskAssessment.floodRisk ? `
+Flood Risk:
+- Level: ${enhancedData.riskAssessment.floodRisk.level}
+- Details: ${enhancedData.riskAssessment.floodRisk.description}
+- Data Source: ${enhancedData.riskAssessment.floodRisk.dataSource}
+` : ''}
+${enhancedData.riskAssessment.bushfireRisk ? `
+Bushfire Risk:
+- Level: ${enhancedData.riskAssessment.bushfireRisk.level}
+- Details: ${enhancedData.riskAssessment.bushfireRisk.description}
+- Data Source: ${enhancedData.riskAssessment.bushfireRisk.dataSource}
+` : ''}
+${enhancedData.riskAssessment.crimeStatistics ? `
+Crime Statistics:
+- Overall Rating: ${enhancedData.riskAssessment.crimeStatistics.overallRating}
+- Comparison: ${enhancedData.riskAssessment.crimeStatistics.comparedToStateAverage}
+- Data Source: ${enhancedData.riskAssessment.crimeStatistics.dataSource}
+` : ''}
+${enhancedData.riskAssessment.climateRisk ? `
+Climate Risk:
+- Overall Rating: ${enhancedData.riskAssessment.climateRisk.overallRating}
+- Main Concerns: ${enhancedData.riskAssessment.climateRisk.mainConcerns.join(', ')}
+- Data Source: ${enhancedData.riskAssessment.climateRisk.dataSource}
+` : ''}
 ` : ''}
 
 ${enhancedData.locationIntelligence ? `

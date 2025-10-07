@@ -94,3 +94,9 @@ verify_jwt = false
 
 [functions.investment-scoring-service]
 verify_jwt = false
+
+[functions.domain-data-service]
+verify_jwt = false
+
+[functions.risk-assessment-service]
+verify_jwt = false
