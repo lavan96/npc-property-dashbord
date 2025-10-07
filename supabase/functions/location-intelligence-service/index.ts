@@ -282,13 +282,21 @@ async function calculateCommuteTime(
 
     const data = await response.json();
     
-    if (data.rows && data.rows[0].elements && data.rows[0].elements[0].status === 'OK') {
+    // Better error handling for Google Maps API response structure
+    if (data.rows && data.rows.length > 0 && data.rows[0].elements && data.rows[0].elements.length > 0) {
       const element = data.rows[0].elements[0];
-      return {
-        durationMinutes: Math.round(element.duration.value / 60),
-        distanceKm: Math.round(element.distance.value / 1000 * 10) / 10,
-        mode: 'public_transit'
-      };
+      
+      if (element.status === 'OK' && element.duration && element.distance) {
+        return {
+          durationMinutes: Math.round(element.duration.value / 60),
+          distanceKm: Math.round(element.distance.value / 1000 * 10) / 10,
+          mode: 'public_transit'
+        };
+      } else {
+        console.warn('Distance Matrix API returned status:', element.status);
+      }
+    } else {
+      console.warn('Distance Matrix API returned unexpected structure:', JSON.stringify(data));
     }
   } catch (error) {
     console.error('Commute calculation error:', error);

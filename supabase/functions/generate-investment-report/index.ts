@@ -273,23 +273,97 @@ ECONOMIC DATA AVAILABLE:
 
 ${enhancedData.financials ? `
 FINANCIAL CALCULATIONS AVAILABLE:
+KEY METRICS:
+- Property Value: $${enhancedData.financials.initialCosts?.propertyValue || 'N/A'}
+- Deposit: $${enhancedData.financials.initialCosts?.deposit || 'N/A'}
+- Loan Amount: $${enhancedData.financials.initialCosts?.loanAmount || 'N/A'}
+- Stamp Duty: $${enhancedData.financials.initialCosts?.stampDuty || 'N/A'}
+- Total Upfront Costs: $${enhancedData.financials.initialCosts?.totalUpfront || 'N/A'}
+- Monthly Loan Payment: $${Math.round(enhancedData.financials.loanDetails?.monthlyPayment || 0)}
+- Total Interest (30yr): $${Math.round(enhancedData.financials.loanDetails?.totalInterest || 0)}
 - Gross Rental Yield: ${enhancedData.financials.keyMetrics?.grossRentalYield || 'N/A'}%
 - Net Rental Yield: ${enhancedData.financials.keyMetrics?.netRentalYield || 'N/A'}%
 - Weekly Net Cash Flow: $${enhancedData.financials.keyMetrics?.weeklyNet || 'N/A'}
+- Annual Net Cash Flow: $${enhancedData.financials.keyMetrics?.annualNet || 'N/A'}
 - Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics?.lvr || 'N/A'}%
-- Stamp Duty: $${enhancedData.financials.initialCosts?.stampDuty || 'N/A'}
+- Cash on Cash Return: ${enhancedData.financials.keyMetrics?.cashOnCashReturn || 'N/A'}%
+
+ANNUAL COSTS:
+- Council Rates: $${enhancedData.financials.annualCosts?.councilRates || 'N/A'}
+- Water Rates: $${enhancedData.financials.annualCosts?.waterRates || 'N/A'}
+- Insurance: $${enhancedData.financials.annualCosts?.landlordInsurance || 'N/A'}
+- Property Management: $${enhancedData.financials.annualCosts?.propertyManagement || 'N/A'}
+- Maintenance: $${enhancedData.financials.annualCosts?.maintenance || 'N/A'}
+- Land Tax: $${enhancedData.financials.annualCosts?.landTax || 'N/A'}
+
+10-YEAR PROJECTIONS (Use these exact numbers in your report):
+${enhancedData.financials.projections ? `
+Conservative Scenario (${enhancedData.financials.projections.conservative?.[0] ? '2% capital, 2% rent growth' : 'N/A'}):
+${enhancedData.financials.projections.conservative?.slice(0, 10).map((p: any, i: number) => 
+  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || 'N/A'}, Equity $${p.equity?.toLocaleString() || 'N/A'}, Cash Flow $${p.cashFlow?.toLocaleString() || 'N/A'}, ROI ${p.roi || 'N/A'}%`
+).join('\n') || 'N/A'}
+
+Moderate Scenario (${enhancedData.financials.projections.moderate?.[0] ? '4% capital, 3% rent growth' : 'N/A'}):
+${enhancedData.financials.projections.moderate?.slice(0, 10).map((p: any, i: number) => 
+  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || 'N/A'}, Equity $${p.equity?.toLocaleString() || 'N/A'}, Cash Flow $${p.cashFlow?.toLocaleString() || 'N/A'}, ROI ${p.roi || 'N/A'}%`
+).join('\n') || 'N/A'}
+
+Optimistic Scenario (${enhancedData.financials.projections.optimistic?.[0] ? '6% capital, 4% rent growth' : 'N/A'}):
+${enhancedData.financials.projections.optimistic?.slice(0, 10).map((p: any, i: number) => 
+  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || 'N/A'}, Equity $${p.equity?.toLocaleString() || 'N/A'}, Cash Flow $${p.cashFlow?.toLocaleString() || 'N/A'}, ROI ${p.roi || 'N/A'}%`
+).join('\n') || 'N/A'}
+` : 'Projection data not available'}
+
+SENSITIVITY ANALYSIS:
+${enhancedData.financials.sensitivityAnalysis ? `
+Interest Rate +1% (${(parseFloat(propertyDetails?.interestRate || '6.5') + 1).toFixed(1)}%):
+- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateUp?.monthlyPayment || 0)}
+- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateUp?.weeklyNet || 0)}
+- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateUp?.annualNet || 0)}
+
+Interest Rate -1% (${(parseFloat(propertyDetails?.interestRate || '6.5') - 1).toFixed(1)}%):
+- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateDown?.monthlyPayment || 0)}
+- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateDown?.weeklyNet || 0)}
+- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateDown?.annualNet || 0)}
+` : 'Sensitivity analysis not available'}
+
+IMPORTANT: Use these exact calculated values in your "Financial Analysis" and "10-Year Projection Scenarios" sections. Do not recalculate - these are professionally calculated projections.
 ` : ''}
 
 ${enhancedData.locationIntelligence ? `
-LOCATION INTELLIGENCE AVAILABLE:
-- Walk Score: ${enhancedData.locationIntelligence.walkScore || 'N/A'}
-- Nearest Transit: ${enhancedData.locationIntelligence.transport?.nearestStation || 'N/A'} (${enhancedData.locationIntelligence.transport?.distanceToStation || 'N/A'}km)
-- CBD Commute: ${enhancedData.locationIntelligence.commute?.durationMinutes || 'N/A'} minutes
-- Nearest School: ${enhancedData.locationIntelligence.schools?.nearestSchool || 'N/A'} (${enhancedData.locationIntelligence.schools?.distanceToSchool || 'N/A'}km)
+LOCATION INTELLIGENCE AVAILABLE (Use these specific details in your report):
+WALKABILITY & ACCESS:
+- Walk Score: ${enhancedData.locationIntelligence.walkScore || 'N/A'}/100
+- CBD Commute: ${enhancedData.locationIntelligence.commute?.durationMinutes || 'N/A'} minutes via ${enhancedData.locationIntelligence.commute?.mode || 'transit'} (${enhancedData.locationIntelligence.commute?.distanceKm || 'N/A'}km)
+
+PUBLIC TRANSPORT:
+- Nearest Station: ${enhancedData.locationIntelligence.transport?.nearestStation || 'N/A'}
+- Distance to Station: ${enhancedData.locationIntelligence.transport?.distanceToStation || 'N/A'}km
+- Stations Within 2km: ${enhancedData.locationIntelligence.transport?.stationsWithin2km || 'N/A'}
+
+EDUCATION:
+- Nearest School: ${enhancedData.locationIntelligence.schools?.nearestSchool || 'N/A'} (${enhancedData.locationIntelligence.schools?.distanceToSchool || 'N/A'}km away)
 - Schools Within 3km: ${enhancedData.locationIntelligence.schools?.schoolsWithin3km || 'N/A'}
-- Healthcare Facilities: ${enhancedData.locationIntelligence.healthcare?.facilitiesWithin5km || 'N/A'} within 5km
+${enhancedData.locationIntelligence.schools?.topSchools?.length > 0 ? `- Top Schools Nearby:
+${enhancedData.locationIntelligence.schools.topSchools.map((s: any) => `  * ${s.name} - ${s.distance}km away (Rating: ${s.rating}/5)`).join('\n')}` : ''}
+
+HEALTHCARE:
+- Nearest Hospital: ${enhancedData.locationIntelligence.healthcare?.nearestHospital || 'N/A'} (${enhancedData.locationIntelligence.healthcare?.distanceToHospital || 'N/A'}km away)
+- Healthcare Facilities Within 5km: ${enhancedData.locationIntelligence.healthcare?.facilitiesWithin5km || 'N/A'}
+
+LIFESTYLE & AMENITIES:
 - Shopping Centers: ${enhancedData.locationIntelligence.lifestyle?.shoppingCenters || 'N/A'}
-- Parks & Recreation: ${enhancedData.locationIntelligence.lifestyle?.parks || 'N/A'}
+- Nearest Shopping: ${enhancedData.locationIntelligence.lifestyle?.nearestShopping || 'N/A'}
+- Parks & Recreation Areas: ${enhancedData.locationIntelligence.lifestyle?.parks || 'N/A'}
+- Nearest Park: ${enhancedData.locationIntelligence.lifestyle?.nearestPark || 'N/A'}
+- Restaurants & Cafes: ${enhancedData.locationIntelligence.lifestyle?.restaurants || 'N/A'}
+
+AMENITY SCORES BY CATEGORY:
+${enhancedData.locationIntelligence.amenities?.map((a: any) => 
+  `- ${a.category}: ${a.count} facilities, nearest "${a.nearest}" at ${a.distance}km (Score: ${a.score}/100)`
+).join('\n') || 'N/A'}
+
+IMPORTANT: Include these specific amenity counts, distances, and scores in your "Infrastructure & Amenities" section. Use the actual facility names and distances provided.
 ` : ''}
 
 ${enhancedData.investmentScore ? `

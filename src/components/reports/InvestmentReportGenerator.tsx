@@ -91,6 +91,9 @@ export function InvestmentReportGenerator() {
 
       // Save the report to the database
       const { data: session } = await supabase.auth.getSession();
+      
+      console.log('Enhanced data structure:', data.enhancedData);
+      
       const { error: insertError } = await supabase
         .from('investment_reports')
         .insert({
@@ -99,9 +102,9 @@ export function InvestmentReportGenerator() {
           sources_content: data.sourcesContent || null,
           demographics_data: data.enhancedData?.demographics || null,
           economic_data: data.enhancedData?.economics || null,
-          financial_calculations: data.enhancedData?.financial || null,
+          financial_calculations: data.enhancedData?.financials || null,
           investment_score: data.enhancedData?.investmentScore || null,
-          location_intelligence: data.enhancedData?.location || null,
+          location_intelligence: data.enhancedData?.locationIntelligence || null,
           generated_by: session?.session?.user?.id || null,
         });
 
