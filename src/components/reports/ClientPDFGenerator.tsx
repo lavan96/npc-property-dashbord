@@ -61,12 +61,28 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
     return sections;
   };
 
-  const findSection = (sections: Record<string, string>, possibleNames: string[]): string => {
+  const findSection = (sections: Record<string, string>, possibleNames: string[], sectionType: string): string => {
+    // Try exact match first
     for (const name of possibleNames) {
       if (sections[name]) {
+        console.log(`✓ Found exact match for ${sectionType}: "${name}"`);
         return sections[name];
       }
     }
+    
+    // Try partial match (case insensitive)
+    for (const name of possibleNames) {
+      const sectionKey = Object.keys(sections).find(key => 
+        key.toLowerCase().includes(name.toLowerCase()) || 
+        name.toLowerCase().includes(key.toLowerCase())
+      );
+      if (sectionKey) {
+        console.log(`✓ Found partial match for ${sectionType}: "${sectionKey}" (searched: "${name}")`);
+        return sections[sectionKey];
+      }
+    }
+    
+    console.log(`✗ No match found for ${sectionType}. Searched:`, possibleNames);
     return '';
   };
 
@@ -79,51 +95,58 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       console.log('Report sections found:', Object.keys(sections));
       console.log('Full report content length:', report.report_content.length);
 
-      // Extract content intelligently
+      // Extract content intelligently with actual report section names
       const profileContent = findSection(sections, [
+        '1. Location Overview',
+        'Location Overview',
         'Property Overview',
         'Executive Summary', 
         'Location Profile',
         'Overview',
-        'Introduction',
-        'Summary'
-      ]) || Object.values(sections)[0] || 'Comprehensive property analysis report';
+        'Introduction'
+      ], 'Profile') || Object.values(sections)[0] || 'Comprehensive property analysis report';
 
       const performanceContent = findSection(sections, [
+        '2. Market KPIs',
+        'Market KPIs',
+        '9. Financial Analysis',
+        'Financial Analysis',
         'Market Performance',
         'Market Analysis',
         'Growth Analysis',
         'Investment Potential',
-        'Market Trends',
-        'Performance Analysis'
-      ]) || 'Market performance data available in full report';
+        'Market Trends'
+      ], 'Performance') || 'Market performance data available in full report';
 
       const demographicsContent = findSection(sections, [
+        '3. Demographics & Demand Drivers',
+        'Demographics & Demand Drivers',
         'Demographics',
         'Population Analysis',
         'Community Profile',
-        'Demographic Profile',
-        'Population'
-      ]) || 'Demographics analysis available in full report';
+        'Demographic Profile'
+      ], 'Demographics') || 'Demographics analysis available in full report';
 
       const infrastructureContent = findSection(sections, [
+        '4. Infrastructure & Amenities',
         'Infrastructure & Amenities',
         'Infrastructure',
         'Local Amenities',
         'Transport',
-        'Facilities',
-        'Amenities'
-      ]) || 'Infrastructure details available in full report';
+        'Facilities'
+      ], 'Infrastructure') || 'Infrastructure details available in full report';
 
       const investmentInsights = findSection(sections, [
+        '12. Key Opportunities & Risks',
+        'Key Opportunities & Risks',
+        '11. Overall Investment Score',
+        'Overall Investment Score',
         'Investment Recommendation',
         'Key Insights',
         'Investment Analysis',
         'Conclusion',
-        'Summary',
-        'Recommendation',
-        'Final Thoughts'
-      ]) || 'Investment insights based on comprehensive analysis';
+        'Recommendation'
+      ], 'Investment Insights') || 'Investment insights based on comprehensive analysis';
 
       // Extract financial data
       const financials = report.financial_calculations || {};
