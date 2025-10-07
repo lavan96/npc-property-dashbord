@@ -75,10 +75,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-chart-analysis]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-investment-report]
-verify_jwt = true
+verify_jwt = false
 
 [functions.abs-data-service]
 verify_jwt = false
