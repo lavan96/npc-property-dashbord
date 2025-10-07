@@ -31,29 +31,45 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
   };
 
   const parseReportContent = (content: string) => {
-    // Extract sections from markdown content
+    // Extract sections from markdown content - handle both ## and # headings
     const sections: Record<string, string> = {};
     const lines = content.split('\n');
     let currentSection = '';
     let currentContent: string[] = [];
 
     lines.forEach(line => {
-      if (line.startsWith('##')) {
+      // Match headings (## or #)
+      const headingMatch = line.match(/^#{1,2}\s+(.+)/);
+      if (headingMatch) {
+        // Save previous section
         if (currentSection && currentContent.length > 0) {
           sections[currentSection] = currentContent.join('\n').trim();
         }
-        currentSection = line.replace('##', '').trim();
+        currentSection = headingMatch[1].trim();
         currentContent = [];
-      } else if (currentSection) {
+      } else if (currentSection && line.trim()) {
+        // Only add non-empty lines
         currentContent.push(line);
       }
     });
 
+    // Save last section
     if (currentSection && currentContent.length > 0) {
       sections[currentSection] = currentContent.join('\n').trim();
     }
 
     return sections;
+  };
+
+  const cleanMarkdown = (text: string): string => {
+    // Remove markdown formatting for PDF
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '$1') // Bold
+      .replace(/\*(.+?)\*/g, '$1') // Italic
+      .replace(/`(.+?)`/g, '$1') // Code
+      .replace(/^[-*]\s+/gm, '• ') // Bullet points
+      .replace(/^\d+\.\s+/gm, '') // Numbered lists
+      .trim();
   };
 
   const generateClientPDF = async () => {
@@ -64,6 +80,7 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 20;
       const contentWidth = pageWidth - 2 * margin;
+      const brandBlue = [41, 128, 185]; // RGB for #2980b9
 
       const { suburb, state } = extractSuburbState(report.property_address);
       const sections = parseReportContent(report.report_content);
@@ -71,204 +88,208 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       // Helper function to add new page with header
       const addPageWithHeader = (title: string) => {
         doc.addPage();
-        doc.setFillColor(220, 220, 220);
-        doc.rect(0, 0, pageWidth, 30, 'F');
-        doc.setFontSize(16);
+        // Gray header bar
+        doc.setFillColor(230, 230, 230);
+        doc.rect(0, 0, pageWidth, 35, 'F');
+        doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(40, 40, 40);
-        doc.text('SUBURB SNAPSHOT', margin, 20);
+        doc.setTextColor(60, 60, 60);
+        doc.text('SUBURB SNAPSHOT', margin, 22);
+      };
+
+      // Helper to add section with better formatting
+      const addSection = (title: string, content: string, yStart: number): number => {
+        let yPos = yStart;
+        
+        // Section title
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(brandBlue[0], brandBlue[1], brandBlue[2]);
+        doc.text(title.toUpperCase(), margin, yPos);
+        yPos += 8;
+
+        // Section content
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        
+        const cleanedContent = cleanMarkdown(content);
+        const lines = doc.splitTextToSize(cleanedContent, contentWidth);
+        
+        lines.forEach((line: string) => {
+          if (yPos > pageHeight - 30) {
+            addPageWithHeader('');
+            yPos = 50;
+          }
+          doc.text(line, margin, yPos);
+          yPos += 5;
+        });
+        
+        return yPos + 5;
       };
 
       // Page 1: Cover Page
-      doc.setFillColor(41, 128, 185);
+      doc.setFillColor(brandBlue[0], brandBlue[1], brandBlue[2]);
       doc.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      doc.setFontSize(32);
+      doc.setFontSize(36);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text('NAIDU PROPERTY', pageWidth / 2, 80, { align: 'center' });
+      doc.text('NAIDU PROPERTY', pageWidth / 2, 90, { align: 'center' });
       
-      doc.setFontSize(28);
-      doc.text('CONSULTING SERVICES', pageWidth / 2, 100, { align: 'center' });
+      doc.setFontSize(30);
+      doc.text('CONSULTING SERVICES', pageWidth / 2, 115, { align: 'center' });
       
-      doc.setFontSize(16);
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'normal');
-      doc.text('YOUR DEDICATED PROPERTY PARTNER', pageWidth / 2, 120, { align: 'center' });
+      doc.text('YOUR DEDICATED PROPERTY PARTNER', pageWidth / 2, 140, { align: 'center' });
+      
+      // Add property address on cover
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(suburb.toUpperCase(), pageWidth / 2, 170, { align: 'center' });
+      doc.setFontSize(12);
+      doc.text(state, pageWidth / 2, 180, { align: 'center' });
 
       // Page 2: Location & Profile
       addPageWithHeader('Location & Profile');
-      let yPos = 45;
+      let yPos = 50;
 
-      doc.setFontSize(14);
+      // Location section
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
+      doc.setTextColor(brandBlue[0], brandBlue[1], brandBlue[2]);
       doc.text('LOCATION', margin, yPos);
-      yPos += 10;
+      yPos += 8;
 
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60, 60, 60);
       doc.text(`SUBURB / AREA: ${suburb.toUpperCase()}`, margin, yPos);
-      yPos += 7;
+      yPos += 6;
       doc.text(`STATE: ${state}`, margin, yPos);
       yPos += 12;
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
-      doc.text('PROFILE', margin, yPos);
-      yPos += 10;
-
-      // Extract profile from report content
-      const profileText = String(
-        sections['Property Overview'] || 
-        sections['Location Profile'] || 
-        report.location_intelligence?.description || 
-        'Profile data not available'
-      );
+      // Profile section - use actual report content
+      const profileContent = sections['Property Overview'] || 
+                            sections['Executive Summary'] ||
+                            sections['Location Profile'] ||
+                            sections['Overview'] ||
+                            Object.values(sections)[0] || // First section if no match
+                            'Comprehensive property analysis report';
       
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      const profileLines = doc.splitTextToSize(profileText.substring(0, 800), contentWidth);
-      doc.text(profileLines, margin, yPos);
+      yPos = addSection('PROFILE', profileContent, yPos);
 
       // Page 3: Property Market
       addPageWithHeader('Property Market');
-      yPos = 45;
+      yPos = 50;
 
-      doc.setFontSize(14);
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
+      doc.setTextColor(brandBlue[0], brandBlue[1], brandBlue[2]);
       doc.text('PROPERTY MARKET', margin, yPos);
-      yPos += 15;
+      yPos += 10;
 
-      // Extract financial data
+      // Extract financial data from report or database
       const financials = report.financial_calculations || {};
-      const medianPrice = financials.medianPrice || 'N/A';
-      const weeklyRent = financials.weeklyRent || 'N/A';
-      const rentalYield = financials.rentalYield || 'N/A';
-
-      doc.setFontSize(11);
+      
+      // Try to extract market data from report sections
+      const marketSection = sections['Property Market'] || 
+                           sections['Market Overview'] || 
+                           sections['Financial Analysis'] || '';
+      
+      // Draw data table
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, yPos, contentWidth, 8, 'F');
+      
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
-      
-      doc.text('MEDIAN HOUSE PRICE', margin, yPos);
+      doc.text('MEDIAN HOUSE PRICE', margin + 2, yPos + 5);
       doc.setFont('helvetica', 'normal');
-      doc.text(`$${typeof medianPrice === 'number' ? medianPrice.toLocaleString() : medianPrice}`, margin + 80, yPos);
+      const medianPrice = financials.medianPrice || financials.propertyValue || 'N/A';
+      doc.text(`$${typeof medianPrice === 'number' ? medianPrice.toLocaleString() : medianPrice}`, margin + 100, yPos + 5);
       yPos += 10;
 
+      doc.rect(margin, yPos, contentWidth, 8, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.text('MEDIAN WEEKLY RENT', margin, yPos);
+      doc.text('MEDIAN WEEKLY RENT', margin + 2, yPos + 5);
       doc.setFont('helvetica', 'normal');
-      doc.text(`$${weeklyRent}/WK`, margin + 80, yPos);
+      const weeklyRent = financials.weeklyRent || financials.rentalIncome || 'N/A';
+      doc.text(`$${weeklyRent}/WK`, margin + 100, yPos + 5);
       yPos += 10;
 
+      doc.rect(margin, yPos, contentWidth, 8, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.text('GROSS RENTAL YIELD', margin, yPos);
+      doc.text('GROSS RENTAL YIELD', margin + 2, yPos + 5);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${rentalYield}%`, margin + 80, yPos);
+      const rentalYield = financials.rentalYield || financials.grossYield || 'N/A';
+      doc.text(`${rentalYield}%`, margin + 100, yPos + 5);
+      yPos += 15;
+
+      // Add market analysis from report
+      if (marketSection) {
+        yPos = addSection('MARKET ANALYSIS', marketSection, yPos);
+      }
 
       // Page 4: Market Performance
       addPageWithHeader('Market Performance');
-      yPos = 45;
+      yPos = 50;
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
-      doc.text('MARKET PERFORMANCE', margin, yPos);
-      yPos += 15;
-
-      const performanceText = String(
-        sections['Market Analysis'] || 
-        sections['Investment Potential'] || 
-        'Market performance data being collected from enhanced APIs'
-      );
+      const performanceContent = sections['Market Analysis'] || 
+                                sections['Market Performance'] ||
+                                sections['Growth Analysis'] ||
+                                sections['Investment Potential'] || 
+                                sections['Market Trends'] ||
+                                'Comprehensive market performance analysis included in full report';
       
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      const perfLines = doc.splitTextToSize(performanceText.substring(0, 600), contentWidth);
-      doc.text(perfLines, margin, yPos);
+      yPos = addSection('MARKET PERFORMANCE', performanceContent, yPos);
 
       // Page 5: Demographics
       addPageWithHeader('Demographics');
-      yPos = 45;
+      yPos = 50;
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
-      doc.text('DEMOGRAPHICS', margin, yPos);
-      yPos += 15;
-
-      const demographics = report.demographics_data || {};
-      const demoText = String(
-        sections['Demographics'] || 
-        `Population: ${demographics.population || 'N/A'}\n` +
-        `Median Age: ${demographics.medianAge || 'N/A'}\n` +
-        `Household Types: ${demographics.householdTypes || 'Data available via enhanced APIs'}`
-      );
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      const demoLines = doc.splitTextToSize(demoText, contentWidth);
-      doc.text(demoLines, margin, yPos);
+      const demographicsContent = sections['Demographics'] ||
+                                 sections['Population Analysis'] ||
+                                 sections['Community Profile'] ||
+                                 'Demographics and community analysis available in full report';
+      
+      yPos = addSection('DEMOGRAPHICS', demographicsContent, yPos);
 
       // Page 6: Infrastructure & Amenities
       addPageWithHeader('Infrastructure & Amenities');
-      yPos = 45;
+      yPos = 50;
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
-      doc.text('INFRASTRUCTURE & AMENITIES', margin, yPos);
-      yPos += 15;
-
-      const infraText = String(
-        sections['Infrastructure'] || 
-        sections['Location Profile'] ||
-        (typeof report.location_intelligence?.amenities === 'string' 
-          ? report.location_intelligence.amenities 
-          : JSON.stringify(report.location_intelligence?.amenities || {})) ||
-        'Infrastructure details available in full report'
-      );
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      const infraLines = doc.splitTextToSize(infraText.substring(0, 800), contentWidth);
-      doc.text(infraLines, margin, yPos);
+      const infrastructureContent = sections['Infrastructure'] ||
+                                   sections['Infrastructure & Amenities'] ||
+                                   sections['Local Amenities'] ||
+                                   sections['Transport'] ||
+                                   'Infrastructure and amenities analysis available in full report';
+      
+      yPos = addSection('INFRASTRUCTURE & AMENITIES', infrastructureContent, yPos);
 
       // Page 7: Key Investor Insights
       addPageWithHeader('Key Investor Insights');
-      yPos = 45;
+      yPos = 50;
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(41, 128, 185);
-      doc.text('KEY INVESTOR INSIGHTS', margin, yPos);
-      yPos += 15;
-
-      const insights = String(
-        sections['Investment Recommendation'] || 
-        sections['Conclusion'] ||
-        'Investment insights based on comprehensive market analysis'
-      );
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      const insightLines = doc.splitTextToSize(insights, contentWidth);
-      doc.text(insightLines, margin, yPos);
+      const insightsContent = sections['Investment Recommendation'] ||
+                             sections['Key Insights'] ||
+                             sections['Investment Analysis'] ||
+                             sections['Conclusion'] ||
+                             sections['Summary'] ||
+                             'Comprehensive investment insights based on detailed market analysis';
+      
+      yPos = addSection('KEY INVESTOR INSIGHTS', insightsContent, yPos);
 
       // Investment Score if available
-      if (report.investment_score) {
-        yPos += insightLines.length * 5 + 10;
-        doc.setFontSize(12);
+      if (report.investment_score?.score) {
+        yPos += 10;
+        doc.setFillColor(brandBlue[0], brandBlue[1], brandBlue[2]);
+        doc.rect(margin, yPos, contentWidth, 15, 'F');
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(41, 128, 185);
-        doc.text(`INVESTMENT SCORE: ${report.investment_score.score || 'N/A'}/10`, margin, yPos);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`INVESTMENT SCORE: ${report.investment_score.score}/10`, pageWidth / 2, yPos + 10, { align: 'center' });
       }
 
       // Page 8: Contact & Disclaimer
