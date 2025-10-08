@@ -225,8 +225,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       
       // Load the template PDF
       const pdfDoc = await PDFDocument.load(templateBytes);
-      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const bodyFont = await pdfDoc.embedFont(StandardFonts['Times-Roman']);
+      const bodyBoldFont = await pdfDoc.embedFont(StandardFonts['Times-Bold']);
+      const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
       // Get the second page from template to use as content template
       const templatePages = pdfDoc.getPages();
@@ -241,9 +242,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const pageWidth = 595; // A4 width in points
       const pageHeight = 842; // A4 height in points
       const margin = 70;
-      const lineHeight = 18;
-      const titleSize = 16;
-      const textSize = 11;
+      const lineHeight = 20;
+      const titleSize = 18;
+      const textSize = 12;
+
+      // Keywords that should be bold
+      const importantKeywords = [
+        'investment', 'growth', 'return', 'yield', 'capital', 'rental',
+        'median', 'price', 'strong', 'high', 'low', 'risk', 'opportunity',
+        'recommend', 'excellent', 'good', 'poor', 'infrastructure',
+        'development', 'demand', 'supply', 'market', 'potential', 'score',
+        'positive', 'negative', 'increase', 'decrease', 'significant'
+      ];
 
       let currentPage: any = null;
       let yPosition = 0;
@@ -272,51 +282,65 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           .trim();
       };
 
-      // Helper to draw text with word wrapping
-      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, font: any, size: number, lineSpacing: number) => {
+      // Helper to check if a word should be bold
+      const shouldBeBold = (word: string): boolean => {
+        const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+        return importantKeywords.some(keyword => cleanWord.includes(keyword)) ||
+               /^\$[\d,]+/.test(word) || // Dollar amounts
+               /\d+%/.test(word) || // Percentages
+               /\d{4}/.test(word); // Years
+      };
+
+      // Helper to draw text with word wrapping and smart bolding
+      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, size: number, lineSpacing: number) => {
         const words = text.split(' ');
         let currentLine = '';
+        let currentLineWords: { text: string; bold: boolean }[] = [];
         let currentY = startY;
+        let currentX = x;
+
+        const drawCurrentLine = () => {
+          if (currentLineWords.length === 0) return;
+
+          currentX = x;
+          for (const wordObj of currentLineWords) {
+            const font = wordObj.bold ? bodyBoldFont : bodyFont;
+            page.drawText(wordObj.text + ' ', {
+              x: currentX,
+              y: currentY,
+              size,
+              font,
+              color: rgb(0.15, 0.15, 0.15),
+            });
+            currentX += font.widthOfTextAtSize(wordObj.text + ' ', size);
+          }
+          currentY -= lineSpacing;
+          currentLineWords = [];
+          currentLine = '';
+        };
 
         for (const word of words) {
           const testLine = currentLine + (currentLine ? ' ' : '') + word;
-          const textWidth = font.widthOfTextAtSize(testLine, size);
+          const isBold = shouldBeBold(word);
+          const testFont = isBold ? bodyBoldFont : bodyFont;
+          const testWidth = currentX - x + testFont.widthOfTextAtSize(word + ' ', size);
           
-          if (textWidth > maxWidth) {
-            // Draw current line
-            if (currentLine) {
-              page.drawText(currentLine, {
-                x,
-                y: currentY,
-                size,
-                font,
-                color: rgb(0.2, 0.2, 0.2),
-              });
-              currentY -= lineSpacing;
-            }
+          if (testWidth > maxWidth) {
+            drawCurrentLine();
+            currentX = x;
             currentLine = word;
+            currentLineWords = [{ text: word, bold: isBold }];
           } else {
             currentLine = testLine;
+            currentLineWords.push({ text: word, bold: isBold });
           }
 
-          // Check if we need a new page
           if (currentY < margin + 50) {
             return { needsNewPage: true, lastY: currentY, remainingText: words.slice(words.indexOf(word)).join(' ') };
           }
         }
         
-        // Draw the last line
-        if (currentLine) {
-          page.drawText(currentLine, {
-            x,
-            y: currentY,
-            size,
-            font,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-          currentY -= lineSpacing;
-        }
-
+        drawCurrentLine();
         return { needsNewPage: false, lastY: currentY, remainingText: '' };
       };
 
@@ -327,8 +351,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       currentPage.drawText(`Investment Report: ${suburb}, ${state}`, {
         x: margin,
         y: yPosition,
-        size: 20,
-        font: helveticaBold,
+        size: 22,
+        font: titleFont,
         color: rgb(0.1, 0.1, 0.1),
       });
       yPosition -= 50;
@@ -364,10 +388,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           x: margin,
           y: yPosition,
           size: titleSize,
-          font: helveticaBold,
-          color: rgb(0.15, 0.15, 0.15),
+          font: titleFont,
+          color: rgb(0.1, 0.1, 0.1),
         });
-        yPosition -= 35;
+        yPosition -= 40;
 
         // Clean and draw content
         const cleanContent = cleanMarkdown(content);
@@ -385,7 +409,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               margin,
               yPosition,
               pageWidth - 2 * margin,
-              helveticaFont,
               textSize,
               lineHeight
             );
