@@ -228,25 +228,110 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-      // Add content pages starting from page 2
-      let yPosition = 750;
+      // Get the second page from template to use as content template
+      const templatePages = pdfDoc.getPages();
+      if (templatePages.length < 2) {
+        throw new Error('Template must have at least 2 pages');
+      }
+
+      // Remove the original second page since we'll duplicate it as needed
+      pdfDoc.removePage(1); // Remove index 1 (second page)
+
+      // Page settings
       const pageWidth = 595; // A4 width in points
       const pageHeight = 842; // A4 height in points
-      const margin = 50;
-      const lineHeight = 20;
+      const margin = 70;
+      const lineHeight = 18;
+      const titleSize = 16;
+      const textSize = 11;
 
-      // Add a new page for content
-      const contentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+      let currentPage: any = null;
+      let yPosition = 0;
 
-      // Add title
-      contentPage.drawText(`Investment Report: ${suburb}, ${state}`, {
+      // Helper function to add a new content page by copying from template
+      const addContentPage = async () => {
+        // Load template again to get a fresh page 2
+        const freshTemplate = await PDFDocument.load(templateBytes);
+        const [copiedPage] = await pdfDoc.copyPages(freshTemplate, [1]);
+        pdfDoc.addPage(copiedPage);
+        return pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+      };
+
+      // Helper to clean markdown formatting
+      const cleanMarkdown = (text: string): string => {
+        return text
+          .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers
+          .replace(/\*\*\*(.*?)\*\*\*/g, '$1') // Remove bold+italic
+          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+          .replace(/\*(.*?)\*/g, '$1') // Remove italic
+          .replace(/^[\*\-\+]\s+/gm, '• ') // Convert markdown bullets to bullets
+          .replace(/^\d+\.\s+/gm, '') // Remove numbered lists
+          .replace(/^>\s+/gm, '') // Remove blockquotes
+          .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // Remove code formatting
+          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
+          .trim();
+      };
+
+      // Helper to draw text with word wrapping
+      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, font: any, size: number, lineSpacing: number) => {
+        const words = text.split(' ');
+        let currentLine = '';
+        let currentY = startY;
+
+        for (const word of words) {
+          const testLine = currentLine + (currentLine ? ' ' : '') + word;
+          const textWidth = font.widthOfTextAtSize(testLine, size);
+          
+          if (textWidth > maxWidth) {
+            // Draw current line
+            if (currentLine) {
+              page.drawText(currentLine, {
+                x,
+                y: currentY,
+                size,
+                font,
+                color: rgb(0.2, 0.2, 0.2),
+              });
+              currentY -= lineSpacing;
+            }
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+
+          // Check if we need a new page
+          if (currentY < margin + 50) {
+            return { needsNewPage: true, lastY: currentY, remainingText: words.slice(words.indexOf(word)).join(' ') };
+          }
+        }
+        
+        // Draw the last line
+        if (currentLine) {
+          page.drawText(currentLine, {
+            x,
+            y: currentY,
+            size,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          currentY -= lineSpacing;
+        }
+
+        return { needsNewPage: false, lastY: currentY, remainingText: '' };
+      };
+
+      // Add report title on first content page
+      currentPage = await addContentPage();
+      yPosition = pageHeight - margin - 50;
+
+      currentPage.drawText(`Investment Report: ${suburb}, ${state}`, {
         x: margin,
         y: yPosition,
-        size: 18,
+        size: 20,
         font: helveticaBold,
-        color: rgb(0, 0, 0),
+        color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 40;
+      yPosition -= 50;
 
       // Add sections
       const sectionOrder = [
@@ -268,132 +353,57 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const content = findSection(sections, [sectionName]);
         if (!content) continue;
 
-        // Check if we need a new page
-        if (yPosition < 100) {
-          const newPage = pdfDoc.addPage([pageWidth, pageHeight]);
-          yPosition = 750;
-          
-          // Draw section title on new page
-          newPage.drawText(sectionName, {
-            x: margin,
-            y: yPosition,
-            size: 14,
-            font: helveticaBold,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-          yPosition -= 30;
-
-          // Draw content
-          const cleanContent = content
-            .replace(/^[#*\-•]\s*/gm, '')
-            .replace(/\*\*(.*?)\*\*/g, '$1')
-            .trim();
-
-          const lines = cleanContent.split('\n');
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            
-            // Word wrap
-            const words = line.split(' ');
-            let currentLine = '';
-            
-            for (const word of words) {
-              const testLine = currentLine + (currentLine ? ' ' : '') + word;
-              const textWidth = helveticaFont.widthOfTextAtSize(testLine, 11);
-              
-              if (textWidth > pageWidth - 2 * margin) {
-                newPage.drawText(currentLine, {
-                  x: margin,
-                  y: yPosition,
-                  size: 11,
-                  font: helveticaFont,
-                  color: rgb(0.3, 0.3, 0.3),
-                });
-                yPosition -= lineHeight;
-                currentLine = word;
-                
-                if (yPosition < 50) {
-                  const anotherPage = pdfDoc.addPage([pageWidth, pageHeight]);
-                  yPosition = 750;
-                }
-              } else {
-                currentLine = testLine;
-              }
-            }
-            
-            if (currentLine) {
-              newPage.drawText(currentLine, {
-                x: margin,
-                y: yPosition,
-                size: 11,
-                font: helveticaFont,
-                color: rgb(0.3, 0.3, 0.3),
-              });
-              yPosition -= lineHeight;
-            }
-          }
-          
-          yPosition -= 20;
-        } else {
-          // Draw on current page
-          contentPage.drawText(sectionName, {
-            x: margin,
-            y: yPosition,
-            size: 14,
-            font: helveticaBold,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-          yPosition -= 30;
-
-          const cleanContent = content
-            .replace(/^[#*\-•]\s*/gm, '')
-            .replace(/\*\*(.*?)\*\*/g, '$1')
-            .trim();
-
-          const lines = cleanContent.split('\n');
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            
-            const words = line.split(' ');
-            let currentLine = '';
-            
-            for (const word of words) {
-              const testLine = currentLine + (currentLine ? ' ' : '') + word;
-              const textWidth = helveticaFont.widthOfTextAtSize(testLine, 11);
-              
-              if (textWidth > pageWidth - 2 * margin) {
-                contentPage.drawText(currentLine, {
-                  x: margin,
-                  y: yPosition,
-                  size: 11,
-                  font: helveticaFont,
-                  color: rgb(0.3, 0.3, 0.3),
-                });
-                yPosition -= lineHeight;
-                currentLine = word;
-                
-                if (yPosition < 50) break;
-              } else {
-                currentLine = testLine;
-              }
-            }
-            
-            if (currentLine && yPosition >= 50) {
-              contentPage.drawText(currentLine, {
-                x: margin,
-                y: yPosition,
-                size: 11,
-                font: helveticaFont,
-                color: rgb(0.3, 0.3, 0.3),
-              });
-              yPosition -= lineHeight;
-            }
-            
-            if (yPosition < 100) break;
-          }
-          
-          yPosition -= 20;
+        // Check if we need a new page for section title
+        if (yPosition < margin + 100) {
+          currentPage = await addContentPage();
+          yPosition = pageHeight - margin - 50;
         }
+
+        // Draw section title
+        currentPage.drawText(sectionName, {
+          x: margin,
+          y: yPosition,
+          size: titleSize,
+          font: helveticaBold,
+          color: rgb(0.15, 0.15, 0.15),
+        });
+        yPosition -= 35;
+
+        // Clean and draw content
+        const cleanContent = cleanMarkdown(content);
+        const paragraphs = cleanContent.split('\n').filter(p => p.trim());
+
+        for (const paragraph of paragraphs) {
+          if (!paragraph.trim()) continue;
+
+          let remainingText = paragraph;
+          
+          while (remainingText) {
+            const result = drawTextWithWrap(
+              currentPage,
+              remainingText,
+              margin,
+              yPosition,
+              pageWidth - 2 * margin,
+              helveticaFont,
+              textSize,
+              lineHeight
+            );
+
+            if (result.needsNewPage) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - margin - 50;
+              remainingText = result.remainingText;
+            } else {
+              yPosition = result.lastY;
+              remainingText = '';
+            }
+          }
+
+          yPosition -= 10; // Space between paragraphs
+        }
+
+        yPosition -= 20; // Space between sections
       }
 
       // Save the PDF
