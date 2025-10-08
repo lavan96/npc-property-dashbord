@@ -214,6 +214,7 @@ export type Database = {
           id: string
           investment_score: Json | null
           location_intelligence: Json | null
+          pdf_url: string | null
           property_address: string
           property_listing_id: string | null
           report_content: string
@@ -229,6 +230,7 @@ export type Database = {
           id?: string
           investment_score?: Json | null
           location_intelligence?: Json | null
+          pdf_url?: string | null
           property_address: string
           property_listing_id?: string | null
           report_content: string
@@ -244,6 +246,7 @@ export type Database = {
           id?: string
           investment_score?: Json | null
           location_intelligence?: Json | null
+          pdf_url?: string | null
           property_address?: string
           property_listing_id?: string | null
           report_content?: string

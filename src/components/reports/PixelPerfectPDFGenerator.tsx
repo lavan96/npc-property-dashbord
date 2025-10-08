@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { supabase } from '@/integrations/supabase/client';
 
 interface InvestmentReportData {
   id: string;
@@ -216,164 +216,225 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     try {
       const { suburb, state } = extractSuburbState(report.address);
       const sections = parseReportContent(report.content);
-      const marketData = extractMarketData(sections, report.enhanced_data);
 
       console.log('Parsed sections:', Object.keys(sections));
-      console.log('Extracted market data:', marketData);
 
-      // Load the HTML template
-      const response = await fetch('/templates/npc_suburb_snapshot_pixel_perfect.html');
-      const htmlContent = await response.text();
-
-      // Create a temporary container
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.innerHTML = htmlContent;
-      document.body.appendChild(container);
-
-      // Replace placeholders with actual data
-      replaceTextInElement(container, 'NORTH ROTHBURY', suburb);
-      replaceTextInElement(container, 'NSW', state);
+      // Load the PDF template
+      const templateResponse = await fetch('/templates/npc_template.pdf');
+      const templateBytes = await templateResponse.arrayBuffer();
       
-      // Replace all numeric market data placeholders
-      const formatCurrency = (val: any) => {
-        if (typeof val === 'number') return `$${val.toLocaleString()}`;
-        if (typeof val === 'string' && !val.includes('$') && !val.includes('N/A')) return `$${val}`;
-        return val;
-      };
+      // Load the template PDF
+      const pdfDoc = await PDFDocument.load(templateBytes);
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-      const formatPercentage = (val: any) => {
-        if (typeof val === 'number') return `${val.toFixed(1)}%`;
-        if (typeof val === 'string' && !val.includes('%') && !val.includes('N/A')) return `${val}%`;
-        return val;
-      };
+      // Add content pages starting from page 2
+      let yPosition = 750;
+      const pageWidth = 595; // A4 width in points
+      const pageHeight = 842; // A4 height in points
+      const margin = 50;
+      const lineHeight = 20;
 
-      const formatNumber = (val: any) => {
-        if (typeof val === 'number') return val.toLocaleString();
-        return val;
-      };
+      // Add a new page for content
+      const contentPage = pdfDoc.addPage([pageWidth, pageHeight]);
 
-      // Replace specific placeholder values with actual data
-      if (marketData.medianPrice && marketData.medianPrice !== 'N/A') {
-        replaceTextInElement(container, '$750,000', formatCurrency(marketData.medianPrice));
-        replaceTextInElement(container, '$750000', formatCurrency(marketData.medianPrice));
-      }
-      
-      if (marketData.rentalYield && marketData.rentalYield !== 'N/A') {
-        replaceTextInElement(container, '5.2%', formatPercentage(marketData.rentalYield));
-        replaceTextInElement(container, '5.2', formatPercentage(marketData.rentalYield));
-      }
-      
-      if (marketData.growthRate && marketData.growthRate !== 'N/A') {
-        replaceTextInElement(container, '12.5%', formatPercentage(marketData.growthRate));
-        replaceTextInElement(container, '12.5', formatPercentage(marketData.growthRate));
-      }
+      // Add title
+      contentPage.drawText(`Investment Report: ${suburb}, ${state}`, {
+        x: margin,
+        y: yPosition,
+        size: 18,
+        font: helveticaBold,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 40;
 
-      if (marketData.population && marketData.population !== 'N/A') {
-        replaceTextInElement(container, '15,000', formatNumber(marketData.population));
-        replaceTextInElement(container, '15000', formatNumber(marketData.population));
-      }
-
-      if (marketData.medianIncome && marketData.medianIncome !== 'N/A') {
-        replaceTextInElement(container, '$85,000', formatCurrency(marketData.medianIncome));
-        replaceTextInElement(container, '$85000', formatCurrency(marketData.medianIncome));
-      }
-
-      // Map and replace content sections
-      const sectionMappings = [
-        {
-          identifiers: ['Location Overview', 'Location Profile', 'Area Description'],
-          content: findSection(sections, ['Location Overview', 'Location Profile', 'Suburb Overview', 'Area Overview'])
-        },
-        {
-          identifiers: ['Market Performance', 'Market Analysis', 'Property Market'],
-          content: findSection(sections, ['Market KPIs', 'Market Performance', 'Market Analysis', 'Property Market'])
-        },
-        {
-          identifiers: ['Demographics', 'Population', 'Demand Drivers'],
-          content: findSection(sections, ['Demographics & Demand Drivers', 'Demographics', 'Population'])
-        },
-        {
-          identifiers: ['Infrastructure', 'Amenities', 'Development'],
-          content: findSection(sections, ['Infrastructure & Development', 'Infrastructure', 'Amenities'])
-        },
-        {
-          identifiers: ['Investment Score', 'Investment Rating', 'Score'],
-          content: findSection(sections, ['Investment Score', 'Investment Rating', 'Overall Score'])
-        },
-        {
-          identifiers: ['Risks', 'Opportunities', 'Risk Assessment'],
-          content: findSection(sections, ['Risks & Opportunities', 'Risk Factors', 'Opportunities'])
-        }
+      // Add sections
+      const sectionOrder = [
+        'Location Overview',
+        'Market KPIs',
+        'Demographics & Demand Drivers',
+        'Infrastructure & Amenities',
+        'Property-Level Information',
+        'Costs for Investors',
+        'Risk Assessment',
+        'Comparable Market Evidence',
+        'Financial Analysis',
+        '10-Year Projection Scenarios',
+        'Overall Investment Score',
+        'Key Opportunities & Risks',
       ];
 
-      sectionMappings.forEach(({ identifiers, content }) => {
-        if (content) {
-          replaceContentSection(container, identifiers, content);
+      for (const sectionName of sectionOrder) {
+        const content = findSection(sections, [sectionName]);
+        if (!content) continue;
+
+        // Check if we need a new page
+        if (yPosition < 100) {
+          const newPage = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPosition = 750;
+          
+          // Draw section title on new page
+          newPage.drawText(sectionName, {
+            x: margin,
+            y: yPosition,
+            size: 14,
+            font: helveticaBold,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          yPosition -= 30;
+
+          // Draw content
+          const cleanContent = content
+            .replace(/^[#*\-•]\s*/gm, '')
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .trim();
+
+          const lines = cleanContent.split('\n');
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            
+            // Word wrap
+            const words = line.split(' ');
+            let currentLine = '';
+            
+            for (const word of words) {
+              const testLine = currentLine + (currentLine ? ' ' : '') + word;
+              const textWidth = helveticaFont.widthOfTextAtSize(testLine, 11);
+              
+              if (textWidth > pageWidth - 2 * margin) {
+                newPage.drawText(currentLine, {
+                  x: margin,
+                  y: yPosition,
+                  size: 11,
+                  font: helveticaFont,
+                  color: rgb(0.3, 0.3, 0.3),
+                });
+                yPosition -= lineHeight;
+                currentLine = word;
+                
+                if (yPosition < 50) {
+                  const anotherPage = pdfDoc.addPage([pageWidth, pageHeight]);
+                  yPosition = 750;
+                }
+              } else {
+                currentLine = testLine;
+              }
+            }
+            
+            if (currentLine) {
+              newPage.drawText(currentLine, {
+                x: margin,
+                y: yPosition,
+                size: 11,
+                font: helveticaFont,
+                color: rgb(0.3, 0.3, 0.3),
+              });
+              yPosition -= lineHeight;
+            }
+          }
+          
+          yPosition -= 20;
+        } else {
+          // Draw on current page
+          contentPage.drawText(sectionName, {
+            x: margin,
+            y: yPosition,
+            size: 14,
+            font: helveticaBold,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          yPosition -= 30;
+
+          const cleanContent = content
+            .replace(/^[#*\-•]\s*/gm, '')
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .trim();
+
+          const lines = cleanContent.split('\n');
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            
+            const words = line.split(' ');
+            let currentLine = '';
+            
+            for (const word of words) {
+              const testLine = currentLine + (currentLine ? ' ' : '') + word;
+              const textWidth = helveticaFont.widthOfTextAtSize(testLine, 11);
+              
+              if (textWidth > pageWidth - 2 * margin) {
+                contentPage.drawText(currentLine, {
+                  x: margin,
+                  y: yPosition,
+                  size: 11,
+                  font: helveticaFont,
+                  color: rgb(0.3, 0.3, 0.3),
+                });
+                yPosition -= lineHeight;
+                currentLine = word;
+                
+                if (yPosition < 50) break;
+              } else {
+                currentLine = testLine;
+              }
+            }
+            
+            if (currentLine && yPosition >= 50) {
+              contentPage.drawText(currentLine, {
+                x: margin,
+                y: yPosition,
+                size: 11,
+                font: helveticaFont,
+                color: rgb(0.3, 0.3, 0.3),
+              });
+              yPosition -= lineHeight;
+            }
+            
+            if (yPosition < 100) break;
+          }
+          
+          yPosition -= 20;
         }
-      });
-
-      // Wait for any fonts/images to load
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Find all pages in the template - pdf2htmlEX uses .pf class for page frames
-      const pages = container.querySelectorAll('.pf, .page, [data-page], .pdf-page');
-      
-      if (pages.length === 0) {
-        console.error('No pages found. Available classes:', container.querySelector('*')?.className);
-        throw new Error('No pages found in template');
       }
 
-      // Calculate PDF dimensions based on the first page's actual rendered size
-      const firstPage = pages[0] as HTMLElement;
-      const pageWidth = firstPage.offsetWidth;
-      const pageHeight = firstPage.offsetHeight;
+      // Save the PDF
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       
-      // Convert pixels to mm (assuming 96 DPI: 1 inch = 25.4mm, 96px = 25.4mm)
-      const pxToMm = 25.4 / 96;
-      const pdfWidthMm = pageWidth * pxToMm;
-      const pdfHeightMm = pageHeight * pxToMm;
-
-      // Create PDF with dimensions matching the template
-      const pdf = new jsPDF({
-        orientation: pdfWidthMm > pdfHeightMm ? 'landscape' : 'portrait',
-        unit: 'mm',
-        format: [pdfWidthMm, pdfHeightMm],
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      // Capture each page
-      for (let i = 0; i < pages.length; i++) {
-        const pageElement = pages[i] as HTMLElement;
-        
-        const canvas = await html2canvas(pageElement, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
+      // Upload to Supabase Storage
+      const fileName = `${report.id}_${suburb}_${state}_${Date.now()}.pdf`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('investment-reports')
+        .upload(fileName, blob, {
+          contentType: 'application/pdf',
+          upsert: true,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        
-        if (i > 0) {
-          pdf.addPage();
-        }
-        
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      }
+      if (uploadError) throw uploadError;
 
-      // Clean up
-      document.body.removeChild(container);
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('investment-reports')
+        .getPublicUrl(fileName);
 
-      // Save PDF
-      const fileName = `${suburb}_${state}_Investment_Report.pdf`;
-      pdf.save(fileName);
+      // Update the investment_reports table with the PDF URL
+      const { error: updateError } = await supabase
+        .from('investment_reports')
+        .update({ pdf_url: publicUrl })
+        .eq('id', report.id);
 
-      toast.success('PDF generated successfully!');
+      if (updateError) throw updateError;
+
+      // Download the PDF
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${suburb}_${state}_Investment_Report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      toast.success('PDF generated and saved successfully!');
     } catch (error) {
       console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF. Please try again.');
