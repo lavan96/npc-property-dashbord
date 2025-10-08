@@ -225,8 +225,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       
       // Load the template PDF
       const pdfDoc = await PDFDocument.load(templateBytes);
-      const bodyFont = await pdfDoc.embedFont(StandardFonts['Times-Roman']);
-      const bodyBoldFont = await pdfDoc.embedFont(StandardFonts['Times-Bold']);
+      const bodyFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      const bodyBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
       const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
       // Get the second page from template to use as content template
