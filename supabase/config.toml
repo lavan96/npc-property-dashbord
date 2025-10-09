@@ -100,3 +100,15 @@ verify_jwt = false
 
 [functions.risk-assessment-service]
 verify_jwt = false
+
+[functions.abs-seifa-service]
+verify_jwt = false
+
+[functions.crime-statistics-service]
+verify_jwt = false
+
+[functions.abs-employment-service]
+verify_jwt = false
+
+[functions.climate-data-service]
+verify_jwt = false

@@ -92,6 +92,10 @@ serve(async (req) => {
       investmentScore?: any;
       domainData?: any;
       riskAssessment?: any;
+      seifaData?: any;
+      crimeStatistics?: any;
+      employmentData?: any;
+      climateData?: any;
     }
     
     let enhancedData: EnhancedData = {};
@@ -307,6 +311,121 @@ serve(async (req) => {
         }
       }
 
+      // Fetch ABS SEIFA socioeconomic data
+      if (postcode) {
+        try {
+          console.log('Fetching SEIFA socioeconomic data for postcode:', postcode);
+          const seifaResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-seifa-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              postcode: postcode,
+              state: state
+            })
+          });
+          
+          if (seifaResponse.ok) {
+            const seifaData = await seifaResponse.json();
+            if (seifaData.success && seifaData.data) {
+              enhancedData = { ...enhancedData, seifaData: seifaData.data };
+              console.log('✓ SEIFA socioeconomic data fetched successfully');
+            }
+          }
+        } catch (error: any) {
+          console.log('SEIFA data fetch failed:', error?.message || 'Unknown error');
+        }
+      }
+
+      // Fetch crime statistics
+      if (suburb && state) {
+        try {
+          console.log('Fetching crime statistics for:', suburb, state);
+          const crimeResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/crime-statistics-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              suburb: suburb,
+              state: state,
+              postcode: postcode
+            })
+          });
+          
+          if (crimeResponse.ok) {
+            const crimeData = await crimeResponse.json();
+            if (crimeData.success && crimeData.data) {
+              enhancedData = { ...enhancedData, crimeStatistics: crimeData.data };
+              console.log('✓ Crime statistics fetched successfully');
+            }
+          }
+        } catch (error: any) {
+          console.log('Crime statistics fetch failed:', error?.message || 'Unknown error');
+        }
+      }
+
+      // Fetch employment & job growth data
+      if (state) {
+        try {
+          console.log('Fetching employment data for:', state);
+          const employmentResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-employment-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              suburb: suburb,
+              state: state,
+              postcode: postcode
+            })
+          });
+          
+          if (employmentResponse.ok) {
+            const employmentData = await employmentResponse.json();
+            if (employmentData.success && employmentData.data) {
+              enhancedData = { ...enhancedData, employmentData: employmentData.data };
+              console.log('✓ Employment data fetched successfully');
+            }
+          }
+        } catch (error: any) {
+          console.log('Employment data fetch failed:', error?.message || 'Unknown error');
+        }
+      }
+
+      // Fetch climate data
+      if (state) {
+        try {
+          console.log('Fetching climate data for:', state);
+          const climateResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/climate-data-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              suburb: suburb,
+              state: state,
+              postcode: postcode
+            })
+          });
+          
+          if (climateResponse.ok) {
+            const climateData = await climateResponse.json();
+            if (climateData.success && climateData.data) {
+              enhancedData = { ...enhancedData, climateData: climateData.data };
+              console.log('✓ Climate data fetched successfully');
+            }
+          }
+        } catch (error: any) {
+          console.log('Climate data fetch failed:', error?.message || 'Unknown error');
+        }
+      }
+
     } catch (error: any) {
       console.log('Enhanced data fetch failed, proceeding with basic analysis:', error?.message || 'Unknown error');
     }
@@ -484,6 +603,114 @@ INVESTMENT SCORE AVAILABLE:
 - Yield Score: ${enhancedData.investmentScore.yieldScore?.score || 'N/A'}/100
 - Growth Score: ${enhancedData.investmentScore.growthScore?.score || 'N/A'}/100
 - Location Score: ${enhancedData.investmentScore.locationScore?.score || 'N/A'}/100
+` : ''}
+
+${enhancedData.seifaData ? `
+SEIFA SOCIOECONOMIC INDEX DATA (ABS):
+- IRSAD Score: ${enhancedData.seifaData.irsad?.score || 'N/A'} (Decile ${enhancedData.seifaData.irsad?.decile || 'N/A'}/10)
+- IRSAD Rating: ${enhancedData.seifaData.irsad?.description || 'N/A'}
+- IRSD Score: ${enhancedData.seifaData.irsd?.score || 'N/A'} (Decile ${enhancedData.seifaData.irsd?.decile || 'N/A'}/10)
+- IER Score: ${enhancedData.seifaData.ier?.score || 'N/A'} (Decile ${enhancedData.seifaData.ier?.decile || 'N/A'}/10)
+- IEO Score: ${enhancedData.seifaData.ieo?.score || 'N/A'} (Decile ${enhancedData.seifaData.ieo?.decile || 'N/A'}/10)
+- Summary: ${enhancedData.seifaData.summary || 'N/A'}
+- Data Source: ${enhancedData.seifaData.dataSource || 'ABS'}
+- Note: ${enhancedData.seifaData.note || 'SEIFA indexes rank areas based on socioeconomic advantage'}
+
+IMPORTANT: Use this SEIFA data in your "Demographics & Demand Drivers" section to provide socioeconomic context. Decile 10 = most advantaged, Decile 1 = most disadvantaged.
+` : ''}
+
+${enhancedData.crimeStatistics ? `
+CRIME STATISTICS DATA:
+- Overall Crime Rating: ${enhancedData.crimeStatistics.overallRating || 'N/A'}
+- Compared to State Average: ${enhancedData.crimeStatistics.comparedToStateAverage || 'N/A'}
+- Rate per 100k people: ${enhancedData.crimeStatistics.ratePerCapita || 'N/A'}
+- Period: ${enhancedData.crimeStatistics.period || 'Latest 12 months'}
+- Safety Score: ${enhancedData.crimeStatistics.safetyScore || 'N/A'}/100
+
+CRIME BREAKDOWN BY CATEGORY:
+- Property Offenses: ${enhancedData.crimeStatistics.breakdown?.propertyOffenses?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.propertyOffenses?.percentage || 'N/A'}%)
+  Types: ${enhancedData.crimeStatistics.breakdown?.propertyOffenses?.types?.join(', ') || 'N/A'}
+- Violent Offenses: ${enhancedData.crimeStatistics.breakdown?.violentOffenses?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.violentOffenses?.percentage || 'N/A'}%)
+  Types: ${enhancedData.crimeStatistics.breakdown?.violentOffenses?.types?.join(', ') || 'N/A'}
+- Drug Offenses: ${enhancedData.crimeStatistics.breakdown?.drugOffenses?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.drugOffenses?.percentage || 'N/A'}%)
+- Public Order: ${enhancedData.crimeStatistics.breakdown?.publicOrder?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.publicOrder?.percentage || 'N/A'}%)
+
+CRIME TRENDS:
+- Year-on-Year Change: ${enhancedData.crimeStatistics.trends?.yearOnYear || 'N/A'}
+- 3-Year Trend: ${enhancedData.crimeStatistics.trends?.threeYear || 'N/A'}
+- Trend Description: ${enhancedData.crimeStatistics.trends?.description || 'N/A'}
+
+Data Source: ${enhancedData.crimeStatistics.dataSource || 'State crime statistics'}
+Official Sources: ${enhancedData.crimeStatistics.officialSources?.join(', ') || 'State police service'}
+
+IMPORTANT: Include this crime data in your "Risk Assessment" section. Provide context about safety and how it compares to state averages.
+` : ''}
+
+${enhancedData.employmentData ? `
+EMPLOYMENT & JOB GROWTH DATA (ABS):
+- Employment Rate: ${enhancedData.employmentData.employmentRate || 'N/A'}%
+- Unemployment Rate: ${enhancedData.employmentData.unemploymentRate || 'N/A'}%
+- Participation Rate: ${enhancedData.employmentData.participationRate || 'N/A'}%
+- Labor Force Size: ${enhancedData.employmentData.laborForceSize?.toLocaleString() || 'N/A'}
+
+MAJOR INDUSTRIES:
+${enhancedData.employmentData.majorIndustries?.map((ind: any) => 
+  `- ${ind.name}: ${ind.percentage}% of workforce (Growth: ${ind.growth})`
+).join('\n') || 'N/A'}
+
+JOB GROWTH TRENDS:
+- Annual Growth: ${enhancedData.employmentData.jobGrowth?.annual || 'N/A'}
+- 3-Year Growth: ${enhancedData.employmentData.jobGrowth?.threeYear || 'N/A'}
+- 5-Year Growth: ${enhancedData.employmentData.jobGrowth?.fiveYear || 'N/A'}
+- Description: ${enhancedData.employmentData.jobGrowth?.description || 'N/A'}
+
+MEDIAN INCOME:
+- Weekly: $${enhancedData.employmentData.medianIncome?.weekly?.toLocaleString() || 'N/A'}
+- Annual: $${enhancedData.employmentData.medianIncome?.annual?.toLocaleString() || 'N/A'}
+- Growth: ${enhancedData.employmentData.medianIncome?.growth || 'N/A'}
+
+FUTURE OUTLOOK:
+- Rating: ${enhancedData.employmentData.futureOutlook?.rating || 'N/A'}
+- Description: ${enhancedData.employmentData.futureOutlook?.description || 'N/A'}
+- Key Drivers: ${enhancedData.employmentData.futureOutlook?.keyDrivers?.join(', ') || 'N/A'}
+
+Data Source: ${enhancedData.employmentData.dataSource || 'ABS Labour Force Survey'}
+
+IMPORTANT: Use this employment data in your "Demographics & Demand Drivers" and "Infrastructure & Amenities" sections to show job market strength and economic prospects.
+` : ''}
+
+${enhancedData.climateData ? `
+CLIMATE & ENVIRONMENTAL DATA (BoM):
+- Climate Zone: ${enhancedData.climateData.climateZone || 'N/A'}
+- Annual Average Temperature: ${enhancedData.climateData.temperature?.annual || 'N/A'}°C
+  Summer: ${enhancedData.climateData.temperature?.summer || 'N/A'}°C, Winter: ${enhancedData.climateData.temperature?.winter || 'N/A'}°C
+- Annual Rainfall: ${enhancedData.climateData.rainfall?.annual || 'N/A'}mm
+  Wettest Period: ${enhancedData.climateData.rainfall?.wettest || 'N/A'}
+  Driest Period: ${enhancedData.climateData.rainfall?.driest || 'N/A'}
+- Humidity: ${enhancedData.climateData.humidity?.annual || 'N/A'}%
+- Comfort Index: ${enhancedData.climateData.comfortIndex || 'N/A'}/100
+
+EXTREME WEATHER RISKS:
+- Heatwaves: ${enhancedData.climateData.extremeWeather?.heatwaves || 'N/A'}
+- Bushfire: ${enhancedData.climateData.extremeWeather?.bushfire || 'N/A'}
+- Flooding: ${enhancedData.climateData.extremeWeather?.flooding || 'N/A'}
+- Storms: ${enhancedData.climateData.extremeWeather?.storms || 'N/A'}
+- Cyclones: ${enhancedData.climateData.extremeWeather?.cyclones || 'N/A'}
+
+CLIMATE PROJECTIONS:
+- Temperature Trend: ${enhancedData.climateData.climateProjections?.temperature?.trend || 'N/A'}
+- Rainfall Trend: ${enhancedData.climateData.climateProjections?.rainfall?.trend || 'N/A'}
+- Extreme Events: ${enhancedData.climateData.climateProjections?.extremeEvents?.trend || 'N/A'}
+
+PROPERTY IMPLICATIONS:
+Construction Considerations: ${enhancedData.climateData.propertyImplications?.construction?.join(', ') || 'N/A'}
+Insurance Factors: ${enhancedData.climateData.propertyImplications?.insurance?.join(', ') || 'N/A'}
+Value Impacts: ${enhancedData.climateData.propertyImplications?.value?.join(', ') || 'N/A'}
+
+Data Source: ${enhancedData.climateData.dataSource || 'Bureau of Meteorology'}
+Note: ${enhancedData.climateData.note || 'Climate data based on historical patterns'}
+
+IMPORTANT: Include climate data in your "Risk Assessment" section and discuss long-term climate impacts on property value and insurance costs.
 ` : ''}
 
 ---
