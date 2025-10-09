@@ -112,3 +112,6 @@ verify_jwt = false
 
 [functions.climate-data-service]
 verify_jwt = false
+
+[functions.school-data-service]
+verify_jwt = false

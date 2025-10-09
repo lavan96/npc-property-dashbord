@@ -96,6 +96,7 @@ serve(async (req) => {
       crimeStatistics?: any;
       employmentData?: any;
       climateData?: any;
+      schoolData?: any;
     }
     
     let enhancedData: EnhancedData = {};
@@ -438,6 +439,44 @@ serve(async (req) => {
         }
       }
 
+      // Fetch school data
+      if (suburb && state && postcode) {
+        try {
+          console.log('Fetching school data for:', suburb, state, postcode);
+          
+          // Extract coordinates from location intelligence if available
+          const latitude = enhancedData.locationIntelligence?.coordinates?.lat;
+          const longitude = enhancedData.locationIntelligence?.coordinates?.lng;
+          
+          const schoolResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/school-data-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({ 
+              suburb: suburb,
+              state: state,
+              postcode: postcode,
+              latitude: latitude || undefined,
+              longitude: longitude || undefined
+            })
+          });
+          
+          if (schoolResponse.ok) {
+            const schoolData = await schoolResponse.json();
+            if (schoolData.success && schoolData.data) {
+              enhancedData = { ...enhancedData, schoolData: schoolData.data };
+              console.log('✓ School data fetched successfully');
+              console.log(`  Found ${schoolData.data.summary?.totalSchools || 0} schools in ${postcode}`);
+            }
+          }
+        } catch (error: any) {
+          console.log('School data fetch failed:', error?.message || 'Unknown error');
+        }
+      }
+
+
     } catch (error: any) {
       console.log('Enhanced data fetch failed, proceeding with basic analysis:', error?.message || 'Unknown error');
     }
@@ -723,6 +762,49 @@ Data Source: ${enhancedData.climateData.dataSource || 'Bureau of Meteorology'}
 Note: ${enhancedData.climateData.note || 'Climate data based on historical patterns'}
 
 IMPORTANT: Include climate data in your "Risk Assessment" section and discuss long-term climate impacts on property value and insurance costs.
+` : ''}
+
+${enhancedData.schoolData ? `
+SCHOOL & EDUCATION DATA AVAILABLE:
+SUMMARY:
+- Total Schools in Postcode: ${enhancedData.schoolData.summary?.totalSchools || 'N/A'}
+- Primary Schools: ${enhancedData.schoolData.summary?.primarySchools || 'N/A'}
+- Secondary Schools: ${enhancedData.schoolData.summary?.secondarySchools || 'N/A'}
+- Average ICSEA Score: ${enhancedData.schoolData.summary?.averageICSEA || 'N/A'} (National average: 1000)
+- Average School Rating: ${enhancedData.schoolData.summary?.averageRating || 'N/A'}/5 stars
+- Education Quality: ${enhancedData.schoolData.summary?.educationQuality || 'N/A'}
+
+${enhancedData.schoolData.summary?.nearestSchool ? `
+NEAREST SCHOOL:
+- Name: ${enhancedData.schoolData.summary.nearestSchool.name}
+- Distance: ${enhancedData.schoolData.summary.nearestSchool.distance}km
+- Level: ${enhancedData.schoolData.summary.nearestSchool.level}
+- Rating: ${enhancedData.schoolData.summary.nearestSchool.rating}/5 stars
+` : ''}
+
+${enhancedData.schoolData.summary?.topRatedSchools?.length > 0 ? `
+TOP-RATED SCHOOLS IN AREA:
+${enhancedData.schoolData.summary.topRatedSchools.map((school: any) => 
+  `- ${school.name} (${school.level}, ${school.type})
+  Rating: ${school.rating}/5 stars, ICSEA: ${school.icsea || 'N/A'}`
+).join('\n')}
+` : ''}
+
+${enhancedData.schoolData.schools?.length > 0 ? `
+DETAILED SCHOOL INFORMATION:
+${enhancedData.schoolData.schools.slice(0, 10).map((school: any) => 
+  `- ${school.name} (${school.level}, ${school.type})
+  ICSEA: ${school.icsea || 'N/A'}, Rating: ${school.rating || 'N/A'}/5
+  ${school.naplan?.overall ? `NAPLAN Average: ${school.naplan.overall}` : ''}
+  ${school.atar?.median ? `ATAR Median: ${school.atar.median}` : ''}
+  ${school.studentCount ? `Students: ${school.studentCount}` : ''}`
+).join('\n\n')}
+` : ''}
+
+Data Source: ${enhancedData.schoolData.dataSource || 'ACARA MySchool'}
+Note: ${enhancedData.schoolData.note || 'ICSEA measures socio-educational advantage (Australian average = 1000)'}
+
+IMPORTANT: Include this education data in a dedicated "Schools & Education" section or incorporate it into "Demographics & Lifestyle". This is CRITICAL for families and significantly impacts property demand and capital growth. Mention specific school names, ratings, and ICSEA scores.
 ` : ''}
 
 ---
@@ -1136,7 +1218,8 @@ Produce a full investment report following the structure above, including detail
         investmentScore: enhancedData.investmentScore,
         financials: enhancedData.financials,
         demographics: enhancedData.demographics,
-        economics: enhancedData.economics
+        economics: enhancedData.economics,
+        schoolData: enhancedData.schoolData
       }
     };
 
