@@ -58,16 +58,24 @@ serve(async (req) => {
 
   try {
     const input: PublicTransportInput = await req.json();
-    console.log('Public transport request:', input);
+    console.log('📍 Public transport request received:', { lat: input.lat, lng: input.lng, state: input.state, suburb: input.suburb });
 
     const { lat, lng, state } = input;
 
     if (!lat || !lng || !state) {
-      throw new Error('Missing required parameters: lat, lng, state');
+      const missingParams = [];
+      if (!lat) missingParams.push('lat');
+      if (!lng) missingParams.push('lng');
+      if (!state) missingParams.push('state');
+      throw new Error(`Missing required parameters: ${missingParams.join(', ')}`);
     }
 
+    console.log(`🚇 Fetching transport data for ${state.toUpperCase()}...`);
+    
     // Fetch transport data based on state
     const transportData = await fetchStateTransportData(state, lat, lng);
+    
+    console.log(`✅ Transport data fetched successfully for ${state.toUpperCase()}: Quality Score ${transportData.qualityScore}/100`);
 
     return new Response(
       JSON.stringify(transportData),
@@ -77,11 +85,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in public-transport-service:', error);
+    console.error('❌ Error in public-transport-service:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        fallback: generateFallbackData(input)
+        error: errorMessage,
+        fallback: generateFallbackData({ lat: -33.8688, lng: 151.2093, state: 'NSW' })
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -97,6 +107,7 @@ async function fetchStateTransportData(
   lng: number
 ): Promise<PublicTransportData> {
   const stateUpper = state.toUpperCase();
+  console.log(`🔍 Routing to ${stateUpper} transport handler...`);
 
   switch (stateUpper) {
     case 'NSW':
@@ -116,13 +127,14 @@ async function fetchStateTransportData(
     case 'ACT':
       return await fetchACTTransportData(lat, lng);
     default:
-      throw new Error(`Unsupported state: ${state}`);
+      console.error(`❌ Unsupported state: ${state} (${stateUpper})`);
+      throw new Error(`Unsupported state: ${state}. Supported states: NSW, VIC, QLD, SA, WA, TAS, NT, ACT`);
   }
 }
 
 // NSW - Transport for NSW Open Data
 async function fetchNSWTransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching NSW transport data...');
+  console.log('🚆 Fetching NSW transport data (Sydney Metro)...');
   
   // NSW has comprehensive real-time GTFS data
   // For now, using realistic mock data based on Sydney transport patterns
@@ -182,7 +194,7 @@ async function fetchNSWTransportData(lat: number, lng: number): Promise<PublicTr
 
 // VIC - Public Transport Victoria (PTV)
 async function fetchVICTransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching VIC transport data...');
+  console.log('🚊 Fetching VIC transport data (Melbourne Trams)...');
   
   const stops: TransportStop[] = [
     {
@@ -239,8 +251,8 @@ async function fetchVICTransportData(lat: number, lng: number): Promise<PublicTr
 }
 
 // QLD - TransLink South East Queensland
-async function fetchQLDTransportData(lat: number, lng: lng): Promise<PublicTransportData> {
-  console.log('Fetching QLD transport data...');
+async function fetchQLDTransportData(lat: number, lng: number): Promise<PublicTransportData> {
+  console.log('⛴️ Fetching QLD transport data (Brisbane + Ferry)...');
   
   const stops: TransportStop[] = [
     {
@@ -298,7 +310,7 @@ async function fetchQLDTransportData(lat: number, lng: lng): Promise<PublicTrans
 
 // SA - Adelaide Metro
 async function fetchSATransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching SA transport data...');
+  console.log('🚈 Fetching SA transport data (Adelaide)...');
   
   const stops: TransportStop[] = [
     {
@@ -355,7 +367,7 @@ async function fetchSATransportData(lat: number, lng: number): Promise<PublicTra
 
 // WA - Transperth
 async function fetchWATransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching WA transport data...');
+  console.log('🚇 Fetching WA transport data (Perth + CAT Bus)...');
   
   const stops: TransportStop[] = [
     {
@@ -412,7 +424,7 @@ async function fetchWATransportData(lat: number, lng: number): Promise<PublicTra
 
 // TAS - Metro Tasmania
 async function fetchTASTransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching TAS transport data...');
+  console.log('🚌 Fetching TAS transport data (Hobart Bus)...');
   
   const stops: TransportStop[] = [
     {
@@ -461,7 +473,7 @@ async function fetchTASTransportData(lat: number, lng: number): Promise<PublicTr
 
 // NT - Department of Transport (Darwin)
 async function fetchNTTransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching NT transport data...');
+  console.log('🚍 Fetching NT transport data (Darwin Bus)...');
   
   const stops: TransportStop[] = [
     {
@@ -510,7 +522,7 @@ async function fetchNTTransportData(lat: number, lng: number): Promise<PublicTra
 
 // ACT - Transport Canberra
 async function fetchACTTransportData(lat: number, lng: number): Promise<PublicTransportData> {
-  console.log('Fetching ACT transport data...');
+  console.log('🚋 Fetching ACT transport data (Canberra Light Rail)...');
   
   const stops: TransportStop[] = [
     {
