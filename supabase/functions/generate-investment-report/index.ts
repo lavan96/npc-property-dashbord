@@ -147,6 +147,11 @@ serve(async (req) => {
       if (postcode && state) {
         try {
           console.log('Fetching risk assessment for:', suburb, state, postcode);
+          
+          // Extract coordinates from location intelligence if available
+          const latitude = enhancedData.locationIntelligence?.coordinates?.lat;
+          const longitude = enhancedData.locationIntelligence?.coordinates?.lng;
+          
           const riskResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/risk-assessment-service`, {
             method: 'POST',
             headers: {
@@ -156,7 +161,9 @@ serve(async (req) => {
             body: JSON.stringify({ 
               suburb: suburb || 'unknown',
               state: state,
-              postcode: postcode
+              postcode: postcode,
+              latitude: latitude || undefined,
+              longitude: longitude || undefined
             })
           });
           
@@ -165,6 +172,11 @@ serve(async (req) => {
             if (riskData.success && riskData.data) {
               enhancedData = { ...enhancedData, riskAssessment: riskData.data };
               console.log('✓ Risk assessment data fetched successfully');
+              if (latitude && longitude) {
+                console.log('  Using precise coordinates for flood/bushfire assessment');
+              } else {
+                console.log('  Using postcode-based estimates (coordinates unavailable)');
+              }
             }
           }
         } catch (error: any) {

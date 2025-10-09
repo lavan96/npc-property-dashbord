@@ -31,6 +31,8 @@ interface RiskAssessment {
     dataSource: string;
     officialSource?: string;
     note?: string;
+    category?: string;
+    overlayCode?: string;
   };
 }
 
@@ -56,8 +58,13 @@ serve(async (req) => {
       riskAssessment.floodRisk = await fetchFloodRiskByPostcode(postcode, suburb, state);
     }
 
-    // Bushfire risk - state-specific (to be implemented per state)
-    riskAssessment.bushfireRisk = generateBushfireEstimate(state, suburb, postcode);
+    // Fetch real bushfire risk data from state-specific services
+    console.log(`Fetching bushfire risk for ${state}`);
+    if (latitude && longitude) {
+      riskAssessment.bushfireRisk = await fetchBushfireRiskByState(state, suburb, postcode, latitude, longitude);
+    } else {
+      riskAssessment.bushfireRisk = await fetchBushfireRiskByPostcode(state, suburb, postcode);
+    }
 
     console.log('Risk assessment compiled:', riskAssessment);
 
@@ -249,6 +256,429 @@ function generateFloodEstimate(suburb: string, state: string, latitude?: number,
     dataSource: 'Estimated based on regional flood patterns (AFRIP data unavailable)',
     note: 'For accurate flood risk assessment, provide property coordinates or consult https://afrip.ga.gov.au/'
   };
+}
+
+async function fetchBushfireRiskByState(
+  state: string, 
+  suburb: string, 
+  postcode: string, 
+  latitude: number, 
+  longitude: number
+) {
+  const stateUpper = state.toUpperCase();
+  
+  try {
+    switch (stateUpper) {
+      case 'NSW':
+        return await fetchNSWBushfireRisk(suburb, postcode, latitude, longitude);
+      case 'VIC':
+        return await fetchVICBushfireRisk(suburb, postcode, latitude, longitude);
+      case 'QLD':
+        return await fetchQLDBushfireRisk(suburb, postcode, latitude, longitude);
+      case 'SA':
+        return await fetchSABushfireRisk(suburb, postcode, latitude, longitude);
+      case 'WA':
+        return await fetchWABushfireRisk(suburb, postcode, latitude, longitude);
+      case 'TAS':
+        return await fetchTASBushfireRisk(suburb, postcode, latitude, longitude);
+      case 'NT':
+        return await fetchNTBushfireRisk(suburb, postcode, latitude, longitude);
+      case 'ACT':
+        return await fetchACTBushfireRisk(suburb, postcode, latitude, longitude);
+      default:
+        return generateBushfireEstimate(state, suburb, postcode);
+    }
+  } catch (error: any) {
+    console.error(`Error fetching ${state} bushfire risk:`, error);
+    return generateBushfireEstimate(state, suburb, postcode);
+  }
+}
+
+async function fetchBushfireRiskByPostcode(state: string, suburb: string, postcode: string) {
+  // Without coordinates, provide state-specific general risk information
+  return generateBushfireEstimate(state, suburb, postcode);
+}
+
+// NSW Rural Fire Service (RFS)
+async function fetchNSWBushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching NSW RFS bushfire risk data...');
+    
+    // NSW RFS Bushfire Prone Land mapping
+    // Using NSW Spatial Services WFS endpoint
+    const wfsUrl = 'https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Bushfire_Prone_Land/MapServer/0/query';
+    const queryUrl = `${wfsUrl}?geometry=${longitude},${latitude}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('NSW RFS data received');
+      
+      if (data.features && data.features.length > 0) {
+        const feature = data.features[0];
+        const attributes = feature.attributes;
+        
+        // Property is in bushfire prone land
+        const category = attributes.CATEGORY || attributes.BF_CATEGORY || 'Unknown';
+        let level: 'Low' | 'Medium' | 'High' | 'Extreme' | 'Unknown';
+        
+        if (category.toLowerCase().includes('vegetation category 1')) {
+          level = 'Extreme';
+        } else if (category.toLowerCase().includes('vegetation')) {
+          level = 'High';
+        } else if (category.toLowerCase().includes('buffer')) {
+          level = 'Medium';
+        } else {
+          level = 'High';
+        }
+        
+        return {
+          level,
+          description: `This property is designated as Bushfire Prone Land (${category}). A Bushfire Attack Level (BAL) assessment is required for development. Properties must comply with AS 3959 construction standards.`,
+          dataSource: 'NSW Rural Fire Service (RFS) - Bushfire Prone Land Mapping',
+          category,
+          officialSource: getStateBushfireDataSource('NSW'),
+          note: 'All development in bushfire prone land requires a BAL assessment and compliance with NSW Planning for Bushfire Protection guidelines.'
+        };
+      } else {
+        return {
+          level: 'Low' as const,
+          description: 'This property is not currently mapped as Bushfire Prone Land by NSW RFS. However, bushfire risk can exist outside mapped areas.',
+          dataSource: 'NSW Rural Fire Service (RFS) - Bushfire Prone Land Mapping',
+          officialSource: getStateBushfireDataSource('NSW'),
+          note: 'Even properties outside bushfire prone land should maintain defensible space during fire season.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('NSW RFS API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('NSW', suburb, postcode);
+}
+
+// VIC Country Fire Authority (CFA)
+async function fetchVICBushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching VIC CFA bushfire risk data...');
+    
+    // Victoria CFA Bushfire Management Overlay (BMO)
+    // Using VIC DataVic WFS endpoint
+    const wfsUrl = 'https://services.land.vic.gov.au/catalogue/publicproxy/guest/dv_geoserver/wfs';
+    const queryUrl = `${wfsUrl}?service=WFS&version=2.0.0&request=GetFeature&typeName=PLANNING_BMO&outputFormat=application/json&CQL_FILTER=INTERSECTS(geom,POINT(${longitude} ${latitude}))`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('VIC CFA data received');
+      
+      if (data.features && data.features.length > 0) {
+        const feature = data.features[0];
+        const properties = feature.properties;
+        
+        return {
+          level: 'High' as const,
+          description: 'This property is within a Bushfire Management Overlay (BMO) area. Development requires a bushfire management plan and BAL assessment. Property must comply with bushfire protection standards.',
+          dataSource: 'Country Fire Authority (CFA) Victoria - Bushfire Management Overlay',
+          overlayCode: properties.ZONE_CODE || properties.BMO_CODE,
+          officialSource: getStateBushfireDataSource('VIC'),
+          note: 'BMO areas have specific planning requirements. Consult with CFA and local council before development.'
+        };
+      } else {
+        return {
+          level: 'Low' as const,
+          description: 'This property is not within a mapped Bushfire Management Overlay. Standard fire safety practices recommended.',
+          dataSource: 'Country Fire Authority (CFA) Victoria - Bushfire Management Overlay',
+          officialSource: getStateBushfireDataSource('VIC'),
+          note: 'Bushfire risk can exist outside overlay areas. Maintain defensible space during fire danger periods.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('VIC CFA API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('VIC', suburb, postcode);
+}
+
+// QLD Fire and Emergency Services (QFES)
+async function fetchQLDBushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching QLD QFES bushfire risk data...');
+    
+    // Queensland Bushfire Prone Areas
+    // Using QLD Government WFS endpoint
+    const wfsUrl = 'https://spatial-gis.information.qld.gov.au/arcgis/rest/services/Environment/BushfireProneAreas/MapServer/0/query';
+    const queryUrl = `${wfsUrl}?geometry=${longitude},${latitude}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('QLD QFES data received');
+      
+      if (data.features && data.features.length > 0) {
+        const feature = data.features[0];
+        const attributes = feature.attributes;
+        
+        const category = attributes.CATEGORY || attributes.TYPE || 'Bushfire Prone Area';
+        
+        return {
+          level: 'High' as const,
+          description: `This property is within a designated Bushfire Prone Area (${category}). Development requires compliance with Queensland Development Code MP 3.4 and a bushfire management plan.`,
+          dataSource: 'Queensland Fire and Emergency Services (QFES) - Bushfire Prone Areas',
+          category,
+          officialSource: getStateBushfireDataSource('QLD'),
+          note: 'Properties in bushfire prone areas must comply with QDC MP 3.4 construction standards.'
+        };
+      } else {
+        return {
+          level: 'Low' as const,
+          description: 'This property is not currently mapped as a Bushfire Prone Area. Standard bushfire safety practices recommended.',
+          dataSource: 'Queensland Fire and Emergency Services (QFES) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('QLD'),
+          note: 'Bushfire preparedness is important statewide during fire season.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('QLD QFES API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('QLD', suburb, postcode);
+}
+
+// SA Country Fire Service (CFS)
+async function fetchSABushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching SA CFS bushfire risk data...');
+    
+    // South Australia Bushfire Prone Areas
+    // Using SA Government data portal
+    const wfsUrl = 'https://data.sa.gov.au/data/api/3/action/datastore_search';
+    const queryUrl = `${wfsUrl}?resource_id=bushfire-prone-areas&filters={"LATITUDE":"${latitude}","LONGITUDE":"${longitude}"}`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('SA CFS data received');
+      
+      if (data.result && data.result.records && data.result.records.length > 0) {
+        const record = data.result.records[0];
+        
+        return {
+          level: 'High' as const,
+          description: 'This property is within a Bushfire Prone Area. Development requires compliance with SA Planning and Design Code bushfire protection measures and a BAL assessment.',
+          dataSource: 'SA Country Fire Service (CFS) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('SA'),
+          note: 'Bushfire prone areas have specific development requirements under the SA Planning and Design Code.'
+        };
+      } else {
+        return {
+          level: 'Medium' as const,
+          description: 'This property is not within a mapped Bushfire Prone Area. South Australia experiences regular bushfire seasons - maintain appropriate defensible space.',
+          dataSource: 'SA Country Fire Service (CFS) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('SA'),
+          note: 'SA is prone to severe fire danger days. Prepare a bushfire survival plan regardless of mapping.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('SA CFS API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('SA', suburb, postcode);
+}
+
+// WA Department of Fire and Emergency Services (DFES)
+async function fetchWABushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching WA DFES bushfire risk data...');
+    
+    // Western Australia Bushfire Prone Areas
+    // Using WA Government spatial data
+    const wfsUrl = 'https://catalogue.data.wa.gov.au/api/3/action/datastore_search';
+    const queryUrl = `${wfsUrl}?resource_id=bushfire-prone-areas&filters={"latitude":"${latitude}","longitude":"${longitude}"}`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('WA DFES data received');
+      
+      if (data.result && data.result.records && data.result.records.length > 0) {
+        return {
+          level: 'High' as const,
+          description: 'This property is within a designated Bushfire Prone Area. Development requires compliance with AS 3959 and a BAL assessment as per State Planning Policy 3.7.',
+          dataSource: 'WA Department of Fire and Emergency Services (DFES) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('WA'),
+          note: 'Bushfire prone areas in WA require compliance with SPP 3.7 and Guidelines for Planning in Bushfire Prone Areas.'
+        };
+      } else {
+        return {
+          level: 'Medium' as const,
+          description: 'This property is not currently mapped as Bushfire Prone. WA experiences severe bushfire seasons - maintain defensible space and fire preparedness.',
+          dataSource: 'WA Department of Fire and Emergency Services (DFES) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('WA'),
+          note: 'Bushfire risk exists across much of WA. Prepare a bushfire plan and maintain adequate defensible space.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('WA DFES API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('WA', suburb, postcode);
+}
+
+// TAS Tasmania Fire Service (TFS)
+async function fetchTASBushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching TAS Fire Service bushfire risk data...');
+    
+    // Tasmania Bushfire Prone Areas
+    // Using TAS Government LIST (Land Information System Tasmania)
+    const wfsUrl = 'https://services.thelist.tas.gov.au/arcgis/rest/services/Public/CadastreAndAdministrative/MapServer/13/query';
+    const queryUrl = `${wfsUrl}?geometry=${longitude},${latitude}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('TAS Fire Service data received');
+      
+      if (data.features && data.features.length > 0) {
+        return {
+          level: 'High' as const,
+          description: 'This property is within a Bushfire-Prone Area. Development requires a BAL assessment and compliance with the Tasmanian Planning Scheme bushfire code.',
+          dataSource: 'Tasmania Fire Service (TFS) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('TAS'),
+          note: 'Tasmania experiences severe bushfire conditions. Properties in prone areas must comply with E1.0 Bushfire-Prone Areas Code.'
+        };
+      } else {
+        return {
+          level: 'Medium' as const,
+          description: 'This property is not within a mapped Bushfire-Prone Area. Tasmania experiences bushfire risk statewide - maintain fire preparedness.',
+          dataSource: 'Tasmania Fire Service (TFS) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('TAS'),
+          note: 'Bushfire risk exists across Tasmania. Prepare a bushfire survival plan for fire danger periods.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('TAS Fire Service API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('TAS', suburb, postcode);
+}
+
+// NT Police, Fire and Emergency Services (NTPFES)
+async function fetchNTBushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching NT PFES bushfire risk data...');
+    
+    // Northern Territory Bushfire Risk Areas
+    // Using NT Government open data portal
+    const apiUrl = 'https://data.gov.au/api/3/action/datastore_search';
+    const queryUrl = `${apiUrl}?resource_id=nt-bushfire-risk&filters={"latitude":"${latitude}","longitude":"${longitude}"}`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('NT PFES data received');
+      
+      if (data.result && data.result.records && data.result.records.length > 0) {
+        return {
+          level: 'High' as const,
+          description: 'This property is in a bushfire risk area. The NT experiences extensive bushfire activity annually. Maintain large defensible space and prepare for fire season (typically April-November).',
+          dataSource: 'NT Police, Fire and Emergency Services (NTPFES) - Bushfire Risk Areas',
+          officialSource: getStateBushfireDataSource('NT'),
+          note: 'NT bushfire seasons are extensive. Maintain defensible space of at least 50-100m in high-risk areas.'
+        };
+      } else {
+        return {
+          level: 'Medium' as const,
+          description: 'Bushfire risk information available through NT PFES. The Northern Territory experiences significant annual bushfire activity across most regions.',
+          dataSource: 'NT Police, Fire and Emergency Services (NTPFES)',
+          officialSource: getStateBushfireDataSource('NT'),
+          note: 'Bushfire is a significant risk across the NT. Prepare property and plan for the annual fire season.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('NT PFES API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('NT', suburb, postcode);
+}
+
+// ACT Emergency Services Agency (ESA)
+async function fetchACTBushfireRisk(suburb: string, postcode: string, latitude: number, longitude: number) {
+  try {
+    console.log('Fetching ACT ESA bushfire risk data...');
+    
+    // ACT Bushfire Prone Areas
+    // Using ACT Government data portal
+    const wfsUrl = 'https://www.data.act.gov.au/api/geospatial/';
+    const queryUrl = `${wfsUrl}bushfire-prone-areas?$where=intersects(location,POINT(${longitude} ${latitude}))`;
+    
+    const response = await fetch(queryUrl, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('ACT ESA data received');
+      
+      if (data && data.length > 0) {
+        return {
+          level: 'High' as const,
+          description: 'This property is within a Bushfire Prone Area. Given ACT\'s 2003 bushfire history, properties must comply with strict bushfire protection standards and maintain defensible space.',
+          dataSource: 'ACT Emergency Services Agency (ESA) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('ACT'),
+          note: 'ACT has strict bushfire planning requirements. Development requires BAL assessment and compliance with Territory Plan bushfire provisions.'
+        };
+      } else {
+        return {
+          level: 'Medium' as const,
+          description: 'This property is not within a mapped Bushfire Prone Area. However, given ACT\'s bushfire history, all properties should maintain fire preparedness.',
+          dataSource: 'ACT Emergency Services Agency (ESA) - Bushfire Prone Areas',
+          officialSource: getStateBushfireDataSource('ACT'),
+          note: 'The ACT is surrounded by bushfire-prone landscapes. Maintain defensible space and prepare a bushfire survival plan.'
+        };
+      }
+    }
+  } catch (error: any) {
+    console.log('ACT ESA API fetch failed:', error.message);
+  }
+  
+  return generateBushfireEstimate('ACT', suburb, postcode);
 }
 
 function generateBushfireEstimate(state: string, suburb: string, postcode: string) {
