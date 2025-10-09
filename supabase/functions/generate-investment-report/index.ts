@@ -616,10 +616,31 @@ WALKABILITY & ACCESS:
 - Walk Score: ${enhancedData.locationIntelligence.walkScore || 'N/A'}/100
 - CBD Commute: ${enhancedData.locationIntelligence.commute?.durationMinutes || 'N/A'} minutes via ${enhancedData.locationIntelligence.commute?.mode || 'transit'} (${enhancedData.locationIntelligence.commute?.distanceKm || 'N/A'}km)
 
-PUBLIC TRANSPORT:
+PUBLIC TRANSPORT ${enhancedData.locationIntelligence.transport?.qualityScore ? `(Quality Score: ${enhancedData.locationIntelligence.transport.qualityScore}/100)` : ''}:
+${enhancedData.locationIntelligence.transport?.qualityScore ? `
+${enhancedData.locationIntelligence.transport?.summary || ''}
+
+TRANSPORT DETAILS:
+- Nearest Stop: ${enhancedData.locationIntelligence.transport?.nearestStop || 'N/A'} (${enhancedData.locationIntelligence.transport?.distanceToStop || 'N/A'}m away)
+- Stops Within 1km: ${enhancedData.locationIntelligence.transport?.stopsWithin1km || 'N/A'}
+- Transport Types Available: ${enhancedData.locationIntelligence.transport?.transportTypes?.join(', ') || 'N/A'}
+- Service Frequency:
+  Peak Hour: ${enhancedData.locationIntelligence.transport?.serviceFrequency?.peak || 'N/A'} services/hour
+  Off-Peak: ${enhancedData.locationIntelligence.transport?.serviceFrequency?.offPeak || 'N/A'} services/hour
+${enhancedData.locationIntelligence.transport?.routeCoverage?.length > 0 ? `
+- Route Coverage:
+${enhancedData.locationIntelligence.transport.routeCoverage.map((r: any) => `  * ${r.route} (${r.type}): ${r.frequency} services/hour`).join('\n')}` : ''}
+- Accessibility: ${enhancedData.locationIntelligence.transport?.accessibility?.wheelchairAccessible ? 'Wheelchair accessible' : 'Standard access'}${enhancedData.locationIntelligence.transport?.accessibility?.lifts ? ', Lifts available' : ''}${enhancedData.locationIntelligence.transport?.accessibility?.tactilePaving ? ', Tactile paving' : ''}
+${enhancedData.locationIntelligence.transport?.realTimeAlerts?.length > 0 ? `
+- Current Service Alerts: ${enhancedData.locationIntelligence.transport.realTimeAlerts.join('; ')}` : ''}
+${enhancedData.locationIntelligence.transport?.detailedStops?.length > 0 ? `
+- Nearby Stops Detail:
+${enhancedData.locationIntelligence.transport.detailedStops.slice(0, 5).map((s: any) => `  * ${s.name} (${s.type}): ${s.distance}m away, Routes: ${s.routes?.join(', ') || 'N/A'}`).join('\n')}` : ''}
+` : `
 - Nearest Station: ${enhancedData.locationIntelligence.transport?.nearestStation || 'N/A'}
 - Distance to Station: ${enhancedData.locationIntelligence.transport?.distanceToStation || 'N/A'}km
 - Stations Within 2km: ${enhancedData.locationIntelligence.transport?.stationsWithin2km || 'N/A'}
+`}
 
 EDUCATION:
 - Nearest School: ${enhancedData.locationIntelligence.schools?.nearestSchool || 'N/A'} (${enhancedData.locationIntelligence.schools?.distanceToSchool || 'N/A'}km away)

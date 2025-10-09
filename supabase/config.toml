@@ -115,3 +115,6 @@ verify_jwt = false
 
 [functions.school-data-service]
 verify_jwt = false
+
+[functions.public-transport-service]
+verify_jwt = false

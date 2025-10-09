@@ -122,6 +122,36 @@ async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKe
 
   console.log('Coordinates:', coordinates);
 
+  // Fetch enhanced public transport data from dedicated service
+  let publicTransportData: any = null;
+  if (input.state) {
+    try {
+      console.log('Fetching detailed public transport data from public-transport-service...');
+      const transportResponse = await fetch(
+        `https://dduzbchuswwbefdunfct.supabase.co/functions/v1/public-transport-service`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lat: coordinates.lat,
+            lng: coordinates.lng,
+            state: input.state,
+            suburb: input.suburb
+          })
+        }
+      );
+      
+      if (transportResponse.ok) {
+        publicTransportData = await transportResponse.json();
+        console.log('✓ Public transport data fetched successfully');
+      } else {
+        console.warn('Public transport service returned error, will use Google data');
+      }
+    } catch (error) {
+      console.error('Error fetching public transport data:', error);
+    }
+  }
+
   // Fetch all location intelligence data in parallel
   const [
     transitData,
@@ -143,7 +173,7 @@ async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKe
   const cbdCoordinates = getCBDCoordinates(input.state || 'NSW');
   const commuteData = await calculateCommuteTime(coordinates, cbdCoordinates, apiKey);
 
-  // Calculate walk score and lifestyle score
+  // Calculate walk score and lifestyle score - enhanced with real transport data
   const walkScore = calculateWalkScore({
     transit: transitData,
     schools: schoolsData,
@@ -151,7 +181,7 @@ async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKe
     shopping: shoppingData,
     recreation: recreationData,
     restaurants: restaurantsData
-  });
+  }, publicTransportData);
 
   const amenityScores = calculateAmenityScores({
     transit: transitData,
@@ -162,16 +192,31 @@ async function fetchLocationIntelligence(input: LocationIntelligenceInput, apiKe
     restaurants: restaurantsData
   });
 
+  // Use enhanced public transport data if available, otherwise fall back to Google data
+  const transportInfo = publicTransportData ? {
+    nearestStop: publicTransportData.nearestStop,
+    distanceToStop: publicTransportData.distanceToStop,
+    stopsWithin1km: publicTransportData.stopsWithin1km.length,
+    transportTypes: publicTransportData.transportTypes,
+    routeCoverage: publicTransportData.routeCoverage,
+    serviceFrequency: publicTransportData.serviceFrequency,
+    accessibility: publicTransportData.accessibility,
+    realTimeAlerts: publicTransportData.realTimeAlerts,
+    qualityScore: publicTransportData.qualityScore,
+    summary: publicTransportData.summary,
+    detailedStops: publicTransportData.stopsWithin1km
+  } : {
+    nearestStation: transitData.results[0]?.name || 'N/A',
+    distanceToStation: transitData.results[0]?.distance || 0,
+    stationsWithin2km: transitData.count
+  };
+
   return {
     coordinates,
     commute: commuteData,
     walkScore,
     amenities: amenityScores,
-    transport: {
-      nearestStation: transitData.results[0]?.name || 'N/A',
-      distanceToStation: transitData.results[0]?.distance || 0,
-      stationsWithin2km: transitData.count
-    },
+    transport: transportInfo,
     schools: {
       nearestSchool: schoolsData.results[0]?.name || 'N/A',
       distanceToSchool: schoolsData.results[0]?.distance || 0,
@@ -341,11 +386,14 @@ function getCBDCoordinates(state: string) {
   return cbdLocations[state.toUpperCase()] || cbdLocations['NSW'];
 }
 
-function calculateWalkScore(amenities: any): number {
+function calculateWalkScore(amenities: any, publicTransportData?: any): number {
   let score = 0;
   
-  // Transit accessibility (max 30 points)
-  if (amenities.transit.count > 0) {
+  // Transit accessibility (max 30 points) - enhanced with real transport data
+  if (publicTransportData && publicTransportData.qualityScore) {
+    // Use the detailed transport quality score for more accurate walk score
+    score += (publicTransportData.qualityScore / 100) * 30;
+  } else if (amenities.transit.count > 0) {
     const nearestDistance = amenities.transit.results[0]?.distance || 999;
     if (nearestDistance < 0.5) score += 30;
     else if (nearestDistance < 1) score += 20;
