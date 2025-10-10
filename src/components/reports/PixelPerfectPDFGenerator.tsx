@@ -45,11 +45,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
     for (const line of lines) {
       // Handle both ## and # headers, remove numbering like "1. "
-      if (line.match(/^#{1,2}\s*(\d+\.\s*)?/)) {
+      if (line.match(/^#{1,6}\s*/)) {
         if (currentSection && currentContent.length > 0) {
           sections[currentSection] = currentContent.join('\n').trim();
         }
-        currentSection = line.replace(/^#{1,2}\s*(\d+\.\s*)?/, '').trim();
+        // Remove all leading hashtags, spaces, and optional numbering
+        currentSection = line
+          .replace(/^#{1,6}\s*/, '') // Remove hashtags
+          .replace(/^\d+\.\s*/, '') // Remove numbering
+          .replace(/:\s*$/, '') // Remove trailing colon
+          .trim();
         currentContent = [];
       } else if (currentSection && line.trim()) {
         currentContent.push(line);
@@ -240,10 +245,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       // Page settings
       const pageWidth = 595; // A4 width in points
       const pageHeight = 842; // A4 height in points
-      const margin = 70;
-      const lineHeight = 18;
-      const titleSize = 16;
-      const textSize = 11;
+      const margin = 60; // Left/right margin
+      const topMargin = 80; // Top margin (more space for template header)
+      const bottomMargin = 70; // Bottom margin
+      const lineHeight = 16;
+      const titleSize = 14;
+      const textSize = 10;
 
       let currentPage: any = null;
       let yPosition = 0;
@@ -360,7 +367,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               currentY -= lineSpacing;
               
               // Check if we need a new page
-              if (currentY < margin + 50) {
+              if (currentY < bottomMargin + 40) {
                 return { needsNewPage: true, lastY: currentY, remainingParts: parts.slice(parts.indexOf(part)) };
               }
             }
@@ -383,16 +390,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Add report title on first content page
       currentPage = await addContentPage();
-      yPosition = pageHeight - margin - 50;
+      yPosition = pageHeight - topMargin - 20;
 
       currentPage.drawText(`Investment Report: ${suburb}, ${state}`, {
         x: margin,
         y: yPosition,
-        size: 20,
+        size: 18,
         font: helveticaBold,
         color: rgb(0.1, 0.1, 0.1),
       });
-      yPosition -= 50;
+      yPosition -= 45;
 
       // Get ALL sections from the report dynamically instead of hardcoded list
       const allSectionNames = Object.keys(sections).filter(name => 
@@ -406,20 +413,25 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         if (!content) continue;
 
         // Check if we need a new page for section title
-        if (yPosition < margin + 100) {
+        if (yPosition < bottomMargin + 80) {
           currentPage = await addContentPage();
-          yPosition = pageHeight - margin - 50;
+          yPosition = pageHeight - topMargin - 20;
         }
 
-        // Draw section title
-        currentPage.drawText(sectionName, {
+        // Draw section title (remove any remaining hashtags)
+        const cleanSectionName = sectionName
+          .replace(/^#{1,6}\s*/, '')
+          .replace(/:\s*$/, '')
+          .trim();
+          
+        currentPage.drawText(cleanSectionName, {
           x: margin,
           y: yPosition,
           size: titleSize,
           font: helveticaBold,
           color: rgb(0.15, 0.15, 0.15),
         });
-        yPosition -= 35;
+        yPosition -= 30;
 
         // Split content into paragraphs
         const paragraphs = content.split('\n').filter(p => p.trim());
@@ -451,7 +463,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
             if (result.needsNewPage) {
               currentPage = await addContentPage();
-              yPosition = pageHeight - margin - 50;
+              yPosition = pageHeight - topMargin - 20;
               remainingParts = result.remainingParts;
             } else {
               yPosition = result.lastY;
@@ -459,10 +471,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             }
           }
 
-          yPosition -= 10; // Space between paragraphs
+          yPosition -= 8; // Space between paragraphs
         }
 
-        yPosition -= 20; // Space between sections
+        yPosition -= 15; // Space between sections
       }
 
       // Save the PDF
