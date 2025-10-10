@@ -346,6 +346,32 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         return parts;
       };
 
+      // Helper to calculate text height without drawing
+      const calculateTextHeight = (text: string, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number): number => {
+        const parts = parseMarkdownText(text);
+        let lines = 1;
+        let currentLineWidth = 0;
+        
+        for (const part of parts) {
+          const words = part.text.split(' ');
+          const font = part.bold ? boldFont : normalFont;
+          
+          for (const word of words) {
+            const wordWithSpace = word + ' ';
+            const wordWidth = font.widthOfTextAtSize(wordWithSpace, size);
+            
+            if (currentLineWidth + wordWidth > maxWidth && currentLineWidth > 0) {
+              lines++;
+              currentLineWidth = wordWidth;
+            } else {
+              currentLineWidth += wordWidth;
+            }
+          }
+        }
+        
+        return lines * lineSpacing;
+      };
+
       // Helper to draw text with word wrapping and markdown formatting
       const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number) => {
         const parts = parseMarkdownText(text);
@@ -388,18 +414,23 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         return { needsNewPage: false, lastY: currentY - lineSpacing, remainingParts: [] };
       };
 
-      // Add report title on first content page
+      // Add report title on first content page with word wrapping
       currentPage = await addContentPage();
       yPosition = pageHeight - topMargin - 20;
 
-      currentPage.drawText(`Investment Report: ${suburb}, ${state}`, {
-        x: margin,
-        y: yPosition,
-        size: 18,
-        font: helveticaBold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      yPosition -= 45;
+      const titleText = `Investment Report: ${suburb}, ${state}`;
+      const titleResult = drawTextWithWrap(
+        currentPage,
+        `**${titleText}**`,
+        margin,
+        yPosition,
+        pageWidth - 2 * margin,
+        helveticaFont,
+        helveticaBold,
+        18,
+        24
+      );
+      yPosition = titleResult.lastY - 25;
 
       // Get ALL sections from the report dynamically instead of hardcoded list
       const allSectionNames = Object.keys(sections).filter(name => 
@@ -412,36 +443,70 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const content = sections[sectionName];
         if (!content) continue;
 
-        // Check if we need a new page for section title
-        if (yPosition < bottomMargin + 80) {
-          currentPage = await addContentPage();
-          yPosition = pageHeight - topMargin - 20;
-        }
-
-        // Draw section title (remove any remaining hashtags)
+        // Clean section name
         const cleanSectionName = sectionName
           .replace(/^#{1,6}\s*/, '')
           .replace(/:\s*$/, '')
           .trim();
-          
-        currentPage.drawText(cleanSectionName, {
-          x: margin,
-          y: yPosition,
-          size: titleSize,
-          font: helveticaBold,
-          color: rgb(0.15, 0.15, 0.15),
-        });
-        yPosition -= 30;
 
-        // Split content into paragraphs
+        // Calculate total height needed for this section
         const paragraphs = content.split('\n').filter(p => p.trim());
+        const sectionTitleHeight = 30;
+        let totalContentHeight = 0;
+        
+        for (const paragraph of paragraphs) {
+          if (paragraph.trim()) {
+            totalContentHeight += calculateTextHeight(
+              paragraph,
+              pageWidth - 2 * margin,
+              helveticaFont,
+              helveticaBold,
+              textSize,
+              lineHeight
+            ) + 8; // paragraph spacing
+          }
+        }
+        
+        const totalSectionHeight = sectionTitleHeight + totalContentHeight + 15; // section spacing
+        
+        // Smart page break: if section is small enough and won't fit, start on new page
+        if (totalSectionHeight < (pageHeight - topMargin - bottomMargin - 100) && 
+            yPosition - totalSectionHeight < bottomMargin + 40) {
+          currentPage = await addContentPage();
+          yPosition = pageHeight - topMargin - 20;
+        } else if (yPosition < bottomMargin + 80) {
+          // Otherwise just check if we have minimum space for title
+          currentPage = await addContentPage();
+          yPosition = pageHeight - topMargin - 20;
+        }
 
+        // Draw section title with word wrapping
+        const titleResult = drawTextWithWrap(
+          currentPage,
+          `**${cleanSectionName}**`,
+          margin,
+          yPosition,
+          pageWidth - 2 * margin,
+          helveticaFont,
+          helveticaBold,
+          titleSize,
+          20
+        );
+        yPosition = titleResult.lastY - 10;
+
+        // Draw paragraphs
         for (const paragraph of paragraphs) {
           if (!paragraph.trim()) continue;
 
           let remainingParts = parseMarkdownText(paragraph);
           
           while (remainingParts.length > 0) {
+            // Check if we need a new page before starting paragraph
+            if (yPosition < bottomMargin + 60) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+            }
+
             const paragraphText = remainingParts.map(p => {
               if (p.bold && p.italic) return `***${p.text}***`;
               if (p.bold) return `**${p.text}**`;
