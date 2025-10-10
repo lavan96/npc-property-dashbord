@@ -257,67 +257,128 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         return pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
       };
 
-      // Helper to clean markdown formatting
-      const cleanMarkdown = (text: string): string => {
-        return text
+      // Helper to parse markdown and detect formatting
+      const parseMarkdownText = (text: string): Array<{text: string, bold: boolean, italic: boolean}> => {
+        const parts: Array<{text: string, bold: boolean, italic: boolean}> = [];
+        let remaining = text
           .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers
-          .replace(/\*\*\*(.*?)\*\*\*/g, '$1') // Remove bold+italic
-          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-          .replace(/\*(.*?)\*/g, '$1') // Remove italic
-          .replace(/^[\*\-\+]\s+/gm, '• ') // Convert markdown bullets to bullets
+          .replace(/^[\*\-\+]\s+/gm, '• ') // Convert markdown bullets
           .replace(/^\d+\.\s+/gm, '') // Remove numbered lists
           .replace(/^>\s+/gm, '') // Remove blockquotes
           .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // Remove code formatting
-          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
-          .trim();
+          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove links, keep text
+
+        // Parse bold and italic
+        const boldItalicRegex = /\*\*\*(.*?)\*\*\*/g;
+        const boldRegex = /\*\*(.*?)\*\*/g;
+        const italicRegex = /\*(.*?)\*/g;
+
+        let lastIndex = 0;
+        const segments: Array<{text: string, start: number, end: number, bold: boolean, italic: boolean}> = [];
+
+        // Find all bold+italic
+        let match;
+        while ((match = boldItalicRegex.exec(remaining)) !== null) {
+          segments.push({text: match[1], start: match.index, end: match.index + match[0].length, bold: true, italic: true});
+        }
+
+        // Find all bold
+        boldItalicRegex.lastIndex = 0;
+        remaining = text
+          .replace(/^#{1,6}\s+/gm, '')
+          .replace(/^[\*\-\+]\s+/gm, '• ')
+          .replace(/^\d+\.\s+/gm, '')
+          .replace(/^>\s+/gm, '')
+          .replace(/`{1,3}(.*?)`{1,3}/g, '$1')
+          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+        
+        while ((match = boldRegex.exec(remaining)) !== null) {
+          // Don't overlap with bold+italic
+          if (!segments.some(s => match.index >= s.start && match.index < s.end)) {
+            segments.push({text: match[1], start: match.index, end: match.index + match[0].length, bold: true, italic: false});
+          }
+        }
+
+        // Find all italic
+        boldRegex.lastIndex = 0;
+        while ((match = italicRegex.exec(remaining)) !== null) {
+          // Don't overlap with bold or bold+italic
+          if (!segments.some(s => match.index >= s.start && match.index < s.end)) {
+            segments.push({text: match[1], start: match.index, end: match.index + match[0].length, bold: false, italic: true});
+          }
+        }
+
+        // Sort segments by position
+        segments.sort((a, b) => a.start - b.start);
+
+        // Build parts array with normal text between segments
+        segments.forEach((seg, i) => {
+          // Add normal text before this segment
+          if (seg.start > lastIndex) {
+            const normalText = remaining.substring(lastIndex, seg.start)
+              .replace(/\*\*\*/g, '').replace(/\*\*/g, '').replace(/\*/g, '');
+            if (normalText) parts.push({text: normalText, bold: false, italic: false});
+          }
+          // Add formatted segment
+          parts.push({text: seg.text, bold: seg.bold, italic: seg.italic});
+          lastIndex = seg.end;
+        });
+
+        // Add remaining normal text
+        if (lastIndex < remaining.length) {
+          const normalText = remaining.substring(lastIndex)
+            .replace(/\*\*\*/g, '').replace(/\*\*/g, '').replace(/\*/g, '');
+          if (normalText) parts.push({text: normalText, bold: false, italic: false});
+        }
+
+        // If no formatting found, return whole text as normal
+        if (parts.length === 0) {
+          parts.push({text: remaining.replace(/\*\*\*/g, '').replace(/\*\*/g, '').replace(/\*/g, ''), bold: false, italic: false});
+        }
+
+        return parts;
       };
 
-      // Helper to draw text with word wrapping
-      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, font: any, size: number, lineSpacing: number) => {
-        const words = text.split(' ');
-        let currentLine = '';
+      // Helper to draw text with word wrapping and markdown formatting
+      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number) => {
+        const parts = parseMarkdownText(text);
         let currentY = startY;
-
-        for (const word of words) {
-          const testLine = currentLine + (currentLine ? ' ' : '') + word;
-          const textWidth = font.widthOfTextAtSize(testLine, size);
-          
-          if (textWidth > maxWidth) {
-            // Draw current line
-            if (currentLine) {
-              page.drawText(currentLine, {
-                x,
-                y: currentY,
-                size,
-                font,
-                color: rgb(0.2, 0.2, 0.2),
-              });
-              currentY -= lineSpacing;
-            }
-            currentLine = word;
-          } else {
-            currentLine = testLine;
-          }
-
-          // Check if we need a new page
-          if (currentY < margin + 50) {
-            return { needsNewPage: true, lastY: currentY, remainingText: words.slice(words.indexOf(word)).join(' ') };
-          }
-        }
+        let currentX = x;
         
-        // Draw the last line
-        if (currentLine) {
-          page.drawText(currentLine, {
-            x,
-            y: currentY,
-            size,
-            font,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-          currentY -= lineSpacing;
+        for (const part of parts) {
+          const words = part.text.split(' ');
+          const font = part.bold ? boldFont : normalFont;
+          
+          for (const word of words) {
+            const wordWithSpace = word + ' ';
+            const wordWidth = font.widthOfTextAtSize(wordWithSpace, size);
+            
+            // Check if word fits on current line
+            if (currentX + wordWidth > x + maxWidth && currentX > x) {
+              // Move to next line
+              currentX = x;
+              currentY -= lineSpacing;
+              
+              // Check if we need a new page
+              if (currentY < margin + 50) {
+                return { needsNewPage: true, lastY: currentY, remainingParts: parts.slice(parts.indexOf(part)) };
+              }
+            }
+            
+            // Draw the word
+            page.drawText(wordWithSpace, {
+              x: currentX,
+              y: currentY,
+              size,
+              font,
+              color: rgb(0.2, 0.2, 0.2),
+            });
+            
+            currentX += wordWidth;
+          }
         }
 
-        return { needsNewPage: false, lastY: currentY, remainingText: '' };
+        return { needsNewPage: false, lastY: currentY - lineSpacing, remainingParts: [] };
       };
 
       // Add report title on first content page
@@ -333,24 +394,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       });
       yPosition -= 50;
 
-      // Add sections
-      const sectionOrder = [
-        'Location Overview',
-        'Market KPIs',
-        'Demographics & Demand Drivers',
-        'Infrastructure & Amenities',
-        'Property-Level Information',
-        'Costs for Investors',
-        'Risk Assessment',
-        'Comparable Market Evidence',
-        'Financial Analysis',
-        '10-Year Projection Scenarios',
-        'Overall Investment Score',
-        'Key Opportunities & Risks',
-      ];
+      // Get ALL sections from the report dynamically instead of hardcoded list
+      const allSectionNames = Object.keys(sections).filter(name => 
+        name && sections[name] && sections[name].trim().length > 0
+      );
+      
+      console.log('Found sections to include in PDF:', allSectionNames);
 
-      for (const sectionName of sectionOrder) {
-        const content = findSection(sections, [sectionName]);
+      for (const sectionName of allSectionNames) {
+        const content = sections[sectionName];
         if (!content) continue;
 
         // Check if we need a new page for section title
@@ -369,23 +421,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         });
         yPosition -= 35;
 
-        // Clean and draw content
-        const cleanContent = cleanMarkdown(content);
-        const paragraphs = cleanContent.split('\n').filter(p => p.trim());
+        // Split content into paragraphs
+        const paragraphs = content.split('\n').filter(p => p.trim());
 
         for (const paragraph of paragraphs) {
           if (!paragraph.trim()) continue;
 
-          let remainingText = paragraph;
+          let remainingParts = parseMarkdownText(paragraph);
           
-          while (remainingText) {
+          while (remainingParts.length > 0) {
+            const paragraphText = remainingParts.map(p => {
+              if (p.bold && p.italic) return `***${p.text}***`;
+              if (p.bold) return `**${p.text}**`;
+              if (p.italic) return `*${p.text}*`;
+              return p.text;
+            }).join('');
+
             const result = drawTextWithWrap(
               currentPage,
-              remainingText,
+              paragraphText,
               margin,
               yPosition,
               pageWidth - 2 * margin,
               helveticaFont,
+              helveticaBold,
               textSize,
               lineHeight
             );
@@ -393,10 +452,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             if (result.needsNewPage) {
               currentPage = await addContentPage();
               yPosition = pageHeight - margin - 50;
-              remainingText = result.remainingText;
+              remainingParts = result.remainingParts;
             } else {
               yPosition = result.lastY;
-              remainingText = '';
+              remainingParts = [];
             }
           }
 
