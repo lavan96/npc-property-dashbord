@@ -65,21 +65,73 @@ serve(async (req) => {
     // Determine analysis mode and format input query
     let analysisMode = 'address'; // Default mode
     let formattedInput = propertyAddress;
+    let detectedSuburb = null;
+    let detectedPostcode = null;
+    let detectedState = null;
+    
+    // Extract postcode and state from input
+    const postcodeMatch = propertyAddress.match(/\b(\d{4})\b/);
+    const stateMatch = propertyAddress.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT|Western Australia|New South Wales|Victoria|Queensland|South Australia|Tasmania|Northern Territory|Australian Capital Territory)\b/i);
+    
+    if (postcodeMatch) {
+      detectedPostcode = postcodeMatch[1];
+    }
+    if (stateMatch) {
+      const stateInput = stateMatch[1].toUpperCase();
+      // Convert full state names to abbreviations
+      const stateMap: Record<string, string> = {
+        'WESTERN AUSTRALIA': 'WA',
+        'NEW SOUTH WALES': 'NSW',
+        'VICTORIA': 'VIC',
+        'QUEENSLAND': 'QLD',
+        'SOUTH AUSTRALIA': 'SA',
+        'TASMANIA': 'TAS',
+        'NORTHERN TERRITORY': 'NT',
+        'AUSTRALIAN CAPITAL TERRITORY': 'ACT'
+      };
+      detectedState = stateMap[stateInput] || stateInput;
+    }
     
     // Detect analysis mode
     if (/^\d{4}$/.test(propertyAddress.trim()) || /postcode\s+\d{4}/i.test(propertyAddress)) {
+      // Pure postcode mode
       analysisMode = 'postcode';
-      const postcodeMatch = propertyAddress.match(/\b(\d{4})\b/);
-      if (postcodeMatch) {
-        formattedInput = `Postcode ${postcodeMatch[1]}, Australia`;
+      const postcode = postcodeMatch ? postcodeMatch[1] : propertyAddress.trim();
+      // Require state for postcode to avoid ambiguity
+      if (!detectedState) {
+        console.warn('⚠️ Postcode provided without state, defaulting to NSW');
+        detectedState = 'NSW';
       }
-    } else if (/(western australia|wa|new south wales|nsw|victoria|vic|queensland|qld|south australia|sa|tasmania|tas|northern territory|nt|australian capital territory|act)/i.test(propertyAddress)) {
+      formattedInput = `Postcode ${postcode}, ${detectedState}, Australia`;
+    } else if (propertyAddress.match(/^[A-Za-z\s]+(?:,\s*(?:\d{4}|NSW|VIC|QLD|WA|SA|TAS|NT|ACT))+/i)) {
+      // Suburb mode: Suburb name followed by postcode and/or state
+      // Examples: "Bondi, 2026, NSW" or "Bondi NSW 2026" or "Bondi, NSW"
+      analysisMode = 'suburb';
+      const parts = propertyAddress.split(',').map(p => p.trim());
+      detectedSuburb = parts[0];
+      
+      // Require both postcode and state for suburb to avoid ambiguity
+      if (!detectedPostcode || !detectedState) {
+        console.warn('⚠️ Suburb provided without complete postcode/state information');
+        if (!detectedState) {
+          detectedState = 'NSW'; // Default fallback
+        }
+      }
+      
+      formattedInput = `${detectedSuburb}${detectedPostcode ? ', ' + detectedPostcode : ''}${detectedState ? ', ' + detectedState : ''}, Australia`;
+      console.log('Suburb analysis mode detected:', { suburb: detectedSuburb, postcode: detectedPostcode, state: detectedState });
+    } else if (/(western australia|wa|new south wales|nsw|victoria|vic|queensland|qld|south australia|sa|tasmania|tas|northern territory|nt|australian capital territory|act)$/i.test(propertyAddress.trim())) {
+      // State-wide mode: ends with just a state name
       analysisMode = 'state';
-      // Keep the state input as is
+      formattedInput = propertyAddress;
+    } else {
+      // Default to address mode
+      analysisMode = 'address';
     }
 
     console.log('Analysis mode:', analysisMode);
     console.log('Formatted input:', formattedInput);
+    console.log('Analysis details:', { suburb: detectedSuburb, postcode: detectedPostcode, state: detectedState });
 
     // Fetch enhanced data from multiple sources
     console.log('Fetching enhanced data from multiple APIs...');
@@ -102,15 +154,30 @@ serve(async (req) => {
     let enhancedData: EnhancedData = {};
     
     try {
-      // Extract postcode, state, and suburb from address for API calls
-      const postcodeMatch = formattedInput.match(/\b(\d{4})\b/);
-      const stateMatch = formattedInput.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
-      const postcode = postcodeMatch ? postcodeMatch[1] : null;
-      const state = stateMatch ? stateMatch[1].toUpperCase() : 'NSW';
+      // Use detected values from earlier, or extract from formatted input
+      let postcode = detectedPostcode;
+      let state = detectedState || 'NSW';
+      let suburb = detectedSuburb;
       
-      // Extract suburb from address (everything between street and state/postcode)
-      const suburbMatch = formattedInput.match(/,\s*([A-Za-z\s]+)(?:,|\s+(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT))/i);
-      const suburb = suburbMatch ? suburbMatch[1].trim().toLowerCase().replace(/\s+/g, '-') : null;
+      // If not detected earlier, try to extract from formatted input
+      if (!postcode) {
+        const postcodeMatch = formattedInput.match(/\b(\d{4})\b/);
+        postcode = postcodeMatch ? postcodeMatch[1] : null;
+      }
+      if (!state || state === 'NSW') {
+        const stateMatch = formattedInput.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
+        if (stateMatch) state = stateMatch[1].toUpperCase();
+      }
+      if (!suburb) {
+        // Extract suburb from address (everything between street and state/postcode)
+        const suburbMatch = formattedInput.match(/,\s*([A-Za-z\s]+)(?:,|\s+(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT))/i);
+        suburb = suburbMatch ? suburbMatch[1].trim().toLowerCase().replace(/\s+/g, '-') : null;
+      } else {
+        // Convert suburb to URL-friendly format if not already
+        suburb = suburb.toLowerCase().replace(/\s+/g, '-');
+      }
+      
+      console.log('Using for API calls:', { suburb, postcode, state });
 
       // Fetch Domain market data
       if (suburb && state) {
@@ -908,19 +975,58 @@ Health, education, and lifestyle facilities (schools, hospitals, parks, recreati
 
 ---
 
-5. Property-Level Information (Address Mode Only)
+5. Property-Level Information (MODE-SPECIFIC)
 
-Property type (house, townhouse, unit, etc.).
+${analysisMode === 'address' ? `
+[ADDRESS MODE]
+- Property type (house, townhouse, unit, etc.)
+- Number of bedrooms, bathrooms, parking spaces
+- Land size and building size
+- Year built and overall condition
+- Asking price (if listed)
+- Comparison to suburb median
+` : ''}
 
-Number of bedrooms, bathrooms, parking spaces.
+${analysisMode === 'suburb' ? `
+[SUBURB MODE]
+Focus on suburb-level analysis:
+- Suburb boundaries and key features
+- Dominant property types in the suburb
+- Median prices by property type (houses vs units)
+- Typical property characteristics (common bed/bath configurations)
+- Best streets/pockets within the suburb
+- Suburb-specific market dynamics
+- Price distribution across different areas of the suburb
+- Postcode: ${detectedPostcode || 'Not specified'}
+- State: ${detectedState || 'Not specified'}
+- Include analysis of multiple areas within the suburb if applicable
+` : ''}
 
-Land size and building size.
+${analysisMode === 'postcode' ? `
+[POSTCODE MODE]
+Focus on postcode-wide analysis:
+- Postcode: ${detectedPostcode || 'Not specified'}
+- State: ${detectedState || 'Not specified'}
+- All suburbs within this postcode
+- Price variations across different suburbs in the postcode
+- Dominant property types across the postcode
+- Best performing suburbs within the postcode
+- Comparative analysis of different areas
+- Infrastructure that serves the entire postcode
+` : ''}
 
-Year built and overall condition.
-
-Asking price (if listed).
-
-Comparison to suburb median.
+${analysisMode === 'state' ? `
+[STATE-WIDE MODE]
+Focus on state-level analysis:
+- State: ${detectedState || formattedInput}
+- Major metro markets performance
+- Regional market trends
+- State-wide economic indicators
+- Government policies affecting property
+- Population distribution and migration patterns
+- Top performing regions/LGAs
+- State infrastructure projects
+` : ''}
 
 ---
 
