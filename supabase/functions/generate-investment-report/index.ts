@@ -1331,10 +1331,22 @@ Produce a full investment report following the structure above, including detail
     console.log('Citations found:', citations.length);
     console.log('Search results found:', searchResults.length);
 
-    // Add professional disclaimer at the end of the report
-    const disclaimer = `\n\n---
+    // Add contact details and professional disclaimer at the end of the report
+    const contactAndDisclaimer = `\n\n---
 
-## PROFESSIONAL DISCLAIMER
+## 📞 CONTACT US
+
+**Let's discuss your next investment opportunity**
+
+| | |
+|---|---|
+| 🌐 **Website** | [npcservices.com.au](https://npcservices.com.au) |
+| 📧 **Email** | [admin@npcservices.com.au](mailto:admin@npcservices.com.au) |
+| 📱 **Phone** | [0433 005 110](tel:+61433005110) |
+
+---
+
+## ⚖️ PROFESSIONAL DISCLAIMER
 
 As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice.
 
@@ -1350,8 +1362,8 @@ By engaging our services, you acknowledge that you have read and understood this
 
 Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.`;
 
-    // Append disclaimer to report content
-    reportContent = reportContent + disclaimer;
+    // Append contact details and disclaimer to report content
+    reportContent = reportContent + contactAndDisclaimer;
 
     // Database save will be handled client-side
     console.log('Report generation complete, returning response');
