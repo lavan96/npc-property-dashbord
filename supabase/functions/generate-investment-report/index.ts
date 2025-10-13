@@ -1331,6 +1331,28 @@ Produce a full investment report following the structure above, including detail
     console.log('Citations found:', citations.length);
     console.log('Search results found:', searchResults.length);
 
+    // Add professional disclaimer at the end of the report
+    const disclaimer = `\n\n---
+
+## PROFESSIONAL DISCLAIMER
+
+As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice.
+
+While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment.
+
+It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses.
+
+Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process.
+
+Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors.
+
+By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions.
+
+Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.`;
+
+    // Append disclaimer to report content
+    reportContent = reportContent + disclaimer;
+
     // Database save will be handled client-side
     console.log('Report generation complete, returning response');
 
