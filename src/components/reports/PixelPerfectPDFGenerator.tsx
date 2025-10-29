@@ -255,6 +255,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       let currentPage: any = null;
       let yPosition = 0;
 
+      // Helper function to strip emojis from text (WinAnsi encoding doesn't support them)
+      const stripEmojis = (text: string): string => {
+        // Remove emojis and other non-WinAnsi characters
+        return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/gu, '')
+          .replace(/[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{231A}-\u{231B}]/gu, '')
+          .replace(/[\u{FE00}-\u{FE0F}]|[\u{E0020}-\u{E007F}]|[\u{200D}]/gu, '') // Variation selectors and ZWJ
+          .trim();
+      };
+
       // Helper function to add a new content page by copying from template
       const addContentPage = async () => {
         // Load template again to get a fresh page 2
@@ -266,6 +275,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Helper to parse markdown and detect formatting
       const parseMarkdownText = (text: string): Array<{text: string, bold: boolean, italic: boolean}> => {
+        // Strip emojis first to prevent encoding errors
+        text = stripEmojis(text);
         const parts: Array<{text: string, bold: boolean, italic: boolean}> = [];
         let remaining = text
           .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers
@@ -418,7 +429,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       currentPage = await addContentPage();
       yPosition = pageHeight - topMargin - 20;
 
-      const titleText = `Investment Report: ${suburb}, ${state}`;
+      const titleText = stripEmojis(`Investment Report: ${suburb}, ${state}`);
       const titleResult = drawTextWithWrap(
         currentPage,
         `**${titleText}**`,
@@ -443,11 +454,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const content = sections[sectionName];
         if (!content) continue;
 
-        // Clean section name
-        const cleanSectionName = sectionName
-          .replace(/^#{1,6}\s*/, '')
-          .replace(/:\s*$/, '')
-          .trim();
+        // Clean section name and strip emojis
+        const cleanSectionName = stripEmojis(
+          sectionName
+            .replace(/^#{1,6}\s*/, '')
+            .replace(/:\s*$/, '')
+            .trim()
+        );
 
         // Calculate total height needed for this section
         const paragraphs = content.split('\n').filter(p => p.trim());
