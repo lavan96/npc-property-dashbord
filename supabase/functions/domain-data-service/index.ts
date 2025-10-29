@@ -10,6 +10,7 @@ interface DomainDataRequest {
   state: string;
   postcode?: string;
   propertyCategory?: 'house' | 'unit';
+  healthCheck?: boolean;
 }
 
 interface SuburbPerformance {
@@ -22,8 +23,14 @@ interface SuburbPerformance {
   annualGrowth?: number;
   rentalYield?: number;
   dataSource: string;
+  dataQuality: 'live' | 'fallback' | 'unavailable';
   lastUpdated: string;
+  apiStatus?: string;
 }
+
+// Track API health
+let lastSuccessfulCall: Date | null = null;
+let consecutiveFailures = 0;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -33,14 +40,23 @@ serve(async (req) => {
   try {
     const domainApiKey = Deno.env.get('DOMAIN_API_KEY');
     if (!domainApiKey) {
-      console.error('DOMAIN_API_KEY not configured');
+      console.error('❌ DOMAIN_API_KEY not configured in environment');
       return new Response(
-        JSON.stringify({ error: 'Domain API key not configured' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Domain API key not configured',
+          dataQuality: 'unavailable'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { suburb, state, postcode, propertyCategory = 'house' }: DomainDataRequest = await req.json();
+    const { suburb, state, postcode, propertyCategory = 'house', healthCheck }: DomainDataRequest = await req.json();
+
+    // Health check endpoint
+    if (healthCheck) {
+      return await performHealthCheck(domainApiKey);
+    }
 
     console.log(`Fetching Domain data for: ${suburb}, ${state}, ${postcode}`);
 
@@ -59,24 +75,59 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Domain API error (${response.status}):`, errorText);
+      consecutiveFailures++;
       
-      // Return graceful fallback data
+      // Log detailed error information
+      const errorDetails = {
+        status: response.status,
+        statusText: response.statusText,
+        suburb,
+        state,
+        consecutiveFailures,
+        lastSuccess: lastSuccessfulCall?.toISOString() || 'Never'
+      };
+      
+      if (response.status === 401) {
+        console.error('❌ Domain API: Invalid or expired API key (401 Unauthorized)');
+        console.error('Please verify your DOMAIN_API_KEY is correct');
+      } else if (response.status === 403) {
+        console.error('❌ Domain API: Access forbidden (403). API key may lack required permissions');
+      } else if (response.status === 429) {
+        console.error('⚠️ Domain API: Rate limit exceeded (429). Consider caching or throttling requests');
+      } else if (response.status === 404) {
+        console.error(`⚠️ Domain API: Suburb not found (404) - ${suburb}, ${state}`);
+      } else {
+        console.error(`❌ Domain API error (${response.status}):`, errorText);
+      }
+      
+      console.error('Error details:', JSON.stringify(errorDetails, null, 2));
+      
+      // Return graceful fallback with detailed status
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Domain API returned ${response.status}`,
+          error: `Domain API error: ${response.status} ${response.statusText}`,
+          dataQuality: 'unavailable',
           fallbackData: {
-            dataSource: 'unavailable',
+            dataSource: 'Estimated (Domain API Unavailable)',
+            dataQuality: 'fallback',
             lastUpdated: new Date().toISOString(),
+            apiStatus: `${response.status} - ${getApiStatusMessage(response.status)}`,
+            lastSuccessfulFetch: lastSuccessfulCall?.toISOString() || 'Never',
+            consecutiveFailures
           }
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Success - reset failure counter and update last successful call
+    consecutiveFailures = 0;
+    lastSuccessfulCall = new Date();
+
     const data = await response.json();
-    console.log('Domain API response received:', JSON.stringify(data).substring(0, 500));
+    console.log('✅ Domain API response received successfully');
+    console.log('Response preview:', JSON.stringify(data).substring(0, 300));
 
     // Extract relevant metrics from the response
     const series = data?.series;
@@ -95,11 +146,14 @@ serve(async (req) => {
       rentalYield: latestData?.values?.medianRentListingPrice && latestData?.values?.medianSoldPrice
         ? (latestData.values.medianRentListingPrice * 52 / latestData.values.medianSoldPrice * 100)
         : undefined,
-      dataSource: 'Domain API',
+      dataSource: 'Domain API (Live Data)',
+      dataQuality: 'live',
       lastUpdated: new Date().toISOString(),
+      apiStatus: 'Operational'
     };
 
-    console.log('Processed performance data:', performanceData);
+    console.log('✅ Processed live performance data from Domain API');
+    console.log('Data quality: LIVE | Median price:', performanceData.medianSoldPrice);
 
     return new Response(
       JSON.stringify({
@@ -113,17 +167,91 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in domain-data-service:', error);
+    consecutiveFailures++;
+    console.error('❌ Unexpected error in domain-data-service:', error);
+    console.error('Consecutive failures:', consecutiveFailures);
+    
     return new Response(
       JSON.stringify({ 
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
+        dataQuality: 'unavailable',
         fallbackData: {
-          dataSource: 'unavailable',
+          dataSource: 'Estimated (Service Error)',
+          dataQuality: 'fallback',
           lastUpdated: new Date().toISOString(),
+          apiStatus: 'Service Error',
+          lastSuccessfulFetch: lastSuccessfulCall?.toISOString() || 'Never',
+          consecutiveFailures
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+// Health check function
+async function performHealthCheck(apiKey: string) {
+  console.log('🔍 Performing Domain API health check...');
+  
+  try {
+    // Test API with a known suburb
+    const testUrl = 'https://api.domain.com.au/v1/suburbPerformanceStatistics/NSW/Sydney?propertyCategory=house&chronologicalSpan=12&tPlusFrom=1&tPlusTo=12';
+    
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'X-Api-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const healthStatus = {
+      service: 'Domain Data Service',
+      apiStatus: response.ok ? 'Operational' : 'Error',
+      statusCode: response.status,
+      message: getApiStatusMessage(response.status),
+      lastSuccessfulCall: lastSuccessfulCall?.toISOString() || 'Never',
+      consecutiveFailures,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('Health check result:', JSON.stringify(healthStatus, null, 2));
+
+    return new Response(
+      JSON.stringify({ success: response.ok, health: healthStatus }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('❌ Health check failed:', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        health: {
+          service: 'Domain Data Service',
+          apiStatus: 'Error',
+          message: error instanceof Error ? error.message : 'Health check failed',
+          timestamp: new Date().toISOString()
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// Helper function to get user-friendly status messages
+function getApiStatusMessage(statusCode: number): string {
+  const messages: Record<number, string> = {
+    200: 'API operational - data retrieved successfully',
+    401: 'Invalid API key - please verify credentials',
+    403: 'Access forbidden - API key lacks required permissions',
+    404: 'Suburb not found in Domain database',
+    429: 'Rate limit exceeded - too many requests',
+    500: 'Domain API server error',
+    502: 'Bad gateway - Domain API temporarily unavailable',
+    503: 'Service unavailable - Domain API maintenance'
+  };
+  
+  return messages[statusCode] || `Unknown status: ${statusCode}`;
+}

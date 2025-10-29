@@ -170,97 +170,210 @@ async function fetchSEIFAData(postcode: string, state?: string) {
   }
 }
 
-function parseSEIFAResponseReal(data: any, postcode: string): any {
-  // Parse SDMX-JSON format from ABS API
+async function parseSEIFAResponseReal(data: any, postcode: string): Promise<any> {
   try {
-    if (!data || !data.data) {
-      console.log('No data or data.data in response');
-      return null;
-    }
-
-    // SDMX-JSON structure: data.dataSets[0].observations
-    const dataSets = data.data.dataSets;
-    if (!dataSets || dataSets.length === 0) {
-      console.log('No dataSets found');
-      return null;
-    }
-
-    const observations = dataSets[0].observations;
-    if (!observations) {
-      console.log('No observations found');
-      return null;
-    }
-
-    // Find the observation matching our postcode
-    // The structure indexes are: [MEASURE][REGION][TIME_PERIOD]
-    // We need to iterate through observations to find matching postcode
-    const structure = data.data.structure;
-    const dimensions = structure.dimensions.observation;
+    console.log('🔍 Attempting to parse SEIFA SDMX-JSON data for postcode:', postcode);
     
-    // Get region dimension to find postcode index
-    const regionDimension = dimensions.find((d: any) => d.id === 'REGION' || d.id === 'POA');
-    if (!regionDimension) {
-      console.log('No region dimension found');
+    // SDMX-JSON 2.0 structure from ABS API
+    const structure = data?.data?.structure;
+    const dataSets = data?.data?.dataSets;
+    
+    if (!structure || !dataSets || dataSets.length === 0) {
+      console.log('⚠️ Invalid SDMX-JSON structure');
       return null;
     }
 
-    // Find postcode in values
-    const postcodeIndex = regionDimension.values.findIndex((v: any) => 
-      v.id === postcode || v.id === `POA${postcode}` || v.name === postcode
+    // Get dimensions - can be in different locations
+    const dimensions = structure?.dimensions?.observation || structure?.dimensions?.series;
+    if (!dimensions || !Array.isArray(dimensions)) {
+      console.log('⚠️ No dimensions found in structure');
+      return null;
+    }
+
+    console.log(`Found ${dimensions.length} dimensions:`, dimensions.map((d: any) => d.id).join(', '));
+
+    // Find POA (Postcode Area) dimension
+    let poaDimension = dimensions.find((d: any) => 
+      d.id === 'POA' || d.id === 'REGION' || d.id === 'REGIONTYPE'
     );
 
-    if (postcodeIndex === -1) {
-      console.log(`Postcode ${postcode} not found in dimension values`);
+    if (!poaDimension) {
+      console.log('⚠️ POA dimension not found, checking dimension names...');
+      poaDimension = dimensions.find((d: any) => 
+        d.name?.toLowerCase().includes('postcode') || 
+        d.name?.toLowerCase().includes('poa')
+      );
+    }
+
+    if (!poaDimension) {
+      console.log('❌ Could not locate postcode dimension');
       return null;
     }
 
-    // Extract SEIFA measures
-    // Measures: IRSAD, IRSD, IER, IEO
-    const result: any = {};
+    console.log('✅ Found POA dimension:', poaDimension.id);
+
+    // Find postcode in values
+    const postcodePattern = [`POA${postcode}`, `POA ${postcode}`, postcode];
+    let postcodeIndex = -1;
     
+    for (const pattern of postcodePattern) {
+      postcodeIndex = poaDimension.values?.findIndex((v: any) => 
+        v.id === pattern || v.id?.includes(postcode) || v.name?.includes(postcode)
+      );
+      if (postcodeIndex !== -1) {
+        console.log(`✅ Found postcode at index ${postcodeIndex} with pattern: ${pattern}`);
+        break;
+      }
+    }
+
+    if (postcodeIndex === -1) {
+      console.log(`⚠️ Postcode ${postcode} not found in dimension values`);
+      return null;
+    }
+
+    // Find MEASURE dimension for SEIFA types
+    const measureDimension = dimensions.find((d: any) => 
+      d.id === 'MEASURE' || d.id === 'SEIFA' || d.id === 'INDEX'
+    );
+
+    if (!measureDimension) {
+      console.log('⚠️ MEASURE dimension not found');
+    } else {
+      console.log('✅ Found MEASURE dimension with values:', 
+        measureDimension.values?.map((v: any) => v.id).join(', ')
+      );
+    }
+
+    // Extract observations
+    const observations = dataSets[0]?.observations || dataSets[0]?.series;
+    if (!observations) {
+      console.log('❌ No observations found in dataset');
+      return null;
+    }
+
+    console.log(`Found ${Object.keys(observations).length} observations`);
+
+    // Parse SEIFA scores from observations
+    const scores: any = {
+      irsad: { score: null, decile: null },
+      irsd: { score: null, decile: null },
+      ier: { score: null, decile: null },
+      ieo: { score: null, decile: null }
+    };
+
+    // Observation keys format varies:
+    // Could be "0:1:2" (measure:region:time) or "1:2" (region:time)
     for (const [key, value] of Object.entries(observations)) {
-      const coords = key.split(':').map(Number);
-      const measureIdx = coords[0];
-      const regionIdx = coords[1];
+      const parts = key.split(':').map(Number);
       
-      if (regionIdx === postcodeIndex && Array.isArray(value) && value.length > 0) {
-        const score = value[0];
-        const decile = value[1] || Math.ceil(score / 100); // Decile might be second value
-        
-        // Map measure index to SEIFA type
-        switch (measureIdx) {
-          case 0:
-            result.irsad = score;
-            result.irsadDecile = decile;
-            break;
-          case 1:
-            result.irsd = score;
-            result.irsdDecile = decile;
-            break;
-          case 2:
-            result.ier = score;
-            result.ierDecile = decile;
-            break;
-          case 3:
-            result.ieo = score;
-            result.ieoDecile = decile;
-            break;
+      // Check if this observation matches our postcode
+      let isMatch = false;
+      let measureIdx = -1;
+      
+      if (parts.length === 3) {
+        // Format: measure:region:time
+        isMatch = parts[1] === postcodeIndex;
+        measureIdx = parts[0];
+      } else if (parts.length === 2) {
+        // Format: region:measure or region:time
+        isMatch = parts[0] === postcodeIndex;
+        measureIdx = parts[1];
+      } else if (parts.length === 1) {
+        // Format: flat index - need to calculate
+        isMatch = parts[0] === postcodeIndex;
+      }
+
+      if (isMatch) {
+        let scoreValue: number | null = null;
+        let decileValue: number | null = null;
+
+        // Value can be array [score] or array [score, decile] or just number
+        if (Array.isArray(value)) {
+          scoreValue = value[0] ?? null;
+          decileValue = value[1] ?? null;
+        } else if (typeof value === 'number') {
+          scoreValue = value;
+        }
+
+        if (scoreValue !== null) {
+          // Determine which SEIFA measure this is
+          const measureValue = measureDimension?.values?.[measureIdx];
+          const measureId = measureValue?.id?.toLowerCase() || '';
+          
+          if (measureId.includes('irsad') || measureIdx === 0) {
+            scores.irsad.score = scoreValue;
+            scores.irsad.decile = decileValue ?? calculateDecile(scoreValue);
+          } else if (measureId.includes('irsd') || measureIdx === 1) {
+            scores.irsd.score = scoreValue;
+            scores.irsd.decile = decileValue ?? calculateDecile(scoreValue);
+          } else if (measureId.includes('ier') && !measureId.includes('ieo')) {
+            scores.ier.score = scoreValue;
+            scores.ier.decile = decileValue ?? calculateDecile(scoreValue);
+          } else if (measureId.includes('ieo')) {
+            scores.ieo.score = scoreValue;
+            scores.ieo.decile = decileValue ?? calculateDecile(scoreValue);
+          }
+          
+          console.log(`Found score for measure ${measureId || measureIdx}: ${scoreValue} (decile: ${decileValue || 'calculated'})`);
         }
       }
     }
+
+    // Check if we found any valid scores
+    const hasData = scores.irsad.score || scores.irsd.score || scores.ier.score || scores.ieo.score;
     
-    if (Object.keys(result).length > 0) {
-      console.log('Successfully parsed SEIFA data for postcode:', postcode);
-      return result;
+    if (!hasData) {
+      console.log('⚠️ No valid SEIFA scores found for postcode');
+      return null;
     }
-  } catch (error: any) {
-    console.log('Error parsing SEIFA response:', error.message);
+
+    const result = {
+      irsad: scores.irsad.score,
+      irsadDecile: scores.irsad.decile,
+      irsd: scores.irsd.score,
+      irsdDecile: scores.irsd.decile,
+      ier: scores.ier.score,
+      ierDecile: scores.ier.decile,
+      ieo: scores.ieo.score,
+      ieoDecile: scores.ieo.decile,
+    };
+
+    console.log('✅ Successfully parsed SEIFA data:', JSON.stringify(result, null, 2));
+    return result;
+
+  } catch (error) {
+    console.error('❌ Error parsing SEIFA SDMX-JSON data:', error);
+    return null;
+  }
+}
+
+function calculateDecile(score: number): number {
+  // SEIFA scores typically range from ~600 to ~1200
+  // Deciles divide the population into 10 equal groups
+  // Higher score = higher advantage (for IRSAD, IER, IEO)
+  // Lower score = higher disadvantage (for IRSD)
+  
+  // Validate score range
+  if (score < 500 || score > 1300) {
+    console.log(`⚠️ Unusual SEIFA score: ${score}`);
   }
   
-  return null;
+  if (score < 800) return 1;
+  if (score < 850) return 2;
+  if (score < 900) return 3;
+  if (score < 950) return 4;
+  if (score < 1000) return 5;
+  if (score < 1050) return 6;
+  if (score < 1100) return 7;
+  if (score < 1150) return 8;
+  if (score < 1200) return 9;
+  return 10;
 }
 
 function generateSEIFAEstimate(postcode: string, state?: string): any {
+  console.log(`⚠️ Generating SEIFA estimates for postcode ${postcode}, state: ${state}`);
+  console.log('Note: This is estimated data. Real API data could not be retrieved.');
+  
   // Generate reasonable estimates based on postcode patterns
   // This is used when real data is unavailable
   
@@ -340,6 +453,7 @@ function generateSEIFAEstimate(postcode: string, state?: string): any {
     },
     summary: getSEIFASummary(decile),
     dataSource: 'Estimated based on ABS SEIFA patterns',
+    dataQuality: 'estimated',
     lastUpdated: '2021 Census (estimated)',
     note: 'SEIFA indexes rank areas based on socio-economic advantage and disadvantage. Decile 10 = most advantaged, Decile 1 = most disadvantaged. This is an estimate - actual ABS data requires postcode-level access.'
   };
