@@ -428,7 +428,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           currentY -= rowHeight;
         }
 
-        return { lastY: currentY - 8, needsNewPage: false };
+        return { lastY: currentY - 25, needsNewPage: false }; // Increased spacing after table
       };
 
       // Helper to draw horizontal rule
@@ -706,8 +706,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             continue;
           }
 
-          // Check if paragraph is a markdown table
-          if (isMarkdownTable(paragraph)) {
+          // Check if paragraph is a markdown table (but skip contact sections)
+          if (isMarkdownTable(paragraph) && !cleanSectionName.toLowerCase().includes('contact')) {
             console.log('✓ Detected markdown table, rendering...');
             // Check if we need a new page
             if (yPosition < bottomMargin + 100) {
