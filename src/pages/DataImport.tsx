@@ -10,21 +10,36 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const DATA_TYPES = [
-  { value: 'schools', label: 'Schools Directory', table: 'schools_directory' },
-  { value: 'abs_census', label: 'ABS Census Data', table: 'abs_census_cache' },
-  { value: 'crime_stats', label: 'Crime Statistics', table: 'crime_statistics_cache' },
-  { value: 'economic', label: 'Economic Data', table: 'economic_data_cache' },
-  { value: 'transport', label: 'Transport Data', table: 'transport_data_cache' },
-  { value: 'risk', label: 'Risk Assessment', table: 'risk_assessment_cache' },
-  { value: 'climate', label: 'Climate Data', table: 'climate_data_cache' },
+  { value: 'schools', label: 'Schools Directory', table: 'schools_directory', requiresState: true },
+  { value: 'abs_census', label: 'ABS Census Data', table: 'abs_census_cache', requiresState: true },
+  { value: 'crime_stats', label: 'Crime Statistics', table: 'crime_statistics_cache', requiresState: true },
+  { value: 'economic', label: 'Economic Data (National)', table: 'economic_data_cache', requiresState: false },
+  { value: 'transport', label: 'Transport Data', table: 'transport_data_cache', requiresState: true },
+  { value: 'risk', label: 'Risk Assessment', table: 'risk_assessment_cache', requiresState: true },
+  { value: 'climate', label: 'Climate Data', table: 'climate_data_cache', requiresState: true },
+];
+
+const AUSTRALIAN_STATES = [
+  { value: 'NSW', label: 'New South Wales (NSW)' },
+  { value: 'VIC', label: 'Victoria (VIC)' },
+  { value: 'QLD', label: 'Queensland (QLD)' },
+  { value: 'SA', label: 'South Australia (SA)' },
+  { value: 'WA', label: 'Western Australia (WA)' },
+  { value: 'TAS', label: 'Tasmania (TAS)' },
+  { value: 'NT', label: 'Northern Territory (NT)' },
+  { value: 'ACT', label: 'Australian Capital Territory (ACT)' },
 ];
 
 export default function DataImport() {
   const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedState, setSelectedState] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const { toast } = useToast();
+
+  const selectedDataType = DATA_TYPES.find(t => t.value === selectedType);
+  const requiresState = selectedDataType?.requiresState ?? false;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -66,6 +81,15 @@ export default function DataImport() {
       return;
     }
 
+    if (requiresState && !selectedState) {
+      toast({
+        title: "Missing State",
+        description: "Please select a state for this data type",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(true);
     setResult(null);
 
@@ -81,7 +105,7 @@ export default function DataImport() {
               name: r.name || r.school_name,
               suburb: r.suburb,
               postcode: r.postcode,
-              state: r.state,
+              state: selectedState || r.state,
               school_type: r.school_type || r.type,
               school_level: r.school_level || r.level,
               icsea_score: r.icsea_score ? parseInt(r.icsea_score) : null,
@@ -120,7 +144,7 @@ export default function DataImport() {
               return {
                 ...base,
                 postcode: r.postcode,
-                state: r.state?.toUpperCase(),
+                state: selectedState || r.state?.toUpperCase(),
                 dataset: r.dataset,
                 data: JSON.parse(r.data || '{}')
               };
@@ -129,7 +153,7 @@ export default function DataImport() {
                 ...base,
                 suburb: r.suburb?.toLowerCase(),
                 postcode: r.postcode,
-                state: r.state?.toUpperCase(),
+                state: selectedState || r.state?.toUpperCase(),
                 data: JSON.parse(r.data || '{}')
               };
             case 'economic':
@@ -143,7 +167,7 @@ export default function DataImport() {
                 ...base,
                 latitude: parseFloat(r.latitude),
                 longitude: parseFloat(r.longitude),
-                state: r.state?.toUpperCase(),
+                state: selectedState || r.state?.toUpperCase(),
                 suburb: r.suburb?.toLowerCase(),
                 data: JSON.parse(r.data || '{}')
               };
@@ -152,7 +176,7 @@ export default function DataImport() {
                 ...base,
                 suburb: r.suburb?.toLowerCase(),
                 postcode: r.postcode,
-                state: r.state?.toUpperCase(),
+                state: selectedState || r.state?.toUpperCase(),
                 latitude: r.latitude ? parseFloat(r.latitude) : null,
                 longitude: r.longitude ? parseFloat(r.longitude) : null,
                 flood_risk: JSON.parse(r.flood_risk || '{}'),
@@ -163,7 +187,7 @@ export default function DataImport() {
                 ...base,
                 suburb: r.suburb?.toLowerCase(),
                 postcode: r.postcode,
-                state: r.state?.toUpperCase(),
+                state: selectedState || r.state?.toUpperCase(),
                 climate_zone: r.climate_zone,
                 temperature_data: JSON.parse(r.temperature_data || '{}'),
                 rainfall_data: JSON.parse(r.rainfall_data || '{}'),
@@ -233,23 +257,51 @@ export default function DataImport() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="dataType">Data Type</Label>
-              <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger id="dataType">
-                  <SelectValue placeholder="Select data type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {DATA_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-2">
-                        <Database className="h-4 w-4" />
-                        {type.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="dataType">Data Type</Label>
+                <Select value={selectedType} onValueChange={(value) => {
+                  setSelectedType(value);
+                  setSelectedState('');
+                }}>
+                  <SelectTrigger id="dataType">
+                    <SelectValue placeholder="Select data type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DATA_TYPES.map(type => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <div className="flex items-center gap-2">
+                          <Database className="h-4 w-4" />
+                          {type.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {requiresState && (
+                <div className="space-y-2">
+                  <Label htmlFor="state">
+                    State/Territory <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={selectedState} onValueChange={setSelectedState}>
+                    <SelectTrigger id="state">
+                      <SelectValue placeholder="Select state..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUSTRALIAN_STATES.map(state => (
+                        <SelectItem key={state.value} value={state.value}>
+                          {state.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Data will be tagged for {selectedState || 'the selected state'}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -273,7 +325,7 @@ export default function DataImport() {
 
             <Button 
               onClick={handleUpload} 
-              disabled={!file || !selectedType || uploading}
+              disabled={!file || !selectedType || (requiresState && !selectedState) || uploading}
               className="w-full"
             >
               {uploading ? (
@@ -335,16 +387,59 @@ export default function DataImport() {
           <CardContent>
             <div className="space-y-4 text-sm">
               <div>
-                <h4 className="font-medium mb-2">Schools Directory:</h4>
+                <h4 className="font-medium mb-2">🏫 Schools Directory:</h4>
+                <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
                 <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
                   name,suburb,postcode,state,school_type,school_level,icsea_score,student_count,latitude,longitude,address,website_url
                 </code>
               </div>
+              
               <div>
-                <h4 className="font-medium mb-2">Cache Tables:</h4>
-                <p className="text-muted-foreground">
-                  Must include: state, postcode (or coordinates), and a data column containing JSON string
-                </p>
+                <h4 className="font-medium mb-2">📊 ABS Census Cache:</h4>
+                <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  postcode,state,dataset,data
+                </code>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">🚨 Crime Statistics Cache:</h4>
+                <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  suburb,postcode,state,data
+                </code>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">🚇 Transport Data Cache:</h4>
+                <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  latitude,longitude,state,suburb,data
+                </code>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">⚠️ Risk Assessment Cache:</h4>
+                <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  suburb,postcode,state,latitude,longitude,flood_risk,bushfire_risk
+                </code>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">🌡️ Climate Data Cache:</h4>
+                <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  suburb,postcode,state,climate_zone,temperature_data,rainfall_data,humidity_data,extreme_weather,projections
+                </code>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">💰 Economic Data (National):</h4>
+                <p className="text-xs text-muted-foreground mb-1">No state selection needed</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  data_type,data
+                </code>
               </div>
               <Alert>
                 <div className="flex gap-2">
