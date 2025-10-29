@@ -287,21 +287,33 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const lines = tableText.trim().split('\n').map(l => l.trim()).filter(l => l);
         if (lines.length === 0) return { lastY: startY, needsNewPage: false };
 
-        // Parse table structure
+        console.log('Drawing table with lines:', lines);
+
+        // Parse table structure - filter out separator lines more carefully
         const rows = lines
-          .filter(line => !line.match(/^[\|\s\-:]+$/)) // Filter out separator lines
-          .map(line => 
-            line.split('|')
+          .filter(line => {
+            // Keep lines that have content other than just |, -, :, and spaces
+            const withoutPipes = line.replace(/\|/g, '').trim();
+            const isSeparator = /^[\s\-:]+$/.test(withoutPipes);
+            return !isSeparator;
+          })
+          .map(line => {
+            // Split by | and clean up cells
+            const cells = line.split('|')
               .map(cell => stripEmojis(cell.trim()))
-              .filter(cell => cell.length > 0)
-          );
+              .filter(cell => cell.length > 0);
+            return cells;
+          })
+          .filter(row => row.length > 0);
+
+        console.log('Parsed table rows:', rows);
 
         if (rows.length === 0) return { lastY: startY, needsNewPage: false };
 
         const columnCount = Math.max(...rows.map(r => r.length));
         const cellWidth = maxWidth / columnCount;
         const cellPadding = 5;
-        const rowHeight = size + 10;
+        const rowHeight = size + 12;
 
         let currentY = startY;
 
@@ -389,11 +401,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         page.drawLine({
           start: { x: x, y: y },
           end: { x: x + width, y: y },
-          thickness: 1,
-          color: rgb(0.6, 0.6, 0.6),
-          dashArray: [3, 3],
+          thickness: 1.5,
+          color: rgb(0.5, 0.5, 0.5),
         });
-        return y - 15; // Space after rule
+        return y - 20; // Space after rule
       };
 
       // Helper to parse markdown and detect formatting
