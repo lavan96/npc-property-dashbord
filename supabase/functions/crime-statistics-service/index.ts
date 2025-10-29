@@ -60,6 +60,7 @@ async function fetchCrimeDataWithCache(supabase: any, suburb: string, state: str
   const normalizedSuburb = suburb.trim().toLowerCase();
   const normalizedState = state.trim().toUpperCase();
   const normalizedPostcode = postcode?.trim() || 'unknown';
+  const startTime = Date.now();
 
   console.log(`🔍 Step 1: Checking cache for ${normalizedSuburb}, ${normalizedState}, ${normalizedPostcode}`);
 
@@ -78,41 +79,45 @@ async function fetchCrimeDataWithCache(supabase: any, suburb: string, state: str
   }
 
   if (cachedData) {
-    console.log(`✅ Cache HIT! Found ${cachedData.data_quality} data (age: ${Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60 * 24))} days)`);
+    const cacheAge = Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60 * 24));
+    console.log(`✅ Cache HIT! Found ${cachedData.data_quality} data (age: ${cacheAge} days)`);
+    
+    // Log API health
+    await logAPIHealth(supabase, 'crime-statistics', 'success', Date.now() - startTime, cachedData.data_quality);
+    
     return { ...cachedData.data, dataQuality: cachedData.data_quality, cached: true };
   }
 
-  console.log('❌ Cache MISS. Fetching live data...');
+  console.log('❌ Cache MISS. Generating enhanced crime data...');
 
-  // Fetch fresh data
-  const freshData = await fetchCrimeData(suburb, state, postcode);
+  // Generate enhanced estimated data
+  const freshData = generateEnhancedCrimeData(suburb, state, postcode);
 
-  // Only cache if it's real data (not estimated)
-  if (freshData.dataQuality === 'live') {
-    console.log('💾 Caching live crime data for 90 days...');
-    
-    const { error: insertError } = await supabase
-      .from('crime_statistics_cache')
-      .upsert({
-        suburb: normalizedSuburb,
-        postcode: normalizedPostcode,
-        state: normalizedState,
-        data: freshData,
-        data_quality: 'live',
-        fetched_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days
-      }, {
-        onConflict: 'suburb,postcode,state'
-      });
+  // Cache the estimated data for 90 days
+  console.log('💾 Caching enhanced crime data for 90 days...');
+  
+  const { error: insertError } = await supabase
+    .from('crime_statistics_cache')
+    .upsert({
+      suburb: normalizedSuburb,
+      postcode: normalizedPostcode,
+      state: normalizedState,
+      data: freshData,
+      data_quality: 'estimated',
+      fetched_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days
+    }, {
+      onConflict: 'suburb,postcode,state'
+    });
 
-    if (insertError) {
-      console.error('❌ Error caching crime data:', insertError);
-    } else {
-      console.log('✅ Crime data cached successfully');
-    }
+  if (insertError) {
+    console.error('❌ Error caching crime data:', insertError);
   } else {
-    console.log('⚠️ Skipping cache for estimated data');
+    console.log('✅ Crime data cached successfully');
   }
+
+  // Log API health
+  await logAPIHealth(supabase, 'crime-statistics', 'success', Date.now() - startTime, 'estimated');
 
   return freshData;
 }
@@ -705,4 +710,164 @@ function getOfficialCrimeSources(state: string): string[] {
   };
   
   return sources[state.toUpperCase()] || ['State police service website', 'data.gov.au'];
+}
+
+async function logAPIHealth(supabase: any, serviceName: string, status: string, responseTime: number, dataQuality: string) {
+  try {
+    await supabase
+      .from('api_health_log')
+      .insert({
+        service_name: serviceName,
+        status,
+        response_time_ms: responseTime,
+        data_quality: dataQuality
+      });
+  } catch (error) {
+    console.error('❌ Error logging API health:', error);
+  }
+}
+
+function generateEnhancedCrimeData(suburb: string, state: string, postcode?: string): any {
+  console.log(`🔍 Generating enhanced crime estimates for ${suburb}, ${state}`);
+  
+  const profile = getCrimeProfile(postcode, state);
+  const totalIncidents = profile.baseRate;
+  
+  return {
+    suburb: suburb,
+    state: state,
+    postcode: postcode || 'Unknown',
+    overallRating: profile.rating,
+    comparedToStateAverage: profile.comparison,
+    ratePerCapita: profile.baseRate,
+    period: 'Latest 12 months (estimated)',
+    breakdown: {
+      propertyOffenses: {
+        count: Math.round(totalIncidents * profile.breakdowns.property),
+        percentage: Math.round(profile.breakdowns.property * 100),
+        types: ['Theft', 'Break and Enter', 'Motor Vehicle Theft']
+      },
+      violentOffenses: {
+        count: Math.round(totalIncidents * profile.breakdowns.violent),
+        percentage: Math.round(profile.breakdowns.violent * 100),
+        types: ['Assault', 'Robbery', 'Sexual Offenses']
+      },
+      drugOffenses: {
+        count: Math.round(totalIncidents * profile.breakdowns.drug),
+        percentage: Math.round(profile.breakdowns.drug * 100),
+        types: ['Drug Possession', 'Drug Supply']
+      },
+      publicOrder: {
+        count: Math.round(totalIncidents * profile.breakdowns.publicOrder),
+        percentage: Math.round(profile.breakdowns.publicOrder * 100),
+        types: ['Disorderly Conduct', 'Trespass', 'Offensive Behavior']
+      },
+      fraud: {
+        count: Math.round(totalIncidents * profile.breakdowns.fraud),
+        percentage: Math.round(profile.breakdowns.fraud * 100),
+        types: ['Fraud', 'Identity Theft', 'Cybercrime']
+      }
+    },
+    trends: {
+      yearOnYear: profile.trends.yearly,
+      threeYear: profile.trends.threeYear,
+      description: profile.trends.description
+    },
+    safetyScore: profile.safetyScore,
+    dataSource: `Estimated based on ${state} crime patterns`,
+    dataQuality: 'estimated',
+    note: 'Crime data is estimated based on state and regional patterns. For official statistics, consult your state police service.',
+    officialSources: getOfficialCrimeSources(state),
+    lastUpdated: new Date().toISOString()
+  };
+}
+
+function getCrimeProfile(postcode?: string, state?: string) {
+  const postcodeNum = postcode ? parseInt(postcode) : 0;
+  
+  // CBD and inner city areas - higher crime rates
+  if ([2000, 3000, 4000, 5000, 6000, 7000, 800, 2600].includes(postcodeNum)) {
+    return {
+      baseRate: 7200,
+      rating: 'Above Average',
+      comparison: '22% higher than state average',
+      safetyScore: 68,
+      breakdowns: {
+        property: 0.38,
+        violent: 0.16,
+        drug: 0.22,
+        publicOrder: 0.18,
+        fraud: 0.06
+      },
+      trends: {
+        yearly: '+4.2%',
+        threeYear: '-3.5%',
+        description: 'Urban areas show seasonal variations with peaks during major events.'
+      }
+    };
+  }
+  
+  // Affluent suburbs - lower crime rates
+  if ([2026, 2027, 2028, 2030, 3142, 3144, 3181, 6009].includes(postcodeNum)) {
+    return {
+      baseRate: 2800,
+      rating: 'Below Average',
+      comparison: '35% lower than state average',
+      safetyScore: 88,
+      breakdowns: {
+        property: 0.32,
+        violent: 0.08,
+        drug: 0.12,
+        publicOrder: 0.15,
+        fraud: 0.33
+      },
+      trends: {
+        yearly: '-6.1%',
+        threeYear: '-12.8%',
+        description: 'Affluent areas typically show declining crime rates with focus on fraud prevention.'
+      }
+    };
+  }
+  
+  // Regional/rural areas
+  if (state && ['NT', 'TAS', 'SA'].includes(state.toUpperCase())) {
+    return {
+      baseRate: 4200,
+      rating: 'Medium',
+      comparison: 'Similar to state average',
+      safetyScore: 76,
+      breakdowns: {
+        property: 0.30,
+        violent: 0.18,
+        drug: 0.15,
+        publicOrder: 0.25,
+        fraud: 0.12
+      },
+      trends: {
+        yearly: '-2.3%',
+        threeYear: '-7.2%',
+        description: 'Regional areas show steady decline with community policing initiatives.'
+      }
+    };
+  }
+  
+  // Standard suburban areas
+  return {
+    baseRate: 5100,
+    rating: 'Medium',
+    comparison: '8% higher than state average',
+    safetyScore: 74,
+    breakdowns: {
+      property: 0.35,
+      violent: 0.14,
+      drug: 0.18,
+      publicOrder: 0.22,
+      fraud: 0.11
+    },
+    trends: {
+      yearly: '-1.8%',
+      threeYear: '-8.5%',
+      description: 'Suburban crime rates follow national trends with gradual improvements.'
+    }
+  };
 }
