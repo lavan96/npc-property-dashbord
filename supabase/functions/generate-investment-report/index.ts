@@ -1266,15 +1266,23 @@ Produce a full investment report following the structure above, including detail
     }
 
     let data;
+    let responseText;
     try {
-      data = await response.json();
-      console.log('Response parsed successfully');
-      console.log('Response structure keys:', Object.keys(data));
+      // Read response as text first (more reliable than direct .json())
+      responseText = await response.text();
+      console.log('✓ Response text received, length:', responseText.length);
+      
+      // Parse the text as JSON
+      data = JSON.parse(responseText);
+      console.log('✓ Response parsed successfully');
+      console.log('✓ Response structure keys:', Object.keys(data));
     } catch (jsonError) {
-      console.error('Error parsing JSON response:', jsonError);
+      console.error('❌ Error parsing JSON response:', jsonError);
+      console.error('❌ Raw response text (first 500 chars):', responseText?.substring(0, 500));
       return new Response(JSON.stringify({ 
         error: 'Invalid JSON response from Perplexity API',
-        success: false 
+        success: false,
+        details: jsonError.message
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
