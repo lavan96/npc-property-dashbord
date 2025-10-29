@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,9 +15,15 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fetching RBA economic data...');
+    console.log('Fetching RBA economic data with caching...');
 
-    const rbaData = await fetchRBAData();
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const rbaData = await fetchRBADataWithCache(supabase);
     
     return new Response(JSON.stringify({ 
       success: true, 
@@ -38,6 +45,55 @@ serve(async (req) => {
     });
   }
 });
+
+async function fetchRBADataWithCache(supabase: any) {
+  console.log('🔍 Checking economic data cache...');
+
+  // Check cache for RBA indicators (data_type: 'rba_indicators')
+  const { data: cachedData, error: cacheError } = await supabase
+    .from('economic_data_cache')
+    .select('*')
+    .eq('data_type', 'rba_indicators')
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+
+  if (cacheError) {
+    console.error('❌ Cache query error:', cacheError);
+  }
+
+  if (cachedData) {
+    const ageHours = Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60));
+    console.log(`✅ Cache HIT! RBA data age: ${ageHours} hours`);
+    return { ...cachedData.data, cached: true, lastCached: cachedData.fetched_at };
+  }
+
+  console.log('❌ Cache MISS. Fetching fresh RBA data...');
+
+  // Fetch fresh data
+  const freshData = await fetchRBAData();
+
+  // Cache the data for 7 days
+  console.log('💾 Caching RBA economic data for 7 days...');
+  
+  const { error: insertError } = await supabase
+    .from('economic_data_cache')
+    .upsert({
+      data_type: 'rba_indicators',
+      data: freshData,
+      fetched_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+    }, {
+      onConflict: 'data_type'
+    });
+
+  if (insertError) {
+    console.error('❌ Error caching RBA data:', insertError);
+  } else {
+    console.log('✅ RBA data cached successfully');
+  }
+
+  return { ...freshData, cached: false };
+}
 
 async function fetchRBAData() {
   const economicData: any = {};

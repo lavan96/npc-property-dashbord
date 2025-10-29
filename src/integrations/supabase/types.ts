@@ -159,6 +159,42 @@ export type Database = {
           },
         ]
       }
+      crime_statistics_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          data_quality: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          postcode: string
+          state: string
+          suburb: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          postcode: string
+          state: string
+          suburb: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          postcode?: string
+          state?: string
+          suburb?: string
+        }
+        Relationships: []
+      }
       custom_users: {
         Row: {
           created_at: string
@@ -186,6 +222,33 @@ export type Database = {
           role?: string
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      economic_data_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          data_type: string
+          expires_at: string
+          fetched_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          data_type: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          data_type?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
         }
         Relationships: []
       }
@@ -381,6 +444,45 @@ export type Database = {
         }
         Relationships: []
       }
+      transport_data_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          data_quality: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          latitude: number
+          longitude: number
+          state: string
+          suburb: string | null
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          state: string
+          suburb?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          state?: string
+          suburb?: string | null
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           author_name: string | null
@@ -463,7 +565,21 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_census_cache: { Args: never; Returns: undefined }
+      cleanup_expired_crime_cache: { Args: never; Returns: undefined }
+      cleanup_expired_economic_cache: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
+      cleanup_expired_transport_cache: { Args: never; Returns: undefined }
+      get_cache_statistics: {
+        Args: never
+        Returns: {
+          cache_hit_potential: number
+          cache_type: string
+          estimated_data: number
+          expired_entries: number
+          live_data: number
+          total_entries: number
+        }[]
+      }
       get_schools_statistics: {
         Args: never
         Returns: {

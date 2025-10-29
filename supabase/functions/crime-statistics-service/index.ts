@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,8 +28,14 @@ serve(async (req) => {
       });
     }
 
-    // Fetch crime data from state open data portals
-    const crimeData = await fetchCrimeData(suburb, state, postcode);
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Fetch crime data with cache-first strategy
+    const crimeData = await fetchCrimeDataWithCache(supabase, suburb, state, postcode);
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -48,6 +55,67 @@ serve(async (req) => {
     });
   }
 });
+
+async function fetchCrimeDataWithCache(supabase: any, suburb: string, state: string, postcode?: string) {
+  const normalizedSuburb = suburb.trim().toLowerCase();
+  const normalizedState = state.trim().toUpperCase();
+  const normalizedPostcode = postcode?.trim() || 'unknown';
+
+  console.log(`🔍 Step 1: Checking cache for ${normalizedSuburb}, ${normalizedState}, ${normalizedPostcode}`);
+
+  // Check cache first
+  const { data: cachedData, error: cacheError } = await supabase
+    .from('crime_statistics_cache')
+    .select('*')
+    .eq('suburb', normalizedSuburb)
+    .eq('postcode', normalizedPostcode)
+    .eq('state', normalizedState)
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+
+  if (cacheError) {
+    console.error('❌ Cache query error:', cacheError);
+  }
+
+  if (cachedData) {
+    console.log(`✅ Cache HIT! Found ${cachedData.data_quality} data (age: ${Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60 * 24))} days)`);
+    return { ...cachedData.data, dataQuality: cachedData.data_quality, cached: true };
+  }
+
+  console.log('❌ Cache MISS. Fetching live data...');
+
+  // Fetch fresh data
+  const freshData = await fetchCrimeData(suburb, state, postcode);
+
+  // Only cache if it's real data (not estimated)
+  if (freshData.dataQuality === 'live') {
+    console.log('💾 Caching live crime data for 90 days...');
+    
+    const { error: insertError } = await supabase
+      .from('crime_statistics_cache')
+      .upsert({
+        suburb: normalizedSuburb,
+        postcode: normalizedPostcode,
+        state: normalizedState,
+        data: freshData,
+        data_quality: 'live',
+        fetched_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days
+      }, {
+        onConflict: 'suburb,postcode,state'
+      });
+
+    if (insertError) {
+      console.error('❌ Error caching crime data:', insertError);
+    } else {
+      console.log('✅ Crime data cached successfully');
+    }
+  } else {
+    console.log('⚠️ Skipping cache for estimated data');
+  }
+
+  return freshData;
+}
 
 async function fetchCrimeData(suburb: string, state: string, postcode?: string) {
   const stateUpper = state.toUpperCase();
