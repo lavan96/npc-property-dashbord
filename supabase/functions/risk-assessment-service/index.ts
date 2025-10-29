@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,7 +45,41 @@ serve(async (req) => {
   try {
     const { suburb, state, postcode, latitude, longitude }: RiskAssessmentRequest = await req.json();
 
-    console.log(`Fetching risk assessment for: ${suburb}, ${state}, ${postcode}`);
+    console.log(`🔍 Risk assessment request: ${suburb}, ${state}, ${postcode}`);
+
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Check cache first
+    const cachedData = await checkRiskCache(supabase, suburb, postcode, state);
+    
+    if (cachedData) {
+      const ageHours = Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60));
+      console.log(`✅ Cache HIT! Risk data age: ${ageHours} hours`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            floodRisk: cachedData.flood_risk,
+            bushfireRisk: cachedData.bushfire_risk
+          },
+          suburb,
+          state,
+          postcode,
+          cached: true,
+          cachedAt: cachedData.fetched_at,
+          note: 'Risk data from cache. Flood data from AFRIP, bushfire risk from state services.',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('❌ Cache MISS. Fetching fresh risk data...');
+    const startTime = Date.now();
 
     // Initialize risk assessment object
     const riskAssessment: RiskAssessment = {};
@@ -66,7 +101,15 @@ serve(async (req) => {
       riskAssessment.bushfireRisk = await fetchBushfireRiskByPostcode(state, suburb, postcode);
     }
 
-    console.log('Risk assessment compiled:', riskAssessment);
+    const responseTime = Date.now() - startTime;
+    console.log(`⏱️ Risk assessment fetched in ${responseTime}ms`);
+
+    // Cache the result for 180 days
+    await cacheRiskData(supabase, suburb, postcode, state, latitude, longitude, riskAssessment);
+
+    // Log API health
+    await logApiHealth(supabase, 'risk-assessment', '/assess', 'success', responseTime, 
+      riskAssessment.floodRisk?.dataSource.includes('estimated') ? 'estimated' : 'live');
 
     return new Response(
       JSON.stringify({
@@ -75,13 +118,27 @@ serve(async (req) => {
         suburb,
         state,
         postcode,
+        cached: false,
         note: 'Flood data from AFRIP (Geoscience Australia). Bushfire risk uses regional estimates.',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in risk-assessment-service:', error);
+    console.error('❌ Error in risk-assessment-service:', error);
+    
+    // Log API health failure
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      await logApiHealth(supabase, 'risk-assessment', '/assess', 'error', null, 'estimated', 
+        error instanceof Error ? error.message : 'Unknown error');
+    } catch (logError) {
+      console.error('Failed to log error:', logError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: false,
@@ -91,6 +148,87 @@ serve(async (req) => {
     );
   }
 });
+
+async function checkRiskCache(supabase: any, suburb: string, postcode: string, state: string) {
+  const { data, error } = await supabase
+    .from('risk_assessment_cache')
+    .select('*')
+    .eq('suburb', suburb.toLowerCase())
+    .eq('postcode', postcode)
+    .eq('state', state.toUpperCase())
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+
+  if (error) {
+    console.error('Cache query error:', error);
+    return null;
+  }
+
+  return data;
+}
+
+async function cacheRiskData(
+  supabase: any, 
+  suburb: string, 
+  postcode: string, 
+  state: string,
+  latitude: number | undefined,
+  longitude: number | undefined,
+  riskAssessment: RiskAssessment
+) {
+  console.log('💾 Caching risk data for 180 days...');
+  
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 180);
+
+  const { error } = await supabase
+    .from('risk_assessment_cache')
+    .upsert({
+      suburb: suburb.toLowerCase(),
+      postcode,
+      state: state.toUpperCase(),
+      latitude,
+      longitude,
+      flood_risk: riskAssessment.floodRisk,
+      bushfire_risk: riskAssessment.bushfireRisk,
+      fetched_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      data_quality: riskAssessment.floodRisk?.dataSource.includes('estimated') ? 'estimated' : 'live'
+    }, {
+      onConflict: 'suburb,postcode,state'
+    });
+
+  if (error) {
+    console.error('❌ Error caching risk data:', error);
+  } else {
+    console.log('✅ Risk data cached successfully');
+  }
+}
+
+async function logApiHealth(
+  supabase: any,
+  serviceName: string,
+  endpoint: string,
+  status: string,
+  responseTime: number | null,
+  dataQuality: string,
+  errorMessage?: string
+) {
+  const { error } = await supabase
+    .from('api_health_log')
+    .insert({
+      service_name: serviceName,
+      endpoint,
+      status,
+      response_time_ms: responseTime,
+      data_quality: dataQuality,
+      error_message: errorMessage
+    });
+
+  if (error) {
+    console.error('Failed to log API health:', error);
+  }
+}
 
 async function fetchFloodRiskFromAFRIP(latitude: number, longitude: number, suburb: string, state: string) {
   try {

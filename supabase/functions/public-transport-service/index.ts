@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,9 +59,9 @@ serve(async (req) => {
 
   try {
     const input: PublicTransportInput = await req.json();
-    console.log('📍 Public transport request received:', { lat: input.lat, lng: input.lng, state: input.state, suburb: input.suburb });
+    console.log('🚇 Public transport request:', { lat: input.lat, lng: input.lng, state: input.state, suburb: input.suburb });
 
-    const { lat, lng, state } = input;
+    const { lat, lng, state, suburb } = input;
 
     if (!lat || !lng || !state) {
       const missingParams = [];
@@ -70,15 +71,45 @@ serve(async (req) => {
       throw new Error(`Missing required parameters: ${missingParams.join(', ')}`);
     }
 
-    console.log(`🚇 Fetching transport data for ${state.toUpperCase()}...`);
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Check cache first
+    const cachedData = await checkTransportCache(supabase, lat, lng, state);
+    
+    if (cachedData) {
+      const ageHours = Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60));
+      console.log(`✅ Cache HIT! Transport data age: ${ageHours} hours`);
+      
+      return new Response(
+        JSON.stringify({ ...cachedData.data, cached: true, cachedAt: cachedData.fetched_at }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
+
+    console.log(`❌ Cache MISS. Fetching fresh transport data for ${state.toUpperCase()}...`);
+    const startTime = Date.now();
     
     // Fetch transport data based on state
     const transportData = await fetchStateTransportData(state, lat, lng);
+    const responseTime = Date.now() - startTime;
     
-    console.log(`✅ Transport data fetched successfully for ${state.toUpperCase()}: Quality Score ${transportData.qualityScore}/100`);
+    console.log(`✅ Transport data fetched in ${responseTime}ms: Quality Score ${transportData.qualityScore}/100`);
+
+    // Cache the result for 30 days
+    await cacheTransportData(supabase, lat, lng, state, suburb, transportData);
+
+    // Log API health
+    await logApiHealth(supabase, 'public-transport', '/fetch', 'success', responseTime, 'estimated');
 
     return new Response(
-      JSON.stringify(transportData),
+      JSON.stringify({ ...transportData, cached: false }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
@@ -87,6 +118,17 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Error in public-transport-service:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Log API health failure
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      await logApiHealth(supabase, 'public-transport', '/fetch', 'error', null, 'estimated', errorMessage);
+    } catch (logError) {
+      console.error('Failed to log error:', logError);
+    }
     
     return new Response(
       JSON.stringify({ 
@@ -100,6 +142,81 @@ serve(async (req) => {
     );
   }
 });
+
+async function checkTransportCache(supabase: any, lat: number, lng: number, state: string) {
+  // Find cache within ~100m radius (0.001 degrees ≈ 111m)
+  const tolerance = 0.001;
+  
+  const { data, error } = await supabase
+    .from('transport_data_cache')
+    .select('*')
+    .eq('state', state.toUpperCase())
+    .gte('latitude', lat - tolerance)
+    .lte('latitude', lat + tolerance)
+    .gte('longitude', lng - tolerance)
+    .lte('longitude', lng + tolerance)
+    .gt('expires_at', new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Cache query error:', error);
+    return null;
+  }
+
+  return data;
+}
+
+async function cacheTransportData(supabase: any, lat: number, lng: number, state: string, suburb: string | undefined, transportData: any) {
+  console.log('💾 Caching transport data for 30 days...');
+  
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30);
+
+  const { error } = await supabase
+    .from('transport_data_cache')
+    .insert({
+      latitude: lat,
+      longitude: lng,
+      state: state.toUpperCase(),
+      suburb: suburb?.toLowerCase(),
+      data: transportData,
+      fetched_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      data_quality: 'estimated'
+    });
+
+  if (error) {
+    console.error('❌ Error caching transport data:', error);
+  } else {
+    console.log('✅ Transport data cached successfully');
+  }
+}
+
+async function logApiHealth(
+  supabase: any,
+  serviceName: string,
+  endpoint: string,
+  status: string,
+  responseTime: number | null,
+  dataQuality: string,
+  errorMessage?: string
+) {
+  const { error } = await supabase
+    .from('api_health_log')
+    .insert({
+      service_name: serviceName,
+      endpoint,
+      status,
+      response_time_ms: responseTime,
+      data_quality: dataQuality,
+      error_message: errorMessage
+    });
+
+  if (error) {
+    console.error('Failed to log API health:', error);
+  }
+}
 
 async function fetchStateTransportData(
   state: string,

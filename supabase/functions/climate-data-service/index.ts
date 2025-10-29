@@ -1,5 +1,5 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,47 +7,172 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log('Climate Data service invoked');
-  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { suburb, state, postcode } = await req.json();
-    console.log('Fetching climate data for:', suburb, state, postcode);
 
     if (!state) {
+      throw new Error('State parameter is required');
+    }
+
+    console.log(`🌡️ Climate data request: ${suburb || 'N/A'}, ${state}, ${postcode || 'N/A'}`);
+
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Check cache first
+    const cachedData = await checkClimateCache(supabase, suburb, postcode, state);
+    
+    if (cachedData) {
+      const ageHours = Math.round((Date.now() - new Date(cachedData.fetched_at).getTime()) / (1000 * 60 * 60));
+      console.log(`✅ Cache HIT! Climate data age: ${ageHours} hours`);
+      
       return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'State is required' 
+        success: true, 
+        data: {
+          climateZone: cachedData.climate_zone,
+          temperature: cachedData.temperature_data,
+          rainfall: cachedData.rainfall_data,
+          humidity: cachedData.humidity_data,
+          extremeWeather: cachedData.extreme_weather,
+          projections: cachedData.projections,
+          cached: true,
+          cachedAt: cachedData.fetched_at
+        }
       }), {
-        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
       });
     }
 
-    // Fetch climate data
+    console.log('❌ Cache MISS. Fetching fresh climate data...');
+    const startTime = Date.now();
+
     const climateData = await fetchClimateData(suburb, state, postcode);
+    const responseTime = Date.now() - startTime;
+
+    // Cache the result for 365 days
+    await cacheClimateData(supabase, suburb, postcode, state, climateData);
+
+    // Log API health
+    await logApiHealth(supabase, 'climate-data', '/fetch', 'success', responseTime, 'estimated');
 
     return new Response(JSON.stringify({ 
       success: true, 
-      data: climateData 
+      data: { ...climateData, cached: false }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
     });
 
   } catch (error: any) {
-    console.error('Error in Climate Data service:', error);
+    console.error('❌ Error in climate-data-service:', error);
+    
+    // Log API health failure
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      await logApiHealth(supabase, 'climate-data', '/fetch', 'error', null, 'estimated', error.message);
+    } catch (logError) {
+      console.error('Failed to log error:', logError);
+    }
+
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message 
     }), {
-      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
     });
   }
 });
+
+async function checkClimateCache(supabase: any, suburb: string | undefined, postcode: string | undefined, state: string) {
+  const query = supabase
+    .from('climate_data_cache')
+    .select('*')
+    .eq('state', state.toUpperCase())
+    .gt('expires_at', new Date().toISOString());
+
+  if (suburb) {
+    query.eq('suburb', suburb.toLowerCase());
+  }
+  if (postcode) {
+    query.eq('postcode', postcode);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    console.error('Cache query error:', error);
+    return null;
+  }
+
+  return data;
+}
+
+async function cacheClimateData(supabase: any, suburb: string | undefined, postcode: string | undefined, state: string, climateData: any) {
+  console.log('💾 Caching climate data for 365 days...');
+  
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 365);
+
+  const { error } = await supabase
+    .from('climate_data_cache')
+    .insert({
+      suburb: suburb?.toLowerCase(),
+      postcode,
+      state: state.toUpperCase(),
+      climate_zone: climateData.climateZone,
+      temperature_data: climateData.temperature,
+      rainfall_data: climateData.rainfall,
+      humidity_data: climateData.humidity,
+      extreme_weather: climateData.extremeWeather,
+      projections: climateData.projections,
+      fetched_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      data_quality: 'estimated'
+    });
+
+  if (error) {
+    console.error('❌ Error caching climate data:', error);
+  } else {
+    console.log('✅ Climate data cached successfully');
+  }
+}
+
+async function logApiHealth(
+  supabase: any,
+  serviceName: string,
+  endpoint: string,
+  status: string,
+  responseTime: number | null,
+  dataQuality: string,
+  errorMessage?: string
+) {
+  const { error } = await supabase
+    .from('api_health_log')
+    .insert({
+      service_name: serviceName,
+      endpoint,
+      status,
+      response_time_ms: responseTime,
+      data_quality: dataQuality,
+      error_message: errorMessage
+    });
+
+  if (error) {
+    console.error('Failed to log API health:', error);
+  }
+}
 
 async function fetchClimateData(suburb?: string, state?: string, postcode?: string) {
   try {

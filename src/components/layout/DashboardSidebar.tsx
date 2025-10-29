@@ -10,7 +10,8 @@ import {
   BarChart3,
   FileText,
   BookOpen,
-  Activity
+  Activity,
+  Upload
 } from 'lucide-react';
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const navigationItems = [
 
 const adminItems = [
   { title: 'Monitoring', url: '/monitoring', icon: Activity },
+  { title: 'Data Import', url: '/data-import', icon: Upload },
   { title: 'Errors', url: '/errors', icon: AlertTriangle },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
