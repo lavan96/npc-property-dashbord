@@ -255,6 +255,41 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       let currentPage: any = null;
       let yPosition = 0;
 
+      // Helper to group content into paragraphs and tables
+      const groupContentBlocks = (content: string): string[] => {
+        const lines = content.split('\n');
+        const blocks: string[] = [];
+        let i = 0;
+        
+        while (i < lines.length) {
+          const line = lines[i].trim();
+          
+          // Skip empty lines
+          if (!line) {
+            i++;
+            continue;
+          }
+          
+          // Check if this line is part of a table (contains |)
+          if (line.includes('|')) {
+            // Accumulate all consecutive table lines
+            const tableLines: string[] = [];
+            while (i < lines.length && lines[i].trim().includes('|')) {
+              tableLines.push(lines[i]);
+              i++;
+            }
+            // Add the complete table as one block
+            blocks.push(tableLines.join('\n'));
+          } else {
+            // Regular paragraph line
+            blocks.push(line);
+            i++;
+          }
+        }
+        
+        return blocks;
+      };
+
       // Helper function to strip emojis from text (WinAnsi encoding doesn't support them)
       const stripEmojis = (text: string): string => {
         // Remove emojis and other non-WinAnsi characters
@@ -597,7 +632,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         );
 
         // Calculate total height needed for this section
-        const paragraphs = content.split('\n').filter(p => p.trim());
+        const paragraphs = groupContentBlocks(content);
         const sectionTitleHeight = 30;
         let totalContentHeight = 0;
         
@@ -658,6 +693,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
           // Check if paragraph is a markdown table
           if (isMarkdownTable(paragraph)) {
+            console.log('✓ Detected markdown table, rendering...');
             // Check if we need a new page
             if (yPosition < bottomMargin + 100) {
               currentPage = await addContentPage();
