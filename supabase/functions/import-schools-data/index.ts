@@ -1,0 +1,162 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface SchoolImportRequest {
+  schools: Array<{
+    name: string;
+    suburb: string;
+    postcode: string;
+    state: string;
+    school_type?: 'Government' | 'Catholic' | 'Independent' | 'Other';
+    school_level?: 'Primary' | 'Secondary' | 'Combined' | 'Special' | 'Other';
+    icsea_score?: number;
+    student_count?: number;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    website_url?: string;
+  }>;
+  overwrite?: boolean;
+}
+
+serve(async (req) => {
+  console.log('📥 School data import service invoked');
+  
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { schools, overwrite = false }: SchoolImportRequest = await req.json();
+    
+    if (!schools || !Array.isArray(schools) || schools.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Schools array is required and must not be empty' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`📊 Importing ${schools.length} schools...`);
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Validate school data
+    const validSchools = schools.filter(school => 
+      school.name && 
+      school.suburb && 
+      school.postcode && 
+      school.state
+    );
+
+    if (validSchools.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'No valid schools found. Each school must have name, suburb, postcode, and state.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`✅ ${validSchools.length} schools validated`);
+
+    let imported = 0;
+    let updated = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    // Import schools one by one (could be batched for large datasets)
+    for (const school of validSchools) {
+      try {
+        const schoolData = {
+          name: school.name,
+          suburb: school.suburb,
+          postcode: school.postcode,
+          state: school.state.toUpperCase(),
+          school_type: school.school_type || 'Government',
+          school_level: school.school_level || 'Combined',
+          icsea_score: school.icsea_score || null,
+          student_count: school.student_count || null,
+          latitude: school.latitude || null,
+          longitude: school.longitude || null,
+          address: school.address || null,
+          website_url: school.website_url || null,
+          last_updated: new Date().toISOString().split('T')[0]
+        };
+
+        if (overwrite) {
+          // Upsert: Update if exists, insert if not
+          const { error } = await supabase
+            .from('schools_directory')
+            .upsert(schoolData, {
+              onConflict: 'name,postcode,state'
+            });
+
+          if (error) {
+            errors.push(`${school.name}: ${error.message}`);
+            skipped++;
+          } else {
+            updated++;
+          }
+        } else {
+          // Insert only, skip if exists
+          const { error } = await supabase
+            .from('schools_directory')
+            .insert(schoolData);
+
+          if (error) {
+            if (error.message.includes('duplicate key')) {
+              skipped++;
+            } else {
+              errors.push(`${school.name}: ${error.message}`);
+              skipped++;
+            }
+          } else {
+            imported++;
+          }
+        }
+      } catch (error: any) {
+        errors.push(`${school.name}: ${error.message}`);
+        skipped++;
+      }
+    }
+
+    console.log(`✅ Import complete: ${imported} imported, ${updated} updated, ${skipped} skipped`);
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      summary: {
+        total: validSchools.length,
+        imported,
+        updated,
+        skipped,
+        errors: errors.length
+      },
+      errors: errors.slice(0, 10), // Return first 10 errors
+      message: `Successfully processed ${validSchools.length} schools`
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error in school data import:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

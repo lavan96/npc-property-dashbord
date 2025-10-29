@@ -118,3 +118,6 @@ verify_jwt = false
 
 [functions.public-transport-service]
 verify_jwt = false
+
+[functions.import-schools-data]
+verify_jwt = false

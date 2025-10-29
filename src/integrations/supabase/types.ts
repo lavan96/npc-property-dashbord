@@ -464,6 +464,18 @@ export type Database = {
     Functions: {
       cleanup_expired_census_cache: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
+      get_schools_statistics: {
+        Args: never
+        Returns: {
+          avg_icsea: number
+          by_level: Json
+          by_state: Json
+          by_type: Json
+          total_schools: number
+          total_students: number
+        }[]
+      }
+      seed_sample_schools: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
