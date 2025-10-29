@@ -254,6 +254,7 @@ serve(async (req) => {
 
       // Fetch ABS demographic data
       try {
+        console.log('Fetching ABS data for postcode:', postcode, 'state:', state);
         const absResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-data-service`, {
           method: 'POST',
           headers: {
@@ -265,11 +266,20 @@ serve(async (req) => {
         
         if (absResponse.ok) {
           const absData = await absResponse.json();
-          enhancedData = { ...enhancedData, demographics: absData.data };
-          console.log('ABS data fetched successfully');
+          console.log('✓ ABS response received:', { success: absData.success, hasData: !!absData.data });
+          if (absData.success && absData.data) {
+            enhancedData = { ...enhancedData, demographics: absData.data };
+            console.log('✓ ABS demographics data integrated successfully');
+          } else {
+            console.warn('⚠️ ABS response missing expected data structure');
+          }
+        } else {
+          const errorText = await absResponse.text();
+          console.error('❌ ABS service returned non-OK status:', absResponse.status, errorText);
         }
       } catch (error: any) {
-        console.log('ABS data fetch failed, using estimates:', error?.message || 'Unknown error');
+        console.error('❌ ABS data fetch failed:', error?.message || 'Unknown error');
+        console.error('Stack trace:', error?.stack);
       }
 
       // Fetch RBA economic data
@@ -422,7 +432,7 @@ serve(async (req) => {
       // Fetch crime statistics
       if (suburb && state) {
         try {
-          console.log('Fetching crime statistics for:', suburb, state);
+          console.log('Fetching crime statistics for suburb:', suburb, 'state:', state, 'postcode:', postcode);
           const crimeResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/crime-statistics-service`, {
             method: 'POST',
             headers: {
@@ -438,14 +448,23 @@ serve(async (req) => {
           
           if (crimeResponse.ok) {
             const crimeData = await crimeResponse.json();
+            console.log('✓ Crime response received:', { success: crimeData.success, hasData: !!crimeData.data });
             if (crimeData.success && crimeData.data) {
               enhancedData = { ...enhancedData, crimeStatistics: crimeData.data };
-              console.log('✓ Crime statistics fetched successfully');
+              console.log('✓ Crime statistics integrated successfully');
+            } else {
+              console.warn('⚠️ Crime response missing expected data structure');
             }
+          } else {
+            const errorText = await crimeResponse.text();
+            console.error('❌ Crime service returned non-OK status:', crimeResponse.status, errorText);
           }
         } catch (error: any) {
-          console.log('Crime statistics fetch failed:', error?.message || 'Unknown error');
+          console.error('❌ Crime statistics fetch failed:', error?.message || 'Unknown error');
+          console.error('Stack trace:', error?.stack);
         }
+      } else {
+        console.warn('⚠️ Skipping crime statistics - missing suburb or state');
       }
 
       // Fetch employment & job growth data
