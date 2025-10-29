@@ -273,6 +273,129 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         return pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
       };
 
+      // Helper to check if text is a markdown table
+      const isMarkdownTable = (text: string): boolean => {
+        const lines = text.trim().split('\n');
+        // A table has at least 2 lines (header + separator)
+        if (lines.length < 2) return false;
+        // Check if it has pipe separators
+        return lines.some(line => line.includes('|'));
+      };
+
+      // Helper to parse and draw markdown table
+      const drawTable = (page: any, tableText: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number): { lastY: number; needsNewPage: boolean } => {
+        const lines = tableText.trim().split('\n').map(l => l.trim()).filter(l => l);
+        if (lines.length === 0) return { lastY: startY, needsNewPage: false };
+
+        // Parse table structure
+        const rows = lines
+          .filter(line => !line.match(/^[\|\s\-:]+$/)) // Filter out separator lines
+          .map(line => 
+            line.split('|')
+              .map(cell => stripEmojis(cell.trim()))
+              .filter(cell => cell.length > 0)
+          );
+
+        if (rows.length === 0) return { lastY: startY, needsNewPage: false };
+
+        const columnCount = Math.max(...rows.map(r => r.length));
+        const cellWidth = maxWidth / columnCount;
+        const cellPadding = 5;
+        const rowHeight = size + 10;
+
+        let currentY = startY;
+
+        // Draw each row
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const isHeader = i === 0;
+          const font = isHeader ? boldFont : normalFont;
+          
+          // Check if we need a new page
+          if (currentY - rowHeight < bottomMargin + 40) {
+            return { lastY: currentY, needsNewPage: true };
+          }
+
+          // Draw cell backgrounds (alternating for readability)
+          if (!isHeader && i % 2 === 0) {
+            page.drawRectangle({
+              x: x,
+              y: currentY - rowHeight + 2,
+              width: maxWidth,
+              height: rowHeight,
+              color: rgb(0.95, 0.95, 0.95),
+            });
+          }
+
+          // Draw cell borders and text
+          for (let j = 0; j < row.length; j++) {
+            const cellX = x + (j * cellWidth);
+            const cellText = row[j];
+            
+            // Truncate text if too long for cell
+            let displayText = cellText;
+            let textWidth = font.widthOfTextAtSize(displayText, size);
+            while (textWidth > cellWidth - 2 * cellPadding && displayText.length > 3) {
+              displayText = displayText.slice(0, -4) + '...';
+              textWidth = font.widthOfTextAtSize(displayText, size);
+            }
+
+            // Draw cell text
+            page.drawText(displayText, {
+              x: cellX + cellPadding,
+              y: currentY - size - 3,
+              size,
+              font,
+              color: rgb(0.2, 0.2, 0.2),
+            });
+
+            // Draw vertical cell border
+            if (j < row.length - 1) {
+              page.drawLine({
+                start: { x: cellX + cellWidth, y: currentY },
+                end: { x: cellX + cellWidth, y: currentY - rowHeight },
+                thickness: 0.5,
+                color: rgb(0.7, 0.7, 0.7),
+              });
+            }
+          }
+
+          // Draw horizontal border
+          page.drawLine({
+            start: { x: x, y: currentY - rowHeight },
+            end: { x: x + maxWidth, y: currentY - rowHeight },
+            thickness: isHeader ? 1.5 : 0.5,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+
+          if (isHeader) {
+            // Draw top border for header
+            page.drawLine({
+              start: { x: x, y: currentY },
+              end: { x: x + maxWidth, y: currentY },
+              thickness: 1.5,
+              color: rgb(0.5, 0.5, 0.5),
+            });
+          }
+
+          currentY -= rowHeight;
+        }
+
+        return { lastY: currentY - 8, needsNewPage: false };
+      };
+
+      // Helper to draw horizontal rule
+      const drawHorizontalRule = (page: any, x: number, y: number, width: number): number => {
+        page.drawLine({
+          start: { x: x, y: y },
+          end: { x: x + width, y: y },
+          thickness: 1,
+          color: rgb(0.6, 0.6, 0.6),
+          dashArray: [3, 3],
+        });
+        return y - 15; // Space after rule
+      };
+
       // Helper to parse markdown and detect formatting
       const parseMarkdownText = (text: string): Array<{text: string, bold: boolean, italic: boolean}> => {
         // Strip emojis first to prevent encoding errors
@@ -511,6 +634,58 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         for (const paragraph of paragraphs) {
           if (!paragraph.trim()) continue;
 
+          // Check for horizontal rule (---)
+          if (paragraph.trim().match(/^-{3,}$/)) {
+            // Check if we need a new page
+            if (yPosition < bottomMargin + 60) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+            }
+            yPosition = drawHorizontalRule(currentPage, margin, yPosition - 10, pageWidth - 2 * margin);
+            continue;
+          }
+
+          // Check if paragraph is a markdown table
+          if (isMarkdownTable(paragraph)) {
+            // Check if we need a new page
+            if (yPosition < bottomMargin + 100) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+            }
+
+            const tableResult = drawTable(
+              currentPage,
+              paragraph,
+              margin,
+              yPosition,
+              pageWidth - 2 * margin,
+              helveticaFont,
+              helveticaBold,
+              textSize
+            );
+
+            if (tableResult.needsNewPage) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+              // Retry drawing the table on new page
+              const retryResult = drawTable(
+                currentPage,
+                paragraph,
+                margin,
+                yPosition,
+                pageWidth - 2 * margin,
+                helveticaFont,
+                helveticaBold,
+                textSize
+              );
+              yPosition = retryResult.lastY;
+            } else {
+              yPosition = tableResult.lastY;
+            }
+            continue;
+          }
+
+          // Regular paragraph with text wrapping
           let remainingParts = parseMarkdownText(paragraph);
           
           while (remainingParts.length > 0) {
