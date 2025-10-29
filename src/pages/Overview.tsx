@@ -653,8 +653,8 @@ export default function Overview() {
                     cx="50%"
                     cy="40%"
                     labelLine={false}
-                    label={({ count, percent }) => 
-                      percent > 0.05 ? `${count}` : ''
+                    label={(props: any) => 
+                      props.percent > 0.05 ? `${props.count}` : ''
                     }
                     outerRadius={90}
                     fill="#8884d8"

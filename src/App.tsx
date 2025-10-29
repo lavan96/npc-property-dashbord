@@ -18,6 +18,7 @@ import GeneratedReports from "./pages/GeneratedReports";
 import ReportViewer from "./pages/ReportViewer";
 import Settings from "./pages/Settings";
 import UserGuide from "./pages/UserGuide";
+import Monitoring from "./pages/Monitoring";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="generated-reports" element={<GeneratedReports />} />
               <Route path="generated-reports/:reportId" element={<ReportViewer />} />
               <Route path="user-guide" element={<UserGuide />} />
+              <Route path="monitoring" element={<Monitoring />} />
               <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
               <Route path="settings" element={<Settings />} />
             </Route>

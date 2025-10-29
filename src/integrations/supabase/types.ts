@@ -50,6 +50,42 @@ export type Database = {
         }
         Relationships: []
       }
+      api_health_log: {
+        Row: {
+          created_at: string
+          data_quality: string | null
+          endpoint: string | null
+          error_message: string | null
+          id: string
+          response_time_ms: number | null
+          service_name: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_quality?: string | null
+          endpoint?: string | null
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          service_name: string
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_quality?: string | null
+          endpoint?: string | null
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          service_name?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       chart_analysis: {
         Row: {
           analysis_text: string
@@ -158,6 +194,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      climate_data_cache: {
+        Row: {
+          climate_zone: string | null
+          created_at: string
+          data_quality: string
+          expires_at: string
+          extreme_weather: Json | null
+          fetched_at: string
+          humidity_data: Json | null
+          id: string
+          postcode: string | null
+          projections: Json | null
+          rainfall_data: Json | null
+          state: string
+          suburb: string | null
+          temperature_data: Json | null
+        }
+        Insert: {
+          climate_zone?: string | null
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          extreme_weather?: Json | null
+          fetched_at?: string
+          humidity_data?: Json | null
+          id?: string
+          postcode?: string | null
+          projections?: Json | null
+          rainfall_data?: Json | null
+          state: string
+          suburb?: string | null
+          temperature_data?: Json | null
+        }
+        Update: {
+          climate_zone?: string | null
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          extreme_weather?: Json | null
+          fetched_at?: string
+          humidity_data?: Json | null
+          id?: string
+          postcode?: string | null
+          projections?: Json | null
+          rainfall_data?: Json | null
+          state?: string
+          suburb?: string | null
+          temperature_data?: Json | null
+        }
+        Relationships: []
       }
       crime_statistics_cache: {
         Row: {
@@ -387,6 +474,51 @@ export type Database = {
         }
         Relationships: []
       }
+      risk_assessment_cache: {
+        Row: {
+          bushfire_risk: Json | null
+          created_at: string
+          data_quality: string
+          expires_at: string
+          fetched_at: string
+          flood_risk: Json | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          postcode: string
+          state: string
+          suburb: string
+        }
+        Insert: {
+          bushfire_risk?: Json | null
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          flood_risk?: Json | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          postcode: string
+          state: string
+          suburb: string
+        }
+        Update: {
+          bushfire_risk?: Json | null
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          flood_risk?: Json | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          postcode?: string
+          state?: string
+          suburb?: string
+        }
+        Relationships: []
+      }
       schools_directory: {
         Row: {
           address: string | null
@@ -565,10 +697,40 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_census_cache: { Args: never; Returns: undefined }
+      cleanup_expired_climate_cache: { Args: never; Returns: undefined }
       cleanup_expired_crime_cache: { Args: never; Returns: undefined }
       cleanup_expired_economic_cache: { Args: never; Returns: undefined }
+      cleanup_expired_risk_cache: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
+      cleanup_old_health_logs: { Args: never; Returns: undefined }
+      get_all_cache_stats: {
+        Args: never
+        Returns: {
+          avg_age_days: number
+          cache_hit_potential: number
+          cache_type: string
+          estimated_data: number
+          expired_entries: number
+          live_data: number
+          retention_days: number
+          total_entries: number
+        }[]
+      }
+      get_api_health_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          avg_response_time: number
+          data_quality_score: number
+          error_calls: number
+          estimated_data_count: number
+          live_data_count: number
+          service_name: string
+          success_calls: number
+          success_rate: number
+          total_calls: number
+        }[]
+      }
       get_cache_statistics: {
         Args: never
         Returns: {

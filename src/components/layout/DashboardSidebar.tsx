@@ -9,7 +9,8 @@ import {
   Database,
   BarChart3,
   FileText,
-  BookOpen
+  BookOpen,
+  Activity
 } from 'lucide-react';
 import {
   Sidebar,
@@ -35,6 +36,7 @@ const navigationItems = [
 ];
 
 const adminItems = [
+  { title: 'Monitoring', url: '/monitoring', icon: Activity },
   { title: 'Errors', url: '/errors', icon: AlertTriangle },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
