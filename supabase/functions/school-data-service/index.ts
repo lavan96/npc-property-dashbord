@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,31 +17,21 @@ interface SchoolDataRequest {
 
 interface School {
   name: string;
-  type: 'Government' | 'Catholic' | 'Independent';
-  level: 'Primary' | 'Secondary' | 'Combined' | 'Special';
+  type: 'Government' | 'Catholic' | 'Independent' | 'Other';
+  level: 'Primary' | 'Secondary' | 'Combined' | 'Special' | 'Other';
   address: string;
   postcode: string;
-  icsea?: number; // Index of Community Socio-Educational Advantage
+  icsea?: number;
   studentCount?: number;
-  naplan?: {
-    reading?: number;
-    writing?: number;
-    spelling?: number;
-    grammar?: number;
-    numeracy?: number;
-    overall?: number;
-  };
-  atar?: {
-    median?: number;
-    percentAbove80?: number;
-  };
-  rating?: number; // 0-5 star rating
-  distance?: number; // km from property
+  naplan?: any;
+  rating?: number;
+  distance?: number;
   schoolId?: string;
+  websiteUrl?: string;
 }
 
 serve(async (req) => {
-  console.log('School Data service invoked');
+  console.log('🏫 School Data service invoked');
   
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -60,8 +51,13 @@ serve(async (req) => {
       });
     }
 
-    // Fetch school data
-    const schoolData = await fetchSchoolData(suburb, state, postcode, latitude, longitude);
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch school data from database
+    const schoolData = await fetchSchoolDataFromDB(supabase, suburb, state, postcode, latitude, longitude);
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -71,7 +67,7 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error('Error in School Data service:', error);
+    console.error('❌ Error in School Data service:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message 
@@ -82,7 +78,8 @@ serve(async (req) => {
   }
 });
 
-async function fetchSchoolData(
+async function fetchSchoolDataFromDB(
+  supabase: any,
   suburb: string, 
   state: string, 
   postcode: string,
@@ -90,336 +87,134 @@ async function fetchSchoolData(
   longitude?: number
 ) {
   try {
-    console.log('Attempting to fetch school data from ACARA/MySchool...');
+    console.log('🔍 Querying schools_directory database...');
     
-    // Try to fetch from ACARA (Australian Curriculum, Assessment and Reporting Authority)
-    // MySchool.edu.au data portal
-    const schools = await fetchSchoolsByLocation(suburb, state, postcode, latitude, longitude);
-    
+    // Query schools from database by postcode and state
+    const { data: schools, error } = await supabase
+      .from('schools_directory')
+      .select('*')
+      .eq('postcode', postcode)
+      .eq('state', state.toUpperCase());
+
+    if (error) {
+      console.error('❌ Database query error:', error);
+      throw error;
+    }
+
     if (schools && schools.length > 0) {
-      // Calculate summary statistics
-      const summary = calculateSchoolSummary(schools, postcode);
+      console.log(`✅ Found ${schools.length} schools in database`);
+      
+      // Calculate distances if coordinates provided
+      const schoolsWithDistance = schools.map((school: any) => ({
+        name: school.name,
+        type: school.school_type || 'Government',
+        level: school.school_level || 'Combined',
+        address: school.address || `${school.suburb}, ${state} ${postcode}`,
+        postcode: school.postcode,
+        icsea: school.icsea_score,
+        studentCount: school.student_count,
+        naplan: school.naplan_data,
+        rating: calculateSchoolRating(school.icsea_score, school.naplan_data),
+        distance: latitude && longitude && school.latitude && school.longitude
+          ? calculateDistance(latitude, longitude, school.latitude, school.longitude)
+          : undefined,
+        schoolId: school.id,
+        websiteUrl: school.website_url
+      }));
+
+      // Sort by distance if available, otherwise by rating
+      schoolsWithDistance.sort((a, b) => {
+        if (a.distance !== undefined && b.distance !== undefined) {
+          return a.distance - b.distance;
+        }
+        return (b.rating || 0) - (a.rating || 0);
+      });
+
+      const summary = calculateSchoolSummary(schoolsWithDistance, postcode);
       
       return {
-        schools,
+        schools: schoolsWithDistance,
         summary,
-        dataSource: 'Australian Curriculum, Assessment and Reporting Authority (ACARA) - MySchool',
-        lastUpdated: '2024',
-        note: 'School data includes NAPLAN results, ICSEA values, and school characteristics. Ratings are derived from multiple performance indicators.'
+        dataSource: 'Schools Directory Database (Cached)',
+        dataQuality: 'cached',
+        lastUpdated: new Date().toISOString(),
+        note: 'School data from local database. For latest information, visit myschool.edu.au'
       };
     }
 
-    // Fallback to state-specific education data
-    console.log('Using state-specific education data...');
-    return await fetchStateEducationData(suburb, state, postcode, latitude, longitude);
+    console.log('⚠️ No schools found in database, attempting API fallback...');
+    
+    // Fallback: Try Google Places API if coordinates provided
+    if (latitude && longitude) {
+      const googleSchools = await fetchSchoolsFromGooglePlaces(latitude, longitude);
+      if (googleSchools.length > 0) {
+        console.log(`✅ Found ${googleSchools.length} schools from Google Places API`);
+        return {
+          schools: googleSchools,
+          summary: calculateSchoolSummary(googleSchools, postcode),
+          dataSource: 'Google Places API',
+          dataQuality: 'live',
+          lastUpdated: new Date().toISOString(),
+          note: 'School data from Google Places API. ICSEA scores and ratings not available.'
+        };
+      }
+    }
+
+    // Final fallback: Generate estimates
+    console.log('⚠️ Using estimated school data');
+    return generateSchoolEstimates(suburb, state, postcode);
 
   } catch (error: any) {
-    console.error('Error fetching school data:', error);
-    // Generate estimates based on location patterns
+    console.error('❌ Error fetching school data:', error);
     return generateSchoolEstimates(suburb, state, postcode);
   }
 }
 
-async function fetchSchoolsByLocation(
-  suburb: string,
-  state: string,
-  postcode: string,
-  latitude?: number,
-  longitude?: number
-): Promise<School[]> {
+async function fetchSchoolsFromGooglePlaces(latitude: number, longitude: number): Promise<School[]> {
   try {
-    // Try ACARA/MySchool data portal
-    // Note: MySchool doesn't have a public API, but data is available through data.gov.au
-    const dataGovUrl = `https://data.gov.au/api/3/action/datastore_search?resource_id=acara-schools&filters={"Postcode":"${postcode}"}`;
+    const googleApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    if (!googleApiKey) {
+      console.log('⚠️ Google Maps API key not configured');
+      return [];
+    }
+
+    console.log('🔍 Fetching schools from Google Places API...');
     
-    const response = await fetch(dataGovUrl, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      console.log('ACARA school data received');
-      
-      if (data.result && data.result.records && data.result.records.length > 0) {
-        return data.result.records.map((record: any) => parseSchoolRecord(record, latitude, longitude));
-      }
+    const radius = 5000; // 5km radius
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=school&key=${googleApiKey}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.log(`⚠️ Google Places API returned status: ${response.status}`);
+      return [];
     }
-  } catch (error: any) {
-    console.log('ACARA data fetch failed:', error.message);
-  }
 
-  // Try state-specific education department data
-  return await fetchStateSchools(state, suburb, postcode, latitude, longitude);
-}
-
-async function fetchStateSchools(
-  state: string,
-  suburb: string,
-  postcode: string,
-  latitude?: number,
-  longitude?: number
-): Promise<School[]> {
-  const stateUpper = state.toUpperCase();
-  
-  try {
-    switch (stateUpper) {
-      case 'NSW':
-        return await fetchNSWSchools(suburb, postcode, latitude, longitude);
-      case 'VIC':
-        return await fetchVICSchools(suburb, postcode, latitude, longitude);
-      case 'QLD':
-        return await fetchQLDSchools(suburb, postcode, latitude, longitude);
-      case 'SA':
-        return await fetchSASchools(suburb, postcode, latitude, longitude);
-      case 'WA':
-        return await fetchWASchools(suburb, postcode, latitude, longitude);
-      case 'TAS':
-        return await fetchTASSchools(suburb, postcode, latitude, longitude);
-      case 'NT':
-        return await fetchNTSchools(suburb, postcode, latitude, longitude);
-      case 'ACT':
-        return await fetchACTSchools(suburb, postcode, latitude, longitude);
-      default:
-        return [];
+    const data = await response.json();
+    
+    if (data.results && data.results.length > 0) {
+      return data.results.map((place: any) => ({
+        name: place.name,
+        type: 'Government' as const,
+        level: 'Combined' as const,
+        address: place.vicinity || '',
+        postcode: '',
+        rating: place.rating ? Math.min(5, place.rating) : 3,
+        distance: calculateDistance(
+          latitude,
+          longitude,
+          place.geometry.location.lat,
+          place.geometry.location.lng
+        ),
+        websiteUrl: place.website || undefined
+      }));
     }
-  } catch (error: any) {
-    console.log(`${state} school data fetch failed:`, error.message);
+
+    return [];
+  } catch (error) {
+    console.error('❌ Google Places API error:', error);
     return [];
   }
-}
-
-// NSW Education - School Data
-async function fetchNSWSchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  try {
-    console.log('Fetching NSW Department of Education school data...');
-    
-    // NSW DoE Master Dataset
-    const apiUrl = `https://data.cese.nsw.gov.au/data/api/3/action/datastore_search?resource_id=nsw-public-schools&filters={"postcode":"${postcode}"}`;
-    
-    const response = await fetch(apiUrl, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.result?.records) {
-        return data.result.records.map((record: any) => ({
-          name: record.school_name || record.School_name,
-          type: record.school_type === 'Government' ? 'Government' : 'Independent',
-          level: parseSchoolLevel(record.school_level || record.Level),
-          address: `${record.street || ''}, ${record.suburb || suburb}, NSW ${postcode}`,
-          postcode: record.postcode || postcode,
-          icsea: record.icsea_value || null,
-          studentCount: record.total_enrolments || null,
-          naplan: parseNAPLAN(record),
-          rating: calculateSchoolRating(record.icsea_value, record),
-          schoolId: record.school_code
-        }));
-      }
-    }
-  } catch (error: any) {
-    console.log('NSW school data fetch failed:', error.message);
-  }
-  
-  return [];
-}
-
-// VIC Education - School Data
-async function fetchVICSchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  try {
-    console.log('Fetching VIC Department of Education school data...');
-    
-    const apiUrl = `https://discover.data.vic.gov.au/api/3/action/datastore_search?resource_id=victorian-schools&filters={"Postcode":"${postcode}"}`;
-    
-    const response = await fetch(apiUrl, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.result?.records) {
-        return data.result.records.map((record: any) => ({
-          name: record.School_Name,
-          type: record.School_Type || 'Government',
-          level: parseSchoolLevel(record.Education_Sector),
-          address: `${record.Address_Line_1}, ${record.Suburb}, VIC ${postcode}`,
-          postcode: record.Postcode || postcode,
-          icsea: record.ICSEA || null,
-          studentCount: record.Total_Students || null,
-          naplan: parseNAPLAN(record),
-          rating: calculateSchoolRating(record.ICSEA, record)
-        }));
-      }
-    }
-  } catch (error: any) {
-    console.log('VIC school data fetch failed:', error.message);
-  }
-  
-  return [];
-}
-
-// QLD Education - School Data
-async function fetchQLDSchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  try {
-    console.log('Fetching QLD Department of Education school data...');
-    
-    const apiUrl = `https://www.data.qld.gov.au/api/3/action/datastore_search?resource_id=queensland-schools&filters={"Postcode":"${postcode}"}`;
-    
-    const response = await fetch(apiUrl, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.result?.records) {
-        return data.result.records.map((record: any) => ({
-          name: record.School_Name,
-          type: record.Sector || 'Government',
-          level: parseSchoolLevel(record.Level_of_Schooling),
-          address: `${record.Street_Address}, ${record.Town_Suburb}, QLD ${postcode}`,
-          postcode: record.Postcode || postcode,
-          icsea: record.ICSEA_Value || null,
-          studentCount: record.Enrolments || null,
-          naplan: parseNAPLAN(record),
-          rating: calculateSchoolRating(record.ICSEA_Value, record)
-        }));
-      }
-    }
-  } catch (error: any) {
-    console.log('QLD school data fetch failed:', error.message);
-  }
-  
-  return [];
-}
-
-// SA, WA, TAS, NT, ACT - Similar implementations
-async function fetchSASchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  console.log('Fetching SA school data...');
-  return [];
-}
-
-async function fetchWASchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  console.log('Fetching WA school data...');
-  return [];
-}
-
-async function fetchTASSchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  console.log('Fetching TAS school data...');
-  return [];
-}
-
-async function fetchNTSchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  console.log('Fetching NT school data...');
-  return [];
-}
-
-async function fetchACTSchools(suburb: string, postcode: string, latitude?: number, longitude?: number): Promise<School[]> {
-  console.log('Fetching ACT school data...');
-  return [];
-}
-
-async function fetchStateEducationData(
-  suburb: string,
-  state: string,
-  postcode: string,
-  latitude?: number,
-  longitude?: number
-) {
-  // Generate estimated school data
-  const schools = generateSchoolEstimates(suburb, state, postcode);
-  const summary = calculateSchoolSummary(schools.schools, postcode);
-  
-  return {
-    ...schools,
-    summary,
-    dataSource: `Estimated based on ${state} education patterns`,
-    note: 'School data is estimated. For official information, visit myschool.edu.au'
-  };
-}
-
-function parseSchoolRecord(record: any, latitude?: number, longitude?: number): School {
-  return {
-    name: record.School_Name || record.school_name,
-    type: record.School_Type || record.Sector || 'Government',
-    level: parseSchoolLevel(record.School_Level || record.Level_of_Schooling),
-    address: record.Address || `${record.Street_Address}, ${record.Suburb}`,
-    postcode: record.Postcode || record.postcode,
-    icsea: record.ICSEA_Value || record.ICSEA || null,
-    studentCount: record.Total_Enrolments || record.Student_Count || null,
-    naplan: parseNAPLAN(record),
-    atar: parseATAR(record),
-    rating: calculateSchoolRating(record.ICSEA_Value || record.ICSEA, record),
-    distance: latitude && longitude && record.Latitude && record.Longitude 
-      ? calculateDistance(latitude, longitude, record.Latitude, record.Longitude)
-      : undefined
-  };
-}
-
-function parseSchoolLevel(level: string): 'Primary' | 'Secondary' | 'Combined' | 'Special' {
-  if (!level) return 'Combined';
-  const levelLower = level.toLowerCase();
-  if (levelLower.includes('primary')) return 'Primary';
-  if (levelLower.includes('secondary') || levelLower.includes('high')) return 'Secondary';
-  if (levelLower.includes('special')) return 'Special';
-  return 'Combined';
-}
-
-function parseNAPLAN(record: any) {
-  if (!record) return undefined;
-  
-  const naplan = {
-    reading: record.NAPLAN_Reading || record.Reading || null,
-    writing: record.NAPLAN_Writing || record.Writing || null,
-    spelling: record.NAPLAN_Spelling || record.Spelling || null,
-    grammar: record.NAPLAN_Grammar || record.Grammar || null,
-    numeracy: record.NAPLAN_Numeracy || record.Numeracy || null,
-  };
-  
-  // Calculate overall NAPLAN score
-  const scores = Object.values(naplan).filter(s => s !== null) as number[];
-  naplan.overall = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
-  
-  return naplan.overall ? naplan : undefined;
-}
-
-function parseATAR(record: any) {
-  if (!record) return undefined;
-  
-  return {
-    median: record.ATAR_Median || record.Median_ATAR || null,
-    percentAbove80: record.Percent_Above_80 || null
-  };
-}
-
-function calculateSchoolRating(icsea: number | null, record: any): number {
-  // Calculate 0-5 star rating based on ICSEA and NAPLAN
-  if (!icsea && !record) return 3; // Default
-  
-  let rating = 3; // Start with average
-  
-  // ICSEA-based rating (Australian average is 1000)
-  if (icsea) {
-    if (icsea >= 1150) rating = 5;
-    else if (icsea >= 1100) rating = 4.5;
-    else if (icsea >= 1050) rating = 4;
-    else if (icsea >= 1000) rating = 3.5;
-    else if (icsea >= 950) rating = 3;
-    else if (icsea >= 900) rating = 2.5;
-    else rating = 2;
-  }
-  
-  // Adjust for NAPLAN results if available
-  const naplan = parseNAPLAN(record);
-  if (naplan?.overall) {
-    if (naplan.overall >= 450) rating = Math.min(5, rating + 0.5);
-    else if (naplan.overall <= 350) rating = Math.max(1, rating - 0.5);
-  }
-  
-  return Math.round(rating * 2) / 2; // Round to nearest 0.5
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -437,6 +232,29 @@ function toRad(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
+function calculateSchoolRating(icsea: number | null, naplan: any): number {
+  if (!icsea && !naplan) return 3;
+  
+  let rating = 3;
+  
+  if (icsea) {
+    if (icsea >= 1150) rating = 5;
+    else if (icsea >= 1100) rating = 4.5;
+    else if (icsea >= 1050) rating = 4;
+    else if (icsea >= 1000) rating = 3.5;
+    else if (icsea >= 950) rating = 3;
+    else if (icsea >= 900) rating = 2.5;
+    else rating = 2;
+  }
+  
+  if (naplan?.overall) {
+    if (naplan.overall >= 450) rating = Math.min(5, rating + 0.5);
+    else if (naplan.overall <= 350) rating = Math.max(1, rating - 0.5);
+  }
+  
+  return Math.round(rating * 2) / 2;
+}
+
 function calculateSchoolSummary(schools: School[], postcode: string) {
   if (!schools || schools.length === 0) {
     return {
@@ -446,7 +264,8 @@ function calculateSchoolSummary(schools: School[], postcode: string) {
       averageICSEA: null,
       averageRating: null,
       topRatedSchools: [],
-      nearestSchool: null
+      nearestSchool: null,
+      educationQuality: 'No school data available'
     };
   }
   
@@ -498,30 +317,31 @@ function getEducationQualityDescription(icsea: number | null, rating: number | n
   
   if (icsea && icsea >= 1100) {
     return 'Excellent - This area has access to high-performing schools with well-above-average ICSEA scores.';
-  } else if (icsea && icsea >= 1050) {
+  } else if (icsea && icsea >= 1000) {
     return 'Very Good - Schools in this area perform above the national average.';
   } else if (icsea && icsea >= 950) {
-    return 'Good - Schools in this area perform at or around the national average.';
+    return 'Good - Schools in this area are close to the national average.';
   } else if (rating && rating >= 4) {
-    return 'Very Good - Schools in this area are highly rated based on performance indicators.';
-  } else if (rating && rating >= 3) {
-    return 'Good - Schools in this area have satisfactory performance ratings.';
+    return 'Good - Schools in this area are well-rated by the community.';
+  } else {
+    return 'Average - Schools in this area perform around the national average.';
   }
-  
-  return 'Average - Schools in this area have mixed performance. Consider researching individual schools.';
 }
 
 function generateSchoolEstimates(suburb: string, state: string, postcode: string) {
-  // Generate estimated school data based on postcode patterns
+  console.log(`⚠️ Generating school estimates for ${suburb}, ${state} ${postcode}`);
+  
   const postcodeNum = parseInt(postcode);
+  let baseICSEA = 1000;
   
-  // Affluent areas tend to have higher ICSEA scores
-  const affluentPostcodes = [2026, 2027, 2028, 2030, 2061, 3142, 3144, 3181, 4066, 4101, 5000, 6000, 6009];
-  const isAffluent = affluentPostcodes.includes(postcodeNum);
-  
-  const baseICSEA = isAffluent ? 1100 : 1000;
-  const baseRating = isAffluent ? 4.5 : 3.5;
-  
+  // Estimate ICSEA based on postcode patterns
+  const affluent = [2026, 2027, 2028, 2030, 3142, 3144, 3181, 6000, 6009];
+  if (affluent.includes(postcodeNum)) {
+    baseICSEA = 1150;
+  } else if (postcodeNum >= 2000 && postcodeNum < 2100) {
+    baseICSEA = 1050;
+  }
+
   const schools: School[] = [
     {
       name: `${suburb} Public School`,
@@ -529,12 +349,9 @@ function generateSchoolEstimates(suburb: string, state: string, postcode: string
       level: 'Primary',
       address: `${suburb}, ${state} ${postcode}`,
       postcode,
-      icsea: baseICSEA + Math.floor(Math.random() * 100 - 50),
-      studentCount: Math.floor(Math.random() * 400) + 200,
-      rating: baseRating,
-      naplan: {
-        overall: baseICSEA >= 1050 ? 420 : 380
-      }
+      icsea: baseICSEA,
+      studentCount: 450,
+      rating: calculateSchoolRating(baseICSEA, null)
     },
     {
       name: `${suburb} High School`,
@@ -542,44 +359,18 @@ function generateSchoolEstimates(suburb: string, state: string, postcode: string
       level: 'Secondary',
       address: `${suburb}, ${state} ${postcode}`,
       postcode,
-      icsea: baseICSEA + Math.floor(Math.random() * 100 - 50),
-      studentCount: Math.floor(Math.random() * 800) + 400,
-      rating: baseRating,
-      naplan: {
-        overall: baseICSEA >= 1050 ? 430 : 390
-      },
-      atar: isAffluent ? {
-        median: 85,
-        percentAbove80: 45
-      } : undefined
+      icsea: baseICSEA - 20,
+      studentCount: 850,
+      rating: calculateSchoolRating(baseICSEA - 20, null)
     }
   ];
-  
-  // Add a private school for affluent areas
-  if (isAffluent) {
-    schools.push({
-      name: `${suburb} Grammar School`,
-      type: 'Independent',
-      level: 'Combined',
-      address: `${suburb}, ${state} ${postcode}`,
-      postcode,
-      icsea: baseICSEA + 100,
-      studentCount: Math.floor(Math.random() * 600) + 300,
-      rating: 5,
-      naplan: {
-        overall: 450
-      },
-      atar: {
-        median: 92,
-        percentAbove80: 65
-      }
-    });
-  }
-  
+
   return {
     schools,
+    summary: calculateSchoolSummary(schools, postcode),
     dataSource: `Estimated based on ${state} education patterns`,
-    lastUpdated: '2024 (estimated)',
-    note: 'School data is estimated based on area characteristics. Visit myschool.edu.au for official school information and NAPLAN results.'
+    dataQuality: 'estimated',
+    lastUpdated: new Date().toISOString(),
+    note: 'School data is estimated. For official information, visit myschool.edu.au and import real data.'
   };
 }

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      abs_census_cache: {
+        Row: {
+          created_at: string
+          data: Json
+          data_quality: string
+          dataset: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          postcode: string
+          state: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          data_quality?: string
+          dataset: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          postcode: string
+          state: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          data_quality?: string
+          dataset?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          postcode?: string
+          state?: string
+        }
+        Relationships: []
+      }
       chart_analysis: {
         Row: {
           analysis_text: string
@@ -288,6 +324,63 @@ export type Database = {
         }
         Relationships: []
       }
+      schools_directory: {
+        Row: {
+          address: string | null
+          created_at: string
+          icsea_score: number | null
+          id: string
+          last_updated: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          naplan_data: Json | null
+          postcode: string
+          school_level: string | null
+          school_type: string | null
+          state: string
+          student_count: number | null
+          suburb: string
+          website_url: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          icsea_score?: number | null
+          id?: string
+          last_updated?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          naplan_data?: Json | null
+          postcode: string
+          school_level?: string | null
+          school_type?: string | null
+          state: string
+          student_count?: number | null
+          suburb: string
+          website_url?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          icsea_score?: number | null
+          id?: string
+          last_updated?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          naplan_data?: Json | null
+          postcode?: string
+          school_level?: string | null
+          school_type?: string | null
+          state?: string
+          student_count?: number | null
+          suburb?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           author_name: string | null
@@ -369,10 +462,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cleanup_expired_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_census_cache: { Args: never; Returns: undefined }
+      cleanup_expired_sessions: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
