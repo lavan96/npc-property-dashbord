@@ -637,7 +637,22 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         let totalContentHeight = 0;
         
         for (const paragraph of paragraphs) {
-          if (paragraph.trim()) {
+          if (!paragraph.trim()) continue;
+          
+          // Check for horizontal rule
+          if (paragraph.trim().match(/^-{3,}$/)) {
+            totalContentHeight += 20;
+            continue;
+          }
+          
+          // Check if it's a table (contains newlines and pipes)
+          if (isMarkdownTable(paragraph)) {
+            // Estimate table height: count rows and multiply by row height
+            const tableLines = paragraph.split('\n').filter(l => l.trim() && !l.match(/^[\|\s\-:]+$/));
+            const estimatedTableHeight = tableLines.length * (textSize + 12) + 16; // row height + padding
+            totalContentHeight += estimatedTableHeight;
+          } else {
+            // Regular text - calculate height normally
             totalContentHeight += calculateTextHeight(
               paragraph,
               pageWidth - 2 * margin,
