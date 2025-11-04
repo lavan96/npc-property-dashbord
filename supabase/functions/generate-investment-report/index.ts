@@ -1365,11 +1365,9 @@ Produce a full investment report following the structure above, including detail
 
 **Let's discuss your next investment opportunity**
 
-| | |
-|---|---|
-| 🌐 **Website** | [npcservices.com.au](https://npcservices.com.au) |
-| 📧 **Email** | [admin@npcservices.com.au](mailto:admin@npcservices.com.au) |
-| 📱 **Phone** | [0433 005 110](tel:+61433005110) |
+- 🌐 **Website:** [npcservices.com.au](https://npcservices.com.au)
+- 📧 **Email:** [admin@npcservices.com.au](mailto:admin@npcservices.com.au)
+- 📱 **Phone:** [0433 005 110](tel:+61433005110)
 
 ---
 
