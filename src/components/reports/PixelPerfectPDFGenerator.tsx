@@ -353,9 +353,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             return !isSeparator;
           })
           .map(line => {
-            // Split by | and clean up cells
+            // Split by | and clean up cells - don't strip emojis yet, we'll do it when drawing
             const cells = line.split('|')
-              .map(cell => stripEmojis(cell.trim()))
+              .map(cell => cell.trim())
               .filter(cell => cell.length > 0);
             return cells;
           })
@@ -368,15 +368,111 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const columnCount = Math.max(...rows.map(r => r.length));
         const cellWidth = maxWidth / columnCount;
         const cellPadding = 5;
-        const rowHeight = size + 12;
+        const lineHeight = size + 4;
 
         let currentY = startY;
+
+        // Helper to draw text with wrapping and markdown within a cell
+        const drawCellText = (
+          cellText: string, 
+          cellX: number, 
+          cellY: number, 
+          cellWidth: number, 
+          font: any,
+          isHeader: boolean
+        ): number => {
+          const maxCellWidth = cellWidth - 2 * cellPadding;
+          const parts = parseMarkdownText(stripEmojis(cellText));
+          
+          let currentLineY = cellY;
+          let currentLineX = cellX + cellPadding;
+          let lineWords: Array<{text: string, font: any}> = [];
+          let lineWidth = 0;
+
+          const drawLine = () => {
+            if (lineWords.length === 0) return;
+            let drawX = currentLineX;
+            for (const word of lineWords) {
+              page.drawText(word.text, {
+                x: drawX,
+                y: currentLineY,
+                size,
+                font: word.font,
+                color: rgb(0.2, 0.2, 0.2),
+              });
+              drawX += word.font.widthOfTextAtSize(word.text, size);
+            }
+            lineWords = [];
+            lineWidth = 0;
+            currentLineY -= lineHeight;
+          };
+
+          for (const part of parts) {
+            const partFont = (part.bold || isHeader) ? boldFont : normalFont;
+            const words = part.text.split(' ').filter(w => w.length > 0);
+            
+            for (const word of words) {
+              const wordWithSpace = word + ' ';
+              const wordWidth = partFont.widthOfTextAtSize(wordWithSpace, size);
+              
+              if (lineWidth + wordWidth > maxCellWidth && lineWords.length > 0) {
+                drawLine();
+              }
+              
+              lineWords.push({ text: wordWithSpace, font: partFont });
+              lineWidth += wordWidth;
+            }
+          }
+          
+          if (lineWords.length > 0) {
+            drawLine();
+          }
+
+          return cellY - currentLineY;
+        };
+
+        // Calculate row height based on tallest cell
+        const calculateRowHeight = (row: string[], isHeader: boolean): number => {
+          let maxHeight = lineHeight + 8; // Minimum height
+          
+          for (let j = 0; j < row.length; j++) {
+            const cellText = row[j];
+            const maxCellWidth = cellWidth - 2 * cellPadding;
+            
+            // Calculate how many lines this cell needs
+            const parts = parseMarkdownText(stripEmojis(cellText));
+            let currentLineWidth = 0;
+            let lines = 1;
+            
+            for (const part of parts) {
+              const partFont = (part.bold || isHeader) ? boldFont : normalFont;
+              const words = part.text.split(' ').filter(w => w.length > 0);
+              
+              for (const word of words) {
+                const wordWithSpace = word + ' ';
+                const wordWidth = partFont.widthOfTextAtSize(wordWithSpace, size);
+                
+                if (currentLineWidth + wordWidth > maxCellWidth && currentLineWidth > 0) {
+                  lines++;
+                  currentLineWidth = wordWidth;
+                } else {
+                  currentLineWidth += wordWidth;
+                }
+              }
+            }
+            
+            const cellHeight = (lines * lineHeight) + 8;
+            maxHeight = Math.max(maxHeight, cellHeight);
+          }
+          
+          return maxHeight;
+        };
 
         // Draw each row
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           const isHeader = i === 0;
-          const font = isHeader ? boldFont : normalFont;
+          const rowHeight = calculateRowHeight(row, isHeader);
           
           // Check if we need a new page
           if (currentY - rowHeight < bottomMargin + 40) {
@@ -394,27 +490,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             });
           }
 
-          // Draw cell borders and text
+          // Draw cells
           for (let j = 0; j < row.length; j++) {
             const cellX = x + (j * cellWidth);
             const cellText = row[j];
+            const font = isHeader ? boldFont : normalFont;
             
-            // Truncate text if too long for cell
-            let displayText = cellText;
-            let textWidth = font.widthOfTextAtSize(displayText, size);
-            while (textWidth > cellWidth - 2 * cellPadding && displayText.length > 3) {
-              displayText = displayText.slice(0, -4) + '...';
-              textWidth = font.widthOfTextAtSize(displayText, size);
-            }
-
-            // Draw cell text (strip emojis for WinAnsi encoding)
-            page.drawText(stripEmojis(displayText), {
-              x: cellX + cellPadding,
-              y: currentY - size - 3,
-              size,
-              font,
-              color: rgb(0.2, 0.2, 0.2),
-            });
+            // Draw cell text with wrapping and markdown
+            drawCellText(cellText, cellX, currentY - size - 4, cellWidth, font, isHeader);
 
             // Draw vertical cell border
             if (j < row.length - 1) {
