@@ -217,30 +217,47 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
   const generatePixelPerfectPDF = async () => {
     setIsGenerating(true);
+    console.log('🚀 Starting PDF generation for report:', report.id);
     
     try {
+      console.log('📍 Step 1: Extracting suburb and state from address:', report.address);
       const { suburb, state } = extractSuburbState(report.address);
+      console.log('✓ Extracted:', { suburb, state });
+      
+      console.log('📄 Step 2: Parsing report content...');
       const sections = parseReportContent(report.content);
-
-      console.log('Parsed sections:', Object.keys(sections));
+      console.log('✓ Parsed sections:', Object.keys(sections));
 
       // Load the PDF template
+      console.log('📥 Step 3: Loading PDF template from /templates/npc_template.pdf...');
       const templateResponse = await fetch('/templates/npc_template.pdf');
+      if (!templateResponse.ok) {
+        throw new Error(`Failed to load template: ${templateResponse.status} ${templateResponse.statusText}`);
+      }
       const templateBytes = await templateResponse.arrayBuffer();
+      console.log('✓ Template loaded, size:', templateBytes.byteLength, 'bytes');
       
       // Load the template PDF
+      console.log('📋 Step 4: Parsing PDF template...');
       const pdfDoc = await PDFDocument.load(templateBytes);
+      console.log('✓ PDF template parsed successfully');
+      
       const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      console.log('✓ Fonts embedded');
 
       // Get the second page from template to use as content template
+      console.log('📑 Step 5: Preparing template pages...');
       const templatePages = pdfDoc.getPages();
+      console.log('✓ Template has', templatePages.length, 'pages');
+      
       if (templatePages.length < 2) {
         throw new Error('Template must have at least 2 pages');
       }
 
       // Remove the original second page since we'll duplicate it as needed
       pdfDoc.removePage(1); // Remove index 1 (second page)
+      console.log('✓ Template pages configured');
 
       // Page settings
       const pageWidth = 595; // A4 width in points
@@ -618,8 +635,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       );
       
       console.log('Found sections to include in PDF:', allSectionNames);
+      console.log('✏️ Step 5.1: Starting to render', allSectionNames.length, 'sections...');
 
+      let sectionCount = 0;
       for (const sectionName of allSectionNames) {
+        sectionCount++;
         const content = sections[sectionName];
         if (!content) continue;
 
@@ -630,9 +650,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             .replace(/:\s*$/, '')
             .trim()
         );
+        
+        console.log(`  📝 Section ${sectionCount}/${allSectionNames.length}: "${cleanSectionName}"`);
 
         // Calculate total height needed for this section
         const paragraphs = groupContentBlocks(content);
+        console.log(`     → ${paragraphs.length} content blocks`);
         const sectionTitleHeight = 30;
         let totalContentHeight = 0;
         
@@ -708,29 +731,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
           // Check if paragraph is a markdown table (but skip contact sections)
           if (isMarkdownTable(paragraph) && !cleanSectionName.toLowerCase().includes('contact')) {
-            console.log('✓ Detected markdown table, rendering...');
-            // Check if we need a new page
-            if (yPosition < bottomMargin + 100) {
-              currentPage = await addContentPage();
-              yPosition = pageHeight - topMargin - 20;
-            }
+            console.log('     ✓ Detected markdown table, rendering...');
+            try {
+              // Check if we need a new page
+              if (yPosition < bottomMargin + 100) {
+                currentPage = await addContentPage();
+                yPosition = pageHeight - topMargin - 20;
+              }
 
-            const tableResult = drawTable(
-              currentPage,
-              paragraph,
-              margin,
-              yPosition,
-              pageWidth - 2 * margin,
-              helveticaFont,
-              helveticaBold,
-              textSize
-            );
-
-            if (tableResult.needsNewPage) {
-              currentPage = await addContentPage();
-              yPosition = pageHeight - topMargin - 20;
-              // Retry drawing the table on new page
-              const retryResult = drawTable(
+              const tableResult = drawTable(
                 currentPage,
                 paragraph,
                 margin,
@@ -740,9 +749,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
                 helveticaBold,
                 textSize
               );
-              yPosition = retryResult.lastY;
-            } else {
-              yPosition = tableResult.lastY;
+
+              if (tableResult.needsNewPage) {
+                currentPage = await addContentPage();
+                yPosition = pageHeight - topMargin - 20;
+                // Retry drawing the table on new page
+                const retryResult = drawTable(
+                  currentPage,
+                  paragraph,
+                  margin,
+                  yPosition,
+                  pageWidth - 2 * margin,
+                  helveticaFont,
+                  helveticaBold,
+                  textSize
+                );
+                yPosition = retryResult.lastY;
+              } else {
+                yPosition = tableResult.lastY;
+              }
+              console.log('     ✓ Table rendered successfully');
+            } catch (tableError) {
+              console.error('     ❌ Error rendering table:', tableError);
+              console.error('     Table content:', paragraph.substring(0, 200));
+              throw tableError;
             }
             continue;
           }
@@ -793,11 +823,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       }
 
       // Save the PDF
+      console.log('💾 Step 6: Saving PDF document...');
       const pdfBytes = await pdfDoc.save();
+      console.log('✓ PDF saved, size:', pdfBytes.length, 'bytes');
+      
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+      console.log('✓ Blob created');
       
       // Upload to Supabase Storage
+      console.log('☁️ Step 7: Uploading to Supabase Storage...');
       const fileName = `${report.id}_${suburb}_${state}_${Date.now()}.pdf`;
+      console.log('📤 Uploading as:', fileName);
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('investment-reports')
         .upload(fileName, blob, {
@@ -805,22 +842,34 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           upsert: true,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('❌ Upload failed:', uploadError);
+        throw uploadError;
+      }
+      console.log('✓ Upload successful:', uploadData);
 
       // Get public URL
+      console.log('🔗 Step 8: Getting public URL...');
       const { data: { publicUrl } } = supabase.storage
         .from('investment-reports')
         .getPublicUrl(fileName);
+      console.log('✓ Public URL:', publicUrl);
 
       // Update the investment_reports table with the PDF URL
+      console.log('💽 Step 9: Updating database...');
       const { error: updateError } = await supabase
         .from('investment_reports')
         .update({ pdf_url: publicUrl })
         .eq('id', report.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Database update failed:', updateError);
+        throw updateError;
+      }
+      console.log('✓ Database updated');
 
       // Download the PDF
+      console.log('⬇️ Step 10: Triggering browser download...');
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -829,11 +878,33 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
+      console.log('✓ Download triggered');
 
+      console.log('✅ PDF generation completed successfully!');
       toast.success('PDF generated and saved successfully!');
     } catch (error) {
-      console.error('PDF generation error:', error);
-      toast.error('Failed to generate PDF. Please try again.');
+      console.error('❌ PDF generation error:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // More specific error message
+      let errorMessage = 'Failed to generate PDF. ';
+      if (error instanceof Error) {
+        if (error.message.includes('WinAnsi')) {
+          errorMessage += 'Special characters encoding issue detected.';
+        } else if (error.message.includes('template')) {
+          errorMessage += 'Template loading failed.';
+        } else if (error.message.includes('storage')) {
+          errorMessage += 'Failed to upload to storage.';
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
