@@ -307,12 +307,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         return blocks;
       };
 
-      // Helper function to strip emojis from text (WinAnsi encoding doesn't support them)
+      // Helper function to sanitize text for WinAnsi encoding (removes emojis, newlines, and special chars)
       const stripEmojis = (text: string): string => {
         // Remove emojis and other non-WinAnsi characters
-        return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/gu, '')
+        return text
+          .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/gu, '')
           .replace(/[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{231A}-\u{231B}]/gu, '')
           .replace(/[\u{FE00}-\u{FE0F}]|[\u{E0020}-\u{E007F}]|[\u{200D}]/gu, '') // Variation selectors and ZWJ
+          .replace(/[\n\r\t]/g, ' ') // Replace newlines, carriage returns, tabs with spaces
+          .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
           .trim();
       };
 
@@ -545,7 +548,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Helper to calculate text height without drawing
       const calculateTextHeight = (text: string, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number): number => {
-        const parts = parseMarkdownText(text);
+        const sanitizedText = stripEmojis(text); // Sanitize text first
+        const parts = parseMarkdownText(sanitizedText);
         let lines = 1;
         let currentLineWidth = 0;
         
@@ -571,7 +575,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Helper to draw text with word wrapping and markdown formatting
       const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number) => {
-        const parts = parseMarkdownText(text);
+        const sanitizedText = stripEmojis(text); // Sanitize text first
+        const parts = parseMarkdownText(sanitizedText);
         let currentY = startY;
         let currentX = x;
         
@@ -595,8 +600,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               }
             }
             
-            // Draw the word (strip emojis for WinAnsi encoding)
-            page.drawText(stripEmojis(wordWithSpace), {
+            // Draw the word (already sanitized)
+            page.drawText(wordWithSpace, {
               x: currentX,
               y: currentY,
               size,
