@@ -455,18 +455,65 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
           for (const part of parts) {
             const partFont = (part.bold || isHeader) ? boldFont : normalFont;
-            const words = part.text.split(' ').filter(w => w.length > 0);
             
-            for (const word of words) {
-              const wordWithSpace = word + ' ';
-              const wordWidth = partFont.widthOfTextAtSize(wordWithSpace, size);
+            // Check if this is a URL (contains :// or www. or long string without spaces)
+            const isURL = part.text.includes('://') || part.text.includes('www.') || 
+                         (part.text.length > 40 && !part.text.includes(' '));
+            
+            if (isURL) {
+              // Break URLs at slashes, question marks, and other delimiters
+              let currentSegment = '';
               
-              if (lineWidth + wordWidth > maxCellWidth && lineWords.length > 0) {
-                drawLine();
+              for (let i = 0; i < part.text.length; i++) {
+                const char = part.text[i];
+                currentSegment += char;
+                
+                // Break after these characters, or if segment gets too wide
+                const shouldBreakAfter = ['/', '?', '&', '='].includes(char);
+                const segmentWidth = partFont.widthOfTextAtSize(currentSegment, size);
+                
+                if ((shouldBreakAfter && i < part.text.length - 1) || segmentWidth > maxCellWidth * 0.95) {
+                  // Draw current segment
+                  if (lineWidth + segmentWidth > maxCellWidth && lineWords.length > 0) {
+                    drawLine();
+                  }
+                  
+                  lineWords.push({ text: currentSegment, font: partFont });
+                  lineWidth += segmentWidth;
+                  
+                  // Start new line for next segment
+                  if (shouldBreakAfter) {
+                    drawLine();
+                  }
+                  
+                  currentSegment = '';
+                }
               }
               
-              lineWords.push({ text: wordWithSpace, font: partFont });
-              lineWidth += wordWidth;
+              // Draw any remaining segment
+              if (currentSegment) {
+                const segmentWidth = partFont.widthOfTextAtSize(currentSegment, size);
+                if (lineWidth + segmentWidth > maxCellWidth && lineWords.length > 0) {
+                  drawLine();
+                }
+                lineWords.push({ text: currentSegment, font: partFont });
+                lineWidth += segmentWidth;
+              }
+            } else {
+              // Normal text wrapping by words
+              const words = part.text.split(' ').filter(w => w.length > 0);
+              
+              for (const word of words) {
+                const wordWithSpace = word + ' ';
+                const wordWidth = partFont.widthOfTextAtSize(wordWithSpace, size);
+                
+                if (lineWidth + wordWidth > maxCellWidth && lineWords.length > 0) {
+                  drawLine();
+                }
+                
+                lineWords.push({ text: wordWithSpace, font: partFont });
+                lineWidth += wordWidth;
+              }
             }
           }
           
@@ -492,17 +539,62 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             for (const part of parts) {
               const partFont = (part.bold || isHeader) ? boldFont : normalFont;
-              const words = part.text.split(' ').filter(w => w.length > 0);
               
-              for (const word of words) {
-                const wordWithSpace = word + ' ';
-                const wordWidth = partFont.widthOfTextAtSize(wordWithSpace, size);
+              // Check if this is a URL (same logic as drawCellText)
+              const isURL = part.text.includes('://') || part.text.includes('www.') || 
+                           (part.text.length > 40 && !part.text.includes(' '));
+              
+              if (isURL) {
+                // Calculate lines needed for URL with breaking
+                let currentSegment = '';
                 
-                if (currentLineWidth + wordWidth > maxCellWidth && currentLineWidth > 0) {
-                  lines++;
-                  currentLineWidth = wordWidth;
-                } else {
-                  currentLineWidth += wordWidth;
+                for (let i = 0; i < part.text.length; i++) {
+                  const char = part.text[i];
+                  currentSegment += char;
+                  
+                  const shouldBreakAfter = ['/', '?', '&', '='].includes(char);
+                  const segmentWidth = partFont.widthOfTextAtSize(currentSegment, size);
+                  
+                  if ((shouldBreakAfter && i < part.text.length - 1) || segmentWidth > maxCellWidth * 0.95) {
+                    if (currentLineWidth + segmentWidth > maxCellWidth && currentLineWidth > 0) {
+                      lines++;
+                      currentLineWidth = segmentWidth;
+                    } else {
+                      currentLineWidth += segmentWidth;
+                    }
+                    
+                    if (shouldBreakAfter) {
+                      lines++;
+                      currentLineWidth = 0;
+                    }
+                    
+                    currentSegment = '';
+                  }
+                }
+                
+                if (currentSegment) {
+                  const segmentWidth = partFont.widthOfTextAtSize(currentSegment, size);
+                  if (currentLineWidth + segmentWidth > maxCellWidth && currentLineWidth > 0) {
+                    lines++;
+                    currentLineWidth = segmentWidth;
+                  } else {
+                    currentLineWidth += segmentWidth;
+                  }
+                }
+              } else {
+                // Normal word-based calculation
+                const words = part.text.split(' ').filter(w => w.length > 0);
+                
+                for (const word of words) {
+                  const wordWithSpace = word + ' ';
+                  const wordWidth = partFont.widthOfTextAtSize(wordWithSpace, size);
+                  
+                  if (currentLineWidth + wordWidth > maxCellWidth && currentLineWidth > 0) {
+                    lines++;
+                    currentLineWidth = wordWidth;
+                  } else {
+                    currentLineWidth += wordWidth;
+                  }
                 }
               }
             }
