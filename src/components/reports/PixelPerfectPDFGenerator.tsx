@@ -366,9 +366,55 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         if (rows.length === 0) return { lastY: startY, needsNewPage: false };
 
         const columnCount = Math.max(...rows.map(r => r.length));
-        const cellWidth = maxWidth / columnCount;
         const cellPadding = 5;
         const lineHeight = size + 4;
+        
+        // Calculate dynamic column widths based on content
+        const calculateColumnWidths = (): number[] => {
+          const minColWidth = 60; // Minimum column width
+          const contentWidths: number[] = [];
+          
+          // Calculate content width for each column
+          for (let col = 0; col < columnCount; col++) {
+            let maxContentWidth = minColWidth;
+            
+            for (const row of rows) {
+              if (row[col]) {
+                const cellText = stripEmojis(row[col]);
+                const parts = parseMarkdownText(cellText);
+                
+                // Calculate max word/segment width in this cell
+                for (const part of parts) {
+                  const partFont = part.bold ? boldFont : normalFont;
+                  const words = part.text.split(' ');
+                  
+                  for (const word of words) {
+                    const wordWidth = partFont.widthOfTextAtSize(word + ' ', size);
+                    maxContentWidth = Math.max(maxContentWidth, wordWidth + 2 * cellPadding);
+                  }
+                }
+              }
+            }
+            
+            contentWidths.push(maxContentWidth);
+          }
+          
+          // Calculate total desired width
+          const totalDesiredWidth = contentWidths.reduce((sum, w) => sum + w, 0);
+          
+          // If desired width fits, use it; otherwise scale proportionally
+          if (totalDesiredWidth <= maxWidth) {
+            // Distribute extra space proportionally
+            const extraSpace = maxWidth - totalDesiredWidth;
+            return contentWidths.map(w => w + (w / totalDesiredWidth) * extraSpace);
+          } else {
+            // Scale down proportionally to fit
+            const scale = maxWidth / totalDesiredWidth;
+            return contentWidths.map(w => Math.max(minColWidth, w * scale));
+          }
+        };
+        
+        const columnWidths = calculateColumnWidths();
 
         let currentY = startY;
 
@@ -437,7 +483,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           for (let j = 0; j < row.length; j++) {
             const cellText = row[j];
-            const maxCellWidth = cellWidth - 2 * cellPadding;
+            const maxCellWidth = columnWidths[j] - 2 * cellPadding;
             
             // Calculate how many lines this cell needs
             const parts = parseMarkdownText(stripEmojis(cellText));
@@ -492,18 +538,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
           // Draw cells
           for (let j = 0; j < row.length; j++) {
-            const cellX = x + (j * cellWidth);
+            const cellX = x + columnWidths.slice(0, j).reduce((sum, w) => sum + w, 0);
             const cellText = row[j];
             const font = isHeader ? boldFont : normalFont;
             
             // Draw cell text with wrapping and markdown
-            drawCellText(cellText, cellX, currentY - size - 4, cellWidth, font, isHeader);
+            drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
 
             // Draw vertical cell border
             if (j < row.length - 1) {
               page.drawLine({
-                start: { x: cellX + cellWidth, y: currentY },
-                end: { x: cellX + cellWidth, y: currentY - rowHeight },
+                start: { x: cellX + columnWidths[j], y: currentY },
+                end: { x: cellX + columnWidths[j], y: currentY - rowHeight },
                 thickness: 0.5,
                 color: rgb(0.7, 0.7, 0.7),
               });
