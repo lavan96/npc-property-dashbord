@@ -1187,13 +1187,25 @@ If data was estimated or inferred, explain the methodology.
 
 Output Style
 
-Use clear section headings.
+Use clear section headings (## for major sections, ### for subsections).
 
 Write in professional, concise, and data-driven language.
 
-Use bullet points or tables for clarity wherever appropriate.
+**CRITICAL FORMATTING REQUIREMENTS:**
 
-Keep everything plain text — no code blocks or JSON.
+- Add horizontal rulers (---) between ALL major sections for visual separation
+- Use markdown tables extensively for data presentation, especially for:
+  * Market KPIs (median prices, growth rates, yields, vacancy rates)
+  * Comparable sales (address, price, date, beds/baths/parking, distance)
+  * Comparable rentals (address, weekly rent, property type, location)
+  * Financial analysis (cashflow breakdown, loan scenarios)
+  * 10-year projections (all three scenarios side-by-side in a table)
+  * Investment score breakdown (showing each component, weighting, score)
+  * Cost breakdown (stamp duty, rates, fees, insurance)
+  * Demographics data (population, income, employment by category)
+- Use bullet points for narrative content and lists
+- Keep everything plain text — no code blocks or JSON
+- Ensure every major section ends with --- before the next section begins
 
 ---
 
