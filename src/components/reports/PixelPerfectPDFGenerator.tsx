@@ -462,14 +462,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             if (isURL) {
               // Break URLs at slashes, question marks, and other delimiters
+              // BUT skip breaking at the protocol (https://, http://)
               let currentSegment = '';
+              const protocolEndIndex = part.text.indexOf('://') !== -1 ? part.text.indexOf('://') + 3 : 0;
               
               for (let i = 0; i < part.text.length; i++) {
                 const char = part.text[i];
                 currentSegment += char;
                 
-                // Break after these characters, or if segment gets too wide
-                const shouldBreakAfter = ['/', '?', '&', '='].includes(char);
+                // Only break at / if we're past the protocol part
+                const isBreakableSlash = char === '/' && i >= protocolEndIndex;
+                const shouldBreakAfter = (isBreakableSlash || ['?', '&', '='].includes(char));
                 const segmentWidth = partFont.widthOfTextAtSize(currentSegment, size);
                 
                 if ((shouldBreakAfter && i < part.text.length - 1) || segmentWidth > maxCellWidth * 0.95) {
@@ -546,13 +549,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               
               if (isURL) {
                 // Calculate lines needed for URL with breaking
+                // BUT skip breaking at the protocol (https://, http://)
                 let currentSegment = '';
+                const protocolEndIndex = part.text.indexOf('://') !== -1 ? part.text.indexOf('://') + 3 : 0;
                 
                 for (let i = 0; i < part.text.length; i++) {
                   const char = part.text[i];
                   currentSegment += char;
                   
-                  const shouldBreakAfter = ['/', '?', '&', '='].includes(char);
+                  // Only break at / if we're past the protocol part
+                  const isBreakableSlash = char === '/' && i >= protocolEndIndex;
+                  const shouldBreakAfter = (isBreakableSlash || ['?', '&', '='].includes(char));
                   const segmentWidth = partFont.widthOfTextAtSize(currentSegment, size);
                   
                   if ((shouldBreakAfter && i < part.text.length - 1) || segmentWidth > maxCellWidth * 0.95) {
