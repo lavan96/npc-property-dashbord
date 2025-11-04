@@ -404,8 +404,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               textWidth = font.widthOfTextAtSize(displayText, size);
             }
 
-            // Draw cell text
-            page.drawText(displayText, {
+            // Draw cell text (strip emojis for WinAnsi encoding)
+            page.drawText(stripEmojis(displayText), {
               x: cellX + cellPadding,
               y: currentY - size - 3,
               size,
@@ -595,8 +595,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               }
             }
             
-            // Draw the word
-            page.drawText(wordWithSpace, {
+            // Draw the word (strip emojis for WinAnsi encoding)
+            page.drawText(stripEmojis(wordWithSpace), {
               x: currentX,
               y: currentY,
               size,
@@ -703,7 +703,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         // Draw section title with word wrapping
         const titleResult = drawTextWithWrap(
           currentPage,
-          `**${cleanSectionName}**`,
+          `**${stripEmojis(cleanSectionName)}**`,
           margin,
           yPosition,
           pageWidth - 2 * margin,
