@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { session_token: sessionToken }
       });
 
+      // 401 errors are expected for expired sessions - handle silently
       if (error || !data?.valid) {
         localStorage.removeItem('session_token');
         setUser(null);
@@ -45,12 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
       }
     } catch (error) {
-      console.error('Session check error:', error);
+      // Silently clear invalid session - this is expected behavior
       localStorage.removeItem('session_token');
       setUser(null);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const signIn = async (username: string, password: string) => {
