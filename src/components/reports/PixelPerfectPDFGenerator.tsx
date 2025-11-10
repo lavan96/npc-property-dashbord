@@ -357,6 +357,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             const cells = line.split('|')
               .map(cell => cell.trim())
               .filter(cell => cell.length > 0);
+            
+            // Remove the last column (Methodology column) from all tables
+            // This simplifies the layout and removes non-essential information
+            if (cells.length > 1) {
+              return cells.slice(0, -1);
+            }
             return cells;
           })
           .filter(row => row.length > 0);
