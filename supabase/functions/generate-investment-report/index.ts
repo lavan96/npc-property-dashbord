@@ -1216,33 +1216,69 @@ Produce a full investment report following the structure above, including detail
     console.log('Calling Perplexity API with sonar model...');
     console.log('Prompt length:', prompt.length);
 
+    // Retry logic with exponential backoff
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
     let response;
-    try {
-      // Using the correct Perplexity API configuration based on their docs
-      response = await fetch('https://api.perplexity.ai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${perplexityApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'sonar-reasoning', // Deep research model for comprehensive analysis
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        }),
-      });
-    } catch (fetchError: any) {
-      console.error('Network error calling Perplexity API:', fetchError);
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`API call attempt ${attempt}/${maxRetries}`);
+        
+        // Using the correct Perplexity API configuration based on their docs
+        response = await fetch('https://api.perplexity.ai/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${perplexityApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'sonar-reasoning', // Deep research model for comprehensive analysis
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ]
+          }),
+        });
+        
+        // If we got a response, break out of retry loop
+        console.log(`✓ API call successful on attempt ${attempt}`);
+        break;
+        
+      } catch (fetchError: any) {
+        lastError = fetchError;
+        console.error(`Network error on attempt ${attempt}/${maxRetries}:`, fetchError?.message || fetchError);
+        
+        // If this was the last attempt, return error
+        if (attempt === maxRetries) {
+          console.error('All retry attempts failed');
+          return new Response(JSON.stringify({ 
+            error: `Failed to connect to Perplexity API after ${maxRetries} attempts: ${fetchError?.message || 'Network error'}`,
+            success: false 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Calculate exponential backoff delay
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    // Safety check (should never happen given the retry logic above)
+    if (!response) {
       return new Response(JSON.stringify({ 
-        error: `Failed to connect to Perplexity API: ${fetchError?.message || 'Network error'}`,
+        error: 'Failed to get response from Perplexity API',
         success: false 
       }), {
         status: 500,
