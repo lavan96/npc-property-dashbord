@@ -155,7 +155,7 @@ function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: 
     waterRates: 1200,
     landlordInsurance: Math.floor(annualRent * 0.01), // ~1% of rent
     propertyManagement: Math.floor(annualRent * 0.07), // 7% of rent
-    maintenance: Math.floor(propertyValue * 0.01), // 1% of property value
+    maintenance: 1500, // Fixed $1,500 annually
     landTax: calculateLandTax(propertyValue, state),
     strataFees: propertyType === 'unit' ? 4800 : 0, // $400/month for units
     totalAnnual: 0 // Will be calculated

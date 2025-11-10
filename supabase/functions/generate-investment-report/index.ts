@@ -1113,7 +1113,7 @@ Interest rate: 6.5%
 
 Property management fee: 7% of rent
 
-Maintenance: 1% of property value annually
+Maintenance: $1,500 annually
 
 Council rates and insurance: include estimated figures
 
