@@ -573,8 +573,15 @@ Your goal is to generate a comprehensive, professional-grade investment report f
 
 Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
 
-Input: ${formattedInput}
+**PROPERTY ADDRESS TO ANALYZE: ${formattedInput}**
+
 ${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
+
+**CRITICAL - REPORT STRUCTURE:**
+1. Begin the report with a clear header stating: "Investment Report for [FULL PROPERTY ADDRESS]"
+2. ${analysisMode === 'address' ? `Use the EXACT property address "${formattedInput}" in ALL research queries and throughout the report` : `Focus the analysis on "${formattedInput}"`}
+3. This property address MUST appear prominently in the Location Overview section
+4. All market data, comparables, and analysis MUST be relevant to this specific ${analysisMode === 'address' ? 'property address' : 'location'}
 
 ${enhancedData.demographics ? `
 DEMOGRAPHIC DATA AVAILABLE:
@@ -754,13 +761,34 @@ IMPORTANT: Include these specific amenity counts, distances, and scores in your 
 ` : ''}
 
 ${enhancedData.investmentScore ? `
-INVESTMENT SCORE AVAILABLE:
+INVESTMENT SCORE CALCULATED (USE THESE VALUES IN YOUR REPORT):
 - Total Score: ${enhancedData.investmentScore.totalScore || 'N/A'}/100
-- Grade: ${enhancedData.investmentScore.grade || 'N/A'}
-- Recommendation: ${enhancedData.investmentScore.recommendation || 'N/A'}
-- Yield Score: ${enhancedData.investmentScore.yieldScore?.score || 'N/A'}/100
-- Growth Score: ${enhancedData.investmentScore.growthScore?.score || 'N/A'}/100
-- Location Score: ${enhancedData.investmentScore.locationScore?.score || 'N/A'}/100
+- Letter Grade: ${enhancedData.investmentScore.grade || 'N/A'} (A+ to F scale)
+- Investment Recommendation: ${enhancedData.investmentScore.recommendation || 'N/A'}
+
+COMPONENT SCORES (out of 100):
+- Yield Score: ${enhancedData.investmentScore.breakdown?.yieldScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.yieldScore?.weight || 30}%)
+  Details: ${enhancedData.investmentScore.breakdown?.yieldScore?.details || 'N/A'}
+  
+- Growth Score: ${enhancedData.investmentScore.breakdown?.growthScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.growthScore?.weight || 25}%)
+  Details: ${enhancedData.investmentScore.breakdown?.growthScore?.details || 'N/A'}
+  
+- Location Score: ${enhancedData.investmentScore.breakdown?.locationScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.locationScore?.weight || 20}%)
+  Details: ${enhancedData.investmentScore.breakdown?.locationScore?.details || 'N/A'}
+  
+- Demand Score: ${enhancedData.investmentScore.breakdown?.demandScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.demandScore?.weight || 15}%)
+  Details: ${enhancedData.investmentScore.breakdown?.demandScore?.details || 'N/A'}
+  
+- Risk Score: ${enhancedData.investmentScore.breakdown?.riskScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.riskScore?.weight || 10}%)
+  Details: ${enhancedData.investmentScore.breakdown?.riskScore?.details || 'N/A'}
+
+SWOT ANALYSIS:
+Strengths: ${enhancedData.investmentScore.strengths?.join('; ') || 'N/A'}
+Weaknesses: ${enhancedData.investmentScore.weaknesses?.join('; ') || 'N/A'}
+Opportunities: ${enhancedData.investmentScore.opportunities?.join('; ') || 'N/A'}
+Threats/Risks: ${enhancedData.investmentScore.risks?.join('; ') || 'N/A'}
+
+IMPORTANT: Use this pre-calculated investment score directly in your "Overall Investment Score" section. Display the letter grade (${enhancedData.investmentScore.grade || 'N/A'}) prominently. Do NOT recalculate - use these exact values and component breakdowns.
 ` : ''}
 
 ${enhancedData.seifaData ? `
@@ -944,13 +972,19 @@ Sections to Include
 
 1. Location Overview
 
+**MUST BEGIN WITH:** "This investment report analyzes: ${formattedInput}"
+
+${analysisMode === 'address' ? `
+**CRITICAL:** State the complete property address "${formattedInput}" clearly at the start of this section. All analysis must be for this specific address.
+` : ''}
+
 Suburb/area profile and character.
 
 Distance to nearest major city or CBD.
 
 Key lifestyle attributes (parks, schools, shopping hubs, etc.).
 
-Identify the SA2, SA3, SA4, and LGA that this address/postcode/state belongs to.
+Identify the SA2, SA3, SA4, and LGA that this ${analysisMode === 'address' ? 'property address' : 'location'} belongs to.
 
 ---
 
@@ -1157,19 +1191,27 @@ Final Loan-to-Value Ratio (LVR).
 
 11. Overall Investment Score
 
-Create a total score out of 100 with these weightings:
+**CRITICAL: Use the pre-calculated investment score provided above.**
 
-Market momentum (25%)
+Display the investment score as follows:
 
-Yield and cashflow (30%)
+**Investment Grade: [Letter Grade A+ to F]**
+**Total Score: [Score]/100**
+**Recommendation: [Buy/Hold/Sell recommendation]**
 
-Risk factors (20%)
+Then create a detailed breakdown table showing:
+- Component Name | Weight (%) | Score (/100) | Details
 
-Demand drivers (15%)
+Include all five components:
+1. Yield Score (30% weighting)
+2. Growth Score (25% weighting)  
+3. Location Score (20% weighting)
+4. Demand Score (15% weighting)
+5. Risk Score (10% weighting)
 
-Supply factors (10%)
+Present the SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) provided in the investment score data.
 
-Explain each component and provide a final recommendation: Buy, Hold, Sell, or Wait/Negotiate.
+Add context and explanation for each component based on the market data you've analyzed, but use the exact scores and letter grade provided above. Do NOT recalculate the investment score.
 
 ---
 
