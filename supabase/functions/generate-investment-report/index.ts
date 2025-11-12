@@ -611,12 +611,12 @@ KEY METRICS:
 - Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics?.lvr || 'N/A'}%
 - Cash on Cash Return: ${enhancedData.financials.keyMetrics?.cashOnCashReturn || 'N/A'}%
 
-ANNUAL COSTS:
+ANNUAL COSTS (ALL AMOUNTS IN AUD):
 - Council Rates: $${enhancedData.financials.annualCosts?.councilRates || 'N/A'}
 - Water Rates: $${enhancedData.financials.annualCosts?.waterRates || 'N/A'}
 - Insurance: $${enhancedData.financials.annualCosts?.landlordInsurance || 'N/A'}
 - Property Management: $${enhancedData.financials.annualCosts?.propertyManagement || 'N/A'}
-- Maintenance: $${enhancedData.financials.annualCosts?.maintenance || 'N/A'}
+- Maintenance: $1,500 AUD (FIXED - USE THIS EXACT AMOUNT IN ALL CALCULATIONS)
 - Land Tax: $${enhancedData.financials.annualCosts?.landTax || 'N/A'}
 
 10-YEAR PROJECTIONS (Use these exact numbers in your report):
@@ -918,6 +918,12 @@ IMPORTANT: Include this education data in a dedicated "Schools & Education" sect
 
 Instructions
 
+CRITICAL - FIXED COSTS:
+- Annual Maintenance Fee: ALWAYS use exactly $1,500 AUD (Australian Dollars)
+- This is a FIXED amount and must NOT be calculated, estimated, or varied
+- Use this exact figure in ALL sections: Financial Analysis, Cashflow Calculations, 10-Year Projections, and any other cost breakdowns
+- Do NOT use percentages, estimates, or ranges for maintenance - it is always $1,500 AUD annually
+
 1. Use only Australian data and sources.
 
 2. Provide clear sections with proper headings and bullet points.
@@ -929,6 +935,8 @@ Instructions
 5. Avoid filler text. Provide specific numbers, facts, and actionable insights.
 
 6. The output should be plain text, not JSON or code.
+
+7. All currency amounts must be in AUD (Australian Dollars) unless otherwise specified.
 
 ---
 
@@ -1063,7 +1071,9 @@ Property management fee assumption (% of rent).
 
 Typical strata fees (if applicable).
 
-Insurance and maintenance estimates.
+Insurance estimates.
+
+MAINTENANCE COSTS: Always use the FIXED amount of $1,500 AUD annually. Do NOT estimate or calculate this - it is a predetermined fixed cost.
 
 ---
 
@@ -1113,11 +1123,13 @@ Interest rate: 6.5%
 
 Property management fee: 7% of rent
 
-Maintenance: $1,500 annually
+Maintenance: FIXED at $1,500 AUD annually (DO NOT change this amount - use exactly $1,500 AUD)
 
 Council rates and insurance: include estimated figures
 
 Sensitivity analysis: show effect of interest rates at +1% and -1%.
+
+IMPORTANT: The $1,500 AUD annual maintenance fee is FIXED and must be used in all cashflow calculations, projections, and cost breakdowns without variation.
 
 ---
 
