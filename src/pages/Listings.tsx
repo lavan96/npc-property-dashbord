@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearch } from '@/contexts/SearchContext';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3 } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,23 +35,35 @@ export default function Listings() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    propertyType: 'all',
-    suburb: 'all',
-    state: 'all',
-    zipCode: 'all',
-    sourceHost: 'all',
-    hasInspection: false,
-    lowConfidence: false,
-    priceMin: '',
-    priceMax: '',
-    bedsMin: '',
-    bedsMax: '',
-    bathsMin: '',
-    bathsMax: '',
-    carsMin: '',
-    carsMax: '',
-    agencyName: 'all',
+  
+  // Load filters from localStorage on mount
+  const [filters, setFilters] = useState(() => {
+    const savedFilters = localStorage.getItem('listingFilters');
+    if (savedFilters) {
+      try {
+        return JSON.parse(savedFilters);
+      } catch (e) {
+        console.error('Failed to parse saved filters:', e);
+      }
+    }
+    return {
+      propertyType: 'all',
+      suburb: 'all',
+      state: 'all',
+      zipCode: 'all',
+      sourceHost: 'all',
+      hasInspection: false,
+      lowConfidence: false,
+      priceMin: '',
+      priceMax: '',
+      bedsMin: '',
+      bedsMax: '',
+      bathsMin: '',
+      bathsMax: '',
+      carsMin: '',
+      carsMax: '',
+      agencyName: 'all',
+    };
   });
   const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -68,6 +80,11 @@ export default function Listings() {
   useEffect(() => {
     setSearchQuery(globalSearchQuery);
   }, [globalSearchQuery]);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('listingFilters', JSON.stringify(filters));
+  }, [filters]);
 
 
   const loadListings = async () => {
@@ -228,7 +245,12 @@ export default function Listings() {
       return false;
     }
 
-    // Price filters
+    // Price filters - exclude properties without pricing when price filter is active
+    const hasPriceFilter = filters.priceMin || filters.priceMax;
+    if (hasPriceFilter && (!listing.price || listing.price <= 0)) {
+      return false;
+    }
+
     if (filters.priceMin && listing.price && listing.price < parseFloat(filters.priceMin)) {
       return false;
     }
@@ -281,6 +303,35 @@ export default function Listings() {
     setSelectedListing(null);
     setIsDetailsModalOpen(false);
   };
+
+  const clearAllFilters = () => {
+    setFilters({
+      propertyType: 'all',
+      suburb: 'all',
+      state: 'all',
+      zipCode: 'all',
+      sourceHost: 'all',
+      hasInspection: false,
+      lowConfidence: false,
+      priceMin: '',
+      priceMax: '',
+      bedsMin: '',
+      bedsMax: '',
+      bathsMin: '',
+      bathsMax: '',
+      carsMin: '',
+      carsMax: '',
+      agencyName: 'all',
+    });
+  };
+
+  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+    if (typeof value === 'boolean') return value;
+    if (key === 'propertyType' || key === 'suburb' || key === 'state' || key === 'zipCode' || key === 'sourceHost' || key === 'agencyName') {
+      return value !== '' && value !== 'all';
+    }
+    return value !== '';
+  });
 
   if (isLoading) {
     return (
@@ -356,6 +407,12 @@ export default function Listings() {
                 setFilters={setFilters}
                 uniqueValues={uniqueValues}
               />
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear all filters
+                </Button>
+              )}
             </div>
 
             {/* Quick Filters */}
