@@ -38,15 +38,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { session_token: sessionToken }
       });
 
-      // 401 errors are expected for expired sessions - handle silently
-      if (error || !data?.valid) {
+      // Handle 401 errors (expired sessions) silently - this is expected behavior
+      // Only log unexpected errors
+      if (error) {
+        // Check if it's a 401 (expired session) - expected, handle silently
+        if (error.message && error.message.includes('401')) {
+          // Expired session - clear silently without logging
+          localStorage.removeItem('session_token');
+          setUser(null);
+        } else {
+          // Unexpected error - log it but still clear session
+          console.warn('Session verification error:', error.message || error);
+          localStorage.removeItem('session_token');
+          setUser(null);
+        }
+      } else if (!data?.valid) {
+        // Invalid session response - clear silently
         localStorage.removeItem('session_token');
         setUser(null);
       } else {
+        // Valid session - set user
         setUser(data.user);
       }
-    } catch (error) {
-      // Silently clear invalid session - this is expected behavior
+    } catch (error: any) {
+      // Network or other errors - clear session silently
+      // Don't log 401s as they're expected for expired sessions
+      if (!error?.message?.includes('401')) {
+        console.warn('Session check failed:', error?.message || 'Unknown error');
+      }
       localStorage.removeItem('session_token');
       setUser(null);
     } finally {
