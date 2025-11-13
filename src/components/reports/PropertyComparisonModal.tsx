@@ -169,22 +169,22 @@ export function PropertyComparisonModal({
     
     const textContent = `
 PROPERTY COMPARISON ANALYSIS
-${propertyAddresses.map((addr, i) => `Property ${i + 1}: ${addr}`).join('\n')}
+${(propertyAddresses || []).map((addr, i) => `Property ${i + 1}: ${addr}`).join('\n')}
 
 EXECUTIVE SUMMARY
-${analysis.executiveSummary}
+${analysis.executiveSummary || 'N/A'}
 
 RANKINGS
-${analysis.rankings.map(r => `
+${(analysis.rankings || []).map(r => `
 ${r.rank}. ${r.address} (Score: ${r.finalScore})
-   Strengths: ${r.primaryStrengths.join(', ')}
-   Concerns: ${r.primaryConcerns.join(', ')}
+   Strengths: ${(r.primaryStrengths || []).join(', ')}
+   Concerns: ${(r.primaryConcerns || []).join(', ')}
    Best for: ${r.bestSuitedFor}
 `).join('\n')}
 
 FINAL RECOMMENDATION
-Best Overall: Property ${analysis.finalRecommendation.bestOverall.propertyNumber}
-Reason: ${analysis.finalRecommendation.bestOverall.reason}
+Best Overall: Property ${analysis.finalRecommendation?.bestOverall?.propertyNumber || 'N/A'}
+Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
     `.trim();
 
     navigator.clipboard.writeText(textContent);
@@ -309,7 +309,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                         <CardTitle>Quick Comparison</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {analysis.rankings.map((ranking) => (
+                        {(analysis.rankings || []).map((ranking) => (
                           <div
                             key={ranking.propertyNumber}
                             className="flex items-start gap-3 p-3 rounded-lg border bg-card"
@@ -325,7 +325,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                                 {ranking.bestSuitedFor}
                               </p>
                               <div className="flex gap-2 flex-wrap">
-                                {ranking.primaryStrengths.slice(0, 2).map((strength, i) => (
+                                {(ranking.primaryStrengths || []).slice(0, 2).map((strength, i) => (
                                   <Badge key={i} variant="secondary" className="text-xs">
                                     <CheckCircle2 className="h-3 w-3 mr-1" />
                                     {strength}
@@ -348,7 +348,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {analysis.rankings.map((ranking) => (
+                        {(analysis.rankings || []).map((ranking) => (
                           <Card key={ranking.propertyNumber}>
                             <CardHeader>
                               <div className="flex items-start justify-between">
@@ -373,7 +373,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                                   Primary Strengths
                                 </h5>
                                 <ul className="space-y-1">
-                                  {ranking.primaryStrengths.map((strength, i) => (
+                                  {(ranking.primaryStrengths || []).map((strength, i) => (
                                     <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                                       <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                       {strength}
@@ -390,7 +390,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                                   Primary Concerns
                                 </h5>
                                 <ul className="space-y-1">
-                                  {ranking.primaryConcerns.map((concern, i) => (
+                                  {(ranking.primaryConcerns || []).map((concern, i) => (
                                     <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                                       <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                       {concern}
@@ -597,7 +597,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                             <CardTitle className="text-base">Risk Levels by Property</CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
-                            {analysis.riskComparison.riskLevels.map((risk) => (
+                            {(analysis.riskComparison?.riskLevels || []).map((risk) => (
                               <div key={risk.propertyNumber} className="border rounded-lg p-3">
                                 <div className="flex items-center justify-between mb-2">
                                   <span className="text-sm font-medium">Property {risk.propertyNumber}</span>
@@ -605,9 +605,9 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                                     {risk.riskLevel}
                                   </Badge>
                                 </div>
-                                {risk.specificRisks.length > 0 && (
+                                {(risk.specificRisks || []).length > 0 && (
                                   <ul className="space-y-1 mt-2">
-                                    {risk.specificRisks.map((riskItem, i) => (
+                                    {(risk.specificRisks || []).map((riskItem, i) => (
                                       <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
                                         <ChevronRight className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                         {riskItem}
@@ -639,7 +639,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                                     </div>
                                   </div>
                                   <ul className="space-y-1">
-                                    {flag.concerns.map((concern, i) => (
+                                    {(flag.concerns || []).map((concern, i) => (
                                       <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
                                         <ChevronRight className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                         {concern}
@@ -738,7 +738,7 @@ Reason: ${analysis.finalRecommendation.bestOverall.reason}
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="font-medium">Property {match.propertyNumber}</span>
                                     <div className="flex gap-1 flex-wrap">
-                                      {match.investorTypes.map((type, i) => (
+                                      {(match.investorTypes || []).map((type, i) => (
                                         <Badge key={i} variant="outline" className="text-xs">
                                           {type}
                                         </Badge>
