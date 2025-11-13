@@ -122,3 +122,7 @@ verify_jwt = false
 
 [functions.import-schools-data]
 verify_jwt = false
+
+[functions.compare-investment-reports]
+verify_jwt = false
+request_timeout = 120
