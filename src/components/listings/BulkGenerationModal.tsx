@@ -75,23 +75,26 @@ export function BulkGenerationModal({
     try {
       // Fetch job status
       const { data: job } = await supabase
-        .from('bulk_generation_jobs')
+        .from('bulk_generation_jobs' as any)
         .select('*')
         .eq('id', jobId)
         .single();
 
-      if (job) {
-        setJobStatus(job);
+      if (!job) return;
+      
+      if (typeof job === 'object' && 'status' in job!) {
+        const typedJob = job! as any;
+        setJobStatus(job! as unknown as JobStatus);
 
         // If job is completed or failed, stop generating state
-        if (job.status === 'completed' || job.status === 'failed') {
+        if (typedJob.status === 'completed' || typedJob.status === 'failed') {
           setIsGenerating(false);
           
           // Show completion notification
-          if (job.status === 'completed') {
+          if (typedJob.status === 'completed') {
             toast({
               title: "Bulk Generation Complete",
-              description: `Successfully generated ${job.completed_reports} of ${job.total_reports} reports`,
+              description: `Successfully generated ${typedJob.completed_reports} of ${typedJob.total_reports} reports`,
             });
           }
         }
@@ -99,13 +102,13 @@ export function BulkGenerationModal({
 
       // Fetch items status
       const { data: itemsData } = await supabase
-        .from('bulk_generation_items')
+        .from('bulk_generation_items' as any)
         .select('*')
         .eq('job_id', jobId)
         .order('created_at', { ascending: true });
 
-      if (itemsData) {
-        setItems(itemsData);
+      if (itemsData && Array.isArray(itemsData)) {
+        setItems(itemsData as unknown as ItemStatus[]);
       }
     } catch (error) {
       console.error('Error fetching job status:', error);

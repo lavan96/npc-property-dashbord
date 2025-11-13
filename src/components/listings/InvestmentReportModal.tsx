@@ -5,9 +5,10 @@ import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Download, Copy, Check, Eye } from 'lucide-react';
+import { Loader2, Download, Copy, Check, Eye, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import jsPDF from 'jspdf';
 
 interface InvestmentReportModalProps {
@@ -30,12 +31,24 @@ export function InvestmentReportModal({
   const [isCopied, setIsCopied] = useState(false);
   const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
   const [enhancedData, setEnhancedData] = useState<any>(null);
+  const [isBackgroundGeneration, setIsBackgroundGeneration] = useState(false);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
 
-  const generateReport = async () => {
+  const generateReport = async (runInBackground = false) => {
     setIsGenerating(true);
     setHasStartedGeneration(true);
+    
+    if (runInBackground) {
+      setIsBackgroundGeneration(true);
+      toast({
+        title: "Generating in Background",
+        description: "Report generation started. You'll be notified when complete.",
+      });
+      // Close modal if running in background
+      handleClose();
+    }
     
     try {
       const { data, error } = await supabase.functions.invoke('generate-investment-report', {
@@ -91,19 +104,38 @@ export function InvestmentReportModal({
         console.log('Could not save report to database:', error);
       }
       
-      toast({
-        title: "Investment Report Generated",
-        description: "Your comprehensive property analysis is ready.",
-      });
+      if (runInBackground) {
+        addNotification({
+          type: 'report_generated',
+          title: 'Investment Report Generated',
+          message: `Report for ${propertyAddress} is ready to view.`,
+          reportId: reportId || undefined
+        });
+      } else {
+        toast({
+          title: "Investment Report Generated",
+          description: "Your comprehensive property analysis is ready.",
+        });
+      }
     } catch (error) {
       console.error('Report generation failed:', error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
-        variant: "destructive",
-      });
+      
+      if (runInBackground) {
+        addNotification({
+          type: 'report_failed',
+          title: 'Report Generation Failed',
+          message: `Failed to generate report for ${propertyAddress}. Please try again.`
+        });
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
+          variant: "destructive",
+        });
+      }
       // Reset states on error so user can try again
       setHasStartedGeneration(false);
+      setIsBackgroundGeneration(false);
     } finally {
       setIsGenerating(false);
     }
@@ -288,27 +320,25 @@ export function InvestmentReportModal({
   };
 
   const handleClose = () => {
-    // Only allow closing if not currently generating
-    if (isGenerating) {
-      return;
+    // Allow closing if not generating, or if generating in background
+    if (!isGenerating || isBackgroundGeneration) {
+      setReportContent('');
+      setSourcesContent('');
+      setIsGenerating(false);
+      setHasStartedGeneration(false);
+      setReportId('');
+      setIsCopied(false);
+      setEnhancedData(null);
+      setIsBackgroundGeneration(false);
+      onClose();
     }
-    
-    // Reset all states when closing
-    setReportContent('');
-    setSourcesContent('');
-    setReportId('');
-    setEnhancedData(null);
-    setIsGenerating(false);
-    setHasStartedGeneration(false);
-    setIsCopied(false);
-    onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" onPointerDownOutside={(e) => {
-        // Prevent closing modal when clicking outside during generation
-        if (isGenerating) {
+        // Allow closing during background generation
+        if (isGenerating && !isBackgroundGeneration) {
           e.preventDefault();
         }
       }}>
@@ -317,6 +347,16 @@ export function InvestmentReportModal({
           <DialogDescription>
             Comprehensive investment report for {propertyAddress}
           </DialogDescription>
+          {isGenerating && !isBackgroundGeneration && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-12 top-4"
+              onClick={() => generateReport(true)}
+            >
+              Continue in Background
+            </Button>
+          )}
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0">
@@ -328,7 +368,7 @@ export function InvestmentReportModal({
                   Click below to generate a comprehensive property investment analysis 
                   including financial projections, market analysis, and growth potential.
                 </p>
-                <Button onClick={generateReport} size="lg" disabled={isGenerating}>
+                <Button onClick={() => generateReport()} size="lg" disabled={isGenerating}>
                   Generate Analysis
                 </Button>
               </div>
@@ -342,10 +382,11 @@ export function InvestmentReportModal({
                   <>
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                     <h3 className="text-lg font-medium">Generating Investment Report</h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground mb-2">
                       Analyzing property data and market conditions...
-                      <br />
-                      <span className="text-sm">This may take up to 30 seconds</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      This may take 2-3 minutes. You can continue in background.
                     </p>
                   </>
                 ) : (
@@ -354,7 +395,7 @@ export function InvestmentReportModal({
                     <p className="text-muted-foreground">
                       There was an error generating your report. Please try again.
                     </p>
-                    <Button onClick={generateReport} variant="outline" size="lg">
+                    <Button onClick={() => generateReport()} variant="outline" size="lg">
                       Try Again
                     </Button>
                   </>
