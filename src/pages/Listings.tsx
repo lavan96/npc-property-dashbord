@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearch } from '@/contexts/SearchContext';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { ListingFilters } from '@/components/listings/ListingFilters';
 import { ListingDetailsModal } from '@/components/listings/ListingDetailsModal';
 import { InvestmentReportModal } from '@/components/listings/InvestmentReportModal';
+import { BulkGenerationModal } from '@/components/listings/BulkGenerationModal';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
 import {
@@ -69,6 +70,7 @@ export default function Listings() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [investmentReportListing, setInvestmentReportListing] = useState<PropertyListing | null>(null);
   const [isInvestmentReportModalOpen, setIsInvestmentReportModalOpen] = useState(false);
+  const [isBulkGenerationModalOpen, setIsBulkGenerationModalOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -302,6 +304,14 @@ export default function Listings() {
   const closeDetailsModal = () => {
     setSelectedListing(null);
     setIsDetailsModalOpen(false);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedListings.size === filteredListings.length) {
+      setSelectedListings(new Set());
+    } else {
+      setSelectedListings(new Set(filteredListings.map(l => l.id)));
+    }
   };
 
   const clearAllFilters = () => {
@@ -615,6 +625,64 @@ export default function Listings() {
         propertyAddress={investmentReportListing ? `${investmentReportListing.address || ''} ${investmentReportListing.suburb || ''} ${investmentReportListing.state || ''} ${investmentReportListing.zipCode || ''}`.trim() : ''}
         propertyDetails={investmentReportListing}
       />
+
+      <BulkGenerationModal
+        open={isBulkGenerationModalOpen}
+        onOpenChange={setIsBulkGenerationModalOpen}
+        selectedProperties={listings.filter(l => selectedListings.has(l.id))}
+        onComplete={() => {
+          setSelectedListings(new Set());
+          loadListings();
+        }}
+      />
+
+      {/* Floating Action Bar */}
+      {selectedListings.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <Card className="shadow-lg border-2">
+            <CardContent className="py-3 px-6">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={selectedListings.size === filteredListings.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="font-medium">
+                    {selectedListings.size} {selectedListings.size === 1 ? 'property' : 'properties'} selected
+                  </span>
+                </div>
+                
+                <div className="h-6 w-px bg-border" />
+                
+                <Button
+                  onClick={() => setIsBulkGenerationModalOpen(true)}
+                  disabled={selectedListings.size < 2 || selectedListings.size > 10}
+                  size="sm"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate Reports
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedListings(new Set())}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {(selectedListings.size < 2 || selectedListings.size > 10) && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {selectedListings.size < 2 
+                    ? 'Select at least 2 properties to generate bulk reports' 
+                    : 'Maximum 10 properties allowed per bulk generation'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
