@@ -291,7 +291,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                   <TabsTrigger value="recommendation">Final</TabsTrigger>
                 </TabsList>
 
-                <ScrollArea className="flex-1 mt-4">
+                <ScrollArea className="flex-1 mt-4 pr-4">
                   <TabsContent value="overview" className="space-y-4 mt-0">
                     <Card>
                       <CardHeader>

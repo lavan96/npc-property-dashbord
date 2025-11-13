@@ -46,6 +46,10 @@ interface ComparisonAnalysis {
   executive_summary: string | null;
   rankings: any;
   recommendations: any;
+  financial_comparison: any;
+  location_comparison: any;
+  risk_comparison: any;
+  red_flags: any;
 }
 
 export default function GeneratedReports() {
@@ -268,7 +272,7 @@ export default function GeneratedReports() {
       </div>
 
       <Tabs defaultValue="quantitative" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="quantitative" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Quantitative Reports
@@ -276,6 +280,10 @@ export default function GeneratedReports() {
           <TabsTrigger value="investment" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Investment Reports
+          </TabsTrigger>
+          <TabsTrigger value="comparisons" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Comparison Analyses
           </TabsTrigger>
         </TabsList>
 
@@ -456,6 +464,77 @@ export default function GeneratedReports() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="comparisons" className="space-y-4">
+          {comparisons.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
+                <div className="text-6xl text-muted-foreground">🔄</div>
+                <div className="text-center space-y-2">
+                  <h3 className="text-lg font-semibold">No Comparison Analyses Yet</h3>
+                  <p className="text-muted-foreground">
+                    Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {comparisons.map((comparison: any) => (
+                <Card key={comparison.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      {comparison.property_count} Property Comparison
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                      <Calendar className="h-3 w-3" />
+                      {format(new Date(comparison.created_at), 'MMM dd, yyyy')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {comparison.executive_summary && (
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        {comparison.executive_summary}
+                      </p>
+                    )}
+                    {comparison.rankings && comparison.rankings.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium">Top Ranked:</p>
+                        <Badge variant="default">
+                          {comparison.rankings[0]?.address || `Property #${comparison.rankings[0]?.propertyNumber}`}
+                        </Badge>
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedComparison(comparison);
+                          setComparisonViewerOpen(true);
+                        }}
+                        className="flex-1"
+                      >
+                        <Eye className="mr-1 h-3 w-3" />
+                        View Analysis
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        className="flex-1"
+                      >
+                        <Download className="mr-1 h-3 w-3" />
+                        Download
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       <ComparisonBasket onCompare={handleCompare} />
@@ -475,6 +554,15 @@ export default function GeneratedReports() {
           setSelectedInvestmentReport(null);
         }}
         onReportUpdate={handleInvestmentReportUpdate}
+      />
+
+      <ComparisonViewer
+        comparison={selectedComparison}
+        isOpen={comparisonViewerOpen}
+        onClose={() => {
+          setComparisonViewerOpen(false);
+          setSelectedComparison(null);
+        }}
       />
     </div>
   );
