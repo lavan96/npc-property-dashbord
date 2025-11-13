@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
@@ -33,9 +34,10 @@ const App = () => (
         <AuthProvider>
           <BrowserRouter>
             <NotificationsProvider>
-              <SearchProvider>
-                <Toaster />
-                <Sonner />
+              <ComparisonProvider>
+                <SearchProvider>
+                  <Toaster />
+                  <Sonner />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={
@@ -60,7 +62,8 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-              </SearchProvider>
+                </SearchProvider>
+              </ComparisonProvider>
             </NotificationsProvider>
           </BrowserRouter>
         </AuthProvider>

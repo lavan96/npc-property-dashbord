@@ -5,8 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
+import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
+import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
 import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +43,7 @@ export default function GeneratedReports() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
 
   useEffect(() => {
     fetchReports();
@@ -139,6 +143,26 @@ export default function GeneratedReports() {
   const handleInvestmentReportUpdate = () => {
     // Refresh the investment reports list
     fetchInvestmentReports();
+  };
+
+  const handleToggleSelection = (report: InvestmentReport, checked: boolean) => {
+    if (checked) {
+      addReport({
+        id: report.id,
+        property_address: report.property_address,
+        created_at: report.created_at
+      });
+    } else {
+      removeReport(report.id);
+    }
+  };
+
+  const handleCompare = () => {
+    toast({
+      title: "Comparison Starting",
+      description: "Analyzing selected properties...",
+    });
+    // Will be implemented in step 2
   };
 
   const handleViewReport = (reportId: string) => {
@@ -316,9 +340,17 @@ export default function GeneratedReports() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {investmentReports.map((report) => (
-                <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-shadow relative">
+                  <div className="absolute top-4 right-4 z-10">
+                    <Checkbox
+                      checked={isSelected(report.id)}
+                      onCheckedChange={(checked) => handleToggleSelection(report, checked as boolean)}
+                      disabled={!canAddMore && !isSelected(report.id)}
+                      className="h-5 w-5 bg-background border-2"
+                    />
+                  </div>
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-start justify-between">
+                    <CardTitle className="text-lg flex items-start justify-between pr-8">
                       <span className="line-clamp-2">{report.property_address}</span>
                       <TrendingUp className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
                     </CardTitle>
@@ -379,6 +411,8 @@ export default function GeneratedReports() {
           )}
         </TabsContent>
       </Tabs>
+
+      <ComparisonBasket onCompare={handleCompare} />
 
       <InvestmentReportViewer
         report={selectedInvestmentReport}
