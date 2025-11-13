@@ -1,0 +1,340 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Trophy, TrendingUp, MapPin, AlertTriangle, Target } from 'lucide-react';
+
+interface ComparisonViewerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  comparison: {
+    id: string;
+    property_count: number;
+    executive_summary: string | null;
+    rankings: any;
+    financial_comparison: any;
+    location_comparison: any;
+    risk_comparison: any;
+    recommendations: any;
+    red_flags: any;
+  } | null;
+}
+
+export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonViewerProps) {
+  if (!comparison) return null;
+
+  const getRankIcon = (rank: number) => {
+    if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
+    if (rank === 2) return <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs">2</div>;
+    if (rank === 3) return <div className="h-5 w-5 rounded-full bg-amber-600 flex items-center justify-center text-xs">3</div>;
+    return <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-xs">{rank}</div>;
+  };
+
+  const getRiskColor = (level: string) => {
+    switch (level?.toLowerCase()) {
+      case 'low': return 'text-green-600';
+      case 'medium': return 'text-yellow-600';
+      case 'high': return 'text-red-600';
+      default: return 'text-muted-foreground';
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Property Comparison Analysis
+          </DialogTitle>
+        </DialogHeader>
+
+        <ScrollArea className="h-[calc(90vh-100px)]">
+          <div className="space-y-6 pr-4">
+            {/* Executive Summary */}
+            {comparison.executive_summary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Executive Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {comparison.executive_summary}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            <Tabs defaultValue="rankings" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="rankings">Rankings</TabsTrigger>
+                <TabsTrigger value="financial">Financial</TabsTrigger>
+                <TabsTrigger value="location">Location</TabsTrigger>
+                <TabsTrigger value="risk">Risk</TabsTrigger>
+              </TabsList>
+
+              {/* Rankings Tab */}
+              <TabsContent value="rankings" className="space-y-4">
+                {comparison.rankings && Array.isArray(comparison.rankings) ? (
+                  comparison.rankings.map((property: any) => (
+                    <Card key={property.propertyNumber}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {getRankIcon(property.rank)}
+                            <div>
+                              <CardTitle className="text-base">{property.address}</CardTitle>
+                              <CardDescription>
+                                Score: {property.finalScore}/100
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <Badge variant={property.rank === 1 ? "default" : "secondary"}>
+                            Rank #{property.rank}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {property.primaryStrengths && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">Strengths:</p>
+                            <ul className="text-sm text-muted-foreground space-y-1">
+                              {property.primaryStrengths.map((strength: string, idx: number) => (
+                                <li key={idx}>✓ {strength}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {property.primaryConcerns && property.primaryConcerns.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">Concerns:</p>
+                            <ul className="text-sm text-muted-foreground space-y-1">
+                              {property.primaryConcerns.map((concern: string, idx: number) => (
+                                <li key={idx}>⚠ {concern}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {property.bestSuitedFor && (
+                          <p className="text-sm">
+                            <span className="font-medium">Best for:</span> {property.bestSuitedFor}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      No ranking data available
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Financial Tab */}
+              <TabsContent value="financial" className="space-y-4">
+                {comparison.financial_comparison ? (
+                  <div className="grid gap-4">
+                    {Object.entries(comparison.financial_comparison).map(([key, value]: [string, any]) => (
+                      <Card key={key}>
+                        <CardHeader>
+                          <CardTitle className="text-sm capitalize flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <span className="font-medium">Property #{value.propertyNumber}</span>
+                            {value.value && `: ${value.value}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">{value.reason}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      No financial comparison data available
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Location Tab */}
+              <TabsContent value="location" className="space-y-4">
+                {comparison.location_comparison ? (
+                  <div className="grid gap-4">
+                    {Object.entries(comparison.location_comparison).map(([key, value]: [string, any]) => (
+                      <Card key={key}>
+                        <CardHeader>
+                          <CardTitle className="text-sm capitalize flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <span className="font-medium">Property #{value.propertyNumber}</span>
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">{value.reason}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      No location comparison data available
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Risk Tab */}
+              <TabsContent value="risk" className="space-y-4">
+                {comparison.risk_comparison ? (
+                  <>
+                    <div className="grid gap-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-green-600" />
+                            Lowest Risk
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <span className="font-medium">Property #{comparison.risk_comparison.lowestRisk?.propertyNumber}</span>
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {comparison.risk_comparison.lowestRisk?.reason}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                            Highest Risk
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <span className="font-medium">Property #{comparison.risk_comparison.highestRisk?.propertyNumber}</span>
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {comparison.risk_comparison.highestRisk?.reason}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {comparison.risk_comparison.riskLevels && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Risk Levels by Property</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {comparison.risk_comparison.riskLevels.map((risk: any) => (
+                            <div key={risk.propertyNumber} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Property #{risk.propertyNumber}</span>
+                                <Badge className={getRiskColor(risk.riskLevel)}>
+                                  {risk.riskLevel} Risk
+                                </Badge>
+                              </div>
+                              {risk.specificRisks && risk.specificRisks.length > 0 && (
+                                <ul className="text-sm text-muted-foreground space-y-1">
+                                  {risk.specificRisks.map((r: string, idx: number) => (
+                                    <li key={idx}>• {r}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      No risk comparison data available
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            {/* Final Recommendation */}
+            {comparison.recommendations && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Final Recommendation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {comparison.recommendations.bestOverall && (
+                    <div>
+                      <p className="font-medium text-sm mb-1">Best Overall Investment:</p>
+                      <p className="text-sm">
+                        Property #{comparison.recommendations.bestOverall.propertyNumber}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {comparison.recommendations.bestOverall.reason}
+                      </p>
+                    </div>
+                  )}
+                  {comparison.recommendations.runners && comparison.recommendations.runners.length > 0 && (
+                    <div>
+                      <p className="font-medium text-sm mb-1">Alternative Options:</p>
+                      {comparison.recommendations.runners.map((runner: any, idx: number) => (
+                        <div key={idx} className="mt-2">
+                          <p className="text-sm">Property #{runner.propertyNumber}</p>
+                          <p className="text-sm text-muted-foreground">{runner.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Red Flags */}
+            {comparison.red_flags && comparison.red_flags.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-5 w-5" />
+                    Red Flags & Concerns
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {comparison.red_flags.map((flag: any) => (
+                    <div key={flag.propertyNumber} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-sm">Property #{flag.propertyNumber}</p>
+                        <Badge variant="destructive">{flag.severity}</Badge>
+                      </div>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {flag.concerns.map((concern: string, idx: number) => (
+                          <li key={idx}>⚠ {concern}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}

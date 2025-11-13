@@ -10,6 +10,7 @@ import { InvestmentReportViewer } from '@/components/reports/InvestmentReportVie
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { PropertyComparisonModal } from '@/components/reports/PropertyComparisonModal';
+import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
 import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin } from 'lucide-react';
@@ -36,11 +37,25 @@ interface InvestmentReport {
   created_at: string;
 }
 
+interface ComparisonAnalysis {
+  id: string;
+  property_count: number;
+  report_ids: string[];
+  created_at: string;
+  analysis_summary: string | null;
+  executive_summary: string | null;
+  rankings: any;
+  recommendations: any;
+}
+
 export default function GeneratedReports() {
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
+  const [comparisons, setComparisons] = useState<ComparisonAnalysis[]>([]);
   const [selectedInvestmentReport, setSelectedInvestmentReport] = useState<InvestmentReport | null>(null);
+  const [selectedComparison, setSelectedComparison] = useState<ComparisonAnalysis | null>(null);
   const [investmentViewerOpen, setInvestmentViewerOpen] = useState(false);
+  const [comparisonViewerOpen, setComparisonViewerOpen] = useState(false);
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -50,6 +65,7 @@ export default function GeneratedReports() {
   useEffect(() => {
     fetchReports();
     fetchInvestmentReports();
+    fetchComparisons();
 
     // Listen for custom event to open a specific report
     const handleOpenReport = (event: CustomEvent) => {
@@ -134,6 +150,30 @@ export default function GeneratedReports() {
         description: "Failed to fetch investment reports",
         variant: "destructive",
       });
+    }
+  };
+
+  const fetchComparisons = async () => {
+    try {
+      // Cast to any to bypass TypeScript for property_comparisons table
+      const { data, error } = await (supabase as any)
+        .from('property_comparisons')
+        .select('id, property_count, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching comparisons:', error);
+        toast({
+          title: "Error fetching comparisons",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setComparisons((data || []) as ComparisonAnalysis[]);
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 

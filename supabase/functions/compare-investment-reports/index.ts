@@ -53,54 +53,59 @@ serve(async (req) => {
 
     // Structure data for AI analysis
     const propertiesData = reports.map((report, index) => {
-      const investmentScore = report.investment_score || {};
-      const financials = report.financial_calculations || {};
-      const demographics = report.demographics_data || {};
-      const location = report.location_intelligence || {};
-      const economics = report.economic_data || {};
+      // Parse JSONB fields safely
+      const investmentScore = typeof report.investment_score === 'object' ? report.investment_score : {};
+      const financials = typeof report.financial_calculations === 'object' ? report.financial_calculations : {};
+      const demographics = typeof report.demographics_data === 'object' ? report.demographics_data : {};
+      const location = typeof report.location_intelligence === 'object' ? report.location_intelligence : {};
+      const economics = typeof report.economic_data === 'object' ? report.economic_data : {};
+      
+      // Extract report text for analysis if structured data is missing
+      const reportText = report.report_content || '';
 
       return {
         propertyNumber: index + 1,
         address: report.property_address,
+        reportText: reportText.substring(0, 5000), // First 5000 chars for context
         
         // Investment Scoring
-        overallScore: investmentScore.totalScore || 0,
-        letterGrade: investmentScore.letterGrade || 'N/A',
-        recommendation: investmentScore.recommendation || 'Not available',
+        overallScore: investmentScore.totalScore || null,
+        letterGrade: investmentScore.letterGrade || null,
+        recommendation: investmentScore.recommendation || null,
         scoreBreakdown: {
-          yield: investmentScore.yieldScore || {},
-          growth: investmentScore.growthScore || {},
-          location: investmentScore.locationScore || {},
-          demand: investmentScore.demandScore || {},
-          risk: investmentScore.riskScore || {}
+          yield: investmentScore.yieldScore || null,
+          growth: investmentScore.growthScore || null,
+          location: investmentScore.locationScore || null,
+          demand: investmentScore.demandScore || null,
+          risk: investmentScore.riskScore || null
         },
         
         // Financial Metrics
         financialMetrics: {
-          purchasePrice: financials.purchasePrice || 0,
-          weeklyRent: financials.weeklyRent || 0,
-          annualRent: financials.annualRent || 0,
-          rentalYield: financials.rentalYield || 0,
-          cashFlow: financials.monthlyCashFlow || 0,
-          roi5Year: financials.projections?.fiveYear?.totalReturn || 0,
-          roi10Year: financials.projections?.tenYear?.totalReturn || 0,
-          appreciation: financials.projections?.tenYear?.appreciation || 0
+          purchasePrice: financials.purchasePrice || null,
+          weeklyRent: financials.weeklyRent || null,
+          annualRent: financials.annualRent || null,
+          rentalYield: financials.rentalYield || null,
+          cashFlow: financials.monthlyCashFlow || null,
+          roi5Year: financials.projections?.fiveYear?.totalReturn || null,
+          roi10Year: financials.projections?.tenYear?.totalReturn || null,
+          appreciation: financials.projections?.tenYear?.appreciation || null
         },
         
         // Location Intelligence
         locationData: {
-          walkScore: location.walkScore || 0,
-          transitScore: location.transitScore || 0,
-          schoolRating: location.averageSchoolRating || 0,
-          nearbySchools: location.schoolsNearby || 0,
-          amenitiesCount: location.amenitiesNearby || 0,
-          distanceToCity: location.distanceToCity || 'N/A'
+          walkScore: location.walkScore || null,
+          transitScore: location.transitScore || null,
+          schoolRating: location.averageSchoolRating || null,
+          nearbySchools: location.schoolsNearby || null,
+          amenitiesCount: location.amenitiesNearby || null,
+          distanceToCity: location.distanceToCity || null
         },
         
         // Demographics
         demographics: {
-          population: demographics.population || 0,
-          medianIncome: demographics.medianIncome || 0,
+          population: demographics.population || null,
+          medianIncome: demographics.medianIncome || null,
           medianAge: demographics.medianAge || 0,
           employmentRate: demographics.employmentRate || 0,
           housingAffordability: demographics.housingAffordability || 'N/A'
@@ -119,13 +124,24 @@ serve(async (req) => {
       };
     });
 
-    // Prepare AI analysis prompt
-    const analysisPrompt = `You are a professional property investment analyst. Perform a comprehensive qualitative comparison of ${reports.length} investment properties.
+    const prompt = `You are an expert Australian property investment analyst comparing ${reports.length} investment properties for a client.
 
-PROPERTIES DATA:
-${JSON.stringify(propertiesData, null, 2)}
+    **IMPORTANT INSTRUCTIONS:**
+    - Some properties may have incomplete structured data - if data is null, analyze the reportText field to extract relevant information
+    - Provide a comprehensive, data-driven comparison using all available information from both structured fields and report text
+    - Focus on actionable insights and clear recommendations
+    - Consider both quantitative metrics and qualitative factors
+    - Highlight competitive advantages and red flags for each property
+    - Tailor recommendations to the ${investorProfile || 'general investor'} profile
+    - Use Australian property market context and terminology
+    - When structured data is missing, extract key metrics and insights from the reportText field
+    - If certain metrics are unavailable for a property, note this but still provide meaningful comparison based on available data
+    
+    **ANALYSIS DEPTH:** ${analysisDepth}
+    ${investorProfile ? `**INVESTOR PROFILE:** ${investorProfile}` : ''}
 
-${investorProfile ? `INVESTOR PROFILE: ${investorProfile}` : ''}
+    **PROPERTIES TO COMPARE:**
+    ${JSON.stringify(propertiesData, null, 2)}
 
 Provide a detailed comparative analysis including:
 
