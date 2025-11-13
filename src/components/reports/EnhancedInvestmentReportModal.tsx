@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, Download, Copy, Check, Eye, TrendingUp, DollarSign, Home, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import jsPDF from 'jspdf';
 
 interface EnhancedInvestmentReportModalProps {
@@ -40,13 +41,19 @@ export function EnhancedInvestmentReportModal({
   const [isCopied, setIsCopied] = useState(false);
   const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isGeneratingInBackground, setIsGeneratingInBackground] = useState(false);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
 
-  const generateReport = async () => {
+  const generateReport = async (runInBackground = false) => {
     setIsGenerating(true);
     setHasStartedGeneration(true);
     setProgress(0);
+    
+    if (runInBackground) {
+      setIsGeneratingInBackground(true);
+    }
     
     try {
       // Step 1: Generate main report
@@ -76,6 +83,7 @@ export function EnhancedInvestmentReportModal({
       setReportContent(data.reportContent);
       
       // Try to fetch the saved report ID
+      let finalReportId = '';
       try {
         const { data: reports } = await supabase
           .from('investment_reports')
@@ -86,28 +94,56 @@ export function EnhancedInvestmentReportModal({
           
         if (reports && reports.length > 0) {
           setReportId(reports[0].id);
+          finalReportId = reports[0].id;
         }
       } catch (error) {
         console.log('Could not fetch report ID:', error);
       }
       
-      toast({
-        title: "Enhanced Investment Report Generated",
-        description: "Your comprehensive property analysis with location intelligence is ready.",
-      });
+      if (runInBackground) {
+        // Add notification when generated in background
+        addNotification({
+          type: 'report_generated',
+          title: 'Investment Report Ready',
+          message: `Your report for ${propertyAddress} has been generated successfully.`,
+          reportId: finalReportId
+        });
+      } else {
+        toast({
+          title: "Enhanced Investment Report Generated",
+          description: "Your comprehensive property analysis with location intelligence is ready.",
+        });
+      }
     } catch (error) {
       console.error('Report generation failed:', error);
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
-        variant: "destructive",
-      });
+      
+      if (runInBackground) {
+        addNotification({
+          type: 'report_failed',
+          title: 'Report Generation Failed',
+          message: `Failed to generate report for ${propertyAddress}. Please try again.`
+        });
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
+          variant: "destructive",
+        });
+      }
       setHasStartedGeneration(false);
     } finally {
       setIsGenerating(false);
       setProgress(0);
+      setIsGeneratingInBackground(false);
     }
   };
+
+  // Continue generation in background if modal is closed while generating
+  useEffect(() => {
+    if (!isOpen && isGenerating && !isGeneratingInBackground) {
+      setIsGeneratingInBackground(true);
+    }
+  }, [isOpen, isGenerating, isGeneratingInBackground]);
 
   const fetchEnhancedData = async () => {
     try {
@@ -799,7 +835,7 @@ export function EnhancedInvestmentReportModal({
                   Generate a comprehensive analysis including ABS demographic data, RBA economic indicators, 
                   and detailed financial projections with 10-year scenarios.
                 </p>
-                <Button onClick={generateReport} size="lg" disabled={isGenerating}>
+                <Button onClick={() => generateReport(false)} size="lg" disabled={isGenerating}>
                   Generate Enhanced Analysis
                 </Button>
               </div>
@@ -827,7 +863,7 @@ export function EnhancedInvestmentReportModal({
                     <p className="text-muted-foreground">
                       There was an error generating your enhanced report. Please try again.
                     </p>
-                    <Button onClick={generateReport} variant="outline" size="lg">
+                    <Button onClick={() => generateReport(false)} variant="outline" size="lg">
                       Try Again
                     </Button>
                   </>
