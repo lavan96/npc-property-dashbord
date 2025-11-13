@@ -295,7 +295,7 @@ Format your response as valid JSON with this structure:
           },
           {
             role: 'user',
-            content: analysisPrompt
+            content: prompt
           }
         ],
         temperature: 0.7,
