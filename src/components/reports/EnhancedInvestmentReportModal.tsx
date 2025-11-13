@@ -82,22 +82,44 @@ export function EnhancedInvestmentReportModal({
       setProgress(100);
       setReportContent(data.reportContent);
       
-      // Try to fetch the saved report ID
+      // Save the report to the database
       let finalReportId = '';
       try {
-        const { data: reports } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data: savedReport, error: saveError } = await supabase
           .from('investment_reports')
-          .select('id')
-          .eq('property_address', propertyAddress)
-          .order('created_at', { ascending: false })
-          .limit(1);
-          
-        if (reports && reports.length > 0) {
-          setReportId(reports[0].id);
-          finalReportId = reports[0].id;
+          .insert({
+            property_address: propertyAddress,
+            report_content: data.reportContent,
+            sources_content: data.sourcesContent || null,
+            location_intelligence: data.enhancedData?.locationIntelligence || null,
+            investment_score: data.enhancedData?.investmentScore || null,
+            financial_calculations: data.enhancedData?.financials || null,
+            demographics_data: data.enhancedData?.demographics || null,
+            economic_data: data.enhancedData?.economics || null,
+            generated_by: user.id
+          })
+          .select()
+          .single();
+
+        if (saveError) {
+          console.error('Failed to save report to database:', saveError);
+          throw new Error(`Database error: ${saveError.message}`);
+        }
+
+        if (savedReport) {
+          setReportId(savedReport.id);
+          finalReportId = savedReport.id;
+          console.log('Report saved successfully with ID:', savedReport.id);
         }
       } catch (error) {
-        console.log('Could not fetch report ID:', error);
+        console.error('Could not save report:', error);
+        throw new Error(error instanceof Error ? error.message : 'Failed to store report in database');
       }
       
       if (runInBackground) {
