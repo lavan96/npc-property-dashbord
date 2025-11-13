@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
+import { PropertyComparisonModal } from '@/components/reports/PropertyComparisonModal';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
 import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin } from 'lucide-react';
@@ -40,6 +41,7 @@ export default function GeneratedReports() {
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
   const [selectedInvestmentReport, setSelectedInvestmentReport] = useState<InvestmentReport | null>(null);
   const [investmentViewerOpen, setInvestmentViewerOpen] = useState(false);
+  const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -158,11 +160,15 @@ export default function GeneratedReports() {
   };
 
   const handleCompare = () => {
-    toast({
-      title: "Comparison Starting",
-      description: "Analyzing selected properties...",
-    });
-    // Will be implemented in step 2
+    if (selectedReports.length < 2) {
+      toast({
+        title: "Select More Properties",
+        description: "Please select at least 2 properties to compare.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setComparisonModalOpen(true);
   };
 
   const handleViewReport = (reportId: string) => {
@@ -413,6 +419,13 @@ export default function GeneratedReports() {
       </Tabs>
 
       <ComparisonBasket onCompare={handleCompare} />
+
+      <PropertyComparisonModal
+        isOpen={comparisonModalOpen}
+        onClose={() => setComparisonModalOpen(false)}
+        reportIds={selectedReports.map(r => r.id)}
+        propertyAddresses={selectedReports.map(r => r.property_address)}
+      />
 
       <InvestmentReportViewer
         report={selectedInvestmentReport}
