@@ -53,12 +53,12 @@ serve(async (req) => {
 
     // Structure data for AI analysis
     const propertiesData = reports.map((report, index) => {
-      // Parse JSONB fields safely
-      const investmentScore = typeof report.investment_score === 'object' ? report.investment_score : {};
-      const financials = typeof report.financial_calculations === 'object' ? report.financial_calculations : {};
-      const demographics = typeof report.demographics_data === 'object' ? report.demographics_data : {};
-      const location = typeof report.location_intelligence === 'object' ? report.location_intelligence : {};
-      const economics = typeof report.economic_data === 'object' ? report.economic_data : {};
+      // Parse JSONB fields safely (null is also typeof 'object' so we need to check for it)
+      const investmentScore = (typeof report.investment_score === 'object' && report.investment_score !== null) ? report.investment_score : {};
+      const financials = (typeof report.financial_calculations === 'object' && report.financial_calculations !== null) ? report.financial_calculations : {};
+      const demographics = (typeof report.demographics_data === 'object' && report.demographics_data !== null) ? report.demographics_data : {};
+      const location = (typeof report.location_intelligence === 'object' && report.location_intelligence !== null) ? report.location_intelligence : {};
+      const economics = (typeof report.economic_data === 'object' && report.economic_data !== null) ? report.economic_data : {};
       
       // Extract report text for analysis if structured data is missing
       const reportText = report.report_content || '';
