@@ -31,11 +31,11 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
         <AuthProvider>
-          <NotificationsProvider>
-            <SearchProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+          <BrowserRouter>
+            <NotificationsProvider>
+              <SearchProvider>
+                <Toaster />
+                <Sonner />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={
@@ -58,12 +58,12 @@ const App = () => (
                 <Route path="settings" element={<Settings />} />
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+              </SearchProvider>
+            </NotificationsProvider>
           </BrowserRouter>
-          </SearchProvider>
-        </NotificationsProvider>
-      </AuthProvider>
+        </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
