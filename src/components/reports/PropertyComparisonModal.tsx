@@ -349,7 +349,9 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                               <div className="flex items-center gap-2 mb-1">
                                 <Badge variant="outline">#{ranking.rank}</Badge>
                                 <h4 className="font-medium text-sm truncate">{ranking.address}</h4>
-                                <Badge className="ml-auto">{ranking.finalScore}/100</Badge>
+                                <Badge className="ml-auto">
+                                  {typeof ranking.finalScore === 'number' ? ranking.finalScore.toFixed(1) : ranking.finalScore}/100
+                                </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground mb-2">
                                 {ranking.bestSuitedFor}
@@ -393,7 +395,9 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                                     </CardDescription>
                                   </div>
                                 </div>
-                                <Badge className="text-lg px-3 py-1">{ranking.finalScore}/100</Badge>
+                                <Badge className="text-lg px-3 py-1">
+                                  {typeof ranking.finalScore === 'number' ? ranking.finalScore.toFixed(1) : ranking.finalScore}/100
+                                </Badge>
                               </div>
                             </CardHeader>
                             <CardContent className="space-y-4">

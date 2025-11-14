@@ -127,6 +127,7 @@ serve(async (req) => {
     const prompt = `You are an expert Australian property investment analyst comparing ${reports.length} investment properties for a client.
 
     **IMPORTANT INSTRUCTIONS:**
+    - **SCORING SCALE**: ALL finalScore values MUST be on a 0-100 scale (e.g., 85.2, not 8.5). Use the overallScore provided in the data when available.
     - Some properties may have incomplete structured data - if data is null, analyze the reportText field to extract relevant information
     - Provide a comprehensive, data-driven comparison using all available information from both structured fields and report text
     - Focus on actionable insights and clear recommendations
@@ -136,6 +137,7 @@ serve(async (req) => {
     - Use Australian property market context and terminology
     - When structured data is missing, extract key metrics and insights from the reportText field
     - If certain metrics are unavailable for a property, note this but still provide meaningful comparison based on available data
+    - **CRITICAL**: Double-check all finalScore values are 0-100 scale before submitting (typical good scores: 70-85, excellent: 85+, poor: <60)
     
     **ANALYSIS DEPTH:** ${analysisDepth}
     ${investorProfile ? `**INVESTOR PROFILE:** ${investorProfile}` : ''}
@@ -153,9 +155,10 @@ Provide a detailed comparative analysis including:
 2. OVERALL RANKINGS
    For each property, provide:
    - Final rank (1st, 2nd, 3rd, etc.)
-   - Primary strengths
-   - Primary concerns
-   - Best suited for (investor type)
+   - Final score (MUST be 0-100 scale - use the overallScore provided in data when available, or calculate based on comprehensive analysis)
+   - Primary strengths (3-5 key strengths)
+   - Primary concerns (3-5 key concerns)
+   - Best suited for (specific investor type)
 
 3. FINANCIAL PERFORMANCE COMPARISON
    - Which property offers best rental yield?
@@ -211,9 +214,9 @@ Format your response as valid JSON with this structure:
       "propertyNumber": number,
       "address": "string",
       "rank": number,
-      "finalScore": number,
-      "primaryStrengths": ["string"],
-      "primaryConcerns": ["string"],
+      "finalScore": number (CRITICAL: Must be 0-100 scale. Use overallScore from data when available, or calculate comprehensively. Example: 85.5, not 8.5),
+      "primaryStrengths": ["string", "string", "string"],
+      "primaryConcerns": ["string", "string", "string"],
       "bestSuitedFor": "string"
     }
   ],
