@@ -95,7 +95,7 @@ export function InvestmentReportGenerator() {
           property_address: propertyAddress,
           report_content: 'Generating report...',
           status: 'pending',
-          generated_by: user.id,
+          generated_by: null, // Set to null to avoid foreign key constraint issues
         })
         .select()
         .single();

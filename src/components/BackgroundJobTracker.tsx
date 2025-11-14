@@ -161,20 +161,23 @@ export function BackgroundJobTracker() {
 
     if (!report) return;
     
-    if (report.status === 'completed') {
+    // Type assertion since types file hasn't been regenerated yet
+    const reportData = report as any;
+    
+    if (reportData.status === 'completed') {
       addNotification({
         type: 'report_generated',
         title: 'Investment Report Completed',
-        message: `Your investment report for ${report.property_address} has been generated successfully.`,
-        reportId: report.id,
+        message: `Your investment report for ${reportData.property_address} has been generated successfully.`,
+        reportId: reportData.id,
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
-    } else if (report.status === 'failed') {
+    } else if (reportData.status === 'failed') {
       addNotification({
         type: 'report_failed',
         title: 'Investment Report Failed',
-        message: `Failed to generate report for ${report.property_address}. ${report.error_message || 'Please try again.'}`,
+        message: `Failed to generate report for ${reportData.property_address}. ${reportData.error_message || 'Please try again.'}`,
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
