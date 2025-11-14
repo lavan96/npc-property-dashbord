@@ -116,31 +116,46 @@ export function EnhancedInvestmentReportModal({
           throw new Error('User not authenticated');
         }
 
-        const { data: savedReport, error: saveError } = await supabase
+        // Check if a report with this exact address and content already exists recently
+        const { data: existingReport } = await supabase
           .from('investment_reports')
-          .insert({
-            property_address: propertyAddress,
-            report_content: data.reportContent,
-            sources_content: data.sourcesContent || null,
-            location_intelligence: data.enhancedData?.locationIntelligence || null,
-            investment_score: data.enhancedData?.investmentScore || null,
-            financial_calculations: data.enhancedData?.financials || null,
-            demographics_data: data.enhancedData?.demographics || null,
-            economic_data: data.enhancedData?.economics || null,
-            generated_by: user.id
-          })
-          .select()
-          .single();
+          .select('id')
+          .eq('property_address', propertyAddress)
+          .eq('generated_by', user.id)
+          .gte('created_at', new Date(Date.now() - 60000).toISOString()) // Within last 60 seconds
+          .maybeSingle();
 
-        if (saveError) {
-          console.error('Failed to save report to database:', saveError);
-          throw new Error(`Database error: ${saveError.message}`);
-        }
+        if (existingReport) {
+          console.log('Report already exists, skipping duplicate save');
+          setReportId(existingReport.id);
+          finalReportId = existingReport.id;
+        } else {
+          const { data: savedReport, error: saveError } = await supabase
+            .from('investment_reports')
+            .insert({
+              property_address: propertyAddress,
+              report_content: data.reportContent,
+              sources_content: data.sourcesContent || null,
+              location_intelligence: data.enhancedData?.locationIntelligence || null,
+              investment_score: data.enhancedData?.investmentScore || null,
+              financial_calculations: data.enhancedData?.financials || null,
+              demographics_data: data.enhancedData?.demographics || null,
+              economic_data: data.enhancedData?.economics || null,
+              generated_by: user.id
+            })
+            .select()
+            .single();
 
-        if (savedReport) {
-          setReportId(savedReport.id);
-          finalReportId = savedReport.id;
-          console.log('Report saved successfully with ID:', savedReport.id);
+          if (saveError) {
+            console.error('Failed to save report to database:', saveError);
+            throw new Error(`Database error: ${saveError.message}`);
+          }
+
+          if (savedReport) {
+            setReportId(savedReport.id);
+            finalReportId = savedReport.id;
+            console.log('Report saved successfully with ID:', savedReport.id);
+          }
         }
       } catch (error) {
         console.error('Could not save report:', error);
