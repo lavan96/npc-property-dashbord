@@ -86,7 +86,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                             <div>
                               <CardTitle className="text-base">{property.address}</CardTitle>
                               <CardDescription>
-                                Score: {property.finalScore}/100
+                                Score: {typeof property.finalScore === 'number' ? property.finalScore.toFixed(1) : property.finalScore}/100
                               </CardDescription>
                             </div>
                           </div>
