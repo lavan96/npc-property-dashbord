@@ -87,9 +87,9 @@ function calculateInvestmentScore(input: InvestmentScoringInput): InvestmentScor
 
   // Weighted scoring
   const weights = {
-    yield: 0.30,  // 30% - Cash flow is critical
-    growth: 0.25, // 25% - Capital appreciation potential
-    location: 0.20, // 20% - Location quality and amenities
+    growth: 0.30, // 30% - Capital appreciation potential
+    location: 0.25, // 25% - Location quality and amenities
+    yield: 0.20,  // 20% - Cash flow generation
     demand: 0.15, // 15% - Supply/demand dynamics
     risk: 0.10    // 10% - Risk factors
   };
