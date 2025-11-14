@@ -102,7 +102,7 @@ export function PropertyComparisonModal({
   const [runInBackground, setRunInBackground] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   
-  // Analysis parameters
+  // Analysis parameters (all optional with sensible defaults)
   const [investorProfile, setInvestorProfile] = useState<string>('general');
   const [analysisDepth, setAnalysisDepth] = useState<string>('comprehensive');
   const [timeHorizon, setTimeHorizon] = useState<string>('5-7 years');
@@ -301,11 +301,15 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         <div className="flex items-center gap-2">
                           <Settings className="h-4 w-4" />
                           <span>Analysis Settings</span>
+                          <Badge variant="secondary" className="text-xs">Optional</Badge>
                         </div>
                         <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-4 pt-4">
+                      <p className="text-xs text-muted-foreground">
+                        Customize the analysis or use defaults. All settings are optional with sensible defaults applied automatically.
+                      </p>
                       <div className="space-y-2">
                         <Label htmlFor="investor-profile">Investor Profile</Label>
                         <Select value={investorProfile} onValueChange={setInvestorProfile}>
@@ -457,6 +461,30 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     </CollapsibleContent>
                   </Collapsible>
                   
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setInvestorProfile('general');
+                        setAnalysisDepth('comprehensive');
+                        setTimeHorizon('5-7 years');
+                        setRiskTolerance('moderate');
+                        setUseCustomWeights(false);
+                        setCustomWeights({
+                          growth: 30,
+                          location: 25,
+                          yield: 20,
+                          demand: 15,
+                          risk: 10
+                        });
+                      }}
+                      className="h-7"
+                    >
+                      Reset to Defaults
+                    </Button>
+                  </div>
+                  
                   <div className="flex gap-3">
                     <Button 
                       onClick={() => startAnalysis(false)} 
@@ -529,6 +557,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         <div className="flex items-center gap-2">
                           <Settings className="h-4 w-4" />
                           <CardTitle className="text-sm">Analysis Settings</CardTitle>
+                          <Badge variant="outline" className="text-xs">Optional</Badge>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex gap-1">
@@ -543,6 +572,9 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="space-y-4 pt-0">
+                      <p className="text-xs text-muted-foreground">
+                        Adjust settings and re-run to see how different parameters affect the analysis. Changes are optional.
+                      </p>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="investor-profile-result">Investor Profile</Label>
