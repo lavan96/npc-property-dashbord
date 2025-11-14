@@ -90,7 +90,11 @@ export function InvestmentReportGenerator() {
       }
 
       // Save the report to the database
-      const { data: session } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated. Please log in to save reports.');
+      }
       
       console.log('Enhanced data structure:', data.enhancedData);
       
@@ -105,12 +109,12 @@ export function InvestmentReportGenerator() {
           financial_calculations: data.enhancedData?.financials || null,
           investment_score: data.enhancedData?.investmentScore || null,
           location_intelligence: data.enhancedData?.locationIntelligence || null,
-          generated_by: session?.session?.user?.id || null,
+          generated_by: user.id,
         });
 
       if (insertError) {
         console.error('Error saving report:', insertError);
-        throw new Error('Report generated but failed to save to database');
+        throw new Error(`Failed to save report: ${insertError.message || 'Database error'}`);
       }
 
       setGeneratedReport(data.reportContent);
