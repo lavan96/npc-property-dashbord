@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Notification {
   id: string;
@@ -24,61 +25,128 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'property_intel_notifications';
-
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const navigate = useNavigate();
 
-  // Load notifications from localStorage on mount
+  // Load notifications from Supabase on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        // Convert timestamp strings back to Date objects
-        const notificationsWithDates = parsed.map((n: any) => ({
+    fetchNotifications();
+    
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications'
+        },
+        () => {
+          // Refetch all notifications when any change occurs
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      if (data) {
+        const notificationsWithDates = data.map((n: any) => ({
           ...n,
+          reportId: n.report_id,
           timestamp: new Date(n.timestamp)
         }));
         setNotifications(notificationsWithDates);
-      } catch (error) {
-        console.error('Failed to parse notifications:', error);
       }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
     }
-  }, []);
-
-  // Save notifications to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-  }, [notifications]);
-
-  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: `notif_${Date.now()}_${Math.random()}`,
-      timestamp: new Date(),
-      read: false
-    };
-    setNotifications(prev => [newNotification, ...prev].slice(0, 50)); // Keep max 50 notifications
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
+  const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          report_id: notification.reportId || null,
+          read: false
+        });
+
+      if (error) throw error;
+      // Real-time subscription will handle updating the UI
+    } catch (error) {
+      console.error('Failed to add notification:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markAsRead = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const clearNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const markAllAsRead = async () => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('read', false);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
+  const clearNotification = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to clear notification:', error);
+    }
+  };
+
+  const clearAll = async () => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error);
+    }
   };
 
   const handleNotificationClick = (notification: Notification) => {
