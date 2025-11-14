@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,7 +34,8 @@ serve(async (req) => {
       });
     }
     
-    const { propertyAddress, propertyDetails } = requestBody;
+    const { reportId, propertyAddress, propertyDetails } = requestBody;
+    console.log('Report ID:', reportId);
     console.log('Property address:', propertyAddress);
     
     if (!propertyAddress) {
@@ -45,6 +47,24 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Initialize Supabase client for database updates
+    let supabaseClient = null;
+    if (reportId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (supabaseUrl && supabaseKey) {
+        supabaseClient = createClient(supabaseUrl, supabaseKey);
+        
+        // Update status to processing
+        await supabaseClient
+          .from('investment_reports')
+          .update({ status: 'processing' })
+          .eq('id', reportId);
+        
+        console.log('Updated report status to processing');
+      }
     }
 
     // Check for Perplexity API key
@@ -1492,7 +1512,31 @@ Always conduct your own research and due diligence to ensure that any property t
     // Append contact details and disclaimer to report content
     reportContent = reportContent + contactAndDisclaimer;
 
-    // Database save will be handled client-side
+    // Update database if reportId provided
+    if (reportId && supabaseClient) {
+      console.log('Updating report in database with ID:', reportId);
+      const { error: updateError } = await supabaseClient
+        .from('investment_reports')
+        .update({
+          report_content: reportContent,
+          sources_content: sourcesContent,
+          demographics_data: enhancedData.demographics || null,
+          economic_data: enhancedData.economics || null,
+          financial_calculations: enhancedData.financials || null,
+          investment_score: enhancedData.investmentScore || null,
+          location_intelligence: enhancedData.locationIntelligence || null,
+          status: 'completed'
+        })
+        .eq('id', reportId);
+
+      if (updateError) {
+        console.error('Error updating report:', updateError);
+        throw new Error(`Failed to save report: ${updateError.message}`);
+      }
+      
+      console.log('Report successfully updated in database');
+    }
+
     console.log('Report generation complete, returning response');
 
     // Return successful response
@@ -1520,6 +1564,28 @@ Always conduct your own research and due diligence to ensure that any property t
   } catch (error: any) {
     console.error('Error in generate-investment-report function:', error);
     console.error('Error stack:', error?.stack);
+    
+    // Update report status to failed if reportId provided
+    if (requestBody?.reportId) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        if (supabaseUrl && supabaseKey) {
+          const supabaseClient = createClient(supabaseUrl, supabaseKey);
+          await supabaseClient
+            .from('investment_reports')
+            .update({ 
+              status: 'failed',
+              error_message: error?.message || 'An unexpected error occurred'
+            })
+            .eq('id', requestBody.reportId);
+          
+          console.log('Updated report status to failed');
+        }
+      } catch (updateError) {
+        console.error('Error updating report status to failed:', updateError);
+      }
+    }
     
     const errorResponse = { 
       error: error?.message || 'An unexpected error occurred',
