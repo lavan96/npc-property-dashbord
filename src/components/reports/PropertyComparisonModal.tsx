@@ -10,10 +10,12 @@ import { Separator } from '@/components/ui/separator';
 import { 
   Loader2, Download, Copy, Check, TrendingUp, TrendingDown, 
   DollarSign, MapPin, AlertTriangle, Trophy, Target, Home,
-  CheckCircle2, XCircle, AlertCircle, ChevronRight
+  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { addBackgroundJob } from '@/components/BackgroundJobTracker';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface PropertyComparisonModalProps {
   isOpen: boolean;
@@ -93,9 +95,12 @@ export function PropertyComparisonModal({
   const [comparisonId, setComparisonId] = useState<string>('');
   const [isCopied, setIsCopied] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [runInBackground, setRunInBackground] = useState(false);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
-  const startAnalysis = async () => {
+  const startAnalysis = async (background = false) => {
+    setRunInBackground(background);
     setIsAnalyzing(true);
     setHasStarted(true);
     setProgress(10);
@@ -124,10 +129,25 @@ export function PropertyComparisonModal({
       setComparisonId(data.comparisonId);
       setProgress(100);
 
-      toast({
-        title: "Comparison Complete",
-        description: `Successfully analyzed ${reportIds.length} properties`,
-      });
+      if (background) {
+        addBackgroundJob({
+          id: data.comparisonId,
+          type: 'comparison_analysis'
+        });
+        
+        addNotification({
+          type: 'info',
+          title: 'Comparison Analysis Started',
+          message: 'Your comparison is processing in the background. We\'ll notify you when it\'s ready.'
+        });
+        
+        onClose();
+      } else {
+        toast({
+          title: "Comparison Complete",
+          description: `Successfully analyzed ${reportIds.length} properties`,
+        });
+      }
 
     } catch (error) {
       console.error('Comparison error:', error);
@@ -205,7 +225,11 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && !isAnalyzing) {
+        onClose();
+      }
+    }}>
       <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -238,9 +262,15 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                       </div>
                     ))}
                   </div>
-                  <Button onClick={startAnalysis} size="lg" className="w-full">
-                    Start Comparison Analysis
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button onClick={() => startAnalysis(false)} size="lg" className="flex-1">
+                      Start Analysis
+                    </Button>
+                    <Button onClick={() => startAnalysis(true)} variant="outline" size="lg" className="flex-1">
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Run in Background
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
