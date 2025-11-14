@@ -1,0 +1,117 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    console.log('Starting comparison score migration...');
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch all comparisons
+    const { data: comparisons, error: fetchError } = await supabase
+      .from('property_comparisons')
+      .select('id, rankings');
+
+    if (fetchError) {
+      console.error('Error fetching comparisons:', fetchError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch comparisons' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!comparisons || comparisons.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: 'No comparisons found',
+          migrated: 0
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Found ${comparisons.length} comparisons to check`);
+
+    let migratedCount = 0;
+    let skippedCount = 0;
+    const errors: string[] = [];
+
+    // Process each comparison
+    for (const comparison of comparisons) {
+      try {
+        if (!comparison.rankings || !Array.isArray(comparison.rankings)) {
+          skippedCount++;
+          continue;
+        }
+
+        let needsUpdate = false;
+        const updatedRankings = comparison.rankings.map((ranking: any) => {
+          // Check if finalScore is on 0-10 scale (less than 15 is suspicious)
+          if (typeof ranking.finalScore === 'number' && ranking.finalScore < 15) {
+            console.log(`Migrating score for comparison ${comparison.id}, property ${ranking.propertyNumber}: ${ranking.finalScore} → ${ranking.finalScore * 10}`);
+            needsUpdate = true;
+            return {
+              ...ranking,
+              finalScore: ranking.finalScore * 10 // Convert 0-10 to 0-100
+            };
+          }
+          return ranking;
+        });
+
+        if (needsUpdate) {
+          const { error: updateError } = await supabase
+            .from('property_comparisons')
+            .update({ rankings: updatedRankings })
+            .eq('id', comparison.id);
+
+          if (updateError) {
+            console.error(`Error updating comparison ${comparison.id}:`, updateError);
+            errors.push(`${comparison.id}: ${updateError.message}`);
+          } else {
+            migratedCount++;
+            console.log(`✅ Migrated comparison ${comparison.id}`);
+          }
+        } else {
+          skippedCount++;
+        }
+      } catch (err) {
+        console.error(`Error processing comparison ${comparison.id}:`, err);
+        errors.push(`${comparison.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }
+
+    console.log(`Migration complete: ${migratedCount} migrated, ${skippedCount} skipped`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        totalProcessed: comparisons.length,
+        migrated: migratedCount,
+        skipped: skippedCount,
+        errors: errors.length > 0 ? errors : undefined
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Migration error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        success: false
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

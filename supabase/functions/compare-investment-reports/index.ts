@@ -66,7 +66,7 @@ serve(async (req) => {
       return {
         propertyNumber: index + 1,
         address: report.property_address,
-        reportText: reportText.substring(0, 5000), // First 5000 chars for context
+        reportText: reportText, // Full report content for comprehensive analysis
         
         // Investment Scoring
         overallScore: investmentScore.totalScore || null,
