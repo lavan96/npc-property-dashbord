@@ -602,97 +602,104 @@ ${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not
 2. ${analysisMode === 'address' ? `Use the EXACT property address "${formattedInput}" in ALL research queries and throughout the report` : `Focus the analysis on "${formattedInput}"`}
 3. This property address MUST appear prominently in the Location Overview section
 4. All market data, comparables, and analysis MUST be relevant to this specific ${analysisMode === 'address' ? 'property address' : 'location'}
+5. **CRITICAL DATA HANDLING RULE: If any data point is unavailable, missing, or marked as "N/A", completely OMIT that metric or section from the report. DO NOT show placeholders like "N/A", "not available", "data unavailable", or similar text. Only include sections and metrics where actual data exists.**
 
 ${enhancedData.demographics ? `
-DEMOGRAPHIC DATA AVAILABLE:
-- Population: ${enhancedData.demographics.population?.total || 'N/A'}
-- Median Household Income: $${enhancedData.demographics.income?.medianHouseholdIncome || 'N/A'}
-- Unemployment Rate: ${enhancedData.demographics.income?.unemploymentRate || 'N/A'}%
-- Owner-Occupier Rate: ${enhancedData.demographics.housing?.ownerOccupierRate || 'N/A'}%
-- Labor Force Participation: ${enhancedData.demographics.employment?.laborForceParticipation || 'N/A'}%
+DEMOGRAPHIC DATA AVAILABLE (Only include metrics with actual values):
+${enhancedData.demographics.population?.total ? `- Population: ${enhancedData.demographics.population.total}` : ''}
+${enhancedData.demographics.income?.medianHouseholdIncome ? `- Median Household Income: $${enhancedData.demographics.income.medianHouseholdIncome}` : ''}
+${enhancedData.demographics.income?.unemploymentRate ? `- Unemployment Rate: ${enhancedData.demographics.income.unemploymentRate}%` : ''}
+${enhancedData.demographics.housing?.ownerOccupierRate ? `- Owner-Occupier Rate: ${enhancedData.demographics.housing.ownerOccupierRate}%` : ''}
+${enhancedData.demographics.employment?.laborForceParticipation ? `- Labor Force Participation: ${enhancedData.demographics.employment.laborForceParticipation}%` : ''}
 ` : ''}
 
 ${enhancedData.economics ? `
-ECONOMIC DATA AVAILABLE:
-- Current Cash Rate: ${enhancedData.economics.cashRate?.current || 'N/A'}%
-- Annual Inflation: ${enhancedData.economics.inflation?.annual || 'N/A'}%
-- GDP Growth: ${enhancedData.economics.indicators?.gdpGrowth || 'N/A'}%
-- National Unemployment: ${enhancedData.economics.indicators?.unemploymentRate || 'N/A'}%
-- House Price Growth: ${enhancedData.economics.indicators?.housePriceGrowth || 'N/A'}%
+ECONOMIC DATA AVAILABLE (Only include metrics with actual values):
+${enhancedData.economics.cashRate?.current ? `- Current Cash Rate: ${enhancedData.economics.cashRate.current}%` : ''}
+${enhancedData.economics.inflation?.annual ? `- Annual Inflation: ${enhancedData.economics.inflation.annual}%` : ''}
+${enhancedData.economics.indicators?.gdpGrowth ? `- GDP Growth: ${enhancedData.economics.indicators.gdpGrowth}%` : ''}
+${enhancedData.economics.indicators?.unemploymentRate ? `- National Unemployment: ${enhancedData.economics.indicators.unemploymentRate}%` : ''}
+${enhancedData.economics.indicators?.housePriceGrowth ? `- House Price Growth: ${enhancedData.economics.indicators.housePriceGrowth}%` : ''}
 ` : ''}
 
 ${enhancedData.financials ? `
-FINANCIAL CALCULATIONS AVAILABLE:
+FINANCIAL CALCULATIONS AVAILABLE (Only include metrics with actual values):
 KEY METRICS:
-- Property Value: $${enhancedData.financials.initialCosts?.propertyValue || 'N/A'}
-- Deposit: $${enhancedData.financials.initialCosts?.deposit || 'N/A'}
-- Loan Amount: $${enhancedData.financials.initialCosts?.loanAmount || 'N/A'}
-- Stamp Duty: $${enhancedData.financials.initialCosts?.stampDuty || 'N/A'}
-- Total Upfront Costs: $${enhancedData.financials.initialCosts?.totalUpfront || 'N/A'}
-- Monthly Loan Payment: $${Math.round(enhancedData.financials.loanDetails?.monthlyPayment || 0)}
-- Total Interest (30yr): $${Math.round(enhancedData.financials.loanDetails?.totalInterest || 0)}
-- Gross Rental Yield: ${enhancedData.financials.keyMetrics?.grossRentalYield || 'N/A'}%
-- Net Rental Yield: ${enhancedData.financials.keyMetrics?.netRentalYield || 'N/A'}%
-- Weekly Net Cash Flow: $${enhancedData.financials.keyMetrics?.weeklyNet || 'N/A'}
-- Annual Net Cash Flow: $${enhancedData.financials.keyMetrics?.annualNet || 'N/A'}
-- Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics?.lvr || 'N/A'}%
-- Cash on Cash Return: ${enhancedData.financials.keyMetrics?.cashOnCashReturn || 'N/A'}%
+${enhancedData.financials.initialCosts?.propertyValue ? `- Property Value: $${enhancedData.financials.initialCosts.propertyValue}` : ''}
+${enhancedData.financials.initialCosts?.deposit ? `- Deposit: $${enhancedData.financials.initialCosts.deposit}` : ''}
+${enhancedData.financials.initialCosts?.loanAmount ? `- Loan Amount: $${enhancedData.financials.initialCosts.loanAmount}` : ''}
+${enhancedData.financials.initialCosts?.stampDuty ? `- Stamp Duty: $${enhancedData.financials.initialCosts.stampDuty}` : ''}
+${enhancedData.financials.initialCosts?.totalUpfront ? `- Total Upfront Costs: $${enhancedData.financials.initialCosts.totalUpfront}` : ''}
+${enhancedData.financials.loanDetails?.monthlyPayment ? `- Monthly Loan Payment: $${Math.round(enhancedData.financials.loanDetails.monthlyPayment)}` : ''}
+${enhancedData.financials.loanDetails?.totalInterest ? `- Total Interest (30yr): $${Math.round(enhancedData.financials.loanDetails.totalInterest)}` : ''}
+${enhancedData.financials.keyMetrics?.grossRentalYield ? `- Gross Rental Yield: ${enhancedData.financials.keyMetrics.grossRentalYield}%` : ''}
+${enhancedData.financials.keyMetrics?.netRentalYield ? `- Net Rental Yield: ${enhancedData.financials.keyMetrics.netRentalYield}%` : ''}
+${enhancedData.financials.keyMetrics?.weeklyNet ? `- Weekly Net Cash Flow: $${enhancedData.financials.keyMetrics.weeklyNet}` : ''}
+${enhancedData.financials.keyMetrics?.annualNet ? `- Annual Net Cash Flow: $${enhancedData.financials.keyMetrics.annualNet}` : ''}
+${enhancedData.financials.keyMetrics?.lvr ? `- Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics.lvr}%` : ''}
+${enhancedData.financials.keyMetrics?.cashOnCashReturn ? `- Cash on Cash Return: ${enhancedData.financials.keyMetrics.cashOnCashReturn}%` : ''}
 
-ANNUAL COSTS (ALL AMOUNTS IN AUD):
-- Council Rates: $${enhancedData.financials.annualCosts?.councilRates || 'N/A'}
-- Water Rates: $${enhancedData.financials.annualCosts?.waterRates || 'N/A'}
-- Insurance: $${enhancedData.financials.annualCosts?.landlordInsurance || 'N/A'}
-- Property Management: $${enhancedData.financials.annualCosts?.propertyManagement || 'N/A'}
+ANNUAL COSTS (Only include costs with actual values):
+${enhancedData.financials.annualCosts?.councilRates ? `- Council Rates: $${enhancedData.financials.annualCosts.councilRates}` : ''}
+${enhancedData.financials.annualCosts?.waterRates ? `- Water Rates: $${enhancedData.financials.annualCosts.waterRates}` : ''}
+${enhancedData.financials.annualCosts?.landlordInsurance ? `- Insurance: $${enhancedData.financials.annualCosts.landlordInsurance}` : ''}
+${enhancedData.financials.annualCosts?.propertyManagement ? `- Property Management: $${enhancedData.financials.annualCosts.propertyManagement}` : ''}
 - Maintenance: $1,500 AUD (FIXED - USE THIS EXACT AMOUNT IN ALL CALCULATIONS)
-- Land Tax: $${enhancedData.financials.annualCosts?.landTax || 'N/A'}
+${enhancedData.financials.annualCosts?.landTax ? `- Land Tax: $${enhancedData.financials.annualCosts.landTax}` : ''}
 
-10-YEAR PROJECTIONS (Use these exact numbers in your report):
-${enhancedData.financials.projections ? `
-Conservative Scenario (${enhancedData.financials.projections.conservative?.[0] ? '2% capital, 2% rent growth' : 'N/A'}):
-${enhancedData.financials.projections.conservative?.slice(0, 10).map((p: any, i: number) => 
-  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || 'N/A'}, Equity $${p.equity?.toLocaleString() || 'N/A'}, Cash Flow $${p.cashFlow?.toLocaleString() || 'N/A'}, ROI ${p.roi || 'N/A'}%`
-).join('\n') || 'N/A'}
 
-Moderate Scenario (${enhancedData.financials.projections.moderate?.[0] ? '4% capital, 3% rent growth' : 'N/A'}):
-${enhancedData.financials.projections.moderate?.slice(0, 10).map((p: any, i: number) => 
-  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || 'N/A'}, Equity $${p.equity?.toLocaleString() || 'N/A'}, Cash Flow $${p.cashFlow?.toLocaleString() || 'N/A'}, ROI ${p.roi || 'N/A'}%`
-).join('\n') || 'N/A'}
+10-YEAR PROJECTIONS (Only include scenarios with actual data):
+${enhancedData.financials.projections?.conservative?.[0] ? `
+Conservative Scenario (2% capital, 2% rent growth):
+${enhancedData.financials.projections.conservative.slice(0, 10).map((p: any, i: number) => 
+  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || '0'}, Equity $${p.equity?.toLocaleString() || '0'}, Cash Flow $${p.cashFlow?.toLocaleString() || '0'}, ROI ${p.roi || '0'}%`
+).join('\n')}
+` : ''}
+${enhancedData.financials.projections?.moderate?.[0] ? `
+Moderate Scenario (4% capital, 3% rent growth):
+${enhancedData.financials.projections.moderate.slice(0, 10).map((p: any, i: number) => 
+  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || '0'}, Equity $${p.equity?.toLocaleString() || '0'}, Cash Flow $${p.cashFlow?.toLocaleString() || '0'}, ROI ${p.roi || '0'}%`
+).join('\n')}
+` : ''}
+${enhancedData.financials.projections?.optimistic?.[0] ? `
+Optimistic Scenario (6% capital, 4% rent growth):
+${enhancedData.financials.projections.optimistic.slice(0, 10).map((p: any, i: number) => 
+  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || '0'}, Equity $${p.equity?.toLocaleString() || '0'}, Cash Flow $${p.cashFlow?.toLocaleString() || '0'}, ROI ${p.roi || '0'}%`
+).join('\n')}
+` : ''}
 
-Optimistic Scenario (${enhancedData.financials.projections.optimistic?.[0] ? '6% capital, 4% rent growth' : 'N/A'}):
-${enhancedData.financials.projections.optimistic?.slice(0, 10).map((p: any, i: number) => 
-  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || 'N/A'}, Equity $${p.equity?.toLocaleString() || 'N/A'}, Cash Flow $${p.cashFlow?.toLocaleString() || 'N/A'}, ROI ${p.roi || 'N/A'}%`
-).join('\n') || 'N/A'}
-` : 'Projection data not available'}
-
-SENSITIVITY ANALYSIS:
 ${enhancedData.financials.sensitivityAnalysis ? `
+SENSITIVITY ANALYSIS:
+${enhancedData.financials.sensitivityAnalysis?.interestRateUp ? `
 Interest Rate +1% (${(parseFloat(propertyDetails?.interestRate || '6.5') + 1).toFixed(1)}%):
-- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateUp?.monthlyPayment || 0)}
-- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateUp?.weeklyNet || 0)}
-- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateUp?.annualNet || 0)}
-
+- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateUp.monthlyPayment)}
+- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateUp.weeklyNet)}
+- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateUp.annualNet)}
+` : ''}
+${enhancedData.financials.sensitivityAnalysis?.interestRateDown ? `
 Interest Rate -1% (${(parseFloat(propertyDetails?.interestRate || '6.5') - 1).toFixed(1)}%):
-- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateDown?.monthlyPayment || 0)}
-- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateDown?.weeklyNet || 0)}
-- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis?.interestRateDown?.annualNet || 0)}
-` : 'Sensitivity analysis not available'}
+- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateDown.monthlyPayment)}
+- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateDown.weeklyNet)}
+- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateDown.annualNet)}
+` : ''}
+` : ''}
 
 IMPORTANT: Use these exact calculated values in your "Financial Analysis" and "10-Year Projection Scenarios" sections. Do not recalculate - these are professionally calculated projections.
 ` : ''}
 
 ${enhancedData.domainData ? `
-DOMAIN MARKET DATA (FROM DOMAIN API - USE INSTEAD OF ESTIMATING):
-- Median House Price: $${enhancedData.domainData.medianSoldPrice?.toLocaleString() || 'Data unavailable'}
-- Number of Sales: ${enhancedData.domainData.numberSold || 'Data unavailable'}
-- Median Weekly Rent: $${enhancedData.domainData.medianRentListingPrice || 'Data unavailable'}
-- Days on Market: ${enhancedData.domainData.daysOnMarket || 'Data unavailable'} days
-- Auction Clearance Rate: ${enhancedData.domainData.auctionClearanceRate || 'Data unavailable'}%
-- Annual Price Growth: ${enhancedData.domainData.annualGrowth || 'Data unavailable'}%
-- Rental Yield: ${enhancedData.domainData.rentalYield?.toFixed(2) || 'Data unavailable'}%
+DOMAIN MARKET DATA (FROM DOMAIN API - Only include metrics with actual values):
+${enhancedData.domainData.medianSoldPrice ? `- Median House Price: $${enhancedData.domainData.medianSoldPrice.toLocaleString()}` : ''}
+${enhancedData.domainData.numberSold ? `- Number of Sales: ${enhancedData.domainData.numberSold}` : ''}
+${enhancedData.domainData.medianRentListingPrice ? `- Median Weekly Rent: $${enhancedData.domainData.medianRentListingPrice}` : ''}
+${enhancedData.domainData.daysOnMarket ? `- Days on Market: ${enhancedData.domainData.daysOnMarket} days` : ''}
+${enhancedData.domainData.auctionClearanceRate ? `- Auction Clearance Rate: ${enhancedData.domainData.auctionClearanceRate}%` : ''}
+${enhancedData.domainData.annualGrowth ? `- Annual Price Growth: ${enhancedData.domainData.annualGrowth}%` : ''}
+${enhancedData.domainData.rentalYield ? `- Rental Yield: ${enhancedData.domainData.rentalYield.toFixed(2)}%` : ''}
 - Data Source: ${enhancedData.domainData.dataSource}
 - Last Updated: ${enhancedData.domainData.lastUpdated}
 
-CRITICAL: These are REAL MARKET VALUES from Domain API. Use them to replace any generic market data in your "Market KPIs" and "Comparable Market Evidence" sections. Do not make up comparable sales - state that specific comparable sales require further local agent research if not available.
+CRITICAL: These are REAL MARKET VALUES from Domain API. Use them to replace any generic market data in your "Market KPIs" and "Comparable Market Evidence" sections. Only include metrics with actual values. Do not make up comparable sales - state that specific comparable sales require further local agent research if not available.
 ` : ''}
 
 ${enhancedData.riskAssessment ? `
@@ -724,197 +731,184 @@ Climate Risk:
 ` : ''}
 
 ${enhancedData.locationIntelligence ? `
-LOCATION INTELLIGENCE AVAILABLE (Use these specific details in your report):
-WALKABILITY & ACCESS:
-- Walk Score: ${enhancedData.locationIntelligence.walkScore || 'N/A'}/100
-- CBD Commute: ${enhancedData.locationIntelligence.commute?.durationMinutes || 'N/A'} minutes via ${enhancedData.locationIntelligence.commute?.mode || 'transit'} (${enhancedData.locationIntelligence.commute?.distanceKm || 'N/A'}km)
+LOCATION INTELLIGENCE AVAILABLE (Only include sections with actual data):
+${enhancedData.locationIntelligence.walkScore ? `WALKABILITY & ACCESS:
+- Walk Score: ${enhancedData.locationIntelligence.walkScore}/100` : ''}
+${enhancedData.locationIntelligence.commute?.durationMinutes ? `- CBD Commute: ${enhancedData.locationIntelligence.commute.durationMinutes} minutes via ${enhancedData.locationIntelligence.commute.mode || 'transit'}${enhancedData.locationIntelligence.commute.distanceKm ? ` (${enhancedData.locationIntelligence.commute.distanceKm}km)` : ''}` : ''}
 
-PUBLIC TRANSPORT ${enhancedData.locationIntelligence.transport?.qualityScore ? `(Quality Score: ${enhancedData.locationIntelligence.transport.qualityScore}/100)` : ''}:
-${enhancedData.locationIntelligence.transport?.qualityScore ? `
-${enhancedData.locationIntelligence.transport?.summary || ''}
+${enhancedData.locationIntelligence.transport?.qualityScore ? `PUBLIC TRANSPORT (Quality Score: ${enhancedData.locationIntelligence.transport.qualityScore}/100):
+${enhancedData.locationIntelligence.transport.summary || ''}
 
 TRANSPORT DETAILS:
-- Nearest Stop: ${enhancedData.locationIntelligence.transport?.nearestStop || 'N/A'} (${enhancedData.locationIntelligence.transport?.distanceToStop || 'N/A'}m away)
-- Stops Within 1km: ${enhancedData.locationIntelligence.transport?.stopsWithin1km || 'N/A'}
-- Transport Types Available: ${enhancedData.locationIntelligence.transport?.transportTypes?.join(', ') || 'N/A'}
-- Service Frequency:
-  Peak Hour: ${enhancedData.locationIntelligence.transport?.serviceFrequency?.peak || 'N/A'} services/hour
-  Off-Peak: ${enhancedData.locationIntelligence.transport?.serviceFrequency?.offPeak || 'N/A'} services/hour
-${enhancedData.locationIntelligence.transport?.routeCoverage?.length > 0 ? `
-- Route Coverage:
+${enhancedData.locationIntelligence.transport.nearestStop ? `- Nearest Stop: ${enhancedData.locationIntelligence.transport.nearestStop}${enhancedData.locationIntelligence.transport.distanceToStop ? ` (${enhancedData.locationIntelligence.transport.distanceToStop}m away)` : ''}` : ''}
+${enhancedData.locationIntelligence.transport.stopsWithin1km ? `- Stops Within 1km: ${enhancedData.locationIntelligence.transport.stopsWithin1km}` : ''}
+${enhancedData.locationIntelligence.transport.transportTypes?.length ? `- Transport Types Available: ${enhancedData.locationIntelligence.transport.transportTypes.join(', ')}` : ''}
+${enhancedData.locationIntelligence.transport.serviceFrequency ? `- Service Frequency:
+  Peak Hour: ${enhancedData.locationIntelligence.transport.serviceFrequency.peak} services/hour
+  Off-Peak: ${enhancedData.locationIntelligence.transport.serviceFrequency.offPeak} services/hour` : ''}
+${enhancedData.locationIntelligence.transport.routeCoverage?.length > 0 ? `- Route Coverage:
 ${enhancedData.locationIntelligence.transport.routeCoverage.map((r: any) => `  * ${r.route} (${r.type}): ${r.frequency} services/hour`).join('\n')}` : ''}
-- Accessibility: ${enhancedData.locationIntelligence.transport?.accessibility?.wheelchairAccessible ? 'Wheelchair accessible' : 'Standard access'}${enhancedData.locationIntelligence.transport?.accessibility?.lifts ? ', Lifts available' : ''}${enhancedData.locationIntelligence.transport?.accessibility?.tactilePaving ? ', Tactile paving' : ''}
-${enhancedData.locationIntelligence.transport?.realTimeAlerts?.length > 0 ? `
-- Current Service Alerts: ${enhancedData.locationIntelligence.transport.realTimeAlerts.join('; ')}` : ''}
-${enhancedData.locationIntelligence.transport?.detailedStops?.length > 0 ? `
-- Nearby Stops Detail:
+${enhancedData.locationIntelligence.transport.accessibility ? `- Accessibility: ${enhancedData.locationIntelligence.transport.accessibility.wheelchairAccessible ? 'Wheelchair accessible' : 'Standard access'}${enhancedData.locationIntelligence.transport.accessibility.lifts ? ', Lifts available' : ''}${enhancedData.locationIntelligence.transport.accessibility.tactilePaving ? ', Tactile paving' : ''}` : ''}
+${enhancedData.locationIntelligence.transport.realTimeAlerts?.length > 0 ? `- Current Service Alerts: ${enhancedData.locationIntelligence.transport.realTimeAlerts.join('; ')}` : ''}
+${enhancedData.locationIntelligence.transport.detailedStops?.length > 0 ? `- Nearby Stops Detail:
 ${enhancedData.locationIntelligence.transport.detailedStops.slice(0, 5).map((s: any) => `  * ${s.name} (${s.type}): ${s.distance}m away, Routes: ${s.routes?.join(', ') || 'N/A'}`).join('\n')}` : ''}
-` : `
-- Nearest Station: ${enhancedData.locationIntelligence.transport?.nearestStation || 'N/A'}
-- Distance to Station: ${enhancedData.locationIntelligence.transport?.distanceToStation || 'N/A'}km
+` : `${enhancedData.locationIntelligence.transport?.nearestStation ? `PUBLIC TRANSPORT:
+- Nearest Station: ${enhancedData.locationIntelligence.transport.nearestStation}` : ''}
+${enhancedData.locationIntelligence.transport?.distanceToStation ? `- Distance to Station: ${enhancedData.locationIntelligence.transport.distanceToStation}km` : ''}`}
 - Stations Within 2km: ${enhancedData.locationIntelligence.transport?.stationsWithin2km || 'N/A'}
 `}
 
-EDUCATION:
-- Nearest School: ${enhancedData.locationIntelligence.schools?.nearestSchool || 'N/A'} (${enhancedData.locationIntelligence.schools?.distanceToSchool || 'N/A'}km away)
-- Schools Within 3km: ${enhancedData.locationIntelligence.schools?.schoolsWithin3km || 'N/A'}
-${enhancedData.locationIntelligence.schools?.topSchools?.length > 0 ? `- Top Schools Nearby:
+${enhancedData.locationIntelligence.schools ? `EDUCATION:
+${enhancedData.locationIntelligence.schools.nearestSchool ? `- Nearest School: ${enhancedData.locationIntelligence.schools.nearestSchool}${enhancedData.locationIntelligence.schools.distanceToSchool ? ` (${enhancedData.locationIntelligence.schools.distanceToSchool}km away)` : ''}` : ''}
+${enhancedData.locationIntelligence.schools.schoolsWithin3km ? `- Schools Within 3km: ${enhancedData.locationIntelligence.schools.schoolsWithin3km}` : ''}
+${enhancedData.locationIntelligence.schools.topSchools?.length > 0 ? `- Top Schools Nearby:
 ${enhancedData.locationIntelligence.schools.topSchools.map((s: any) => `  * ${s.name} - ${s.distance}km away (Rating: ${s.rating}/5)`).join('\n')}` : ''}
-
-HEALTHCARE:
-- Nearest Hospital: ${enhancedData.locationIntelligence.healthcare?.nearestHospital || 'N/A'} (${enhancedData.locationIntelligence.healthcare?.distanceToHospital || 'N/A'}km away)
-- Healthcare Facilities Within 5km: ${enhancedData.locationIntelligence.healthcare?.facilitiesWithin5km || 'N/A'}
-
-LIFESTYLE & AMENITIES:
-- Shopping Centers: ${enhancedData.locationIntelligence.lifestyle?.shoppingCenters || 'N/A'}
-- Nearest Shopping: ${enhancedData.locationIntelligence.lifestyle?.nearestShopping || 'N/A'}
-- Parks & Recreation Areas: ${enhancedData.locationIntelligence.lifestyle?.parks || 'N/A'}
-- Nearest Park: ${enhancedData.locationIntelligence.lifestyle?.nearestPark || 'N/A'}
-- Restaurants & Cafes: ${enhancedData.locationIntelligence.lifestyle?.restaurants || 'N/A'}
-
-AMENITY SCORES BY CATEGORY:
-${enhancedData.locationIntelligence.amenities?.map((a: any) => 
+` : ''}
+${enhancedData.locationIntelligence.healthcare ? `HEALTHCARE:
+${enhancedData.locationIntelligence.healthcare.nearestHospital ? `- Nearest Hospital: ${enhancedData.locationIntelligence.healthcare.nearestHospital}${enhancedData.locationIntelligence.healthcare.distanceToHospital ? ` (${enhancedData.locationIntelligence.healthcare.distanceToHospital}km away)` : ''}` : ''}
+${enhancedData.locationIntelligence.healthcare.facilitiesWithin5km ? `- Healthcare Facilities Within 5km: ${enhancedData.locationIntelligence.healthcare.facilitiesWithin5km}` : ''}
+` : ''}
+${enhancedData.locationIntelligence.lifestyle ? `LIFESTYLE & AMENITIES:
+${enhancedData.locationIntelligence.lifestyle.shoppingCenters ? `- Shopping Centers: ${enhancedData.locationIntelligence.lifestyle.shoppingCenters}` : ''}
+${enhancedData.locationIntelligence.lifestyle.nearestShopping ? `- Nearest Shopping: ${enhancedData.locationIntelligence.lifestyle.nearestShopping}` : ''}
+${enhancedData.locationIntelligence.lifestyle.parks ? `- Parks & Recreation Areas: ${enhancedData.locationIntelligence.lifestyle.parks}` : ''}
+${enhancedData.locationIntelligence.lifestyle.nearestPark ? `- Nearest Park: ${enhancedData.locationIntelligence.lifestyle.nearestPark}` : ''}
+${enhancedData.locationIntelligence.lifestyle.restaurants ? `- Restaurants & Cafes: ${enhancedData.locationIntelligence.lifestyle.restaurants}` : ''}
+` : ''}
+${enhancedData.locationIntelligence.amenities?.length > 0 ? `AMENITY SCORES BY CATEGORY:
+${enhancedData.locationIntelligence.amenities.map((a: any) => 
   `- ${a.category}: ${a.count} facilities, nearest "${a.nearest}" at ${a.distance}km (Score: ${a.score}/100)`
-).join('\n') || 'N/A'}
+).join('\n')}
 
 IMPORTANT: Include these specific amenity counts, distances, and scores in your "Infrastructure & Amenities" section. Use the actual facility names and distances provided.
+` : ''}
 ` : ''}
 
 ${enhancedData.investmentScore ? `
 INVESTMENT SCORE CALCULATED (USE THESE VALUES IN YOUR REPORT):
-- Total Score: ${enhancedData.investmentScore.totalScore || 'N/A'}/100
-- Letter Grade: ${enhancedData.investmentScore.grade || 'N/A'} (A+ to F scale)
-- Investment Recommendation: ${enhancedData.investmentScore.recommendation || 'N/A'}
+${enhancedData.investmentScore.totalScore ? `- Total Score: ${enhancedData.investmentScore.totalScore}/100` : ''}
+${enhancedData.investmentScore.grade ? `- Letter Grade: ${enhancedData.investmentScore.grade} (A+ to F scale)` : ''}
+${enhancedData.investmentScore.recommendation ? `- Investment Recommendation: ${enhancedData.investmentScore.recommendation}` : ''}
 
 COMPONENT SCORES (out of 100):
-- Yield Score: ${enhancedData.investmentScore.breakdown?.yieldScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.yieldScore?.weight || 30}%)
-  Details: ${enhancedData.investmentScore.breakdown?.yieldScore?.details || 'N/A'}
-  
-- Growth Score: ${enhancedData.investmentScore.breakdown?.growthScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.growthScore?.weight || 25}%)
-  Details: ${enhancedData.investmentScore.breakdown?.growthScore?.details || 'N/A'}
-  
-- Location Score: ${enhancedData.investmentScore.breakdown?.locationScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.locationScore?.weight || 20}%)
-  Details: ${enhancedData.investmentScore.breakdown?.locationScore?.details || 'N/A'}
-  
-- Demand Score: ${enhancedData.investmentScore.breakdown?.demandScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.demandScore?.weight || 15}%)
-  Details: ${enhancedData.investmentScore.breakdown?.demandScore?.details || 'N/A'}
-  
-- Risk Score: ${enhancedData.investmentScore.breakdown?.riskScore?.score || 'N/A'}/100 (Weight: ${enhancedData.investmentScore.breakdown?.riskScore?.weight || 10}%)
-  Details: ${enhancedData.investmentScore.breakdown?.riskScore?.details || 'N/A'}
-
+${enhancedData.investmentScore.breakdown?.yieldScore ? `- Yield Score: ${enhancedData.investmentScore.breakdown.yieldScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.yieldScore.weight || 30}%)
+  Details: ${enhancedData.investmentScore.breakdown.yieldScore.details}
+  ` : ''}
+${enhancedData.investmentScore.breakdown?.growthScore ? `- Growth Score: ${enhancedData.investmentScore.breakdown.growthScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.growthScore.weight || 25}%)
+  Details: ${enhancedData.investmentScore.breakdown.growthScore.details}
+  ` : ''}
+${enhancedData.investmentScore.breakdown?.locationScore ? `- Location Score: ${enhancedData.investmentScore.breakdown.locationScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.locationScore.weight || 20}%)
+  Details: ${enhancedData.investmentScore.breakdown.locationScore.details}
+  ` : ''}
+${enhancedData.investmentScore.breakdown?.demandScore ? `- Demand Score: ${enhancedData.investmentScore.breakdown.demandScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.demandScore.weight || 15}%)
+  Details: ${enhancedData.investmentScore.breakdown.demandScore.details}
+  ` : ''}
+${enhancedData.investmentScore.breakdown?.riskScore ? `- Risk Score: ${enhancedData.investmentScore.breakdown.riskScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.riskScore.weight || 10}%)
+  Details: ${enhancedData.investmentScore.breakdown.riskScore.details}
+  ` : ''}
+${enhancedData.investmentScore.strengths?.length || enhancedData.investmentScore.weaknesses?.length || enhancedData.investmentScore.opportunities?.length || enhancedData.investmentScore.risks?.length ? `
 SWOT ANALYSIS:
-Strengths: ${enhancedData.investmentScore.strengths?.join('; ') || 'N/A'}
-Weaknesses: ${enhancedData.investmentScore.weaknesses?.join('; ') || 'N/A'}
-Opportunities: ${enhancedData.investmentScore.opportunities?.join('; ') || 'N/A'}
-Threats/Risks: ${enhancedData.investmentScore.risks?.join('; ') || 'N/A'}
-
-IMPORTANT: Use this pre-calculated investment score directly in your "Overall Investment Score" section. Display the letter grade (${enhancedData.investmentScore.grade || 'N/A'}) prominently. Do NOT recalculate - use these exact values and component breakdowns.
+${enhancedData.investmentScore.strengths?.length ? `Strengths: ${enhancedData.investmentScore.strengths.join('; ')}` : ''}
+${enhancedData.investmentScore.weaknesses?.length ? `Weaknesses: ${enhancedData.investmentScore.weaknesses.join('; ')}` : ''}
+${enhancedData.investmentScore.opportunities?.length ? `Opportunities: ${enhancedData.investmentScore.opportunities.join('; ')}` : ''}
+${enhancedData.investmentScore.risks?.length ? `Threats/Risks: ${enhancedData.investmentScore.risks.join('; ')}` : ''}
+` : ''}
+${enhancedData.investmentScore.grade ? `IMPORTANT: Use this pre-calculated investment score directly in your "Overall Investment Score" section. Display the letter grade (${enhancedData.investmentScore.grade}) prominently. Do NOT recalculate - use these exact values and component breakdowns.` : ''}
 ` : ''}
 
 ${enhancedData.seifaData ? `
-SEIFA SOCIOECONOMIC INDEX DATA (ABS):
-- IRSAD Score: ${enhancedData.seifaData.irsad?.score || 'N/A'} (Decile ${enhancedData.seifaData.irsad?.decile || 'N/A'}/10)
-- IRSAD Rating: ${enhancedData.seifaData.irsad?.description || 'N/A'}
-- IRSD Score: ${enhancedData.seifaData.irsd?.score || 'N/A'} (Decile ${enhancedData.seifaData.irsd?.decile || 'N/A'}/10)
-- IER Score: ${enhancedData.seifaData.ier?.score || 'N/A'} (Decile ${enhancedData.seifaData.ier?.decile || 'N/A'}/10)
-- IEO Score: ${enhancedData.seifaData.ieo?.score || 'N/A'} (Decile ${enhancedData.seifaData.ieo?.decile || 'N/A'}/10)
-- Summary: ${enhancedData.seifaData.summary || 'N/A'}
-- Data Source: ${enhancedData.seifaData.dataSource || 'ABS'}
-- Note: ${enhancedData.seifaData.note || 'SEIFA indexes rank areas based on socioeconomic advantage'}
+SEIFA SOCIOECONOMIC INDEX DATA (ABS - Only include indexes with actual values):
+${enhancedData.seifaData.irsad?.score ? `- IRSAD Score: ${enhancedData.seifaData.irsad.score} (Decile ${enhancedData.seifaData.irsad.decile}/10)${enhancedData.seifaData.irsad.description ? `
+- IRSAD Rating: ${enhancedData.seifaData.irsad.description}` : ''}` : ''}
+${enhancedData.seifaData.irsd?.score ? `- IRSD Score: ${enhancedData.seifaData.irsd.score} (Decile ${enhancedData.seifaData.irsd.decile}/10)` : ''}
+${enhancedData.seifaData.ier?.score ? `- IER Score: ${enhancedData.seifaData.ier.score} (Decile ${enhancedData.seifaData.ier.decile}/10)` : ''}
+${enhancedData.seifaData.ieo?.score ? `- IEO Score: ${enhancedData.seifaData.ieo.score} (Decile ${enhancedData.seifaData.ieo.decile}/10)` : ''}
+${enhancedData.seifaData.summary ? `- Summary: ${enhancedData.seifaData.summary}` : ''}
+${enhancedData.seifaData.dataSource ? `- Data Source: ${enhancedData.seifaData.dataSource}` : ''}
+${enhancedData.seifaData.note ? `- Note: ${enhancedData.seifaData.note}` : ''}
 
 IMPORTANT: Use this SEIFA data in your "Demographics & Demand Drivers" section to provide socioeconomic context. Decile 10 = most advantaged, Decile 1 = most disadvantaged.
 ` : ''}
 
 ${enhancedData.crimeStatistics ? `
-CRIME STATISTICS DATA:
-- Overall Crime Rating: ${enhancedData.crimeStatistics.overallRating || 'N/A'}
-- Compared to State Average: ${enhancedData.crimeStatistics.comparedToStateAverage || 'N/A'}
-- Rate per 100k people: ${enhancedData.crimeStatistics.ratePerCapita || 'N/A'}
-- Period: ${enhancedData.crimeStatistics.period || 'Latest 12 months'}
-- Safety Score: ${enhancedData.crimeStatistics.safetyScore || 'N/A'}/100
+CRIME STATISTICS DATA (Only include metrics with actual values):
+${enhancedData.crimeStatistics.overallRating ? `- Overall Crime Rating: ${enhancedData.crimeStatistics.overallRating}` : ''}
+${enhancedData.crimeStatistics.comparedToStateAverage ? `- Compared to State Average: ${enhancedData.crimeStatistics.comparedToStateAverage}` : ''}
+${enhancedData.crimeStatistics.ratePerCapita ? `- Rate per 100k people: ${enhancedData.crimeStatistics.ratePerCapita}` : ''}
+${enhancedData.crimeStatistics.period ? `- Period: ${enhancedData.crimeStatistics.period}` : ''}
+${enhancedData.crimeStatistics.safetyScore ? `- Safety Score: ${enhancedData.crimeStatistics.safetyScore}/100` : ''}
 
-CRIME BREAKDOWN BY CATEGORY:
-- Property Offenses: ${enhancedData.crimeStatistics.breakdown?.propertyOffenses?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.propertyOffenses?.percentage || 'N/A'}%)
-  Types: ${enhancedData.crimeStatistics.breakdown?.propertyOffenses?.types?.join(', ') || 'N/A'}
-- Violent Offenses: ${enhancedData.crimeStatistics.breakdown?.violentOffenses?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.violentOffenses?.percentage || 'N/A'}%)
-  Types: ${enhancedData.crimeStatistics.breakdown?.violentOffenses?.types?.join(', ') || 'N/A'}
-- Drug Offenses: ${enhancedData.crimeStatistics.breakdown?.drugOffenses?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.drugOffenses?.percentage || 'N/A'}%)
-- Public Order: ${enhancedData.crimeStatistics.breakdown?.publicOrder?.count || 'N/A'} incidents (${enhancedData.crimeStatistics.breakdown?.publicOrder?.percentage || 'N/A'}%)
-
-CRIME TRENDS:
-- Year-on-Year Change: ${enhancedData.crimeStatistics.trends?.yearOnYear || 'N/A'}
-- 3-Year Trend: ${enhancedData.crimeStatistics.trends?.threeYear || 'N/A'}
-- Trend Description: ${enhancedData.crimeStatistics.trends?.description || 'N/A'}
-
-Data Source: ${enhancedData.crimeStatistics.dataSource || 'State crime statistics'}
-Official Sources: ${enhancedData.crimeStatistics.officialSources?.join(', ') || 'State police service'}
+${enhancedData.crimeStatistics.breakdown ? `CRIME BREAKDOWN BY CATEGORY:
+${enhancedData.crimeStatistics.breakdown.propertyOffenses ? `- Property Offenses: ${enhancedData.crimeStatistics.breakdown.propertyOffenses.count} incidents (${enhancedData.crimeStatistics.breakdown.propertyOffenses.percentage}%)${enhancedData.crimeStatistics.breakdown.propertyOffenses.types?.length ? `
+  Types: ${enhancedData.crimeStatistics.breakdown.propertyOffenses.types.join(', ')}` : ''}` : ''}
+${enhancedData.crimeStatistics.breakdown.violentOffenses ? `- Violent Offenses: ${enhancedData.crimeStatistics.breakdown.violentOffenses.count} incidents (${enhancedData.crimeStatistics.breakdown.violentOffenses.percentage}%)${enhancedData.crimeStatistics.breakdown.violentOffenses.types?.length ? `
+  Types: ${enhancedData.crimeStatistics.breakdown.violentOffenses.types.join(', ')}` : ''}` : ''}
+${enhancedData.crimeStatistics.breakdown.drugOffenses ? `- Drug Offenses: ${enhancedData.crimeStatistics.breakdown.drugOffenses.count} incidents (${enhancedData.crimeStatistics.breakdown.drugOffenses.percentage}%)` : ''}
+${enhancedData.crimeStatistics.breakdown.publicOrder ? `- Public Order: ${enhancedData.crimeStatistics.breakdown.publicOrder.count} incidents (${enhancedData.crimeStatistics.breakdown.publicOrder.percentage}%)` : ''}
+` : ''}
+${enhancedData.crimeStatistics.trends ? `CRIME TRENDS:
+${enhancedData.crimeStatistics.trends.yearOnYear ? `- Year-on-Year Change: ${enhancedData.crimeStatistics.trends.yearOnYear}` : ''}
+${enhancedData.crimeStatistics.trends.threeYear ? `- 3-Year Trend: ${enhancedData.crimeStatistics.trends.threeYear}` : ''}
+${enhancedData.crimeStatistics.trends.description ? `- Trend Description: ${enhancedData.crimeStatistics.trends.description}` : ''}
+` : ''}
+${enhancedData.crimeStatistics.dataSource ? `Data Source: ${enhancedData.crimeStatistics.dataSource}` : ''}
+${enhancedData.crimeStatistics.officialSources?.length ? `Official Sources: ${enhancedData.crimeStatistics.officialSources.join(', ')}` : ''}
 
 IMPORTANT: Include this crime data in your "Risk Assessment" section. Provide context about safety and how it compares to state averages.
 ` : ''}
 
 ${enhancedData.employmentData ? `
-EMPLOYMENT & JOB GROWTH DATA (ABS):
-- Employment Rate: ${enhancedData.employmentData.employmentRate || 'N/A'}%
-- Unemployment Rate: ${enhancedData.employmentData.unemploymentRate || 'N/A'}%
-- Participation Rate: ${enhancedData.employmentData.participationRate || 'N/A'}%
-- Labor Force Size: ${enhancedData.employmentData.laborForceSize?.toLocaleString() || 'N/A'}
+EMPLOYMENT & JOB GROWTH DATA (ABS - Only include metrics with actual values):
+${enhancedData.employmentData.employmentRate ? `- Employment Rate: ${enhancedData.employmentData.employmentRate}%` : ''}
+${enhancedData.employmentData.unemploymentRate ? `- Unemployment Rate: ${enhancedData.employmentData.unemploymentRate}%` : ''}
+${enhancedData.employmentData.participationRate ? `- Participation Rate: ${enhancedData.employmentData.participationRate}%` : ''}
+${enhancedData.employmentData.laborForceSize ? `- Labor Force Size: ${enhancedData.employmentData.laborForceSize.toLocaleString()}` : ''}
 
-MAJOR INDUSTRIES:
-${enhancedData.employmentData.majorIndustries?.map((ind: any) => 
+${enhancedData.employmentData.majorIndustries?.length > 0 ? `MAJOR INDUSTRIES:
+${enhancedData.employmentData.majorIndustries.map((ind: any) => 
   `- ${ind.name}: ${ind.percentage}% of workforce (Growth: ${ind.growth})`
-).join('\n') || 'N/A'}
-
-JOB GROWTH TRENDS:
-- Annual Growth: ${enhancedData.employmentData.jobGrowth?.annual || 'N/A'}
-- 3-Year Growth: ${enhancedData.employmentData.jobGrowth?.threeYear || 'N/A'}
-- 5-Year Growth: ${enhancedData.employmentData.jobGrowth?.fiveYear || 'N/A'}
-- Description: ${enhancedData.employmentData.jobGrowth?.description || 'N/A'}
-
-MEDIAN INCOME:
-- Weekly: $${enhancedData.employmentData.medianIncome?.weekly?.toLocaleString() || 'N/A'}
-- Annual: $${enhancedData.employmentData.medianIncome?.annual?.toLocaleString() || 'N/A'}
-- Growth: ${enhancedData.employmentData.medianIncome?.growth || 'N/A'}
-
-FUTURE OUTLOOK:
-- Rating: ${enhancedData.employmentData.futureOutlook?.rating || 'N/A'}
-- Description: ${enhancedData.employmentData.futureOutlook?.description || 'N/A'}
-- Key Drivers: ${enhancedData.employmentData.futureOutlook?.keyDrivers?.join(', ') || 'N/A'}
-
-Data Source: ${enhancedData.employmentData.dataSource || 'ABS Labour Force Survey'}
+).join('\n')}
+` : ''}
+${enhancedData.employmentData.jobGrowth ? `JOB GROWTH TRENDS:
+${enhancedData.employmentData.jobGrowth.annual ? `- Annual Growth: ${enhancedData.employmentData.jobGrowth.annual}` : ''}
+${enhancedData.employmentData.jobGrowth.threeYear ? `- 3-Year Growth: ${enhancedData.employmentData.jobGrowth.threeYear}` : ''}
+${enhancedData.employmentData.jobGrowth.fiveYear ? `- 5-Year Growth: ${enhancedData.employmentData.jobGrowth.fiveYear}` : ''}
+${enhancedData.employmentData.jobGrowth.description ? `- Description: ${enhancedData.employmentData.jobGrowth.description}` : ''}
+` : ''}
+${enhancedData.employmentData.medianIncome ? `MEDIAN INCOME:
+${enhancedData.employmentData.medianIncome.weekly ? `- Weekly: $${enhancedData.employmentData.medianIncome.weekly.toLocaleString()}` : ''}
+${enhancedData.employmentData.medianIncome.annual ? `- Annual: $${enhancedData.employmentData.medianIncome.annual.toLocaleString()}` : ''}
+${enhancedData.employmentData.medianIncome.growth ? `- Growth: ${enhancedData.employmentData.medianIncome.growth}` : ''}
+` : ''}
+${enhancedData.employmentData.futureOutlook ? `FUTURE OUTLOOK:
+${enhancedData.employmentData.futureOutlook.rating ? `- Rating: ${enhancedData.employmentData.futureOutlook.rating}` : ''}
+${enhancedData.employmentData.futureOutlook.description ? `- Description: ${enhancedData.employmentData.futureOutlook.description}` : ''}
+${enhancedData.employmentData.futureOutlook.keyDrivers?.length ? `- Key Drivers: ${enhancedData.employmentData.futureOutlook.keyDrivers.join(', ')}` : ''}
+` : ''}
+${enhancedData.employmentData.dataSource ? `Data Source: ${enhancedData.employmentData.dataSource}` : ''}
 
 IMPORTANT: Use this employment data in your "Demographics & Demand Drivers" and "Infrastructure & Amenities" sections to show job market strength and economic prospects.
 ` : ''}
 
 ${enhancedData.climateData ? `
-CLIMATE & ENVIRONMENTAL DATA (BoM):
-- Climate Zone: ${enhancedData.climateData.climateZone || 'N/A'}
-- Annual Average Temperature: ${enhancedData.climateData.temperature?.annual || 'N/A'}°C
-  Summer: ${enhancedData.climateData.temperature?.summer || 'N/A'}°C, Winter: ${enhancedData.climateData.temperature?.winter || 'N/A'}°C
-- Annual Rainfall: ${enhancedData.climateData.rainfall?.annual || 'N/A'}mm
-  Wettest Period: ${enhancedData.climateData.rainfall?.wettest || 'N/A'}
-  Driest Period: ${enhancedData.climateData.rainfall?.driest || 'N/A'}
-- Humidity: ${enhancedData.climateData.humidity?.annual || 'N/A'}%
-- Comfort Index: ${enhancedData.climateData.comfortIndex || 'N/A'}/100
+CLIMATE & ENVIRONMENTAL DATA (BoM - Only include metrics with actual values):
+${enhancedData.climateData.climateZone ? `- Climate Zone: ${enhancedData.climateData.climateZone}` : ''}
+${enhancedData.climateData.temperature?.annual ? `- Annual Average Temperature: ${enhancedData.climateData.temperature.annual}°C${enhancedData.climateData.temperature.summer ? `
+  Summer: ${enhancedData.climateData.temperature.summer}°C` : ''}${enhancedData.climateData.temperature.winter ? `, Winter: ${enhancedData.climateData.temperature.winter}°C` : ''}` : ''}
+${enhancedData.climateData.rainfall?.annual ? `- Annual Rainfall: ${enhancedData.climateData.rainfall.annual}mm${enhancedData.climateData.rainfall.wettest ? `
+  Wettest Period: ${enhancedData.climateData.rainfall.wettest}` : ''}${enhancedData.climateData.rainfall.driest ? `
+  Driest Period: ${enhancedData.climateData.rainfall.driest}` : ''}` : ''}
+${enhancedData.climateData.humidity?.annual ? `- Humidity: ${enhancedData.climateData.humidity.annual}%` : ''}
+${enhancedData.climateData.comfortIndex ? `- Comfort Index: ${enhancedData.climateData.comfortIndex}/100` : ''}
 
-EXTREME WEATHER RISKS:
-- Heatwaves: ${enhancedData.climateData.extremeWeather?.heatwaves || 'N/A'}
-- Bushfire: ${enhancedData.climateData.extremeWeather?.bushfire || 'N/A'}
-- Flooding: ${enhancedData.climateData.extremeWeather?.flooding || 'N/A'}
-- Storms: ${enhancedData.climateData.extremeWeather?.storms || 'N/A'}
-- Cyclones: ${enhancedData.climateData.extremeWeather?.cyclones || 'N/A'}
-
-CLIMATE PROJECTIONS:
-- Temperature Trend: ${enhancedData.climateData.climateProjections?.temperature?.trend || 'N/A'}
-- Rainfall Trend: ${enhancedData.climateData.climateProjections?.rainfall?.trend || 'N/A'}
-- Extreme Events: ${enhancedData.climateData.climateProjections?.extremeEvents?.trend || 'N/A'}
-
-PROPERTY IMPLICATIONS:
-Construction Considerations: ${enhancedData.climateData.propertyImplications?.construction?.join(', ') || 'N/A'}
-Insurance Factors: ${enhancedData.climateData.propertyImplications?.insurance?.join(', ') || 'N/A'}
-Value Impacts: ${enhancedData.climateData.propertyImplications?.value?.join(', ') || 'N/A'}
-
-Data Source: ${enhancedData.climateData.dataSource || 'Bureau of Meteorology'}
-Note: ${enhancedData.climateData.note || 'Climate data based on historical patterns'}
+${enhancedData.climateData.extremeWeather ? `EXTREME WEATHER RISKS:
+${enhancedData.climateData.extremeWeather.heatwaves ? `- Heatwaves: ${enhancedData.climateData.extremeWeather.heatwaves}` : ''}
+${enhancedData.climateData.extremeWeather.bushfire ? `- Bushfire: ${enhancedData.climateData.extremeWeather.bushfire}` : ''}
+${enhancedData.climateData.extremeWeather.flooding ? `- Flooding: ${enhancedData.climateData.extremeWeather.flooding}` : ''}
+${enhancedData.climateData.extremeWeather.storms ? `- Storms: ${enhancedData.climateData.extremeWeather.storms}` : ''}
+${enhancedData.climateData.extremeWeather.cyclones ? `- Cyclones: ${enhancedData.climateData.extremeWeather.cyclones}` : ''}
+` : ''}
+${enhancedData.climateData.dataSource ? `Data Source: ${enhancedData.climateData.dataSource}` : ''}
 
 IMPORTANT: Include climate data in your "Risk Assessment" section and discuss long-term climate impacts on property value and insurance costs.
 ` : ''}
