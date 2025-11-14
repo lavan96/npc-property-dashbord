@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText } from 'lucide-react';
 
 interface RecentReport {
@@ -32,6 +33,7 @@ export function InvestmentReportGenerator() {
   const [baths, setBaths] = useState('');
   
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   const handleGenerate = async () => {
     if (!query.trim()) {
@@ -98,7 +100,7 @@ export function InvestmentReportGenerator() {
       
       console.log('Enhanced data structure:', data.enhancedData);
       
-      const { error: insertError } = await supabase
+      const { data: savedReport, error: insertError } = await supabase
         .from('investment_reports')
         .insert({
           property_address: propertyAddress,
@@ -110,7 +112,9 @@ export function InvestmentReportGenerator() {
           investment_score: data.enhancedData?.investmentScore || null,
           location_intelligence: data.enhancedData?.locationIntelligence || null,
           generated_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) {
         console.error('Error saving report:', insertError);
@@ -123,6 +127,20 @@ export function InvestmentReportGenerator() {
       // Refresh recent reports
       fetchRecentReports();
 
+      // Add notification with scope information
+      const scopeText = queryType === 'address' 
+        ? `Property: ${query}` 
+        : queryType === 'zipcode' 
+          ? `ZIP Code: ${query}` 
+          : `Statewide Analysis: ${query}`;
+
+      addNotification({
+        type: 'report_generated',
+        title: 'Investment Report Completed',
+        message: `Your investment report has been generated successfully. Scope: ${scopeText}`,
+        reportId: savedReport?.id,
+      });
+
       toast({
         title: "Report Generated Successfully",
         description: "Your investment analysis has been completed and saved.",
@@ -130,6 +148,20 @@ export function InvestmentReportGenerator() {
 
     } catch (error) {
       console.error('Error generating report:', error);
+      
+      // Add failure notification
+      const scopeText = queryType === 'address' 
+        ? `Property: ${query}` 
+        : queryType === 'zipcode' 
+          ? `ZIP Code: ${query}` 
+          : `Statewide Analysis: ${query}`;
+
+      addNotification({
+        type: 'report_failed',
+        title: 'Report Generation Failed',
+        message: `Failed to generate investment report for ${scopeText}. ${error instanceof Error ? error.message : 'Please try again.'}`,
+      });
+
       toast({
         title: "Generation Failed",
         description: error instanceof Error ? error.message : "Failed to generate report. Please try again.",
