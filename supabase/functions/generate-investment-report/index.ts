@@ -790,14 +790,14 @@ ${enhancedData.investmentScore.grade ? `- Letter Grade: ${enhancedData.investmen
 ${enhancedData.investmentScore.recommendation ? `- Investment Recommendation: ${enhancedData.investmentScore.recommendation}` : ''}
 
 COMPONENT SCORES (out of 100):
-${enhancedData.investmentScore.breakdown?.yieldScore ? `- Yield Score: ${enhancedData.investmentScore.breakdown.yieldScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.yieldScore.weight || 30}%)
-  Details: ${enhancedData.investmentScore.breakdown.yieldScore.details}
-  ` : ''}
-${enhancedData.investmentScore.breakdown?.growthScore ? `- Growth Score: ${enhancedData.investmentScore.breakdown.growthScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.growthScore.weight || 25}%)
+${enhancedData.investmentScore.breakdown?.growthScore ? `- Growth Score: ${enhancedData.investmentScore.breakdown.growthScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.growthScore.weight || 30}%)
   Details: ${enhancedData.investmentScore.breakdown.growthScore.details}
   ` : ''}
-${enhancedData.investmentScore.breakdown?.locationScore ? `- Location Score: ${enhancedData.investmentScore.breakdown.locationScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.locationScore.weight || 20}%)
+${enhancedData.investmentScore.breakdown?.locationScore ? `- Location Score: ${enhancedData.investmentScore.breakdown.locationScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.locationScore.weight || 25}%)
   Details: ${enhancedData.investmentScore.breakdown.locationScore.details}
+  ` : ''}
+${enhancedData.investmentScore.breakdown?.yieldScore ? `- Yield Score: ${enhancedData.investmentScore.breakdown.yieldScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.yieldScore.weight || 20}%)
+  Details: ${enhancedData.investmentScore.breakdown.yieldScore.details}
   ` : ''}
 ${enhancedData.investmentScore.breakdown?.demandScore ? `- Demand Score: ${enhancedData.investmentScore.breakdown.demandScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.demandScore.weight || 15}%)
   Details: ${enhancedData.investmentScore.breakdown.demandScore.details}
@@ -1216,9 +1216,9 @@ Then create a detailed breakdown table showing:
 - Component Name | Weight (%) | Score (/100) | Details
 
 Include all five components:
-1. Yield Score (30% weighting)
-2. Growth Score (25% weighting)  
-3. Location Score (20% weighting)
+1. Growth Score (30% weighting)
+2. Location Score (25% weighting)  
+3. Yield Score (20% weighting)
 4. Demand Score (15% weighting)
 5. Risk Score (10% weighting)
 
