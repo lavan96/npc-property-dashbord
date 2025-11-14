@@ -7,10 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Loader2, Download, Copy, Check, TrendingUp, TrendingDown, 
   DollarSign, MapPin, AlertTriangle, Trophy, Target, Home,
-  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle
+  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle, Settings, ChevronDown, RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -96,6 +100,22 @@ export function PropertyComparisonModal({
   const [isCopied, setIsCopied] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [runInBackground, setRunInBackground] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Analysis parameters
+  const [investorProfile, setInvestorProfile] = useState<string>('general');
+  const [analysisDepth, setAnalysisDepth] = useState<string>('comprehensive');
+  const [timeHorizon, setTimeHorizon] = useState<string>('5-7 years');
+  const [riskTolerance, setRiskTolerance] = useState<string>('moderate');
+  const [useCustomWeights, setUseCustomWeights] = useState(false);
+  const [customWeights, setCustomWeights] = useState({
+    growth: 30,
+    location: 25,
+    yield: 20,
+    demand: 15,
+    risk: 10
+  });
+  
   const { toast } = useToast();
   const { addNotification } = useNotifications();
 
@@ -108,11 +128,20 @@ export function PropertyComparisonModal({
     try {
       setProgress(30);
       
+      const requestBody: any = { 
+        reportIds,
+        analysisDepth,
+        investorProfile,
+        timeHorizon,
+        riskTolerance
+      };
+      
+      if (useCustomWeights) {
+        requestBody.customWeights = customWeights;
+      }
+      
       const { data, error } = await supabase.functions.invoke('compare-investment-reports', {
-        body: {
-          reportIds,
-          analysisDepth: 'comprehensive'
-        }
+        body: requestBody
       });
 
       if (error) {
@@ -262,8 +291,179 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                       </div>
                     ))}
                   </div>
+
+                  <Separator />
+
+                  {/* Analysis Settings */}
+                  <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between">
+                        <div className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          <span>Analysis Settings</span>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="investor-profile">Investor Profile</Label>
+                        <Select value={investorProfile} onValueChange={setInvestorProfile}>
+                          <SelectTrigger id="investor-profile">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General Investor</SelectItem>
+                            <SelectItem value="first-time">First-Time Investor</SelectItem>
+                            <SelectItem value="cash-flow">Cash Flow Focused</SelectItem>
+                            <SelectItem value="growth">Capital Growth Focused</SelectItem>
+                            <SelectItem value="balanced">Balanced Portfolio</SelectItem>
+                            <SelectItem value="experienced">Experienced Investor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="analysis-depth">Analysis Depth</Label>
+                        <Select value={analysisDepth} onValueChange={setAnalysisDepth}>
+                          <SelectTrigger id="analysis-depth">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="quick">Quick Overview (Faster)</SelectItem>
+                            <SelectItem value="standard">Standard Analysis</SelectItem>
+                            <SelectItem value="comprehensive">Comprehensive (Recommended)</SelectItem>
+                            <SelectItem value="deep">Deep Dive (Most Detailed)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="time-horizon">Investment Time Horizon</Label>
+                        <Select value={timeHorizon} onValueChange={setTimeHorizon}>
+                          <SelectTrigger id="time-horizon">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2-3 years">2-3 Years (Short-term)</SelectItem>
+                            <SelectItem value="5-7 years">5-7 Years (Medium-term)</SelectItem>
+                            <SelectItem value="10+ years">10+ Years (Long-term)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="risk-tolerance">Risk Tolerance</Label>
+                        <Select value={riskTolerance} onValueChange={setRiskTolerance}>
+                          <SelectTrigger id="risk-tolerance">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="conservative">Conservative</SelectItem>
+                            <SelectItem value="moderate">Moderate</SelectItem>
+                            <SelectItem value="aggressive">Aggressive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label>Custom Scoring Weights</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setUseCustomWeights(!useCustomWeights)}
+                          >
+                            {useCustomWeights ? 'Use Default' : 'Customize'}
+                          </Button>
+                        </div>
+                        
+                        {useCustomWeights && (
+                          <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Growth Score</Label>
+                                <span className="text-xs font-medium">{customWeights.growth}%</span>
+                              </div>
+                              <Slider
+                                value={[customWeights.growth]}
+                                onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, growth: value }))}
+                                min={0}
+                                max={50}
+                                step={5}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Location Score</Label>
+                                <span className="text-xs font-medium">{customWeights.location}%</span>
+                              </div>
+                              <Slider
+                                value={[customWeights.location]}
+                                onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, location: value }))}
+                                min={0}
+                                max={50}
+                                step={5}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Yield Score</Label>
+                                <span className="text-xs font-medium">{customWeights.yield}%</span>
+                              </div>
+                              <Slider
+                                value={[customWeights.yield]}
+                                onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, yield: value }))}
+                                min={0}
+                                max={50}
+                                step={5}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Demand Score</Label>
+                                <span className="text-xs font-medium">{customWeights.demand}%</span>
+                              </div>
+                              <Slider
+                                value={[customWeights.demand]}
+                                onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, demand: value }))}
+                                min={0}
+                                max={30}
+                                step={5}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Risk Score</Label>
+                                <span className="text-xs font-medium">{customWeights.risk}%</span>
+                              </div>
+                              <Slider
+                                value={[customWeights.risk]}
+                                onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, risk: value }))}
+                                min={0}
+                                max={30}
+                                step={5}
+                              />
+                            </div>
+                            <div className="pt-2 text-xs text-muted-foreground">
+                              Total: {customWeights.growth + customWeights.location + customWeights.yield + customWeights.demand + customWeights.risk}%
+                              {(customWeights.growth + customWeights.location + customWeights.yield + customWeights.demand + customWeights.risk) !== 100 && (
+                                <span className="text-destructive ml-1">(Must equal 100%)</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
                   <div className="flex gap-3">
-                    <Button onClick={() => startAnalysis(false)} size="lg" className="flex-1">
+                    <Button 
+                      onClick={() => startAnalysis(false)} 
+                      size="lg" 
+                      className="flex-1"
+                      disabled={useCustomWeights && (customWeights.growth + customWeights.location + customWeights.yield + customWeights.demand + customWeights.risk) !== 100}
+                    >
                       Start Analysis
                     </Button>
                     <Button onClick={() => startAnalysis(true)} variant="outline" size="lg" className="flex-1">
@@ -295,7 +495,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
 
           {analysis && !isAnalyzing && (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={copyAnalysis} disabled={isCopied}>
                     {isCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
@@ -305,11 +505,200 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     <Download className="h-4 w-4 mr-2" />
                     Download PDF
                   </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={() => startAnalysis(false)}
+                    className="bg-primary"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Re-run Analysis
+                  </Button>
                 </div>
                 <Button variant="ghost" size="sm" onClick={onClose}>
                   Close
                 </Button>
               </div>
+
+              {/* Current Settings Display */}
+              <Card className="mb-4">
+                <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          <CardTitle className="text-sm">Analysis Settings</CardTitle>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <Badge variant="secondary" className="text-xs">{investorProfile}</Badge>
+                            <Badge variant="secondary" className="text-xs">{timeHorizon}</Badge>
+                            <Badge variant="secondary" className="text-xs">{riskTolerance}</Badge>
+                          </div>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="space-y-4 pt-0">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="investor-profile-result">Investor Profile</Label>
+                          <Select value={investorProfile} onValueChange={setInvestorProfile}>
+                            <SelectTrigger id="investor-profile-result">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="general">General Investor</SelectItem>
+                              <SelectItem value="first-time">First-Time Investor</SelectItem>
+                              <SelectItem value="cash-flow">Cash Flow Focused</SelectItem>
+                              <SelectItem value="growth">Capital Growth Focused</SelectItem>
+                              <SelectItem value="balanced">Balanced Portfolio</SelectItem>
+                              <SelectItem value="experienced">Experienced Investor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="analysis-depth-result">Analysis Depth</Label>
+                          <Select value={analysisDepth} onValueChange={setAnalysisDepth}>
+                            <SelectTrigger id="analysis-depth-result">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="quick">Quick Overview</SelectItem>
+                              <SelectItem value="standard">Standard Analysis</SelectItem>
+                              <SelectItem value="comprehensive">Comprehensive</SelectItem>
+                              <SelectItem value="deep">Deep Dive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="time-horizon-result">Time Horizon</Label>
+                          <Select value={timeHorizon} onValueChange={setTimeHorizon}>
+                            <SelectTrigger id="time-horizon-result">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="2-3 years">2-3 Years</SelectItem>
+                              <SelectItem value="5-7 years">5-7 Years</SelectItem>
+                              <SelectItem value="10+ years">10+ Years</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="risk-tolerance-result">Risk Tolerance</Label>
+                          <Select value={riskTolerance} onValueChange={setRiskTolerance}>
+                            <SelectTrigger id="risk-tolerance-result">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="conservative">Conservative</SelectItem>
+                              <SelectItem value="moderate">Moderate</SelectItem>
+                              <SelectItem value="aggressive">Aggressive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label>Custom Scoring Weights</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setUseCustomWeights(!useCustomWeights)}
+                          >
+                            {useCustomWeights ? 'Use Default' : 'Customize'}
+                          </Button>
+                        </div>
+                        
+                        {useCustomWeights && (
+                          <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-xs">Growth</Label>
+                                  <span className="text-xs font-medium">{customWeights.growth}%</span>
+                                </div>
+                                <Slider
+                                  value={[customWeights.growth]}
+                                  onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, growth: value }))}
+                                  min={0}
+                                  max={50}
+                                  step={5}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-xs">Location</Label>
+                                  <span className="text-xs font-medium">{customWeights.location}%</span>
+                                </div>
+                                <Slider
+                                  value={[customWeights.location]}
+                                  onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, location: value }))}
+                                  min={0}
+                                  max={50}
+                                  step={5}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-xs">Yield</Label>
+                                  <span className="text-xs font-medium">{customWeights.yield}%</span>
+                                </div>
+                                <Slider
+                                  value={[customWeights.yield]}
+                                  onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, yield: value }))}
+                                  min={0}
+                                  max={50}
+                                  step={5}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-xs">Demand</Label>
+                                  <span className="text-xs font-medium">{customWeights.demand}%</span>
+                                </div>
+                                <Slider
+                                  value={[customWeights.demand]}
+                                  onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, demand: value }))}
+                                  min={0}
+                                  max={30}
+                                  step={5}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-xs">Risk</Label>
+                                  <span className="text-xs font-medium">{customWeights.risk}%</span>
+                                </div>
+                                <Slider
+                                  value={[customWeights.risk]}
+                                  onValueChange={([value]) => setCustomWeights(prev => ({ ...prev, risk: value }))}
+                                  min={0}
+                                  max={30}
+                                  step={5}
+                                />
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Total: {customWeights.growth + customWeights.location + customWeights.yield + customWeights.demand + customWeights.risk}%
+                              {(customWeights.growth + customWeights.location + customWeights.yield + customWeights.demand + customWeights.risk) !== 100 && (
+                                <span className="text-destructive ml-1">(Must equal 100%)</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
 
               <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
                 <TabsList className="grid w-full grid-cols-6">
