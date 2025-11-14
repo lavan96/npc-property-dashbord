@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PropertyComparisonModalProps {
   isOpen: boolean;
@@ -131,8 +132,31 @@ export function PropertyComparisonModal({
   
   const { toast } = useToast();
   const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
-  // Auto-load comparison history when analysis is completed
+  // Load templates from database on mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('comparison_analysis_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSavedTemplates(data || []);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      toast({
+        title: "Failed to Load Templates",
+        description: "Could not load saved templates",
+        variant: "destructive",
+      });
+    }
+  };
   useEffect(() => {
     if (analysis && comparisonHistory.length === 0 && !loadingHistory) {
       loadComparisonHistory();
@@ -310,23 +334,8 @@ export function PropertyComparisonModal({
     }
   };
 
-  // Load templates from localStorage on mount
-  useEffect(() => {
-    const loadTemplates = () => {
-      try {
-        const stored = localStorage.getItem('comparison-analysis-templates');
-        if (stored) {
-          setSavedTemplates(JSON.parse(stored));
-        }
-      } catch (error) {
-        console.error('Error loading templates:', error);
-      }
-    };
-    loadTemplates();
-  }, []);
-
   // Save current settings as a template
-  const saveTemplate = () => {
+  const saveTemplate = async () => {
     if (!templateName.trim()) {
       toast({
         title: "Name Required",
@@ -336,33 +345,53 @@ export function PropertyComparisonModal({
       return;
     }
 
-    const newTemplate = {
-      id: `template-${Date.now()}`,
-      name: templateName.trim(),
-      description: templateDescription.trim(),
-      createdAt: new Date().toISOString(),
-      settings: {
-        investorProfile,
-        analysisDepth,
-        timeHorizon,
-        riskTolerance,
-        useCustomWeights,
-        customWeights: useCustomWeights ? customWeights : undefined
-      }
-    };
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to save templates",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const updatedTemplates = [...savedTemplates, newTemplate];
-    setSavedTemplates(updatedTemplates);
-    localStorage.setItem('comparison-analysis-templates', JSON.stringify(updatedTemplates));
+    try {
+      const { data, error } = await supabase
+        .from('comparison_analysis_templates')
+        .insert({
+          name: templateName.trim(),
+          description: templateDescription.trim() || null,
+          settings: {
+            investorProfile,
+            analysisDepth,
+            timeHorizon,
+            riskTolerance,
+            useCustomWeights,
+            customWeights: useCustomWeights ? customWeights : undefined
+          },
+          created_by: user.id
+        })
+        .select()
+        .single();
 
-    setSaveTemplateOpen(false);
-    setTemplateName('');
-    setTemplateDescription('');
+      if (error) throw error;
 
-    toast({
-      title: "Template Saved",
-      description: `Template "${newTemplate.name}" has been saved successfully`,
-    });
+      setSavedTemplates(prev => [data, ...prev]);
+      setSaveTemplateOpen(false);
+      setTemplateName('');
+      setTemplateDescription('');
+
+      toast({
+        title: "Template Saved",
+        description: `Template "${data.name}" has been saved successfully`,
+      });
+    } catch (error) {
+      console.error('Error saving template:', error);
+      toast({
+        title: "Failed to Save Template",
+        description: error instanceof Error ? error.message : "Could not save template",
+        variant: "destructive",
+      });
+    }
   };
 
   // Load a template
@@ -385,15 +414,29 @@ export function PropertyComparisonModal({
   };
 
   // Delete a template
-  const deleteTemplate = (templateId: string) => {
-    const updatedTemplates = savedTemplates.filter(t => t.id !== templateId);
-    setSavedTemplates(updatedTemplates);
-    localStorage.setItem('comparison-analysis-templates', JSON.stringify(updatedTemplates));
+  const deleteTemplate = async (templateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('comparison_analysis_templates')
+        .delete()
+        .eq('id', templateId);
 
-    toast({
-      title: "Template Deleted",
-      description: "Template has been removed",
-    });
+      if (error) throw error;
+
+      setSavedTemplates(prev => prev.filter(t => t.id !== templateId));
+
+      toast({
+        title: "Template Deleted",
+        description: "Template has been removed",
+      });
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast({
+        title: "Failed to Delete Template",
+        description: error instanceof Error ? error.message : "Could not delete template",
+        variant: "destructive",
+      });
+    }
   };
 
   // Reset settings to defaults
@@ -1676,7 +1719,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         )}
                         <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          <span>Created {new Date(template.createdAt).toLocaleDateString()}</span>
+                          <span>Created {new Date(template.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <Button
