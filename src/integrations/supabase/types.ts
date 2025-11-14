@@ -86,6 +86,111 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_generation_items: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_id: string
+          processing_time_seconds: number | null
+          property_address: string
+          property_listing_id: string
+          report_id: string | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id: string
+          processing_time_seconds?: number | null
+          property_address: string
+          property_listing_id: string
+          report_id?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string
+          processing_time_seconds?: number | null
+          property_address?: string
+          property_listing_id?: string
+          report_id?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_generation_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulk_generation_items_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bulk_generation_jobs: {
+        Row: {
+          completed_at: string | null
+          completed_reports: number
+          created_at: string
+          created_by: string
+          error_message: string | null
+          failed_reports: number
+          id: string
+          property_addresses: string[]
+          property_ids: string[]
+          started_at: string | null
+          status: string
+          total_reports: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_reports?: number
+          created_at?: string
+          created_by: string
+          error_message?: string | null
+          failed_reports?: number
+          id?: string
+          property_addresses: string[]
+          property_ids: string[]
+          started_at?: string | null
+          status?: string
+          total_reports: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_reports?: number
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          failed_reports?: number
+          id?: string
+          property_addresses?: string[]
+          property_ids?: string[]
+          started_at?: string | null
+          status?: string
+          total_reports?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chart_analysis: {
         Row: {
           analysis_text: string
@@ -395,6 +500,7 @@ export type Database = {
           created_at: string
           demographics_data: Json | null
           economic_data: Json | null
+          error_message: string | null
           financial_calculations: Json | null
           generated_by: string | null
           id: string
@@ -405,12 +511,14 @@ export type Database = {
           property_listing_id: string | null
           report_content: string
           sources_content: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           demographics_data?: Json | null
           economic_data?: Json | null
+          error_message?: string | null
           financial_calculations?: Json | null
           generated_by?: string | null
           id?: string
@@ -421,12 +529,14 @@ export type Database = {
           property_listing_id?: string | null
           report_content: string
           sources_content?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           demographics_data?: Json | null
           economic_data?: Json | null
+          error_message?: string | null
           financial_calculations?: Json | null
           generated_by?: string | null
           id?: string
@@ -437,9 +547,117 @@ export type Database = {
           property_listing_id?: string | null
           report_content?: string
           sources_content?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          report_id: string | null
+          timestamp: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          report_id?: string | null
+          timestamp?: string
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          report_id?: string | null
+          timestamp?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      property_comparisons: {
+        Row: {
+          analysis_depth: string | null
+          analysis_summary: string | null
+          created_at: string
+          created_by: string | null
+          executive_summary: string | null
+          financial_comparison: Json | null
+          id: string
+          investor_matches: Json | null
+          investor_profile: string | null
+          location_comparison: Json | null
+          model_used: string | null
+          processing_time_ms: number | null
+          property_count: number
+          rankings: Json | null
+          recommendations: Json | null
+          red_flags: Json | null
+          report_ids: string[]
+          risk_comparison: Json | null
+          updated_at: string
+        }
+        Insert: {
+          analysis_depth?: string | null
+          analysis_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          executive_summary?: string | null
+          financial_comparison?: Json | null
+          id?: string
+          investor_matches?: Json | null
+          investor_profile?: string | null
+          location_comparison?: Json | null
+          model_used?: string | null
+          processing_time_ms?: number | null
+          property_count: number
+          rankings?: Json | null
+          recommendations?: Json | null
+          red_flags?: Json | null
+          report_ids: string[]
+          risk_comparison?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          analysis_depth?: string | null
+          analysis_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          executive_summary?: string | null
+          financial_comparison?: Json | null
+          id?: string
+          investor_matches?: Json | null
+          investor_profile?: string | null
+          location_comparison?: Json | null
+          model_used?: string | null
+          processing_time_ms?: number | null
+          property_count?: number
+          rankings?: Json | null
+          recommendations?: Json | null
+          red_flags?: Json | null
+          report_ids?: string[]
+          risk_comparison?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_comparisons_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_templates: {
         Row: {
