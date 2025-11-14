@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText } from 'lucide-react';
 
 interface RecentReport {
@@ -34,6 +35,7 @@ export function InvestmentReportGenerator() {
   
   const { toast } = useToast();
   const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
   const handleGenerate = async () => {
     if (!query.trim()) {
@@ -92,13 +94,12 @@ export function InvestmentReportGenerator() {
       }
 
       // Save the report to the database
-      const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         throw new Error('User not authenticated. Please log in to save reports.');
       }
       
       console.log('Enhanced data structure:', data.enhancedData);
+      console.log('User ID for generated_by:', user.id);
       
       const { data: savedReport, error: insertError } = await supabase
         .from('investment_reports')
