@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText } from 'lucide-react';
 
 interface RecentReport {
@@ -47,6 +48,15 @@ export function InvestmentReportGenerator() {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setShowResults(false);
 
@@ -78,94 +88,68 @@ export function InvestmentReportGenerator() {
       if (beds) propertyDetails.beds = parseInt(beds);
       if (baths) propertyDetails.baths = parseInt(baths);
 
-      const { data, error } = await supabase.functions.invoke('generate-investment-report', {
-        body: {
-          propertyAddress,
-          propertyDetails
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to generate investment report');
-      }
-
-      if (!data?.reportContent) {
-        throw new Error('No report content received');
-      }
-
-      // Save the report to the database
-      if (!user) {
-        throw new Error('User not authenticated. Please log in to save reports.');
-      }
-      
-      console.log('Enhanced data structure:', data.enhancedData);
-      console.log('User ID for generated_by:', user.id);
-      
-      const { data: savedReport, error: insertError } = await supabase
+      // Create the report record first with pending status
+      const { data: pendingReport, error: insertError } = await supabase
         .from('investment_reports')
         .insert({
           property_address: propertyAddress,
-          report_content: data.reportContent,
-          sources_content: data.sourcesContent || null,
-          demographics_data: data.enhancedData?.demographics || null,
-          economic_data: data.enhancedData?.economics || null,
-          financial_calculations: data.enhancedData?.financials || null,
-          investment_score: data.enhancedData?.investmentScore || null,
-          location_intelligence: data.enhancedData?.locationIntelligence || null,
+          report_content: 'Generating report...',
+          status: 'pending',
           generated_by: user.id,
         })
         .select()
         .single();
 
       if (insertError) {
-        console.error('Error saving report:', insertError);
-        throw new Error(`Failed to save report: ${insertError.message || 'Database error'}`);
+        console.error('Error creating report record:', insertError);
+        throw new Error(`Failed to create report: ${insertError.message || 'Database error'}`);
       }
 
-      setGeneratedReport(data.reportContent);
-      setShowResults(true);
-      
+      // Add to background job tracker
+      addBackgroundJob({
+        id: pendingReport.id,
+        type: 'investment_report'
+      });
+
+      // Get scope text for notification
+      const scopeText = queryType === 'address' 
+        ? `Property: ${query}` 
+        : queryType === 'zipcode' 
+          ? `ZIP Code: ${query}` 
+          : `Statewide Analysis: ${query}`;
+
+      // Start generation in background (don't await)
+      supabase.functions.invoke('generate-investment-report', {
+        body: {
+          reportId: pendingReport.id,
+          propertyAddress,
+          propertyDetails
+        }
+      }).catch(error => {
+        console.error('Background generation error:', error);
+      });
+
+      toast({
+        title: "Report Generation Started",
+        description: `Your investment report is being generated in the background. You'll be notified when it's ready. Scope: ${scopeText}`,
+      });
+
       // Refresh recent reports
       fetchRecentReports();
-
-      // Add notification with scope information
-      const scopeText = queryType === 'address' 
-        ? `Property: ${query}` 
-        : queryType === 'zipcode' 
-          ? `ZIP Code: ${query}` 
-          : `Statewide Analysis: ${query}`;
-
-      addNotification({
-        type: 'report_generated',
-        title: 'Investment Report Completed',
-        message: `Your investment report has been generated successfully. Scope: ${scopeText}`,
-        reportId: savedReport?.id,
-      });
-
-      toast({
-        title: "Report Generated Successfully",
-        description: "Your investment analysis has been completed and saved.",
-      });
+      
+      // Clear form
+      setQuery('');
+      setPropertyPrice('');
+      setWeeklyRent('');
+      setBeds('');
+      setBaths('');
 
     } catch (error) {
-      console.error('Error generating report:', error);
-      
-      // Add failure notification
-      const scopeText = queryType === 'address' 
-        ? `Property: ${query}` 
-        : queryType === 'zipcode' 
-          ? `ZIP Code: ${query}` 
-          : `Statewide Analysis: ${query}`;
-
-      addNotification({
-        type: 'report_failed',
-        title: 'Report Generation Failed',
-        message: `Failed to generate investment report for ${scopeText}. ${error instanceof Error ? error.message : 'Please try again.'}`,
-      });
+      console.error('Error starting report generation:', error);
 
       toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate report. Please try again.",
+        title: "Failed to Start Generation",
+        description: error instanceof Error ? error.message : "Failed to start report generation. Please try again.",
         variant: "destructive",
       });
     } finally {

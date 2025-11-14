@@ -4,7 +4,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface BackgroundJob {
   id: string;
-  type: 'bulk_generation' | 'comparison_analysis';
+  type: 'bulk_generation' | 'comparison_analysis' | 'investment_report';
 }
 
 export function BackgroundJobTracker() {
@@ -77,6 +77,8 @@ export function BackgroundJobTracker() {
             await checkBulkGenerationJob(job.id);
           } else if (job.type === 'comparison_analysis') {
             await checkComparisonJob(job.id);
+          } else if (job.type === 'investment_report') {
+            await checkInvestmentReportJob(job.id);
           }
         } catch (error) {
           console.error(`Error checking job ${job.id}:`, error);
@@ -142,6 +144,37 @@ export function BackgroundJobTracker() {
         type: 'info',
         title: 'Comparison Analysis Complete',
         message: 'Your property comparison analysis is ready to view'
+      });
+      processedJobsRef.current.add(jobId);
+      removeJob(jobId);
+    }
+  };
+
+  const checkInvestmentReportJob = async (jobId: string) => {
+    if (processedJobsRef.current.has(jobId)) return;
+
+    const { data: report } = await supabase
+      .from('investment_reports')
+      .select('id, property_address, status, error_message')
+      .eq('id', jobId)
+      .single();
+
+    if (!report) return;
+    
+    if (report.status === 'completed') {
+      addNotification({
+        type: 'report_generated',
+        title: 'Investment Report Completed',
+        message: `Your investment report for ${report.property_address} has been generated successfully.`,
+        reportId: report.id,
+      });
+      processedJobsRef.current.add(jobId);
+      removeJob(jobId);
+    } else if (report.status === 'failed') {
+      addNotification({
+        type: 'report_failed',
+        title: 'Investment Report Failed',
+        message: `Failed to generate report for ${report.property_address}. ${report.error_message || 'Please try again.'}`,
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
