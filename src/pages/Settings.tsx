@@ -11,6 +11,7 @@ import { airtableService } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
+import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
 
 export default function Settings() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -247,6 +248,9 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Comparison Score Migration */}
+      <ComparisonScoreMigration />
 
       {/* Security Settings */}
       <Card>
