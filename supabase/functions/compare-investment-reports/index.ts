@@ -14,7 +14,14 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { reportIds, analysisDepth = 'comprehensive', investorProfile } = await req.json();
+    const { 
+      reportIds, 
+      analysisDepth = 'comprehensive', 
+      investorProfile = 'general',
+      timeHorizon = '5-7 years',
+      riskTolerance = 'moderate',
+      customWeights
+    } = await req.json();
 
     if (!reportIds || !Array.isArray(reportIds) || reportIds.length < 2 || reportIds.length > 5) {
       return new Response(
@@ -133,14 +140,20 @@ serve(async (req) => {
     - Focus on actionable insights and clear recommendations
     - Consider both quantitative metrics and qualitative factors
     - Highlight competitive advantages and red flags for each property
-    - Tailor recommendations to the ${investorProfile || 'general investor'} profile
+    - Tailor recommendations to the "${investorProfile}" investor profile
+    - Consider the "${timeHorizon}" investment timeframe when evaluating properties
+    - Apply "${riskTolerance}" risk tolerance filter to recommendations
     - Use Australian property market context and terminology
     - When structured data is missing, extract key metrics and insights from the reportText field
     - If certain metrics are unavailable for a property, note this but still provide meaningful comparison based on available data
     - **CRITICAL**: Double-check all finalScore values are 0-100 scale before submitting (typical good scores: 70-85, excellent: 85+, poor: <60)
+    ${customWeights ? `- **CUSTOM SCORING WEIGHTS**: Apply these custom weights when calculating rankings: Growth ${customWeights.growth}%, Location ${customWeights.location}%, Yield ${customWeights.yield}%, Demand ${customWeights.demand}%, Risk ${customWeights.risk}%` : ''}
     
     **ANALYSIS DEPTH:** ${analysisDepth}
-    ${investorProfile ? `**INVESTOR PROFILE:** ${investorProfile}` : ''}
+    **INVESTOR PROFILE:** ${investorProfile}
+    **TIME HORIZON:** ${timeHorizon}
+    **RISK TOLERANCE:** ${riskTolerance}
+    ${customWeights ? `**CUSTOM WEIGHTS:** Growth ${customWeights.growth}%, Location ${customWeights.location}%, Yield ${customWeights.yield}%, Demand ${customWeights.demand}%, Risk ${customWeights.risk}%` : ''}
 
     **PROPERTIES TO COMPARE:**
     ${JSON.stringify(propertiesData, null, 2)}
@@ -353,7 +366,12 @@ Format your response as valid JSON with this structure:
         analysis_depth: analysisDepth,
         investor_profile: investorProfile,
         model_used: 'google/gemini-2.5-flash',
-        processing_time_ms: processingTime
+        processing_time_ms: processingTime,
+        analysis_summary: JSON.stringify({
+          timeHorizon,
+          riskTolerance,
+          customWeights: customWeights || null
+        })
       })
       .select()
       .single();
