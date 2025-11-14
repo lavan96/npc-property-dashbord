@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { 
   Loader2, Download, Copy, Check, TrendingUp, TrendingDown, 
   DollarSign, MapPin, AlertTriangle, Trophy, Target, Home,
-  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle, Settings, ChevronDown, RefreshCw
+  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle, Settings, ChevronDown, RefreshCw, History, Clock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -101,6 +101,9 @@ export function PropertyComparisonModal({
   const [hasStarted, setHasStarted] = useState(false);
   const [runInBackground, setRunInBackground] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [comparisonHistory, setComparisonHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   
   // Analysis parameters (all optional with sensible defaults)
   const [investorProfile, setInvestorProfile] = useState<string>('general');
@@ -118,6 +121,13 @@ export function PropertyComparisonModal({
   
   const { toast } = useToast();
   const { addNotification } = useNotifications();
+
+  // Auto-load comparison history when analysis is completed
+  useEffect(() => {
+    if (analysis && comparisonHistory.length === 0 && !loadingHistory) {
+      loadComparisonHistory();
+    }
+  }, [analysis]);
 
   const startAnalysis = async (background = false) => {
     setRunInBackground(background);
@@ -189,6 +199,104 @@ export function PropertyComparisonModal({
     } finally {
       setIsAnalyzing(false);
       setProgress(0);
+    }
+  };
+
+  const loadComparisonHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      // Sort report IDs to ensure consistent matching
+      const sortedReportIds = [...reportIds].sort();
+      
+      const { data, error } = await supabase
+        .from('property_comparisons')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      // Filter for comparisons with the exact same report IDs
+      const matchingComparisons = data?.filter(comp => {
+        const compReportIds = [...(comp.report_ids || [])].sort();
+        return compReportIds.length === sortedReportIds.length &&
+               compReportIds.every((id, index) => id === sortedReportIds[index]);
+      }) || [];
+
+      setComparisonHistory(matchingComparisons);
+    } catch (error) {
+      console.error('Error loading comparison history:', error);
+      toast({
+        title: "Failed to Load History",
+        description: "Could not load previous comparisons",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const loadHistoricalComparison = async (comparisonId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('property_comparisons')
+        .select('*')
+        .eq('id', comparisonId)
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Comparison not found');
+
+      // Reconstruct the analysis object from database fields
+      const historicalAnalysis: ComparisonAnalysis = {
+        executiveSummary: data.executive_summary || '',
+        rankings: (data.rankings || []) as ComparisonAnalysis['rankings'],
+        financialComparison: (data.financial_comparison || {}) as ComparisonAnalysis['financialComparison'],
+        locationComparison: (data.location_comparison || {}) as ComparisonAnalysis['locationComparison'],
+        riskComparison: (data.risk_comparison || {}) as ComparisonAnalysis['riskComparison'],
+        investorMatches: (data.investor_matches || []) as ComparisonAnalysis['investorMatches'],
+        competitiveAdvantages: [], // Not stored separately
+        redFlags: (data.red_flags || []) as ComparisonAnalysis['redFlags'],
+        finalRecommendation: (data.recommendations || {}) as ComparisonAnalysis['finalRecommendation']
+      };
+
+      setAnalysis(historicalAnalysis);
+      setComparisonId(comparisonId);
+
+      // Load settings from analysis_summary if available
+      if (data.analysis_summary) {
+        try {
+          const summary = typeof data.analysis_summary === 'string' 
+            ? JSON.parse(data.analysis_summary) 
+            : data.analysis_summary;
+          
+          if (summary.timeHorizon) setTimeHorizon(summary.timeHorizon);
+          if (summary.riskTolerance) setRiskTolerance(summary.riskTolerance);
+          if (summary.customWeights) {
+            setCustomWeights(summary.customWeights);
+            setUseCustomWeights(true);
+          }
+        } catch (e) {
+          console.error('Error parsing analysis summary:', e);
+        }
+      }
+
+      // Load other parameters
+      if (data.investor_profile) setInvestorProfile(data.investor_profile);
+      if (data.analysis_depth) setAnalysisDepth(data.analysis_depth);
+
+      setHistoryOpen(false);
+      toast({
+        title: "Historical Analysis Loaded",
+        description: `Loaded analysis from ${new Date(data.created_at).toLocaleString()}`,
+      });
+    } catch (error) {
+      console.error('Error loading historical comparison:', error);
+      toast({
+        title: "Failed to Load Analysis",
+        description: error instanceof Error ? error.message : "Could not load comparison",
+        variant: "destructive",
+      });
     }
   };
 
@@ -542,6 +650,19 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Re-run Analysis
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      if (comparisonHistory.length === 0) {
+                        loadComparisonHistory();
+                      }
+                      setHistoryOpen(!historyOpen);
+                    }}
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    History ({comparisonHistory.length})
+                  </Button>
                 </div>
                 <Button variant="ghost" size="sm" onClick={onClose}>
                   Close
@@ -731,6 +852,117 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                   </CollapsibleContent>
                 </Collapsible>
               </Card>
+
+              {/* Comparison History Panel */}
+              {historyOpen && (
+                <Card className="mb-4">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <History className="h-4 w-4" />
+                        <CardTitle className="text-sm">Comparison History</CardTitle>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setHistoryOpen(false)}>
+                        Close
+                      </Button>
+                    </div>
+                    <CardDescription>
+                      Previous analyses for these properties with different parameters
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingHistory ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : comparisonHistory.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="text-sm">No previous comparisons found for these properties.</p>
+                        <p className="text-xs mt-1">Run analysis with different settings to build history.</p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[300px]">
+                        <div className="space-y-2 pr-4">
+                          {comparisonHistory.map((comp) => {
+                            const isCurrentAnalysis = comp.id === comparisonId;
+                            const createdDate = new Date(comp.created_at);
+                            let summaryData = null;
+                            try {
+                              summaryData = comp.analysis_summary 
+                                ? (typeof comp.analysis_summary === 'string' 
+                                    ? JSON.parse(comp.analysis_summary) 
+                                    : comp.analysis_summary)
+                                : null;
+                            } catch (e) {
+                              // Ignore parsing errors
+                            }
+
+                            return (
+                              <Card 
+                                key={comp.id} 
+                                className={`cursor-pointer transition-colors ${
+                                  isCurrentAnalysis 
+                                    ? 'border-primary bg-primary/5' 
+                                    : 'hover:bg-muted/50'
+                                }`}
+                                onClick={() => !isCurrentAnalysis && loadHistoricalComparison(comp.id)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Clock className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-xs font-medium">
+                                          {createdDate.toLocaleDateString()} at {createdDate.toLocaleTimeString()}
+                                        </span>
+                                        {isCurrentAnalysis && (
+                                          <Badge variant="default" className="text-xs">Current</Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {comp.investor_profile && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {comp.investor_profile}
+                                          </Badge>
+                                        )}
+                                        {comp.analysis_depth && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {comp.analysis_depth}
+                                          </Badge>
+                                        )}
+                                        {summaryData?.timeHorizon && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {summaryData.timeHorizon}
+                                          </Badge>
+                                        )}
+                                        {summaryData?.riskTolerance && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {summaryData.riskTolerance} risk
+                                          </Badge>
+                                        )}
+                                        {summaryData?.customWeights && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            Custom weights
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {!isCurrentAnalysis && (
+                                      <Button variant="ghost" size="sm">
+                                        Load
+                                      </Button>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
                 <TabsList className="grid w-full grid-cols-6">
