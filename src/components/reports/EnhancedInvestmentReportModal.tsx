@@ -56,7 +56,7 @@ export function EnhancedInvestmentReportModal({
     }
     
     try {
-      // Step 1: Generate main report
+      // Step 1: Generate main report (edge function already fetches all enhanced data)
       setProgress(25);
       const { data, error } = await supabase.functions.invoke('generate-investment-report', {
         body: {
@@ -66,21 +66,32 @@ export function EnhancedInvestmentReportModal({
       });
 
       if (error) {
+        console.error('Edge function error:', error);
         throw new Error(error.message || 'Failed to generate investment report');
+      }
+
+      if (!data) {
+        throw new Error('No data returned from edge function');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Report generation failed');
       }
 
       setProgress(50);
       
-      // Step 2: Fetch enhanced data separately for display
-      if (propertyDetails?.price) {
-        setProgress(60);
-        const enhancedDataResponse = await fetchEnhancedData();
-        setEnhancedData(enhancedDataResponse);
-        setProgress(90);
+      // Use the enhanced data returned from the edge function
+      if (data.enhancedData) {
+        setEnhancedData({
+          demographics: data.enhancedData.demographics,
+          economics: data.enhancedData.economics,
+          financials: data.enhancedData.financials,
+          location: data.enhancedData.locationIntelligence,
+          investmentScore: data.enhancedData.investmentScore
+        });
       }
 
-      setProgress(100);
-      setReportContent(data.reportContent);
+      setProgress(90);
       
       // Save the report to the database
       let finalReportId = '';
@@ -119,8 +130,12 @@ export function EnhancedInvestmentReportModal({
         }
       } catch (error) {
         console.error('Could not save report:', error);
-        throw new Error(error instanceof Error ? error.message : 'Failed to store report in database');
+        // Don't fail the entire generation if save fails, just log it
+        console.warn('Report generated but not saved to database');
       }
+
+      setProgress(100);
+      setReportContent(data.reportContent);
       
       if (runInBackground) {
         // Add notification when generated in background
@@ -138,17 +153,19 @@ export function EnhancedInvestmentReportModal({
       }
     } catch (error) {
       console.error('Report generation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error details:', errorMessage);
       
       if (runInBackground) {
         addNotification({
           type: 'report_failed',
           title: 'Report Generation Failed',
-          message: `Failed to generate report for ${propertyAddress}. Please try again.`
+          message: `Failed to generate report for ${propertyAddress}: ${errorMessage}`
         });
       } else {
         toast({
           title: "Generation Failed",
-          description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
