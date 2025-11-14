@@ -85,7 +85,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     markAsRead(notification.id);
     
     if (notification.type === 'report_generated' && notification.reportId) {
-      navigate(`/generated-reports/${notification.reportId}`);
+      // Store reportId in localStorage for GeneratedReports page to open
+      localStorage.setItem('openReportId', notification.reportId);
+      navigate('/generated-reports');
     } else if (notification.type === 'report_generated') {
       navigate('/generated-reports');
     }
