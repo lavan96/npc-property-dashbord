@@ -754,9 +754,8 @@ ${enhancedData.locationIntelligence.transport.detailedStops?.length > 0 ? `- Nea
 ${enhancedData.locationIntelligence.transport.detailedStops.slice(0, 5).map((s: any) => `  * ${s.name} (${s.type}): ${s.distance}m away, Routes: ${s.routes?.join(', ') || 'N/A'}`).join('\n')}` : ''}
 ` : `${enhancedData.locationIntelligence.transport?.nearestStation ? `PUBLIC TRANSPORT:
 - Nearest Station: ${enhancedData.locationIntelligence.transport.nearestStation}` : ''}
-${enhancedData.locationIntelligence.transport?.distanceToStation ? `- Distance to Station: ${enhancedData.locationIntelligence.transport.distanceToStation}km` : ''}`}
-- Stations Within 2km: ${enhancedData.locationIntelligence.transport?.stationsWithin2km || 'N/A'}
-`}
+${enhancedData.locationIntelligence.transport?.distanceToStation ? `
+- Distance to Station: ${enhancedData.locationIntelligence.transport.distanceToStation}km` : ''}`}
 
 ${enhancedData.locationIntelligence.schools ? `EDUCATION:
 ${enhancedData.locationIntelligence.schools.nearestSchool ? `- Nearest School: ${enhancedData.locationIntelligence.schools.nearestSchool}${enhancedData.locationIntelligence.schools.distanceToSchool ? ` (${enhancedData.locationIntelligence.schools.distanceToSchool}km away)` : ''}` : ''}
