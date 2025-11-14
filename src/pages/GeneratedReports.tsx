@@ -72,6 +72,20 @@ export default function GeneratedReports() {
     fetchComparisons();
   }, []); // Only run once on mount
 
+  // Handle opening a specific report after data is loaded
+  useEffect(() => {
+    if (!loading && investmentReports.length > 0) {
+      const openReportId = localStorage.getItem('openReportId');
+      if (openReportId) {
+        localStorage.removeItem('openReportId');
+        const report = investmentReports.find(r => r.id === openReportId);
+        if (report) {
+          handleViewInvestmentReport(report);
+        }
+      }
+    }
+  }, [loading, investmentReports]);
+
   useEffect(() => {
     // Listen for custom event to open a specific report
     const handleOpenReport = (event: CustomEvent) => {
@@ -81,19 +95,6 @@ export default function GeneratedReports() {
         handleViewInvestmentReport(report);
       }
     };
-
-    // Check for report ID in localStorage (from navigation)
-    const openReportId = localStorage.getItem('openReportId');
-    if (openReportId) {
-      localStorage.removeItem('openReportId');
-      // Need to wait for reports to load first
-      setTimeout(() => {
-        const report = investmentReports.find(r => r.id === openReportId);
-        if (report) {
-          handleViewInvestmentReport(report);
-        }
-      }, 500);
-    }
 
     window.addEventListener('openReport', handleOpenReport as EventListener);
     return () => {
