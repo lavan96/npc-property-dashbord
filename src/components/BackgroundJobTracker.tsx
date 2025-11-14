@@ -9,13 +9,21 @@ interface BackgroundJob {
 
 export function BackgroundJobTracker() {
   const [jobs, setJobs] = useState<BackgroundJob[]>([]);
+  const jobsRef = useRef<BackgroundJob[]>([]);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { addNotification } = useNotifications();
   const processedJobsRef = useRef<Set<string>>(new Set());
 
-  // Load jobs from localStorage on mount
+  // Keep jobsRef in sync with jobs state
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
+
+  // Load jobs from localStorage on mount and also load processed jobs
   useEffect(() => {
     const stored = localStorage.getItem('background_jobs');
+    const processedStored = localStorage.getItem('processed_jobs');
+    
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -24,12 +32,32 @@ export function BackgroundJobTracker() {
         console.error('Failed to parse background jobs:', error);
       }
     }
+    
+    if (processedStored) {
+      try {
+        const parsed = JSON.parse(processedStored);
+        processedJobsRef.current = new Set(parsed);
+      } catch (error) {
+        console.error('Failed to parse processed jobs:', error);
+      }
+    }
   }, []);
 
   // Save jobs to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('background_jobs', JSON.stringify(jobs));
   }, [jobs]);
+
+  // Save processed jobs to localStorage whenever they change
+  useEffect(() => {
+    const saveProcessedJobs = () => {
+      localStorage.setItem('processed_jobs', JSON.stringify(Array.from(processedJobsRef.current)));
+    };
+    
+    // Debounce saves
+    const timeoutId = setTimeout(saveProcessedJobs, 500);
+    return () => clearTimeout(timeoutId);
+  }, [jobs]); // Trigger when jobs change to ensure processed state is saved
 
   // Poll for job status
   useEffect(() => {
@@ -40,6 +68,21 @@ export function BackgroundJobTracker() {
       }
       return;
     }
+
+    const checkAllJobs = async () => {
+      const currentJobs = jobsRef.current;
+      for (const job of currentJobs) {
+        try {
+          if (job.type === 'bulk_generation') {
+            await checkBulkGenerationJob(job.id);
+          } else if (job.type === 'comparison_analysis') {
+            await checkComparisonJob(job.id);
+          }
+        } catch (error) {
+          console.error(`Error checking job ${job.id}:`, error);
+        }
+      }
+    };
 
     if (!pollIntervalRef.current) {
       pollIntervalRef.current = setInterval(checkAllJobs, 3000);
@@ -52,20 +95,6 @@ export function BackgroundJobTracker() {
       }
     };
   }, [jobs.length]);
-
-  const checkAllJobs = async () => {
-    for (const job of jobs) {
-      try {
-        if (job.type === 'bulk_generation') {
-          await checkBulkGenerationJob(job.id);
-        } else if (job.type === 'comparison_analysis') {
-          await checkComparisonJob(job.id);
-        }
-      } catch (error) {
-        console.error(`Error checking job ${job.id}:`, error);
-      }
-    }
-  };
 
   const checkBulkGenerationJob = async (jobId: string) => {
     if (processedJobsRef.current.has(jobId)) return;
