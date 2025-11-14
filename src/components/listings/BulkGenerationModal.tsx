@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, XCircle, Clock, Loader2, FileText, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Loader2, FileText, AlertCircle, PlayCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PropertyListing } from '@/lib/airtable';
+import { addBackgroundJob } from '@/components/BackgroundJobTracker';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface BulkGenerationModalProps {
   open: boolean;
@@ -46,7 +48,9 @@ export function BulkGenerationModal({
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [items, setItems] = useState<ItemStatus[]>([]);
+  const [runInBackground, setRunInBackground] = useState(false);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   // Reset state when modal opens
   useEffect(() => {
@@ -115,8 +119,9 @@ export function BulkGenerationModal({
     }
   };
 
-  const startGeneration = async () => {
+  const startGeneration = async (background = false) => {
     setIsGenerating(true);
+    setRunInBackground(background);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -153,13 +158,28 @@ export function BulkGenerationModal({
 
       setJobId(data.jobId);
       
-      toast({
-        title: "Bulk Generation Started",
-        description: `Processing ${properties.length} properties...`,
-      });
+      if (background) {
+        addBackgroundJob({
+          id: data.jobId,
+          type: 'bulk_generation'
+        });
+        
+        addNotification({
+          type: 'info',
+          title: 'Bulk Generation Started',
+          message: `Processing ${selectedProperties.length} properties in the background. We'll notify you when it's complete.`
+        });
+        
+        onOpenChange(false);
+      } else {
+        toast({
+          title: "Bulk Generation Started",
+          description: `Processing ${properties.length} properties...`,
+        });
 
-      // Fetch initial status
-      setTimeout(() => fetchJobStatus(), 1000);
+        // Fetch initial status
+        setTimeout(() => fetchJobStatus(), 1000);
+      }
 
     } catch (error) {
       console.error('Error starting bulk generation:', error);
@@ -255,13 +275,14 @@ export function BulkGenerationModal({
               </p>
             </div>
 
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={startGeneration} disabled={isGenerating}>
+            <div className="flex gap-3">
+              <Button onClick={() => startGeneration(false)} disabled={isGenerating} size="lg" className="flex-1">
                 {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Start Generation
+              </Button>
+              <Button onClick={() => startGeneration(true)} disabled={isGenerating} variant="outline" size="lg" className="flex-1">
+                <PlayCircle className="h-4 w-4 mr-2" />
+                Run in Background
               </Button>
             </div>
           </div>

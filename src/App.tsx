@@ -10,6 +10,7 @@ import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
 import Overview from "./pages/Overview";
 import Listings from "./pages/Listings";
 import Calendar from "./pages/Calendar";
@@ -34,6 +35,7 @@ const App = () => (
         <AuthProvider>
           <BrowserRouter>
             <NotificationsProvider>
+              <BackgroundJobTracker />
               <ComparisonProvider>
                 <SearchProvider>
                   <Toaster />
