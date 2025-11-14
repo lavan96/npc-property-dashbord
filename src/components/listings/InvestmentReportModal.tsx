@@ -51,6 +51,8 @@ export function InvestmentReportModal({
     }
     
     try {
+      console.log('Calling generate-investment-report with:', { propertyAddress, propertyDetails });
+      
       const { data, error } = await supabase.functions.invoke('generate-investment-report', {
         body: {
           propertyAddress,
@@ -58,12 +60,27 @@ export function InvestmentReportModal({
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
-        console.error('Error generating report:', error);
+        console.error('Edge function error:', error);
         throw new Error(error.message || 'Failed to generate investment report');
       }
 
-      if (!data?.reportContent) {
+      if (!data) {
+        console.error('No data returned from edge function');
+        throw new Error('No data returned from edge function');
+      }
+
+      // Check if the response indicates an error
+      if (data.success === false) {
+        console.error('Report generation failed:', data.error);
+        throw new Error(data.error || 'Report generation failed');
+      }
+
+      // Check if we have the required report content
+      if (!data.reportContent) {
+        console.error('No report content in response');
         throw new Error('No report content received');
       }
 
@@ -119,17 +136,19 @@ export function InvestmentReportModal({
       }
     } catch (error) {
       console.error('Report generation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error details:', errorMessage);
       
       if (runInBackground) {
         addNotification({
           type: 'report_failed',
           title: 'Report Generation Failed',
-          message: `Failed to generate report for ${propertyAddress}. Please try again.`
+          message: `Failed to generate report for ${propertyAddress}: ${errorMessage}`
         });
       } else {
         toast({
           title: "Generation Failed",
-          description: error instanceof Error ? error.message : "Failed to generate investment report. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
