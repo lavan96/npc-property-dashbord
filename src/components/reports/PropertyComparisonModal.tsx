@@ -14,8 +14,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { 
   Loader2, Download, Copy, Check, TrendingUp, TrendingDown, 
   DollarSign, MapPin, AlertTriangle, Trophy, Target, Home,
-  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle, Settings, ChevronDown, RefreshCw, History, Clock
+  CheckCircle2, XCircle, AlertCircle, ChevronRight, PlayCircle, Settings, ChevronDown, RefreshCw, History, Clock,
+  Save, BookmarkPlus, FolderOpen, Trash2
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
@@ -104,6 +107,13 @@ export function PropertyComparisonModal({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [comparisonHistory, setComparisonHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  
+  // Template management
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [savedTemplates, setSavedTemplates] = useState<any[]>([]);
   
   // Analysis parameters (all optional with sensible defaults)
   const [investorProfile, setInvestorProfile] = useState<string>('general');
@@ -300,6 +310,113 @@ export function PropertyComparisonModal({
     }
   };
 
+  // Load templates from localStorage on mount
+  useEffect(() => {
+    const loadTemplates = () => {
+      try {
+        const stored = localStorage.getItem('comparison-analysis-templates');
+        if (stored) {
+          setSavedTemplates(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error('Error loading templates:', error);
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  // Save current settings as a template
+  const saveTemplate = () => {
+    if (!templateName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter a name for your template",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newTemplate = {
+      id: `template-${Date.now()}`,
+      name: templateName.trim(),
+      description: templateDescription.trim(),
+      createdAt: new Date().toISOString(),
+      settings: {
+        investorProfile,
+        analysisDepth,
+        timeHorizon,
+        riskTolerance,
+        useCustomWeights,
+        customWeights: useCustomWeights ? customWeights : undefined
+      }
+    };
+
+    const updatedTemplates = [...savedTemplates, newTemplate];
+    setSavedTemplates(updatedTemplates);
+    localStorage.setItem('comparison-analysis-templates', JSON.stringify(updatedTemplates));
+
+    setSaveTemplateOpen(false);
+    setTemplateName('');
+    setTemplateDescription('');
+
+    toast({
+      title: "Template Saved",
+      description: `Template "${newTemplate.name}" has been saved successfully`,
+    });
+  };
+
+  // Load a template
+  const loadTemplate = (template: any) => {
+    const settings = template.settings;
+    setInvestorProfile(settings.investorProfile);
+    setAnalysisDepth(settings.analysisDepth);
+    setTimeHorizon(settings.timeHorizon);
+    setRiskTolerance(settings.riskTolerance);
+    setUseCustomWeights(settings.useCustomWeights || false);
+    if (settings.customWeights) {
+      setCustomWeights(settings.customWeights);
+    }
+
+    setTemplatesOpen(false);
+    toast({
+      title: "Template Loaded",
+      description: `Settings from "${template.name}" have been applied`,
+    });
+  };
+
+  // Delete a template
+  const deleteTemplate = (templateId: string) => {
+    const updatedTemplates = savedTemplates.filter(t => t.id !== templateId);
+    setSavedTemplates(updatedTemplates);
+    localStorage.setItem('comparison-analysis-templates', JSON.stringify(updatedTemplates));
+
+    toast({
+      title: "Template Deleted",
+      description: "Template has been removed",
+    });
+  };
+
+  // Reset settings to defaults
+  const resetToDefaults = () => {
+    setInvestorProfile('general');
+    setAnalysisDepth('comprehensive');
+    setTimeHorizon('5-7 years');
+    setRiskTolerance('moderate');
+    setUseCustomWeights(false);
+    setCustomWeights({
+      growth: 30,
+      location: 25,
+      yield: 20,
+      demand: 15,
+      risk: 10
+    });
+
+    toast({
+      title: "Settings Reset",
+      description: "All settings have been reset to defaults",
+    });
+  };
+
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
     if (rank === 2) return <Trophy className="h-5 w-5 text-gray-400" />;
@@ -362,6 +479,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open && !isAnalyzing) {
         onClose();
@@ -569,24 +687,40 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     </CollapsibleContent>
                   </Collapsible>
                   
+                  {/* Template Management */}
+                  <Separator />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSaveTemplateOpen(true)}
+                      className="h-8 flex-1"
+                    >
+                      <Save className="h-3.5 w-3.5 mr-2" />
+                      Save Template
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTemplatesOpen(true)}
+                      className="h-8 flex-1"
+                      disabled={savedTemplates.length === 0}
+                    >
+                      <FolderOpen className="h-3.5 w-3.5 mr-2" />
+                      Load Template
+                      {savedTemplates.length > 0 && (
+                        <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                          {savedTemplates.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </div>
+                  
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        setInvestorProfile('general');
-                        setAnalysisDepth('comprehensive');
-                        setTimeHorizon('5-7 years');
-                        setRiskTolerance('moderate');
-                        setUseCustomWeights(false);
-                        setCustomWeights({
-                          growth: 30,
-                          location: 25,
-                          yield: 20,
-                          demand: 15,
-                          risk: 10
-                        });
-                      }}
+                      onClick={resetToDefaults}
                       className="h-7"
                     >
                       Reset to Defaults
@@ -1448,5 +1582,151 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Save Template Dialog */}
+    <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BookmarkPlus className="h-5 w-5" />
+            Save Analysis Template
+          </DialogTitle>
+          <DialogDescription>
+            Save your current analysis settings as a reusable template
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="template-name">Template Name *</Label>
+            <Input
+              id="template-name"
+              placeholder="e.g., Growth Focused Analysis"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="template-description">Description (Optional)</Label>
+            <Textarea
+              id="template-description"
+              placeholder="Describe when to use this template..."
+              value={templateDescription}
+              onChange={(e) => setTemplateDescription(e.target.value)}
+              rows={3}
+            />
+          </div>
+          
+          <div className="rounded-lg bg-muted p-4 space-y-2">
+            <p className="text-sm font-medium">Current Settings:</p>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div>• Investor Profile: <span className="text-foreground font-medium">{investorProfile}</span></div>
+              <div>• Analysis Depth: <span className="text-foreground font-medium">{analysisDepth}</span></div>
+              <div>• Time Horizon: <span className="text-foreground font-medium">{timeHorizon}</span></div>
+              <div>• Risk Tolerance: <span className="text-foreground font-medium">{riskTolerance}</span></div>
+              {useCustomWeights && (
+                <div>• Custom Weights: <span className="text-foreground font-medium">Enabled</span></div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" onClick={() => setSaveTemplateOpen(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={saveTemplate} className="flex-1">
+              <Save className="h-4 w-4 mr-2" />
+              Save Template
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Load Templates Dialog */}
+    <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FolderOpen className="h-5 w-5" />
+            Saved Templates
+          </DialogTitle>
+          <DialogDescription>
+            Load a saved template to quickly apply analysis settings
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh]">
+          {savedTemplates.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <BookmarkPlus className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No saved templates yet</p>
+              <p className="text-xs mt-1">Create your first template from the analysis settings</p>
+            </div>
+          ) : (
+            <div className="space-y-3 pr-4">
+              {savedTemplates.map((template) => (
+                <Card key={template.id} className="hover:bg-muted/50 transition-colors">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-base">{template.name}</CardTitle>
+                        {template.description && (
+                          <CardDescription className="mt-1 text-xs">
+                            {template.description}
+                          </CardDescription>
+                        )}
+                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>Created {new Date(template.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteTemplate(template.id)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs">
+                          {template.settings.investorProfile}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {template.settings.analysisDepth}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {template.settings.timeHorizon}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Risk: {template.settings.riskTolerance}
+                        </Badge>
+                        {template.settings.useCustomWeights && (
+                          <Badge variant="outline" className="text-xs">
+                            Custom Weights
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => loadTemplate(template)}
+                        className="w-full"
+                      >
+                        Load Template
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
