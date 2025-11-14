@@ -93,28 +93,42 @@ export function InvestmentReportModal({
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          const { data: savedReport, error: saveError } = await supabase
+          // Check if a report with this exact address and content already exists recently
+          const { data: existingReport } = await supabase
             .from('investment_reports')
-            .insert({
-              property_address: propertyAddress,
-              property_listing_id: propertyDetails?.id || null,
-              report_content: data.reportContent,
-              sources_content: data.sourcesContent || '',
-              generated_by: user.id,
-              location_intelligence: data.enhancedData?.locationIntelligence || null,
-              investment_score: data.enhancedData?.investmentScore || null,
-              financial_calculations: data.enhancedData?.financials || null,
-              demographics_data: data.enhancedData?.demographics || null,
-              economic_data: data.enhancedData?.economics || null
-            })
-            .select()
-            .single();
-          
-          if (!saveError && savedReport) {
-            setReportId(savedReport.id);
-            console.log('Report saved with ID:', savedReport.id);
-          } else if (saveError) {
-            console.error('Error saving report:', saveError);
+            .select('id')
+            .eq('property_address', propertyAddress)
+            .eq('generated_by', user.id)
+            .gte('created_at', new Date(Date.now() - 60000).toISOString()) // Within last 60 seconds
+            .maybeSingle();
+
+          if (existingReport) {
+            console.log('Report already exists, skipping duplicate save');
+            setReportId(existingReport.id);
+          } else {
+            const { data: savedReport, error: saveError } = await supabase
+              .from('investment_reports')
+              .insert({
+                property_address: propertyAddress,
+                property_listing_id: propertyDetails?.id || null,
+                report_content: data.reportContent,
+                sources_content: data.sourcesContent || '',
+                generated_by: user.id,
+                location_intelligence: data.enhancedData?.locationIntelligence || null,
+                investment_score: data.enhancedData?.investmentScore || null,
+                financial_calculations: data.enhancedData?.financials || null,
+                demographics_data: data.enhancedData?.demographics || null,
+                economic_data: data.enhancedData?.economics || null
+              })
+              .select()
+              .single();
+            
+            if (!saveError && savedReport) {
+              setReportId(savedReport.id);
+              console.log('Report saved with ID:', savedReport.id);
+            } else if (saveError) {
+              console.error('Error saving report:', saveError);
+            }
           }
         }
       } catch (error) {

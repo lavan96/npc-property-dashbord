@@ -70,7 +70,9 @@ export default function GeneratedReports() {
     fetchReports();
     fetchInvestmentReports();
     fetchComparisons();
+  }, []); // Only run once on mount
 
+  useEffect(() => {
     // Listen for custom event to open a specific report
     const handleOpenReport = (event: CustomEvent) => {
       const { reportId } = event.detail;
@@ -97,7 +99,7 @@ export default function GeneratedReports() {
     return () => {
       window.removeEventListener('openReport', handleOpenReport as EventListener);
     };
-  }, [investmentReports]);
+  }, [investmentReports]); // Keep this separate for event handling
 
   const fetchReports = async () => {
     try {
