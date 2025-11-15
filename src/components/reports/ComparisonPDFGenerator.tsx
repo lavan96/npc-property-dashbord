@@ -1,4 +1,7 @@
 import { PixelPerfectPDFGenerator } from './PixelPerfectPDFGenerator';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ComparisonData {
   id: string;
@@ -19,178 +22,81 @@ interface ComparisonPDFGeneratorProps {
 }
 
 export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorProps) {
-  // Helper function to convert JSON to readable text
-  const formatValue = (value: any, indent: string = ''): string => {
-    if (value === null || value === undefined) return 'N/A';
-    
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number') return value.toString();
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    
-    if (Array.isArray(value)) {
-      if (value.length === 0) return 'None';
-      return value.map(item => {
-        if (typeof item === 'object') {
-          return Object.entries(item)
-            .map(([k, v]) => `${indent}  - ${k}: ${formatValue(v, indent + '  ')}`)
-            .join('\n');
-        }
-        return `${indent}  - ${formatValue(item, indent + '  ')}`;
-      }).join('\n');
+  const [formattedContent, setFormattedContent] = useState<string | null>(null);
+  const [isFormatting, setIsFormatting] = useState(true);
+
+  useEffect(() => {
+    formatComparisonReport();
+  }, [comparison]);
+
+  const formatComparisonReport = async () => {
+    try {
+      setIsFormatting(true);
+      console.log('Calling format-comparison-report edge function...');
+
+      const { data, error } = await supabase.functions.invoke('format-comparison-report', {
+        body: { comparisonData: comparison }
+      });
+
+      if (error) {
+        console.error('Error formatting report:', error);
+        toast.error('Failed to format comparison report');
+        // Fallback to basic formatting
+        setFormattedContent(generateBasicReportContent());
+      } else if (data?.formattedContent) {
+        console.log('Successfully formatted comparison report');
+        setFormattedContent(data.formattedContent);
+      } else {
+        console.warn('No formatted content returned, using fallback');
+        setFormattedContent(generateBasicReportContent());
+      }
+    } catch (error) {
+      console.error('Error in formatComparisonReport:', error);
+      toast.error('Error formatting report, using basic format');
+      setFormattedContent(generateBasicReportContent());
+    } finally {
+      setIsFormatting(false);
     }
-    
-    if (typeof value === 'object') {
-      return Object.entries(value)
-        .filter(([_, v]) => v !== null && v !== undefined)
-        .map(([k, v]) => {
-          const formattedKey = k.replace(/([A-Z])/g, ' $1').trim()
-            .replace(/^./, str => str.toUpperCase());
-          return `${indent}${formattedKey}: ${formatValue(v, indent + '  ')}`;
-        })
-        .join('\n');
-    }
-    
-    return String(value);
   };
 
-  // Transform comparison data into report content format
-  const generateReportContent = (): string => {
+  // Fallback basic formatting function
+  const generateBasicReportContent = (): string => {
     let content = '# Property Comparison Analysis Report\n\n';
     
-    // Executive Summary
     if (comparison.executive_summary) {
       content += '## Executive Summary\n\n';
       content += comparison.executive_summary + '\n\n';
     }
 
-    // Rankings Section
     if (comparison.rankings) {
       content += '## Overall Rankings\n\n';
-      
-      if (Array.isArray(comparison.rankings)) {
-        comparison.rankings.forEach((property: any, index: number) => {
-          const rank = property.rank || (index + 1);
-          const address = property.address || property.propertyAddress || `Property ${index + 1}`;
-          const score = property.finalScore || property.score || property.overallScore;
-          
-          content += `**Rank ${rank}: ${address}**\n\n`;
-          
-          if (score !== undefined && score !== null) {
-            content += `Overall Score: ${typeof score === 'number' ? score.toFixed(1) : score}/100\n\n`;
-          }
-          
-          // Add all other property details
-          Object.entries(property).forEach(([key, value]) => {
-            if (!['rank', 'address', 'propertyAddress', 'finalScore', 'score', 'overallScore'].includes(key)) {
-              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
-                .replace(/^./, str => str.toUpperCase());
-              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
-            }
-          });
-          
-          content += '---\n\n';
-        });
-      } else if (typeof comparison.rankings === 'object') {
-        content += formatValue(comparison.rankings) + '\n\n';
-      }
+      content += JSON.stringify(comparison.rankings, null, 2) + '\n\n';
     }
 
-    // Financial Comparison
     if (comparison.financial_comparison) {
       content += '## Financial Analysis\n\n';
-      
-      if (Array.isArray(comparison.financial_comparison)) {
-        comparison.financial_comparison.forEach((property: any) => {
-          const address = property.address || property.propertyAddress || 'Property';
-          content += `**${address}**\n\n`;
-          
-          Object.entries(property).forEach(([key, value]) => {
-            if (key !== 'address' && key !== 'propertyAddress') {
-              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
-                .replace(/^./, str => str.toUpperCase());
-              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
-            }
-          });
-          
-          content += '---\n\n';
-        });
-      } else if (typeof comparison.financial_comparison === 'object') {
-        content += formatValue(comparison.financial_comparison) + '\n\n';
-      }
+      content += JSON.stringify(comparison.financial_comparison, null, 2) + '\n\n';
     }
 
-    // Location Comparison
     if (comparison.location_comparison) {
       content += '## Location Intelligence\n\n';
-      
-      if (Array.isArray(comparison.location_comparison)) {
-        comparison.location_comparison.forEach((property: any) => {
-          const address = property.address || property.propertyAddress || 'Property';
-          content += `**${address}**\n\n`;
-          
-          Object.entries(property).forEach(([key, value]) => {
-            if (key !== 'address' && key !== 'propertyAddress') {
-              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
-                .replace(/^./, str => str.toUpperCase());
-              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
-            }
-          });
-          
-          content += '---\n\n';
-        });
-      } else if (typeof comparison.location_comparison === 'object') {
-        content += formatValue(comparison.location_comparison) + '\n\n';
-      }
+      content += JSON.stringify(comparison.location_comparison, null, 2) + '\n\n';
     }
 
-    // Risk Assessment
     if (comparison.risk_comparison) {
       content += '## Risk Assessment\n\n';
-      
-      if (Array.isArray(comparison.risk_comparison)) {
-        comparison.risk_comparison.forEach((property: any) => {
-          const address = property.address || property.propertyAddress || 'Property';
-          content += `**${address}**\n\n`;
-          
-          Object.entries(property).forEach(([key, value]) => {
-            if (key !== 'address' && key !== 'propertyAddress') {
-              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
-                .replace(/^./, str => str.toUpperCase());
-              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
-            }
-          });
-          
-          content += '---\n\n';
-        });
-      } else if (typeof comparison.risk_comparison === 'object') {
-        content += formatValue(comparison.risk_comparison) + '\n\n';
-      }
+      content += JSON.stringify(comparison.risk_comparison, null, 2) + '\n\n';
     }
 
-    // Recommendations
     if (comparison.recommendations) {
       content += '## Investment Recommendations\n\n';
-      
-      if (typeof comparison.recommendations === 'string') {
-        content += comparison.recommendations + '\n\n';
-      } else if (Array.isArray(comparison.recommendations)) {
-        comparison.recommendations.forEach((rec: any) => {
-          content += formatValue(rec) + '\n\n';
-        });
-      } else if (typeof comparison.recommendations === 'object') {
-        content += formatValue(comparison.recommendations) + '\n\n';
-      }
+      content += JSON.stringify(comparison.recommendations, null, 2) + '\n\n';
     }
 
-    // Red Flags
     if (comparison.red_flags && Array.isArray(comparison.red_flags) && comparison.red_flags.length > 0) {
       content += '## Important Considerations\n\n';
       comparison.red_flags.forEach((flag: any) => {
-        if (typeof flag === 'string') {
-          content += `- ${flag}\n`;
-        } else if (typeof flag === 'object') {
-          content += formatValue(flag, '- ') + '\n';
-        }
+        content += `- ${typeof flag === 'string' ? flag : JSON.stringify(flag)}\n`;
       });
       content += '\n';
     }
@@ -198,11 +104,23 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
     return content;
   };
 
+  // Show loading state while formatting
+  if (isFormatting || !formattedContent) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Formatting comparison report...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Transform comparison data to match PixelPerfectPDFGenerator expectations
   const transformedReport = {
     id: comparison.id,
     address: `Comparison Analysis - ${comparison.property_count} Properties`,
-    content: generateReportContent(),
+    content: formattedContent, // Use the formatted content from Perplexity
     created_at: comparison.created_at || new Date().toISOString(),
     enhanced_data: {
       domainData: null,
