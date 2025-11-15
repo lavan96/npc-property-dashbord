@@ -19,6 +19,40 @@ interface ComparisonPDFGeneratorProps {
 }
 
 export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorProps) {
+  // Helper function to convert JSON to readable text
+  const formatValue = (value: any, indent: string = ''): string => {
+    if (value === null || value === undefined) return 'N/A';
+    
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) return 'None';
+      return value.map(item => {
+        if (typeof item === 'object') {
+          return Object.entries(item)
+            .map(([k, v]) => `${indent}  - ${k}: ${formatValue(v, indent + '  ')}`)
+            .join('\n');
+        }
+        return `${indent}  - ${formatValue(item, indent + '  ')}`;
+      }).join('\n');
+    }
+    
+    if (typeof value === 'object') {
+      return Object.entries(value)
+        .filter(([_, v]) => v !== null && v !== undefined)
+        .map(([k, v]) => {
+          const formattedKey = k.replace(/([A-Z])/g, ' $1').trim()
+            .replace(/^./, str => str.toUpperCase());
+          return `${indent}${formattedKey}: ${formatValue(v, indent + '  ')}`;
+        })
+        .join('\n');
+    }
+    
+    return String(value);
+  };
+
   // Transform comparison data into report content format
   const generateReportContent = (): string => {
     let content = '# Property Comparison Analysis Report\n\n';
@@ -30,17 +64,35 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
     }
 
     // Rankings Section
-    if (comparison.rankings && Array.isArray(comparison.rankings)) {
+    if (comparison.rankings) {
       content += '## Overall Rankings\n\n';
-      comparison.rankings.forEach((property: any) => {
-        content += `**Rank ${property.rank}: ${property.address}**\n`;
-        content += `- Overall Score: ${typeof property.finalScore === 'number' ? property.finalScore.toFixed(1) : property.finalScore}/100\n`;
-        if (property.reasoning) {
-          content += `- Analysis: ${property.reasoning}\n`;
-        }
-        content += '\n';
-      });
-      content += '\n';
+      
+      if (Array.isArray(comparison.rankings)) {
+        comparison.rankings.forEach((property: any, index: number) => {
+          const rank = property.rank || (index + 1);
+          const address = property.address || property.propertyAddress || `Property ${index + 1}`;
+          const score = property.finalScore || property.score || property.overallScore;
+          
+          content += `**Rank ${rank}: ${address}**\n\n`;
+          
+          if (score !== undefined && score !== null) {
+            content += `Overall Score: ${typeof score === 'number' ? score.toFixed(1) : score}/100\n\n`;
+          }
+          
+          // Add all other property details
+          Object.entries(property).forEach(([key, value]) => {
+            if (!['rank', 'address', 'propertyAddress', 'finalScore', 'score', 'overallScore'].includes(key)) {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
+                .replace(/^./, str => str.toUpperCase());
+              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
+            }
+          });
+          
+          content += '---\n\n';
+        });
+      } else if (typeof comparison.rankings === 'object') {
+        content += formatValue(comparison.rankings) + '\n\n';
+      }
     }
 
     // Financial Comparison
@@ -49,19 +101,22 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
       
       if (Array.isArray(comparison.financial_comparison)) {
         comparison.financial_comparison.forEach((property: any) => {
-          content += `**${property.address}**\n`;
-          if (property.expectedYield) content += `- Expected Yield: ${property.expectedYield}\n`;
-          if (property.capitalGrowth) content += `- Capital Growth: ${property.capitalGrowth}\n`;
-          if (property.cashFlow) content += `- Cash Flow: ${property.cashFlow}\n`;
-          if (property.analysis) content += `- Analysis: ${property.analysis}\n`;
-          content += '\n';
+          const address = property.address || property.propertyAddress || 'Property';
+          content += `**${address}**\n\n`;
+          
+          Object.entries(property).forEach(([key, value]) => {
+            if (key !== 'address' && key !== 'propertyAddress') {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
+                .replace(/^./, str => str.toUpperCase());
+              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
+            }
+          });
+          
+          content += '---\n\n';
         });
       } else if (typeof comparison.financial_comparison === 'object') {
-        Object.entries(comparison.financial_comparison).forEach(([key, value]) => {
-          content += `**${key}**: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
-        });
+        content += formatValue(comparison.financial_comparison) + '\n\n';
       }
-      content += '\n';
     }
 
     // Location Comparison
@@ -70,19 +125,22 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
       
       if (Array.isArray(comparison.location_comparison)) {
         comparison.location_comparison.forEach((property: any) => {
-          content += `**${property.address}**\n`;
-          if (property.transportScore) content += `- Transport Score: ${property.transportScore}\n`;
-          if (property.amenitiesScore) content += `- Amenities Score: ${property.amenitiesScore}\n`;
-          if (property.schoolsQuality) content += `- Schools Quality: ${property.schoolsQuality}\n`;
-          if (property.analysis) content += `- Analysis: ${property.analysis}\n`;
-          content += '\n';
+          const address = property.address || property.propertyAddress || 'Property';
+          content += `**${address}**\n\n`;
+          
+          Object.entries(property).forEach(([key, value]) => {
+            if (key !== 'address' && key !== 'propertyAddress') {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
+                .replace(/^./, str => str.toUpperCase());
+              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
+            }
+          });
+          
+          content += '---\n\n';
         });
       } else if (typeof comparison.location_comparison === 'object') {
-        Object.entries(comparison.location_comparison).forEach(([key, value]) => {
-          content += `**${key}**: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
-        });
+        content += formatValue(comparison.location_comparison) + '\n\n';
       }
-      content += '\n';
     }
 
     // Risk Assessment
@@ -91,19 +149,22 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
       
       if (Array.isArray(comparison.risk_comparison)) {
         comparison.risk_comparison.forEach((property: any) => {
-          content += `**${property.address}**\n`;
-          if (property.overallRisk) content += `- Overall Risk: ${property.overallRisk}\n`;
-          if (property.marketVolatility) content += `- Market Volatility: ${property.marketVolatility}\n`;
-          if (property.liquidityRisk) content += `- Liquidity Risk: ${property.liquidityRisk}\n`;
-          if (property.analysis) content += `- Analysis: ${property.analysis}\n`;
-          content += '\n';
+          const address = property.address || property.propertyAddress || 'Property';
+          content += `**${address}**\n\n`;
+          
+          Object.entries(property).forEach(([key, value]) => {
+            if (key !== 'address' && key !== 'propertyAddress') {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').trim()
+                .replace(/^./, str => str.toUpperCase());
+              content += `${formattedKey}:\n${formatValue(value, '  ')}\n\n`;
+            }
+          });
+          
+          content += '---\n\n';
         });
       } else if (typeof comparison.risk_comparison === 'object') {
-        Object.entries(comparison.risk_comparison).forEach(([key, value]) => {
-          content += `**${key}**: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
-        });
+        content += formatValue(comparison.risk_comparison) + '\n\n';
       }
-      content += '\n';
     }
 
     // Recommendations
@@ -112,20 +173,12 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
       
       if (typeof comparison.recommendations === 'string') {
         content += comparison.recommendations + '\n\n';
+      } else if (Array.isArray(comparison.recommendations)) {
+        comparison.recommendations.forEach((rec: any) => {
+          content += formatValue(rec) + '\n\n';
+        });
       } else if (typeof comparison.recommendations === 'object') {
-        if (comparison.recommendations.topChoice) {
-          content += `**Top Choice**: ${comparison.recommendations.topChoice}\n\n`;
-        }
-        if (comparison.recommendations.reasoning) {
-          content += comparison.recommendations.reasoning + '\n\n';
-        }
-        if (Array.isArray(comparison.recommendations.keyPoints)) {
-          content += '**Key Points**:\n';
-          comparison.recommendations.keyPoints.forEach((point: string) => {
-            content += `- ${point}\n`;
-          });
-          content += '\n';
-        }
+        content += formatValue(comparison.recommendations) + '\n\n';
       }
     }
 
@@ -135,9 +188,8 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
       comparison.red_flags.forEach((flag: any) => {
         if (typeof flag === 'string') {
           content += `- ${flag}\n`;
-        } else if (flag.property && flag.issue) {
-          content += `**${flag.property}**: ${flag.issue}\n`;
-          if (flag.severity) content += `  - Severity: ${flag.severity}\n`;
+        } else if (typeof flag === 'object') {
+          content += formatValue(flag, '- ') + '\n';
         }
       });
       content += '\n';
