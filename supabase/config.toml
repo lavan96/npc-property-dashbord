@@ -133,3 +133,7 @@ request_timeout = 150
 
 [functions.migrate-comparison-scores]
 verify_jwt = false
+
+[functions.format-comparison-report]
+verify_jwt = false
+request_timeout = 60
