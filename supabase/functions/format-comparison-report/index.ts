@@ -33,6 +33,13 @@ REQUIREMENTS:
 8. Do NOT include any JSON code or raw data structures - only clean, formatted text
 9. Use bold for property addresses and important metrics
 10. Include divider lines (---) between major sections
+11. At the end of the report, add two final sections:
+    a) **Contact Information** section with:
+       - Company name: NPC Services
+       - Phone: [Include appropriate contact number]
+       - Email: [Include appropriate contact email]
+       - Website: [Include appropriate website]
+    b) **Disclaimer** section with appropriate legal disclaimers about investment advice, property valuations, and the need for independent professional advice
 
 Here is the comparison data to format:
 
