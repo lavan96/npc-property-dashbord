@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, MapPin, AlertTriangle, Target } from 'lucide-react';
+import { ComparisonPDFGenerator } from './ComparisonPDFGenerator';
 
 interface ComparisonViewerProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ interface ComparisonViewerProps {
     risk_comparison: any;
     recommendations: any;
     red_flags: any;
+    report_ids: string[];
+    created_at: string;
   } | null;
 }
 
@@ -44,9 +47,12 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Property Comparison Analysis
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Property Comparison Analysis
+            </div>
+            <ComparisonPDFGenerator comparison={comparison} />
           </DialogTitle>
         </DialogHeader>
 
