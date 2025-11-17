@@ -43,10 +43,30 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
     }
   };
 
+  // Parse JSON strings if needed
+  const parseIfNeeded = (data: any) => {
+    if (!data) return data;
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch {
+        return data;
+      }
+    }
+    return data;
+  };
+
+  const rankings = parseIfNeeded(comparison.rankings);
+  const financialComparison = parseIfNeeded(comparison.financial_comparison);
+  const locationComparison = parseIfNeeded(comparison.location_comparison);
+  const riskComparison = parseIfNeeded(comparison.risk_comparison);
+  const recommendations = parseIfNeeded(comparison.recommendations);
+  const redFlags = parseIfNeeded(comparison.red_flags);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5" />
@@ -56,8 +76,8 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="h-[calc(90vh-100px)]">
-          <div className="space-y-6 pr-4">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-4">
+          <div className="space-y-6 pb-4">
             {/* Executive Summary */}
             {comparison.executive_summary && (
               <Card>
@@ -82,8 +102,8 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
 
               {/* Rankings Tab */}
               <TabsContent value="rankings" className="space-y-4">
-                {comparison.rankings && Array.isArray(comparison.rankings) ? (
-                  comparison.rankings.map((property: any) => (
+                {rankings && Array.isArray(rankings) ? (
+                  rankings.map((property: any) => (
                     <Card key={property.propertyNumber}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
@@ -141,9 +161,9 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
 
               {/* Financial Tab */}
               <TabsContent value="financial" className="space-y-4">
-                {comparison.financial_comparison ? (
+                {financialComparison ? (
                   <div className="grid gap-4">
-                    {Object.entries(comparison.financial_comparison).map(([key, value]: [string, any]) => (
+                    {Object.entries(financialComparison).map(([key, value]: [string, any]) => (
                       <Card key={key}>
                         <CardHeader>
                           <CardTitle className="text-sm capitalize flex items-center gap-2">
@@ -172,9 +192,9 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
 
               {/* Location Tab */}
               <TabsContent value="location" className="space-y-4">
-                {comparison.location_comparison ? (
+                {locationComparison ? (
                   <div className="grid gap-4">
-                    {Object.entries(comparison.location_comparison).map(([key, value]: [string, any]) => (
+                    {Object.entries(locationComparison).map(([key, value]: [string, any]) => (
                       <Card key={key}>
                         <CardHeader>
                           <CardTitle className="text-sm capitalize flex items-center gap-2">
@@ -202,7 +222,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
 
               {/* Risk Tab */}
               <TabsContent value="risk" className="space-y-4">
-                {comparison.risk_comparison ? (
+                {riskComparison ? (
                   <>
                     <div className="grid gap-4">
                       <Card>
@@ -214,10 +234,10 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm">
-                            <span className="font-medium">Property #{comparison.risk_comparison.lowestRisk?.propertyNumber}</span>
+                            <span className="font-medium">Property #{riskComparison.lowestRisk?.propertyNumber}</span>
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {comparison.risk_comparison.lowestRisk?.reason}
+                            {riskComparison.lowestRisk?.reason}
                           </p>
                         </CardContent>
                       </Card>
@@ -230,22 +250,22 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                         </CardHeader>
                         <CardContent>
                           <p className="text-sm">
-                            <span className="font-medium">Property #{comparison.risk_comparison.highestRisk?.propertyNumber}</span>
+                            <span className="font-medium">Property #{riskComparison.highestRisk?.propertyNumber}</span>
                           </p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {comparison.risk_comparison.highestRisk?.reason}
+                            {riskComparison.highestRisk?.reason}
                           </p>
                         </CardContent>
                       </Card>
                     </div>
 
-                    {comparison.risk_comparison.riskLevels && (
+                    {riskComparison.riskLevels && (
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-sm">Risk Levels by Property</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {comparison.risk_comparison.riskLevels.map((risk: any) => (
+                          {riskComparison.riskLevels.map((risk: any) => (
                             <div key={risk.propertyNumber} className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">Property #{risk.propertyNumber}</span>
@@ -277,7 +297,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
             </Tabs>
 
             {/* Final Recommendation */}
-            {comparison.recommendations && (
+            {recommendations && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -286,18 +306,18 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {comparison.recommendations.bestOverall && (
+                  {recommendations.bestOverall && (
                     <div>
                       <p className="font-medium text-sm mb-1">Best Overall Investment:</p>
                       <p className="text-sm">
-                        Property #{comparison.recommendations.bestOverall.propertyNumber}
+                        Property #{recommendations.bestOverall.propertyNumber}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {comparison.recommendations.bestOverall.reason}
+                        {recommendations.bestOverall.reason}
                       </p>
                     </div>
                   )}
-                  {comparison.recommendations.runners && comparison.recommendations.runners.length > 0 && (
+                  {recommendations.runners && recommendations.runners.length > 0 && (
                     <div>
                       <p className="font-medium text-sm mb-1">Alternative Options:</p>
                       {comparison.recommendations.runners.map((runner: any, idx: number) => (
@@ -313,7 +333,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
             )}
 
             {/* Red Flags */}
-            {comparison.red_flags && comparison.red_flags.length > 0 && (
+            {redFlags && redFlags.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2 text-red-600">
@@ -322,7 +342,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {comparison.red_flags.map((flag: any) => (
+                  {redFlags.map((flag: any) => (
                     <div key={flag.propertyNumber} className="space-y-1">
                       <div className="flex items-center justify-between">
                         <p className="font-medium text-sm">Property #{flag.propertyNumber}</p>
@@ -339,7 +359,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
               </Card>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
