@@ -169,6 +169,13 @@ export function PropertyComparisonModal({
     setHasStarted(true);
     setProgress(10);
 
+    // Add notification for analysis start
+    addNotification({
+      type: 'info',
+      title: 'Comparison Analysis Started',
+      message: `Comparing ${reportIds.length} properties with ${analysisDepth} analysis depth...`
+    });
+
     try {
       setProgress(30);
       
@@ -202,16 +209,18 @@ export function PropertyComparisonModal({
       setComparisonId(data.comparisonId);
       setProgress(100);
 
+      // Add notification for completion
+      addNotification({
+        type: 'report_generated',
+        title: 'Comparison Analysis Complete',
+        message: `Successfully compared ${reportIds.length} properties. View results now.`,
+        reportId: data.comparisonId
+      });
+
       if (background) {
         addBackgroundJob({
           id: data.comparisonId,
           type: 'comparison_analysis'
-        });
-        
-        addNotification({
-          type: 'info',
-          title: 'Comparison Analysis Started',
-          message: 'Your comparison is processing in the background. We\'ll notify you when it\'s ready.'
         });
         
         onClose();
@@ -224,11 +233,24 @@ export function PropertyComparisonModal({
 
     } catch (error) {
       console.error('Comparison error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to compare properties';
+      
+      // Add error notification
+      addNotification({
+        type: 'report_failed',
+        title: 'Comparison Analysis Failed',
+        message: errorMessage
+      });
+      
       toast({
         title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Failed to compare properties",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      // Reset states on error to prevent blank page
+      setAnalysis(null);
+      setComparisonId('');
       setHasStarted(false);
     } finally {
       setIsAnalyzing(false);
@@ -575,7 +597,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-4 pt-4">
+                    <CollapsibleContent className="space-y-4 pt-4 max-h-[400px] overflow-y-auto pr-4">
                       <p className="text-xs text-muted-foreground">
                         Customize the analysis or use defaults. All settings are optional with sensible defaults applied automatically.
                       </p>
