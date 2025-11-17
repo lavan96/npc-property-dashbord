@@ -550,8 +550,8 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
         onClose();
       }
     }}>
-      <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col w-[95vw]">
-        <DialogHeader>
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col w-[95vw]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
             Multi-Property Comparison Analysis
@@ -561,8 +561,8 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col min-h-0">
-          {!hasStarted && !analysis && (
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="h-full flex flex-col">{!hasStarted && !analysis && (
             <div className="flex-1 flex items-center justify-center p-8">
               <Card className="w-full max-w-5xl">
                 <CardHeader>
@@ -573,8 +573,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <ScrollArea className="max-h-[calc(90vh-12rem)] pr-4">
-                    <div className="space-y-4">
+                  <div className="space-y-4">
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Selected Properties:</h4>
                     {propertyAddresses.map((address, index) => (
@@ -813,7 +812,6 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     </Button>
                   </div>
                   </div>
-                  </ScrollArea>
                 </CardContent>
               </Card>
             </div>
@@ -1652,6 +1650,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
               </Tabs>
             </div>
           )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
