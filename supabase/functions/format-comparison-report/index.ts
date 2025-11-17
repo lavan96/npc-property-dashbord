@@ -36,9 +36,9 @@ REQUIREMENTS:
 11. At the end of the report, add two final sections:
     a) **Contact Information** section with:
        - Company name: NPC Services
-       - Phone: [Include appropriate contact number]
-       - Email: [Include appropriate contact email]
-       - Website: [Include appropriate website]
+       - Phone: 0433 005 110
+       - Email: admin@npcservices.com.au
+       - Website: npcservices.com.au
     b) **Disclaimer** section with appropriate legal disclaimers about investment advice, property valuations, and the need for independent professional advice
 
 Here is the comparison data to format:
