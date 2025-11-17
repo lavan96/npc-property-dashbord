@@ -94,7 +94,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96" align="start">
+      <PopoverContent className="w-96 max-h-[80vh] overflow-y-auto" align="start">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">Filters</h4>
