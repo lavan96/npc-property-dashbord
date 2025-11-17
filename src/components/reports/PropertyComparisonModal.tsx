@@ -550,7 +550,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
         onClose();
       }
     }}>
-      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -564,7 +564,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
         <div className="flex-1 flex flex-col min-h-0">
           {!hasStarted && !analysis && (
             <div className="flex-1 flex items-center justify-center p-8">
-              <Card className="max-w-md">
+              <Card className="w-full max-w-5xl">
                 <CardHeader>
                   <CardTitle>Ready to Compare Properties</CardTitle>
                   <CardDescription>
@@ -602,6 +602,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                       <p className="text-xs text-muted-foreground">
                         Customize the analysis or use defaults. All settings are optional with sensible defaults applied automatically.
                       </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="investor-profile">Investor Profile</Label>
                         <Select value={investorProfile} onValueChange={setInvestorProfile}>
@@ -662,7 +663,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         </Select>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-3 md:col-span-2">
                         <div className="flex items-center justify-between">
                           <Label>Custom Scoring Weights</Label>
                           <Button
@@ -749,6 +750,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                             </div>
                           </div>
                         )}
+                      </div>
                       </div>
                       </div>
                     </CollapsibleContent>
