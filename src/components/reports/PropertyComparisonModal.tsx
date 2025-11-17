@@ -597,7 +597,8 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                       </Button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-4 pt-4 max-h-[400px] overflow-y-auto pr-4">
+                    <CollapsibleContent className="space-y-4 pt-4">
+                      <div className="max-h-[400px] overflow-y-auto pr-4 space-y-4">
                       <p className="text-xs text-muted-foreground">
                         Customize the analysis or use defaults. All settings are optional with sensible defaults applied automatically.
                       </p>
@@ -748,6 +749,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                             </div>
                           </div>
                         )}
+                      </div>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
