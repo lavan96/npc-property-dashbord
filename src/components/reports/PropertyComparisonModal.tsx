@@ -573,6 +573,8 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <ScrollArea className="max-h-[calc(90vh-12rem)] pr-4">
+                    <div className="space-y-4">
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium">Selected Properties:</h4>
                     {propertyAddresses.map((address, index) => (
@@ -810,6 +812,8 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                       Run in Background
                     </Button>
                   </div>
+                  </div>
+                  </ScrollArea>
                 </CardContent>
               </Card>
             </div>
