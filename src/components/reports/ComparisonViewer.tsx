@@ -12,6 +12,9 @@ interface ComparisonViewerProps {
   comparison: {
     id: string;
     property_count: number;
+    property_addresses?: string[];
+    property_states?: string[];
+    report_title?: string;
     executive_summary: string | null;
     rankings: any;
     financial_comparison: any;
@@ -68,9 +71,16 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Property Comparison Analysis
+            <div>
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                {comparison.report_title || `Property Comparison Analysis - ${comparison.property_count} Properties`}
+              </div>
+              {comparison.property_states && comparison.property_states.length > 0 && (
+                <p className="text-sm font-normal text-muted-foreground mt-1">
+                  States: {comparison.property_states.join(', ')}
+                </p>
+              )}
             </div>
             <ComparisonPDFGenerator comparison={comparison} />
           </DialogTitle>

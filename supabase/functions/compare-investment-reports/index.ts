@@ -58,6 +58,28 @@ serve(async (req) => {
 
     console.log(`Comparing ${reports.length} properties...`);
 
+    // Extract property addresses and determine states
+    const propertyAddresses = reports.map(r => r.property_address);
+    const propertyStates = [...new Set(
+      reports.map(r => {
+        // Extract state from address (e.g., "123 Street, Suburb, VIC 3000" -> "VIC")
+        const match = r.property_address.match(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i);
+        return match ? match[0].toUpperCase() : 'UNKNOWN';
+      })
+    )].filter(state => state !== 'UNKNOWN');
+
+    // Generate accurate report title
+    const statesText = propertyStates.length === 0 
+      ? 'MIXED STATES' 
+      : propertyStates.length === 1 
+        ? propertyStates[0]
+        : propertyStates.join(' & ');
+    
+    const reportTitle = `COMPARISON ANALYSIS - ${reports.length} PROPERTIES, ${statesText}`;
+    
+    console.log(`Generated title: ${reportTitle}`);
+    console.log(`Property states: ${propertyStates.join(', ')}`);
+
     // Structure data for AI analysis
     const propertiesData = reports.map((report, index) => {
       // Parse JSONB fields safely (null is also typeof 'object' so we need to check for it)
@@ -133,19 +155,29 @@ serve(async (req) => {
 
     const prompt = `You are an expert Australian property investment analyst comparing ${reports.length} investment properties for a client.
 
-    **IMPORTANT INSTRUCTIONS:**
+**REPORT METADATA:**
+- Properties: ${propertyAddresses.join(' | ')}
+- States: ${propertyStates.join(', ')}
+- Report Title: ${reportTitle}
+
+**CRITICAL STRUCTURE REQUIREMENTS:**
+This comparison MUST contain ALL of the following 10 sections in exact order. Missing sections will cause report rejection:
+1. EXECUTIVE SUMMARY (2-3 paragraphs)
+2. OVERALL RANKINGS (complete table with all properties)
+3. FINANCIAL PERFORMANCE COMPARISON (4 sub-sections: yield, cash flow, ROI, value)
+4. LOCATION INTELLIGENCE COMPARISON (4 sub-sections: infrastructure, growth corridor, schools, lifestyle)
+5. RISK-ADJUSTED RECOMMENDATIONS (risk levels for all properties)
+6. INVESTOR PROFILE MATCHING (match each property to investor types)
+7. MARKET TIMING & STRATEGY (buy order, holding periods, exit strategies)
+8. COMPETITIVE ADVANTAGES (3-5 advantages per property)
+9. RED FLAGS & CONCERNS (specific concerns per property with severity ratings)
+10. FINAL RECOMMENDATION (best overall, runners-up, properties to avoid/reconsider)
+
+**DATA QUALITY INSTRUCTIONS:**
     - **SCORING SCALE**: ALL finalScore values MUST be on a 0-100 scale (e.g., 85.2, not 8.5). Use the overallScore provided in the data when available.
     - Some properties may have incomplete structured data - if data is null, analyze the reportText field to extract relevant information
-    - Provide a comprehensive, data-driven comparison using all available information from both structured fields and report text
-    - Focus on actionable insights and clear recommendations
-    - Consider both quantitative metrics and qualitative factors
-    - Highlight competitive advantages and red flags for each property
-    - Tailor recommendations to the "${investorProfile}" investor profile
-    - Consider the "${timeHorizon}" investment timeframe when evaluating properties
-    - Apply "${riskTolerance}" risk tolerance filter to recommendations
-    - Use Australian property market context and terminology
     - When structured data is missing, extract key metrics and insights from the reportText field
-    - If certain metrics are unavailable for a property, note this but still provide meaningful comparison based on available data
+    - If certain metrics are unavailable for a property, note this clearly (use "N/A" or "Data unavailable")
     - **CRITICAL**: Double-check all finalScore values are 0-100 scale before submitting (typical good scores: 70-85, excellent: 85+, poor: <60)
     ${customWeights ? `- **CUSTOM SCORING WEIGHTS**: Apply these custom weights when calculating rankings: Growth ${customWeights.growth}%, Location ${customWeights.location}%, Yield ${customWeights.yield}%, Demand ${customWeights.demand}%, Risk ${customWeights.risk}%` : ''}
     
@@ -349,12 +381,16 @@ Format your response as valid JSON with this structure:
 
     const processingTime = Date.now() - startTime;
 
-    // Store comparison in database
+    // Store comparison in database with metadata
     const { data: comparisonData, error: insertError } = await supabase
       .from('property_comparisons')
       .insert({
         report_ids: reportIds,
         property_count: reports.length,
+        property_addresses: propertyAddresses,
+        property_states: propertyStates,
+        report_title: reportTitle,
+        structure_version: 1,
         executive_summary: analysis.executiveSummary,
         rankings: analysis.rankings,
         financial_comparison: analysis.financialComparison,
