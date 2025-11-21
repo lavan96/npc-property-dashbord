@@ -339,7 +339,7 @@ Format your response as valid JSON with this structure:
         messages: [
           {
             role: 'system',
-            content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. Always respond with valid JSON.'
+            content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. CRITICAL: Always respond with ONLY valid JSON - no markdown formatting, no code blocks, no ```json wrappers. Return pure JSON starting with { and ending with }.'
           },
           {
             role: 'user',
@@ -367,14 +367,35 @@ Format your response as valid JSON with this structure:
     let analysis;
     try {
       // Extract JSON from markdown code blocks if present
-      const jsonMatch = analysisText.match(/```json\n([\s\S]*?)\n```/) || analysisText.match(/```\n([\s\S]*?)\n```/);
-      const jsonString = jsonMatch ? jsonMatch[1] : analysisText;
+      let jsonString = analysisText;
+      
+      // Remove markdown code block wrappers
+      const jsonMatch = analysisText.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[1];
+      }
+      
+      // Parse the JSON
       analysis = JSON.parse(jsonString);
+      
+      // Clean up any remaining markdown artifacts in text fields
+      if (analysis.executiveSummary && typeof analysis.executiveSummary === 'string') {
+        // Remove any JSON formatting artifacts
+        analysis.executiveSummary = analysis.executiveSummary
+          .replace(/^```json\s*\n/, '')
+          .replace(/\n```$/, '')
+          .replace(/\\n/g, '\n')
+          .trim();
+      }
+      
+      console.log('Successfully parsed AI analysis');
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
+      console.error('Raw response:', analysisText);
+      
       // Store raw text if JSON parsing fails
       analysis = {
-        executiveSummary: analysisText,
+        executiveSummary: analysisText.replace(/```json\s*\n|\n```/g, '').trim(),
         rawResponse: true
       };
     }
