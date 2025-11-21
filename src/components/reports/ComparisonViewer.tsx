@@ -46,15 +46,31 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
     }
   };
 
-  // Parse JSON strings if needed
+  // Parse JSON strings if needed and clean up any markdown artifacts
   const parseIfNeeded = (data: any) => {
     if (!data) return data;
     if (typeof data === 'string') {
-      try {
-        return JSON.parse(data);
-      } catch {
-        return data;
+      // Check if it's a JSON string
+      if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+        try {
+          return JSON.parse(data);
+        } catch {
+          // If parsing fails, clean up markdown and return as is
+          return data
+            .replace(/^```json\s*\n/, '')
+            .replace(/\n```$/, '')
+            .replace(/\\n\\n/g, '\n\n')
+            .replace(/\\n/g, '\n')
+            .trim();
+        }
       }
+      // Clean up markdown artifacts from plain text
+      return data
+        .replace(/^```json\s*\n/, '')
+        .replace(/\n```$/, '')
+        .replace(/\\n\\n/g, '\n\n')
+        .replace(/\\n/g, '\n')
+        .trim();
     }
     return data;
   };
@@ -65,6 +81,11 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
   const riskComparison = parseIfNeeded(comparison.risk_comparison);
   const recommendations = parseIfNeeded(comparison.recommendations);
   const redFlags = parseIfNeeded(comparison.red_flags);
+  
+  // Clean up executive summary separately
+  const cleanExecutiveSummary = comparison.executive_summary 
+    ? parseIfNeeded(comparison.executive_summary)
+    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -89,14 +110,14 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
         <div className="flex-1 overflow-y-auto min-h-0 pr-4">
           <div className="space-y-6 pb-4">
             {/* Executive Summary */}
-            {comparison.executive_summary && (
+            {cleanExecutiveSummary && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Executive Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {comparison.executive_summary}
+                    {cleanExecutiveSummary}
                   </p>
                 </CardContent>
               </Card>
