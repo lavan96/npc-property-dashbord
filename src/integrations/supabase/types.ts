@@ -637,12 +637,16 @@ export type Database = {
           location_comparison: Json | null
           model_used: string | null
           processing_time_ms: number | null
+          property_addresses: string[] | null
           property_count: number
+          property_states: string[] | null
           rankings: Json | null
           recommendations: Json | null
           red_flags: Json | null
           report_ids: string[]
+          report_title: string | null
           risk_comparison: Json | null
+          structure_version: number | null
           updated_at: string
         }
         Insert: {
@@ -658,12 +662,16 @@ export type Database = {
           location_comparison?: Json | null
           model_used?: string | null
           processing_time_ms?: number | null
+          property_addresses?: string[] | null
           property_count: number
+          property_states?: string[] | null
           rankings?: Json | null
           recommendations?: Json | null
           red_flags?: Json | null
           report_ids: string[]
+          report_title?: string | null
           risk_comparison?: Json | null
+          structure_version?: number | null
           updated_at?: string
         }
         Update: {
@@ -679,12 +687,16 @@ export type Database = {
           location_comparison?: Json | null
           model_used?: string | null
           processing_time_ms?: number | null
+          property_addresses?: string[] | null
           property_count?: number
+          property_states?: string[] | null
           rankings?: Json | null
           recommendations?: Json | null
           red_flags?: Json | null
           report_ids?: string[]
+          report_title?: string | null
           risk_comparison?: Json | null
+          structure_version?: number | null
           updated_at?: string
         }
         Relationships: [

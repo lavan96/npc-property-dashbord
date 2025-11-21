@@ -40,6 +40,9 @@ interface InvestmentReport {
 interface ComparisonAnalysis {
   id: string;
   property_count: number;
+  property_addresses?: string[];
+  property_states?: string[];
+  report_title?: string;
   report_ids: string[];
   created_at: string;
   analysis_summary: string | null;
@@ -165,7 +168,7 @@ export default function GeneratedReports() {
       // Cast to any to bypass TypeScript for property_comparisons table
       const { data, error } = await (supabase as any)
         .from('property_comparisons')
-        .select('id, property_count, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags')
+        .select('id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -488,11 +491,18 @@ export default function GeneratedReports() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
-                      {comparison.property_count} Property Comparison
+                      {comparison.report_title || `${comparison.property_count} Property Comparison`}
                     </CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(comparison.created_at), 'MMM dd, yyyy')}
+                    <CardDescription className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(comparison.created_at), 'MMM dd, yyyy')}
+                      </div>
+                      {comparison.property_states && comparison.property_states.length > 0 && (
+                        <div className="text-xs">
+                          States: {comparison.property_states.join(', ')}
+                        </div>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">

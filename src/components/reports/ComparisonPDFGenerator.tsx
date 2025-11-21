@@ -6,6 +6,9 @@ import { toast } from 'sonner';
 interface ComparisonData {
   id: string;
   property_count: number;
+  property_addresses?: string[];
+  property_states?: string[];
+  report_title?: string;
   executive_summary: string | null;
   rankings: any;
   financial_comparison: any;
@@ -61,7 +64,23 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
 
   // Fallback basic formatting function
   const generateBasicReportContent = (): string => {
-    let content = '# Property Comparison Analysis Report\n\n';
+    const title = comparison.report_title || `Property Comparison Analysis - ${comparison.property_count} Properties`;
+    const states = comparison.property_states?.join(', ') || 'Mixed States';
+    
+    let content = `# ${title}\n\n`;
+    content += `**Properties Compared:** ${comparison.property_count}\n`;
+    content += `**States:** ${states}\n`;
+    content += `**Analysis Date:** ${new Date(comparison.created_at).toLocaleDateString()}\n\n`;
+    
+    if (comparison.property_addresses && comparison.property_addresses.length > 0) {
+      content += `**Property Addresses:**\n`;
+      comparison.property_addresses.forEach((address, index) => {
+        content += `${index + 1}. ${address}\n`;
+      });
+      content += `\n`;
+    }
+    
+    content += `---\n\n`;
     
     if (comparison.executive_summary) {
       content += '## Executive Summary\n\n';
@@ -119,7 +138,7 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
   // Transform comparison data to match PixelPerfectPDFGenerator expectations
   const transformedReport = {
     id: comparison.id,
-    address: `Comparison Analysis - ${comparison.property_count} Properties`,
+    address: comparison.report_title || `Comparison Analysis - ${comparison.property_count} Properties`,
     content: formattedContent, // Use the formatted content from Perplexity
     created_at: comparison.created_at || new Date().toISOString(),
     enhanced_data: {
