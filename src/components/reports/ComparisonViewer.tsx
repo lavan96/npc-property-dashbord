@@ -46,33 +46,39 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
     }
   };
 
-  // Parse JSON strings if needed and clean up any markdown artifacts
+  // Parse JSON strings if needed and clean up any markdown/JSON artifacts
   const parseIfNeeded = (data: any) => {
     if (!data) return data;
     if (typeof data === 'string') {
-      // Check if it's a JSON string
-      if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+      let cleaned = data
+        .replace(/^```json\s*\n?/, '')
+        .replace(/\n?```$/, '')
+        .replace(/^```\s*\n?/, '')
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .trim();
+      
+      // Try to parse as JSON if it looks like JSON
+      if (cleaned.startsWith('{') || cleaned.startsWith('[')) {
         try {
-          return JSON.parse(data);
+          return JSON.parse(cleaned);
         } catch {
-          // If parsing fails, clean up markdown and return as is
-          return data
-            .replace(/^```json\s*\n/, '')
-            .replace(/\n```$/, '')
-            .replace(/\\n\\n/g, '\n\n')
-            .replace(/\\n/g, '\n')
-            .trim();
+          // If JSON parsing fails, return the cleaned string
+          return cleaned;
         }
       }
-      // Clean up markdown artifacts from plain text
-      return data
-        .replace(/^```json\s*\n/, '')
-        .replace(/\n```$/, '')
-        .replace(/\\n\\n/g, '\n\n')
-        .replace(/\\n/g, '\n')
-        .trim();
+      return cleaned;
     }
     return data;
+  };
+
+  // Format text content for display (converts to readable paragraphs)
+  const formatText = (text: string): string[] => {
+    if (!text) return [];
+    return text
+      .split('\n\n')
+      .map(para => para.trim())
+      .filter(para => para.length > 0);
   };
 
   const rankings = parseIfNeeded(comparison.rankings);
@@ -116,9 +122,11 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                   <CardTitle className="text-lg">Executive Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                    {cleanExecutiveSummary}
-                  </p>
+                  <div className="space-y-3 text-sm leading-relaxed">
+                    {formatText(cleanExecutiveSummary).map((paragraph, idx) => (
+                      <p key={idx}>{paragraph}</p>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -203,11 +211,15 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm">
+                          <p className="text-sm mb-2">
                             <span className="font-medium">Property #{value.propertyNumber}</span>
                             {value.value && `: ${value.value}`}
                           </p>
-                          <p className="text-sm text-muted-foreground mt-1">{value.reason}</p>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {formatText(value.reason || '').map((para, idx) => (
+                              <p key={idx}>{para}</p>
+                            ))}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -234,10 +246,14 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm">
+                          <p className="text-sm mb-2">
                             <span className="font-medium">Property #{value.propertyNumber}</span>
                           </p>
-                          <p className="text-sm text-muted-foreground mt-1">{value.reason}</p>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {formatText(value.reason || '').map((para, idx) => (
+                              <p key={idx}>{para}</p>
+                            ))}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -264,12 +280,14 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm">
+                          <p className="text-sm mb-2">
                             <span className="font-medium">Property #{riskComparison.lowestRisk?.propertyNumber}</span>
                           </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {riskComparison.lowestRisk?.reason}
-                          </p>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {formatText(riskComparison.lowestRisk?.reason || '').map((para, idx) => (
+                              <p key={idx}>{para}</p>
+                            ))}
+                          </div>
                         </CardContent>
                       </Card>
                       <Card>
@@ -280,12 +298,14 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <p className="text-sm">
+                          <p className="text-sm mb-2">
                             <span className="font-medium">Property #{riskComparison.highestRisk?.propertyNumber}</span>
                           </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {riskComparison.highestRisk?.reason}
-                          </p>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {formatText(riskComparison.highestRisk?.reason || '').map((para, idx) => (
+                              <p key={idx}>{para}</p>
+                            ))}
+                          </div>
                         </CardContent>
                       </Card>
                     </div>
@@ -339,22 +359,28 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                 <CardContent className="space-y-4">
                   {recommendations.bestOverall && (
                     <div>
-                      <p className="font-medium text-sm mb-1">Best Overall Investment:</p>
-                      <p className="text-sm">
+                      <p className="font-medium text-sm mb-2">Best Overall Investment:</p>
+                      <p className="text-sm mb-2">
                         Property #{recommendations.bestOverall.propertyNumber}
                       </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {recommendations.bestOverall.reason}
-                      </p>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        {formatText(recommendations.bestOverall.reason || '').map((para, idx) => (
+                          <p key={idx}>{para}</p>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {recommendations.runners && recommendations.runners.length > 0 && (
                     <div>
-                      <p className="font-medium text-sm mb-1">Alternative Options:</p>
-                      {comparison.recommendations.runners.map((runner: any, idx: number) => (
-                        <div key={idx} className="mt-2">
-                          <p className="text-sm">Property #{runner.propertyNumber}</p>
-                          <p className="text-sm text-muted-foreground">{runner.reason}</p>
+                      <p className="font-medium text-sm mb-2">Alternative Options:</p>
+                      {recommendations.runners.map((runner: any, idx: number) => (
+                        <div key={idx} className="mt-3 pt-3 border-t first:mt-0 first:pt-0 first:border-0">
+                          <p className="text-sm font-medium mb-1">Property #{runner.propertyNumber}</p>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            {formatText(runner.reason || '').map((para, pIdx) => (
+                              <p key={pIdx}>{para}</p>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
