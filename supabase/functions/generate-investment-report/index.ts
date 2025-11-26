@@ -345,6 +345,43 @@ serve(async (req) => {
             const financialData = await financialResponse.json();
             enhancedData = { ...enhancedData, financials: financialData.data };
             console.log('Financial calculations completed successfully');
+            
+            // Run validation on financial calculations
+            try {
+              const validationResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/financial-validation-service`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+                },
+                body: JSON.stringify({
+                  propertyValue: propertyDetails.price,
+                  weeklyRent: propertyDetails.weeklyRent,
+                  stampDuty: financialData.data.initialCosts.stampDuty,
+                  councilRates: financialData.data.annualCosts.councilRates,
+                  annualCosts: financialData.data.annualCosts,
+                  state: state,
+                  propertyType: propertyDetails.propertyType || 'house'
+                })
+              });
+              
+              if (validationResponse.ok) {
+                const validationData = await validationResponse.json();
+                enhancedData = { ...enhancedData, validation: validationData.data };
+                console.log('✓ Financial validation completed:', {
+                  qualityScore: validationData.data.qualityScore,
+                  flagCount: validationData.data.flags.length
+                });
+                
+                // Log any critical validation errors
+                const criticalFlags = validationData.data.flags.filter((f: any) => f.severity === 'critical');
+                if (criticalFlags.length > 0) {
+                  console.warn('⚠️ CRITICAL validation issues detected:', criticalFlags);
+                }
+              }
+            } catch (validationError: any) {
+              console.warn('⚠️ Validation service failed (non-blocking):', validationError?.message);
+            }
           }
         } catch (error: any) {
           console.log('Financial calculations failed:', error?.message || 'Unknown error');
@@ -1508,6 +1545,44 @@ Always conduct your own research and due diligence to ensure that any property t
     // Update database if reportId provided
     if (reportId && supabaseClient) {
       console.log('Updating report in database with ID:', reportId);
+      
+      // Prepare property specs from property details
+      const propertySpecs = {
+        land_size_sqm: propertyDetails?.landSize || null,
+        building_size_sqm: propertyDetails?.buildingSize || null,
+        bedrooms: propertyDetails?.beds || null,
+        bathrooms: propertyDetails?.baths || null,
+        parking: propertyDetails?.parking || null,
+        year_built: propertyDetails?.yearBuilt || null,
+        property_type: propertyDetails?.propertyType || 'house',
+        zoning: propertyDetails?.zoning || null,
+        council_area: propertyDetails?.councilArea || null
+      };
+      
+      // Prepare data sources tracking
+      const dataSources = {
+        demographics: enhancedData.demographics ? {
+          source: 'abs',
+          confidence: enhancedData.demographics.data_quality === 'live' ? 1.0 : 0.6,
+          timestamp: new Date().toISOString()
+        } : null,
+        financials: enhancedData.financials ? {
+          source: 'calculated',
+          confidence: 1.0,
+          timestamp: new Date().toISOString()
+        } : null,
+        marketData: enhancedData.domainData ? {
+          source: 'domain',
+          confidence: 0.9,
+          timestamp: new Date().toISOString()
+        } : null,
+        locationIntelligence: enhancedData.locationIntelligence ? {
+          source: 'google_maps',
+          confidence: 0.95,
+          timestamp: new Date().toISOString()
+        } : null
+      };
+      
       const { error: updateError } = await supabaseClient
         .from('investment_reports')
         .update({
@@ -1518,6 +1593,10 @@ Always conduct your own research and due diligence to ensure that any property t
           financial_calculations: enhancedData.financials || null,
           investment_score: enhancedData.investmentScore || null,
           location_intelligence: enhancedData.locationIntelligence || null,
+          property_specs: propertySpecs,
+          validation_flags: enhancedData.validation?.flags || [],
+          calculation_version: '1.0.0',
+          data_sources: dataSources,
           status: 'completed'
         })
         .eq('id', reportId);
@@ -1527,7 +1606,12 @@ Always conduct your own research and due diligence to ensure that any property t
         throw new Error(`Failed to save report: ${updateError.message}`);
       }
       
-      console.log('Report successfully updated in database');
+      console.log('Report successfully updated in database with validation and property specs');
+      
+      // Log data quality score
+      if (enhancedData.validation) {
+        console.log('📊 Report Quality Score:', enhancedData.validation.qualityScore, '/100');
+      }
     }
 
     console.log('Report generation complete, returning response');
