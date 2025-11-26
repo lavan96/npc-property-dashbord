@@ -140,3 +140,9 @@ request_timeout = 60
 
 [functions.financial-validation-service]
 verify_jwt = false
+
+[functions.report-schema-validator]
+verify_jwt = false
+
+[functions.data-conflict-resolver]
+verify_jwt = false
