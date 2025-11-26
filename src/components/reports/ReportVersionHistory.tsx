@@ -422,21 +422,19 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
       </DialogContent>
 
       {/* Version Comparison Modal */}
-      {comparisonVersionA && comparisonVersionB && (
-        <ReportVersionComparison
-          reportId={reportId}
-          versionA={comparisonVersionA}
-          versionB={comparisonVersionB}
-          open={showComparison}
-          onOpenChange={(open) => {
-            setShowComparison(open);
-            if (!open) {
-              setComparisonVersionA(null);
-              setComparisonVersionB(null);
-            }
-          }}
-        />
-      )}
+      <ReportVersionComparison
+        reportId={reportId}
+        versionA={comparisonVersionA || 0}
+        versionB={comparisonVersionB || 0}
+        open={showComparison && !!comparisonVersionA && !!comparisonVersionB}
+        onOpenChange={(open) => {
+          setShowComparison(open);
+          if (!open) {
+            setComparisonVersionA(null);
+            setComparisonVersionB(null);
+          }
+        }}
+      />
 
       {/* Rollback Confirmation Dialog */}
       <AlertDialog open={showRollbackDialog} onOpenChange={setShowRollbackDialog}>

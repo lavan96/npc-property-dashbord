@@ -65,10 +65,45 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
     }
   };
 
+  const compareValues = (valueA: any, valueB: any): boolean => {
+    // Handle null/undefined cases
+    if (valueA === null && valueB === null) return false;
+    if (valueA === undefined && valueB === undefined) return false;
+    if ((valueA === null || valueA === undefined) !== (valueB === null || valueB === undefined)) return true;
+    
+    // Handle primitive types
+    if (typeof valueA !== 'object' || typeof valueB !== 'object') {
+      return valueA !== valueB;
+    }
+    
+    // Deep comparison for objects/arrays
+    try {
+      // Sort keys for consistent comparison
+      const sortObject = (obj: any): any => {
+        if (Array.isArray(obj)) {
+          return obj.map(sortObject);
+        }
+        if (obj !== null && typeof obj === 'object') {
+          return Object.keys(obj)
+            .sort()
+            .reduce((result: any, key) => {
+              result[key] = sortObject(obj[key]);
+              return result;
+            }, {});
+        }
+        return obj;
+      };
+      
+      return JSON.stringify(sortObject(valueA)) !== JSON.stringify(sortObject(valueB));
+    } catch {
+      return JSON.stringify(valueA) !== JSON.stringify(valueB);
+    }
+  };
+
   const renderMetricComparison = (label: string, valueA: any, valueB: any, format?: (val: any) => string) => {
-    const displayA = format ? format(valueA) : valueA?.toString() || 'N/A';
-    const displayB = format ? format(valueB) : valueB?.toString() || 'N/A';
-    const changed = JSON.stringify(valueA) !== JSON.stringify(valueB);
+    const displayA = format ? format(valueA) : (valueA !== null && valueA !== undefined ? valueA.toString() : 'N/A');
+    const displayB = format ? format(valueB) : (valueB !== null && valueB !== undefined ? valueB.toString() : 'N/A');
+    const changed = compareValues(valueA, valueB);
 
     return (
       <div className="grid grid-cols-[1fr,auto,1fr] gap-4 items-center py-2">
@@ -103,8 +138,17 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
   }
 
   const qualityChange = dataB.quality_score - dataA.quality_score;
-  const validationCountA = dataA.validation_flags ? Object.keys(dataA.validation_flags).length : 0;
-  const validationCountB = dataB.validation_flags ? Object.keys(dataB.validation_flags).length : 0;
+  
+  // Handle validation flags as either array or object
+  const getValidationCount = (flags: any): number => {
+    if (!flags) return 0;
+    if (Array.isArray(flags)) return flags.length;
+    if (typeof flags === 'object') return Object.keys(flags).length;
+    return 0;
+  };
+  
+  const validationCountA = getValidationCount(dataA.validation_flags);
+  const validationCountB = getValidationCount(dataB.validation_flags);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -181,11 +225,14 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
                   <CardTitle className="text-base">Property Specifications</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {renderMetricComparison('Land Size', dataA.property_specs?.land_size_sqm, dataB.property_specs?.land_size_sqm, (v) => v ? `${v} m²` : 'N/A')}
-                  {renderMetricComparison('Building Size', dataA.property_specs?.building_size_sqm, dataB.property_specs?.building_size_sqm, (v) => v ? `${v} m²` : 'N/A')}
+                  {renderMetricComparison('Land Size', dataA.property_specs?.land_size_sqm, dataB.property_specs?.land_size_sqm, (v) => (v !== null && v !== undefined) ? `${v} m²` : 'N/A')}
+                  {renderMetricComparison('Building Size', dataA.property_specs?.building_size_sqm, dataB.property_specs?.building_size_sqm, (v) => (v !== null && v !== undefined) ? `${v} m²` : 'N/A')}
                   {renderMetricComparison('Bedrooms', dataA.property_specs?.bedrooms, dataB.property_specs?.bedrooms)}
                   {renderMetricComparison('Bathrooms', dataA.property_specs?.bathrooms, dataB.property_specs?.bathrooms)}
+                  {renderMetricComparison('Parking', dataA.property_specs?.parking, dataB.property_specs?.parking)}
                   {renderMetricComparison('Property Type', dataA.property_specs?.property_type, dataB.property_specs?.property_type)}
+                  {renderMetricComparison('Year Built', dataA.property_specs?.year_built, dataB.property_specs?.year_built)}
+                  {renderMetricComparison('Zoning', dataA.property_specs?.zoning, dataB.property_specs?.zoning)}
                 </CardContent>
               </Card>
             )}
@@ -197,10 +244,16 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
                   <CardTitle className="text-base">Financial Calculations</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {renderMetricComparison('Purchase Price', dataA.financial_calculations?.purchase_price, dataB.financial_calculations?.purchase_price, (v) => v ? `$${v.toLocaleString()}` : 'N/A')}
-                  {renderMetricComparison('Stamp Duty', dataA.financial_calculations?.stamp_duty, dataB.financial_calculations?.stamp_duty, (v) => v ? `$${v.toLocaleString()}` : 'N/A')}
-                  {renderMetricComparison('Rental Yield', dataA.financial_calculations?.rental_yield, dataB.financial_calculations?.rental_yield, (v) => v ? `${v}%` : 'N/A')}
-                  {renderMetricComparison('Cash Flow', dataA.financial_calculations?.annual_cash_flow, dataB.financial_calculations?.annual_cash_flow, (v) => v ? `$${v.toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Purchase Price', dataA.financial_calculations?.purchase_price, dataB.financial_calculations?.purchase_price, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Stamp Duty', dataA.financial_calculations?.stamp_duty, dataB.financial_calculations?.stamp_duty, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Legal Fees', dataA.financial_calculations?.legal_fees, dataB.financial_calculations?.legal_fees, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Inspection Costs', dataA.financial_calculations?.inspection_costs, dataB.financial_calculations?.inspection_costs, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Total Acquisition', dataA.financial_calculations?.total_acquisition_cost, dataB.financial_calculations?.total_acquisition_cost, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Weekly Rent', dataA.financial_calculations?.estimated_weekly_rent, dataB.financial_calculations?.estimated_weekly_rent, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Annual Rent', dataA.financial_calculations?.annual_rent, dataB.financial_calculations?.annual_rent, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Rental Yield', dataA.financial_calculations?.rental_yield, dataB.financial_calculations?.rental_yield, (v) => (v !== null && v !== undefined) ? `${Number(v).toFixed(2)}%` : 'N/A')}
+                  {renderMetricComparison('Annual Cash Flow', dataA.financial_calculations?.annual_cash_flow, dataB.financial_calculations?.annual_cash_flow, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
+                  {renderMetricComparison('Operating Costs', dataA.financial_calculations?.total_annual_costs, dataB.financial_calculations?.total_annual_costs, (v) => (v !== null && v !== undefined) ? `$${Number(v).toLocaleString()}` : 'N/A')}
                 </CardContent>
               </Card>
             )}
