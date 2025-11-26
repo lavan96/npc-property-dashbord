@@ -137,3 +137,6 @@ verify_jwt = false
 [functions.format-comparison-report]
 verify_jwt = false
 request_timeout = 60
+
+[functions.financial-validation-service]
+verify_jwt = false
