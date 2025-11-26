@@ -358,11 +358,25 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               .map(cell => cell.trim())
               .filter(cell => cell.length > 0);
             
-            // Remove the last column (Methodology column) from all tables
-            // This simplifies the layout and removes non-essential information
-            if (cells.length > 1) {
+            // Check if this is a total row (contains "Total" and has amount in the text)
+            const lineText = line.toLowerCase();
+            const isTotalRow = lineText.includes('total') && /\$[\d,]+/.test(line);
+            
+            // For total rows, preserve all cells including amounts
+            // For normal rows, remove the last column (Source/Methodology) to simplify layout
+            if (!isTotalRow && cells.length > 3) {
+              // Only remove last column if we have more than 3 columns (Cost Type, Calculation, Amount, Source)
               return cells.slice(0, -1);
             }
+            
+            // For rows with amount in first cell like "Total Initial Costs $48,269", split it properly
+            if (isTotalRow && cells.length === 1 && cells[0].includes('$')) {
+              const match = cells[0].match(/^(.*?)(\$[\d,]+)$/);
+              if (match) {
+                return [match[1].trim(), '', match[2].trim()];
+              }
+            }
+            
             return cells;
           })
           .filter(row => row.length > 0);
