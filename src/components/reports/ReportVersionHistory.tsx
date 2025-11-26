@@ -8,8 +8,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
-import { History, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ChevronRight } from 'lucide-react';
+import { History, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ChevronRight, GitCompare, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { ReportVersionComparison } from './ReportVersionComparison';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface VersionHistoryProps {
   reportId: string;
@@ -37,6 +48,12 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
+  const [comparisonVersionA, setComparisonVersionA] = useState<number | null>(null);
+  const [comparisonVersionB, setComparisonVersionB] = useState<number | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [rollbackVersion, setRollbackVersion] = useState<number | null>(null);
+  const [showRollbackDialog, setShowRollbackDialog] = useState(false);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -86,6 +103,75 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
       return <TrendingDown className="h-4 w-4 text-red-600" />;
     }
     return null;
+  };
+
+  const handleCompareSelect = (versionNumber: number) => {
+    if (!comparisonVersionA) {
+      setComparisonVersionA(versionNumber);
+      toast.info('Select a second version to compare');
+    } else if (!comparisonVersionB) {
+      setComparisonVersionB(versionNumber);
+      setShowComparison(true);
+    } else {
+      // Reset and start new comparison
+      setComparisonVersionA(versionNumber);
+      setComparisonVersionB(null);
+      toast.info('Select a second version to compare');
+    }
+  };
+
+  const handleRollback = async () => {
+    if (!rollbackVersion) return;
+
+    try {
+      setRollbackLoading(true);
+
+      // Fetch the version data to rollback to
+      const { data: versionData, error: fetchError } = await supabase
+        .from('report_versions')
+        .select('*')
+        .eq('report_id', reportId)
+        .eq('version_number', rollbackVersion)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the main report with the version data
+      const { error: updateError } = await supabase
+        .from('investment_reports')
+        .update({
+          report_content: versionData.report_content,
+          sources_content: versionData.sources_content,
+          property_specs: versionData.property_specs,
+          validation_flags: versionData.validation_flags,
+          data_sources: versionData.data_sources,
+          financial_calculations: versionData.financial_calculations,
+          investment_score: versionData.investment_score,
+          location_intelligence: versionData.location_intelligence,
+          demographics_data: versionData.demographics_data,
+          economic_data: versionData.economic_data,
+          calculation_version: versionData.calculation_version,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reportId);
+
+      if (updateError) throw updateError;
+
+      toast.success(`Successfully rolled back to version ${rollbackVersion}`);
+      setShowRollbackDialog(false);
+      setRollbackVersion(null);
+      fetchVersionHistory(); // Refresh the version history
+      
+      // Trigger a page reload or state update in parent component
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('Rollback error:', error);
+      toast.error('Failed to rollback report version');
+    } finally {
+      setRollbackLoading(false);
+    }
   };
 
   if (loading) {
@@ -232,14 +318,32 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                             </div>
                           )}
 
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full mt-2"
-                            onClick={() => setSelectedVersion(version)}
-                          >
-                            View Details
-                          </Button>
+                          <div className="flex gap-2 mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              onClick={() => handleCompareSelect(version.version_number)}
+                              disabled={comparisonVersionA === version.version_number || comparisonVersionB === version.version_number}
+                            >
+                              <GitCompare className="h-4 w-4 mr-1" />
+                              {comparisonVersionA === version.version_number || comparisonVersionB === version.version_number ? 'Selected' : 'Compare'}
+                            </Button>
+                            {!isCurrent && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="flex-1"
+                                onClick={() => {
+                                  setRollbackVersion(version.version_number);
+                                  setShowRollbackDialog(true);
+                                }}
+                              >
+                                <RotateCcw className="h-4 w-4 mr-1" />
+                                Rollback
+                              </Button>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     );
@@ -291,7 +395,72 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Comparison status indicator */}
+        {(comparisonVersionA || comparisonVersionB) && (
+          <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <GitCompare className="h-4 w-4" />
+              <span>
+                {comparisonVersionA && !comparisonVersionB && `Version ${comparisonVersionA} selected - select another`}
+                {comparisonVersionA && comparisonVersionB && `Comparing v${comparisonVersionA} with v${comparisonVersionB}`}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-primary-foreground hover:text-primary-foreground/80"
+                onClick={() => {
+                  setComparisonVersionA(null);
+                  setComparisonVersionB(null);
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
+
+      {/* Version Comparison Modal */}
+      {comparisonVersionA && comparisonVersionB && (
+        <ReportVersionComparison
+          reportId={reportId}
+          versionA={comparisonVersionA}
+          versionB={comparisonVersionB}
+          open={showComparison}
+          onOpenChange={(open) => {
+            setShowComparison(open);
+            if (!open) {
+              setComparisonVersionA(null);
+              setComparisonVersionB(null);
+            }
+          }}
+        />
+      )}
+
+      {/* Rollback Confirmation Dialog */}
+      <AlertDialog open={showRollbackDialog} onOpenChange={setShowRollbackDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Rollback</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to rollback to version {rollbackVersion}? 
+              This will replace the current report content with the selected version. 
+              The current version will be archived automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rollbackLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRollback}
+              disabled={rollbackLoading}
+              className="bg-primary"
+            >
+              {rollbackLoading ? 'Rolling back...' : 'Confirm Rollback'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
