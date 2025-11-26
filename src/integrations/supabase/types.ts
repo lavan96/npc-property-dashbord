@@ -537,6 +537,7 @@ export type Database = {
         Row: {
           calculation_version: string | null
           created_at: string
+          current_version: number | null
           data_sources: Json | null
           demographics_data: Json | null
           economic_data: Json | null
@@ -559,6 +560,7 @@ export type Database = {
         Insert: {
           calculation_version?: string | null
           created_at?: string
+          current_version?: number | null
           data_sources?: Json | null
           demographics_data?: Json | null
           economic_data?: Json | null
@@ -581,6 +583,7 @@ export type Database = {
         Update: {
           calculation_version?: string | null
           created_at?: string
+          current_version?: number | null
           data_sources?: Json | null
           demographics_data?: Json | null
           economic_data?: Json | null
@@ -753,6 +756,77 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      report_versions: {
+        Row: {
+          calculation_version: string | null
+          changelog: string | null
+          created_at: string | null
+          created_by: string | null
+          data_sources: Json | null
+          demographics_data: Json | null
+          economic_data: Json | null
+          financial_calculations: Json | null
+          id: string
+          investment_score: Json | null
+          location_intelligence: Json | null
+          property_specs: Json | null
+          quality_score: number | null
+          report_content: string
+          report_id: string
+          sources_content: string | null
+          validation_flags: Json | null
+          version_number: number
+        }
+        Insert: {
+          calculation_version?: string | null
+          changelog?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_sources?: Json | null
+          demographics_data?: Json | null
+          economic_data?: Json | null
+          financial_calculations?: Json | null
+          id?: string
+          investment_score?: Json | null
+          location_intelligence?: Json | null
+          property_specs?: Json | null
+          quality_score?: number | null
+          report_content: string
+          report_id: string
+          sources_content?: string | null
+          validation_flags?: Json | null
+          version_number: number
+        }
+        Update: {
+          calculation_version?: string | null
+          changelog?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_sources?: Json | null
+          demographics_data?: Json | null
+          economic_data?: Json | null
+          financial_calculations?: Json | null
+          id?: string
+          investment_score?: Json | null
+          location_intelligence?: Json | null
+          property_specs?: Json | null
+          quality_score?: number | null
+          report_content?: string
+          report_id?: string
+          sources_content?: string | null
+          validation_flags?: Json | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_versions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       risk_assessment_cache: {
         Row: {
@@ -1024,6 +1098,21 @@ export type Database = {
           expired_entries: number
           live_data: number
           total_entries: number
+        }[]
+      }
+      get_report_changelog: {
+        Args: {
+          p_report_id: string
+          p_version_from?: number
+          p_version_to?: number
+        }
+        Returns: {
+          changelog: string
+          changes_summary: Json
+          created_at: string
+          quality_score: number
+          validation_count: number
+          version_number: number
         }[]
       }
       get_schools_statistics: {

@@ -13,8 +13,10 @@ import { PropertyComparisonModal } from '@/components/reports/PropertyComparison
 import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
+import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
 
 interface GeneratedReport {
   id: string;
@@ -35,6 +37,7 @@ interface InvestmentReport {
   property_listing_id: string | null;
   report_content: string;
   created_at: string;
+  current_version: number;
 }
 
 interface ComparisonAnalysis {
@@ -64,6 +67,8 @@ export default function GeneratedReports() {
   const [investmentViewerOpen, setInvestmentViewerOpen] = useState(false);
   const [comparisonViewerOpen, setComparisonViewerOpen] = useState(false);
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
+  const [selectedReportForHistory, setSelectedReportForHistory] = useState<InvestmentReport | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -139,7 +144,7 @@ export default function GeneratedReports() {
     try {
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('*')
+        .select('id, property_address, property_listing_id, report_content, created_at, current_version')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -195,6 +200,11 @@ export default function GeneratedReports() {
   const handleInvestmentReportUpdate = () => {
     // Refresh the investment reports list
     fetchInvestmentReports();
+  };
+
+  const handleViewVersionHistory = (report: InvestmentReport) => {
+    setSelectedReportForHistory(report);
+    setVersionHistoryOpen(true);
   };
 
   const handleToggleSelection = (report: InvestmentReport, checked: boolean) => {
@@ -462,6 +472,25 @@ export default function GeneratedReports() {
                           Download
                         </Button>
                       </div>
+                      <div className="flex gap-2">
+                        <RegenerateReportButton
+                          reportId={report.id}
+                          propertyAddress={report.property_address}
+                          onRegenerated={handleInvestmentReportUpdate}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewVersionHistory(report)}
+                          className="flex-1"
+                        >
+                          <History className="mr-1 h-3 w-3" />
+                          History ({report.current_version || 1})
+                        </Button>
+                      </div>
                       <ClientPDFGenerator report={report} />
                     </div>
                   </CardContent>
@@ -577,6 +606,15 @@ export default function GeneratedReports() {
           setSelectedComparison(null);
         }}
       />
+
+      {selectedReportForHistory && (
+        <ReportVersionHistory
+          reportId={selectedReportForHistory.id}
+          currentVersion={selectedReportForHistory.current_version || 1}
+          open={versionHistoryOpen}
+          onOpenChange={setVersionHistoryOpen}
+        />
+      )}
     </div>
   );
 }
