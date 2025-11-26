@@ -146,3 +146,7 @@ verify_jwt = false
 
 [functions.data-conflict-resolver]
 verify_jwt = false
+
+[functions.update-stamp-duty-rates]
+verify_jwt = false
+request_timeout = 120

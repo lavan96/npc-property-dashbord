@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,10 +36,19 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration missing')
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    
     const input: LoanCalculationInput = await req.json();
     console.log('Calculating financial projections for:', input);
 
-    const calculations = await calculateFinancialProjections(input);
+    const calculations = await calculateFinancialProjections(input, supabase);
     
     return new Response(JSON.stringify({ 
       success: true, 
@@ -61,7 +71,7 @@ serve(async (req) => {
   }
 });
 
-async function calculateFinancialProjections(input: LoanCalculationInput) {
+async function calculateFinancialProjections(input: LoanCalculationInput, supabase: any) {
   const {
     propertyValue,
     deposit,
@@ -80,8 +90,8 @@ async function calculateFinancialProjections(input: LoanCalculationInput) {
   // Monthly loan payment (Principal + Interest)
   const monthlyPayment = calculateMonthlyPayment(loanAmount, monthlyInterestRate, totalPayments);
   
-  // Calculate stamp duty
-  const stampDuty = calculateStampDuty(propertyValue, state);
+  // Calculate stamp duty using dynamic rates from cache
+  const stampDuty = await calculateStampDutyDynamic(propertyValue, state, supabase);
   
   // Calculate ongoing costs
   const annualCosts = calculateAnnualCosts(propertyValue, weeklyRent, state, propertyType);
@@ -125,7 +135,38 @@ function calculateMonthlyPayment(loanAmount: number, monthlyRate: number, totalP
          (Math.pow(1 + monthlyRate, totalPayments) - 1);
 }
 
-function calculateStampDuty(propertyValue: number, state: string): number {
+async function calculateStampDutyDynamic(propertyValue: number, state: string, supabase: any): Promise<number> {
+  try {
+    // Try to fetch live rates from cache
+    const { data, error } = await supabase
+      .from('stamp_duty_rates_cache')
+      .select('brackets, data_quality')
+      .eq('state', state.toUpperCase())
+      .single()
+
+    if (!error && data) {
+      const brackets = data.brackets as Array<{ threshold: number; base: number; rate: number }>
+      console.log(`Using ${data.data_quality} stamp duty rates for ${state}`)
+      
+      // Calculate using progressive brackets
+      for (let i = brackets.length - 1; i >= 0; i--) {
+        if (propertyValue >= brackets[i].threshold) {
+          const amountAboveThreshold = propertyValue - brackets[i].threshold
+          return brackets[i].base + (amountAboveThreshold * brackets[i].rate)
+        }
+      }
+    }
+
+    console.warn(`Could not fetch stamp duty rates for ${state}, using fallback calculation`)
+  } catch (error) {
+    console.error(`Error fetching stamp duty rates for ${state}:`, error)
+  }
+
+  // Fallback to hardcoded calculation
+  return calculateStampDutyFallback(propertyValue, state)
+}
+
+function calculateStampDutyFallback(propertyValue: number, state: string): number {
   // ACCURATE PROGRESSIVE BRACKET CALCULATIONS FOR EACH STATE
   // Updated with real state government formulas as of 2024
   
