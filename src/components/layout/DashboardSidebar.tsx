@@ -11,7 +11,8 @@ import {
   FileText,
   BookOpen,
   Activity,
-  Upload
+  Upload,
+  ShieldCheck
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,6 +39,7 @@ const navigationItems = [
 
 const adminItems = [
   { title: 'Monitoring', url: '/monitoring', icon: Activity },
+  { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck },
   { title: 'Data Import', url: '/data-import', icon: Upload },
   { title: 'Errors', url: '/errors', icon: AlertTriangle },
   { title: 'Settings', url: '/settings', icon: Settings },
