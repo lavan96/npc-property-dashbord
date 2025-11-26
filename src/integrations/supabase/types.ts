@@ -535,7 +535,9 @@ export type Database = {
       }
       investment_reports: {
         Row: {
+          calculation_version: string | null
           created_at: string
+          data_sources: Json | null
           demographics_data: Json | null
           economic_data: Json | null
           error_message: string | null
@@ -547,13 +549,17 @@ export type Database = {
           pdf_url: string | null
           property_address: string
           property_listing_id: string | null
+          property_specs: Json | null
           report_content: string
           sources_content: string | null
           status: string
           updated_at: string
+          validation_flags: Json | null
         }
         Insert: {
+          calculation_version?: string | null
           created_at?: string
+          data_sources?: Json | null
           demographics_data?: Json | null
           economic_data?: Json | null
           error_message?: string | null
@@ -565,13 +571,17 @@ export type Database = {
           pdf_url?: string | null
           property_address: string
           property_listing_id?: string | null
+          property_specs?: Json | null
           report_content: string
           sources_content?: string | null
           status?: string
           updated_at?: string
+          validation_flags?: Json | null
         }
         Update: {
+          calculation_version?: string | null
           created_at?: string
+          data_sources?: Json | null
           demographics_data?: Json | null
           economic_data?: Json | null
           error_message?: string | null
@@ -583,10 +593,12 @@ export type Database = {
           pdf_url?: string | null
           property_address?: string
           property_listing_id?: string | null
+          property_specs?: Json | null
           report_content?: string
           sources_content?: string | null
           status?: string
           updated_at?: string
+          validation_flags?: Json | null
         }
         Relationships: []
       }
@@ -964,6 +976,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_data_quality_score: {
+        Args: { report_id: string }
+        Returns: number
+      }
       cleanup_expired_census_cache: { Args: never; Returns: undefined }
       cleanup_expired_climate_cache: { Args: never; Returns: undefined }
       cleanup_expired_crime_cache: { Args: never; Returns: undefined }
@@ -1022,6 +1038,13 @@ export type Database = {
         }[]
       }
       seed_sample_schools: { Args: never; Returns: undefined }
+      validate_property_specs: {
+        Args: { specs: Json }
+        Returns: {
+          is_valid: boolean
+          missing_fields: string[]
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
