@@ -930,6 +930,42 @@ export type Database = {
         }
         Relationships: []
       }
+      stamp_duty_rates_cache: {
+        Row: {
+          brackets: Json
+          created_at: string
+          data_quality: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          source_url: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          brackets: Json
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          source_url?: string | null
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          brackets?: Json
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          source_url?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transport_data_cache: {
         Row: {
           created_at: string
@@ -1060,6 +1096,7 @@ export type Database = {
       cleanup_expired_economic_cache: { Args: never; Returns: undefined }
       cleanup_expired_risk_cache: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
+      cleanup_expired_stamp_duty_cache: { Args: never; Returns: undefined }
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
       cleanup_old_health_logs: { Args: never; Returns: undefined }
       get_all_cache_stats: {
