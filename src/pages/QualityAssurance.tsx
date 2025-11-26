@@ -60,17 +60,17 @@ export default function QualityAssurance() {
       // Calculate metrics
       const totalReports = (reportsData || []).length;
       const reportsWithIssues = (reportsData || []).filter(r => 
-        Array.isArray(r.validation_flags) && (r.validation_flags as ValidationFlag[]).length > 0
+        Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0
       ).length;
 
       const criticalIssues = (reportsData || []).reduce((sum, r) => {
         if (!Array.isArray(r.validation_flags)) return sum;
-        return sum + (r.validation_flags as ValidationFlag[]).filter(f => f.severity === 'critical').length;
+        return sum + (r.validation_flags as unknown as ValidationFlag[]).filter(f => f.severity === 'critical').length;
       }, 0);
 
       const highPriorityIssues = (reportsData || []).reduce((sum, r) => {
         if (!Array.isArray(r.validation_flags)) return sum;
-        return sum + (r.validation_flags as ValidationFlag[]).filter(f => f.severity === 'high').length;
+        return sum + (r.validation_flags as unknown as ValidationFlag[]).filter(f => f.severity === 'high').length;
       }, 0);
 
       const last24h = new Date();
@@ -83,7 +83,7 @@ export default function QualityAssurance() {
       const qualityScores = (reportsData || []).map(r => {
         if (!Array.isArray(r.validation_flags)) return 100;
         let score = 100;
-        (r.validation_flags as ValidationFlag[]).forEach(flag => {
+        (r.validation_flags as unknown as ValidationFlag[]).forEach(flag => {
           if (flag.severity === 'critical') score -= 15;
           else if (flag.severity === 'high') score -= 10;
           else if (flag.severity === 'medium') score -= 5;
@@ -140,7 +140,7 @@ export default function QualityAssurance() {
   const calculateReportQualityScore = (flags: Json): number => {
     if (!Array.isArray(flags)) return 100;
     let score = 100;
-    (flags as ValidationFlag[]).forEach(flag => {
+    (flags as unknown as ValidationFlag[]).forEach(flag => {
       if (flag.severity === 'critical') score -= 15;
       else if (flag.severity === 'high') score -= 10;
       else if (flag.severity === 'medium') score -= 5;
@@ -270,7 +270,7 @@ export default function QualityAssurance() {
               <TabsContent value="all" className="space-y-3 mt-4">
                 {reports.map(report => {
                   const qualityScore = calculateReportQualityScore(report.validation_flags);
-                  const hasIssues = Array.isArray(report.validation_flags) && (report.validation_flags as ValidationFlag[]).length > 0;
+                  const hasIssues = Array.isArray(report.validation_flags) && (report.validation_flags as unknown as ValidationFlag[]).length > 0;
                   
                   return (
                     <div
@@ -289,7 +289,7 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        <DataQualityIndicator dataSources={report.data_sources as DataSources} inline />
+                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         
                         <div className="text-center min-w-[60px]">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
@@ -301,7 +301,7 @@ export default function QualityAssurance() {
                         {hasIssues ? (
                           <Badge variant="destructive" className="gap-1">
                             <AlertTriangle className="h-3 w-3" />
-                            {(report.validation_flags as ValidationFlag[]).length}
+                            {(report.validation_flags as unknown as ValidationFlag[]).length}
                           </Badge>
                         ) : (
                           <Badge variant="secondary" className="gap-1">
@@ -316,7 +316,7 @@ export default function QualityAssurance() {
               </TabsContent>
 
               <TabsContent value="issues" className="space-y-3 mt-4">
-                {reports.filter(r => Array.isArray(r.validation_flags) && (r.validation_flags as ValidationFlag[]).length > 0).map(report => {
+                {reports.filter(r => Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0).map(report => {
                   const qualityScore = calculateReportQualityScore(report.validation_flags);
                   
                   return (
@@ -336,7 +336,7 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        <DataQualityIndicator dataSources={report.data_sources as DataSources} inline />
+                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         
                         <div className="text-center min-w-[60px]">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
@@ -347,7 +347,7 @@ export default function QualityAssurance() {
 
                         <Badge variant="destructive" className="gap-1">
                           <AlertTriangle className="h-3 w-3" />
-                          {(report.validation_flags as ValidationFlag[]).length}
+                          {(report.validation_flags as unknown as ValidationFlag[]).length}
                         </Badge>
                       </div>
                     </div>
@@ -356,7 +356,7 @@ export default function QualityAssurance() {
               </TabsContent>
 
               <TabsContent value="clean" className="space-y-3 mt-4">
-                {reports.filter(r => !Array.isArray(r.validation_flags) || (r.validation_flags as ValidationFlag[]).length === 0).map(report => (
+                {reports.filter(r => !Array.isArray(r.validation_flags) || (r.validation_flags as unknown as ValidationFlag[]).length === 0).map(report => (
                   <div
                     key={report.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
@@ -373,7 +373,7 @@ export default function QualityAssurance() {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      <DataQualityIndicator dataSources={report.data_sources as DataSources} inline />
+                      <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                       
                       <Badge variant="secondary" className="gap-1">
                         <CheckCircle className="h-3 w-3" />
@@ -390,7 +390,7 @@ export default function QualityAssurance() {
         {/* Selected Report Details */}
         {selectedReport && (
           <ValidationFlagsDisplay
-            flags={(selectedReport.validation_flags as ValidationFlag[]) || []}
+            flags={(selectedReport.validation_flags as unknown as ValidationFlag[]) || []}
             qualityScore={calculateReportQualityScore(selectedReport.validation_flags)}
           />
         )}
