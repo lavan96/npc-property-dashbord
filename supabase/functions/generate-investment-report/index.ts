@@ -1542,6 +1542,48 @@ Always conduct your own research and due diligence to ensure that any property t
     // Append contact details and disclaimer to report content
     reportContent = reportContent + contactAndDisclaimer;
 
+    // Validate report structure against schema
+    console.log('🔍 Validating report structure...');
+    let schemaValidationFlags: any[] = [];
+    
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+      
+      if (supabaseUrl && supabaseAnonKey) {
+        const schemaValidatorClient = createClient(supabaseUrl, supabaseAnonKey);
+        
+        const { data: schemaValidation, error: schemaError } = await schemaValidatorClient.functions.invoke(
+          'report-schema-validator',
+          {
+            body: { reportContent }
+          }
+        );
+        
+        if (schemaError) {
+          console.error('Schema validation error:', schemaError);
+        } else if (schemaValidation) {
+          console.log('✓ Schema validation complete');
+          console.log('Schema valid:', schemaValidation.valid);
+          console.log('Schema issues found:', schemaValidation.issues?.length || 0);
+          
+          // Convert schema issues to validation flags
+          if (schemaValidation.issues && schemaValidation.issues.length > 0) {
+            schemaValidationFlags = schemaValidation.issues.map((issue: any) => ({
+              type: 'schema',
+              severity: issue.severity || 'medium',
+              field: issue.section || 'structure',
+              message: issue.message,
+              value: issue.details || null
+            }));
+          }
+        }
+      }
+    } catch (validationError) {
+      console.error('Error during schema validation:', validationError);
+      // Continue without blocking report generation
+    }
+
     // Update database if reportId provided
     if (reportId && supabaseClient) {
       console.log('Updating report in database with ID:', reportId);
@@ -1583,6 +1625,12 @@ Always conduct your own research and due diligence to ensure that any property t
         } : null
       };
       
+      // Combine financial validation flags with schema validation flags
+      const allValidationFlags = [
+        ...(enhancedData.validation?.flags || []),
+        ...schemaValidationFlags
+      ];
+      
       const { error: updateError } = await supabaseClient
         .from('investment_reports')
         .update({
@@ -1594,7 +1642,7 @@ Always conduct your own research and due diligence to ensure that any property t
           investment_score: enhancedData.investmentScore || null,
           location_intelligence: enhancedData.locationIntelligence || null,
           property_specs: propertySpecs,
-          validation_flags: enhancedData.validation?.flags || [],
+          validation_flags: allValidationFlags,
           calculation_version: '1.0.0',
           data_sources: dataSources,
           status: 'completed'
