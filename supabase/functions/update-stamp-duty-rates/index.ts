@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
-import FirecrawlApp from 'https://esm.sh/@mendable/firecrawl-js@1.12.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,7 +79,6 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const firecrawl = new FirecrawlApp({ apiKey: firecrawlApiKey })
 
     const { states } = await req.json()
     const statesToUpdate = states || STATE_CONFIGS.map(c => c.state)
@@ -93,16 +91,31 @@ Deno.serve(async (req) => {
       console.log(`Scraping ${stateConfig.state} from ${stateConfig.url}`)
 
       try {
-        // Use Firecrawl to scrape the government website
-        const scrapeResult = await firecrawl.scrapeUrl(stateConfig.url, {
-          formats: ['markdown'],
+        // Use Firecrawl API directly to scrape the government website
+        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${firecrawlApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: stateConfig.url,
+            formats: ['markdown'],
+          })
         })
 
-        if (!scrapeResult.success) {
-          throw new Error(`Failed to scrape ${stateConfig.state}: ${scrapeResult.error}`)
+        if (!scrapeResponse.ok) {
+          const errorText = await scrapeResponse.text()
+          throw new Error(`Firecrawl API error (${scrapeResponse.status}): ${errorText}`)
         }
 
-        const markdown = scrapeResult.markdown || ''
+        const scrapeResult = await scrapeResponse.json()
+        
+        if (!scrapeResult.success) {
+          throw new Error(`Failed to scrape ${stateConfig.state}: ${scrapeResult.error || 'Unknown error'}`)
+        }
+
+        const markdown = scrapeResult.data?.markdown || ''
         console.log(`Scraped content for ${stateConfig.state}, length: ${markdown.length}`)
 
         // Parse the markdown content to extract stamp duty brackets
