@@ -158,34 +158,34 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       </li>
     ),
     table: ({ children }: any) => (
-      <div className="overflow-x-auto my-6">
-        <table className="min-w-full border-collapse border border-border">
+      <div className="overflow-x-auto my-8">
+        <table className="min-w-full border-collapse border-2 border-border shadow-sm">
           {children}
         </table>
       </div>
     ),
     thead: ({ children }: any) => (
-      <thead className="bg-muted">
+      <thead className="bg-gradient-to-r from-primary/10 to-primary/5 border-b-2 border-border">
         {children}
       </thead>
     ),
     tbody: ({ children }: any) => (
-      <tbody>
+      <tbody className="divide-y divide-border">
         {children}
       </tbody>
     ),
-    tr: ({ children }: any) => (
-      <tr className="border-b border-border">
+    tr: ({ children, isHeader }: any) => (
+      <tr className={isHeader ? "" : "hover:bg-muted/50 transition-colors"}>
         {children}
       </tr>
     ),
     th: ({ children }: any) => (
-      <th className="border border-border px-4 py-2 text-left font-semibold text-foreground">
+      <th className="border border-border px-6 py-3 text-left font-bold text-foreground bg-muted/50">
         {children}
       </th>
     ),
     td: ({ children }: any) => (
-      <td className="border border-border px-4 py-2 text-foreground">
+      <td className="border border-border px-6 py-3 text-foreground">
         {children}
       </td>
     ),
