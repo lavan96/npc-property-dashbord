@@ -85,91 +85,93 @@ Deno.serve(async (req) => {
 
     console.log(`Updating stamp duty rates for states: ${statesToUpdate.join(', ')}`)
 
-    const results = []
+    // Process all states in parallel for faster execution
+    const scrapePromises = STATE_CONFIGS
+      .filter(c => statesToUpdate.includes(c.state))
+      .map(async (stateConfig) => {
+        console.log(`Scraping ${stateConfig.state} from ${stateConfig.url}`)
 
-    for (const stateConfig of STATE_CONFIGS.filter(c => statesToUpdate.includes(c.state))) {
-      console.log(`Scraping ${stateConfig.state} from ${stateConfig.url}`)
-
-      try {
-        // Use Firecrawl API directly to scrape the government website
-        const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${firecrawlApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            url: stateConfig.url,
-            formats: ['markdown'],
+        try {
+          // Use Firecrawl API directly to scrape the government website
+          const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${firecrawlApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: stateConfig.url,
+              formats: ['markdown'],
+            })
           })
-        })
 
-        if (!scrapeResponse.ok) {
-          const errorText = await scrapeResponse.text()
-          throw new Error(`Firecrawl API error (${scrapeResponse.status}): ${errorText}`)
-        }
+          if (!scrapeResponse.ok) {
+            const errorText = await scrapeResponse.text()
+            throw new Error(`Firecrawl API error (${scrapeResponse.status}): ${errorText}`)
+          }
 
-        const scrapeResult = await scrapeResponse.json()
-        
-        if (!scrapeResult.success) {
-          throw new Error(`Failed to scrape ${stateConfig.state}: ${scrapeResult.error || 'Unknown error'}`)
-        }
+          const scrapeResult = await scrapeResponse.json()
+          
+          if (!scrapeResult.success) {
+            throw new Error(`Failed to scrape ${stateConfig.state}: ${scrapeResult.error || 'Unknown error'}`)
+          }
 
-        const markdown = scrapeResult.data?.markdown || ''
-        console.log(`Scraped content for ${stateConfig.state}, length: ${markdown.length}`)
+          const markdown = scrapeResult.data?.markdown || ''
+          console.log(`Scraped content for ${stateConfig.state}, length: ${markdown.length}`)
 
-        // Parse the markdown content to extract stamp duty brackets
-        // This is a simplified parser - in production, you'd want more sophisticated parsing
-        const brackets = parseStampDutyBrackets(markdown, stateConfig.state)
+          // Parse the markdown content to extract stamp duty brackets
+          const brackets = parseStampDutyBrackets(markdown, stateConfig.state)
 
-        if (brackets.length === 0) {
-          console.warn(`No brackets found for ${stateConfig.state}, keeping fallback data`)
-          results.push({
+          if (brackets.length === 0) {
+            console.warn(`No brackets found for ${stateConfig.state}, keeping fallback data`)
+            return {
+              state: stateConfig.state,
+              success: false,
+              error: 'Could not parse brackets from scraped content',
+              dataQuality: 'fallback'
+            }
+          }
+
+          // Update the cache with live data
+          const { error: updateError } = await supabase
+            .from('stamp_duty_rates_cache')
+            .upsert({
+              state: stateConfig.state,
+              brackets: brackets,
+              data_quality: 'live',
+              fetched_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days
+              source_url: stateConfig.url,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'state'
+            })
+
+          if (updateError) {
+            throw updateError
+          }
+
+          console.log(`✅ Successfully updated ${stateConfig.state} with ${brackets.length} brackets`)
+          return {
+            state: stateConfig.state,
+            success: true,
+            brackets: brackets.length,
+            dataQuality: 'live'
+          }
+
+        } catch (error) {
+          console.error(`Error processing ${stateConfig.state}:`, error)
+          return {
             state: stateConfig.state,
             success: false,
-            error: 'Could not parse brackets from scraped content',
+            error: error instanceof Error ? error.message : 'Unknown error',
             dataQuality: 'fallback'
-          })
-          continue
+          }
         }
+      })
 
-        // Update the cache with live data
-        const { error: updateError } = await supabase
-          .from('stamp_duty_rates_cache')
-          .upsert({
-            state: stateConfig.state,
-            brackets: brackets,
-            data_quality: 'live',
-            fetched_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days
-            source_url: stateConfig.url,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'state'
-          })
-
-        if (updateError) {
-          throw updateError
-        }
-
-        console.log(`✅ Successfully updated ${stateConfig.state} with ${brackets.length} brackets`)
-        results.push({
-          state: stateConfig.state,
-          success: true,
-          brackets: brackets.length,
-          dataQuality: 'live'
-        })
-
-      } catch (error) {
-        console.error(`Error processing ${stateConfig.state}:`, error)
-        results.push({
-          state: stateConfig.state,
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          dataQuality: 'fallback'
-        })
-      }
-    }
+    // Wait for all scraping operations to complete
+    const results = await Promise.all(scrapePromises)
 
     return new Response(
       JSON.stringify({
