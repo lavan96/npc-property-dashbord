@@ -634,21 +634,302 @@ Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
 
 ${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
 
-**CRITICAL - REPORT STRUCTURE:**
-1. Begin the report with a clear header stating: "Investment Report for [FULL PROPERTY ADDRESS]"
-2. ${analysisMode === 'address' ? `Use the EXACT property address "${formattedInput}" in ALL research queries and throughout the report` : `Focus the analysis on "${formattedInput}"`}
-3. This property address MUST appear prominently in the Location Overview section
-4. All market data, comparables, and analysis MUST be relevant to this specific ${analysisMode === 'address' ? 'property address' : 'location'}
-5. **CRITICAL DATA HANDLING RULE: If any data point is unavailable, missing, or marked as "N/A", completely OMIT that metric or section from the report. DO NOT show placeholders like "N/A", "not available", "data unavailable", or similar text. Only include sections and metrics where actual data exists.**
+**CRITICAL - MANDATORY REPORT STRUCTURE:**
+
+YOU MUST FOLLOW THIS EXACT STRUCTURE. DO NOT DEVIATE. Each section must follow this precise format:
+
+# REPORT TITLE
+Investment Report: [PROPERTY ADDRESS], [STATE]
+
+# 1. Location Overview
+- Begin with: "This investment report analyzes: [FULL PROPERTY ADDRESS]"
+- Suburb profile and characteristics
+- Distance to CBD/major city (e.g., "approximately 55km northwest of Brisbane CBD")
+- Statistical areas: SA2, SA3, SA4, LGA
+- Suburb lifestyle and amenities description
+- Commute information
+- Population and development trends
+
+# 2. Current Market Performance (Include reporting period)
+**Table format:**
+| Metric | Value | YoY Change |
+| Median House Price | $XXX,XXX | +/-X.X% |
+| Median Rent (House) | $XXX | +/-X.X% |
+| Gross Rental Yield | X.XX% | N/A |
+| Houses Sold (12 months) | XX | N/A |
+| Days on Market | XX | N/A |
+| Annual Capital Growth | X.X% | N/A |
+
+# 3. Historical Price Growth
+| Time Period | Growth Rate | Source |
+
+# 4. Historical Rent Growth  
+| Time Period | Growth Rate | Source |
+
+# 5. Market Activity
+| Metric | Value | Source |
+
+# 6. Population & Household Characteristics
+**Table format:**
+| Metric | Value | Source |
+| Employment Rate | XX.X% | ABS (2025) |
+| Unemployment Rate | X.X% | ABS (2025) |
+| Labor Force Size | XX,XXX | ABS (2025) |
+| Median Weekly Income | $X,XXX | ABS (2025) |
+| Median Annual Income | $XX,XXX | ABS (2025) |
+| IRSAD Score | XXX (Decile X/10) | ABS SEIFA (2025) |
+| IRSD Score | XXX (Decile X/10) | ABS SEIFA (2025) |
+
+# 7. Major Industries & Job Growth
+| Industry | Workforce % | Growth Rate |
+
+# 8. Job Growth Trends
+| Time Period | Growth Rate | Source |
+
+[Include narrative about demand drivers]
+
+# 9. Transport & Accessibility
+| Metric | Value | Details |
+| Walk Score | XX/100 | ... |
+| CBD Commute | XX minutes | ... |
+| Public Transport Score | XX/100 | ... |
+
+# 10. Education Facilities
+| Facility | Distance | Rating |
+
+# 11. Healthcare & Shopping
+| Facility | Distance | Details |
+
+# 12. Amenity Scores
+| Category | Facilities Count | Nearest Facility |
+
+[Include commentary on amenities]
+
+# 13. Property-Level Information
+| Property Characteristic | Estimated Value |
+| Property Type | ... |
+| Land Size | ... |
+| Bedrooms | ... |
+| Bathrooms | ... |
+| Parking | ... |
+| Year Built | ... |
+| Condition | ... |
+| Estimated Value | $XXX,XXX |
+
+[Include property description and comparison]
+
+# 14. Purchase & Ongoing Costs (Annual)
+| Cost Category | Amount (AUD) | Calculation Method |
+| Property Price | $XXX,XXX | ... |
+| Stamp Duty | $XX,XXX | ... |
+| Council Rates | $X,XXX | ... |
+| Water Rates | $XXX | ... |
+| Property Management Fee | $X,XXX | ... |
+| Insurance | $X,XXX | ... |
+| Maintenance | $1,500 | Fixed amount per instructions |
+| **Total Annual Costs** | **$XX,XXX** | **Sum of ongoing costs** |
+
+# 15. Cost Breakdown Analysis
+[Detailed breakdown sections: Stamp Duty, Council & Water Rates, Property Management, Insurance, Maintenance]
+
+# 16. Environmental Risks
+| Risk Type | Assessment | Details |
+| Flood Risk | ... | ... |
+| Bushfire Risk | ... | ... |
+| Heatwaves | ... | ... |
+| Storms | ... | ... |
+
+# 17. Crime Statistics
+| Metric | Value | Comparison |
+| Overall Crime Rating | ... | ... |
+| Rate per 100k people | ... | ... |
+| Safety Score | XX/100 | ... |
+| Year-on-Year Change | ... | ... |
+| 3-Year Trend | ... | ... |
+
+# 18. Crime Breakdown
+| Category | Incidents | Percentage |
+
+[Include narrative on risk profile]
+
+# 19. Recent Comparable Sales (Last 12 Months)
+| Address | Sale Price | Sale Date | Beds/Baths/Parking | Distance |
+
+# 20. Recent Comparable Rentals
+| Address | Weekly Rent | Property Type | Location |
+
+[Include analysis of comparables]
+
+# 21. Base Assumptions
+- Property Price: $XXX,XXX
+- Deposit: 20% ($XXX,XXX)
+- Loan Amount: $XXX,XXX
+- Interest Rate: 6.5%
+- Loan Term: 30 years
+- Weekly Rent: $XXX ($XX,XXX annually)
+- Property Management: 7% of rent
+- Maintenance: $1,500 annually (fixed)
+- Council Rates: $X,XXX annually
+- Water Rates: $XXX annually
+- Insurance: $X,XXX annually
+
+# 22. Gross & Net Yield Calculation
+| Metric | Calculation | Value |
+| Gross Rental Yield | ... | X.XX% |
+| Annual Income | | $XX,XXX |
+| Annual Expenses | | $X,XXX |
+| Net Annual Return | | $XX,XXX |
+| Net Rental Yield | ... | X.XX% |
+
+# 23. Principal & Interest Loan
+| Item | Amount (Annual) | Amount (Monthly) |
+
+# 24. Interest-Only Loan (First 5 Years)
+| Item | Amount (Annual) | Amount (Monthly) |
+
+# 25. Sensitivity Analysis
+| Scenario | Interest Rate | Annual Cashflow |
+
+[Include narrative on cashflow]
+
+# 26. Property Value Projections ($)
+| Year | Conservative (2%) | Base (4%) |
+
+# 27. Rental Income Projections ($)
+| Year | Conservative (2%) | Base (3%) |
+
+# 28. Cumulative Cashflow Projections ($)
+| Year | Conservative | Base |
+
+# 29. Final Loan-to-Value Ratio (LVR)
+| Scenario | Year 10 LVR |
+
+[Include projection narrative]
+
+# 30. Overall Investment Score
+Investment Grade: [GRADE]
+Total Score: XX/100
+Recommendation: [BUY/HOLD/SELL]
+
+# 31. Investment Score Breakdown
+| Component | Weight (%) | Score (/100) |
+
+# 32. SWOT Analysis
+**Strengths:**
+- [bullet points]
+
+**Weaknesses:**
+- [bullet points]
+
+**Opportunities:**
+- [bullet points]
+
+**Threats:**
+- [bullet points]
+
+[Include narrative conclusion]
+
+# 33. Top 3 Opportunities
+1. [Opportunity title] - [Description]
+
+# 34. Top 3 Risks
+1. [Risk title] - [Description]
+
+# 35. Market Data Sources
+| Metric | Source | URL |
+
+# 36. Demographic & Economic Data
+| Metric | Source | URL |
+
+# 37. Methodology Notes
+[Bullet points explaining data collection and calculations]
+
+**ABSOLUTE REQUIREMENTS:**
+1. **NO N/A VALUES**: If a data point is not available, DO NOT include it in tables or text. Completely omit that row/metric.
+2. **EXACT STRUCTURE**: Follow the section order and numbering exactly as shown above
+3. **TABLE FORMATTING**: Use markdown tables exactly as specified
+4. **CONSISTENT HEADERS**: Use # for main sections exactly as shown
+5. **CURRENCY**: All amounts in AUD with $ symbol
+6. **DATES**: Include reporting periods and data sources with every metric
+7. **NO PLACEHOLDERS**: Never write "data unavailable", "TBD", "N/A", or similar - just omit the metric entirely
+
+**CRITICAL DATA HANDLING RULE: If any data point is unavailable, missing, or would be marked as "N/A", completely OMIT that entire row/metric from the table or section. DO NOT show any placeholders. Only include metrics where actual data exists.**
 
 ${enhancedData.demographics ? `
-DEMOGRAPHIC DATA AVAILABLE (Only include metrics with actual values):
+DEMOGRAPHIC DATA AVAILABLE (Only include metrics with actual values - OMIT any N/A values):
 ${enhancedData.demographics.population?.total ? `- Population: ${enhancedData.demographics.population.total}` : ''}
 ${enhancedData.demographics.income?.medianHouseholdIncome ? `- Median Household Income: $${enhancedData.demographics.income.medianHouseholdIncome}` : ''}
 ${enhancedData.demographics.income?.unemploymentRate ? `- Unemployment Rate: ${enhancedData.demographics.income.unemploymentRate}%` : ''}
 ${enhancedData.demographics.housing?.ownerOccupierRate ? `- Owner-Occupier Rate: ${enhancedData.demographics.housing.ownerOccupierRate}%` : ''}
 ${enhancedData.demographics.employment?.laborForceParticipation ? `- Labor Force Participation: ${enhancedData.demographics.employment.laborForceParticipation}%` : ''}
 ` : ''}
+
+${enhancedData.economics ? `
+ECONOMIC DATA AVAILABLE (Only include metrics with actual values - OMIT any N/A values):
+${enhancedData.economics.cashRate?.current ? `- Current Cash Rate: ${enhancedData.economics.cashRate.current}%` : ''}
+${enhancedData.economics.inflation?.annual ? `- Annual Inflation: ${enhancedData.economics.inflation.annual}%` : ''}
+${enhancedData.economics.indicators?.gdpGrowth ? `- GDP Growth: ${enhancedData.economics.indicators.gdpGrowth}%` : ''}
+${enhancedData.economics.indicators?.unemploymentRate ? `- National Unemployment: ${enhancedData.economics.indicators.unemploymentRate}%` : ''}
+${enhancedData.economics.indicators?.housePriceGrowth ? `- House Price Growth: ${enhancedData.economics.indicators.housePriceGrowth}%` : ''}
+` : ''}
+
+${enhancedData.financials ? `
+FINANCIAL CALCULATIONS AVAILABLE - USE THESE EXACT VALUES (Only include metrics with actual values):
+${enhancedData.financials.initialCosts?.stampDuty ? `- Stamp Duty: $${enhancedData.financials.initialCosts.stampDuty}` : ''}
+${enhancedData.financials.keyMetrics?.grossRentalYield ? `- Gross Rental Yield: ${enhancedData.financials.keyMetrics.grossRentalYield}%` : ''}
+${enhancedData.financials.keyMetrics?.netRentalYield ? `- Net Rental Yield: ${enhancedData.financials.keyMetrics.netRentalYield}%` : ''}
+${enhancedData.financials.annualCosts?.councilRates ? `- Council Rates: $${enhancedData.financials.annualCosts.councilRates}` : ''}
+${enhancedData.financials.annualCosts?.waterRates ? `- Water Rates: $${enhancedData.financials.annualCosts.waterRates}` : ''}
+${enhancedData.financials.annualCosts?.landlordInsurance ? `- Insurance: $${enhancedData.financials.annualCosts.landlordInsurance}` : ''}
+${enhancedData.financials.annualCosts?.propertyManagement ? `- Property Management: $${enhancedData.financials.annualCosts.propertyManagement}` : ''}
+- Maintenance: $1,500 AUD (FIXED - ALWAYS USE THIS EXACT AMOUNT)
+
+10-YEAR PROJECTIONS (Use these exact calculated values):
+${enhancedData.financials.projections?.conservative?.[0] ? `Conservative: Year 1-10 values provided` : ''}
+${enhancedData.financials.projections?.moderate?.[0] ? `Moderate: Year 1-10 values provided` : ''}
+${enhancedData.financials.projections?.optimistic?.[0] ? `Optimistic: Year 1-10 values provided` : ''}
+` : ''}
+
+${enhancedData.domainData ? `
+DOMAIN MARKET DATA (REAL API VALUES - Use these in Current Market Performance section):
+${enhancedData.domainData.medianSoldPrice ? `- Median House Price: $${enhancedData.domainData.medianSoldPrice.toLocaleString()}` : ''}
+${enhancedData.domainData.medianRentListingPrice ? `- Median Weekly Rent: $${enhancedData.domainData.medianRentListingPrice}` : ''}
+${enhancedData.domainData.annualGrowth ? `- Annual Capital Growth: ${enhancedData.domainData.annualGrowth}%` : ''}
+${enhancedData.domainData.rentalYield ? `- Rental Yield: ${enhancedData.domainData.rentalYield.toFixed(2)}%` : ''}
+${enhancedData.domainData.daysOnMarket ? `- Days on Market: ${enhancedData.domainData.daysOnMarket}` : ''}
+${enhancedData.domainData.numberSold ? `- Houses Sold: ${enhancedData.domainData.numberSold}` : ''}
+` : ''}
+
+${enhancedData.riskAssessment ? `
+ENVIRONMENTAL RISK DATA (Use in Environmental Risks section):
+${enhancedData.riskAssessment.floodRisk ? `Flood: ${enhancedData.riskAssessment.floodRisk.level} - ${enhancedData.riskAssessment.floodRisk.description}` : ''}
+${enhancedData.riskAssessment.bushfireRisk ? `Bushfire: ${enhancedData.riskAssessment.bushfireRisk.level} - ${enhancedData.riskAssessment.bushfireRisk.description}` : ''}
+${enhancedData.riskAssessment.crimeStatistics ? `Crime: ${enhancedData.riskAssessment.crimeStatistics.overallRating} - ${enhancedData.riskAssessment.crimeStatistics.comparedToStateAverage}` : ''}
+` : ''}
+
+${enhancedData.locationIntelligence ? `
+LOCATION INTELLIGENCE DATA:
+${enhancedData.locationIntelligence.walkScore ? `- Walk Score: ${enhancedData.locationIntelligence.walkScore}/100` : ''}
+${enhancedData.locationIntelligence.commute?.durationMinutes ? `- CBD Commute: ${enhancedData.locationIntelligence.commute.durationMinutes} minutes` : ''}
+${enhancedData.locationIntelligence.transport?.qualityScore ? `- Public Transport Score: ${enhancedData.locationIntelligence.transport.qualityScore}/100` : ''}
+` : ''}
+
+${enhancedData.investmentScore ? `
+INVESTMENT SCORE (Use these exact values in Overall Investment Score section):
+- Total Score: ${enhancedData.investmentScore.totalScore}/100
+- Grade: ${enhancedData.investmentScore.grade}
+- Recommendation: ${enhancedData.investmentScore.recommendation}
+Component Scores: Growth ${enhancedData.investmentScore.breakdown?.growthScore?.score}, Location ${enhancedData.investmentScore.breakdown?.locationScore?.score}, Yield ${enhancedData.investmentScore.breakdown?.yieldScore?.score}, Demand ${enhancedData.investmentScore.breakdown?.demandScore?.score}, Risk ${enhancedData.investmentScore.breakdown?.riskScore?.score}
+` : ''}
+
+**FORMATTING INSTRUCTIONS:**
+- Use markdown tables for all data presentations
+- Include data sources and dates for every metric
+- Add horizontal rulers (---) between major sections
+- Use # for section headers
+- CRITICAL: Omit any metric where data is not available - do not show N/A or placeholders
+- All amounts in AUD with $ symbol
+- Follow the 37-section structure exactly as specified above
 
 ${enhancedData.economics ? `
 ECONOMIC DATA AVAILABLE (Only include metrics with actual values):
