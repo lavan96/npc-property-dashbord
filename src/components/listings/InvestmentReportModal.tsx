@@ -9,6 +9,7 @@ import { Loader2, Download, Copy, Check, Eye, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 import jsPDF from 'jspdf';
 
 interface InvestmentReportModalProps {
@@ -34,6 +35,7 @@ export function InvestmentReportModal({
   const [isBackgroundGeneration, setIsBackgroundGeneration] = useState(false);
   const { toast } = useToast();
   const { addNotification } = useNotifications();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const generateReport = async (runInBackground = false) => {
@@ -89,21 +91,20 @@ export function InvestmentReportModal({
       setEnhancedData(data.enhancedData || null);
       
       // Save report to database with enhanced data
+      let savedReportId: string | null = null;
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
         if (user) {
-          // Check if a report with this exact address and content already exists recently
+          // Check if a report with this exact address already exists recently
           const { data: existingReport } = await supabase
             .from('investment_reports')
             .select('id')
             .eq('property_address', propertyAddress)
-            .eq('generated_by', user.id)
             .gte('created_at', new Date(Date.now() - 60000).toISOString()) // Within last 60 seconds
             .maybeSingle();
 
           if (existingReport) {
             console.log('Report already exists, skipping duplicate save');
+            savedReportId = existingReport.id;
             setReportId(existingReport.id);
           } else {
             const { data: savedReport, error: saveError } = await supabase
@@ -118,31 +119,47 @@ export function InvestmentReportModal({
                 investment_score: data.enhancedData?.investmentScore || null,
                 financial_calculations: data.enhancedData?.financials || null,
                 demographics_data: data.enhancedData?.demographics || null,
-                economic_data: data.enhancedData?.economics || null
+                economic_data: data.enhancedData?.economics || null,
+                status: 'completed'
               })
               .select()
               .single();
             
             if (!saveError && savedReport) {
+              savedReportId = savedReport.id;
               setReportId(savedReport.id);
               console.log('Report saved with ID:', savedReport.id);
+              
+              // Only send success notification if save was successful
+              if (runInBackground) {
+                addNotification({
+                  type: 'report_generated',
+                  title: 'Investment Report Generated',
+                  message: `Report for ${propertyAddress} is ready to view.`,
+                  reportId: savedReport.id
+                });
+              }
             } else if (saveError) {
               console.error('Error saving report:', saveError);
+              throw new Error(`Failed to save report: ${saveError.message}`);
             }
           }
+        } else {
+          console.warn('No user found, report not saved to database');
         }
       } catch (error) {
-        console.log('Could not save report to database:', error);
+        console.error('Could not save report to database:', error);
+        if (runInBackground) {
+          addNotification({
+            type: 'report_failed',
+            title: 'Report Save Failed',
+            message: `Report generated but could not be saved for ${propertyAddress}`,
+          });
+        }
+        throw error;
       }
       
-      if (runInBackground) {
-        addNotification({
-          type: 'report_generated',
-          title: 'Investment Report Generated',
-          message: `Report for ${propertyAddress} is ready to view.`,
-          reportId: reportId || undefined
-        });
-      } else {
+      if (!runInBackground) {
         toast({
           title: "Investment Report Generated",
           description: "Your comprehensive property analysis is ready.",
