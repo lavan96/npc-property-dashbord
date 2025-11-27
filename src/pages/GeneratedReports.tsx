@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
@@ -70,26 +71,32 @@ export default function GeneratedReports() {
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [selectedReportForHistory, setSelectedReportForHistory] = useState<InvestmentReport | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination & Search states
+  const [investmentPage, setInvestmentPage] = useState(1);
+  const [investmentSearchQuery, setInvestmentSearchQuery] = useState('');
+  const reportsPerPage = 9;
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
 
-  useEffect(() => {
-    console.log('📋 Investment reports state updated:', investmentReports.length);
-    if (investmentReports.length > 0) {
-      console.log('📋 First 5 reports:', investmentReports.slice(0, 5).map(r => ({ 
-        id: r.id, 
-        address: r.property_address, 
-        created: r.created_at 
-      })));
-    }
-  }, [investmentReports]);
+  // Filter and paginate investment reports
+  const filteredInvestmentReports = investmentReports.filter(report =>
+    report.property_address.toLowerCase().includes(investmentSearchQuery.toLowerCase())
+  );
+  
+  const totalInvestmentPages = Math.ceil(filteredInvestmentReports.length / reportsPerPage);
+  const paginatedInvestmentReports = filteredInvestmentReports.slice(
+    (investmentPage - 1) * reportsPerPage,
+    investmentPage * reportsPerPage
+  );
 
   useEffect(() => {
     fetchReports();
     fetchInvestmentReports();
     fetchComparisons();
-  }, []); // Only run once on mount
+  }, []);
 
   // Handle opening a specific report after data is loaded
   useEffect(() => {
@@ -157,6 +164,7 @@ export default function GeneratedReports() {
       const { data, error } = await supabase
         .from('investment_reports')
         .select('id, property_address, property_listing_id, report_content, created_at, current_version')
+        .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
       console.log('📊 Investment reports response:', { data, error, count: data?.length });
@@ -406,7 +414,25 @@ export default function GeneratedReports() {
         </TabsContent>
 
         <TabsContent value="investment" className="space-y-4">
-          {investmentReports.length === 0 ? (
+          {/* Search Bar */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative flex-1">
+              <Input
+                type="text"
+                placeholder="Search by property address..."
+                value={investmentSearchQuery}
+                onChange={(e) => {
+                  setInvestmentSearchQuery(e.target.value);
+                  setInvestmentPage(1); // Reset to first page on search
+                }}
+              />
+            </div>
+            <Badge variant="secondary">
+              {filteredInvestmentReports.length} of {investmentReports.length} reports
+            </Badge>
+          </div>
+
+          {filteredInvestmentReports.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
                 <div className="text-6xl text-muted-foreground">🏠</div>
@@ -423,8 +449,9 @@ export default function GeneratedReports() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {investmentReports.map((report) => (
+            <>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {paginatedInvestmentReports.map((report) => (
                 <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-shadow relative">
                   <div className="absolute top-4 right-4 z-10">
                     <Checkbox
@@ -512,6 +539,32 @@ export default function GeneratedReports() {
                 </Card>
               ))}
             </div>
+            
+            {/* Pagination Controls */}
+            {totalInvestmentPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInvestmentPage(p => Math.max(1, p - 1))}
+                  disabled={investmentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {investmentPage} of {totalInvestmentPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInvestmentPage(p => Math.min(totalInvestmentPages, p + 1))}
+                  disabled={investmentPage === totalInvestmentPages}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </TabsContent>
 
