@@ -603,7 +603,15 @@ export type Database = {
           updated_at?: string
           validation_flags?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "investment_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
