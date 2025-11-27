@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PropertyListing } from '@/lib/airtable';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BulkGenerationModalProps {
   open: boolean;
@@ -51,6 +52,7 @@ export function BulkGenerationModal({
   const [runInBackground, setRunInBackground] = useState(false);
   const { toast } = useToast();
   const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
   // Reset state when modal opens
   useEffect(() => {
@@ -124,8 +126,6 @@ export function BulkGenerationModal({
     setRunInBackground(background);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         throw new Error('User not authenticated');
       }
