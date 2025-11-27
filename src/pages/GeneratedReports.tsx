@@ -75,6 +75,17 @@ export default function GeneratedReports() {
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
 
   useEffect(() => {
+    console.log('📋 Investment reports state updated:', investmentReports.length);
+    if (investmentReports.length > 0) {
+      console.log('📋 First 5 reports:', investmentReports.slice(0, 5).map(r => ({ 
+        id: r.id, 
+        address: r.property_address, 
+        created: r.created_at 
+      })));
+    }
+  }, [investmentReports]);
+
+  useEffect(() => {
     fetchReports();
     fetchInvestmentReports();
     fetchComparisons();
