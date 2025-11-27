@@ -39,6 +39,7 @@ interface InvestmentReport {
   report_content: string;
   created_at: string;
   current_version: number;
+  status?: string;
 }
 
 interface ComparisonAnalysis {
@@ -163,8 +164,8 @@ export default function GeneratedReports() {
       console.log('🔍 Fetching investment reports...');
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, created_at, current_version')
-        .eq('status', 'completed')
+        .select('id, property_address, property_listing_id, report_content, created_at, current_version, status')
+        .in('status', ['completed', 'pending']) // Show both completed and pending reports
         .order('created_at', { ascending: false });
 
       console.log('📊 Investment reports response:', { data, error, count: data?.length });
@@ -464,7 +465,12 @@ export default function GeneratedReports() {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-start justify-between pr-8">
                       <span className="line-clamp-2">{report.property_address}</span>
-                      <TrendingUp className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
+                      <div className="flex items-center gap-2">
+                        {report.status === 'pending' && (
+                          <Badge variant="outline" className="text-xs">Pending</Badge>
+                        )}
+                        <TrendingUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      </div>
                     </CardTitle>
                     <CardDescription className="text-xs flex items-center gap-1">
                       <Calendar className="h-3 w-3" />

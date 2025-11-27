@@ -308,6 +308,7 @@ async function generateSingleReport(
         demographics_data: reportData.enhancedData?.demographics || null,
         economic_data: reportData.enhancedData?.economics || null,
         generated_by: userId,
+        status: 'completed', // Mark as completed
       })
       .select()
       .single();
