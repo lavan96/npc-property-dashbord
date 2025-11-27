@@ -382,6 +382,28 @@ Format your response as valid JSON with this structure:
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('Lovable AI error:', aiResponse.status, errorText);
+      
+      // Handle specific error codes
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Rate limit exceeded', 
+            details: 'Too many requests. Please wait a moment and try again.' 
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Payment required', 
+            details: 'AI credits exhausted. Please add credits to your Lovable workspace.' 
+          }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: 'AI analysis failed', details: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -430,6 +452,35 @@ Format your response as valid JSON with this structure:
 
     const processingTime = Date.now() - startTime;
 
+    // Get user ID for created_by field
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    let userId = null;
+    
+    if (token) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser(token);
+        const supabaseAuthUserId = user?.id;
+        
+        if (supabaseAuthUserId) {
+          // Look up the corresponding custom_users record
+          const { data: customUser } = await supabase
+            .from('custom_users')
+            .select('id')
+            .eq('id', supabaseAuthUserId)
+            .single();
+          
+          userId = customUser?.id || null;
+          
+          if (!customUser) {
+            console.warn(`No custom_users record found for Supabase Auth user ${supabaseAuthUserId}`);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not decode user from token:', error);
+      }
+    }
+
     // Store comparison in database with metadata
     const { data: comparisonData, error: insertError } = await supabase
       .from('property_comparisons')
@@ -450,6 +501,7 @@ Format your response as valid JSON with this structure:
         red_flags: analysis.redFlags,
         analysis_depth: analysisDepth,
         investor_profile: investorProfile,
+        created_by: userId,
         model_used: 'google/gemini-2.5-flash',
         processing_time_ms: processingTime,
         analysis_summary: JSON.stringify({
@@ -463,6 +515,7 @@ Format your response as valid JSON with this structure:
 
     if (insertError) {
       console.error('Error storing comparison:', insertError);
+      console.error('Insert error details:', JSON.stringify(insertError, null, 2));
     }
 
     console.log(`Comparison completed in ${processingTime}ms`);

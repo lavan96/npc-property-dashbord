@@ -196,7 +196,21 @@ export function PropertyComparisonModal({
       });
 
       if (error) {
-        throw new Error(error.message || 'Failed to compare properties');
+        // Extract more detailed error information
+        let errorMessage = error.message || 'Failed to compare properties';
+        
+        // Check for specific error types in the error object
+        if (error.context?.status === 429) {
+          errorMessage = 'Rate limit exceeded. Too many comparison requests. Please wait a moment and try again.';
+        } else if (error.context?.status === 402) {
+          errorMessage = 'AI credits exhausted. Please add credits to your Lovable workspace to continue.';
+        } else if (errorMessage.includes('rate limit')) {
+          errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
+        } else if (errorMessage.includes('payment') || errorMessage.includes('credits')) {
+          errorMessage = 'AI credits exhausted. Please add credits to your Lovable workspace.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       setProgress(90);
