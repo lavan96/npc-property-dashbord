@@ -97,6 +97,17 @@ export default function GeneratedReports() {
     fetchReports();
     fetchInvestmentReports();
     fetchComparisons();
+
+    // Listen for custom event to refresh comparisons
+    const handleRefreshComparisons = () => {
+      console.log('📊 Refreshing comparisons from event');
+      fetchComparisons();
+    };
+
+    window.addEventListener('refreshComparisons', handleRefreshComparisons);
+    return () => {
+      window.removeEventListener('refreshComparisons', handleRefreshComparisons);
+    };
   }, []);
 
   // Handle opening a specific report after data is loaded
@@ -224,6 +235,11 @@ export default function GeneratedReports() {
   const handleInvestmentReportUpdate = () => {
     // Refresh the investment reports list
     fetchInvestmentReports();
+  };
+
+  const handleComparisonUpdate = () => {
+    // Refresh the comparisons list
+    fetchComparisons();
   };
 
   const handleViewVersionHistory = (report: InvestmentReport) => {
@@ -635,15 +651,6 @@ export default function GeneratedReports() {
                         <Eye className="mr-1 h-3 w-3" />
                         View Analysis
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled
-                        className="flex-1"
-                      >
-                        <Download className="mr-1 h-3 w-3" />
-                        Download
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -657,7 +664,10 @@ export default function GeneratedReports() {
 
       <PropertyComparisonModal
         isOpen={comparisonModalOpen}
-        onClose={() => setComparisonModalOpen(false)}
+        onClose={() => {
+          setComparisonModalOpen(false);
+          handleComparisonUpdate(); // Refresh comparisons when modal closes
+        }}
         reportIds={selectedReports.map(r => r.id)}
         propertyAddresses={selectedReports.map(r => r.property_address)}
       />

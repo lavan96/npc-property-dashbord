@@ -217,6 +217,9 @@ export function PropertyComparisonModal({
         reportId: data.comparisonId
       });
 
+      // Trigger refresh of comparisons list
+      window.dispatchEvent(new CustomEvent('refreshComparisons'));
+
       if (background) {
         addBackgroundJob({
           id: data.comparisonId,

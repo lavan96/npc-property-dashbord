@@ -60,13 +60,41 @@ serve(async (req) => {
 
     // Extract property addresses and determine states
     const propertyAddresses = reports.map(r => r.property_address);
-    const propertyStates = [...new Set(
-      reports.map(r => {
-        // Extract state from address (e.g., "123 Street, Suburb, VIC 3000" -> "VIC")
-        const match = r.property_address.match(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i);
-        return match ? match[0].toUpperCase() : 'UNKNOWN';
-      })
-    )].filter(state => state !== 'UNKNOWN');
+    
+    // Extract states from addresses with improved pattern matching
+    const extractedStates = reports.map(r => {
+      const address = r.property_address;
+      
+      // Try multiple patterns to extract state
+      // Pattern 1: State code followed by postcode (e.g., "VIC 3000", "NSW 2000")
+      let match = address.match(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\s+\d{4}\b/i);
+      if (match) return match[1].toUpperCase();
+      
+      // Pattern 2: State code in parentheses or brackets (e.g., "(VIC)", "[WA]")
+      match = address.match(/[\(\[](NSW|VIC|QLD|WA|SA|TAS|ACT|NT)[\)\]]/i);
+      if (match) return match[1].toUpperCase();
+      
+      // Pattern 3: State code at end of address (e.g., "Street, Suburb VIC")
+      match = address.match(/,\s*(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)$/i);
+      if (match) return match[1].toUpperCase();
+      
+      // Pattern 4: Any occurrence of state code with word boundaries
+      match = address.match(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/i);
+      if (match) return match[1].toUpperCase();
+      
+      // Try to extract from property_specs if available
+      if (report.property_specs && typeof report.property_specs === 'object') {
+        const specs = report.property_specs as any;
+        if (specs.state) return specs.state.toUpperCase();
+      }
+      
+      return null;
+    }).filter(state => state !== null) as string[];
+    
+    // Get unique states, preserving empty array if no states found
+    const propertyStates = extractedStates.length > 0 
+      ? [...new Set(extractedStates)]
+      : [];
 
     // Generate accurate report title
     const statesText = propertyStates.length === 0 
@@ -78,7 +106,7 @@ serve(async (req) => {
     const reportTitle = `COMPARISON ANALYSIS - ${reports.length} PROPERTIES, ${statesText}`;
     
     console.log(`Generated title: ${reportTitle}`);
-    console.log(`Property states: ${propertyStates.join(', ')}`);
+    console.log(`Property states extracted: ${propertyStates.length > 0 ? propertyStates.join(', ') : 'none found'}`);
 
     // Structure data for AI analysis
     const propertiesData = reports.map((report, index) => {
