@@ -83,8 +83,8 @@ serve(async (req) => {
       if (match) return match[1].toUpperCase();
       
       // Try to extract from property_specs if available
-      if (report.property_specs && typeof report.property_specs === 'object') {
-        const specs = report.property_specs as any;
+      if (r.property_specs && typeof r.property_specs === 'object') {
+        const specs = r.property_specs as any;
         if (specs.state) return specs.state.toUpperCase();
       }
       
