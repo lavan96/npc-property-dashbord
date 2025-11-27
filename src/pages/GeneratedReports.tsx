@@ -142,13 +142,16 @@ export default function GeneratedReports() {
 
   const fetchInvestmentReports = async () => {
     try {
+      console.log('🔍 Fetching investment reports...');
       const { data, error } = await supabase
         .from('investment_reports')
         .select('id, property_address, property_listing_id, report_content, created_at, current_version')
         .order('created_at', { ascending: false });
 
+      console.log('📊 Investment reports response:', { data, error, count: data?.length });
+
       if (error) {
-        console.error('Error fetching investment reports:', error);
+        console.error('❌ Error fetching investment reports:', error);
         toast({
           title: "Error fetching investment reports",
           description: error.message,
@@ -157,9 +160,10 @@ export default function GeneratedReports() {
         return;
       }
 
+      console.log('✅ Setting investment reports:', data?.length || 0);
       setInvestmentReports(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('💥 Exception:', error);
       toast({
         title: "Error",
         description: "Failed to fetch investment reports",
