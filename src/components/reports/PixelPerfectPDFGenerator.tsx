@@ -30,8 +30,42 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
   const extractSuburbState = (address: string): { suburb: string; state: string } => {
     const parts = address.split(',').map(p => p.trim());
     const lastPart = parts[parts.length - 1] || '';
-    const stateMatch = lastPart.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-    const state = stateMatch ? stateMatch[0].toUpperCase() : 'NSW';
+    
+    // Map full state names to abbreviations
+    const stateMapping: Record<string, string> = {
+      'new south wales': 'NSW',
+      'victoria': 'VIC',
+      'queensland': 'QLD',
+      'south australia': 'SA',
+      'western australia': 'WA',
+      'tasmania': 'TAS',
+      'northern territory': 'NT',
+      'australian capital territory': 'ACT',
+    };
+    
+    // First try to match abbreviations
+    let stateMatch = lastPart.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
+    let state = stateMatch ? stateMatch[0].toUpperCase() : '';
+    
+    // If no abbreviation found, check for full state names in the address
+    if (!state) {
+      const addressLower = address.toLowerCase();
+      for (const [fullName, abbrev] of Object.entries(stateMapping)) {
+        if (addressLower.includes(fullName)) {
+          state = abbrev;
+          break;
+        }
+      }
+    }
+    
+    // If still no state found, try to extract from parts
+    if (!state && parts.length > 0) {
+      const lastPartLower = lastPart.toLowerCase();
+      const matchedState = Object.entries(stateMapping).find(([fullName]) => 
+        lastPartLower.includes(fullName)
+      );
+      state = matchedState ? matchedState[1] : '';
+    }
     
     const suburb = parts.length > 1 ? parts[parts.length - 2] : parts[0];
     return { suburb: suburb.toUpperCase(), state };
@@ -868,7 +902,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       currentPage = await addContentPage();
       yPosition = pageHeight - topMargin - 20;
 
-      const titleText = stripEmojis(`Investment Report: ${suburb}, ${state}`);
+      // Use the property address directly as the title (which admins can edit)
+      const titleText = stripEmojis(`Investment Report: ${report.address}`);
       const titleResult = drawTextWithWrap(
         currentPage,
         `**${titleText}**`,
