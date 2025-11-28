@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +34,7 @@ interface InvestmentReportEditorProps {
 export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentReportEditorProps) {
   const [editedContent, setEditedContent] = useState('');
   const [editedSources, setEditedSources] = useState('');
+  const [editedPropertyAddress, setEditedPropertyAddress] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState('content');
@@ -42,6 +44,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
     if (report) {
       setEditedContent(report.report_content);
       setEditedSources(report.sources_content || '');
+      setEditedPropertyAddress(report.property_address);
       setHasChanges(false);
     }
   }, [report]);
@@ -50,12 +53,29 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
 
   const handleContentChange = (value: string) => {
     setEditedContent(value);
-    setHasChanges(value !== report.report_content || editedSources !== (report.sources_content || ''));
+    setHasChanges(
+      value !== report.report_content || 
+      editedSources !== (report.sources_content || '') ||
+      editedPropertyAddress !== report.property_address
+    );
   };
 
   const handleSourcesChange = (value: string) => {
     setEditedSources(value);
-    setHasChanges(editedContent !== report.report_content || value !== (report.sources_content || ''));
+    setHasChanges(
+      editedContent !== report.report_content || 
+      value !== (report.sources_content || '') ||
+      editedPropertyAddress !== report.property_address
+    );
+  };
+
+  const handlePropertyAddressChange = (value: string) => {
+    setEditedPropertyAddress(value);
+    setHasChanges(
+      editedContent !== report.report_content || 
+      editedSources !== (report.sources_content || '') ||
+      value !== report.property_address
+    );
   };
 
   const handleSave = async () => {
@@ -72,6 +92,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       const { error } = await supabase
         .from('investment_reports')
         .update({ 
+          property_address: editedPropertyAddress,
           report_content: editedContent,
           sources_content: editedSources || null,
           updated_at: new Date().toISOString()
@@ -91,6 +112,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       
       // Update the original report object
       Object.assign(report, { 
+        property_address: editedPropertyAddress,
         report_content: editedContent,
         sources_content: editedSources 
       });
@@ -112,6 +134,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       if (confirm("You have unsaved changes. Are you sure you want to close without saving?")) {
         setEditedContent(report.report_content);
         setEditedSources(report.sources_content || '');
+        setEditedPropertyAddress(report.property_address);
         setHasChanges(false);
         onClose();
       }
@@ -224,12 +247,20 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
             <FileText className="h-5 w-5" />
             Edit Investment Report
           </DialogTitle>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-3 w-3" />
-            {report.property_address}
-            <span>•</span>
-            <Calendar className="h-3 w-3" />
-            {format(new Date(report.created_at), 'PPp')}
+          <div className="space-y-2 mt-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <Input
+                value={editedPropertyAddress}
+                onChange={(e) => handlePropertyAddressChange(e.target.value)}
+                placeholder="Property address / Report title"
+                className="flex-1"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              {format(new Date(report.created_at), 'PPp')}
+            </div>
           </div>
         </DialogHeader>
 
