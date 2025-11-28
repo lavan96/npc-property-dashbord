@@ -20,8 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
+  // Check for existing session on mount and ensure Supabase Auth is signed out
   useEffect(() => {
+    // Sign out of Supabase Auth to prevent conflicts with custom auth
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {
+      // Ignore errors, we just want to ensure no Supabase auth session exists
+    });
     checkSession();
   }, []);
 
@@ -106,6 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Logout error:', error);
       }
     }
+
+    // Also ensure Supabase Auth is signed out to prevent conflicts
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 
     localStorage.removeItem('session_token');
     setUser(null);
