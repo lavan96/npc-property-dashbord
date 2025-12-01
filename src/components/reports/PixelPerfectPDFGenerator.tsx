@@ -112,6 +112,28 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
     console.log('💉 Injecting override values into markdown content');
 
+    // Calculate total annual costs dynamically from overridden values
+    const councilRates = financialData?.annualCosts?.councilRates || 0;
+    const waterRates = financialData?.annualCosts?.waterRates || 0;
+    const strataFees = financialData?.annualCosts?.strataFees || 0;
+    const landlordInsurance = financialData?.annualCosts?.landlordInsurance || 0;
+    const propertyManagement = financialData?.annualCosts?.propertyManagement || 0;
+    const maintenance = 1500; // Fixed amount
+    const lettingFees = financialData?.annualCosts?.lettingFees || 0;
+    
+    const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance + lettingFees;
+    
+    console.log('📊 Computed total annual costs:', {
+      councilRates,
+      waterRates,
+      strataFees,
+      landlordInsurance,
+      propertyManagement,
+      maintenance,
+      lettingFees,
+      totalAnnualCosts
+    });
+
     // Map of field paths to regex patterns that match them in markdown tables
     const fieldReplacements: Array<{ pattern: RegExp; getValue: () => any; format: (v: any) => string }> = [
       {
@@ -130,7 +152,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
-        pattern: /Deposit.*?\$[\d,]+(?=\s|$|\)|,)/gi,
+        pattern: /Deposit(?:.*?20%)?[:\s-]+\$[\d,]+/gi,
         getValue: () => financialData?.initialCosts?.deposit,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
@@ -208,6 +230,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         pattern: /LVR.*?[\d.]+%/gi,
         getValue: () => financialData?.keyMetrics?.lvr,
         format: (v) => `${v || '0'}%`
+      },
+      {
+        pattern: /\*\*Total Annual Costs\*\*.*?\$[\d,]+/gi,
+        getValue: () => totalAnnualCosts,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Total Annual Costs.*?\$[\d,]+/gi,
+        getValue: () => totalAnnualCosts,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
       },
     ];
 
