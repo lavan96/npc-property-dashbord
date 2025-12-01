@@ -66,7 +66,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     },
     'depositValue': {
       displayName: 'Deposit Value',
-      patterns: [/Deposit.*?\$[\d,]+/gi]
+      patterns: [/Deposit.*?\$[\d,]+(?=\s|$|\)|,)/gi]
     },
     'loanToValueRatio': {
       displayName: 'Loan to Value Ratio',
@@ -106,7 +106,13 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     },
     'buildingLandlordInsurance': {
       displayName: 'Building & Landlord Insurance',
-      patterns: [/Landlord Insurance.*?\$[\d,]+/gi, /Building.*Insurance.*?\$[\d,]+/gi]
+      patterns: [
+        /Building & Landlord Insurance.*?\$[\d,]+/gi,
+        /Building and Landlord Insurance.*?\$[\d,]+/gi,
+        /Landlord Insurance.*?\$[\d,]+/gi,
+        /Building.*Insurance.*?\$[\d,]+/gi,
+        /Insurance.*?\$[\d,]+/gi
+      ]
     },
     'propertyManagementFees': {
       displayName: 'Property Management',
