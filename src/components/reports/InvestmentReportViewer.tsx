@@ -21,6 +21,11 @@ interface InvestmentReport {
   sources_content?: string | null;
   created_at: string;
   manual_overrides?: any;
+  financial_calculations?: any;
+  demographics_data?: any;
+  economic_data?: any;
+  investment_score?: any;
+  location_intelligence?: any;
 }
 
 interface InvestmentReportViewerProps {

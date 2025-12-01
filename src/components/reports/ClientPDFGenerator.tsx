@@ -9,6 +9,7 @@ interface InvestmentReportData {
   financial_calculations?: any;
   investment_score?: any;
   location_intelligence?: any;
+  manual_overrides?: any;
 }
 
 interface ClientPDFGeneratorProps {
@@ -16,6 +17,11 @@ interface ClientPDFGeneratorProps {
 }
 
 export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
+  // Merge manual_overrides with financial_calculations for PDF generation
+  const mergedFinancialData = report.manual_overrides 
+    ? { ...report.financial_calculations, ...report.manual_overrides }
+    : report.financial_calculations;
+
   // Transform the report data to match PixelPerfectPDFGenerator expectations
   const transformedReport = {
     id: report.id,
@@ -26,7 +32,7 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       domainData: null,
       absData: report.demographics_data,
       rbaData: report.economic_data,
-      financialData: report.financial_calculations,
+      financialData: mergedFinancialData,
       locationData: report.location_intelligence,
       investmentScore: report.investment_score,
     }

@@ -43,6 +43,10 @@ interface InvestmentReport {
   status?: string;
   manual_overrides?: any;
   financial_calculations?: any;
+  demographics_data?: any;
+  economic_data?: any;
+  investment_score?: any;
+  location_intelligence?: any;
 }
 
 interface ComparisonAnalysis {
@@ -180,7 +184,7 @@ export default function GeneratedReports() {
       console.log('🔍 Fetching investment reports...');
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, created_at, current_version, status, manual_overrides, financial_calculations')
+        .select('id, property_address, property_listing_id, report_content, created_at, current_version, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
         .in('status', ['completed', 'pending']) // Show both completed and pending reports
         .order('created_at', { ascending: false });
 
