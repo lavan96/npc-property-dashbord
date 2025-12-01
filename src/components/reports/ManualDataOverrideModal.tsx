@@ -196,41 +196,67 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
     setSaving(true);
     try {
-      console.log('💾 Saving manual overrides for report:', report.id);
+      console.log('💾 Saving manual overrides (data-only update, no AI regeneration)');
       
-      // Step 1: Update the report with manual overrides
+      // Merge overrides with existing financial_calculations
+      const mergedFinancialData = { ...report.financial_calculations };
+      
+      // Apply override mapping to nested structure
+      const overrideMapping: Record<string, string> = {
+        'purchasePrice': 'initialCosts.propertyValue',
+        'stampDuty': 'initialCosts.stampDuty',
+        'depositValue': 'initialCosts.deposit',
+        'loanToValueRatio': 'keyMetrics.lvr',
+        'interestRate': 'loanDetails.interestRate',
+        'weeklyRent': 'income.weeklyRent',
+        'councilRates': 'annualCosts.councilRates',
+        'waterRates': 'annualCosts.waterRates',
+        'bodyCorporateFees': 'annualCosts.strataFees',
+        'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
+        'propertyManagementFees': 'annualCosts.propertyManagementPercent',
+        'solicitorFees': 'initialCosts.legalFees',
+        'repairsMaintenance': 'annualCosts.maintenance',
+        'lettingFees': 'annualCosts.lettingFees',
+        'capitalGrowth': 'assumptions.capitalGrowth',
+        'buildPrice': 'initialCosts.buildPrice',
+        'landPrice': 'initialCosts.landPrice'
+      };
+      
+      // Apply overrides to nested structure
+      for (const [flatKey, overrideValue] of Object.entries(overrides)) {
+        const nestedPath = overrideMapping[flatKey];
+        if (nestedPath) {
+          const keys = nestedPath.split('.');
+          let current = mergedFinancialData;
+          
+          for (let i = 0; i < keys.length - 1; i++) {
+            if (!current[keys[i]]) {
+              current[keys[i]] = {};
+            }
+            current = current[keys[i]];
+          }
+          
+          current[keys[keys.length - 1]] = overrideValue;
+        }
+      }
+      
+      // Update database with merged data (NO Perplexity call)
       const { error: updateError } = await supabase
         .from('investment_reports')
         .update({ 
           manual_overrides: overrides,
+          financial_calculations: mergedFinancialData,
           updated_at: new Date().toISOString()
         })
         .eq('id', report.id);
 
       if (updateError) throw updateError;
-      console.log('✓ Manual overrides saved to database');
 
-      // Step 2: Trigger report regeneration to apply overrides
-      console.log('🔄 Triggering report regeneration with overrides...');
-      const { data, error: regenError } = await supabase.functions.invoke('generate-investment-report', {
-        body: {
-          reportId: report.id,
-          propertyAddress: report.property_address,
-          propertyDetails: null // Will fetch fresh data
-        }
-      });
-
-      if (regenError) throw regenError;
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to regenerate report with overrides');
-      }
-
-      console.log('✓ Report regenerated successfully with overrides');
+      console.log('✓ Manual overrides saved (data-only, no AI regeneration)');
 
       toast({
         title: "Overrides applied",
-        description: "Manual data overrides have been saved and the report has been regenerated with updated values.",
+        description: "Manual data overrides have been saved. The updated values are now reflected in the report.",
       });
 
       setHasChanges(false);
@@ -240,7 +266,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       console.error('❌ Error applying overrides:', error);
       toast({
         title: "Failed to apply overrides",
-        description: error.message || "Failed to save manual data overrides and regenerate report",
+        description: error.message || "Failed to save manual data overrides",
         variant: "destructive",
       });
     } finally {
@@ -364,7 +390,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
             </Button>
             <Button onClick={handleSave} disabled={!hasChanges || saving}>
               <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save & Regenerate'}
+              {saving ? 'Saving...' : 'Save Overrides'}
             </Button>
           </div>
         </div>
