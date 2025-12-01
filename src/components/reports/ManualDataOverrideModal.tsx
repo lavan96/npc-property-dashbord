@@ -196,8 +196,10 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
     setSaving(true);
     try {
-      // Update the report with manual overrides
-      const { error } = await supabase
+      console.log('💾 Saving manual overrides for report:', report.id);
+      
+      // Step 1: Update the report with manual overrides
+      const { error: updateError } = await supabase
         .from('investment_reports')
         .update({ 
           manual_overrides: overrides,
@@ -205,21 +207,40 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         })
         .eq('id', report.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+      console.log('✓ Manual overrides saved to database');
+
+      // Step 2: Trigger report regeneration to apply overrides
+      console.log('🔄 Triggering report regeneration with overrides...');
+      const { data, error: regenError } = await supabase.functions.invoke('generate-investment-report', {
+        body: {
+          reportId: report.id,
+          propertyAddress: report.property_address,
+          propertyDetails: null // Will fetch fresh data
+        }
+      });
+
+      if (regenError) throw regenError;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to regenerate report with overrides');
+      }
+
+      console.log('✓ Report regenerated successfully with overrides');
 
       toast({
-        title: "Overrides saved",
-        description: "Manual data overrides have been saved successfully. Report will regenerate automatically.",
+        title: "Overrides applied",
+        description: "Manual data overrides have been saved and the report has been regenerated with updated values.",
       });
 
       setHasChanges(false);
       onSave?.();
       onClose();
     } catch (error: any) {
-      console.error('Error saving overrides:', error);
+      console.error('❌ Error applying overrides:', error);
       toast({
-        title: "Save failed",
-        description: error.message || "Failed to save manual data overrides",
+        title: "Failed to apply overrides",
+        description: error.message || "Failed to save manual data overrides and regenerate report",
         variant: "destructive",
       });
     } finally {
