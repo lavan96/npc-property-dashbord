@@ -331,25 +331,23 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </div>
               <div className="flex-1 border rounded-md overflow-y-auto">
                 <div className="p-4">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={markdownComponents}
-                    >
-                      {editedContent}
-                    </ReactMarkdown>
-                    
-                    {editedSources && (
-                      <div className="mt-8 border-t pt-6">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={markdownComponents}
-                        >
-                          {editedSources}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {editedContent}
+                  </ReactMarkdown>
+                  
+                  {editedSources && (
+                    <div className="mt-8 border-t pt-6">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={markdownComponents}
+                      >
+                        {editedSources}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
