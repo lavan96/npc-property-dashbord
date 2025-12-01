@@ -14,7 +14,7 @@ import { PropertyComparisonModal } from '@/components/reports/PropertyComparison
 import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Settings } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
@@ -561,16 +561,6 @@ export default function GeneratedReports() {
                           className="flex-1"
                         />
                         <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleOpenOverrideModal(report)}
-                          className="flex-1"
-                          title="Override data"
-                        >
-                          <Settings className="mr-1 h-3 w-3" />
-                          Override
-                        </Button>
-                        <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewVersionHistory(report)}
@@ -705,6 +695,11 @@ export default function GeneratedReports() {
           setSelectedInvestmentReport(null);
         }}
         onReportUpdate={handleInvestmentReportUpdate}
+        onOpenOverride={() => {
+          if (selectedInvestmentReport) {
+            handleOpenOverrideModal(selectedInvestmentReport);
+          }
+        }}
       />
 
       <ComparisonViewer
