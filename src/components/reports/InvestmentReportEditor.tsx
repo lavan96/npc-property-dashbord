@@ -324,16 +324,13 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
 
             <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
               <div className="flex-shrink-0 mb-4">
-                <p className="text-sm font-medium mb-1 flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Formatted Preview
-                </p>
+                <p className="text-sm font-medium mb-1">Formatted Preview</p>
                 <p className="text-xs text-muted-foreground">
                   See how your markdown will appear when rendered with proper formatting.
                 </p>
               </div>
               <ScrollArea className="flex-1 border rounded-md">
-                <div className="p-6">
+                <div className="p-4">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
