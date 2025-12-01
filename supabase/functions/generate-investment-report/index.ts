@@ -51,11 +51,25 @@ serve(async (req) => {
 
     // Initialize Supabase client for database updates
     let supabaseClient = null;
+    let existingManualOverrides = null;
+    
     if (reportId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (supabaseUrl && supabaseKey) {
         supabaseClient = createClient(supabaseUrl, supabaseKey);
+        
+        // Fetch existing manual overrides before regeneration
+        const { data: existingReport } = await supabaseClient
+          .from('investment_reports')
+          .select('manual_overrides')
+          .eq('id', reportId)
+          .single();
+        
+        if (existingReport?.manual_overrides) {
+          existingManualOverrides = existingReport.manual_overrides;
+          console.log('📝 Fetched existing manual overrides:', Object.keys(existingManualOverrides).length, 'fields');
+        }
         
         // Update status to processing
         await supabaseClient
@@ -343,7 +357,19 @@ serve(async (req) => {
           
           if (financialResponse.ok) {
             const financialData = await financialResponse.json();
-            enhancedData = { ...enhancedData, financials: financialData.data };
+            
+            // Merge manual overrides with fresh financial calculations
+            if (existingManualOverrides && Object.keys(existingManualOverrides).length > 0) {
+              console.log('🔀 Merging manual overrides with fresh financial calculations');
+              enhancedData = { 
+                ...enhancedData, 
+                financials: { ...financialData.data, ...existingManualOverrides }
+              };
+              console.log('✓ Manual overrides applied to financial calculations');
+            } else {
+              enhancedData = { ...enhancedData, financials: financialData.data };
+            }
+            
             console.log('Financial calculations completed successfully');
             
             // Run validation on financial calculations
@@ -1912,22 +1938,31 @@ Always conduct your own research and due diligence to ensure that any property t
         ...schemaValidationFlags
       ];
       
+      // Prepare update object, preserving manual_overrides if they exist
+      const updateData: any = {
+        report_content: reportContent,
+        sources_content: sourcesContent,
+        demographics_data: enhancedData.demographics || null,
+        economic_data: enhancedData.economics || null,
+        financial_calculations: enhancedData.financials || null,
+        investment_score: enhancedData.investmentScore || null,
+        location_intelligence: enhancedData.locationIntelligence || null,
+        property_specs: propertySpecs,
+        validation_flags: allValidationFlags,
+        calculation_version: '1.0.0',
+        data_sources: dataSources,
+        status: 'completed'
+      };
+      
+      // Preserve manual_overrides if they exist (don't overwrite with null)
+      if (existingManualOverrides && Object.keys(existingManualOverrides).length > 0) {
+        updateData.manual_overrides = existingManualOverrides;
+        console.log('✓ Preserving manual overrides in database update');
+      }
+      
       const { error: updateError } = await supabaseClient
         .from('investment_reports')
-        .update({
-          report_content: reportContent,
-          sources_content: sourcesContent,
-          demographics_data: enhancedData.demographics || null,
-          economic_data: enhancedData.economics || null,
-          financial_calculations: enhancedData.financials || null,
-          investment_score: enhancedData.investmentScore || null,
-          location_intelligence: enhancedData.locationIntelligence || null,
-          property_specs: propertySpecs,
-          validation_flags: allValidationFlags,
-          calculation_version: '1.0.0',
-          data_sources: dataSources,
-          status: 'completed'
-        })
+        .update(updateData)
         .eq('id', reportId);
 
       if (updateError) {
