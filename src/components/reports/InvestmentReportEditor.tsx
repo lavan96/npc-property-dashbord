@@ -5,9 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -290,86 +288,73 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="content" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex">
-              <Card className="h-full flex flex-col overflow-hidden">
-                <CardHeader className="pb-3 flex-shrink-0">
-                  <CardTitle className="text-base">Report Content Editor</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Edit the main investment analysis report using markdown syntax.
-                  </p>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
-                  <ScrollArea className="h-full w-full">
-                    <Textarea
-                      value={editedContent}
-                      onChange={(e) => handleContentChange(e.target.value)}
-                      placeholder="Enter your investment analysis report content..."
-                      className="w-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
-                    />
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+            <TabsContent value="content" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+              <div className="flex-shrink-0 mb-4">
+                <p className="text-sm font-medium mb-1">Report Content Editor</p>
+                <p className="text-xs text-muted-foreground">
+                  Edit the main investment analysis report using markdown syntax.
+                </p>
+              </div>
+              <ScrollArea className="flex-1 border rounded-md">
+                <Textarea
+                  value={editedContent}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  placeholder="Enter your investment analysis report content..."
+                  className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
+                />
+              </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex">
-              <Card className="h-full flex flex-col overflow-hidden">
-                <CardHeader className="pb-3 flex-shrink-0">
-                  <CardTitle className="text-base">Sources & Citations Editor</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Edit the sources and citations section that will be appended to the report.
-                  </p>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
-                  <ScrollArea className="h-full w-full">
-                    <Textarea
-                      value={editedSources}
-                      onChange={(e) => handleSourcesChange(e.target.value)}
-                      placeholder="Enter sources and citations here..."
-                      className="w-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
-                    />
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+              <div className="flex-shrink-0 mb-4">
+                <p className="text-sm font-medium mb-1">Sources & Citations Editor</p>
+                <p className="text-xs text-muted-foreground">
+                  Edit the sources and citations section that will be appended to the report.
+                </p>
+              </div>
+              <ScrollArea className="flex-1 border rounded-md">
+                <Textarea
+                  value={editedSources}
+                  onChange={(e) => handleSourcesChange(e.target.value)}
+                  placeholder="Enter sources and citations here..."
+                  className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
+                />
+              </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex">
-              <Card className="h-full flex flex-col overflow-hidden">
-                <CardHeader className="pb-3 flex-shrink-0">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    Formatted Preview
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    See how your markdown will appear when rendered with proper formatting.
-                  </p>
-                </CardHeader>
-                <Separator className="flex-shrink-0" />
-                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
-                  <ScrollArea className="h-full w-full">
-                    <div className="p-6">
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
+            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+              <div className="flex-shrink-0 mb-4">
+                <p className="text-sm font-medium mb-1 flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Formatted Preview
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  See how your markdown will appear when rendered with proper formatting.
+                </p>
+              </div>
+              <ScrollArea className="flex-1 border rounded-md">
+                <div className="p-6">
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {editedContent}
+                    </ReactMarkdown>
+                    
+                    {editedSources && (
+                      <div className="mt-8 border-t pt-6">
                         <ReactMarkdown 
                           remarkPlugins={[remarkGfm]}
                           components={markdownComponents}
                         >
-                          {editedContent}
+                          {editedSources}
                         </ReactMarkdown>
-                        
-                        {editedSources && (
-                          <div className="mt-8 border-t pt-6">
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]}
-                              components={markdownComponents}
-                            >
-                              {editedSources}
-                            </ReactMarkdown>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+                    )}
+                  </div>
+                </div>
+              </ScrollArea>
             </TabsContent>
           </Tabs>
         </div>
