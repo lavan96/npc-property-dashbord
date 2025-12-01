@@ -14,9 +14,10 @@ interface InvestmentReportData {
 
 interface ClientPDFGeneratorProps {
   report: InvestmentReportData;
+  includeSources?: boolean;
 }
 
-export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
+export function ClientPDFGenerator({ report, includeSources = true }: ClientPDFGeneratorProps) {
   // Merge manual_overrides with financial_calculations for PDF generation
   const mergedFinancialData = (() => {
     if (!report.manual_overrides || Object.keys(report.manual_overrides).length === 0) {
@@ -88,5 +89,5 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
     }
   };
 
-  return <PixelPerfectPDFGenerator report={transformedReport} />;
+  return <PixelPerfectPDFGenerator report={transformedReport} includeSources={includeSources} />;
 }

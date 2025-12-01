@@ -444,7 +444,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               <Separator className="flex-shrink-0" />
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="p-4 border-b bg-muted/50 flex-shrink-0">
-                  <ClientPDFGenerator report={report} />
+                  <ClientPDFGenerator report={report} includeSources={includeSources} />
                 </div>
                 <ScrollArea className="flex-1 min-h-0 p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">

@@ -907,14 +907,26 @@ Recommendation: [BUY/HOLD/SELL]
 # 34. Top 3 Risks
 1. [Risk title] - [Description]
 
-# 35. Market Data Sources
+# 35. Investment Recommendations
+Based on the comprehensive analysis above, here are tailored recommendations for this investment:
+
+**Short-term Actions:**
+- [Specific actionable recommendation]
+- [Specific actionable recommendation]
+
+**Long-term Strategy:**
+- [Strategic recommendation for maximizing returns]
+- [Risk mitigation recommendation]
+
+**Key Considerations:**
+- [Important factor to monitor]
+- [Market condition to watch]
+
+# 36. Market Data Sources
 | Metric | Source | URL |
 
-# 36. Demographic & Economic Data
+# 37. Demographic & Economic Data
 | Metric | Source | URL |
-
-# 37. Methodology Notes
-[Bullet points explaining data collection and calculations]
 
 **ABSOLUTE REQUIREMENTS:**
 1. **NO N/A VALUES**: If a data point is not available, DO NOT include it in tables or text. Completely omit that row/metric.
