@@ -329,7 +329,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
                   See how your markdown will appear when rendered with proper formatting.
                 </p>
               </div>
-              <ScrollArea className="flex-1 border rounded-md">
+              <div className="flex-1 border rounded-md overflow-y-auto">
                 <div className="p-4">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown 
@@ -351,7 +351,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
                     )}
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
