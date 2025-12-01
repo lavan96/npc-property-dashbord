@@ -361,9 +361,55 @@ serve(async (req) => {
             // Merge manual overrides with fresh financial calculations
             if (existingManualOverrides && Object.keys(existingManualOverrides).length > 0) {
               console.log('🔀 Merging manual overrides with fresh financial calculations');
+              
+              // Create a deep copy of financial data
+              const mergedFinancials = JSON.parse(JSON.stringify(financialData.data));
+              
+              // Map flat override keys to nested structure
+              const overrideMapping: Record<string, string> = {
+                'purchasePrice': 'initialCosts.propertyValue',
+                'stampDuty': 'initialCosts.stampDuty',
+                'depositValue': 'initialCosts.deposit',
+                'loanToValueRatio': 'keyMetrics.lvr',
+                'interestRate': 'loanDetails.interestRate',
+                'weeklyRent': 'income.weeklyRent',
+                'councilRates': 'annualCosts.councilRates',
+                'waterRates': 'annualCosts.waterRates',
+                'bodyCorporateFees': 'annualCosts.strataFees',
+                'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
+                'propertyManagementFees': 'annualCosts.propertyManagementPercent',
+                'solicitorFees': 'initialCosts.legalFees',
+                'repairsMaintenance': 'annualCosts.maintenance',
+                'lettingFees': 'annualCosts.lettingFees',
+                'capitalGrowth': 'assumptions.capitalGrowth',
+                'buildPrice': 'initialCosts.buildPrice',
+                'landPrice': 'initialCosts.landPrice'
+              };
+              
+              // Apply overrides to the nested structure
+              for (const [flatKey, overrideValue] of Object.entries(existingManualOverrides)) {
+                const nestedPath = overrideMapping[flatKey];
+                if (nestedPath) {
+                  const keys = nestedPath.split('.');
+                  let current = mergedFinancials;
+                  
+                  // Navigate to the nested location
+                  for (let i = 0; i < keys.length - 1; i++) {
+                    if (!current[keys[i]]) {
+                      current[keys[i]] = {};
+                    }
+                    current = current[keys[i]];
+                  }
+                  
+                  // Set the overridden value
+                  current[keys[keys.length - 1]] = overrideValue;
+                  console.log(`  ✓ Override applied: ${flatKey} → ${nestedPath} = ${overrideValue}`);
+                }
+              }
+              
               enhancedData = { 
                 ...enhancedData, 
-                financials: { ...financialData.data, ...existingManualOverrides }
+                financials: mergedFinancials
               };
               console.log('✓ Manual overrides applied to financial calculations');
             } else {

@@ -18,9 +18,55 @@ interface ClientPDFGeneratorProps {
 
 export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
   // Merge manual_overrides with financial_calculations for PDF generation
-  const mergedFinancialData = report.manual_overrides 
-    ? { ...report.financial_calculations, ...report.manual_overrides }
-    : report.financial_calculations;
+  const mergedFinancialData = (() => {
+    if (!report.manual_overrides || Object.keys(report.manual_overrides).length === 0) {
+      return report.financial_calculations;
+    }
+
+    // Create deep copy of financial calculations
+    const merged = JSON.parse(JSON.stringify(report.financial_calculations || {}));
+    
+    // Map flat override keys to nested structure
+    const overrideMapping: Record<string, string> = {
+      'purchasePrice': 'initialCosts.propertyValue',
+      'stampDuty': 'initialCosts.stampDuty',
+      'depositValue': 'initialCosts.deposit',
+      'loanToValueRatio': 'keyMetrics.lvr',
+      'interestRate': 'loanDetails.interestRate',
+      'weeklyRent': 'income.weeklyRent',
+      'councilRates': 'annualCosts.councilRates',
+      'waterRates': 'annualCosts.waterRates',
+      'bodyCorporateFees': 'annualCosts.strataFees',
+      'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
+      'propertyManagementFees': 'annualCosts.propertyManagementPercent',
+      'solicitorFees': 'initialCosts.legalFees',
+      'repairsMaintenance': 'annualCosts.maintenance',
+      'lettingFees': 'annualCosts.lettingFees',
+      'capitalGrowth': 'assumptions.capitalGrowth',
+      'buildPrice': 'initialCosts.buildPrice',
+      'landPrice': 'initialCosts.landPrice'
+    };
+    
+    // Apply overrides to the nested structure
+    for (const [flatKey, overrideValue] of Object.entries(report.manual_overrides)) {
+      const nestedPath = overrideMapping[flatKey];
+      if (nestedPath) {
+        const keys = nestedPath.split('.');
+        let current = merged;
+        
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) {
+            current[keys[i]] = {};
+          }
+          current = current[keys[i]];
+        }
+        
+        current[keys[keys.length - 1]] = overrideValue;
+      }
+    }
+    
+    return merged;
+  })();
 
   // Transform the report data to match PixelPerfectPDFGenerator expectations
   const transformedReport = {
