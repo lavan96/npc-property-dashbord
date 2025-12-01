@@ -788,7 +788,7 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Condition | ... |
 | Estimated Value | $XXX,XXX |
 
-[Include property description and comparison]
+[Include property description. CRITICAL: When comparing to median prices, ONLY include comparisons if the property price is HIGHER than the median (positive comparison showing value or premium). NEVER include comparisons when the property price is LOWER than the median (negative comparison). If the property is below median, simply omit the comparison entirely.]
 
 # 14. Purchase & Ongoing Costs (Annual)
 | Cost Category | Amount (AUD) | Calculation Method |
@@ -834,7 +834,7 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 
 # 21. Base Assumptions
 - Property Price: $XXX,XXX
-- Deposit: 20% ($XXX,XXX)
+- Deposit: 20% - $XXX,XXX
 - Loan Amount: $XXX,XXX
 - Interest Rate: 6.5%
 - Loan Term: 30 years
@@ -936,6 +936,7 @@ Based on the comprehensive analysis above, here are tailored recommendations for
 5. **CURRENCY**: All amounts in AUD with $ symbol
 6. **DATES**: Include reporting periods and data sources with every metric
 7. **NO PLACEHOLDERS**: Never write "data unavailable", "TBD", "N/A", or similar - just omit the metric entirely
+8. **MEDIAN PRICE COMPARISONS**: ONLY include property-to-median price comparisons when the property price is HIGHER than the median. NEVER mention or include comparisons when the property price is LOWER than the median. If below median, omit the comparison entirely.
 
 **CRITICAL DATA HANDLING RULE: If any data point is unavailable, missing, or would be marked as "N/A", completely OMIT that entire row/metric from the table or section. DO NOT show any placeholders. Only include metrics where actual data exists.**
 
