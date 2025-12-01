@@ -22,9 +22,10 @@ interface InvestmentReportData {
 
 interface PixelPerfectPDFGeneratorProps {
   report: InvestmentReportData;
+  includeSources?: boolean;
 }
 
-export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report }) => {
+export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report, includeSources = true }) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const extractSuburbState = (address: string): { suburb: string; state: string } => {
@@ -69,6 +70,20 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     
     const suburb = parts.length > 1 ? parts[parts.length - 2] : parts[0];
     return { suburb: suburb.toUpperCase(), state };
+  };
+
+  const filterSourcesSections = (content: string): string => {
+    if (includeSources) return content;
+    
+    console.log('🚫 Filtering out sources sections from PDF');
+    
+    // Remove sources-related sections using regex
+    // Match sections like "Market Data Sources" and "Demographic & Economic Data"
+    let filteredContent = content.replace(/#{1,6}\s*\d*\.?\s*(Market Data Sources|Data Sources).*?(?=#{1,6}|\z)/gis, '');
+    filteredContent = filteredContent.replace(/#{1,6}\s*\d*\.?\s*(Demographic & Economic Data|Economic Data Sources).*?(?=#{1,6}|\z)/gis, '');
+    
+    console.log('✓ Sources sections removed from PDF content');
+    return filteredContent;
   };
 
   const injectOverridesIntoContent = (content: string, financialData: any): string => {
@@ -416,10 +431,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       
       console.log('📄 Step 2: Injecting override values and parsing report content...');
       // Inject override values from structured financial data into markdown content
-      const contentWithOverrides = injectOverridesIntoContent(
+      let contentWithOverrides = injectOverridesIntoContent(
         report.content,
         report.enhanced_data?.financialData
       );
+      
+      // Filter out sources sections if toggle is off
+      contentWithOverrides = filterSourcesSections(contentWithOverrides);
+      
       const sections = parseReportContent(contentWithOverrides);
       console.log('✓ Parsed sections:', Object.keys(sections));
 
