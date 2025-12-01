@@ -14,10 +14,11 @@ import { PropertyComparisonModal } from '@/components/reports/PropertyComparison
 import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
+import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 
 interface GeneratedReport {
   id: string;
@@ -40,6 +41,8 @@ interface InvestmentReport {
   created_at: string;
   current_version: number;
   status?: string;
+  manual_overrides?: any;
+  financial_calculations?: any;
 }
 
 interface ComparisonAnalysis {
@@ -71,6 +74,8 @@ export default function GeneratedReports() {
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [selectedReportForHistory, setSelectedReportForHistory] = useState<InvestmentReport | null>(null);
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [selectedReportForOverride, setSelectedReportForOverride] = useState<InvestmentReport | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Pagination & Search states
@@ -175,7 +180,7 @@ export default function GeneratedReports() {
       console.log('🔍 Fetching investment reports...');
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, created_at, current_version, status')
+        .select('id, property_address, property_listing_id, report_content, created_at, current_version, status, manual_overrides, financial_calculations')
         .in('status', ['completed', 'pending']) // Show both completed and pending reports
         .order('created_at', { ascending: false });
 
@@ -245,6 +250,16 @@ export default function GeneratedReports() {
   const handleViewVersionHistory = (report: InvestmentReport) => {
     setSelectedReportForHistory(report);
     setVersionHistoryOpen(true);
+  };
+
+  const handleOpenOverrideModal = (report: InvestmentReport) => {
+    setSelectedReportForOverride(report);
+    setOverrideModalOpen(true);
+  };
+
+  const handleOverrideSave = () => {
+    // Refresh reports after override
+    fetchInvestmentReports();
   };
 
   const handleToggleSelection = (report: InvestmentReport, checked: boolean) => {
@@ -536,7 +551,7 @@ export default function GeneratedReports() {
                           Download
                         </Button>
                       </div>
-                      <div className="flex gap-2">
+                       <div className="flex gap-2">
                         <RegenerateReportButton
                           reportId={report.id}
                           propertyAddress={report.property_address}
@@ -545,6 +560,16 @@ export default function GeneratedReports() {
                           size="sm"
                           className="flex-1"
                         />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleOpenOverrideModal(report)}
+                          className="flex-1"
+                          title="Override data"
+                        >
+                          <Settings className="mr-1 h-3 w-3" />
+                          Override
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -699,6 +724,13 @@ export default function GeneratedReports() {
           onOpenChange={setVersionHistoryOpen}
         />
       )}
+
+      <ManualDataOverrideModal
+        report={selectedReportForOverride}
+        isOpen={overrideModalOpen}
+        onClose={() => setOverrideModalOpen(false)}
+        onSave={handleOverrideSave}
+      />
     </div>
   );
 }

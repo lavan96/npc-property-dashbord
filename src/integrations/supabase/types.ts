@@ -547,6 +547,7 @@ export type Database = {
           id: string
           investment_score: Json | null
           location_intelligence: Json | null
+          manual_overrides: Json | null
           pdf_url: string | null
           property_address: string
           property_listing_id: string | null
@@ -570,6 +571,7 @@ export type Database = {
           id?: string
           investment_score?: Json | null
           location_intelligence?: Json | null
+          manual_overrides?: Json | null
           pdf_url?: string | null
           property_address: string
           property_listing_id?: string | null
@@ -593,6 +595,7 @@ export type Database = {
           id?: string
           investment_score?: Json | null
           location_intelligence?: Json | null
+          manual_overrides?: Json | null
           pdf_url?: string | null
           property_address?: string
           property_listing_id?: string | null

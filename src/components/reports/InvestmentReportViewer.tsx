@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle } from 'lucide-react';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 
@@ -20,6 +20,7 @@ interface InvestmentReport {
   report_content: string;
   sources_content?: string | null;
   created_at: string;
+  manual_overrides?: any;
 }
 
 interface InvestmentReportViewerProps {
@@ -34,6 +35,8 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
   const [includeSources, setIncludeSources] = useState(true);
 
   if (!report) return null;
+
+  const hasOverrides = report.manual_overrides && Object.keys(report.manual_overrides).length > 0;
 
   const handleDownload = () => {
     let content = report.report_content;
@@ -185,10 +188,18 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       Generated on {format(new Date(report.created_at), 'PPpp')}
                     </div>
                   </div>
-                  <Badge variant="secondary">
-                    <FileText className="h-3 w-3 mr-1" />
-                    Investment Report
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Investment Report
+                    </Badge>
+                    {hasOverrides && (
+                      <Badge variant="default" className="bg-primary">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Contains Manual Overrides
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
             </Card>
