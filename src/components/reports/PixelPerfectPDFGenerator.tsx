@@ -77,10 +77,19 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     
     console.log('🚫 Filtering out sources sections from PDF');
     
-    // Remove sources-related sections using regex
-    // Match sections like "Market Data Sources" and "Demographic & Economic Data"
-    let filteredContent = content.replace(/#{1,6}\s*\d*\.?\s*(Market Data Sources|Data Sources).*?(?=#{1,6}|\z)/gis, '');
-    filteredContent = filteredContent.replace(/#{1,6}\s*\d*\.?\s*(Demographic & Economic Data|Economic Data Sources).*?(?=#{1,6}|\z)/gis, '');
+    // Remove sources-related sections by matching section headers and all content until next section
+    // This handles both "# 36. Market Data Sources" and similar variations
+    let filteredContent = content;
+    
+    // Remove Market Data Sources section (captures everything until next # header or end)
+    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Market Data Sources[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
+    
+    // Remove Demographic & Economic Data section
+    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Demographic & Economic Data[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
+    
+    // Also handle alternative naming variations
+    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Data Sources[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
+    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Economic Data Sources[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
     
     console.log('✓ Sources sections removed from PDF content');
     return filteredContent;
