@@ -94,7 +94,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
-        pattern: /Deposit.*?\$[\d,]+/gi,
+        pattern: /Deposit.*?\$[\d,]+(?=\s|$|\)|,)/gi,
         getValue: () => financialData?.initialCosts?.deposit,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
@@ -124,7 +124,22 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
+        pattern: /Building & Landlord Insurance.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.landlordInsurance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Building and Landlord Insurance.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.landlordInsurance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
         pattern: /Landlord Insurance.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.landlordInsurance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Insurance.*?\$[\d,]+/gi,
         getValue: () => financialData?.annualCosts?.landlordInsurance,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
