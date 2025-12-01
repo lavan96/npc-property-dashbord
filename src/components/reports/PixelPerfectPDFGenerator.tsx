@@ -72,27 +72,39 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     return { suburb: suburb.toUpperCase(), state };
   };
 
-  const filterSourcesSections = (content: string): string => {
-    if (includeSources) return content;
+  const filterSourcesSections = (sections: Record<string, string>): Record<string, string> => {
+    if (includeSources) {
+      console.log('✓ Including sources in PDF (toggle is ON)');
+      return sections;
+    }
     
-    console.log('🚫 Filtering out sources sections from PDF');
+    console.log('🚫 Filtering out sources sections from PDF (toggle is OFF)');
+    console.log('📋 Available sections before filtering:', Object.keys(sections));
     
-    // Remove sources-related sections by matching section headers and all content until next section
-    // This handles both "# 36. Market Data Sources" and similar variations
-    let filteredContent = content;
+    // Create a new object without source-related sections
+    const filteredSections: Record<string, string> = {};
+    const sourceSectionPatterns = [
+      /market data sources?/i,
+      /data sources?/i,
+      /demographic.*economic data/i,
+      /economic data sources?/i,
+      /sources?$/i
+    ];
     
-    // Remove Market Data Sources section (captures everything until next # header or end)
-    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Market Data Sources[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
+    let removedCount = 0;
+    for (const [key, value] of Object.entries(sections)) {
+      const isSourceSection = sourceSectionPatterns.some(pattern => pattern.test(key));
+      if (isSourceSection) {
+        console.log(`  ❌ Removing section: "${key}"`);
+        removedCount++;
+      } else {
+        filteredSections[key] = value;
+      }
+    }
     
-    // Remove Demographic & Economic Data section
-    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Demographic & Economic Data[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
-    
-    // Also handle alternative naming variations
-    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Data Sources[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
-    filteredContent = filteredContent.replace(/^#{1,6}\s*\d*\.?\s*Economic Data Sources[\s\S]*?(?=^#{1,6}\s|\z)/gim, '');
-    
-    console.log('✓ Sources sections removed from PDF content');
-    return filteredContent;
+    console.log(`✓ Filtered out ${removedCount} source section(s)`);
+    console.log('📋 Remaining sections:', Object.keys(filteredSections));
+    return filteredSections;
   };
 
   const injectOverridesIntoContent = (content: string, financialData: any): string => {
@@ -440,16 +452,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       
       console.log('📄 Step 2: Injecting override values and parsing report content...');
       // Inject override values from structured financial data into markdown content
-      let contentWithOverrides = injectOverridesIntoContent(
+      const contentWithOverrides = injectOverridesIntoContent(
         report.content,
         report.enhanced_data?.financialData
       );
       
-      // Filter out sources sections if toggle is off
-      contentWithOverrides = filterSourcesSections(contentWithOverrides);
+      // Parse report content into sections
+      const parsedSections = parseReportContent(contentWithOverrides);
+      console.log('✓ Parsed sections:', Object.keys(parsedSections));
       
-      const sections = parseReportContent(contentWithOverrides);
-      console.log('✓ Parsed sections:', Object.keys(sections));
+      // Filter out sources sections if toggle is off (AFTER parsing for reliability)
+      const sections = filterSourcesSections(parsedSections);
+      console.log('✓ Final sections for PDF:', Object.keys(sections));
 
       // Load the PDF template
       console.log('📥 Step 3: Loading PDF template from /templates/npc_template.pdf...');
