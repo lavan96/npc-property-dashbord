@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Edit3 } from 'lucide-react';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 
@@ -40,11 +41,44 @@ interface InvestmentReportViewerProps {
 export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate, onOpenOverride }: InvestmentReportViewerProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
+  const [showOverrides, setShowOverrides] = useState(true);
 
   if (!report) return null;
 
   const hasOverrides = report.manual_overrides && Object.keys(report.manual_overrides).length > 0;
   const isRegenerating = report.status === 'processing';
+
+  // Field name mapping for display
+  const fieldDisplayNames: Record<string, string> = {
+    'purchase_price': 'Purchase Price',
+    'land_price': 'Land Price',
+    'build_price': 'Build Price',
+    'deposit_value': 'Deposit Value',
+    'loan_to_value_ratio': 'Loan to Value Ratio',
+    'interest_rate': 'Interest Rate',
+    'capital_growth': 'Capital Growth',
+    'weekly_rent': 'Weekly Rent',
+    'stamp_duty': 'Stamp Duty',
+    'body_corporate': 'Body Corporate/Strata Fees',
+    'council_rates': 'Council Rate Charges',
+    'water_rates': 'Water Rate Charges',
+    'solicitor_fees': 'Solicitor Fees',
+    'insurance': 'Building & Landlord Insurance',
+    'property_management': 'Property Management Fees',
+    'repairs_maintenance': 'Repairs & Maintenance',
+    'letting_fees': 'Letting Fees',
+  };
+
+  const getOverriddenFields = () => {
+    if (!hasOverrides) return [];
+    return Object.keys(report.manual_overrides).map(key => ({
+      key,
+      displayName: fieldDisplayNames[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      value: report.manual_overrides[key]
+    }));
+  };
+
+  const overriddenFields = getOverriddenFields();
 
   const handleDownload = () => {
     let content = report.report_content;
@@ -211,6 +245,43 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                 </div>
               </CardHeader>
             </Card>
+
+            {/* Manual Overrides Indicator */}
+            {hasOverrides && (
+              <Collapsible open={showOverrides} onOpenChange={setShowOverrides}>
+                <Card className="flex-shrink-0 border-warning bg-warning/5">
+                  <CardHeader className="pb-3">
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Edit3 className="h-4 w-4 text-warning" />
+                          <span className="font-semibold text-warning">
+                            {overriddenFields.length} Field{overriddenFields.length !== 1 ? 's' : ''} Manually Overridden
+                          </span>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-warning transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {overriddenFields.map(field => (
+                          <Badge 
+                            key={field.key} 
+                            variant="warning" 
+                            className="text-xs font-normal"
+                          >
+                            {field.displayName}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        These values were manually corrected and differ from the original API data.
+                      </p>
+                    </CollapsibleContent>
+                  </CardHeader>
+                </Card>
+              </Collapsible>
+            )}
 
             {/* Report Content */}
             <Card className="flex-1 overflow-hidden">
