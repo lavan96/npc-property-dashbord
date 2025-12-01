@@ -290,47 +290,51 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="content" className="flex-1 overflow-hidden mt-0">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="pb-3">
+            <TabsContent value="content" className="flex-1 overflow-hidden mt-0 h-full">
+              <Card className="h-full flex flex-col overflow-hidden">
+                <CardHeader className="pb-3 flex-shrink-0">
                   <CardTitle className="text-base">Report Content Editor</CardTitle>
                   <p className="text-sm text-muted-foreground">
                     Edit the main investment analysis report using markdown syntax.
                   </p>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0">
-                  <Textarea
-                    value={editedContent}
-                    onChange={(e) => handleContentChange(e.target.value)}
-                    placeholder="Enter your investment analysis report content..."
-                    className="w-full h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
-                  />
+                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
+                  <ScrollArea className="h-full w-full">
+                    <Textarea
+                      value={editedContent}
+                      onChange={(e) => handleContentChange(e.target.value)}
+                      placeholder="Enter your investment analysis report content..."
+                      className="w-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
+                    />
+                  </ScrollArea>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="pb-3">
+            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0 h-full">
+              <Card className="h-full flex flex-col overflow-hidden">
+                <CardHeader className="pb-3 flex-shrink-0">
                   <CardTitle className="text-base">Sources & Citations Editor</CardTitle>
                   <p className="text-sm text-muted-foreground">
                     Edit the sources and citations section that will be appended to the report.
                   </p>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0">
-                  <Textarea
-                    value={editedSources}
-                    onChange={(e) => handleSourcesChange(e.target.value)}
-                    placeholder="Enter sources and citations here..."
-                    className="w-full h-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
-                  />
+                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
+                  <ScrollArea className="h-full w-full">
+                    <Textarea
+                      value={editedSources}
+                      onChange={(e) => handleSourcesChange(e.target.value)}
+                      placeholder="Enter sources and citations here..."
+                      className="w-full min-h-[500px] resize-none border-0 rounded-none focus:ring-0 p-6 font-mono text-sm"
+                    />
+                  </ScrollArea>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0">
-              <Card className="h-full flex flex-col">
-                <CardHeader className="pb-3">
+            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 h-full">
+              <Card className="h-full flex flex-col overflow-hidden">
+                <CardHeader className="pb-3 flex-shrink-0">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Eye className="h-4 w-4" />
                     Formatted Preview
@@ -339,27 +343,29 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
                     See how your markdown will appear when rendered with proper formatting.
                   </p>
                 </CardHeader>
-                <Separator />
-                <CardContent className="flex-1 overflow-hidden p-0">
-                  <ScrollArea className="h-full p-6">
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={markdownComponents}
-                      >
-                        {editedContent}
-                      </ReactMarkdown>
-                      
-                      {editedSources && (
-                        <div className="mt-8 border-t pt-6">
-                          <ReactMarkdown 
-                            remarkPlugins={[remarkGfm]}
-                            components={markdownComponents}
-                          >
-                            {editedSources}
-                          </ReactMarkdown>
-                        </div>
-                      )}
+                <Separator className="flex-shrink-0" />
+                <CardContent className="flex-1 overflow-hidden p-0 min-h-0">
+                  <ScrollArea className="h-full w-full">
+                    <div className="p-6">
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={markdownComponents}
+                        >
+                          {editedContent}
+                        </ReactMarkdown>
+                        
+                        {editedSources && (
+                          <div className="mt-8 border-t pt-6">
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownComponents}
+                            >
+                              {editedSources}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </ScrollArea>
                 </CardContent>
