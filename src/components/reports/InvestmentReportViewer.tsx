@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Edit3, Maximize, Minimize } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Maximize, Minimize, PenLine } from 'lucide-react';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 
@@ -49,37 +49,112 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
   const hasOverrides = report.manual_overrides && Object.keys(report.manual_overrides).length > 0;
   const isRegenerating = report.status === 'processing';
 
-  // Field name mapping for display
-  const fieldDisplayNames: Record<string, string> = {
-    'purchase_price': 'Purchase Price',
-    'land_price': 'Land Price',
-    'build_price': 'Build Price',
-    'deposit_value': 'Deposit Value',
-    'loan_to_value_ratio': 'Loan to Value Ratio',
-    'interest_rate': 'Interest Rate',
-    'capital_growth': 'Capital Growth',
-    'weekly_rent': 'Weekly Rent',
-    'stamp_duty': 'Stamp Duty',
-    'body_corporate': 'Body Corporate/Strata Fees',
-    'council_rates': 'Council Rate Charges',
-    'water_rates': 'Water Rate Charges',
-    'solicitor_fees': 'Solicitor Fees',
-    'insurance': 'Building & Landlord Insurance',
-    'property_management': 'Property Management Fees',
-    'repairs_maintenance': 'Repairs & Maintenance',
-    'letting_fees': 'Letting Fees',
+  // Field name mapping for display and injection patterns
+  const fieldMappings: Record<string, { displayName: string; patterns: RegExp[] }> = {
+    'purchasePrice': {
+      displayName: 'Purchase Price',
+      patterns: [/Purchase Price.*?\$[\d,]+/gi, /Property Value.*?\$[\d,]+/gi]
+    },
+    'landPrice': {
+      displayName: 'Land Price',
+      patterns: [/Land Price.*?\$[\d,]+/gi]
+    },
+    'buildPrice': {
+      displayName: 'Build Price',
+      patterns: [/Build Price.*?\$[\d,]+/gi]
+    },
+    'depositValue': {
+      displayName: 'Deposit Value',
+      patterns: [/Deposit.*?\$[\d,]+/gi]
+    },
+    'loanToValueRatio': {
+      displayName: 'Loan to Value Ratio',
+      patterns: [/LVR.*?[\d.]+%/gi, /Loan to Value.*?[\d.]+%/gi]
+    },
+    'interestRate': {
+      displayName: 'Interest Rate',
+      patterns: [/Interest Rate.*?[\d.]+%/gi]
+    },
+    'capitalGrowth': {
+      displayName: 'Capital Growth',
+      patterns: [/Capital Growth.*?[\d.]+%/gi]
+    },
+    'weeklyRent': {
+      displayName: 'Weekly Rent',
+      patterns: [/Weekly Rent.*?\$[\d,]+/gi]
+    },
+    'stampDuty': {
+      displayName: 'Stamp Duty',
+      patterns: [/Stamp Duty.*?\$[\d,]+/gi]
+    },
+    'bodyCorporateFees': {
+      displayName: 'Body Corporate/Strata Fees',
+      patterns: [/Body Corporate.*?\$[\d,]+/gi, /Strata Fees.*?\$[\d,]+/gi]
+    },
+    'councilRates': {
+      displayName: 'Council Rates',
+      patterns: [/Council Rate.*?\$[\d,]+/gi]
+    },
+    'waterRates': {
+      displayName: 'Water Rate.*?\$[\d,]+',
+      patterns: [/Water Rate.*?\$[\d,]+/gi]
+    },
+    'solicitorFees': {
+      displayName: 'Solicitor Fees',
+      patterns: [/Solicitor.*?\$[\d,]+/gi, /Legal Fees.*?\$[\d,]+/gi]
+    },
+    'buildingLandlordInsurance': {
+      displayName: 'Building & Landlord Insurance',
+      patterns: [/Landlord Insurance.*?\$[\d,]+/gi, /Building.*Insurance.*?\$[\d,]+/gi]
+    },
+    'propertyManagementFees': {
+      displayName: 'Property Management',
+      patterns: [/Property Management.*?[\d.]+%/gi]
+    },
+    'repairsMaintenance': {
+      displayName: 'Repairs & Maintenance',
+      patterns: [/Repair.*?\$[\d,]+/gi, /Maintenance.*?\$[\d,]+/gi]
+    },
+    'lettingFees': {
+      displayName: 'Letting Fees',
+      patterns: [/Letting.*?\$[\d,]+/gi]
+    },
   };
 
   const getOverriddenFields = () => {
     if (!hasOverrides) return [];
     return Object.keys(report.manual_overrides).map(key => ({
       key,
-      displayName: fieldDisplayNames[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      displayName: fieldMappings[key]?.displayName || key.replace(/([A-Z])/g, ' $1').trim(),
       value: report.manual_overrides[key]
     }));
   };
 
   const overriddenFields = getOverriddenFields();
+
+  // Inject override badges into report content
+  const reportContentWithBadges = useMemo(() => {
+    if (!showOverrides || !hasOverrides) {
+      return report.report_content;
+    }
+
+    let contentWithBadges = report.report_content;
+    
+    // Add badge marker after each overridden field value
+    for (const [key, value] of Object.entries(report.manual_overrides)) {
+      const mapping = fieldMappings[key];
+      if (!mapping) continue;
+
+      for (const pattern of mapping.patterns) {
+        contentWithBadges = contentWithBadges.replace(pattern, (match) => {
+          // Add a special marker that we'll convert to a badge in the custom component
+          return `${match} 🔧OVERRIDE🔧`;
+        });
+      }
+    }
+
+    return contentWithBadges;
+  }, [report.report_content, report.manual_overrides, showOverrides, hasOverrides]);
 
   const handleDownload = () => {
     let content = report.report_content;
@@ -109,6 +184,32 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     onReportUpdate?.();
   };
 
+  // Custom component to render override badges
+  const OverrideBadge = () => (
+    <Badge 
+      variant="secondary" 
+      className="ml-2 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+    >
+      <PenLine className="h-3 w-3 mr-1" />
+      Edited
+    </Badge>
+  );
+
+  // Helper to process text and inject override badges
+  const processTextWithBadges = (text: string) => {
+    if (!text || typeof text !== 'string') return text;
+    
+    const parts = text.split('🔧OVERRIDE🔧');
+    if (parts.length === 1) return text;
+
+    return parts.map((part, index) => (
+      <span key={index}>
+        {part}
+        {index < parts.length - 1 && <OverrideBadge />}
+      </span>
+    ));
+  };
+
   // Custom markdown components for better styling
   const markdownComponents = {
     h1: ({ children }: any) => (
@@ -128,7 +229,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     ),
     p: ({ children }: any) => (
       <p className="mb-4 leading-relaxed text-foreground">
-        {children}
+        {processTextWithBadges(children)}
       </p>
     ),
     ul: ({ children }: any) => (
@@ -175,7 +276,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     ),
     td: ({ children }: any) => (
       <td className="border border-border px-4 py-2 text-foreground">
-        {children}
+        {processTextWithBadges(children)}
       </td>
     ),
     strong: ({ children }: any) => (
@@ -197,11 +298,6 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
       <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">
         {children}
       </code>
-    ),
-    pre: ({ children }: any) => (
-      <pre className="bg-muted p-4 rounded-lg my-4 overflow-x-auto">
-        {children}
-      </pre>
     ),
   };
 
@@ -250,17 +346,17 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
             {/* Manual Overrides Indicator */}
             {hasOverrides && (
               <Collapsible open={showOverrides} onOpenChange={setShowOverrides}>
-                <Card className="flex-shrink-0 border-warning bg-warning/5">
+                <Card className="flex-shrink-0 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
                   <CardHeader className="pb-3">
                     <CollapsibleTrigger className="w-full">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Edit3 className="h-4 w-4 text-warning" />
-                          <span className="font-semibold text-warning">
-                            {overriddenFields.length} Field{overriddenFields.length !== 1 ? 's' : ''} Manually Overridden
+                          <PenLine className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                          <span className="font-semibold text-amber-800 dark:text-amber-200">
+                            {overriddenFields.length} Field{overriddenFields.length !== 1 ? 's' : ''} Manually Edited
                           </span>
                         </div>
-                        <ChevronDown className={`h-4 w-4 text-warning transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-amber-700 dark:text-amber-300 transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -268,15 +364,16 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                         {overriddenFields.map(field => (
                           <Badge 
                             key={field.key} 
-                            variant="warning" 
-                            className="text-xs font-normal"
+                            variant="secondary"
+                            className="text-xs font-normal bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
                           >
+                            <PenLine className="h-3 w-3 mr-1" />
                             {field.displayName}
                           </Badge>
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        These values were manually corrected and differ from the original API data.
+                        These values appear with <Badge variant="secondary" className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 inline-flex items-center"><PenLine className="h-3 w-3 mr-1" />Edited</Badge> badges in the report content below. Toggle this section to show/hide the badges.
                       </p>
                     </CollapsibleContent>
                   </CardHeader>
@@ -348,7 +445,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       remarkPlugins={[remarkGfm]}
                       components={markdownComponents}
                     >
-                      {report.report_content}
+                      {reportContentWithBadges}
                     </ReactMarkdown>
                     
                     {/* Show sources if they exist */}
