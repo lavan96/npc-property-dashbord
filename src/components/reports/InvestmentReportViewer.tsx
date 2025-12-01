@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings } from 'lucide-react';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 
@@ -28,9 +28,10 @@ interface InvestmentReportViewerProps {
   isOpen: boolean;
   onClose: () => void;
   onReportUpdate?: () => void;
+  onOpenOverride?: () => void;
 }
 
-export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate }: InvestmentReportViewerProps) {
+export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate, onOpenOverride }: InvestmentReportViewerProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
 
@@ -224,6 +225,10 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       <Button variant="outline" size="sm" onClick={handleEdit}>
                         <Edit className="h-3 w-3 mr-1" />
                         Edit Report
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={onOpenOverride}>
+                        <Settings className="h-3 w-3 mr-1" />
+                        Override Data
                       </Button>
                       <Button variant="default" size="sm" onClick={handleDownload}>
                         <Download className="h-3 w-3 mr-1" />
