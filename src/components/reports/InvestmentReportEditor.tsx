@@ -264,9 +264,9 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           {hasChanges && (
-            <Alert className="mb-4">
+            <Alert className="mb-4 flex-shrink-0">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 You have unsaved changes. Don't forget to save before closing.
@@ -274,8 +274,8 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
             </Alert>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <TabsList className="grid w-full grid-cols-3 mb-4 flex-shrink-0">
               <TabsTrigger value="content" className="flex items-center gap-2">
                 <Type className="h-4 w-4" />
                 Edit Content
@@ -290,7 +290,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="content" className="flex-1 overflow-hidden mt-0 h-full">
+            <TabsContent value="content" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex">
               <Card className="h-full flex flex-col overflow-hidden">
                 <CardHeader className="pb-3 flex-shrink-0">
                   <CardTitle className="text-base">Report Content Editor</CardTitle>
@@ -311,7 +311,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </Card>
             </TabsContent>
 
-            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0 h-full">
+            <TabsContent value="sources" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex">
               <Card className="h-full flex flex-col overflow-hidden">
                 <CardHeader className="pb-3 flex-shrink-0">
                   <CardTitle className="text-base">Sources & Citations Editor</CardTitle>
@@ -332,7 +332,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
               </Card>
             </TabsContent>
 
-            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 h-full">
+            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex">
               <Card className="h-full flex flex-col overflow-hidden">
                 <CardHeader className="pb-3 flex-shrink-0">
                   <CardTitle className="text-base flex items-center gap-2">

@@ -136,7 +136,7 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
 
       if (fetchError) throw fetchError;
 
-      // Update the main report with the version data
+      // Update the main report with the version data - restore to the exact version
       const { error: updateError } = await supabase
         .from('investment_reports')
         .update({
@@ -151,6 +151,7 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
           demographics_data: versionData.demographics_data,
           economic_data: versionData.economic_data,
           calculation_version: versionData.calculation_version,
+          current_version: rollbackVersion, // Set to the rollback version, not a new version
           updated_at: new Date().toISOString(),
         })
         .eq('id', reportId);
