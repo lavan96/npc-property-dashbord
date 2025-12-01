@@ -20,6 +20,7 @@ interface InvestmentReport {
   report_content: string;
   sources_content?: string | null;
   created_at: string;
+  status?: string;
   manual_overrides?: any;
   financial_calculations?: any;
   demographics_data?: any;
@@ -43,6 +44,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
   if (!report) return null;
 
   const hasOverrides = report.manual_overrides && Object.keys(report.manual_overrides).length > 0;
+  const isRegenerating = report.status === 'processing';
 
   const handleDownload = () => {
     let content = report.report_content;
@@ -214,7 +216,14 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
             <Card className="flex-1 overflow-hidden">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Analysis Report</CardTitle>
+                  <CardTitle className="text-base">
+                    Analysis Report
+                    {isRegenerating && (
+                      <Badge variant="secondary" className="ml-2 animate-pulse">
+                        Regenerating...
+                      </Badge>
+                    )}
+                  </CardTitle>
                   <div className="flex items-center gap-4">
                     {report.sources_content && (
                       <div className="flex items-center gap-2">
