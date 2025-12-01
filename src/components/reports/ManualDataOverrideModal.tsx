@@ -21,7 +21,7 @@ interface ManualDataOverrideModalProps {
   report: InvestmentReport | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave?: () => void;
+  onSave?: () => void | Promise<void>;
 }
 
 interface OverrideField {
@@ -260,7 +260,10 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       });
 
       setHasChanges(false);
-      onSave?.();
+      
+      // Call onSave callback and wait for it to complete (refetches data)
+      await onSave?.();
+      
       onClose();
     } catch (error: any) {
       console.error('❌ Error applying overrides:', error);

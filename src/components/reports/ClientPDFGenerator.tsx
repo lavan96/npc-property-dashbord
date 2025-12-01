@@ -23,6 +23,9 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
       return report.financial_calculations;
     }
 
+    console.log('📊 PDF Generator: Merging manual overrides into financial data');
+    console.log('  Override fields:', Object.keys(report.manual_overrides));
+
     // Create deep copy of financial calculations
     const merged = JSON.parse(JSON.stringify(report.financial_calculations || {}));
     
@@ -62,6 +65,7 @@ export function ClientPDFGenerator({ report }: ClientPDFGeneratorProps) {
         }
         
         current[keys[keys.length - 1]] = overrideValue;
+        console.log(`  ✓ Applied override: ${flatKey} -> ${nestedPath} = ${overrideValue}`);
       }
     }
     
