@@ -71,6 +71,120 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     return { suburb: suburb.toUpperCase(), state };
   };
 
+  const injectOverridesIntoContent = (content: string, financialData: any): string => {
+    if (!financialData) return content;
+
+    console.log('💉 Injecting override values into markdown content');
+
+    // Map of field paths to regex patterns that match them in markdown tables
+    const fieldReplacements: Array<{ pattern: RegExp; getValue: () => any; format: (v: any) => string }> = [
+      {
+        pattern: /Purchase Price.*?\$[\d,]+/gi,
+        getValue: () => financialData?.initialCosts?.propertyValue,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Property Value.*?\$[\d,]+/gi,
+        getValue: () => financialData?.initialCosts?.propertyValue,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Stamp Duty.*?\$[\d,]+/gi,
+        getValue: () => financialData?.initialCosts?.stampDuty,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Deposit.*?\$[\d,]+/gi,
+        getValue: () => financialData?.initialCosts?.deposit,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Weekly Rent.*?\$[\d,]+/gi,
+        getValue: () => financialData?.income?.weeklyRent,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Council Rates.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.councilRates,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Water Rates.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.waterRates,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Strata Fees.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.strataFees,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Body Corporate.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.strataFees,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Landlord Insurance.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.landlordInsurance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Property Management.*?[\d.]+%/gi,
+        getValue: () => financialData?.annualCosts?.propertyManagementPercent,
+        format: (v) => `${v || '0'}%`
+      },
+      {
+        pattern: /Maintenance.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.maintenance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Repairs.*?\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.maintenance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Interest Rate.*?[\d.]+%/gi,
+        getValue: () => financialData?.loanDetails?.interestRate,
+        format: (v) => `${v || '0'}%`
+      },
+      {
+        pattern: /Capital Growth.*?[\d.]+%/gi,
+        getValue: () => financialData?.assumptions?.capitalGrowth,
+        format: (v) => `${v || '0'}%`
+      },
+      {
+        pattern: /LVR.*?[\d.]+%/gi,
+        getValue: () => financialData?.keyMetrics?.lvr,
+        format: (v) => `${v || '0'}%`
+      },
+    ];
+
+    let updatedContent = content;
+    let replacementCount = 0;
+
+    for (const { pattern, getValue, format } of fieldReplacements) {
+      const value = getValue();
+      if (value !== undefined && value !== null) {
+        const formattedValue = format(value);
+        const beforeReplace = updatedContent;
+        updatedContent = updatedContent.replace(pattern, (match) => {
+          // Keep the field name, replace only the value
+          const fieldName = match.split(/\$|[\d]/)[0].trim();
+          replacementCount++;
+          return `${fieldName} ${formattedValue}`;
+        });
+        
+        if (beforeReplace !== updatedContent) {
+          console.log(`  ✓ Injected value for pattern: ${pattern.source.substring(0, 30)}...`);
+        }
+      }
+    }
+
+    console.log(`✓ Completed: ${replacementCount} value replacements in markdown content`);
+    return updatedContent;
+  };
+
   const parseReportContent = (content: string): Record<string, string> => {
     const sections: Record<string, string> = {};
     const lines = content.split('\n');
@@ -122,6 +236,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const absData = enhancedData?.absData || {};
     const locationData = enhancedData?.locationData || {};
 
+    console.log('📊 Extracting market data with financial calculations:', {
+      hasFinancialData: !!financialData,
+      hasInitialCosts: !!financialData?.initialCosts,
+      hasKeyMetrics: !!financialData?.keyMetrics,
+      propertyValue: financialData?.initialCosts?.propertyValue,
+      weeklyRent: financialData?.income?.weeklyRent
+    });
+
     // Helper to extract numeric values from text
     const extractNumber = (text: string, pattern: RegExp): number | null => {
       const match = text.match(pattern);
@@ -133,21 +255,32 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       return null;
     };
 
-    // Parse Market KPIs section
-    const marketKPIs = findSection(sections, ['Market KPIs', 'Market Performance', 'Key Metrics']);
-    let medianPrice = domainData.medianPrice || financialData.propertyValue;
-    let rentalYield = financialData.rentalYield || investmentScore.cashFlowScore;
-    let growthRate = domainData.growthRate || investmentScore.capitalGrowthScore;
+    // CRITICAL: Prioritize structured financial data over markdown-parsed values
+    // This ensures manual overrides are reflected in the PDF
+    let medianPrice = financialData?.initialCosts?.propertyValue || domainData.medianPrice;
+    let rentalYield = financialData?.keyMetrics?.grossYield || investmentScore.cashFlowScore;
+    let growthRate = financialData?.assumptions?.capitalGrowth || domainData.growthRate || investmentScore.capitalGrowthScore;
 
-    if (marketKPIs) {
-      const priceMatch = extractNumber(marketKPIs, /median.*price.*\$?([\d,]+)/i);
-      if (priceMatch) medianPrice = priceMatch;
+    // Only fall back to parsing markdown if structured data is not available
+    if (!medianPrice || !rentalYield) {
+      const marketKPIs = findSection(sections, ['Market KPIs', 'Market Performance', 'Key Metrics']);
       
-      const yieldMatch = extractNumber(marketKPIs, /rental.*yield.*?([\d.]+)%/i);
-      if (yieldMatch) rentalYield = yieldMatch;
-      
-      const growthMatch = extractNumber(marketKPIs, /growth.*?([\d.]+)%/i);
-      if (growthMatch) growthRate = growthMatch;
+      if (marketKPIs) {
+        if (!medianPrice) {
+          const priceMatch = extractNumber(marketKPIs, /median.*price.*\$?([\d,]+)/i);
+          if (priceMatch) medianPrice = priceMatch;
+        }
+        
+        if (!rentalYield) {
+          const yieldMatch = extractNumber(marketKPIs, /rental.*yield.*?([\d.]+)%/i);
+          if (yieldMatch) rentalYield = yieldMatch;
+        }
+        
+        if (!growthRate) {
+          const growthMatch = extractNumber(marketKPIs, /growth.*?([\d.]+)%/i);
+          if (growthMatch) growthRate = growthMatch;
+        }
+      }
     }
 
     // Parse Demographics section
@@ -167,6 +300,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       if (incomeMatch) medianIncome = incomeMatch;
     }
 
+    console.log('✓ Market data extracted:', {
+      medianPrice,
+      rentalYield,
+      growthRate,
+      source: financialData?.initialCosts?.propertyValue ? 'structured_data' : 'markdown_parsed'
+    });
+
     return {
       medianPrice,
       rentalYield,
@@ -176,6 +316,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       medianIncome,
       demographics: absData.demographics || {},
       infrastructure: locationData.nearbyAmenities || locationData.infrastructure || {},
+      financialData, // Pass through full financial data for detailed sections
     };
   };
 
@@ -258,8 +399,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const { suburb, state } = extractSuburbState(report.address);
       console.log('✓ Extracted:', { suburb, state });
       
-      console.log('📄 Step 2: Parsing report content...');
-      const sections = parseReportContent(report.content);
+      console.log('📄 Step 2: Injecting override values and parsing report content...');
+      // Inject override values from structured financial data into markdown content
+      const contentWithOverrides = injectOverridesIntoContent(
+        report.content,
+        report.enhanced_data?.financialData
+      );
+      const sections = parseReportContent(contentWithOverrides);
       console.log('✓ Parsed sections:', Object.keys(sections));
 
       // Load the PDF template
