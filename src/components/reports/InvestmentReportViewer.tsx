@@ -207,7 +207,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -284,8 +284,8 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
             )}
 
             {/* Report Content */}
-            <Card className="flex-1 overflow-hidden">
-              <CardHeader className="pb-2">
+            <Card className="flex-1 overflow-hidden flex flex-col">
+              <CardHeader className="pb-2 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">
                     Analysis Report
@@ -323,12 +323,12 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                   </div>
                 </div>
               </CardHeader>
-              <Separator />
-              <CardContent className="p-0">
-                <div className="p-4 border-b bg-muted/50">
+              <Separator className="flex-shrink-0" />
+              <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
+                <div className="p-4 border-b bg-muted/50 flex-shrink-0">
                   <ClientPDFGenerator report={report} />
                 </div>
-                <ScrollArea className="h-[600px] p-6">
+                <ScrollArea className="flex-1 min-h-0 p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
