@@ -195,21 +195,23 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-primary" />
-            Manual Data Override
-          </DialogTitle>
-          <DialogDescription>
-            Override inaccurate data from external sources. Original values are preserved for reference.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-5xl h-[90vh] flex flex-col gap-0 p-0">
+        <div className="px-6 pt-6 pb-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              Manual Data Override
+            </DialogTitle>
+            <DialogDescription>
+              Override inaccurate data from external sources. Original values are preserved for reference.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
         <Separator />
 
-        <ScrollArea className="flex-1 px-1">
-          <div className="space-y-6 pr-4">
+        <ScrollArea className="flex-1 overflow-y-auto px-6">
+          <div className="space-y-6 py-4">
             {fields.map((field, index) => (
               <div key={field.key} className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -273,7 +275,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
         <Separator />
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-6 py-4">
           <Button
             variant="outline"
             onClick={handleResetAll}
