@@ -39,13 +39,62 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [overrides, setOverrides] = useState<Record<string, number | string>>({});
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Define the 9 critical financial data fields
+  // Define the confirmed input fields for manual overrides
   const fields: OverrideField[] = [
     {
-      key: 'propertyValue',
-      label: 'Property Value / Purchase Price',
-      originalValue: report?.financial_calculations?.propertyValue || null,
-      overrideValue: report?.manual_overrides?.propertyValue || null,
+      key: 'purchasePrice',
+      label: 'Purchase Price',
+      originalValue: report?.financial_calculations?.purchasePrice || report?.financial_calculations?.propertyValue || null,
+      overrideValue: report?.manual_overrides?.purchasePrice || null,
+      prefix: '$'
+    },
+    {
+      key: 'landPrice',
+      label: 'Land Price',
+      originalValue: report?.financial_calculations?.landPrice || null,
+      overrideValue: report?.manual_overrides?.landPrice || null,
+      prefix: '$'
+    },
+    {
+      key: 'buildPrice',
+      label: 'Build Price',
+      originalValue: report?.financial_calculations?.buildPrice || null,
+      overrideValue: report?.manual_overrides?.buildPrice || null,
+      prefix: '$'
+    },
+    {
+      key: 'depositValue',
+      label: 'Deposit Value',
+      originalValue: report?.financial_calculations?.depositValue || null,
+      overrideValue: report?.manual_overrides?.depositValue || null,
+      prefix: '$'
+    },
+    {
+      key: 'loanToValueRatio',
+      label: 'Loan to Value Ratio',
+      originalValue: report?.financial_calculations?.loanToValueRatio || null,
+      overrideValue: report?.manual_overrides?.loanToValueRatio || null,
+      suffix: '%'
+    },
+    {
+      key: 'interestRate',
+      label: 'Interest Rate',
+      originalValue: report?.financial_calculations?.interestRate || null,
+      overrideValue: report?.manual_overrides?.interestRate || null,
+      suffix: '%'
+    },
+    {
+      key: 'capitalGrowth',
+      label: 'Capital Growth',
+      originalValue: report?.financial_calculations?.capitalGrowth || null,
+      overrideValue: report?.manual_overrides?.capitalGrowth || null,
+      suffix: '%'
+    },
+    {
+      key: 'weeklyRent',
+      label: 'Weekly Rent',
+      originalValue: report?.financial_calculations?.weeklyRent || null,
+      overrideValue: report?.manual_overrides?.weeklyRent || null,
       prefix: '$'
     },
     {
@@ -56,57 +105,60 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$'
     },
     {
-      key: 'legalFees',
-      label: 'Legal Fees',
-      originalValue: report?.financial_calculations?.legalFees || null,
-      overrideValue: report?.manual_overrides?.legalFees || null,
+      key: 'bodyCorporateFees',
+      label: 'Body Corporate / Strata Fees',
+      originalValue: report?.financial_calculations?.bodyCorporateFees || report?.financial_calculations?.strataFees || null,
+      overrideValue: report?.manual_overrides?.bodyCorporateFees || null,
       prefix: '$'
-    },
-    {
-      key: 'buildingInspection',
-      label: 'Building & Pest Inspection',
-      originalValue: report?.financial_calculations?.buildingInspection || null,
-      overrideValue: report?.manual_overrides?.buildingInspection || null,
-      prefix: '$'
-    },
-    {
-      key: 'loanSetupCosts',
-      label: 'Loan Setup Costs',
-      originalValue: report?.financial_calculations?.loanSetupCosts || null,
-      overrideValue: report?.manual_overrides?.loanSetupCosts || null,
-      prefix: '$'
-    },
-    {
-      key: 'weeklyRent',
-      label: 'Weekly Rent',
-      originalValue: report?.financial_calculations?.weeklyRent || null,
-      overrideValue: report?.manual_overrides?.weeklyRent || null,
-      prefix: '$',
-      suffix: '/week'
     },
     {
       key: 'councilRates',
-      label: 'Council Rates',
+      label: 'Council Rate Charges',
       originalValue: report?.financial_calculations?.councilRates || null,
       overrideValue: report?.manual_overrides?.councilRates || null,
-      prefix: '$',
-      suffix: '/year'
+      prefix: '$'
     },
     {
       key: 'waterRates',
-      label: 'Water Rates',
+      label: 'Water Rate Charges (Other)',
       originalValue: report?.financial_calculations?.waterRates || null,
       overrideValue: report?.manual_overrides?.waterRates || null,
-      prefix: '$',
-      suffix: '/year'
+      prefix: '$'
     },
     {
-      key: 'strataFees',
-      label: 'Strata/Body Corporate Fees',
-      originalValue: report?.financial_calculations?.strataFees || null,
-      overrideValue: report?.manual_overrides?.strataFees || null,
-      prefix: '$',
-      suffix: '/quarter'
+      key: 'solicitorFees',
+      label: 'Solicitor Fees',
+      originalValue: report?.financial_calculations?.solicitorFees || report?.financial_calculations?.legalFees || null,
+      overrideValue: report?.manual_overrides?.solicitorFees || null,
+      prefix: '$'
+    },
+    {
+      key: 'buildingLandlordInsurance',
+      label: 'Building & Landlord Insurance',
+      originalValue: report?.financial_calculations?.buildingLandlordInsurance || null,
+      overrideValue: report?.manual_overrides?.buildingLandlordInsurance || null,
+      prefix: '$'
+    },
+    {
+      key: 'propertyManagementFees',
+      label: 'Property Management Fees',
+      originalValue: report?.financial_calculations?.propertyManagementFees || null,
+      overrideValue: report?.manual_overrides?.propertyManagementFees || null,
+      suffix: '%'
+    },
+    {
+      key: 'repairsMaintenance',
+      label: 'Repairs & Maintenance',
+      originalValue: report?.financial_calculations?.repairsMaintenance || null,
+      overrideValue: report?.manual_overrides?.repairsMaintenance || null,
+      prefix: '$'
+    },
+    {
+      key: 'lettingFees',
+      label: 'Letting Fees (1 Week Rent)',
+      originalValue: report?.financial_calculations?.lettingFees || null,
+      overrideValue: report?.manual_overrides?.lettingFees || null,
+      prefix: '$'
     }
   ];
 
