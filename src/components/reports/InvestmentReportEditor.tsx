@@ -179,7 +179,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       </li>
     ),
     table: ({ children }: any) => (
-      <div className="overflow-x-auto my-8">
+      <div className="not-prose overflow-x-auto my-8">
         <table className="min-w-full border-collapse border-2 border-border shadow-sm">
           {children}
         </table>
