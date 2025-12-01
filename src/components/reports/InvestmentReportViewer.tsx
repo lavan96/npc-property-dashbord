@@ -210,25 +210,10 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className={`${isFullscreen ? 'max-w-[98vw] max-h-[98vh]' : 'max-w-[90vw] max-h-[90vh]'} overflow-hidden flex flex-col transition-all duration-300`}>
           <DialogHeader className="flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Investment Analysis Report
-              </DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="h-8 w-8"
-                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              >
-                {isFullscreen ? (
-                  <Minimize className="h-4 w-4" />
-                ) : (
-                  <Maximize className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Investment Analysis Report
+            </DialogTitle>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden flex flex-col space-y-4">
@@ -323,6 +308,19 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       </div>
                     )}
                     <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="h-8 w-8"
+                        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                      >
+                        {isFullscreen ? (
+                          <Minimize className="h-4 w-4" />
+                        ) : (
+                          <Maximize className="h-4 w-4" />
+                        )}
+                      </Button>
                       <Button variant="outline" size="sm" onClick={handleEdit}>
                         <Edit className="h-3 w-3 mr-1" />
                         Edit Report
