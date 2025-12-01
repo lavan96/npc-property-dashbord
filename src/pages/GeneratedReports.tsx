@@ -261,9 +261,36 @@ export default function GeneratedReports() {
     setOverrideModalOpen(true);
   };
 
-  const handleOverrideSave = () => {
+  const handleOverrideSave = async () => {
     // Refresh reports after override
-    fetchInvestmentReports();
+    await fetchInvestmentReports();
+    
+    // Refetch the currently viewed report to show updated data
+    if (selectedInvestmentReport) {
+      const { data, error } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
+        .eq('id', selectedInvestmentReport.id)
+        .single();
+      
+      if (!error && data) {
+        console.log('✅ Refetched report with updated overrides:', data);
+        setSelectedInvestmentReport(data);
+      }
+    }
+    
+    // Also refetch the override report if different
+    if (selectedReportForOverride && selectedReportForOverride.id !== selectedInvestmentReport?.id) {
+      const { data, error } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
+        .eq('id', selectedReportForOverride.id)
+        .single();
+      
+      if (!error && data) {
+        setSelectedReportForOverride(data);
+      }
+    }
   };
 
   const handleToggleSelection = (report: InvestmentReport, checked: boolean) => {
