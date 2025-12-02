@@ -33,6 +33,8 @@ export function InvestmentReportGenerator() {
   const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'townhouse'>('house');
   const [beds, setBeds] = useState('');
   const [baths, setBaths] = useState('');
+  const [landSize, setLandSize] = useState('');
+  const [buildSize, setBuildSize] = useState('');
   
   const { toast } = useToast();
   const { addNotification } = useNotifications();
@@ -90,6 +92,8 @@ export function InvestmentReportGenerator() {
       if (propertyType) propertyDetails.propertyType = propertyType;
       if (beds) propertyDetails.beds = parseInt(beds);
       if (baths) propertyDetails.baths = parseInt(baths);
+      if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
+      if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
 
       // Create the report record first with pending status
       const { data: pendingReport, error: insertError } = await supabase
@@ -149,6 +153,8 @@ export function InvestmentReportGenerator() {
       setWeeklyRent('');
       setBeds('');
       setBaths('');
+      setLandSize('');
+      setBuildSize('');
 
     } catch (error) {
       console.error('Error starting report generation:', error);
@@ -366,6 +372,30 @@ export function InvestmentReportGenerator() {
                       value={baths}
                       onChange={(e) => setBaths(e.target.value)}
                       placeholder="e.g., 2"
+                      disabled={isGenerating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="landSize">Land Size (m²)</Label>
+                    <Input
+                      id="landSize"
+                      type="number"
+                      value={landSize}
+                      onChange={(e) => setLandSize(e.target.value)}
+                      placeholder="e.g., 450"
+                      disabled={isGenerating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="buildSize">Build Size (m²)</Label>
+                    <Input
+                      id="buildSize"
+                      type="number"
+                      value={buildSize}
+                      onChange={(e) => setBuildSize(e.target.value)}
+                      placeholder="e.g., 180"
                       disabled={isGenerating}
                     />
                   </div>

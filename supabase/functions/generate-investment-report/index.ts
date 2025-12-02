@@ -385,7 +385,9 @@ serve(async (req) => {
                 'lettingFees': 'annualCosts.lettingFees',
                 'capitalGrowth': 'assumptions.capitalGrowth',
                 'buildPrice': 'initialCosts.buildPrice',
-                'landPrice': 'initialCosts.landPrice'
+                'landPrice': 'initialCosts.landPrice',
+                'landSizeSqm': 'propertySpecs.landSizeSqm',
+                'buildSizeSqm': 'propertySpecs.buildSizeSqm'
               };
               
               // Apply overrides to the nested structure
@@ -705,7 +707,7 @@ Your goal is to generate a professional suburb-level investment analysis report.
 
 **SUBURB TO ANALYZE: ${formattedInput}**
 
-${propertyDetails ? `Context: ${propertyDetails.propertyType || 'Property'} analysis in this suburb` : ''}
+${propertyDetails ? `Context: ${propertyDetails.propertyType || 'Property'} analysis in this suburb${propertyDetails.landSizeSqm ? `, typical land size: ${propertyDetails.landSizeSqm}m²` : ''}${propertyDetails.buildSizeSqm ? `, typical build size: ${propertyDetails.buildSizeSqm}m²` : ''}` : ''}
 
 **CRITICAL - MANDATORY SUBURB REPORT STRUCTURE:**
 
@@ -885,7 +887,7 @@ Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
 
 **PROPERTY ADDRESS TO ANALYZE: ${formattedInput}**
 
-${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}` : ''}
+${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}${propertyDetails.landSizeSqm ? `, Land Size: ${propertyDetails.landSizeSqm}m²` : ''}${propertyDetails.buildSizeSqm ? `, Build Size: ${propertyDetails.buildSizeSqm}m²` : ''}` : ''}
 
 **CRITICAL - MANDATORY REPORT STRUCTURE:**
 
