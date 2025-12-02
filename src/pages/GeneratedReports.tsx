@@ -570,11 +570,12 @@ export default function GeneratedReports() {
                         <span className="line-clamp-2">{report.property_address}</span>
                         {report.report_scope && (
                           <Badge 
+                            variant="secondary"
                             className={`text-xs w-fit flex items-center gap-1 ${
-                              report.report_scope === 'address' ? 'bg-blue-500 text-white hover:bg-blue-600' :
-                              report.report_scope === 'suburb' ? 'bg-green-500 text-white hover:bg-green-600' :
-                              report.report_scope === 'zipcode' ? 'bg-yellow-500 text-white hover:bg-yellow-600' :
-                              'bg-purple-500 text-white hover:bg-purple-600'
+                              report.report_scope === 'address' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300' :
+                              report.report_scope === 'suburb' ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300' :
+                              report.report_scope === 'zipcode' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300'
                             }`}
                           >
                             {report.report_scope === 'address' && (
