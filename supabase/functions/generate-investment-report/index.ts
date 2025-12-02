@@ -984,17 +984,14 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Maintenance | $1,500 | Fixed amount per instructions |
 | **Total Annual Costs** | **$XX,XXX** | **Sum of ongoing costs (Council Rates + Water Rates + Property Management + Insurance + Maintenance only - exclude letting fees)** |
 
-# 15. Cost Breakdown Analysis
-[Detailed breakdown sections: Stamp Duty, Council & Water Rates, Property Management, Insurance, Maintenance]
-
-# 16. Environmental Risks
+# 15. Environmental Risks
 | Risk Type | Assessment | Details |
 | Flood Risk | ... | ... |
 | Bushfire Risk | ... | ... |
 | Heatwaves | ... | ... |
 | Storms | ... | ... |
 
-# 17. Crime Statistics
+# 16. Crime Statistics
 | Metric | Value | Comparison |
 | Overall Crime Rating | ... | ... |
 | Rate per 100k people | ... | ... |
@@ -1002,21 +999,31 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Year-on-Year Change | ... | ... |
 | 3-Year Trend | ... | ... |
 
-# 18. Crime Breakdown
+# 17. Crime Breakdown
 | Category | Incidents | Percentage |
 
 [Include narrative on risk profile]
 
-# 19. Recent Comparable Sales (Last 12 Months)
+# 18. Recent Comparable Sales (Last 12 Months)
 | Address | Sale Price | Sale Date | Beds/Baths/Parking | Distance |
 
-# 20. Recent Comparable Rentals
+# 19. Recent Comparable Rentals
 | Address | Weekly Rent | Property Type | Location |
 
 [Include analysis of comparables]
 
-# 21. Base Assumptions
-- Property Price: $XXX,XXX
+# 20. Base Assumptions
+${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initialCosts?.propertyValue?.toLocaleString() || 'XXX,XXX'}
+- Deposit: 20% - $${enhancedData.financials.initialCosts?.deposit?.toLocaleString() || 'XXX,XXX'}
+- Loan Amount: $${enhancedData.financials.initialCosts?.loanAmount?.toLocaleString() || 'XXX,XXX'}
+- Interest Rate: ${enhancedData.financials.loanDetails?.interestRate || 6.5}%
+- Loan Term: 30 years
+- Weekly Rent: $${enhancedData.financials.income?.weeklyRent || 'XXX'} ($${((enhancedData.financials.income?.weeklyRent || 0) * 52).toLocaleString()} annually)
+- Property Management: 7% of rent
+- Maintenance: $1,500 annually (fixed)
+- Council Rates: $${enhancedData.financials.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'} annually
+- Water Rates: $${enhancedData.financials.annualCosts?.waterRates?.toLocaleString() || 'XXX'} annually
+- Insurance: $${enhancedData.financials.annualCosts?.landlordInsurance?.toLocaleString() || 'X,XXX'} annually` : `- Property Price: $XXX,XXX
 - Deposit: 20% - $XXX,XXX
 - Loan Amount: $XXX,XXX
 - Interest Rate: 6.5%
@@ -1026,9 +1033,9 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 - Maintenance: $1,500 annually (fixed)
 - Council Rates: $X,XXX annually
 - Water Rates: $XXX annually
-- Insurance: $X,XXX annually
+- Insurance: $X,XXX annually`}
 
-# 22. Gross & Net Yield Calculation
+# 21. Gross & Net Yield Calculation
 | Metric | Calculation | Value |
 | Gross Rental Yield | ... | X.XX% |
 | Annual Income | | $XX,XXX |
@@ -1036,40 +1043,40 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Net Annual Return | | $XX,XXX |
 | Net Rental Yield | ... | X.XX% |
 
-# 23. Principal & Interest Loan
+# 22. Principal & Interest Loan
 | Item | Amount (Annual) | Amount (Monthly) |
 
-# 24. Interest-Only Loan (First 5 Years)
+# 23. Interest-Only Loan (First 5 Years)
 | Item | Amount (Annual) | Amount (Monthly) |
 
-# 25. Sensitivity Analysis
+# 24. Sensitivity Analysis
 | Scenario | Interest Rate | Annual Cashflow |
 
 [Include narrative on cashflow]
 
-# 26. Property Value Projections ($)
+# 25. Property Value Projections ($)
 | Year | Conservative (2%) | Base (4%) |
 
-# 27. Rental Income Projections ($)
+# 26. Rental Income Projections ($)
 | Year | Conservative (2%) | Base (3%) |
 
-# 28. Cumulative Cashflow Projections ($)
+# 27. Cumulative Cashflow Projections ($)
 | Year | Conservative | Base |
 
-# 29. Final Loan-to-Value Ratio (LVR)
+# 28. Final Loan-to-Value Ratio (LVR)
 | Scenario | Year 10 LVR |
 
 [Include projection narrative]
 
-# 30. Overall Investment Score
+# 29. Overall Investment Score
 Investment Grade: [GRADE]
 Total Score: XX/100
 Recommendation: [BUY/HOLD/SELL]
 
-# 31. Investment Score Breakdown
+# 30. Investment Score Breakdown
 | Component | Weight (%) | Score (/100) |
 
-# 32. SWOT Analysis
+# 31. SWOT Analysis
 **Strengths:**
 - [bullet points]
 
@@ -1084,13 +1091,13 @@ Recommendation: [BUY/HOLD/SELL]
 
 [Include narrative conclusion]
 
-# 33. Top 3 Opportunities
+# 32. Top 3 Opportunities
 1. [Opportunity title] - [Description]
 
-# 34. Top 3 Risks
+# 33. Top 3 Risks
 1. [Risk title] - [Description]
 
-# 35. Investment Recommendations
+# 34. Investment Recommendations
 Based on the comprehensive analysis above, here are tailored recommendations for this investment:
 
 **Short-term Actions:**
@@ -1105,10 +1112,10 @@ Based on the comprehensive analysis above, here are tailored recommendations for
 - [Important factor to monitor]
 - [Market condition to watch]
 
-# 36. Market Data Sources
+# 35. Market Data Sources
 | Metric | Source | URL |
 
-# 37. Demographic & Economic Data
+# 36. Demographic & Economic Data
 | Metric | Source | URL |
 
 **ABSOLUTE REQUIREMENTS:**
@@ -1197,7 +1204,7 @@ Component Scores: Growth ${enhancedData.investmentScore.breakdown?.growthScore?.
 - Use # for section headers
 - CRITICAL: Omit any metric where data is not available - do not show N/A or placeholders
 - All amounts in AUD with $ symbol
-- Follow the 37-section structure exactly as specified above
+- Follow the 36-section structure exactly as specified above
 
 ${enhancedData.economics ? `
 ECONOMIC DATA AVAILABLE (Only include metrics with actual values):
