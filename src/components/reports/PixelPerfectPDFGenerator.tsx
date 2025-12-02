@@ -112,6 +112,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
     console.log('💉 Injecting override values into markdown content');
 
+    // Calculate annual rent from weekly rent (weekly × 52)
+    const weeklyRent = financialData?.income?.weeklyRent || 0;
+    const annualRent = weeklyRent * 52;
+
     // Calculate total annual costs dynamically from overridden values (excluding letting fees)
     const councilRates = financialData?.annualCosts?.councilRates || 0;
     const waterRates = financialData?.annualCosts?.waterRates || 0;
@@ -122,7 +126,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     
     const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
     
-    console.log('📊 Computed total annual costs (excluding letting fees):', {
+    console.log('📊 Computed values from overrides:', {
+      weeklyRent,
+      annualRent,
       councilRates,
       waterRates,
       strataFees,
@@ -160,6 +166,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
+        pattern: /Annual Rent.*?\$[\d,]+/gi,
+        getValue: () => annualRent,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /Annual Income.*?\$[\d,]+/gi,
+        getValue: () => annualRent,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
         pattern: /Council Rates.*?\$[\d,]+/gi,
         getValue: () => financialData?.annualCosts?.councilRates,
         format: (v) => `$${v?.toLocaleString() || '0'}`
@@ -180,22 +196,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
-        pattern: /Building & Landlord Insurance.*?\$[\d,]+/gi,
+        pattern: /(?:Building\s*(?:&|and)\s*)?Landlord Insurance.*?\$[\d,]+/gi,
         getValue: () => financialData?.annualCosts?.landlordInsurance,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
-        pattern: /Building and Landlord Insurance.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.landlordInsurance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /Landlord Insurance.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.landlordInsurance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /Insurance.*?\$[\d,]+/gi,
+        pattern: /(?:^|\s)Insurance\s*\|.*?\$[\d,]+/gim,
         getValue: () => financialData?.annualCosts?.landlordInsurance,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
