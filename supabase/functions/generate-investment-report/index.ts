@@ -887,7 +887,7 @@ Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
 
 **PROPERTY ADDRESS TO ANALYZE: ${formattedInput}**
 
-${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}${propertyDetails.landSizeSqm ? `, Land Size: ${propertyDetails.landSizeSqm}m²` : ''}${propertyDetails.buildSizeSqm ? `, Build Size: ${propertyDetails.buildSizeSqm}m²` : ''}` : ''}
+${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Weekly Rent: $${propertyDetails.weeklyRent || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}${propertyDetails.landSizeSqm ? `, Land Size: ${propertyDetails.landSizeSqm}m²` : ''}${propertyDetails.buildSizeSqm ? `, Build Size: ${propertyDetails.buildSizeSqm}m²` : ''}` : ''}
 
 **CRITICAL - MANDATORY REPORT STRUCTURE:**
 
