@@ -127,8 +127,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const landlordInsurance = financialData?.annualCosts?.landlordInsurance || 0;
     const propertyManagement = propertyManagementCalculated; // Use dynamically calculated value
     const maintenance = financialData?.annualCosts?.maintenance || 1500; // Use override value or default to 1500
+    const landTax = financialData?.annualCosts?.landTax || 0;
     
-    const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
+    // Total annual costs WITHOUT land tax - used for net yield calculation (pages 14-15)
+    const totalAnnualCostsExcludingLandTax = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
+    
+    // Total annual costs WITH land tax - used for page 10 ongoing costs table display
+    const totalAnnualCostsWithLandTax = totalAnnualCostsExcludingLandTax + landTax;
     
     console.log('📊 Computed values from overrides:', {
       weeklyRent,
@@ -139,7 +144,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       landlordInsurance,
       propertyManagement,
       maintenance,
-      totalAnnualCosts
+      landTax,
+      totalAnnualCostsExcludingLandTax,
+      totalAnnualCostsWithLandTax
     });
 
     // Map of field paths to regex patterns that match them in markdown tables
@@ -256,12 +263,23 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       },
       {
         pattern: /\*\*Total Annual Costs\*\*.*?\$[\d,]+/gi,
-        getValue: () => totalAnnualCosts,
+        getValue: () => totalAnnualCostsWithLandTax,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
         pattern: /Total Annual Costs.*?\$[\d,]+/gi,
-        getValue: () => totalAnnualCosts,
+        getValue: () => totalAnnualCostsWithLandTax,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      // Annual Expenses for net yield calculation (pages 14-15) - EXCLUDES land tax
+      {
+        pattern: /Annual Expenses.*?\$[\d,]+/gi,
+        getValue: () => totalAnnualCostsExcludingLandTax,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
+        pattern: /\*\*Annual Expenses\*\*.*?\$[\d,]+/gi,
+        getValue: () => totalAnnualCostsExcludingLandTax,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
     ];
