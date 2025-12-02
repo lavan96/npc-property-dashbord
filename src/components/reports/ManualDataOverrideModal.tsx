@@ -256,16 +256,35 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         }
       }
       
-      // Recalculate totalAnnual after applying overrides (excluding letting fees)
+      // Recalculate dependent values after applying overrides
       if (!mergedFinancialData.annualCosts) {
         mergedFinancialData.annualCosts = {};
       }
+      if (!mergedFinancialData.income) {
+        mergedFinancialData.income = {};
+      }
       
+      // Recalculate property management dollar amount from weekly rent and percentage
+      const weeklyRent = mergedFinancialData.income.weeklyRent || 0;
+      const annualRent = weeklyRent * 52;
+      const propertyManagementPercent = mergedFinancialData.annualCosts.propertyManagementPercent || 7;
+      const propertyManagement = Math.floor(annualRent * (propertyManagementPercent / 100));
+      
+      // Update the calculated property management dollar amount
+      mergedFinancialData.annualCosts.propertyManagement = propertyManagement;
+      
+      console.log('📊 Recalculated property management:', {
+        weeklyRent,
+        annualRent,
+        propertyManagementPercent,
+        propertyManagement
+      });
+      
+      // Recalculate totalAnnual after applying overrides (excluding letting fees)
       const councilRates = mergedFinancialData.annualCosts.councilRates || 0;
       const waterRates = mergedFinancialData.annualCosts.waterRates || 0;
       const strataFees = mergedFinancialData.annualCosts.strataFees || 0;
       const landlordInsurance = mergedFinancialData.annualCosts.landlordInsurance || 0;
-      const propertyManagement = mergedFinancialData.annualCosts.propertyManagement || 0;
       const maintenance = mergedFinancialData.annualCosts.maintenance || 1500;
       
       mergedFinancialData.annualCosts.totalAnnual = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
