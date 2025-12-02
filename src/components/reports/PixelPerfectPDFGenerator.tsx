@@ -215,7 +215,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `${v || '0'}%`
       },
       {
-        pattern: /Property Management.*?\$[\d,]+/gi,
+        pattern: /Property Management Fee?\s*\|[^|]*\|[^|]*\$[\d,]+\)?/gi,
+        getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
+        format: (v) => `Property Management Fee | ${v.percent}% of $${v.annualRent?.toLocaleString()} | $${v.fee?.toLocaleString()}`
+      },
+      {
+        pattern: /Property Management.*?\$[\d,]+\)?/gi,
         getValue: () => propertyManagement,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
@@ -265,8 +270,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const formattedValue = format(value);
         const beforeReplace = updatedContent;
         updatedContent = updatedContent.replace(pattern, (match) => {
-          // Keep the field name, replace only the value
-          const fieldName = match.split(/\$|[\d]/)[0].trim();
+          // If formattedValue contains ' | ', it's a full table row replacement - use as-is
+          if (formattedValue.includes(' | ')) {
+            replacementCount++;
+            return formattedValue;
+          }
+          // Otherwise, keep the field name and replace only the value
+          // Remove trailing brackets from match before extracting field name
+          const cleanMatch = match.replace(/\)\s*$/, '').trim();
+          const fieldName = cleanMatch.split(/\$|[\d]/)[0].trim();
           replacementCount++;
           return `${fieldName} ${formattedValue}`;
         });
