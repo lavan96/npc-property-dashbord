@@ -210,6 +210,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
+        pattern: /- Insurance:\s*\$[\d,]+/gi,
+        getValue: () => financialData?.annualCosts?.landlordInsurance,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      {
         pattern: /Property Management.*?[\d.]+%/gi,
         getValue: () => financialData?.annualCosts?.propertyManagementPercent,
         format: (v) => `${v || '0'}%`
