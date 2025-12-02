@@ -227,11 +227,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => `- Property Management: ${v.percent}% of $${v.annualRent?.toLocaleString()} annual rent - $${v.fee?.toLocaleString()}`
       },
-      // Page 10 Ongoing Costs Table: full row with calculation method
+      // Page 10 Ongoing Costs Table: full row with amount first, then calculation method
       {
         pattern: /Property Management Fee?\s*\|[^|]*\|[^|]*\$[\d,]+\)?/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
-        format: (v) => `Property Management Fee | ${v.percent}% × $${v.annualRent?.toLocaleString()} annual rent | $${v.fee?.toLocaleString()}`
+        format: (v) => `Property Management Fee | $${v.fee?.toLocaleString()} | ${v.percent}% × $${v.annualRent?.toLocaleString()} annual rent`
       },
       // Generic property management percentage pattern
       {
