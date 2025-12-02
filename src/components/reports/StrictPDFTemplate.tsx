@@ -128,7 +128,8 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           background: '#FFFFFF',
           padding: '25pt',
           pageBreakAfter: 'always',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative'
         }}>
           {/* Header with NPC branding colors */}
           <div style={{ 
@@ -213,6 +214,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               </div>
             </div>
           )}
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '25pt',
+            bottom: '25pt',
+            fontSize: '9pt',
+            color: '#666'
+          }}>
+            2
+          </div>
         </div>
 
         {/* PAGE 3: Market Performance */}
@@ -222,7 +234,8 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           background: '#FFFFFF',
           padding: '25pt',
           pageBreakAfter: 'always',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '2pt solid #C5A572', 
@@ -249,6 +262,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           <div style={{ fontSize: '9pt', color: '#333', lineHeight: '1.5' }}>
             {formatContent(performanceContent)}
           </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '25pt',
+            bottom: '25pt',
+            fontSize: '9pt',
+            color: '#666'
+          }}>
+            3
+          </div>
         </div>
 
         {/* PAGE 4: Demographics */}
@@ -258,7 +282,8 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           background: '#FFFFFF',
           padding: '25pt',
           pageBreakAfter: 'always',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '2pt solid #C5A572', 
@@ -285,6 +310,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           <div style={{ fontSize: '9pt', color: '#333', lineHeight: '1.5' }}>
             {formatContent(demographicsContent)}
           </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '25pt',
+            bottom: '25pt',
+            fontSize: '9pt',
+            color: '#666'
+          }}>
+            4
+          </div>
         </div>
 
         {/* PAGE 5: Infrastructure */}
@@ -294,7 +330,8 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           background: '#FFFFFF',
           padding: '25pt',
           pageBreakAfter: 'always',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '2pt solid #C5A572', 
@@ -321,6 +358,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           <div style={{ fontSize: '9pt', color: '#333', lineHeight: '1.5' }}>
             {formatContent(infrastructureContent)}
           </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '25pt',
+            bottom: '25pt',
+            fontSize: '9pt',
+            color: '#666'
+          }}>
+            5
+          </div>
         </div>
 
         {/* PAGE 6: Investment Insights */}
@@ -330,7 +378,8 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           background: '#FFFFFF',
           padding: '25pt',
           pageBreakAfter: 'always',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '2pt solid #C5A572', 
@@ -373,6 +422,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
 
           <div style={{ fontSize: '9pt', color: '#333', lineHeight: '1.5' }}>
             {formatContent(investmentInsights)}
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '25pt',
+            bottom: '25pt',
+            fontSize: '9pt',
+            color: '#666'
+          }}>
+            6
           </div>
         </div>
 

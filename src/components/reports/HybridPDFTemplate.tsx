@@ -118,7 +118,8 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
           height: '297mm',
           background: 'white',
           padding: '30pt',
-          pageBreakAfter: 'always'
+          pageBreakAfter: 'always',
+          position: 'relative'
         }}>
           {/* Header */}
           <div style={{ 
@@ -138,7 +139,6 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             </h1>
             <div style={{ fontSize: '10pt', color: '#666', textAlign: 'right' }}>
               <div style={{ fontWeight: 'bold' }}>{suburb}, {state}</div>
-              <div>Page 2</div>
             </div>
           </div>
 
@@ -190,6 +190,17 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
               </div>
             </div>
           )}
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '30pt',
+            bottom: '30pt',
+            fontSize: '10pt',
+            color: '#666'
+          }}>
+            2
+          </div>
         </div>
 
         {/* PAGE 3: Market Performance */}
@@ -198,7 +209,8 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
           height: '297mm',
           background: 'white',
           padding: '30pt',
-          pageBreakAfter: 'always'
+          pageBreakAfter: 'always',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '3pt solid #00d4ff', 
@@ -217,12 +229,22 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             </h1>
             <div style={{ fontSize: '10pt', color: '#666', textAlign: 'right' }}>
               <div style={{ fontWeight: 'bold' }}>{suburb}, {state}</div>
-              <div>Page 3</div>
             </div>
           </div>
 
           <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.6' }}>
             {formatContent(performanceContent)}
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '30pt',
+            bottom: '30pt',
+            fontSize: '10pt',
+            color: '#666'
+          }}>
+            3
           </div>
         </div>
 
@@ -232,7 +254,8 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
           height: '297mm',
           background: 'white',
           padding: '30pt',
-          pageBreakAfter: 'always'
+          pageBreakAfter: 'always',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '3pt solid #00d4ff', 
@@ -251,12 +274,22 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             </h1>
             <div style={{ fontSize: '10pt', color: '#666', textAlign: 'right' }}>
               <div style={{ fontWeight: 'bold' }}>{suburb}, {state}</div>
-              <div>Page 4</div>
             </div>
           </div>
 
           <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.6' }}>
             {formatContent(demographicsContent)}
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '30pt',
+            bottom: '30pt',
+            fontSize: '10pt',
+            color: '#666'
+          }}>
+            4
           </div>
         </div>
 
@@ -266,7 +299,8 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
           height: '297mm',
           background: 'white',
           padding: '30pt',
-          pageBreakAfter: 'always'
+          pageBreakAfter: 'always',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '3pt solid #00d4ff', 
@@ -285,12 +319,22 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             </h1>
             <div style={{ fontSize: '10pt', color: '#666', textAlign: 'right' }}>
               <div style={{ fontWeight: 'bold' }}>{suburb}, {state}</div>
-              <div>Page 5</div>
             </div>
           </div>
 
           <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.6' }}>
             {formatContent(infrastructureContent)}
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '30pt',
+            bottom: '30pt',
+            fontSize: '10pt',
+            color: '#666'
+          }}>
+            5
           </div>
         </div>
 
@@ -300,7 +344,8 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
           height: '297mm',
           background: 'white',
           padding: '30pt',
-          pageBreakAfter: 'always'
+          pageBreakAfter: 'always',
+          position: 'relative'
         }}>
           <div style={{ 
             borderBottom: '3pt solid #00d4ff', 
@@ -319,7 +364,6 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             </h1>
             <div style={{ fontSize: '10pt', color: '#666', textAlign: 'right' }}>
               <div style={{ fontWeight: 'bold' }}>{suburb}, {state}</div>
-              <div>Page 6</div>
             </div>
           </div>
 
@@ -343,6 +387,17 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
 
           <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.6' }}>
             {formatContent(investmentInsights)}
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '30pt',
+            bottom: '30pt',
+            fontSize: '10pt',
+            color: '#666'
+          }}>
+            6
           </div>
         </div>
 
