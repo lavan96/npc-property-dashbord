@@ -87,11 +87,11 @@ function calculateInvestmentScore(input: InvestmentScoringInput): InvestmentScor
 
   // Weighted scoring
   const weights = {
-    growth: 0.30, // 30% - Capital appreciation potential
+    growth: 0.40, // 40% - Capital appreciation potential
     location: 0.25, // 25% - Location quality and amenities
-    yield: 0.20,  // 20% - Cash flow generation
+    yield: 0.15,  // 15% - Cash flow generation
     demand: 0.15, // 15% - Supply/demand dynamics
-    risk: 0.10    // 10% - Risk factors
+    risk: 0.05    // 5% - Risk factors
   };
 
   const totalScore = Math.round(
@@ -346,51 +346,91 @@ function calculateDemandScore(input: InvestmentScoringInput) {
 
 function calculateRiskScore(input: InvestmentScoringInput) {
   let score = 100; // Start at 100, deduct for risks
-  const risks: string[] = [];
+  const riskFactors: string[] = [];
+  const positiveFactors: string[] = [];
 
-  // LVR risk
+  // LVR risk assessment
   if (input.lvr) {
     if (input.lvr > 90) {
-      score -= 30;
-      risks.push('Very high LVR (>90%) - significant leverage risk');
+      score -= 40;
+      riskFactors.push('Very high LVR (>90%) creates significant leverage risk');
     } else if (input.lvr > 80) {
-      score -= 15;
-      risks.push('High LVR (80-90%) - moderate leverage risk');
-    } else if (input.lvr < 60) {
-      score += 0; // No bonus, 100 is max
-      risks.push('Conservative LVR (<60%) - low leverage risk');
+      score -= 20;
+      riskFactors.push('High LVR (80-90%) increases leverage risk');
+    } else if (input.lvr > 70) {
+      score -= 5;
+      riskFactors.push('Moderate LVR (70-80%)');
+    } else if (input.lvr <= 60) {
+      positiveFactors.push('Conservative LVR (<60%) provides safety buffer');
     }
   }
 
   // Cash flow risk
-  if (input.cashFlow !== undefined && input.cashFlow < -200) {
-    score -= 20;
-    risks.push('High negative cash flow (>$200/week) - funding risk');
-  } else if (input.cashFlow !== undefined && input.cashFlow < 0) {
-    score -= 10;
-    risks.push('Negative cash flow - moderate funding risk');
+  if (input.cashFlow !== undefined) {
+    if (input.cashFlow < -300) {
+      score -= 25;
+      riskFactors.push('Severe negative cash flow (>$300/week) requires substantial funding');
+    } else if (input.cashFlow < -200) {
+      score -= 15;
+      riskFactors.push('High negative cash flow ($200-300/week) creates funding pressure');
+    } else if (input.cashFlow < 0) {
+      score -= 8;
+      riskFactors.push('Negative cash flow requires ongoing contribution');
+    } else if (input.cashFlow > 100) {
+      positiveFactors.push('Strong positive cash flow provides income buffer');
+    }
   }
 
   // Property type risk
   if (input.propertyType === 'unit' || input.propertyType === 'apartment') {
-    score -= 10;
-    risks.push('Unit/apartment - strata and oversupply risk');
+    score -= 8;
+    riskFactors.push('Unit/apartment carries strata risks and potential oversupply');
+  } else if (input.propertyType === 'house') {
+    positiveFactors.push('House typically offers better long-term capital growth');
   }
 
-  // Market risk
-  if (input.priceGrowth1Year && input.priceGrowth1Year > 15) {
-    score -= 15;
-    risks.push('Rapid recent growth (>15%) - potential cooling risk');
+  // Market overheating risk
+  if (input.priceGrowth1Year && input.priceGrowth1Year > 20) {
+    score -= 20;
+    riskFactors.push('Extreme growth (>20% p.a.) suggests market overheating');
+  } else if (input.priceGrowth1Year && input.priceGrowth1Year > 15) {
+    score -= 12;
+    riskFactors.push('Rapid growth (15-20% p.a.) may indicate cooling ahead');
   }
 
   // Vacancy risk
-  if (input.vacancyRate && input.vacancyRate > 4) {
-    score -= 15;
-    risks.push('High vacancy rate (>4%) - rental income risk');
+  if (input.vacancyRate !== undefined) {
+    if (input.vacancyRate > 5) {
+      score -= 20;
+      riskFactors.push('Very high vacancy (>5%) signals weak rental demand');
+    } else if (input.vacancyRate > 4) {
+      score -= 12;
+      riskFactors.push('High vacancy (4-5%) indicates oversupplied market');
+    } else if (input.vacancyRate < 1.5) {
+      positiveFactors.push('Tight rental market (<1.5% vacancy) supports rental income');
+    }
   }
 
-  const details = risks.length > 0 ? risks.join('. ') : 'Low overall risk profile';
-  return { score: Math.max(0, score), details };
+  // Days on market risk
+  if (input.daysOnMarket !== undefined && input.daysOnMarket > 90) {
+    score -= 10;
+    riskFactors.push('Extended selling time (>90 days) indicates soft demand');
+  }
+
+  // Build overall risk assessment
+  let details = '';
+  if (riskFactors.length > 0) {
+    details = 'Risk Factors: ' + riskFactors.join('. ');
+    if (positiveFactors.length > 0) {
+      details += '. Mitigating Factors: ' + positiveFactors.join('. ');
+    }
+  } else if (positiveFactors.length > 0) {
+    details = 'Low risk profile. ' + positiveFactors.join('. ');
+  } else {
+    details = 'Moderate risk profile with balanced characteristics';
+  }
+
+  return { score: Math.max(0, Math.min(100, score)), details };
 }
 
 function determineGradeAndRecommendation(score: number, input: InvestmentScoringInput) {
