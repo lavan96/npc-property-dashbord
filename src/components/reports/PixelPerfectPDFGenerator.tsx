@@ -221,18 +221,27 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => financialData?.annualCosts?.landlordInsurance,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
+      // Base Assumptions: "- Property Management: X%" -> "- Property Management: X% - $Y,YYY"
       {
-        pattern: /Property Management.*?[\d.]+%/gi,
-        getValue: () => financialData?.annualCosts?.propertyManagementPercent,
-        format: (v) => `${v || '0'}%`
+        pattern: /- Property Management:\s*[\d.]+%/gi,
+        getValue: () => ({ percent: propertyManagementPercent, fee: propertyManagement }),
+        format: (v) => `- Property Management: ${v.percent}% - $${v.fee?.toLocaleString()}`
       },
+      // Page 10 Ongoing Costs Table: full row with calculation method
       {
         pattern: /Property Management Fee?\s*\|[^|]*\|[^|]*\$[\d,]+\)?/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
-        format: (v) => `Property Management Fee | ${v.percent}% of $${v.annualRent?.toLocaleString()} | $${v.fee?.toLocaleString()}`
+        format: (v) => `Property Management Fee | ${v.percent}% × $${v.annualRent?.toLocaleString()} annual rent | $${v.fee?.toLocaleString()}`
       },
+      // Generic property management percentage pattern
       {
-        pattern: /Property Management.*?\$[\d,]+\)?/gi,
+        pattern: /Property Management.*?[\d.]+%(?!\s*[-–])/gi,
+        getValue: () => financialData?.annualCosts?.propertyManagementPercent,
+        format: (v) => `${v || '0'}%`
+      },
+      // Generic property management amount pattern
+      {
+        pattern: /Property Management(?! Fee).*?\$[\d,]+\)?/gi,
         getValue: () => propertyManagement,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
