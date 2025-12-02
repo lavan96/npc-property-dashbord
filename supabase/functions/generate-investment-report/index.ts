@@ -982,7 +982,8 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Property Management Fee | $X,XXX | ... |
 | Insurance | $X,XXX | ... |
 | Maintenance | $1,500 | Fixed amount per instructions |
-| **Total Annual Costs** | **$XX,XXX** | **Sum of ongoing costs (Council Rates + Water Rates + Property Management + Insurance + Maintenance only - exclude letting fees)** |
+| Land Tax | $X,XXX | State-specific calculation |
+| **Total Annual Costs** | **$XX,XXX** | **Sum of ALL ongoing costs including Land Tax (Council Rates + Water Rates + Property Management + Insurance + Maintenance + Land Tax - exclude letting fees)** |
 
 # 15. Environmental Risks
 | Risk Type | Assessment | Details |
@@ -1036,12 +1037,13 @@ ${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initia
 - Insurance: $X,XXX annually`}
 
 # 21. Gross & Net Yield Calculation
+**IMPORTANT: Annual Expenses here must EXCLUDE Land Tax. Land Tax is shown in Section 14 Total Annual Costs but is NOT included in the net yield calculation.**
 | Metric | Calculation | Value |
-| Gross Rental Yield | ... | X.XX% |
-| Annual Income | | $XX,XXX |
-| Annual Expenses | | $X,XXX |
-| Net Annual Return | | $XX,XXX |
-| Net Rental Yield | ... | X.XX% |
+| Gross Rental Yield | Annual Rent ÷ Property Price | X.XX% |
+| Annual Income | Weekly Rent × 52 | $XX,XXX |
+| Annual Expenses | Council Rates + Water Rates + Property Management + Insurance + Maintenance (EXCLUDING Land Tax) | $X,XXX |
+| Net Annual Return | Annual Income - Annual Expenses | $XX,XXX |
+| Net Rental Yield | Net Annual Return ÷ Property Price | X.XX% |
 
 # 22. Principal & Interest Loan
 | Item | Amount (Annual) | Amount (Monthly) |
@@ -1238,7 +1240,13 @@ ${enhancedData.financials.annualCosts?.waterRates ? `- Water Rates: $${enhancedD
 ${enhancedData.financials.annualCosts?.landlordInsurance ? `- Insurance: $${enhancedData.financials.annualCosts.landlordInsurance}` : ''}
 ${enhancedData.financials.annualCosts?.propertyManagement ? `- Property Management: $${enhancedData.financials.annualCosts.propertyManagement}` : ''}
 - Maintenance: $1,500 AUD (FIXED - USE THIS EXACT AMOUNT IN ALL CALCULATIONS)
-${enhancedData.financials.annualCosts?.landTax ? `- Land Tax: $${enhancedData.financials.annualCosts.landTax}` : ''}
+${enhancedData.financials.annualCosts?.landTax ? `- Land Tax: $${enhancedData.financials.annualCosts.landTax} (INCLUDE in Section 14 Total Annual Costs, but EXCLUDE from Section 21 Annual Expenses)` : ''}
+${enhancedData.financials.annualCosts?.totalAnnual ? `- Total Annual Costs (WITH Land Tax - for Section 14): $${enhancedData.financials.annualCosts.totalAnnual}` : ''}
+${enhancedData.financials.annualCosts?.totalAnnualExcludingLandTax ? `- Annual Expenses (WITHOUT Land Tax - for Section 21 Net Yield): $${enhancedData.financials.annualCosts.totalAnnualExcludingLandTax}` : ''}
+
+CRITICAL LAND TAX RULES:
+- Section 14 (Purchase & Ongoing Costs): Include Land Tax as a separate row AND in Total Annual Costs
+- Section 21 (Net Yield Calculation): Annual Expenses must EXCLUDE Land Tax
 
 
 10-YEAR PROJECTIONS (Only include scenarios with actual data):
