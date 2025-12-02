@@ -112,25 +112,23 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
     console.log('💉 Injecting override values into markdown content');
 
-    // Calculate total annual costs dynamically from overridden values
+    // Calculate total annual costs dynamically from overridden values (excluding letting fees)
     const councilRates = financialData?.annualCosts?.councilRates || 0;
     const waterRates = financialData?.annualCosts?.waterRates || 0;
     const strataFees = financialData?.annualCosts?.strataFees || 0;
     const landlordInsurance = financialData?.annualCosts?.landlordInsurance || 0;
     const propertyManagement = financialData?.annualCosts?.propertyManagement || 0;
     const maintenance = 1500; // Fixed amount
-    const lettingFees = financialData?.annualCosts?.lettingFees || 0;
     
-    const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance + lettingFees;
+    const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
     
-    console.log('📊 Computed total annual costs:', {
+    console.log('📊 Computed total annual costs (excluding letting fees):', {
       councilRates,
       waterRates,
       strataFees,
       landlordInsurance,
       propertyManagement,
       maintenance,
-      lettingFees,
       totalAnnualCosts
     });
 

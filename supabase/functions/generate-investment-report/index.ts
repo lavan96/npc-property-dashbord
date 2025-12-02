@@ -799,7 +799,7 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Property Management Fee | $X,XXX | ... |
 | Insurance | $X,XXX | ... |
 | Maintenance | $1,500 | Fixed amount per instructions |
-| **Total Annual Costs** | **$XX,XXX** | **Sum of ongoing costs** |
+| **Total Annual Costs** | **$XX,XXX** | **Sum of ongoing costs (Council Rates + Water Rates + Property Management + Insurance + Maintenance only - exclude letting fees)** |
 
 # 15. Cost Breakdown Analysis
 [Detailed breakdown sections: Stamp Duty, Council & Water Rates, Property Management, Insurance, Maintenance]
