@@ -1343,6 +1343,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         yPosition -= 15; // Space between sections
       }
 
+      // Add page numbers to all pages except first and last
+      console.log('🔢 Step 5.5: Adding page numbers...');
+      const allPages = pdfDoc.getPages();
+      const totalPages = allPages.length;
+      console.log(`✓ Total pages in document: ${totalPages}`);
+      
+      // Add page numbers starting from page 2 (index 1), excluding last page
+      for (let i = 1; i < totalPages - 1; i++) {
+        const page = allPages[i];
+        const pageNumber = i + 1; // Display page number (2, 3, 4, ...)
+        
+        // Draw page number in bottom left corner
+        page.drawText(String(pageNumber), {
+          x: 60, // Left margin position
+          y: 40, // Bottom position
+          size: 10,
+          font: helveticaFont,
+          color: rgb(0.4, 0.4, 0.4), // Gray color
+        });
+        
+        console.log(`  ✓ Added page number ${pageNumber} to page index ${i}`);
+      }
+      console.log(`✓ Page numbering complete (pages 2-${totalPages - 1})`);
+
       // Save the PDF
       console.log('💾 Step 6: Saving PDF document...');
       const pdfBytes = await pdfDoc.save();
