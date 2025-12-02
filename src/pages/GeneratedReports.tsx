@@ -502,27 +502,27 @@ export default function GeneratedReports() {
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by scope" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background z-50">
                 <SelectItem value="all">All Reports</SelectItem>
-                <SelectItem value="address">
+                <SelectItem value="address" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                   <div className="flex items-center gap-2">
                     <Home className="h-4 w-4" />
                     Property Analysis
                   </div>
                 </SelectItem>
-                <SelectItem value="suburb">
+                <SelectItem value="suburb" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
                     Suburb Analysis
                   </div>
                 </SelectItem>
-                <SelectItem value="zipcode">
+                <SelectItem value="zipcode" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
                   <div className="flex items-center gap-2">
                     <Map className="h-4 w-4" />
                     Area Analysis
                   </div>
                 </SelectItem>
-                <SelectItem value="state">
+                <SelectItem value="state" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                   <div className="flex items-center gap-2">
                     <Globe className="h-4 w-4" />
                     State Analysis
