@@ -1020,7 +1020,7 @@ ${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initia
 - Interest Rate: ${enhancedData.financials.loanDetails?.interestRate || 6.5}%
 - Loan Term: 30 years
 - Weekly Rent: $${enhancedData.financials.income?.weeklyRent || 'XXX'} ($${((enhancedData.financials.income?.weeklyRent || 0) * 52).toLocaleString()} annually)
-- Property Management: 7% of rent
+- Property Management: 7% × $${((enhancedData.financials.income?.weeklyRent || 0) * 52).toLocaleString()} annual rent = $${Math.round(((enhancedData.financials.income?.weeklyRent || 0) * 52) * 0.07).toLocaleString()}
 - Maintenance: $1,500 annually (fixed)
 - Council Rates: $${enhancedData.financials.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'} annually
 - Water Rates: $${enhancedData.financials.annualCosts?.waterRates?.toLocaleString() || 'XXX'} annually
@@ -1030,7 +1030,7 @@ ${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initia
 - Interest Rate: 6.5%
 - Loan Term: 30 years
 - Weekly Rent: $XXX ($XX,XXX annually)
-- Property Management: 7% of rent
+- Property Management: 7% × $XX,XXX annual rent = $X,XXX
 - Maintenance: $1,500 annually (fixed)
 - Council Rates: $X,XXX annually
 - Water Rates: $XXX annually
