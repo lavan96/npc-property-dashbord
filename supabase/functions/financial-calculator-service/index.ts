@@ -285,8 +285,11 @@ function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: 
   const landTax = calculateLandTax(propertyValue, state);
   const strataFees = propertyType === 'unit' ? 4800 : 0; // $400/month for units
   
-  // Calculate total annual costs including land tax (excluding letting fees)
+  // Calculate total annual costs INCLUDING land tax (for page 10 table display)
   const totalAnnual = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees + landTax;
+  
+  // Calculate total annual costs EXCLUDING land tax (for net yield/annual expenses calculation on page 14-15)
+  const totalAnnualExcludingLandTax = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees;
   
   return {
     councilRates,
@@ -297,7 +300,8 @@ function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: 
     maintenance,
     landTax,
     strataFees,
-    totalAnnual
+    totalAnnual,
+    totalAnnualExcludingLandTax
   };
 }
 
@@ -380,9 +384,9 @@ function calculateKeyMetrics(
 ) {
   const annualRent = input.weeklyRent * 52;
   
-  // Use the pre-calculated totalAnnual field which includes all operating costs
-  // This excludes the propertyManagementPercent field (which is metadata, not a cost)
-  const totalAnnualCosts = annualCosts.totalAnnual;
+  // Use totalAnnualExcludingLandTax for net yield calculation (page 14-15 annual expenses)
+  // Land tax is shown in totalAnnual for page 10 table but excluded from net yield calc
+  const totalAnnualCosts = annualCosts.totalAnnualExcludingLandTax;
     
   const grossYield = (annualRent / input.propertyValue) * 100;
   const netYield = ((annualRent - totalAnnualCosts) / input.propertyValue) * 100;
