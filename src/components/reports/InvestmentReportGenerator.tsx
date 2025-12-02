@@ -98,6 +98,7 @@ export function InvestmentReportGenerator() {
           property_address: propertyAddress,
           report_content: 'Generating report...',
           status: 'pending',
+          report_scope: queryType, // Track the scope type
           generated_by: null, // Set to null to avoid foreign key constraint issues
         })
         .select()
