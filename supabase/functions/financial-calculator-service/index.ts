@@ -285,8 +285,8 @@ function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: 
   const landTax = calculateLandTax(propertyValue, state);
   const strataFees = propertyType === 'unit' ? 4800 : 0; // $400/month for units
   
-  // Calculate total annual costs (excluding letting fees as per memory)
-  const totalAnnual = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees;
+  // Calculate total annual costs including land tax (excluding letting fees)
+  const totalAnnual = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees + landTax;
   
   return {
     councilRates,
@@ -379,9 +379,10 @@ function calculateKeyMetrics(
   stampDuty: number
 ) {
   const annualRent = input.weeklyRent * 52;
-  const totalAnnualCosts = Object.values(annualCosts)
-    .filter(val => typeof val === 'number')
-    .reduce((sum, cost) => sum + cost, 0);
+  
+  // Use the pre-calculated totalAnnual field which includes all operating costs
+  // This excludes the propertyManagementPercent field (which is metadata, not a cost)
+  const totalAnnualCosts = annualCosts.totalAnnual;
     
   const grossYield = (annualRent / input.propertyValue) * 100;
   const netYield = ((annualRent - totalAnnualCosts) / input.propertyValue) * 100;
