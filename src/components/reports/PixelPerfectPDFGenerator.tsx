@@ -270,6 +270,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => financialData?.keyMetrics?.lvr,
         format: (v) => `${v || '0'}%`
       },
+      // Land Tax row in page 10 table
+      {
+        pattern: /Land Tax.*?\$[\d,]+/gi,
+        getValue: () => landTax,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
       {
         pattern: /\*\*Total Annual Costs\*\*.*?\$[\d,]+/gi,
         getValue: () => totalAnnualCostsWithLandTax,
