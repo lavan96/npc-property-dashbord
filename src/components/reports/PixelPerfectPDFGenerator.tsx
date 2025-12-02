@@ -116,12 +116,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const weeklyRent = financialData?.income?.weeklyRent || 0;
     const annualRent = weeklyRent * 52;
 
+    // Recalculate property management based on overridden values
+    const propertyManagementPercent = financialData?.annualCosts?.propertyManagementPercent || 7;
+    const propertyManagementCalculated = Math.floor(annualRent * (propertyManagementPercent / 100));
+
     // Calculate total annual costs dynamically from overridden values (excluding letting fees)
     const councilRates = financialData?.annualCosts?.councilRates || 0;
     const waterRates = financialData?.annualCosts?.waterRates || 0;
     const strataFees = financialData?.annualCosts?.strataFees || 0;
     const landlordInsurance = financialData?.annualCosts?.landlordInsurance || 0;
-    const propertyManagement = financialData?.annualCosts?.propertyManagement || 0;
+    const propertyManagement = propertyManagementCalculated; // Use dynamically calculated value
     const maintenance = financialData?.annualCosts?.maintenance || 1500; // Use override value or default to 1500
     
     const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
@@ -209,6 +213,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         pattern: /Property Management.*?[\d.]+%/gi,
         getValue: () => financialData?.annualCosts?.propertyManagementPercent,
         format: (v) => `${v || '0'}%`
+      },
+      {
+        pattern: /Property Management.*?\$[\d,]+/gi,
+        getValue: () => propertyManagement,
+        format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
         pattern: /Maintenance.*?\$[\d,]+/gi,
