@@ -196,6 +196,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             </p>
           </div>
 
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '40px',
+            bottom: '40px',
+            fontSize: '12px',
+            color: '#c9a55a',
+            fontFamily: 'serif',
+          }}>
+            2
+          </div>
+
           {/* Decorative curve */}
           <div style={{
             position: 'absolute',
@@ -287,6 +299,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
               </div>
             </div>
           </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '40px',
+            bottom: '40px',
+            fontSize: '12px',
+            color: '#c9a55a',
+            fontFamily: 'serif',
+          }}>
+            3
+          </div>
         </div>
 
       {/* Page 4: Market Performance */}
@@ -344,6 +368,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             }}>
               {cleanText(performanceContent)}
             </div>
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '40px',
+            bottom: '40px',
+            fontSize: '12px',
+            color: '#c9a55a',
+            fontFamily: 'serif',
+          }}>
+            4
           </div>
         </div>
 
@@ -403,6 +439,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
               {cleanText(demographicsContent)}
             </div>
           </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '40px',
+            bottom: '40px',
+            fontSize: '12px',
+            color: '#c9a55a',
+            fontFamily: 'serif',
+          }}>
+            5
+          </div>
         </div>
 
       {/* Page 6: Infrastructure */}
@@ -460,6 +508,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             }}>
               {cleanText(infrastructureContent)}
             </div>
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '40px',
+            bottom: '40px',
+            fontSize: '12px',
+            color: '#c9a55a',
+            fontFamily: 'serif',
+          }}>
+            6
           </div>
         </div>
 
@@ -539,6 +599,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
                 </span>
               </div>
             )}
+          </div>
+
+          {/* Page Number */}
+          <div style={{
+            position: 'absolute',
+            left: '40px',
+            bottom: '40px',
+            fontSize: '12px',
+            color: '#c9a55a',
+            fontFamily: 'serif',
+          }}>
+            7
           </div>
         </div>
 
