@@ -1038,12 +1038,13 @@ ${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initia
 
 # 21. Gross & Net Yield Calculation
 **IMPORTANT: Annual Expenses here must EXCLUDE Land Tax. Land Tax is shown in Section 14 Total Annual Costs but is NOT included in the net yield calculation.**
+**CRITICAL: For Annual Income calculation column, show the WEEKLY rent amount (e.g., $629) multiplied by 52, NOT the annual amount. Example: "$629 × 52 weeks" NOT "$32,708 × 52 weeks"**
 | Metric | Calculation | Value |
-| Gross Rental Yield | Annual Rent ÷ Property Price | X.XX% |
-| Annual Income | Weekly Rent × 52 | $XX,XXX |
+| Gross Rental Yield | $[annual rent] ÷ $[property price] × 100 | X.XX% |
+| Annual Income | $[WEEKLY rent] × 52 weeks | $XX,XXX |
 | Annual Expenses | Council Rates + Water Rates + Property Management + Insurance + Maintenance (EXCLUDING Land Tax) | $X,XXX |
-| Net Annual Return | Annual Income - Annual Expenses | $XX,XXX |
-| Net Rental Yield | Net Annual Return ÷ Property Price | X.XX% |
+| Net Annual Return | $[annual income] - $[annual expenses] | $XX,XXX |
+| Net Rental Yield | $[net annual return] ÷ $[property price] × 100 | X.XX% |
 
 # 22. Principal & Interest Loan
 | Item | Amount (Annual) | Amount (Monthly) |
