@@ -20,7 +20,7 @@ interface RecentReport {
 }
 
 export function InvestmentReportGenerator() {
-  const [queryType, setQueryType] = useState<'address' | 'zipcode' | 'state'>('address');
+  const [queryType, setQueryType] = useState<'address' | 'zipcode' | 'suburb' | 'state'>('address');
   const [query, setQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
@@ -70,6 +70,9 @@ export function InvestmentReportGenerator() {
         case 'zipcode':
           propertyAddress = `Properties in ${query.trim()}`;
           break;
+        case 'suburb':
+          propertyAddress = `${query.trim()}, Australia`;
+          break;
         case 'state':
           propertyAddress = `${query.trim()}, Australia`;
           break;
@@ -115,8 +118,10 @@ export function InvestmentReportGenerator() {
       const scopeText = queryType === 'address' 
         ? `Property: ${query}` 
         : queryType === 'zipcode' 
-          ? `ZIP Code: ${query}` 
-          : `Statewide Analysis: ${query}`;
+          ? `ZIP Code: ${query}`
+          : queryType === 'suburb'
+            ? `Suburb: ${query}`
+            : `Statewide Analysis: ${query}`;
 
       // Start generation in background (don't await)
       supabase.functions.invoke('generate-investment-report', {
@@ -187,6 +192,8 @@ export function InvestmentReportGenerator() {
         return <MapPin className="h-4 w-4" />;
       case 'zipcode':
         return <Hash className="h-4 w-4" />;
+      case 'suburb':
+        return <MapPin className="h-4 w-4" />;
       case 'state':
         return <Globe className="h-4 w-4" />;
       default:
@@ -200,6 +207,8 @@ export function InvestmentReportGenerator() {
         return 'e.g., 123 Main Street, Sydney NSW 2000';
       case 'zipcode':
         return 'e.g., 2000, 3000, 4000';
+      case 'suburb':
+        return 'e.g., Bondi NSW, Carlton VIC, Fortitude Valley QLD';
       case 'state':
         return 'e.g., NSW, VIC, QLD, WA, SA, TAS, NT, ACT';
       default:
@@ -234,7 +243,7 @@ export function InvestmentReportGenerator() {
               {/* Query Type Selection */}
               <div className="space-y-3">
                 <Label htmlFor="queryType">Analysis Scope</Label>
-                <Select value={queryType} onValueChange={(value: 'address' | 'zipcode' | 'state') => setQueryType(value)}>
+                <Select value={queryType} onValueChange={(value: 'address' | 'zipcode' | 'suburb' | 'state') => setQueryType(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select analysis type" />
                   </SelectTrigger>
@@ -249,6 +258,12 @@ export function InvestmentReportGenerator() {
                       <div className="flex items-center gap-2">
                         <Hash className="h-4 w-4" />
                         Zip Code Area Analysis
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="suburb" className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Suburb Investment Analysis
                       </div>
                     </SelectItem>
                     <SelectItem value="state" className="flex items-center">
@@ -267,6 +282,7 @@ export function InvestmentReportGenerator() {
                   {getQueryTypeIcon()}
                   {queryType === 'address' && 'Property Address'}
                   {queryType === 'zipcode' && 'Zip Code'}
+                  {queryType === 'suburb' && 'Suburb Name'}
                   {queryType === 'state' && 'State'}
                 </Label>
                 <Input
