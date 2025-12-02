@@ -553,6 +553,7 @@ export type Database = {
           property_listing_id: string | null
           property_specs: Json | null
           report_content: string
+          report_scope: string | null
           sources_content: string | null
           status: string
           updated_at: string
@@ -577,6 +578,7 @@ export type Database = {
           property_listing_id?: string | null
           property_specs?: Json | null
           report_content: string
+          report_scope?: string | null
           sources_content?: string | null
           status?: string
           updated_at?: string
@@ -601,6 +603,7 @@ export type Database = {
           property_listing_id?: string | null
           property_specs?: Json | null
           report_content?: string
+          report_scope?: string | null
           sources_content?: string | null
           status?: string
           updated_at?: string

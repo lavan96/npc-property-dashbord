@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
@@ -40,6 +41,7 @@ interface InvestmentReport {
   report_content: string;
   created_at: string;
   current_version: number;
+  report_scope?: string; // Track report generation scope
   status?: string;
   manual_overrides?: any;
   financial_calculations?: any;
@@ -85,6 +87,7 @@ export default function GeneratedReports() {
   // Pagination & Search states
   const [investmentPage, setInvestmentPage] = useState(1);
   const [investmentSearchQuery, setInvestmentSearchQuery] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<string>('all'); // Filter by scope
   const reportsPerPage = 9;
   
   const navigate = useNavigate();
@@ -92,9 +95,11 @@ export default function GeneratedReports() {
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
 
   // Filter and paginate investment reports
-  const filteredInvestmentReports = investmentReports.filter(report =>
-    report.property_address.toLowerCase().includes(investmentSearchQuery.toLowerCase())
-  );
+  const filteredInvestmentReports = investmentReports.filter(report => {
+    const matchesSearch = report.property_address.toLowerCase().includes(investmentSearchQuery.toLowerCase());
+    const matchesScope = scopeFilter === 'all' || report.report_scope === scopeFilter;
+    return matchesSearch && matchesScope;
+  });
   
   const totalInvestmentPages = Math.ceil(filteredInvestmentReports.length / reportsPerPage);
   const paginatedInvestmentReports = filteredInvestmentReports.slice(
@@ -477,7 +482,7 @@ export default function GeneratedReports() {
         </TabsContent>
 
         <TabsContent value="investment" className="space-y-4">
-          {/* Search Bar */}
+          {/* Search Bar & Filters */}
           <div className="flex items-center gap-4 mb-4">
             <div className="relative flex-1">
               <Input
@@ -490,6 +495,21 @@ export default function GeneratedReports() {
                 }}
               />
             </div>
+            <Select value={scopeFilter} onValueChange={(value) => {
+              setScopeFilter(value);
+              setInvestmentPage(1); // Reset to first page on filter change
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by scope" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Reports</SelectItem>
+                <SelectItem value="address">Property Analysis</SelectItem>
+                <SelectItem value="suburb">Suburb Analysis</SelectItem>
+                <SelectItem value="zipcode">Area Analysis</SelectItem>
+                <SelectItem value="state">State Analysis</SelectItem>
+              </SelectContent>
+            </Select>
             <Badge variant="secondary">
               {filteredInvestmentReports.length} of {investmentReports.length} reports
             </Badge>
@@ -526,7 +546,17 @@ export default function GeneratedReports() {
                   </div>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-start justify-between pr-8">
-                      <span className="line-clamp-2">{report.property_address}</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="line-clamp-2">{report.property_address}</span>
+                        {report.report_scope && (
+                          <Badge variant="outline" className="text-xs w-fit">
+                            {report.report_scope === 'address' && 'Property Analysis'}
+                            {report.report_scope === 'suburb' && 'Suburb Analysis'}
+                            {report.report_scope === 'zipcode' && 'Area Analysis'}
+                            {report.report_scope === 'state' && 'State Analysis'}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         {report.status === 'pending' && (
                           <Badge variant="outline" className="text-xs">Pending</Badge>

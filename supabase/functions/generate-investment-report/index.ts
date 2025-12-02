@@ -35,8 +35,10 @@ serve(async (req) => {
     }
     
     const { reportId, propertyAddress, propertyDetails } = requestBody;
+    const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
     console.log('Report ID:', reportId);
     console.log('Property address:', propertyAddress);
+    console.log('Report scope:', reportScope);
     
     if (!propertyAddress) {
       console.error('Property address is missing');
@@ -697,7 +699,186 @@ serve(async (req) => {
     }
 
     // Create enhanced prompt with additional data
-    const prompt = `You are an expert property analyst researching Australian property investment reports.
+    // Suburb-specific prompt for suburb investment analysis
+    const suburbPrompt = `You are an expert Australian suburb analyst creating comprehensive suburb investment snapshots.
+Your goal is to generate a professional suburb-level investment analysis report.
+
+**SUBURB TO ANALYZE: ${formattedInput}**
+
+${propertyDetails ? `Context: ${propertyDetails.propertyType || 'Property'} analysis in this suburb` : ''}
+
+**CRITICAL - MANDATORY SUBURB REPORT STRUCTURE:**
+
+Follow this exact structure for suburb-level analysis:
+
+# REPORT TITLE
+Suburb Investment Snapshot: [SUBURB NAME], [STATE]
+
+# 1. Location & Profile
+- Suburb overview and character
+- Distance to CBD/major employment centers (e.g., "12km north of Sydney CBD")
+- Statistical areas: SA2, SA3, SA4, LGA
+- Suburb type (beachside, urban, suburban, regional)
+- Lifestyle description
+- Key attractions and features
+- Development status and trends
+
+# 2. Property Market Data
+**Current Market Snapshot (use most recent data):**
+
+| Property Type | Median Price | Median Rent (Weekly) | Gross Yield | Annual Growth |
+|--------------|--------------|---------------------|-------------|---------------|
+| Houses | $XXX,XXX | $XXX | X.XX% | +/-X.X% |
+| Units | $XXX,XXX | $XXX | X.XX% | +/-X.X% |
+
+**Market Activity:**
+| Metric | Houses | Units |
+|--------|---------|-------|
+| Sales Volume (12 months) | XX | XX |
+| Days on Market | XX | XX |
+| Stock on Market | XX | XX |
+| Vacancy Rate | X.X% | X.X% |
+
+# 3. Market Performance
+**5-Year Price Growth:**
+| Property Type | 1-Year | 3-Year | 5-Year | Peak Growth Period |
+|--------------|--------|--------|--------|-------------------|
+| Houses | +/-X.X% | +/-XX.X% | +/-XX.X% | [period] |
+| Units | +/-X.X% | +/-XX.X% | +/-XX.X% | [period] |
+
+**Rental Growth History:**
+| Property Type | 1-Year | 3-Year | 5-Year |
+|--------------|--------|--------|--------|
+| Houses | +/-X.X% | +/-XX.X% | +/-XX.X% |
+| Units | +/-X.X% | +/-XX.X% | +/-XX.X% |
+
+[Include market cycle analysis and trends]
+
+# 4. Demographics
+**Population Statistics:**
+| Metric | Value | State Average | National Average |
+|--------|-------|---------------|------------------|
+| Total Population | XX,XXX | - | - |
+| Population Density | XX per km² | XX per km² | XX per km² |
+| Population Growth (5yr) | +/-X.X% | +/-X.X% | +/-X.X% |
+| Median Age | XX years | XX years | XX years |
+| Families with Children | XX.X% | XX.X% | XX.X% |
+| Couples without Children | XX.X% | XX.X% | XX.X% |
+| Single Occupants | XX.X% | XX.X% | XX.X% |
+
+**Income & Employment:**
+| Metric | Value | State Average |
+|--------|-------|---------------|
+| Median Household Income | $X,XXX/week | $X,XXX/week |
+| Median Annual Income | $XX,XXX | $XX,XXX |
+| Employment Rate | XX.X% | XX.X% |
+| Unemployment Rate | X.X% | X.X% |
+| SEIFA Index (IRSAD) | XXX (Decile X) | - |
+
+**Top Industries:**
+1. [Industry] - XX.X%
+2. [Industry] - XX.X%
+3. [Industry] - XX.X%
+4. [Industry] - XX.X%
+5. [Industry] - XX.X%
+
+# 5. Infrastructure & Amenities
+**Education:**
+| School Name | Type | Level | Distance | Rating/ICSEA |
+|------------|------|-------|----------|--------------|
+
+**Transport:**
+| Mode | Details | Access Score |
+|------|---------|--------------|
+| Train Stations | [names] (XXkm) | XX/100 |
+| Bus Routes | XX routes | XX/100 |
+| Major Roads | [list] | - |
+| CBD Commute | XX mins by [mode] | - |
+| Walk Score | XX/100 | - |
+
+**Shopping & Services:**
+| Facility Type | Nearest | Distance | Details |
+|--------------|---------|----------|---------|
+| Shopping Center | [name] | XXkm | [description] |
+| Supermarkets | [names] | XXkm | - |
+| Cafes/Restaurants | XX+ venues | within XXkm | - |
+
+**Healthcare:**
+| Facility | Name | Distance |
+|----------|------|----------|
+| Hospital | [name] | XXkm |
+| Medical Centers | XX facilities | within XXkm |
+
+**Recreation:**
+| Facility Type | Count | Details |
+|--------------|-------|---------|
+| Parks | XX | [names] |
+| Beaches | XX | [names] |
+| Sports Facilities | XX | [types] |
+
+# 6. Investment Insights
+**Market Strengths:**
+- [Key advantages for investors]
+- [Growth drivers]
+- [Demand factors]
+
+**Considerations:**
+- [Risks or challenges]
+- [Market competition]
+- [Supply dynamics]
+
+**Buyer Profile:**
+[Who typically buys here and why]
+
+**Rental Demand:**
+[Who rents here, typical lease terms, vacancy patterns]
+
+**Capital Growth Outlook:**
+[Short and medium term price expectations with reasoning]
+
+**Rental Yield Outlook:**
+[Income potential and rental growth expectations]
+
+# 7. Environmental & Risk Factors
+| Risk Type | Assessment | Details |
+|-----------|-----------|---------|
+| Flood Risk | [Low/Medium/High] | [explanation] |
+| Bushfire Risk | [Low/Medium/High] | [explanation] |
+| Coastal Erosion | [Low/Medium/High] | [explanation if applicable] |
+| Climate Risks | [assessment] | [heatwaves, storms, etc.] |
+
+# 8. Crime & Safety
+| Metric | Value | Comparison to State |
+|--------|-------|-------------------|
+| Crime Rate per 100k | XXX | [above/below average] |
+| Safety Score | XX/100 | - |
+| Trend (3-year) | [Improving/Stable/Worsening] | - |
+
+**Crime Breakdown:**
+| Category | Percentage | Trend |
+|----------|-----------|-------|
+
+[Include safety commentary]
+
+---
+
+**DATA QUALITY REQUIREMENTS:**
+- Use live data where available from ABS, Domain, CoreLogic, state authorities
+- Clearly mark estimated or inferred data points
+- Include data sources and "as of" dates for all statistics
+- Prioritize recent data (last 12 months preferred)
+
+**OUTPUT STYLE:**
+- Use markdown tables extensively for data presentation
+- Include horizontal rulers (---) between major sections
+- Professional, data-driven language
+- Specific numbers, percentages, dollar amounts
+- Actionable insights for investors
+- No code blocks or JSON formatting
+
+Produce a comprehensive suburb investment snapshot following the structure above with specific Australian market data.`;
+
+    const propertyPrompt = `You are an expert property analyst researching Australian property investment reports.
 Your goal is to generate a comprehensive, professional-grade investment report for the following input:
 
 Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
@@ -1683,7 +1864,14 @@ Final Output
 
 Produce a full investment report following the structure above, including detailed numbers, calculations, and references to primary Australian data sources such as ABS, RBA, state revenue offices, data.gov.au, SQM Research, and official hazard maps.`;
 
+    // Select the appropriate prompt based on report scope
+    const prompt = reportScope === 'suburb' ? suburbPrompt : propertyPrompt;
+    const systemMessage = reportScope === 'suburb' 
+      ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
+      : 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.';
+
     console.log('Calling Perplexity API with sonar model...');
+    console.log('Report scope:', reportScope);
     console.log('Prompt length:', prompt.length);
 
     // Retry logic with exponential backoff
@@ -1708,7 +1896,7 @@ Produce a full investment report following the structure above, including detail
             messages: [
               {
                 role: 'system',
-                content: 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.'
+                content: systemMessage
               },
               {
                 role: 'user',
@@ -2010,6 +2198,7 @@ Always conduct your own research and due diligence to ensure that any property t
         validation_flags: allValidationFlags,
         calculation_version: '1.0.0',
         data_sources: dataSources,
+        report_scope: reportScope, // Track the scope type
         status: 'completed'
       };
       
