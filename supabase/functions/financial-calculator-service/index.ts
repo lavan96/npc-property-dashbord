@@ -276,15 +276,28 @@ function calculateACTStampDuty(value: number): number {
 function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: string, propertyType: string) {
   const annualRent = weeklyRent * 52;
   
+  const councilRates = Math.floor(propertyValue * 0.008); // ~0.8% of property value
+  const waterRates = 800; // Fixed water rates
+  const landlordInsurance = Math.floor(annualRent * 0.01); // ~1% of rent
+  const propertyManagement = Math.floor(annualRent * 0.07); // 7% of rent
+  const propertyManagementPercent = 7;
+  const maintenance = 1500; // Fixed $1,500 annually
+  const landTax = calculateLandTax(propertyValue, state);
+  const strataFees = propertyType === 'unit' ? 4800 : 0; // $400/month for units
+  
+  // Calculate total annual costs (excluding letting fees as per memory)
+  const totalAnnual = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees;
+  
   return {
-    councilRates: Math.floor(propertyValue * 0.008), // ~0.8% of property value
-    waterRates: 1200,
-    landlordInsurance: Math.floor(annualRent * 0.01), // ~1% of rent
-    propertyManagement: Math.floor(annualRent * 0.07), // 7% of rent
-    maintenance: 1500, // Fixed $1,500 annually
-    landTax: calculateLandTax(propertyValue, state),
-    strataFees: propertyType === 'unit' ? 4800 : 0, // $400/month for units
-    totalAnnual: 0 // Will be calculated
+    councilRates,
+    waterRates,
+    landlordInsurance,
+    propertyManagement,
+    propertyManagementPercent,
+    maintenance,
+    landTax,
+    strataFees,
+    totalAnnual
   };
 }
 
