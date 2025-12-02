@@ -15,7 +15,7 @@ import { PropertyComparisonModal } from '@/components/reports/PropertyComparison
 import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
@@ -504,10 +504,30 @@ export default function GeneratedReports() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Reports</SelectItem>
-                <SelectItem value="address">Property Analysis</SelectItem>
-                <SelectItem value="suburb">Suburb Analysis</SelectItem>
-                <SelectItem value="zipcode">Area Analysis</SelectItem>
-                <SelectItem value="state">State Analysis</SelectItem>
+                <SelectItem value="address">
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4" />
+                    Property Analysis
+                  </div>
+                </SelectItem>
+                <SelectItem value="suburb">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Suburb Analysis
+                  </div>
+                </SelectItem>
+                <SelectItem value="zipcode">
+                  <div className="flex items-center gap-2">
+                    <Map className="h-4 w-4" />
+                    Area Analysis
+                  </div>
+                </SelectItem>
+                <SelectItem value="state">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    State Analysis
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             <Badge variant="secondary">
@@ -549,11 +569,39 @@ export default function GeneratedReports() {
                       <div className="flex flex-col gap-1">
                         <span className="line-clamp-2">{report.property_address}</span>
                         {report.report_scope && (
-                          <Badge variant="outline" className="text-xs w-fit">
-                            {report.report_scope === 'address' && 'Property Analysis'}
-                            {report.report_scope === 'suburb' && 'Suburb Analysis'}
-                            {report.report_scope === 'zipcode' && 'Area Analysis'}
-                            {report.report_scope === 'state' && 'State Analysis'}
+                          <Badge 
+                            variant={
+                              report.report_scope === 'address' ? 'default' :
+                              report.report_scope === 'suburb' ? 'secondary' :
+                              report.report_scope === 'zipcode' ? 'outline' :
+                              'outline'
+                            }
+                            className="text-xs w-fit flex items-center gap-1"
+                          >
+                            {report.report_scope === 'address' && (
+                              <>
+                                <Home className="h-3 w-3" />
+                                Property Analysis
+                              </>
+                            )}
+                            {report.report_scope === 'suburb' && (
+                              <>
+                                <Building2 className="h-3 w-3" />
+                                Suburb Analysis
+                              </>
+                            )}
+                            {report.report_scope === 'zipcode' && (
+                              <>
+                                <Map className="h-3 w-3" />
+                                Area Analysis
+                              </>
+                            )}
+                            {report.report_scope === 'state' && (
+                              <>
+                                <Globe className="h-3 w-3" />
+                                State Analysis
+                              </>
+                            )}
                           </Badge>
                         )}
                       </div>
