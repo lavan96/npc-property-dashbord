@@ -159,6 +159,20 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       originalValue: report?.financial_calculations?.lettingFees || null,
       overrideValue: report?.manual_overrides?.lettingFees || null,
       prefix: '$'
+    },
+    {
+      key: 'landSizeSqm',
+      label: 'Land Size',
+      originalValue: report?.financial_calculations?.landSizeSqm || null,
+      overrideValue: report?.manual_overrides?.landSizeSqm || null,
+      suffix: 'm²'
+    },
+    {
+      key: 'buildSizeSqm',
+      label: 'Build Size',
+      originalValue: report?.financial_calculations?.buildSizeSqm || null,
+      overrideValue: report?.manual_overrides?.buildSizeSqm || null,
+      suffix: 'm²'
     }
   ];
 
@@ -219,7 +233,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         'lettingFees': 'annualCosts.lettingFees',
         'capitalGrowth': 'assumptions.capitalGrowth',
         'buildPrice': 'initialCosts.buildPrice',
-        'landPrice': 'initialCosts.landPrice'
+        'landPrice': 'initialCosts.landPrice',
+        'landSizeSqm': 'propertySpecs.landSizeSqm',
+        'buildSizeSqm': 'propertySpecs.buildSizeSqm'
       };
       
       // Apply overrides to nested structure
