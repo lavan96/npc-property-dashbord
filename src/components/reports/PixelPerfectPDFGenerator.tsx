@@ -181,6 +181,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => annualRent,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
+      // Annual Income row in Gross & Net Yield table - inject WEEKLY rent × 52 in calculation column (MUST BE BEFORE GENERIC PATTERN)
+      {
+        pattern: /Annual Income\s*\|[^|]+\|[^|]*\$[\d,]+/gi,
+        getValue: () => ({ weeklyRent, annualRent }),
+        format: (v) => `Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'}`
+      },
+      // Generic Annual Income pattern (fallback for non-table contexts)
       {
         pattern: /Annual Income.*?\$[\d,]+/gi,
         getValue: () => annualRent,
@@ -286,7 +293,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => totalAnnualCostsWithLandTax,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
-      // Annual Expenses for net yield calculation (pages 14-15) - EXCLUDES land tax
+      // Annual Expenses row in Gross & Net Yield table - inject correct calculation breakdown (MUST BE BEFORE GENERIC PATTERN)
+      {
+        pattern: /Annual Expenses\s*\|[^|]+\|[^|]*\$[\d,]+/gi,
+        getValue: () => ({ councilRates, waterRates, propertyManagement, landlordInsurance, maintenance, total: totalAnnualCostsExcludingLandTax }),
+        format: (v) => `Annual Expenses | $${v.councilRates?.toLocaleString() || '0'} + $${v.waterRates?.toLocaleString() || '0'} + $${v.propertyManagement?.toLocaleString() || '0'} + $${v.landlordInsurance?.toLocaleString() || '0'} + $${v.maintenance?.toLocaleString() || '0'} | $${v.total?.toLocaleString() || '0'}`
+      },
+      // Generic Annual Expenses pattern (fallback for non-table contexts) - EXCLUDES land tax
       {
         pattern: /Annual Expenses.*?\$[\d,]+/gi,
         getValue: () => totalAnnualCostsExcludingLandTax,
