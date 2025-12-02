@@ -122,7 +122,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const strataFees = financialData?.annualCosts?.strataFees || 0;
     const landlordInsurance = financialData?.annualCosts?.landlordInsurance || 0;
     const propertyManagement = financialData?.annualCosts?.propertyManagement || 0;
-    const maintenance = 1500; // Fixed amount
+    const maintenance = financialData?.annualCosts?.maintenance || 1500; // Use override value or default to 1500
     
     const totalAnnualCosts = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
     

@@ -256,6 +256,22 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         }
       }
       
+      // Recalculate totalAnnual after applying overrides (excluding letting fees)
+      if (!mergedFinancialData.annualCosts) {
+        mergedFinancialData.annualCosts = {};
+      }
+      
+      const councilRates = mergedFinancialData.annualCosts.councilRates || 0;
+      const waterRates = mergedFinancialData.annualCosts.waterRates || 0;
+      const strataFees = mergedFinancialData.annualCosts.strataFees || 0;
+      const landlordInsurance = mergedFinancialData.annualCosts.landlordInsurance || 0;
+      const propertyManagement = mergedFinancialData.annualCosts.propertyManagement || 0;
+      const maintenance = mergedFinancialData.annualCosts.maintenance || 1500;
+      
+      mergedFinancialData.annualCosts.totalAnnual = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
+      
+      console.log('📊 Recalculated totalAnnual:', mergedFinancialData.annualCosts.totalAnnual);
+      
       // Update database with merged data (NO Perplexity call)
       const { error: updateError } = await supabase
         .from('investment_reports')
