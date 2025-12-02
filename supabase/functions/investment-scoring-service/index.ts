@@ -43,6 +43,53 @@ interface InvestmentScore {
   risks: string[];
 }
 
+// Transform nested input structure to flat structure expected by scoring logic
+function transformInputData(rawInput: any): InvestmentScoringInput {
+  // Handle both flat and nested input structures for backward compatibility
+  if (rawInput.propertyPrice !== undefined) {
+    // Already in flat format
+    return rawInput as InvestmentScoringInput;
+  }
+
+  // Extract from nested structure
+  const property = rawInput.property || {};
+  const demographics = rawInput.demographics || {};
+  const locationIntelligence = rawInput.locationIntelligence || {};
+  const financials = rawInput.financials || {};
+
+  // Extract market data from demographics or financial data
+  const marketData = demographics.marketData || financials.marketData || {};
+  
+  // Extract key metrics from financials
+  const keyMetrics = financials.keyMetrics || {};
+  
+  // Extract location amenities
+  const walkScore = locationIntelligence.walkScore || 0;
+  const schools = locationIntelligence.schools || {};
+  const commute = locationIntelligence.commute || {};
+  
+  return {
+    propertyPrice: property.price || 0,
+    weeklyRent: property.weeklyRent || 0,
+    propertyType: property.propertyType || 'house',
+    medianSuburbPrice: marketData.medianPrice || undefined,
+    priceGrowth1Year: marketData.priceGrowth1Year || marketData.annualGrowth || undefined,
+    priceGrowth3Year: marketData.priceGrowth3Year || undefined,
+    vacancyRate: marketData.vacancyRate || undefined,
+    daysOnMarket: marketData.daysOnMarket || undefined,
+    walkScore: walkScore,
+    populationGrowth: demographics.populationGrowth || undefined,
+    medianIncome: demographics.medianIncome || demographics.medianHouseholdIncome || undefined,
+    unemploymentRate: demographics.unemploymentRate || undefined,
+    commuteTimeCBD: commute.durationMinutes || undefined,
+    schoolsNearby: schools.schoolsWithin3km || 0,
+    cashFlow: keyMetrics.weeklyNet || undefined,
+    lvr: keyMetrics.lvr || undefined,
+    state: rawInput.state || demographics.state || undefined
+  };
+}
+
+
 serve(async (req) => {
   console.log('Investment scoring service invoked with method:', req.method);
   
@@ -51,8 +98,12 @@ serve(async (req) => {
   }
 
   try {
-    const input: InvestmentScoringInput = await req.json();
-    console.log('Calculating investment score for property:', input);
+    const rawInput: any = await req.json();
+    console.log('Raw input received:', JSON.stringify(rawInput, null, 2));
+
+    // Transform nested structure to flat structure expected by scoring functions
+    const input: InvestmentScoringInput = transformInputData(rawInput);
+    console.log('Transformed input for scoring:', JSON.stringify(input, null, 2));
 
     const investmentScore = calculateInvestmentScore(input);
     
