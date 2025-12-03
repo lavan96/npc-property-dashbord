@@ -329,8 +329,33 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       // Annual Expenses row in Gross & Net Yield table - handle table rows starting with |
       {
         pattern: /\|?\s*Annual Expenses\s*\|[^\n]*/gi,
-        getValue: () => ({ councilRates, waterRates, propertyManagement, landlordInsurance, maintenance, total: totalAnnualCostsExcludingLandTax }),
-        format: (v) => `| Annual Expenses | $${v.councilRates?.toLocaleString() || '0'} + $${v.waterRates?.toLocaleString() || '0'} + $${v.propertyManagement?.toLocaleString() || '0'} + $${v.landlordInsurance?.toLocaleString() || '0'} + $${v.maintenance?.toLocaleString() || '0'} | $${v.total?.toLocaleString() || '0'} |`,
+        getValue: () => {
+          // Build breakdown components for display (include strataFees if present)
+          const components = [];
+          if (councilRates > 0) components.push(`$${councilRates.toLocaleString()}`);
+          if (waterRates > 0) components.push(`$${waterRates.toLocaleString()}`);
+          if (strataFees > 0) components.push(`$${strataFees.toLocaleString()}`);
+          if (propertyManagement > 0) components.push(`$${propertyManagement.toLocaleString()}`);
+          if (landlordInsurance > 0) components.push(`$${landlordInsurance.toLocaleString()}`);
+          if (maintenance > 0) components.push(`$${maintenance.toLocaleString()}`);
+          
+          console.log('📊 Annual Expenses breakdown:', {
+            councilRates,
+            waterRates,
+            strataFees,
+            propertyManagement,
+            landlordInsurance,
+            maintenance,
+            totalAnnualCostsExcludingLandTax,
+            breakdown: components.join(' + ')
+          });
+          
+          return { 
+            breakdown: components.join(' + ') || '$0',
+            total: totalAnnualCostsExcludingLandTax 
+          };
+        },
+        format: (v) => `| Annual Expenses | ${v.breakdown} | $${v.total?.toLocaleString() || '0'} |`,
         isFullLineReplacement: true
       },
       // Generic Annual Expenses pattern (fallback for non-table contexts) - EXCLUDES land tax
