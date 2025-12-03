@@ -134,9 +134,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
   };
 
   const injectOverridesIntoContent = (content: string, financialData: any): string => {
-    if (!financialData) return content;
+    if (!financialData) {
+      console.log('⚠️ No financialData provided, skipping injection');
+      return content;
+    }
 
     console.log('💉 Injecting override values into markdown content');
+    console.log('📊 Input financialData structure:', JSON.stringify(financialData, null, 2).substring(0, 1000));
 
     // Calculate annual rent from weekly rent (weekly × 52)
     const weeklyRent = financialData?.income?.weeklyRent || 0;
@@ -174,9 +178,19 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       totalAnnualCostsExcludingLandTax,
       totalAnnualCostsWithLandTax
     });
+    
+    // Debug: Log specific content snippets we're trying to match
+    const annualIncomeMatch = content.match(/Annual Income[^\n]{0,100}/gi);
+    const annualExpensesMatch = content.match(/Annual Expenses[^\n]{0,100}/gi);
+    const propertyMgmtMatch = content.match(/Property Management[^\n]{0,100}/gi);
+    console.log('🔍 Content snippets found:', {
+      annualIncome: annualIncomeMatch,
+      annualExpenses: annualExpensesMatch,
+      propertyMgmt: propertyMgmtMatch
+    });
 
     // Map of field paths to regex patterns that match them in markdown tables
-    const fieldReplacements: Array<{ pattern: RegExp; getValue: () => any; format: (v: any) => string }> = [
+    const fieldReplacements: Array<{ pattern: RegExp; getValue: () => any; format: (v: any) => string; isFullLineReplacement?: boolean }> = [
       {
         pattern: /Purchase Price.*?\$[\d,]+/gi,
         getValue: () => financialData?.initialCosts?.propertyValue,
@@ -211,7 +225,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       {
         pattern: /\|?\s*Annual Income\s*\|[^\n]*/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => `| Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'} |`
+        format: (v) => `| Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'} |`,
+        isFullLineReplacement: true
       },
       // Generic Annual Income pattern (fallback for non-table contexts)
       {
@@ -254,11 +269,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => financialData?.annualCosts?.landlordInsurance,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
-      // Base Assumptions: "- Property Management: X%" or any variant - clean replacement
+      // Base Assumptions: "- Property Management: X%" or "• Property Management:" - handle both bullet formats
       {
-        pattern: /- Property Management:[^\n]*/gi,
+        pattern: /[-•]\s*Property Management:[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
-        format: (v) => `- Property Management: ${v.percent}% of $${v.annualRent?.toLocaleString()} annual rent = $${v.fee?.toLocaleString()}`
+        format: (v) => `- Property Management: ${v.percent}% of $${v.annualRent?.toLocaleString()} annual rent = $${v.fee?.toLocaleString()}`,
+        isFullLineReplacement: true
       },
       // Page 10 Ongoing Costs Table: full row with calculation method - handle table rows starting with |
       {
@@ -311,7 +327,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       {
         pattern: /\|?\s*Annual Expenses\s*\|[^\n]*/gi,
         getValue: () => ({ councilRates, waterRates, propertyManagement, landlordInsurance, maintenance, total: totalAnnualCostsExcludingLandTax }),
-        format: (v) => `| Annual Expenses | $${v.councilRates?.toLocaleString() || '0'} + $${v.waterRates?.toLocaleString() || '0'} + $${v.propertyManagement?.toLocaleString() || '0'} + $${v.landlordInsurance?.toLocaleString() || '0'} + $${v.maintenance?.toLocaleString() || '0'} | $${v.total?.toLocaleString() || '0'} |`
+        format: (v) => `| Annual Expenses | $${v.councilRates?.toLocaleString() || '0'} + $${v.waterRates?.toLocaleString() || '0'} + $${v.propertyManagement?.toLocaleString() || '0'} + $${v.landlordInsurance?.toLocaleString() || '0'} + $${v.maintenance?.toLocaleString() || '0'} | $${v.total?.toLocaleString() || '0'} |`,
+        isFullLineReplacement: true
       },
       // Generic Annual Expenses pattern (fallback for non-table contexts) - EXCLUDES land tax
       {
@@ -329,12 +346,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     let updatedContent = content;
     let replacementCount = 0;
 
-    for (const { pattern, getValue, format } of fieldReplacements) {
+    for (const { pattern, getValue, format, isFullLineReplacement } of fieldReplacements) {
       const value = getValue();
       if (value !== undefined && value !== null) {
         const formattedValue = format(value);
         const beforeReplace = updatedContent;
         updatedContent = updatedContent.replace(pattern, (match) => {
+          // If explicitly marked as full line replacement, return formatted value directly
+          if (isFullLineReplacement) {
+            console.log(`  🔄 Full line replacement: "${match.substring(0, 50)}..." → "${formattedValue.substring(0, 50)}..."`);
+            replacementCount++;
+            return formattedValue;
+          }
           // If formattedValue contains ' | ' (table row) or starts with '- ' (bullet point line), return as-is
           if (formattedValue.includes(' | ') || formattedValue.startsWith('- ')) {
             replacementCount++;
