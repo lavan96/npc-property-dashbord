@@ -218,24 +218,39 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       // Weekly Rent with annual calculation in brackets - Base Assumptions format (bullet point)
+      // IMPORTANT: Use explicit string building to avoid any $ interpretation issues
       {
         pattern: /[-•]\s*Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => `- Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
+        format: (v) => {
+          const weeklyStr = String(v.weeklyRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          console.log(`📝 Weekly Rent (bullet) format - weeklyRent: ${v.weeklyRent}, formatted: ${weeklyStr}`);
+          return '- Weekly Rent: $' + weeklyStr + ' ($' + annualStr + ' annually)';
+        },
         isFullLineReplacement: true
       },
-      // Weekly Rent with annual calculation (without bullet) - use lookbehind to avoid double-matching after bullet patterns
+      // Weekly Rent with annual calculation (without bullet) - use lookbehind to avoid double-matching
       {
         pattern: /(?<![•\-]\s)Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => `Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
+        format: (v) => {
+          const weeklyStr = String(v.weeklyRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          console.log(`📝 Weekly Rent (no bullet) format - weeklyRent: ${v.weeklyRent}, formatted: ${weeklyStr}`);
+          return 'Weekly Rent: $' + weeklyStr + ' ($' + annualStr + ' annually)';
+        },
         isFullLineReplacement: true
       },
-      // Simple Weekly Rent pattern (fallback for other contexts)
+      // Simple Weekly Rent pattern (fallback for other contexts - no parentheses)
       {
         pattern: /Weekly Rent:\s*\$[\d,]+(?!\s*\()/gi,
         getValue: () => weeklyRent,
-        format: (v) => `Weekly Rent: $${v?.toLocaleString() || '0'}`,
+        format: (v) => {
+          const weeklyStr = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          console.log(`📝 Weekly Rent (simple) format - weeklyRent: ${v}, formatted: ${weeklyStr}`);
+          return 'Weekly Rent: $' + weeklyStr;
+        },
         isFullLineReplacement: true
       },
       {
