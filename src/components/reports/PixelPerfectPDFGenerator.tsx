@@ -561,9 +561,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         },
         isFullLineReplacement: true
       },
-      // Total Annual Costs table row - handle various formats including when amount is in wrong column
+      // Total Annual Costs table row - handle malformed format where amount is in Cost Category column
+      // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
       {
-        pattern: /\|\s*\$[\d,]+\s*\|\s*Sum of ALL ongoing costs\s*\|/gi,
+        pattern: /\|\s*\$[\d,]+\s*\|\s*Sum of ALL ongoing costs[^\n]*/gi,
         getValue: () => totalAnnualCostsWithLandTax,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
