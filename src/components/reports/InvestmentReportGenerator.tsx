@@ -36,6 +36,12 @@ export function InvestmentReportGenerator() {
   const [landSize, setLandSize] = useState('');
   const [buildSize, setBuildSize] = useState('');
   
+  // Suburb analysis year context state
+  const [dataYearType, setDataYearType] = useState<'single' | 'range'>('single');
+  const [singleYear, setSingleYear] = useState('');
+  const [yearRangeStart, setYearRangeStart] = useState('');
+  const [yearRangeEnd, setYearRangeEnd] = useState('');
+  
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const { user } = useAuth();
@@ -94,6 +100,18 @@ export function InvestmentReportGenerator() {
       if (baths) propertyDetails.baths = parseInt(baths);
       if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
       if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
+      
+      // Add suburb year context if provided (only for suburb analysis)
+      if (queryType === 'suburb') {
+        if (dataYearType === 'single' && singleYear) {
+          propertyDetails.dataYearType = 'single';
+          propertyDetails.dataYear = parseInt(singleYear);
+        } else if (dataYearType === 'range' && yearRangeStart && yearRangeEnd) {
+          propertyDetails.dataYearType = 'range';
+          propertyDetails.dataYearStart = parseInt(yearRangeStart);
+          propertyDetails.dataYearEnd = parseInt(yearRangeEnd);
+        }
+      }
 
       // Create the report record first with pending status
       const { data: pendingReport, error: insertError } = await supabase
@@ -155,6 +173,9 @@ export function InvestmentReportGenerator() {
       setBaths('');
       setLandSize('');
       setBuildSize('');
+      setSingleYear('');
+      setYearRangeStart('');
+      setYearRangeEnd('');
 
     } catch (error) {
       console.error('Error starting report generation:', error);
@@ -401,6 +422,86 @@ export function InvestmentReportGenerator() {
                   </div>
                 </div>
               </div>
+
+              {/* Suburb Year Context - Only show for suburb analysis */}
+              {queryType === 'suburb' && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Data Year Context (Optional)</Label>
+                      <Badge variant="outline" className="text-xs">Suburb Analysis</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Specify the year(s) for which data should be sourced and analyzed. Leave empty for the most current data.
+                    </p>
+
+                    <div className="space-y-3">
+                      <Label>Data Period Type</Label>
+                      <Select value={dataYearType} onValueChange={(value: 'single' | 'range') => setDataYearType(value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="single">Single Year</SelectItem>
+                          <SelectItem value="range">Year Range</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {dataYearType === 'single' ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="singleYear">Data Year</Label>
+                        <Input
+                          id="singleYear"
+                          type="number"
+                          min="2010"
+                          max={new Date().getFullYear()}
+                          value={singleYear}
+                          onChange={(e) => setSingleYear(e.target.value)}
+                          placeholder={`e.g., ${new Date().getFullYear()}`}
+                          disabled={isGenerating}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Focus on data from a specific year (e.g., 2024 for latest annual data)
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="yearRangeStart">From Year</Label>
+                          <Input
+                            id="yearRangeStart"
+                            type="number"
+                            min="2010"
+                            max={new Date().getFullYear()}
+                            value={yearRangeStart}
+                            onChange={(e) => setYearRangeStart(e.target.value)}
+                            placeholder="e.g., 2020"
+                            disabled={isGenerating}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="yearRangeEnd">To Year</Label>
+                          <Input
+                            id="yearRangeEnd"
+                            type="number"
+                            min="2010"
+                            max={new Date().getFullYear()}
+                            value={yearRangeEnd}
+                            onChange={(e) => setYearRangeEnd(e.target.value)}
+                            placeholder={`e.g., ${new Date().getFullYear()}`}
+                            disabled={isGenerating}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground sm:col-span-2">
+                          Analyze trends and data across multiple years (e.g., 2020-2024 for 5-year trends)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Info Box */}
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
