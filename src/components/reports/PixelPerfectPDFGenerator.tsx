@@ -682,11 +682,37 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const stripEmojis = (text: string): string => {
         // Remove emojis and other non-WinAnsi characters
         return text
+          // Replace smart/curly quotes with straight quotes
+          .replace(/[\u2018\u2019\u201B]/g, "'") // Single curly quotes to straight
+          .replace(/[\u201C\u201D\u201F]/g, '"') // Double curly quotes to straight
+          // Replace special dashes and hyphens
+          .replace(/[\u2013\u2014\u2015]/g, '-') // En-dash, em-dash, horizontal bar
+          .replace(/[\u2010\u2011\u2012]/g, '-') // Various hyphens
+          // Replace ellipsis
+          .replace(/\u2026/g, '...')
+          // Replace bullet points
+          .replace(/[\u2022\u2023\u2043\u204C\u204D]/g, '-')
+          // Replace non-breaking spaces and other space variants
+          .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+          // Remove zero-width characters
+          .replace(/[\u200C\u200D\uFEFF]/g, '')
+          // Remove emojis - comprehensive ranges
           .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/gu, '')
           .replace(/[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{231A}-\u{231B}]/gu, '')
-          .replace(/[\u{FE00}-\u{FE0F}]|[\u{E0020}-\u{E007F}]|[\u{200D}]/gu, '') // Variation selectors and ZWJ
-          .replace(/[\n\r\t]/g, ' ') // Replace newlines, carriage returns, tabs with spaces
-          .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+          .replace(/[\u{FE00}-\u{FE0F}]|[\u{E0020}-\u{E007F}]/gu, '') // Variation selectors
+          // Remove other problematic Unicode symbols
+          .replace(/[\u2190-\u21FF]/g, '') // Arrows
+          .replace(/[\u2500-\u257F]/g, '') // Box drawing
+          .replace(/[\u2580-\u259F]/g, '') // Block elements
+          .replace(/[\u25A0-\u25FF]/g, '') // Geometric shapes
+          .replace(/[\u2600-\u26FF]/g, '') // Miscellaneous symbols
+          .replace(/[\u2700-\u27BF]/g, '') // Dingbats
+          // Replace any remaining non-ASCII characters that aren't in WinAnsi
+          .replace(/[^\x00-\x7F\xA0-\xFF]/g, '')
+          // Replace newlines, carriage returns, tabs with spaces
+          .replace(/[\n\r\t]/g, ' ')
+          // Normalize multiple spaces to single space
+          .replace(/\s+/g, ' ')
           .trim();
       };
 
