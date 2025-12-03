@@ -195,60 +195,173 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       propertyMgmt: propertyMgmtMatch
     });
 
+    // Calculate loan amount from property value and deposit
+    const propertyValue = financialData?.initialCosts?.propertyValue || 0;
+    const depositValue = financialData?.initialCosts?.deposit || 0;
+    const loanAmount = propertyValue - depositValue;
+    const interestRate = financialData?.loanDetails?.interestRate || 6;
+    const loanTerm = financialData?.loanDetails?.loanTerm || 30;
+
     // Map of field paths to regex patterns that match them in markdown tables
     const fieldReplacements: Array<{ pattern: RegExp; getValue: () => any; format: (v: any) => string; isFullLineReplacement?: boolean }> = [
+      // === BASE ASSUMPTIONS SECTION - Bullet point format ===
+      // Property Price: $XXX,XXX
       {
-        pattern: /Purchase Price.*?\$[\d,]+/gi,
-        getValue: () => financialData?.initialCosts?.propertyValue,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        pattern: /[-•]\s*Property Price:[^\n]*/gi,
+        getValue: () => propertyValue,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '- Property Price: $' + str;
+        },
+        isFullLineReplacement: true
       },
+      // Deposit: $XXX,XXX
       {
-        pattern: /Property Value.*?\$[\d,]+/gi,
-        getValue: () => financialData?.initialCosts?.propertyValue,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        pattern: /[-•]\s*Deposit:[^\n]*/gi,
+        getValue: () => depositValue,
+        format: (v) => {
+          const str = Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+          return '- Deposit: $' + str;
+        },
+        isFullLineReplacement: true
       },
+      // Loan Amount: $XXX,XXX
       {
-        pattern: /Stamp Duty.*?\$[\d,]+/gi,
-        getValue: () => financialData?.initialCosts?.stampDuty,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        pattern: /[-•]\s*Loan Amount:[^\n]*/gi,
+        getValue: () => loanAmount,
+        format: (v) => {
+          const str = Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+          return '- Loan Amount: $' + str;
+        },
+        isFullLineReplacement: true
       },
+      // Interest Rate: X%
       {
-        pattern: /Deposit(?:.*?20%)?[:\s-]+\$[\d,]+/gi,
-        getValue: () => financialData?.initialCosts?.deposit,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        pattern: /[-•]\s*Interest Rate:[^\n]*/gi,
+        getValue: () => interestRate,
+        format: (v) => '- Interest Rate: ' + (v || 0) + '%',
+        isFullLineReplacement: true
       },
-      // Weekly Rent with annual calculation in brackets - Base Assumptions format (bullet point)
-      // IMPORTANT: Use explicit string building to avoid any $ interpretation issues
+      // Loan Term: XX years
       {
-        pattern: /[-•]\s*Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
+        pattern: /[-•]\s*Loan Term:[^\n]*/gi,
+        getValue: () => loanTerm,
+        format: (v) => '- Loan Term: ' + (v || 30) + ' years',
+        isFullLineReplacement: true
+      },
+      // Weekly Rent: $XXX ($XX,XXX annually)
+      {
+        pattern: /[-•]\s*Weekly Rent:[^\n]*/gi,
         getValue: () => ({ weeklyRent, annualRent }),
         format: (v) => {
           const weeklyStr = String(v.weeklyRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          console.log(`📝 Weekly Rent (bullet) format - weeklyRent: ${v.weeklyRent}, formatted: ${weeklyStr}`);
+          console.log('📝 Weekly Rent format - weeklyRent:', v.weeklyRent, 'formatted:', weeklyStr);
           return '- Weekly Rent: $' + weeklyStr + ' ($' + annualStr + ' annually)';
         },
         isFullLineReplacement: true
       },
-      // Weekly Rent with annual calculation (without bullet) - use lookbehind to avoid double-matching
+      // Property Management: X% of $XX,XXX annual rent = $X,XXX
+      {
+        pattern: /[-•]\s*Property Management:[^\n]*/gi,
+        getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
+        format: (v) => {
+          const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const feeStr = String(v.fee || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '- Property Management: ' + (v.percent || 7) + '% of $' + annualStr + ' annual rent = $' + feeStr;
+        },
+        isFullLineReplacement: true
+      },
+      // Maintenance: $X annually (fixed)
+      {
+        pattern: /[-•]\s*Maintenance:[^\n]*/gi,
+        getValue: () => maintenance,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '- Maintenance: $' + str + ' annually (fixed)';
+        },
+        isFullLineReplacement: true
+      },
+      // Council Rates: $X,XXX annually
+      {
+        pattern: /[-•]\s*Council Rates:[^\n]*/gi,
+        getValue: () => councilRates,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '- Council Rates: $' + str + ' annually';
+        },
+        isFullLineReplacement: true
+      },
+      // Water Rates: $X,XXX annually
+      {
+        pattern: /[-•]\s*Water Rates:[^\n]*/gi,
+        getValue: () => waterRates,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '- Water Rates: $' + str + ' annually';
+        },
+        isFullLineReplacement: true
+      },
+      // Insurance: $X,XXX annually
+      {
+        pattern: /[-•]\s*Insurance:[^\n]*/gi,
+        getValue: () => landlordInsurance,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '- Insurance: $' + str + ' annually';
+        },
+        isFullLineReplacement: true
+      },
+
+      // === OTHER SECTIONS - Non-bullet patterns ===
+      {
+        pattern: /Purchase Price.*?\$[\d,]+/gi,
+        getValue: () => propertyValue,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return 'Purchase Price: $' + str;
+        }
+      },
+      {
+        pattern: /Property Value.*?\$[\d,]+/gi,
+        getValue: () => propertyValue,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return 'Property Value: $' + str;
+        }
+      },
+      {
+        pattern: /Stamp Duty.*?\$[\d,]+/gi,
+        getValue: () => financialData?.initialCosts?.stampDuty,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return 'Stamp Duty: $' + str;
+        }
+      },
+      {
+        pattern: /Deposit(?:.*?20%)?[:\s-]+\$[\d,]+/gi,
+        getValue: () => depositValue,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return 'Deposit: $' + str;
+        }
+      },
+      // Non-bullet Weekly Rent patterns
       {
         pattern: /(?<![•\-]\s)Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
         getValue: () => ({ weeklyRent, annualRent }),
         format: (v) => {
           const weeklyStr = String(v.weeklyRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          console.log(`📝 Weekly Rent (no bullet) format - weeklyRent: ${v.weeklyRent}, formatted: ${weeklyStr}`);
           return 'Weekly Rent: $' + weeklyStr + ' ($' + annualStr + ' annually)';
         },
         isFullLineReplacement: true
       },
-      // Simple Weekly Rent pattern (fallback for other contexts - no parentheses)
       {
         pattern: /Weekly Rent:\s*\$[\d,]+(?!\s*\()/gi,
         getValue: () => weeklyRent,
         format: (v) => {
           const weeklyStr = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          console.log(`📝 Weekly Rent (simple) format - weeklyRent: ${v}, formatted: ${weeklyStr}`);
           return 'Weekly Rent: $' + weeklyStr;
         },
         isFullLineReplacement: true
@@ -256,96 +369,112 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       {
         pattern: /Annual Rent.*?\$[\d,]+/gi,
         getValue: () => annualRent,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return 'Annual Rent: $' + str;
+        }
       },
-      // Annual Income row in Gross & Net Yield table - SPECIFIC pattern matching calculation format
+      // Annual Income row in Gross & Net Yield table
       {
         pattern: /\|\s*Annual Income\s*\|\s*\$[\d,]+\s*[×x]\s*52\s*weeks?\s*\|\s*\$[\d,]+\s*\|/gi,
         getValue: () => ({ weeklyRent, annualRent }),
         format: (v) => {
-          console.log('📝 Annual Income replacement - weeklyRent:', v.weeklyRent, 'annualRent:', v.annualRent);
-          return `| Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'} |`;
+          const weeklyStr = String(v.weeklyRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Annual Income | $' + weeklyStr + ' x 52 weeks | $' + annualStr + ' |';
+        },
+        isFullLineReplacement: true
+      },
+      // Table format patterns for ongoing costs
+      {
+        pattern: /\|\s*Council Rates\s*\|[^\n]*/gi,
+        getValue: () => councilRates,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Council Rates | Annual | $' + str + ' |';
         },
         isFullLineReplacement: true
       },
       {
-        pattern: /Council Rates.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.councilRates,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /Water Rates.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.waterRates,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /Strata Fees.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.strataFees,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /Body Corporate.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.strataFees,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /(?:Building\s*(?:&|and)\s*)?Landlord Insurance.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.landlordInsurance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /(?:^|\s)Insurance\s*\|.*?\$[\d,]+/gim,
-        getValue: () => financialData?.annualCosts?.landlordInsurance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /- Insurance:\s*\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.landlordInsurance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      // Base Assumptions: "- Property Management: X%" or "• Property Management:" - handle both bullet formats
-      {
-        pattern: /[-•]\s*Property Management:[^\n]*/gi,
-        getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
-        format: (v) => `- Property Management: ${v.percent}% of $${v.annualRent?.toLocaleString()} annual rent = $${v.fee?.toLocaleString()}`,
+        pattern: /\|\s*Water Rates\s*\|[^\n]*/gi,
+        getValue: () => waterRates,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Water Rates | Annual | $' + str + ' |';
+        },
         isFullLineReplacement: true
       },
-      // Page 10 Ongoing Costs Table: full row with calculation method - handle table rows starting with |
+      {
+        pattern: /\|\s*(?:Building\s*(?:&|and)\s*)?(?:Landlord\s*)?Insurance\s*\|[^\n]*/gi,
+        getValue: () => landlordInsurance,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Building & Landlord Insurance | Annual | $' + str + ' |';
+        },
+        isFullLineReplacement: true
+      },
+      {
+        pattern: /\|\s*Strata Fees\s*\|[^\n]*/gi,
+        getValue: () => strataFees,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Strata Fees | Annual | $' + str + ' |';
+        },
+        isFullLineReplacement: true
+      },
+      {
+        pattern: /\|\s*Body Corporate\s*\|[^\n]*/gi,
+        getValue: () => strataFees,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Body Corporate | Annual | $' + str + ' |';
+        },
+        isFullLineReplacement: true
+      },
+      // Property Management Fee table row
       {
         pattern: /\|?\s*Property Management Fee?\s*\|[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
-        format: (v) => `| Property Management Fee | ${v.percent}% × $${v.annualRent?.toLocaleString()} annual rent | $${v.fee?.toLocaleString()} |`
+        format: (v) => {
+          const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const feeStr = String(v.fee || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Property Management Fee | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent | $' + feeStr + ' |';
+        },
+        isFullLineReplacement: true
       },
       {
-        pattern: /Maintenance.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.maintenance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /Repairs.*?\$[\d,]+/gi,
-        getValue: () => financialData?.annualCosts?.maintenance,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        pattern: /\|\s*Maintenance\s*\|[^\n]*/gi,
+        getValue: () => maintenance,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Maintenance | Annual (fixed) | $' + str + ' |';
+        },
+        isFullLineReplacement: true
       },
       {
         pattern: /Interest Rate.*?[\d.]+%/gi,
-        getValue: () => financialData?.loanDetails?.interestRate,
-        format: (v) => `${v || '0'}%`
+        getValue: () => interestRate,
+        format: (v) => 'Interest Rate: ' + (v || 0) + '%'
       },
       {
         pattern: /Capital Growth.*?[\d.]+%/gi,
         getValue: () => financialData?.assumptions?.capitalGrowth,
-        format: (v) => `${v || '0'}%`
+        format: (v) => 'Capital Growth: ' + (v || 0) + '%'
       },
       {
         pattern: /LVR.*?[\d.]+%/gi,
         getValue: () => financialData?.keyMetrics?.lvr,
-        format: (v) => `${v || '0'}%`
+        format: (v) => 'LVR: ' + (v || 0) + '%'
       },
       // Land Tax row in page 10 table
       {
-        pattern: /Land Tax.*?\$[\d,]+/gi,
+        pattern: /\|\s*Land Tax\s*\|[^\n]*/gi,
         getValue: () => landTax,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Land Tax | Annual | $' + str + ' |';
+        },
+        isFullLineReplacement: true
       },
       {
         pattern: /\*\*Total Annual Costs\*\*.*?\$[\d,]+/gi,
