@@ -148,13 +148,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     });
 
     // Calculate annual rent from weekly rent (weekly × 52)
-    const weeklyRent = financialData?.income?.weeklyRent || 0;
-    console.log('📌 weeklyRent resolved to:', weeklyRent);
+    // Use ?? 0 to handle null/undefined but preserve explicit 0 values
+    const weeklyRentRaw = financialData?.income?.weeklyRent;
+    const weeklyRent = Number(weeklyRentRaw) || 0;
+    console.log('📌 weeklyRent:', { raw: weeklyRentRaw, resolved: weeklyRent });
     const annualRent = weeklyRent * 52;
+    console.log('📌 annualRent calculated:', annualRent);
 
     // Recalculate property management based on overridden values
-    const propertyManagementPercent = financialData?.annualCosts?.propertyManagementPercent ?? 7;
-    const propertyManagementCalculated = Math.floor(annualRent * (propertyManagementPercent / 100));
+    const propertyManagementPercent = Number(financialData?.annualCosts?.propertyManagementPercent) || 7;
+    const propertyManagementFee = Math.floor(annualRent * (propertyManagementPercent / 100));
+    console.log('📌 propertyManagement:', { percent: propertyManagementPercent, calculatedFee: propertyManagementFee });
 
     // Calculate total annual costs dynamically from overridden values (excluding letting fees)
     // IMPORTANT: Use ?? (nullish coalescing) not || to properly handle 0 values as valid overrides
@@ -162,7 +166,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const waterRates = financialData?.annualCosts?.waterRates ?? 0;
     const strataFees = financialData?.annualCosts?.strataFees ?? 0;
     const landlordInsurance = financialData?.annualCosts?.landlordInsurance ?? 0;
-    const propertyManagement = propertyManagementCalculated; // Use dynamically calculated value
+    const propertyManagement = propertyManagementFee; // Use dynamically calculated value
     // Use ?? 1500 so that explicit 0 override is respected, only null/undefined falls back to 1500
     const maintenance = financialData?.annualCosts?.maintenance ?? 1500;
     const landTax = financialData?.annualCosts?.landTax ?? 0;
@@ -263,22 +267,28 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         pattern: /[-•]\s*Weekly Rent:[^\n]*/gi,
         getValue: () => ({ weeklyRent, annualRent }),
         format: (v) => {
-          // Use Number() and toLocaleString() for consistent formatting
-          const weeklyNum = Number(v.weeklyRent) || 0;
-          const annualNum = Number(v.annualRent) || 0;
+          // Explicit type conversion and validation
+          const weeklyNum = typeof v.weeklyRent === 'number' ? v.weeklyRent : Number(v.weeklyRent) || 0;
+          const annualNum = typeof v.annualRent === 'number' ? v.annualRent : Number(v.annualRent) || 0;
+          
+          // Format with explicit locale
           const weeklyFormatted = weeklyNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
           const annualFormatted = annualNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
-          console.log('📝 Weekly Rent format:', {
-            rawWeekly: v.weeklyRent,
-            rawAnnual: v.annualRent,
+          
+          // Build the result string
+          const result = '- Weekly Rent: $' + weeklyFormatted + ' ($' + annualFormatted + ' annually)';
+          
+          console.log('📝 WEEKLY RENT INJECTION:', {
+            inputWeekly: v.weeklyRent,
+            inputAnnual: v.annualRent,
             weeklyNum,
             annualNum,
             weeklyFormatted,
-            annualFormatted
+            annualFormatted,
+            finalResult: result
           });
-          // Construct string using array join to avoid any $ interpolation issues
-          const parts = ['- Weekly Rent: ', '$', weeklyFormatted, ' (', '$', annualFormatted, ' annually)'];
-          return parts.join('');
+          
+          return result;
         },
         isFullLineReplacement: true
       },
@@ -287,21 +297,29 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         pattern: /[-•]\s*Property Management:[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => {
-          const percentNum = Number(v.percent) || 7;
-          const annualNum = Number(v.annualRent) || 0;
-          const feeNum = Number(v.fee) || 0;
+          const percentNum = typeof v.percent === 'number' ? v.percent : Number(v.percent) || 7;
+          const annualNum = typeof v.annualRent === 'number' ? v.annualRent : Number(v.annualRent) || 0;
+          const feeNum = typeof v.fee === 'number' ? v.fee : Number(v.fee) || 0;
+          
           const annualFormatted = annualNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
           const feeFormatted = feeNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
-          console.log('📝 Property Management format:', {
-            percent: percentNum,
-            annualRent: annualNum,
-            fee: feeNum,
+          
+          // IMPORTANT: Use "= $feeFormatted" NOT "Annual Rent: $annualFormatted"
+          const result = '- Property Management: ' + percentNum + '% of $' + annualFormatted + ' annual rent = $' + feeFormatted;
+          
+          console.log('📝 PROPERTY MANAGEMENT INJECTION:', {
+            inputPercent: v.percent,
+            inputAnnual: v.annualRent,
+            inputFee: v.fee,
+            percentNum,
+            annualNum,
+            feeNum,
             annualFormatted,
-            feeFormatted
+            feeFormatted,
+            finalResult: result
           });
-          // Use array join for clean string construction
-          const parts = ['- Property Management: ', String(percentNum), '% of ', '$', annualFormatted, ' annual rent = ', '$', feeFormatted];
-          return parts.join('');
+          
+          return result;
         },
         isFullLineReplacement: true
       },
@@ -383,33 +401,49 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           return 'Deposit: $' + str;
         }
       },
-      // Non-bullet Weekly Rent patterns
+      // Non-bullet Weekly Rent patterns - only for contexts NOT starting with bullets
+      // IMPORTANT: These should NOT match after the bullet patterns have already run
       {
-        pattern: /(?<![•\-]\s)Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
+        pattern: /^\s*Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gim,
         getValue: () => ({ weeklyRent, annualRent }),
         format: (v) => {
-          const weeklyStr = String(v.weeklyRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return 'Weekly Rent: $' + weeklyStr + ' ($' + annualStr + ' annually)';
+          const weeklyNum = Number(v.weeklyRent) || 0;
+          const annualNum = Number(v.annualRent) || 0;
+          const weeklyFormatted = weeklyNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
+          const annualFormatted = annualNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
+          return 'Weekly Rent: $' + weeklyFormatted + ' ($' + annualFormatted + ' annually)';
         },
         isFullLineReplacement: true
       },
+      // Table format Weekly Rent
       {
-        pattern: /Weekly Rent:\s*\$[\d,]+(?!\s*\()/gi,
+        pattern: /\|\s*Weekly Rent\s*\|[^\|]*\|\s*\$[\d,]+\s*\|/gi,
         getValue: () => weeklyRent,
         format: (v) => {
-          const weeklyStr = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return 'Weekly Rent: $' + weeklyStr;
+          const weeklyNum = Number(v) || 0;
+          const weeklyFormatted = weeklyNum.toLocaleString('en-AU', { maximumFractionDigits: 0 });
+          return '| Weekly Rent | | $' + weeklyFormatted + ' |';
         },
         isFullLineReplacement: true
       },
+      // Standalone Annual Rent patterns - must NOT match "annual rent = $X" within other lines
+      // Only match "Annual Rent:" or "Annual Rent |" (table format) at line start or after newline
       {
-        pattern: /Annual Rent.*?\$[\d,]+/gi,
+        pattern: /^Annual Rent:\s*\$[\d,]+/gim,
         getValue: () => annualRent,
         format: (v) => {
-          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const str = Number(v || 0).toLocaleString('en-AU', { maximumFractionDigits: 0 });
           return 'Annual Rent: $' + str;
         }
+      },
+      {
+        pattern: /\|\s*Annual Rent\s*\|[^\|]*\|\s*\$[\d,]+\s*\|/gi,
+        getValue: () => annualRent,
+        format: (v) => {
+          const str = Number(v || 0).toLocaleString('en-AU', { maximumFractionDigits: 0 });
+          return '| Annual Rent | | $' + str + ' |';
+        },
+        isFullLineReplacement: true
       },
       // Annual Income row in Gross & Net Yield table
       {
