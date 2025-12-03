@@ -1076,15 +1076,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             // FIX: Handle malformed Total row where amount is in first cell and description in second
             // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
-            // Use lenient pattern - check if first cell contains only a dollar amount
-            const firstCellTrimmed = cells[0].trim();
-            const secondCellLower = cells.length >= 2 ? cells[1].toLowerCase() : '';
-            const firstCellIsDollarAmount = /^\$[\d,\.]+$/.test(firstCellTrimmed);
-            const secondCellIsOngoingCosts = secondCellLower.includes('sum of') || secondCellLower.includes('ongoing costs');
+            // Note: The content might have partial bold markers like "$8,908**" or "**Sum of..."
+            // Strip bold markers before checking
+            const firstCellClean = cells[0].trim().replace(/\*+/g, '');
+            const secondCellClean = cells.length >= 2 ? cells[1].replace(/\*+/g, '').toLowerCase() : '';
+            const firstCellIsDollarAmount = /^\$[\d,\.]+$/.test(firstCellClean);
+            const secondCellIsOngoingCosts = secondCellClean.includes('sum of') || secondCellClean.includes('ongoing costs');
             
             console.log('Checking row for malformed Total:', { 
               cells, 
-              firstCellTrimmed, 
+              firstCellClean, 
               firstCellIsDollarAmount, 
               secondCellIsOngoingCosts,
               cellsLength: cells.length
@@ -1093,7 +1094,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             if (cells.length >= 2 && firstCellIsDollarAmount && secondCellIsOngoingCosts) {
               console.log('✅ Fixing malformed Total row:', cells);
               // Restructure to: [Label, Amount, Description]
-              return ['**Total Annual Costs**', '**' + firstCellTrimmed + '**', '**Sum of ALL ongoing costs**'];
+              return ['**Total Annual Costs**', '**$' + firstCellClean.replace('$', '') + '**', '**Sum of ALL ongoing costs**'];
             }
             
             // For total rows, preserve all cells including amounts
@@ -1374,12 +1375,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           // BACKUP FIX: Check for malformed Total row right before drawing
           // If first cell is a dollar amount and second cell mentions ongoing costs, fix it
+          // Strip bold markers before checking
           if (!isHeader && row.length >= 2) {
-            const firstCell = row[0]?.trim() || '';
-            const secondCell = row[1]?.toLowerCase() || '';
-            if (/^\$[\d,\.]+$/.test(firstCell) && (secondCell.includes('sum of') || secondCell.includes('ongoing costs'))) {
+            const firstCellClean = (row[0]?.trim() || '').replace(/\*+/g, '');
+            const secondCellClean = (row[1] || '').replace(/\*+/g, '').toLowerCase();
+            if (/^\$[\d,\.]+$/.test(firstCellClean) && (secondCellClean.includes('sum of') || secondCellClean.includes('ongoing costs'))) {
               console.log('🔧 BACKUP FIX: Restructuring malformed Total row at draw time:', row);
-              row = ['**Total Annual Costs**', '**' + firstCell + '**', '**Sum of ALL ongoing costs**'];
+              row = ['**Total Annual Costs**', '**$' + firstCellClean.replace('$', '') + '**', '**Sum of ALL ongoing costs**'];
             }
           }
           
