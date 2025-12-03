@@ -211,6 +211,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     // Calculate loan amount from property value and deposit
     const propertyValue = financialData?.initialCosts?.propertyValue || 0;
     const depositValue = financialData?.initialCosts?.deposit || 0;
+    const stampDuty = financialData?.initialCosts?.stampDuty || 0;
     const loanAmount = propertyValue - depositValue;
     const interestRate = financialData?.loanDetails?.interestRate || 6;
     const loanTerm = financialData?.loanDetails?.loanTerm || 30;
@@ -459,6 +460,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       },
       // Table format patterns for ongoing costs - COLUMN ORDER: Cost Category | Amount (AUD) | Calculation Method
       // Each row has a meaningful, contextual description in Calculation Method
+      
+      // Fix malformed Stamp Duty row where amount is merged into category name
+      {
+        pattern: /\|\s*Stamp Duty:\s*\$[\d,]+\s*\|[^\n]*/gi,
+        getValue: () => stampDuty,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Stamp Duty | $' + str + ' | State Revenue Office calculator (2025) |';
+        },
+        isFullLineReplacement: true
+      },
       {
         pattern: /\|\s*Council Rates\s*\|[^\n]*/gi,
         getValue: () => councilRates,
@@ -504,14 +516,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         },
         isFullLineReplacement: true
       },
-      // Property Management Fee table row - formula in Amount, result in Calculation Method
+      // Property Management Fee table row - Amount column = fee, Calculation Method = formula
       {
         pattern: /\|?\s*Property Management Fee?\s*\|[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => {
           const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           const feeStr = String(v.fee || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Property Management Fee | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent | $' + feeStr + ' |';
+          return '| Property Management Fee | $' + feeStr + ' | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent |';
         },
         isFullLineReplacement: true
       },
@@ -549,7 +561,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         },
         isFullLineReplacement: true
       },
-      // Total Annual Costs table row
+      // Total Annual Costs table row - handle various formats including when amount is in wrong column
+      {
+        pattern: /\|\s*\$[\d,]+\s*\|\s*Sum of ALL ongoing costs\s*\|/gi,
+        getValue: () => totalAnnualCostsWithLandTax,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| **Total Annual Costs** | **$' + str + '** | **Sum of ALL ongoing costs** |';
+        },
+        isFullLineReplacement: true
+      },
       {
         pattern: /\|\s*\*?\*?Total Annual Costs\*?\*?\s*\|[^\n]*/gi,
         getValue: () => totalAnnualCostsWithLandTax,
