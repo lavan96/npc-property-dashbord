@@ -426,15 +426,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         },
         isFullLineReplacement: true
       },
-      // Standalone Annual Rent patterns - must NOT match "annual rent = $X" within other lines
-      // Only match "Annual Rent:" or "Annual Rent |" (table format) at line start or after newline
+      // Standalone Annual Rent patterns - ONLY match bullet-point format in Base Assumptions
+      // Must require bullet point prefix to avoid matching "Annual" in table cells
       {
-        pattern: /^Annual Rent:\s*\$[\d,]+/gim,
+        pattern: /^[•\-]\s*Annual Rent:\s*\$[\d,]+/gim,
         getValue: () => annualRent,
         format: (v) => {
           const str = Number(v || 0).toLocaleString('en-AU', { maximumFractionDigits: 0 });
-          return 'Annual Rent: $' + str;
-        }
+          return '• Annual Rent: $' + str;
+        },
+        isFullLineReplacement: true
       },
       {
         pattern: /\|\s*Annual Rent\s*\|[^\|]*\|\s*\$[\d,]+\s*\|/gi,
