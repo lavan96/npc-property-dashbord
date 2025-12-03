@@ -1074,6 +1074,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             const lineText = line.toLowerCase();
             const isTotalRow = lineText.includes('total') && /\$[\d,]+/.test(line);
             
+            // FIX: Handle malformed Total row where amount is in first cell and description in second
+            // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
+            if (cells.length >= 2 && /^\$[\d,]+$/.test(cells[0]) && cells[1].toLowerCase().includes('sum of')) {
+              console.log('Fixing malformed Total row:', cells);
+              // Restructure to: [Label, Amount, Description]
+              return ['**Total Annual Costs**', '**' + cells[0] + '**', '**Sum of ALL ongoing costs**'];
+            }
+            
             // For total rows, preserve all cells including amounts
             // For normal rows, remove the last column (Source/Methodology) to simplify layout
             if (!isTotalRow && cells.length > 3) {
