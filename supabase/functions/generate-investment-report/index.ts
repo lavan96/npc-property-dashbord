@@ -700,12 +700,30 @@ serve(async (req) => {
       console.log('Enhanced data fetch failed, proceeding with basic analysis:', error?.message || 'Unknown error');
     }
 
+    // Build year context string for suburb analysis
+    let yearContextString = '';
+    if (propertyDetails?.dataYearType === 'single' && propertyDetails?.dataYear) {
+      yearContextString = `\n\n**CRITICAL DATA YEAR REQUIREMENT:**
+Focus the analysis on data from the year ${propertyDetails.dataYear}. All statistics, market data, demographics, and trends should be sourced from or reference ${propertyDetails.dataYear} data where available. Clearly indicate when data from ${propertyDetails.dataYear} is used vs. when more recent or older data is substituted.`;
+      console.log('📅 Single year context:', propertyDetails.dataYear);
+    } else if (propertyDetails?.dataYearType === 'range' && propertyDetails?.dataYearStart && propertyDetails?.dataYearEnd) {
+      yearContextString = `\n\n**CRITICAL DATA YEAR RANGE REQUIREMENT:**
+Analyze trends and data spanning from ${propertyDetails.dataYearStart} to ${propertyDetails.dataYearEnd}. 
+- Include year-over-year comparisons across this period
+- Show growth/decline trends from ${propertyDetails.dataYearStart} to ${propertyDetails.dataYearEnd}
+- Compare early period (${propertyDetails.dataYearStart}-${Math.floor((propertyDetails.dataYearStart + propertyDetails.dataYearEnd) / 2)}) vs. recent period (${Math.ceil((propertyDetails.dataYearStart + propertyDetails.dataYearEnd) / 2)}-${propertyDetails.dataYearEnd})
+- Clearly label data sources with their respective years
+- Highlight significant changes or inflection points within the ${propertyDetails.dataYearEnd - propertyDetails.dataYearStart + 1}-year period`;
+      console.log('📅 Year range context:', propertyDetails.dataYearStart, '-', propertyDetails.dataYearEnd);
+    }
+
     // Create enhanced prompt with additional data
     // Suburb-specific prompt for suburb investment analysis
     const suburbPrompt = `You are an expert Australian suburb analyst creating comprehensive suburb investment snapshots.
 Your goal is to generate a professional suburb-level investment analysis report.
 
 **SUBURB TO ANALYZE: ${formattedInput}**
+${yearContextString}
 
 ${propertyDetails ? `Context: ${propertyDetails.propertyType || 'Property'} analysis in this suburb${propertyDetails.landSizeSqm ? `, typical land size: ${propertyDetails.landSizeSqm}m²` : ''}${propertyDetails.buildSizeSqm ? `, typical build size: ${propertyDetails.buildSizeSqm}m²` : ''}` : ''}
 
