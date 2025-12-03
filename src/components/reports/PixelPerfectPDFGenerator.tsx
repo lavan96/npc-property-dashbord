@@ -140,10 +140,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     }
 
     console.log('💉 Injecting override values into markdown content');
-    console.log('📊 Input financialData structure:', JSON.stringify(financialData, null, 2).substring(0, 1000));
+    console.log('📊 Input financialData structure:', JSON.stringify(financialData, null, 2).substring(0, 2000));
+    console.log('🔍 Direct value checks:', {
+      'financialData.income': financialData?.income,
+      'financialData.income.weeklyRent': financialData?.income?.weeklyRent,
+      'financialData.income.annualRent': financialData?.income?.annualRent,
+    });
 
     // Calculate annual rent from weekly rent (weekly × 52)
     const weeklyRent = financialData?.income?.weeklyRent || 0;
+    console.log('📌 weeklyRent resolved to:', weeklyRent);
     const annualRent = weeklyRent * 52;
 
     // Recalculate property management based on overridden values
@@ -221,18 +227,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => annualRent,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
-      // Annual Income row in Gross & Net Yield table - handle table rows starting with |
+      // Annual Income row in Gross & Net Yield table - SPECIFIC pattern matching calculation format
       {
-        pattern: /\|?\s*Annual Income\s*\|[^\n]*/gi,
+        pattern: /\|\s*Annual Income\s*\|\s*\$[\d,]+\s*[×x]\s*52\s*weeks?\s*\|\s*\$[\d,]+\s*\|/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => `| Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'} |`,
+        format: (v) => {
+          console.log('📝 Annual Income replacement - weeklyRent:', v.weeklyRent, 'annualRent:', v.annualRent);
+          return `| Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'} |`;
+        },
         isFullLineReplacement: true
-      },
-      // Generic Annual Income pattern (fallback for non-table contexts)
-      {
-        pattern: /Annual Income.*?\$[\d,]+/gi,
-        getValue: () => annualRent,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
       },
       {
         pattern: /Council Rates.*?\$[\d,]+/gi,
@@ -340,6 +343,28 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         pattern: /\*\*Annual Expenses\*\*.*?\$[\d,]+/gi,
         getValue: () => totalAnnualCostsExcludingLandTax,
         format: (v) => `$${v?.toLocaleString() || '0'}`
+      },
+      // Net Annual Return row in Gross & Net Yield table - handle table rows starting with |
+      {
+        pattern: /\|?\s*Net Annual Return\s*\|[^\n]*/gi,
+        getValue: () => {
+          const netAnnualReturn = annualRent - totalAnnualCostsExcludingLandTax;
+          return { annualRent, totalExpenses: totalAnnualCostsExcludingLandTax, netReturn: netAnnualReturn };
+        },
+        format: (v) => `| Net Annual Return | $${v.annualRent?.toLocaleString() || '0'} - $${v.totalExpenses?.toLocaleString() || '0'} | $${v.netReturn?.toLocaleString() || '0'} |`,
+        isFullLineReplacement: true
+      },
+      // Net Rental Yield row in Gross & Net Yield table - handle table rows starting with |
+      {
+        pattern: /\|?\s*Net Rental Yield\s*\|[^\n]*/gi,
+        getValue: () => {
+          const purchasePrice = financialData?.initialCosts?.propertyValue || 0;
+          const netAnnualReturn = annualRent - totalAnnualCostsExcludingLandTax;
+          const netYield = purchasePrice > 0 ? ((netAnnualReturn / purchasePrice) * 100).toFixed(2) : '0.00';
+          return { netReturn: netAnnualReturn, purchasePrice, netYield };
+        },
+        format: (v) => `| Net Rental Yield | $${v.netReturn?.toLocaleString() || '0'} ÷ $${v.purchasePrice?.toLocaleString() || '0'} × 100 | ${v.netYield}% |`,
+        isFullLineReplacement: true
       },
     ];
 
