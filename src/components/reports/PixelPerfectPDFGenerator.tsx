@@ -30,7 +30,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
   const extractSuburbState = (address: string): { suburb: string; state: string } => {
     const parts = address.split(',').map(p => p.trim());
-    const lastPart = parts[parts.length - 1] || '';
     
     // Map full state names to abbreviations
     const stateMapping: Record<string, string> = {
@@ -44,13 +43,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       'australian capital territory': 'ACT',
     };
     
-    // First try to match abbreviations
-    let stateMatch = lastPart.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-    let state = stateMatch ? stateMatch[0].toUpperCase() : '';
+    // Search entire address for state (abbreviation first, then full name)
+    let state = '';
+    const addressLower = address.toLowerCase();
     
-    // If no abbreviation found, check for full state names in the address
-    if (!state) {
-      const addressLower = address.toLowerCase();
+    // Try to find state abbreviation anywhere in address
+    const stateAbbrevMatch = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
+    if (stateAbbrevMatch) {
+      state = stateAbbrevMatch[0].toUpperCase();
+    } else {
+      // Try full state names
       for (const [fullName, abbrev] of Object.entries(stateMapping)) {
         if (addressLower.includes(fullName)) {
           state = abbrev;
@@ -59,16 +61,40 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       }
     }
     
-    // If still no state found, try to extract from parts
-    if (!state && parts.length > 0) {
-      const lastPartLower = lastPart.toLowerCase();
-      const matchedState = Object.entries(stateMapping).find(([fullName]) => 
-        lastPartLower.includes(fullName)
-      );
-      state = matchedState ? matchedState[1] : '';
+    // Extract suburb - find the first meaningful part that's not a postcode, state, or "Australia"
+    let suburb = '';
+    for (const part of parts) {
+      const trimmedPart = part.trim();
+      const partLower = trimmedPart.toLowerCase();
+      
+      // Skip if it's "Australia", a postcode (4 digits), or contains the state
+      const isAustralia = partLower === 'australia';
+      const isPostcode = /^\d{4}$/.test(trimmedPart);
+      const isState = /\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i.test(trimmedPart) || 
+                      Object.keys(stateMapping).some(s => partLower === s);
+      const containsPostcode = /\b\d{4}\b/.test(trimmedPart);
+      
+      // For suburb reports, the first part is usually the suburb name
+      if (!isAustralia && !isPostcode && !isState) {
+        // If this part contains a postcode but also text, extract just the suburb name
+        if (containsPostcode) {
+          const suburbOnly = trimmedPart.replace(/\b\d{4}\b/, '').replace(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/gi, '').trim();
+          if (suburbOnly) {
+            suburb = suburbOnly;
+            break;
+          }
+        } else {
+          suburb = trimmedPart;
+          break;
+        }
+      }
     }
     
-    const suburb = parts.length > 1 ? parts[parts.length - 2] : parts[0];
+    // Fallback: use first part if nothing else worked
+    if (!suburb && parts.length > 0) {
+      suburb = parts[0].replace(/\b\d{4}\b/, '').replace(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/gi, '').trim();
+    }
+    
     return { suburb: suburb.toUpperCase(), state };
   };
 
