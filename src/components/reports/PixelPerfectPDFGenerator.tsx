@@ -335,8 +335,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const formattedValue = format(value);
         const beforeReplace = updatedContent;
         updatedContent = updatedContent.replace(pattern, (match) => {
-          // If formattedValue contains ' | ', it's a full table row replacement - use as-is
-          if (formattedValue.includes(' | ')) {
+          // If formattedValue contains ' | ' (table row) or starts with '- ' (bullet point line), return as-is
+          if (formattedValue.includes(' | ') || formattedValue.startsWith('- ')) {
             replacementCount++;
             return formattedValue;
           }
