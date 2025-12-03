@@ -221,12 +221,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       {
         pattern: /[-•]\s*Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => {
-          const weeklyStr = String(v.weeklyRent || 0);
-          const annualStr = v.annualRent?.toLocaleString() || '0';
-          console.log('🔍 Weekly Rent bullet format - weeklyRent:', v.weeklyRent, 'weeklyStr:', weeklyStr, 'annualRent:', v.annualRent);
-          return '- Weekly Rent: $' + weeklyStr + ' ($' + annualStr + ' annually)';
-        },
+        format: (v) => `- Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
         isFullLineReplacement: true
       },
       // Weekly Rent with annual calculation (without bullet) - use lookbehind to avoid double-matching after bullet patterns
@@ -413,26 +408,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       if (value !== undefined && value !== null) {
         const formattedValue = format(value);
         const beforeReplace = updatedContent;
-        
-        // Log Weekly Rent pattern specifically for debugging
-        if (pattern.source.includes('Weekly Rent')) {
-          console.log('🔍 Weekly Rent pattern matching:');
-          console.log('  Pattern:', pattern.source.substring(0, 50));
-          console.log('  Formatted value:', formattedValue);
-          const matches = updatedContent.match(pattern);
-          console.log('  Matches found:', matches);
-        }
-        
         // Use a function replacement to ensure the value is returned verbatim
-        updatedContent = updatedContent.replace(pattern, (match) => {
-          // Log the exact match for Weekly Rent patterns
-          if (pattern.source.includes('Weekly Rent')) {
-            console.log('  📍 Match found:', match);
-            console.log('  📍 Replacing with:', formattedValue);
-          }
-          
+        updatedContent = updatedContent.replace(pattern, () => {
           // If explicitly marked as full line replacement, return formatted value directly
           if (isFullLineReplacement) {
+            console.log(`  🔄 Full line replacement → "${formattedValue.substring(0, 60)}..."`);
             replacementCount++;
             return formattedValue;
           }
@@ -448,11 +428,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         if (beforeReplace !== updatedContent) {
           console.log(`  ✓ Injected value for pattern: ${pattern.source.substring(0, 30)}...`);
-          if (pattern.source.includes('Weekly Rent')) {
-            // Find and log the replaced text in context
-            const weeklyRentContext = updatedContent.match(/Weekly Rent.{0,60}/);
-            console.log('  📍 Result in context:', weeklyRentContext);
-          }
         }
       }
     }
