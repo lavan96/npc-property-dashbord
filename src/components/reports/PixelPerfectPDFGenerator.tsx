@@ -1310,24 +1310,25 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const sectionTitleHeight = 30;
         let totalContentHeight = 0;
         
-        for (const paragraph of paragraphs) {
+        // Calculate height of first content block (to ensure it stays with heading)
+        let firstBlockHeight = 0;
+        
+        for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+          const paragraph = paragraphs[pIdx];
           if (!paragraph.trim()) continue;
+          
+          let blockHeight = 0;
           
           // Check for horizontal rule
           if (paragraph.trim().match(/^-{3,}$/)) {
-            totalContentHeight += 20;
-            continue;
-          }
-          
-          // Check if it's a table (contains newlines and pipes)
-          if (isMarkdownTable(paragraph)) {
+            blockHeight = 20;
+          } else if (isMarkdownTable(paragraph)) {
             // Estimate table height: count rows and multiply by row height
             const tableLines = paragraph.split('\n').filter(l => l.trim() && !l.match(/^[\|\s\-:]+$/));
-            const estimatedTableHeight = tableLines.length * (textSize + 12) + 16; // row height + padding
-            totalContentHeight += estimatedTableHeight;
+            blockHeight = tableLines.length * (textSize + 12) + 16; // row height + padding
           } else {
             // Regular text - calculate height normally
-            totalContentHeight += calculateTextHeight(
+            blockHeight = calculateTextHeight(
               paragraph,
               pageWidth - 2 * margin,
               helveticaFont,
@@ -1336,17 +1337,33 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               lineHeight
             ) + 8; // paragraph spacing
           }
+          
+          totalContentHeight += blockHeight;
+          
+          // Capture first meaningful block height (skip horizontal rules)
+          if (firstBlockHeight === 0 && !paragraph.trim().match(/^-{3,}$/)) {
+            firstBlockHeight = blockHeight;
+          }
         }
         
         const totalSectionHeight = sectionTitleHeight + totalContentHeight + 15; // section spacing
         
-        // Smart page break: if section is small enough and won't fit, start on new page
-        if (totalSectionHeight < (pageHeight - topMargin - bottomMargin - 100) && 
-            yPosition - totalSectionHeight < bottomMargin + 40) {
+        // IMPROVED PAGE BREAK LOGIC:
+        // 1. Minimum content with heading = title + first content block (at least 120px)
+        // 2. Never leave a heading orphaned at the bottom of a page
+        const minContentWithHeading = Math.max(sectionTitleHeight + firstBlockHeight + 30, 150);
+        const remainingSpace = yPosition - bottomMargin;
+        
+        // Force new page if we can't fit heading + first content block together
+        if (remainingSpace < minContentWithHeading) {
+          console.log(`     → Page break: only ${Math.round(remainingSpace)}px remaining, need ${Math.round(minContentWithHeading)}px for heading + first block`);
           currentPage = await addContentPage();
           yPosition = pageHeight - topMargin - 20;
-        } else if (yPosition < bottomMargin + 80) {
-          // Otherwise just check if we have minimum space for title
+        }
+        // Or if entire section fits and current space is tight, start fresh
+        else if (totalSectionHeight < (pageHeight - topMargin - bottomMargin - 100) && 
+            yPosition - totalSectionHeight < bottomMargin + 40) {
+          console.log(`     → Page break: section fits on new page (${Math.round(totalSectionHeight)}px), starting fresh`);
           currentPage = await addContentPage();
           yPosition = pageHeight - topMargin - 20;
         }
