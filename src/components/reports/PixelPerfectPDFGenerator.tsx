@@ -458,12 +458,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       // Table format patterns for ongoing costs - COLUMN ORDER: Cost Category | Amount (AUD) | Calculation Method
+      // Each row has a meaningful, contextual description in Calculation Method
       {
         pattern: /\|\s*Council Rates\s*\|[^\n]*/gi,
         getValue: () => councilRates,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Council Rates | $' + str + ' | Annual |';
+          return '| Council Rates | $' + str + ' | Local council rates notice (2024/25) |';
         },
         isFullLineReplacement: true
       },
@@ -472,7 +473,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => waterRates,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Water Rates | $' + str + ' | Annual |';
+          return '| Water Rates | $' + str + ' | Estimated based on local water authority |';
         },
         isFullLineReplacement: true
       },
@@ -481,7 +482,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => landlordInsurance,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Building & Landlord Insurance | $' + str + ' | Annual |';
+          return '| Insurance | $' + str + ' | Industry average for investment property |';
         },
         isFullLineReplacement: true
       },
@@ -490,7 +491,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => strataFees,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Strata Fees | $' + str + ' | Annual |';
+          return '| Strata Fees | $' + str + ' | Body corporate/strata levy |';
         },
         isFullLineReplacement: true
       },
@@ -499,18 +500,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => strataFees,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Body Corporate | $' + str + ' | Annual |';
+          return '| Body Corporate | $' + str + ' | Body corporate/strata levy |';
         },
         isFullLineReplacement: true
       },
-      // Property Management Fee table row - Amount column then Calculation column
+      // Property Management Fee table row - formula in Amount, result in Calculation Method
       {
         pattern: /\|?\s*Property Management Fee?\s*\|[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => {
           const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           const feeStr = String(v.fee || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Property Management Fee | $' + feeStr + ' | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent |';
+          return '| Property Management Fee | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent | $' + feeStr + ' |';
         },
         isFullLineReplacement: true
       },
@@ -519,7 +520,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => maintenance,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Maintenance | $' + str + ' | Annual (fixed) |';
+          return '| Maintenance | $' + str + ' | Fixed amount per instructions |';
         },
         isFullLineReplacement: true
       },
@@ -544,7 +545,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => landTax,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Land Tax | $' + str + ' | Annual |';
+          return '| Land Tax | $' + str + ' | State land tax threshold for investors |';
+        },
+        isFullLineReplacement: true
+      },
+      // Total Annual Costs table row
+      {
+        pattern: /\|\s*\*?\*?Total Annual Costs\*?\*?\s*\|[^\n]*/gi,
+        getValue: () => totalAnnualCostsWithLandTax,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| **Total Annual Costs** | **$' + str + '** | **Sum of ALL ongoing costs** |';
         },
         isFullLineReplacement: true
       },
