@@ -408,10 +408,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       if (value !== undefined && value !== null) {
         const formattedValue = format(value);
         const beforeReplace = updatedContent;
-        updatedContent = updatedContent.replace(pattern, (match) => {
+        // Use a function replacement to ensure the value is returned verbatim
+        updatedContent = updatedContent.replace(pattern, () => {
           // If explicitly marked as full line replacement, return formatted value directly
           if (isFullLineReplacement) {
-            console.log(`  🔄 Full line replacement: "${match.substring(0, 50)}..." → "${formattedValue.substring(0, 50)}..."`);
+            console.log(`  🔄 Full line replacement → "${formattedValue.substring(0, 60)}..."`);
             replacementCount++;
             return formattedValue;
           }
@@ -420,12 +421,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             replacementCount++;
             return formattedValue;
           }
-          // Otherwise, keep the field name and replace only the value
-          // Remove trailing brackets from match before extracting field name
-          const cleanMatch = match.replace(/\)\s*$/, '').trim();
-          const fieldName = cleanMatch.split(/\$|[\d]/)[0].trim();
+          // Otherwise, this shouldn't happen with current patterns
           replacementCount++;
-          return `${fieldName} ${formattedValue}`;
+          return formattedValue;
         });
         
         if (beforeReplace !== updatedContent) {
