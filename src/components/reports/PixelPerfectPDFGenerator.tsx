@@ -217,17 +217,26 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => financialData?.initialCosts?.deposit,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
-      // Weekly Rent with annual calculation in brackets - Base Assumptions format
+      // Weekly Rent with annual calculation in brackets - Base Assumptions format (bullet point)
       {
-        pattern: /Weekly Rent[:\s]+\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
+        pattern: /[-•]\s*Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => `Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`
+        format: (v) => `- Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
+        isFullLineReplacement: true
+      },
+      // Weekly Rent with annual calculation (without bullet)
+      {
+        pattern: /Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
+        getValue: () => ({ weeklyRent, annualRent }),
+        format: (v) => `Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
+        isFullLineReplacement: true
       },
       // Simple Weekly Rent pattern (fallback for other contexts)
       {
-        pattern: /Weekly Rent[:\s]+\$[\d,]+(?!\s*\()/gi,
+        pattern: /Weekly Rent:\s*\$[\d,]+(?!\s*\()/gi,
         getValue: () => weeklyRent,
-        format: (v) => `Weekly Rent: $${v?.toLocaleString() || '0'}`
+        format: (v) => `Weekly Rent: $${v?.toLocaleString() || '0'}`,
+        isFullLineReplacement: true
       },
       {
         pattern: /Annual Rent.*?\$[\d,]+/gi,
