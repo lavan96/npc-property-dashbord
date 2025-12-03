@@ -207,11 +207,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => annualRent,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
-      // Annual Income row in Gross & Net Yield table - capture entire line to ensure clean replacement
+      // Annual Income row in Gross & Net Yield table - handle table rows starting with |
       {
-        pattern: /Annual Income\s*\|[^\n]*/gi,
+        pattern: /\|?\s*Annual Income\s*\|[^\n]*/gi,
         getValue: () => ({ weeklyRent, annualRent }),
-        format: (v) => `Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'}`
+        format: (v) => `| Annual Income | $${v.weeklyRent?.toLocaleString() || '0'} × 52 weeks | $${v.annualRent?.toLocaleString() || '0'} |`
       },
       // Generic Annual Income pattern (fallback for non-table contexts)
       {
@@ -260,11 +260,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => `- Property Management: ${v.percent}% of $${v.annualRent?.toLocaleString()} annual rent = $${v.fee?.toLocaleString()}`
       },
-      // Page 10 Ongoing Costs Table: full row with calculation method first, then amount - capture entire line to prevent duplicates
+      // Page 10 Ongoing Costs Table: full row with calculation method - handle table rows starting with |
       {
-        pattern: /Property Management Fee?\s*\|[^\n]*/gi,
+        pattern: /\|?\s*Property Management Fee?\s*\|[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
-        format: (v) => `Property Management Fee | ${v.percent}% × $${v.annualRent?.toLocaleString()} annual rent | $${v.fee?.toLocaleString()}`
+        format: (v) => `| Property Management Fee | ${v.percent}% × $${v.annualRent?.toLocaleString()} annual rent | $${v.fee?.toLocaleString()} |`
       },
       {
         pattern: /Maintenance.*?\$[\d,]+/gi,
@@ -307,11 +307,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => totalAnnualCostsWithLandTax,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
-      // Annual Expenses row in Gross & Net Yield table - capture entire line to ensure clean replacement
+      // Annual Expenses row in Gross & Net Yield table - handle table rows starting with |
       {
-        pattern: /Annual Expenses\s*\|[^\n]*/gi,
+        pattern: /\|?\s*Annual Expenses\s*\|[^\n]*/gi,
         getValue: () => ({ councilRates, waterRates, propertyManagement, landlordInsurance, maintenance, total: totalAnnualCostsExcludingLandTax }),
-        format: (v) => `Annual Expenses | $${v.councilRates?.toLocaleString() || '0'} + $${v.waterRates?.toLocaleString() || '0'} + $${v.propertyManagement?.toLocaleString() || '0'} + $${v.landlordInsurance?.toLocaleString() || '0'} + $${v.maintenance?.toLocaleString() || '0'} | $${v.total?.toLocaleString() || '0'}`
+        format: (v) => `| Annual Expenses | $${v.councilRates?.toLocaleString() || '0'} + $${v.waterRates?.toLocaleString() || '0'} + $${v.propertyManagement?.toLocaleString() || '0'} + $${v.landlordInsurance?.toLocaleString() || '0'} + $${v.maintenance?.toLocaleString() || '0'} | $${v.total?.toLocaleString() || '0'} |`
       },
       // Generic Annual Expenses pattern (fallback for non-table contexts) - EXCLUDES land tax
       {
