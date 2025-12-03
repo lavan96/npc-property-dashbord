@@ -224,9 +224,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `- Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
         isFullLineReplacement: true
       },
-      // Weekly Rent with annual calculation (without bullet)
+      // Weekly Rent with annual calculation (without bullet) - use lookbehind to avoid double-matching after bullet patterns
       {
-        pattern: /Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
+        pattern: /(?<![•\-]\s)Weekly Rent:\s*\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
         getValue: () => ({ weeklyRent, annualRent }),
         format: (v) => `Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`,
         isFullLineReplacement: true
