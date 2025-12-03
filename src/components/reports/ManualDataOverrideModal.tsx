@@ -112,6 +112,13 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$'
     },
     {
+      key: 'landTax',
+      label: 'Land Tax',
+      originalValue: report?.financial_calculations?.landTax || report?.financial_calculations?.annualCosts?.landTax || null,
+      overrideValue: report?.manual_overrides?.landTax || null,
+      prefix: '$'
+    },
+    {
       key: 'councilRates',
       label: 'Council Rate Charges',
       originalValue: report?.financial_calculations?.councilRates || null,
@@ -226,6 +233,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         'councilRates': 'annualCosts.councilRates',
         'waterRates': 'annualCosts.waterRates',
         'bodyCorporateFees': 'annualCosts.strataFees',
+        'landTax': 'annualCosts.landTax',
         'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
         'propertyManagementFees': 'annualCosts.propertyManagementPercent',
         'solicitorFees': 'initialCosts.legalFees',
