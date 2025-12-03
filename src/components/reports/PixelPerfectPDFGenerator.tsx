@@ -358,17 +358,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         format: (v) => `| Annual Expenses | ${v.breakdown} | $${v.total?.toLocaleString() || '0'} |`,
         isFullLineReplacement: true
       },
-      // Generic Annual Expenses pattern (fallback for non-table contexts) - EXCLUDES land tax
-      {
-        pattern: /Annual Expenses.*?\$[\d,]+/gi,
-        getValue: () => totalAnnualCostsExcludingLandTax,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
-      {
-        pattern: /\*\*Annual Expenses\*\*.*?\$[\d,]+/gi,
-        getValue: () => totalAnnualCostsExcludingLandTax,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
-      },
+      // Note: Removed generic "Annual Expenses" pattern that was corrupting table breakdown display
+      // The table-specific pattern above handles the yield table; no fallback needed
       // Net Annual Return row in Gross & Net Yield table - handle table rows starting with |
       {
         pattern: /\|?\s*Net Annual Return\s*\|[^\n]*/gi,
