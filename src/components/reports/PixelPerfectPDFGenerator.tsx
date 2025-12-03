@@ -457,13 +457,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         },
         isFullLineReplacement: true
       },
-      // Table format patterns for ongoing costs
+      // Table format patterns for ongoing costs - COLUMN ORDER: Cost Category | Amount (AUD) | Calculation Method
       {
         pattern: /\|\s*Council Rates\s*\|[^\n]*/gi,
         getValue: () => councilRates,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Council Rates | Annual | $' + str + ' |';
+          return '| Council Rates | $' + str + ' | Annual |';
         },
         isFullLineReplacement: true
       },
@@ -472,7 +472,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => waterRates,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Water Rates | Annual | $' + str + ' |';
+          return '| Water Rates | $' + str + ' | Annual |';
         },
         isFullLineReplacement: true
       },
@@ -481,7 +481,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => landlordInsurance,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Building & Landlord Insurance | Annual | $' + str + ' |';
+          return '| Building & Landlord Insurance | $' + str + ' | Annual |';
         },
         isFullLineReplacement: true
       },
@@ -490,7 +490,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => strataFees,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Strata Fees | Annual | $' + str + ' |';
+          return '| Strata Fees | $' + str + ' | Annual |';
         },
         isFullLineReplacement: true
       },
@@ -499,18 +499,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => strataFees,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Body Corporate | Annual | $' + str + ' |';
+          return '| Body Corporate | $' + str + ' | Annual |';
         },
         isFullLineReplacement: true
       },
-      // Property Management Fee table row
+      // Property Management Fee table row - Amount column then Calculation column
       {
         pattern: /\|?\s*Property Management Fee?\s*\|[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => {
           const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           const feeStr = String(v.fee || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Property Management Fee | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent | $' + feeStr + ' |';
+          return '| Property Management Fee | $' + feeStr + ' | ' + (v.percent || 7) + '% x $' + annualStr + ' annual rent |';
         },
         isFullLineReplacement: true
       },
@@ -519,7 +519,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => maintenance,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Maintenance | Annual (fixed) | $' + str + ' |';
+          return '| Maintenance | $' + str + ' | Annual (fixed) |';
         },
         isFullLineReplacement: true
       },
@@ -538,13 +538,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => financialData?.keyMetrics?.lvr,
         format: (v) => 'LVR: ' + (v || 0) + '%'
       },
-      // Land Tax row in page 10 table
+      // Land Tax row in page 10 table - Amount column then Calculation column
       {
         pattern: /\|\s*Land Tax\s*\|[^\n]*/gi,
         getValue: () => landTax,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          return '| Land Tax | Annual | $' + str + ' |';
+          return '| Land Tax | $' + str + ' | Annual |';
         },
         isFullLineReplacement: true
       },
