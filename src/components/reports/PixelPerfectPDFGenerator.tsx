@@ -217,10 +217,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         getValue: () => financialData?.initialCosts?.deposit,
         format: (v) => `$${v?.toLocaleString() || '0'}`
       },
+      // Weekly Rent with annual calculation in brackets - Base Assumptions format
       {
-        pattern: /Weekly Rent.*?\$[\d,]+/gi,
-        getValue: () => financialData?.income?.weeklyRent,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        pattern: /Weekly Rent[:\s]+\$[\d,]+\s*\(\$[\d,]+\s*annually\)/gi,
+        getValue: () => ({ weeklyRent, annualRent }),
+        format: (v) => `Weekly Rent: $${v.weeklyRent?.toLocaleString() || '0'} ($${v.annualRent?.toLocaleString() || '0'} annually)`
+      },
+      // Simple Weekly Rent pattern (fallback for other contexts)
+      {
+        pattern: /Weekly Rent[:\s]+\$[\d,]+(?!\s*\()/gi,
+        getValue: () => weeklyRent,
+        format: (v) => `Weekly Rent: $${v?.toLocaleString() || '0'}`
       },
       {
         pattern: /Annual Rent.*?\$[\d,]+/gi,
