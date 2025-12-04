@@ -978,7 +978,27 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 
 [Include commentary on amenities]
 
-# 13. Property-Level Information
+# 13. Environmental Risks
+| Risk Type | Assessment | Details |
+| Flood Risk | ... | ... |
+| Bushfire Risk | ... | ... |
+| Heatwaves | ... | ... |
+| Storms | ... | ... |
+
+# 14. Crime Statistics
+| Metric | Value | Comparison |
+| Overall Crime Rating | ... | ... |
+| Rate per 100k people | ... | ... |
+| Safety Score | XX/100 | ... |
+| Year-on-Year Change | ... | ... |
+| 3-Year Trend | ... | ... |
+
+# 15. Crime Breakdown
+| Category | Incidents | Percentage |
+
+[Include narrative on risk profile]
+
+# 16. Property-Level Information
 | Property Characteristic | Estimated Value |
 | Property Type | ... |
 | Land Size | ... |
@@ -991,7 +1011,7 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 
 [Include property description. CRITICAL: When comparing to median prices, ONLY include comparisons if the property price is HIGHER than the median (positive comparison showing value or premium). NEVER include comparisons when the property price is LOWER than the median (negative comparison). If the property is below median, simply omit the comparison entirely.]
 
-# 14. Purchase & Ongoing Costs (Annual)
+# 17. Purchase & Ongoing Costs (Annual)
 | Cost Category | Amount (AUD) | Calculation Method |
 | Property Price | $XXX,XXX | ... |
 | Stamp Duty | $XX,XXX | ... |
@@ -1002,26 +1022,6 @@ Investment Report: [PROPERTY ADDRESS], [STATE]
 | Maintenance | $1,500 | Fixed amount per instructions |
 | Land Tax | $X,XXX | State-specific calculation |
 | **Total Annual Costs** | **$XX,XXX** | **Sum of ALL ongoing costs including Land Tax (Council Rates + Water Rates + Property Management + Insurance + Maintenance + Land Tax - exclude letting fees)** |
-
-# 15. Environmental Risks
-| Risk Type | Assessment | Details |
-| Flood Risk | ... | ... |
-| Bushfire Risk | ... | ... |
-| Heatwaves | ... | ... |
-| Storms | ... | ... |
-
-# 16. Crime Statistics
-| Metric | Value | Comparison |
-| Overall Crime Rating | ... | ... |
-| Rate per 100k people | ... | ... |
-| Safety Score | XX/100 | ... |
-| Year-on-Year Change | ... | ... |
-| 3-Year Trend | ... | ... |
-
-# 17. Crime Breakdown
-| Category | Incidents | Percentage |
-
-[Include narrative on risk profile]
 
 # 18. Recent Comparable Sales (Last 12 Months)
 | Address | Sale Price | Sale Date | Beds/Baths/Parking | Distance |
@@ -1055,7 +1055,7 @@ ${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initia
 - Insurance: $X,XXX annually`}
 
 # 21. Gross & Net Yield Calculation
-**IMPORTANT: Annual Expenses here must EXCLUDE Land Tax. Land Tax is shown in Section 14 Total Annual Costs but is NOT included in the net yield calculation.**
+**IMPORTANT: Annual Expenses here must EXCLUDE Land Tax. Land Tax is shown in Section 17 Total Annual Costs but is NOT included in the net yield calculation.**
 **CRITICAL: For Annual Income calculation column, show the WEEKLY rent amount (e.g., $629) multiplied by 52, NOT the annual amount. Example: "$629 × 52 weeks" NOT "$32,708 × 52 weeks"**
 | Metric | Calculation | Value |
 | Gross Rental Yield | $[annual rent] ÷ $[property price] × 100 | X.XX% |
