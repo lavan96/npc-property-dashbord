@@ -44,6 +44,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
+  const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -401,10 +402,20 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     )}
                   </CardTitle>
                   <div className="flex items-center gap-4">
+                    {report.investment_score && (
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-3 w-3" />
+                        <span className="text-sm text-muted-foreground">Include scoring</span>
+                        <Switch
+                          checked={includeScoring}
+                          onCheckedChange={setIncludeScoring}
+                        />
+                      </div>
+                    )}
                     {report.sources_content && (
                       <div className="flex items-center gap-2">
                         <Link className="h-3 w-3" />
-                        <span className="text-sm text-muted-foreground">Include sources in download</span>
+                        <span className="text-sm text-muted-foreground">Include sources</span>
                         <Switch
                           checked={includeSources}
                           onCheckedChange={setIncludeSources}
@@ -444,7 +455,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               <Separator className="flex-shrink-0" />
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="p-4 border-b bg-muted/50 flex-shrink-0">
-                  <ClientPDFGenerator report={report} includeSources={includeSources} />
+                  <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
                 </div>
                 <ScrollArea className="flex-1 min-h-0 p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">

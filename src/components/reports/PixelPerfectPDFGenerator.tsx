@@ -23,9 +23,10 @@ interface InvestmentReportData {
 interface PixelPerfectPDFGeneratorProps {
   report: InvestmentReportData;
   includeSources?: boolean;
+  includeScoring?: boolean;
 }
 
-export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report, includeSources = true }) => {
+export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report, includeSources = true, includeScoring = true }) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const extractSuburbState = (address: string): { suburb: string; state: string } => {
@@ -129,6 +130,43 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     }
     
     console.log(`✓ Filtered out ${removedCount} source section(s)`);
+    console.log('📋 Remaining sections:', Object.keys(filteredSections));
+    return filteredSections;
+  };
+
+  const filterScoringSections = (sections: Record<string, string>): Record<string, string> => {
+    if (includeScoring) {
+      console.log('✓ Including scoring breakdown in PDF (toggle is ON)');
+      return sections;
+    }
+    
+    console.log('🚫 Filtering out scoring sections from PDF (toggle is OFF)');
+    console.log('📋 Available sections before filtering:', Object.keys(sections));
+    
+    // Create a new object without scoring-related sections
+    const filteredSections: Record<string, string> = {};
+    const scoringSectionPatterns = [
+      /investment scor/i,
+      /score breakdown/i,
+      /scoring breakdown/i,
+      /investment grade/i,
+      /investment rating/i,
+      /overall score/i,
+      /property score/i
+    ];
+    
+    let removedCount = 0;
+    for (const [key, value] of Object.entries(sections)) {
+      const isScoringSection = scoringSectionPatterns.some(pattern => pattern.test(key));
+      if (isScoringSection) {
+        console.log(`  ❌ Removing scoring section: "${key}"`);
+        removedCount++;
+      } else {
+        filteredSections[key] = value;
+      }
+    }
+    
+    console.log(`✓ Filtered out ${removedCount} scoring section(s)`);
     console.log('📋 Remaining sections:', Object.keys(filteredSections));
     return filteredSections;
   };
@@ -911,7 +949,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       console.log('✓ Parsed sections:', Object.keys(parsedSections));
       
       // Filter out sources sections if toggle is off (AFTER parsing for reliability)
-      const sections = filterSourcesSections(parsedSections);
+      const sectionsWithoutSources = filterSourcesSections(parsedSections);
+      
+      // Filter out scoring sections if toggle is off
+      const sections = filterScoringSections(sectionsWithoutSources);
       console.log('✓ Final sections for PDF:', Object.keys(sections));
 
       // Load the PDF template
