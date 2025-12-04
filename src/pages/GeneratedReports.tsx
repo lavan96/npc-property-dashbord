@@ -15,7 +15,8 @@ import { PropertyComparisonModal } from '@/components/reports/PropertyComparison
 import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
@@ -88,17 +89,55 @@ export default function GeneratedReports() {
   const [investmentPage, setInvestmentPage] = useState(1);
   const [investmentSearchQuery, setInvestmentSearchQuery] = useState('');
   const [scopeFilter, setScopeFilter] = useState<string>('all'); // Filter by scope
+  const [gradeFilter, setGradeFilter] = useState<string>('all'); // Filter by investment grade
+  const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]); // Filter by score range
   const reportsPerPage = 9;
   
   const navigate = useNavigate();
   const { toast } = useToast();
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
 
+  // Helper function to get grade color classes
+  const getGradeColor = (grade: string): string => {
+    switch (grade?.toUpperCase()) {
+      case 'A+': return 'bg-emerald-500 text-white';
+      case 'A': return 'bg-green-500 text-white';
+      case 'B+': return 'bg-teal-500 text-white';
+      case 'B': return 'bg-yellow-500 text-black';
+      case 'C+': return 'bg-amber-500 text-black';
+      case 'C': return 'bg-orange-500 text-white';
+      case 'D': return 'bg-red-400 text-white';
+      case 'F': return 'bg-red-600 text-white';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  // Helper function to get score color
+  const getScoreColor = (score: number): string => {
+    if (score >= 85) return 'text-emerald-600 dark:text-emerald-400';
+    if (score >= 75) return 'text-green-600 dark:text-green-400';
+    if (score >= 65) return 'text-teal-600 dark:text-teal-400';
+    if (score >= 55) return 'text-yellow-600 dark:text-yellow-400';
+    if (score >= 45) return 'text-amber-600 dark:text-amber-400';
+    if (score >= 35) return 'text-orange-600 dark:text-orange-400';
+    if (score >= 25) return 'text-red-400 dark:text-red-300';
+    return 'text-red-600 dark:text-red-400';
+  };
+
   // Filter and paginate investment reports
   const filteredInvestmentReports = investmentReports.filter(report => {
     const matchesSearch = report.property_address.toLowerCase().includes(investmentSearchQuery.toLowerCase());
     const matchesScope = scopeFilter === 'all' || report.report_scope === scopeFilter;
-    return matchesSearch && matchesScope;
+    
+    // Grade filter
+    const reportGrade = report.investment_score?.grade?.toUpperCase() || '';
+    const matchesGrade = gradeFilter === 'all' || reportGrade === gradeFilter;
+    
+    // Score range filter
+    const reportScore = report.investment_score?.totalScore || 0;
+    const matchesScore = reportScore >= scoreRange[0] && reportScore <= scoreRange[1];
+    
+    return matchesSearch && matchesScope && matchesGrade && matchesScore;
   });
   
   const totalInvestmentPages = Math.ceil(filteredInvestmentReports.length / reportsPerPage);
@@ -483,56 +522,153 @@ export default function GeneratedReports() {
 
         <TabsContent value="investment" className="space-y-4">
           {/* Search Bar & Filters */}
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
-              <Input
-                type="text"
-                placeholder="Search by property address..."
-                value={investmentSearchQuery}
-                onChange={(e) => {
-                  setInvestmentSearchQuery(e.target.value);
-                  setInvestmentPage(1); // Reset to first page on search
-                }}
-              />
+          <div className="flex flex-col gap-4 mb-4">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search by property address..."
+                  value={investmentSearchQuery}
+                  onChange={(e) => {
+                    setInvestmentSearchQuery(e.target.value);
+                    setInvestmentPage(1);
+                  }}
+                />
+              </div>
+              <Select value={scopeFilter} onValueChange={(value) => {
+                setScopeFilter(value);
+                setInvestmentPage(1);
+              }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by scope" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="all">All Reports</SelectItem>
+                  <SelectItem value="address" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    <div className="flex items-center gap-2">
+                      <Home className="h-4 w-4" />
+                      Property Analysis
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="suburb" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Suburb Analysis
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="zipcode" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
+                    <div className="flex items-center gap-2">
+                      <Map className="h-4 w-4" />
+                      Area Analysis
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="state" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      State Analysis
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Grade Filter */}
+              <Select value={gradeFilter} onValueChange={(value) => {
+                setGradeFilter(value);
+                setInvestmentPage(1);
+              }}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Filter by grade" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="all">All Grades</SelectItem>
+                  <SelectItem value="A+">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-emerald-500 text-white">A+</span>
+                      Grade A+
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="A">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-green-500 text-white">A</span>
+                      Grade A
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="B+">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-teal-500 text-white">B+</span>
+                      Grade B+
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="B">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-yellow-500 text-black">B</span>
+                      Grade B
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="C+">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-amber-500 text-black">C+</span>
+                      Grade C+
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="C">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-orange-500 text-white">C</span>
+                      Grade C
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="D">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-red-400 text-white">D</span>
+                      Grade D
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="F">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-red-600 text-white">F</span>
+                      Grade F
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Badge variant="secondary">
+                {filteredInvestmentReports.length} of {investmentReports.length} reports
+              </Badge>
             </div>
-            <Select value={scopeFilter} onValueChange={(value) => {
-              setScopeFilter(value);
-              setInvestmentPage(1); // Reset to first page on filter change
-            }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by scope" />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="all">All Reports</SelectItem>
-                <SelectItem value="address" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                  <div className="flex items-center gap-2">
-                    <Home className="h-4 w-4" />
-                    Property Analysis
-                  </div>
-                </SelectItem>
-                <SelectItem value="suburb" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Suburb Analysis
-                  </div>
-                </SelectItem>
-                <SelectItem value="zipcode" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
-                  <div className="flex items-center gap-2">
-                    <Map className="h-4 w-4" />
-                    Area Analysis
-                  </div>
-                </SelectItem>
-                <SelectItem value="state" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    State Analysis
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Badge variant="secondary">
-              {filteredInvestmentReports.length} of {investmentReports.length} reports
-            </Badge>
+            
+            {/* Score Range Filter */}
+            <div className="flex items-center gap-4 px-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Star className="h-4 w-4" />
+                <span>Score Range:</span>
+              </div>
+              <div className="flex-1 max-w-md flex items-center gap-4">
+                <span className="text-sm font-medium w-8">{scoreRange[0]}</span>
+                <Slider
+                  value={scoreRange}
+                  onValueChange={(value) => {
+                    setScoreRange(value as [number, number]);
+                    setInvestmentPage(1);
+                  }}
+                  min={0}
+                  max={100}
+                  step={5}
+                  className="flex-1"
+                />
+                <span className="text-sm font-medium w-8">{scoreRange[1]}</span>
+              </div>
+              {(scoreRange[0] > 0 || scoreRange[1] < 100) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setScoreRange([0, 100])}
+                  className="text-xs"
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
           </div>
 
           {filteredInvestmentReports.length === 0 ? (
@@ -618,13 +754,31 @@ export default function GeneratedReports() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Investment Grade & Score Display */}
+                    {report.investment_score && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg font-bold text-lg flex items-center justify-center ${getGradeColor(report.investment_score.grade)}`}>
+                            {report.investment_score.grade || 'N/A'}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Investment Grade</span>
+                            <span className="text-sm font-medium">{report.investment_score.recommendation?.split(' ').slice(0, 2).join(' ') || 'Not rated'}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs text-muted-foreground">Score</span>
+                          <span className={`text-xl font-bold ${getScoreColor(report.investment_score.totalScore || 0)}`}>
+                            {report.investment_score.totalScore || 0}<span className="text-sm font-normal text-muted-foreground">/100</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
                         <MapPin className="h-3 w-3 text-muted-foreground" />
                         <span className="text-muted-foreground truncate">{report.property_address}</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Report content: {report.report_content.length > 100 ? `${report.report_content.substring(0, 100)}...` : report.report_content.substring(0, 100)}
                       </div>
                     </div>
                     
