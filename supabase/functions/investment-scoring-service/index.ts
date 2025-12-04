@@ -266,58 +266,70 @@ function calculateLocationScore(input: InvestmentScoringInput) {
   let score = 0;
   const factors: string[] = [];
 
-  // Walk score (max 35 points)
+  // Walk score (max 35 points) - improved thresholds
   if (input.walkScore) {
     if (input.walkScore >= 90) {
       score += 35;
       factors.push('Excellent walkability (90+)');
     } else if (input.walkScore >= 70) {
-      score += 25;
+      score += 28;
       factors.push('Very good walkability (70-89)');
     } else if (input.walkScore >= 50) {
-      score += 15;
+      score += 18;
       factors.push('Good walkability (50-69)');
-    } else {
-      score += 5;
+    } else if (input.walkScore >= 25) {
+      score += 8;
       factors.push('Car-dependent location');
-    }
-  } else {
-    score += 15; // Assume moderate
-  }
-
-  // CBD commute time (max 30 points)
-  if (input.commuteTimeCBD) {
-    if (input.commuteTimeCBD <= 20) {
-      score += 30;
-      factors.push('Excellent CBD access (<20 min)');
-    } else if (input.commuteTimeCBD <= 35) {
-      score += 20;
-      factors.push('Good CBD access (20-35 min)');
-    } else if (input.commuteTimeCBD <= 50) {
-      score += 10;
-      factors.push('Moderate CBD access (35-50 min)');
     } else {
-      score += 5;
-      factors.push('Limited CBD access (>50 min)');
+      score += 3;
+      factors.push('Very car-dependent location');
     }
   } else {
-    score += 15; // Assume moderate
+    score += 12; // Reduced default assumption
   }
 
-  // Schools nearby (max 20 points)
+  // CBD commute time (max 30 points) - improved granularity
+  if (input.commuteTimeCBD) {
+    if (input.commuteTimeCBD <= 15) {
+      score += 30;
+      factors.push('Excellent CBD access (<15 min)');
+    } else if (input.commuteTimeCBD <= 25) {
+      score += 25;
+      factors.push('Very good CBD access (15-25 min)');
+    } else if (input.commuteTimeCBD <= 40) {
+      score += 18;
+      factors.push('Good CBD access (25-40 min)');
+    } else if (input.commuteTimeCBD <= 60) {
+      score += 10;
+      factors.push('Moderate CBD access (40-60 min)');
+    } else {
+      score += 3;
+      factors.push('Limited CBD access (>60 min)');
+    }
+  } else {
+    score += 12; // Reduced default assumption
+  }
+
+  // Schools nearby (max 20 points) - improved scoring
   if (input.schoolsNearby) {
-    if (input.schoolsNearby >= 5) {
+    if (input.schoolsNearby >= 8) {
       score += 20;
-      factors.push('Multiple schools nearby (5+)');
+      factors.push('Exceptional school access (8+)');
+    } else if (input.schoolsNearby >= 5) {
+      score += 18;
+      factors.push('Excellent school access (5-7)');
     } else if (input.schoolsNearby >= 3) {
-      score += 15;
+      score += 14;
       factors.push('Good school access (3-4)');
     } else if (input.schoolsNearby >= 1) {
-      score += 10;
-      factors.push('School access available');
+      score += 8;
+      factors.push('School access available (1-2)');
+    } else {
+      score += 0;
+      factors.push('Limited school access');
     }
   } else {
-    score += 10; // Assume moderate
+    score += 8; // Reduced default assumption
   }
 
   // State capital premium (max 15 points)
@@ -325,8 +337,11 @@ function calculateLocationScore(input: InvestmentScoringInput) {
     score += 15;
     factors.push('Major capital city location');
   } else if (input.state && ['WA', 'SA'].includes(input.state)) {
-    score += 10;
+    score += 12;
     factors.push('Capital city location');
+  } else if (input.state && ['TAS', 'ACT', 'NT'].includes(input.state)) {
+    score += 8;
+    factors.push('Regional capital location');
   }
 
   const details = factors.join('. ');
@@ -337,57 +352,99 @@ function calculateDemandScore(input: InvestmentScoringInput) {
   let score = 50; // Base score
   const factors: string[] = [];
 
-  // Vacancy rate (max 30 points)
+  // Vacancy rate (max 30 points) - improved granularity
   if (input.vacancyRate !== undefined) {
     if (input.vacancyRate < 1) {
       score += 30;
       factors.push('Very tight rental market (<1% vacancy)');
+    } else if (input.vacancyRate < 1.5) {
+      score += 25;
+      factors.push('Tight rental market (1-1.5% vacancy)');
     } else if (input.vacancyRate < 2) {
-      score += 20;
-      factors.push('Tight rental market (1-2% vacancy)');
+      score += 18;
+      factors.push('Strong rental market (1.5-2% vacancy)');
     } else if (input.vacancyRate < 3) {
       score += 10;
       factors.push('Balanced rental market (2-3% vacancy)');
-    } else if (input.vacancyRate > 5) {
-      score -= 10;
+    } else if (input.vacancyRate < 4) {
+      score += 0;
+      factors.push('Adequate rental market (3-4% vacancy)');
+    } else if (input.vacancyRate < 5) {
+      score -= 8;
+      factors.push('Softening rental market (4-5% vacancy)');
+    } else {
+      score -= 15;
       factors.push('Oversupplied rental market (>5% vacancy)');
     }
   }
 
-  // Days on market (max 20 points)
+  // Days on market (max 20 points) - improved granularity
   if (input.daysOnMarket !== undefined) {
-    if (input.daysOnMarket < 20) {
+    if (input.daysOnMarket < 15) {
       score += 20;
-      factors.push('Fast selling market (<20 DOM)');
-    } else if (input.daysOnMarket < 40) {
+      factors.push('Very fast selling market (<15 DOM)');
+    } else if (input.daysOnMarket < 30) {
+      score += 15;
+      factors.push('Fast selling market (15-30 DOM)');
+    } else if (input.daysOnMarket < 45) {
       score += 10;
-      factors.push('Good selling pace (20-40 DOM)');
-    } else if (input.daysOnMarket > 80) {
-      score -= 10;
-      factors.push('Slow selling market (>80 DOM)');
+      factors.push('Good selling pace (30-45 DOM)');
+    } else if (input.daysOnMarket < 60) {
+      score += 5;
+      factors.push('Average selling pace (45-60 DOM)');
+    } else if (input.daysOnMarket < 90) {
+      score -= 5;
+      factors.push('Slow selling market (60-90 DOM)');
+    } else {
+      score -= 12;
+      factors.push('Very slow selling market (>90 DOM)');
     }
   }
 
-  // Price relative to suburb median
+  // Price relative to suburb median - improved granularity
   if (input.medianSuburbPrice) {
     const priceRatio = input.propertyPrice / input.medianSuburbPrice;
-    if (priceRatio < 0.9) {
-      score += 15;
+    if (priceRatio < 0.85) {
+      score += 18;
+      factors.push('Significantly below median pricing - excellent value');
+    } else if (priceRatio < 0.95) {
+      score += 12;
       factors.push('Below median pricing - good value');
-    } else if (priceRatio > 1.2) {
+    } else if (priceRatio <= 1.05) {
+      score += 5;
+      factors.push('At median pricing - fair value');
+    } else if (priceRatio <= 1.15) {
+      score -= 5;
+      factors.push('Above median pricing');
+    } else if (priceRatio <= 1.25) {
       score -= 10;
-      factors.push('Above median pricing - premium location');
+      factors.push('Premium pricing (15-25% above median)');
+    } else {
+      score -= 15;
+      factors.push('Significant premium pricing (>25% above median)');
     }
   }
 
-  // Employment factors
+  // Employment factors - improved granularity
   if (input.unemploymentRate !== undefined) {
-    if (input.unemploymentRate < 3) {
-      score += 15;
-      factors.push('Low unemployment area (<3%)');
-    } else if (input.unemploymentRate > 6) {
-      score -= 10;
-      factors.push('Higher unemployment area (>6%)');
+    if (input.unemploymentRate < 2.5) {
+      score += 18;
+      factors.push('Very low unemployment area (<2.5%)');
+    } else if (input.unemploymentRate < 3.5) {
+      score += 12;
+      factors.push('Low unemployment area (2.5-3.5%)');
+    } else if (input.unemploymentRate < 4.5) {
+      score += 6;
+      factors.push('Below average unemployment (3.5-4.5%)');
+    } else if (input.unemploymentRate < 5.5) {
+      score += 0;
+      factors.push('Average unemployment (4.5-5.5%)');
+    } else if (input.unemploymentRate < 7) {
+      score -= 8;
+      factors.push('Above average unemployment (5.5-7%)');
+    } else {
+      score -= 15;
+      factors.push('High unemployment area (>7%)');
     }
   }
 
@@ -400,72 +457,114 @@ function calculateRiskScore(input: InvestmentScoringInput) {
   const riskFactors: string[] = [];
   const positiveFactors: string[] = [];
 
-  // LVR risk assessment
+  // LVR risk assessment - improved granularity
   if (input.lvr) {
-    if (input.lvr > 90) {
-      score -= 40;
-      riskFactors.push('Very high LVR (>90%) creates significant leverage risk');
+    if (input.lvr > 95) {
+      score -= 45;
+      riskFactors.push('Extreme LVR (>95%) creates very high leverage risk');
+    } else if (input.lvr > 90) {
+      score -= 35;
+      riskFactors.push('Very high LVR (90-95%) creates significant leverage risk');
+    } else if (input.lvr > 85) {
+      score -= 25;
+      riskFactors.push('High LVR (85-90%) increases leverage risk with LMI required');
     } else if (input.lvr > 80) {
-      score -= 20;
-      riskFactors.push('High LVR (80-90%) increases leverage risk');
+      score -= 18;
+      riskFactors.push('Elevated LVR (80-85%) requires LMI consideration');
     } else if (input.lvr > 70) {
-      score -= 5;
+      score -= 8;
       riskFactors.push('Moderate LVR (70-80%)');
-    } else if (input.lvr <= 60) {
-      positiveFactors.push('Conservative LVR (<60%) provides safety buffer');
+    } else if (input.lvr > 60) {
+      score -= 0;
+      positiveFactors.push('Good LVR (60-70%) provides equity buffer');
+    } else {
+      score += 5; // Bonus for very conservative LVR
+      positiveFactors.push('Conservative LVR (<60%) provides strong safety buffer');
     }
   }
 
-  // Cash flow risk
+  // Cash flow risk - improved penalties for severe negative cash flow
   if (input.cashFlow !== undefined) {
-    if (input.cashFlow < -300) {
-      score -= 25;
-      riskFactors.push('Severe negative cash flow (>$300/week) requires substantial funding');
+    if (input.cashFlow < -400) {
+      score -= 35;
+      riskFactors.push('Critical negative cash flow (>$400/week) requires substantial ongoing funding');
+    } else if (input.cashFlow < -300) {
+      score -= 28;
+      riskFactors.push('Severe negative cash flow ($300-400/week) requires significant funding');
     } else if (input.cashFlow < -200) {
-      score -= 15;
+      score -= 20;
       riskFactors.push('High negative cash flow ($200-300/week) creates funding pressure');
+    } else if (input.cashFlow < -100) {
+      score -= 12;
+      riskFactors.push('Moderate negative cash flow ($100-200/week) requires contribution');
     } else if (input.cashFlow < 0) {
-      score -= 8;
-      riskFactors.push('Negative cash flow requires ongoing contribution');
-    } else if (input.cashFlow > 100) {
-      positiveFactors.push('Strong positive cash flow provides income buffer');
+      score -= 6;
+      riskFactors.push('Minor negative cash flow (<$100/week)');
+    } else if (input.cashFlow > 150) {
+      score += 8;
+      positiveFactors.push('Strong positive cash flow (>$150/week) provides excellent income buffer');
+    } else if (input.cashFlow > 50) {
+      score += 4;
+      positiveFactors.push('Positive cash flow provides income buffer');
     }
   }
 
   // Property type risk
   if (input.propertyType === 'unit' || input.propertyType === 'apartment') {
-    score -= 8;
+    score -= 10;
     riskFactors.push('Unit/apartment carries strata risks and potential oversupply');
+  } else if (input.propertyType === 'townhouse') {
+    score -= 5;
+    riskFactors.push('Townhouse carries some strata considerations');
   } else if (input.propertyType === 'house') {
+    score += 3;
     positiveFactors.push('House typically offers better long-term capital growth');
   }
 
   // Market overheating risk
-  if (input.priceGrowth1Year && input.priceGrowth1Year > 20) {
-    score -= 20;
-    riskFactors.push('Extreme growth (>20% p.a.) suggests market overheating');
+  if (input.priceGrowth1Year && input.priceGrowth1Year > 25) {
+    score -= 25;
+    riskFactors.push('Extreme growth (>25% p.a.) suggests significant market overheating');
+  } else if (input.priceGrowth1Year && input.priceGrowth1Year > 20) {
+    score -= 18;
+    riskFactors.push('Very rapid growth (20-25% p.a.) suggests market overheating');
   } else if (input.priceGrowth1Year && input.priceGrowth1Year > 15) {
-    score -= 12;
+    score -= 10;
     riskFactors.push('Rapid growth (15-20% p.a.) may indicate cooling ahead');
   }
 
-  // Vacancy risk
+  // Vacancy risk - improved
   if (input.vacancyRate !== undefined) {
-    if (input.vacancyRate > 5) {
-      score -= 20;
-      riskFactors.push('Very high vacancy (>5%) signals weak rental demand');
+    if (input.vacancyRate > 6) {
+      score -= 22;
+      riskFactors.push('Very high vacancy (>6%) signals weak rental demand');
+    } else if (input.vacancyRate > 5) {
+      score -= 16;
+      riskFactors.push('High vacancy (5-6%) indicates oversupplied market');
     } else if (input.vacancyRate > 4) {
-      score -= 12;
-      riskFactors.push('High vacancy (4-5%) indicates oversupplied market');
+      score -= 10;
+      riskFactors.push('Elevated vacancy (4-5%) suggests softening demand');
+    } else if (input.vacancyRate < 1) {
+      score += 5;
+      positiveFactors.push('Very tight rental market (<1% vacancy) strongly supports income');
     } else if (input.vacancyRate < 1.5) {
+      score += 3;
       positiveFactors.push('Tight rental market (<1.5% vacancy) supports rental income');
     }
   }
 
-  // Days on market risk
-  if (input.daysOnMarket !== undefined && input.daysOnMarket > 90) {
-    score -= 10;
-    riskFactors.push('Extended selling time (>90 days) indicates soft demand');
+  // Days on market risk - improved
+  if (input.daysOnMarket !== undefined) {
+    if (input.daysOnMarket > 120) {
+      score -= 15;
+      riskFactors.push('Very extended selling time (>120 days) indicates weak demand');
+    } else if (input.daysOnMarket > 90) {
+      score -= 10;
+      riskFactors.push('Extended selling time (90-120 days) indicates soft demand');
+    } else if (input.daysOnMarket > 60) {
+      score -= 5;
+      riskFactors.push('Longer selling time (60-90 days) suggests slower market');
+    }
   }
 
   // Build overall risk assessment
@@ -497,13 +596,16 @@ function determineGradeAndRecommendation(score: number, input: InvestmentScoring
   } else if (score >= 65) {
     grade = 'B+';
     recommendation = 'BUY - Good investment opportunity with favorable metrics in most areas';
-  } else if (score >= 55) {
+  } else if (score >= 58) {
     grade = 'B';
     recommendation = 'HOLD/BUY - Moderate investment potential, consider your personal circumstances';
-  } else if (score >= 45) {
+  } else if (score >= 50) {
+    grade = 'C+';
+    recommendation = 'HOLD - Above average investment with some positive indicators, monitor closely';
+  } else if (score >= 42) {
     grade = 'C';
     recommendation = 'HOLD - Average investment with mixed indicators, monitor market conditions';
-  } else if (score >= 35) {
+  } else if (score >= 32) {
     grade = 'D';
     recommendation = 'CAUTION - Below average investment, significant concerns identified';
   } else {
