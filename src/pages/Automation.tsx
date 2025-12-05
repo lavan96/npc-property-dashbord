@@ -120,7 +120,7 @@ const Automation = () => {
     const { data, error } = await supabase
       .from('auto_report_switches')
       .select('*')
-      .order('priority', { ascending: false });
+      .order('created_at', { ascending: false });
     
     if (error) {
       toast.error('Failed to load switches');
@@ -381,9 +381,6 @@ const Automation = () => {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{switchItem.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              Priority: {switchItem.priority}
-                            </Badge>
                             <Badge variant="secondary" className="text-xs">
                               {getCriteriaCount(switchItem.criteria)} criteria
                             </Badge>

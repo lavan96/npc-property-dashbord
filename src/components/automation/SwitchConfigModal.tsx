@@ -238,27 +238,14 @@ export const SwitchConfigModal = ({
           <div className="space-y-6">
             {/* Basic Info */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Switch Name *</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g., Premium VIC Houses"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Priority (higher = checked first)</Label>
-                  <Input
-                    id="priority"
-                    type="number"
-                    value={priority}
-                    onChange={(e) => setPriority(parseInt(e.target.value) || 0)}
-                    min={0}
-                    max={100}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Switch Name *</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Premium VIC Houses"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -454,16 +441,16 @@ export const SwitchConfigModal = ({
               />
             </div>
 
-            {/* Conflict Warning */}
+            {/* Overlap Info */}
             {conflicts.length > 0 && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-blue-500 mt-0.5" />
                   <div>
-                    <p className="font-medium text-amber-500">Potential Overlap Detected</p>
+                    <p className="font-medium text-blue-500">Overlapping Criteria</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      This switch may overlap with: {conflicts.join(', ')}. 
-                      The higher priority switch will be used when both match.
+                      This switch has overlapping criteria with: {conflicts.join(', ')}. 
+                      Using OR logic, a listing only needs to match one switch to trigger a report.
                     </p>
                   </div>
                 </div>
