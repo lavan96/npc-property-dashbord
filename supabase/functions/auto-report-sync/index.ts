@@ -317,7 +317,11 @@ serve(async (req) => {
               queryType: 'address',
               propertyListingId: record.id,
               propertyType: listing.propertyType,
+              price: listing.price, // Required for investment scoring
               purchasePrice: listing.price,
+              weeklyRent: listing.estimatedRent || listing.weeklyRent || 0, // Required for scoring
+              beds: listing.bedrooms,
+              baths: listing.bathrooms,
             },
           }),
         }).catch(err => {
