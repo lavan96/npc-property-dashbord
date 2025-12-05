@@ -184,11 +184,34 @@ const Automation = () => {
               Configure automated investment report generation for incoming listings
             </p>
           </div>
-          <Button variant="outline" onClick={() => setLogModalOpen(true)}>
-            <History className="h-4 w-4 mr-2" />
-            View Generation Log
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setLogModalOpen(true)}>
+              <History className="h-4 w-4 mr-2" />
+              View Log
+            </Button>
+          </div>
         </div>
+
+        {/* Webhook Info */}
+        <Card className="border-blue-500/30 bg-blue-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/20">
+                <Zap className="h-4 w-4 text-blue-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">Webhook Endpoint</p>
+                <code className="text-xs bg-muted px-2 py-1 rounded mt-1 block break-all">
+                  https://dduzbchuswwbefdunfct.supabase.co/functions/v1/auto-report-webhook
+                </code>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Configure your Airtable automation to POST new records to this endpoint. The webhook expects: 
+                  <code className="bg-muted px-1 rounded">{"{ listing: { id, address, propertyType, price, beds, baths, category, confidence, sourceHost } }"}</code>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Master Switch Card */}
         <Card className={masterEnabled ? 'border-green-500/50 bg-green-500/5' : 'border-muted'}>
