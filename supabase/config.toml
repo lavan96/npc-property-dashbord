@@ -150,3 +150,7 @@ verify_jwt = false
 [functions.update-stamp-duty-rates]
 verify_jwt = false
 request_timeout = 120
+
+[functions.auto-report-webhook]
+verify_jwt = false
+request_timeout = 180
