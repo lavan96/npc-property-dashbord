@@ -169,6 +169,54 @@ export type Database = {
           },
         ]
       }
+      auto_report_processed_listings: {
+        Row: {
+          id: string
+          listing_address: string | null
+          listing_id: string
+          processed_at: string
+          report_id: string | null
+          skip_reason: string | null
+          skipped: boolean
+          switch_id: string | null
+        }
+        Insert: {
+          id?: string
+          listing_address?: string | null
+          listing_id: string
+          processed_at?: string
+          report_id?: string | null
+          skip_reason?: string | null
+          skipped?: boolean
+          switch_id?: string | null
+        }
+        Update: {
+          id?: string
+          listing_address?: string | null
+          listing_id?: string
+          processed_at?: string
+          report_id?: string | null
+          skip_reason?: string | null
+          skipped?: boolean
+          switch_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_report_processed_listings_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_report_processed_listings_switch_id_fkey"
+            columns: ["switch_id"]
+            isOneToOne: false
+            referencedRelation: "auto_report_switches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_report_switches: {
         Row: {
           created_at: string

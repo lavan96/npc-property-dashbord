@@ -154,3 +154,7 @@ request_timeout = 120
 [functions.auto-report-webhook]
 verify_jwt = false
 request_timeout = 180
+
+[functions.auto-report-sync]
+verify_jwt = false
+request_timeout = 300

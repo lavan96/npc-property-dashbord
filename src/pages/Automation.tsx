@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Settings2, Trash2, Play, Pause, AlertTriangle, Zap, History } from 'lucide-react';
+import { Plus, Settings2, Trash2, Play, Pause, AlertTriangle, Zap, History, RefreshCw, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SwitchConfigModal } from '@/components/automation/SwitchConfigModal';
@@ -51,11 +51,58 @@ const Automation = () => {
   const [configModalOpen, setConfigModalOpen] = useState(false);
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [editingSwitch, setEditingSwitch] = useState<AutoReportSwitch | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStats, setSyncStats] = useState<{ total: number; generated: number; lastSync?: string } | null>(null);
 
   useEffect(() => {
     fetchMasterSettings();
     fetchSwitches();
+    fetchSyncStats();
   }, []);
+
+  const fetchSyncStats = async () => {
+    const { data, count } = await supabase
+      .from('auto_report_processed_listings')
+      .select('*', { count: 'exact', head: false })
+      .order('processed_at', { ascending: false })
+      .limit(1);
+    
+    const { count: generatedCount } = await supabase
+      .from('auto_report_processed_listings')
+      .select('*', { count: 'exact', head: true })
+      .eq('skipped', false);
+    
+    setSyncStats({
+      total: count || 0,
+      generated: generatedCount || 0,
+      lastSync: data?.[0]?.processed_at
+    });
+  };
+
+  const runSync = async (dryRun: boolean = false) => {
+    setSyncing(true);
+    try {
+      const response = await supabase.functions.invoke('auto-report-sync', {
+        body: { maxRecords: 50, dryRun }
+      });
+      
+      if (response.error) throw response.error;
+      
+      const result = response.data;
+      
+      if (dryRun) {
+        const matches = result.results?.filter((r: any) => r.status === 'generated').length || 0;
+        toast.success(`Dry run complete: ${matches} listing(s) would be processed`);
+      } else {
+        toast.success(`Sync complete: ${result.summary?.generated || 0} report(s) generated`);
+        fetchSyncStats();
+      }
+    } catch (error) {
+      toast.error(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const fetchMasterSettings = async () => {
     const { data, error } = await supabase
@@ -192,22 +239,50 @@ const Automation = () => {
           </div>
         </div>
 
-        {/* Webhook Info */}
+        {/* Airtable Sync Controls */}
         <Card className="border-blue-500/30 bg-blue-500/5">
           <CardContent className="py-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <Zap className="h-4 w-4 text-blue-500" />
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/20">
+                  <Zap className="h-4 w-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Airtable Sync</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Sync new listings from Airtable and auto-generate reports based on your switch criteria.
+                  </p>
+                  {syncStats && (
+                    <div className="flex gap-3 mt-2 text-xs">
+                      <Badge variant="outline">{syncStats.total} processed</Badge>
+                      <Badge variant="secondary">{syncStats.generated} reports generated</Badge>
+                      {syncStats.lastSync && (
+                        <span className="text-muted-foreground">
+                          Last: {new Date(syncStats.lastSync).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">Webhook Endpoint</p>
-                <code className="text-xs bg-muted px-2 py-1 rounded mt-1 block break-all">
-                  https://dduzbchuswwbefdunfct.supabase.co/functions/v1/auto-report-webhook
-                </code>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Configure your Airtable automation to POST new records to this endpoint. The webhook expects: 
-                  <code className="bg-muted px-1 rounded">{"{ listing: { id, address, propertyType, price, beds, baths, category, confidence, sourceHost } }"}</code>
-                </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => runSync(true)}
+                  disabled={syncing || !masterEnabled}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  Dry Run
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => runSync(false)}
+                  disabled={syncing || !masterEnabled}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Now'}
+                </Button>
               </div>
             </div>
           </CardContent>
