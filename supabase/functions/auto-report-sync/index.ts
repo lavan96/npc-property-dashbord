@@ -95,34 +95,76 @@ function evaluateCriteria(listing: ListingData, criteria: SwitchCriteria): boole
 }
 
 // Transform Airtable record to listing data
-function transformRecord(record: AirtableRecord): ListingData {
+function transformRecord(record: AirtableRecord): ListingData & { propertyName?: string; zipcode?: string } {
   const f = record.fields;
   
   // Log first record's field names for debugging
   console.log(`[Auto-Report Sync] Record ${record.id} field names:`, Object.keys(f));
-  console.log(`[Auto-Report Sync] Record ${record.id} sample fields:`, {
-    'Address': f['Address'],
-    'address': f['address'],
-    'Full Address': f['Full Address'],
-    'Property Address': f['Property Address'],
-  });
   
   // Try multiple possible field names for address
   const address = f['Address'] || f['address'] || f['Full Address'] || f['Property Address'] || f['full_address'] || f['property_address'];
   
+  // Try multiple possible field names for property name
+  const propertyName = f['Project Name'] || f['Property Name'] || f['project_name'] || f['property_name'] || f['Name'] || f['name'];
+  
   return {
     id: record.id,
     address: address,
+    propertyName: propertyName,
     suburb: f['Suburb'] || f['suburb'],
     propertyType: f['Property Type'] || f['propertyType'] || f['property_type'],
     category: f['Category'] || f['category'],
     price: f['Price'] || f['price'],
     beds: f['Beds'] || f['beds'] || f['Bedrooms'] || f['bedrooms'],
     baths: f['Baths'] || f['baths'] || f['Bathrooms'] || f['bathrooms'],
-    confidence: f['Confidence'] || f['confidence'],
+    confidence: f['Confidence'] || f['confidence'] || f['Confidence Score'],
     sourceHost: f['Source Host'] || f['sourceHost'] || f['source_host'],
     state: f['State'] || f['state'],
+    zipcode: f['Zipcode'] || f['zipcode'] || f['Postcode'] || f['postcode'],
   };
+}
+
+// Build the best possible address from available fields
+function buildAddress(listing: ListingData & { propertyName?: string; zipcode?: string }): string {
+  // Case 1: Has street address - use it (possibly with suburb/state)
+  if (listing.address && listing.address.trim()) {
+    const parts = [listing.address.trim()];
+    // Add suburb if not already in address
+    if (listing.suburb && !listing.address.toLowerCase().includes(listing.suburb.toLowerCase())) {
+      parts.push(listing.suburb);
+    }
+    // Add state if not already in address
+    if (listing.state && !listing.address.toUpperCase().includes(listing.state.toUpperCase())) {
+      parts.push(listing.state);
+    }
+    // Add zipcode if not already in address
+    if (listing.zipcode && !listing.address.includes(listing.zipcode)) {
+      parts.push(listing.zipcode);
+    }
+    return parts.join(', ');
+  }
+  
+  // Case 2: Has property name but no street address
+  if (listing.propertyName && listing.propertyName.trim()) {
+    const parts = [listing.propertyName.trim()];
+    if (listing.suburb) parts.push(listing.suburb);
+    if (listing.state) parts.push(listing.state);
+    if (listing.zipcode) parts.push(listing.zipcode);
+    return parts.join(', ');
+  }
+  
+  // Case 3: No address or property name - construct from location data
+  const locationParts: string[] = [];
+  if (listing.suburb) locationParts.push(listing.suburb);
+  if (listing.state) locationParts.push(listing.state);
+  if (listing.zipcode) locationParts.push(listing.zipcode);
+  
+  if (locationParts.length > 0) {
+    return locationParts.join(', ');
+  }
+  
+  // Last resort - return empty (will be handled by caller)
+  return '';
 }
 
 serve(async (req) => {
@@ -220,7 +262,8 @@ serve(async (req) => {
 
     for (const record of records) {
       const listing = transformRecord(record);
-      const address = listing.address || `Record ${record.id}`;
+      // Build address using the best available fields (address > property name > suburb/state/zipcode)
+      const address = buildAddress(listing) || `Unknown Property (${record.id})`;
 
       // Skip if already processed
       if (processedIds.has(record.id)) {
