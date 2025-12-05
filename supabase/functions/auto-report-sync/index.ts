@@ -97,17 +97,30 @@ function evaluateCriteria(listing: ListingData, criteria: SwitchCriteria): boole
 // Transform Airtable record to listing data
 function transformRecord(record: AirtableRecord): ListingData {
   const f = record.fields;
+  
+  // Log first record's field names for debugging
+  console.log(`[Auto-Report Sync] Record ${record.id} field names:`, Object.keys(f));
+  console.log(`[Auto-Report Sync] Record ${record.id} sample fields:`, {
+    'Address': f['Address'],
+    'address': f['address'],
+    'Full Address': f['Full Address'],
+    'Property Address': f['Property Address'],
+  });
+  
+  // Try multiple possible field names for address
+  const address = f['Address'] || f['address'] || f['Full Address'] || f['Property Address'] || f['full_address'] || f['property_address'];
+  
   return {
     id: record.id,
-    address: f['Address'] || f['address'],
+    address: address,
     suburb: f['Suburb'] || f['suburb'],
-    propertyType: f['Property Type'] || f['propertyType'],
+    propertyType: f['Property Type'] || f['propertyType'] || f['property_type'],
     category: f['Category'] || f['category'],
     price: f['Price'] || f['price'],
-    beds: f['Beds'] || f['beds'],
-    baths: f['Baths'] || f['baths'],
+    beds: f['Beds'] || f['beds'] || f['Bedrooms'] || f['bedrooms'],
+    baths: f['Baths'] || f['baths'] || f['Bathrooms'] || f['bathrooms'],
     confidence: f['Confidence'] || f['confidence'],
-    sourceHost: f['Source Host'] || f['sourceHost'],
+    sourceHost: f['Source Host'] || f['sourceHost'] || f['source_host'],
     state: f['State'] || f['state'],
   };
 }
