@@ -268,6 +268,26 @@ serve(async (req) => {
 
       // Generate report
       try {
+        // First, create a pending report record in the database
+        const { data: reportRecord, error: reportError } = await supabase
+          .from('investment_reports')
+          .insert({
+            property_address: address,
+            property_listing_id: record.id,
+            report_content: '',
+            status: 'pending',
+            report_scope: 'address'
+          })
+          .select()
+          .single();
+
+        if (reportError || !reportRecord) {
+          throw new Error(`Failed to create report record: ${reportError?.message}`);
+        }
+
+        const reportId = reportRecord.id;
+        console.log(`[Auto-Report Sync] Created report record: ${reportId} for ${address}`);
+
         // Log the attempt
         const { data: logEntry } = await supabase
           .from('auto_report_generation_log')
@@ -276,12 +296,13 @@ serve(async (req) => {
             listing_address: address,
             switch_id: switchId,
             switch_name: switchName,
-            status: 'processing'
+            status: 'processing',
+            report_id: reportId
           })
           .select()
           .single();
 
-        // Call report generation
+        // Call report generation with the reportId so it updates the record
         const reportResponse = await fetch(`${supabaseUrl}/functions/v1/generate-investment-report`, {
           method: 'POST',
           headers: {
@@ -289,6 +310,7 @@ serve(async (req) => {
             'Authorization': `Bearer ${supabaseServiceKey}`,
           },
           body: JSON.stringify({
+            reportId: reportId,
             propertyAddress: address,
             propertyDetails: {
               queryType: 'address',
@@ -300,33 +322,39 @@ serve(async (req) => {
         });
 
         if (!reportResponse.ok) {
+          // Update report status to failed
+          await supabase.from('investment_reports')
+            .update({ status: 'failed', error_message: await reportResponse.text() })
+            .eq('id', reportId);
           throw new Error(await reportResponse.text());
         }
 
         const reportResult = await reportResponse.json();
 
-        // Mark as processed
+        // Mark as processed - use reportId we created, not from response
         await supabase.from('auto_report_processed_listings').insert({
           listing_id: record.id,
           listing_address: address,
           switch_id: switchId,
-          report_id: reportResult.reportId,
+          report_id: reportId,
           skipped: false
         });
 
         // Update log
         if (logEntry) {
           await supabase.from('auto_report_generation_log')
-            .update({ status: 'completed', report_id: reportResult.reportId, completed_at: new Date().toISOString() })
+            .update({ status: 'completed', report_id: reportId, completed_at: new Date().toISOString() })
             .eq('id', logEntry.id);
         }
+
+        console.log(`[Auto-Report Sync] Successfully generated report ${reportId} for ${address}`);
 
         results.push({
           listingId: record.id,
           address,
           status: 'generated',
           switchName,
-          reportId: reportResult.reportId
+          reportId: reportId
         });
 
       } catch (err) {
