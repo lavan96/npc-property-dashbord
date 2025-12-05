@@ -302,8 +302,9 @@ serve(async (req) => {
           .select()
           .single();
 
-        // Call report generation with the reportId so it updates the record
-        const reportResponse = await fetch(`${supabaseUrl}/functions/v1/generate-investment-report`, {
+        // Fire-and-forget: Start report generation without waiting for completion
+        // The generate-investment-report function will update the report status when done
+        fetch(`${supabaseUrl}/functions/v1/generate-investment-report`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -319,19 +320,11 @@ serve(async (req) => {
               purchasePrice: listing.price,
             },
           }),
+        }).catch(err => {
+          console.error(`[Auto-Report Sync] Background report generation error for ${reportId}:`, err);
         });
 
-        if (!reportResponse.ok) {
-          // Update report status to failed
-          await supabase.from('investment_reports')
-            .update({ status: 'failed', error_message: await reportResponse.text() })
-            .eq('id', reportId);
-          throw new Error(await reportResponse.text());
-        }
-
-        const reportResult = await reportResponse.json();
-
-        // Mark as processed - use reportId we created, not from response
+        // Mark as processed immediately - report will be generated in background
         await supabase.from('auto_report_processed_listings').insert({
           listing_id: record.id,
           listing_address: address,
@@ -340,14 +333,14 @@ serve(async (req) => {
           skipped: false
         });
 
-        // Update log
+        // Update log - mark as processing (report generation is async)
         if (logEntry) {
           await supabase.from('auto_report_generation_log')
-            .update({ status: 'completed', report_id: reportId, completed_at: new Date().toISOString() })
+            .update({ status: 'processing', report_id: reportId })
             .eq('id', logEntry.id);
         }
 
-        console.log(`[Auto-Report Sync] Successfully generated report ${reportId} for ${address}`);
+        console.log(`[Auto-Report Sync] Queued report ${reportId} for ${address} (generating in background)`);
 
         results.push({
           listingId: record.id,
