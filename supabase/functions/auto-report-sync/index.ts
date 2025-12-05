@@ -180,7 +180,8 @@ serve(async (req) => {
       );
     }
 
-    const airtableUrl = `https://api.airtable.com/v0/${airtableBaseId}/${encodeURIComponent(airtableTableName)}?maxRecords=${maxRecords}&sort[0][field]=Created At&sort[0][direction]=desc`;
+    // Fetch records without sorting - Airtable returns records in creation order by default
+    const airtableUrl = `https://api.airtable.com/v0/${airtableBaseId}/${encodeURIComponent(airtableTableName)}?maxRecords=${maxRecords}`;
     
     const airtableResponse = await fetch(airtableUrl, {
       headers: { 'Authorization': `Bearer ${airtableToken}` },
