@@ -213,28 +213,12 @@ serve(async (req) => {
       );
     }
 
-    // Get enabled switches ordered by priority (highest first)
+    // Get enabled switches (OR logic - any match triggers report)
     const { data: switches, error: switchError } = await supabase
       .from('auto_report_switches')
       .select('*')
-      .eq('is_enabled', true)
-      .order('priority', { ascending: false });
+      .eq('is_enabled', true);
     
-    if (switchError) {
-      throw new Error(`Failed to fetch switches: ${switchError.message}`);
-    }
-
-    if (!switches?.length) {
-      console.log('[Auto-Report Webhook] No enabled switches found');
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'No enabled switches',
-          processed: 0 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     console.log(`[Auto-Report Webhook] Found ${switches.length} enabled switch(es)`);
 
@@ -247,13 +231,13 @@ serve(async (req) => {
 
       let matchedSwitch: AutoReportSwitch | null = null;
 
-      // Evaluate against switches (priority order)
+      // Evaluate against switches (OR logic - first match triggers)
       for (const switchItem of switches) {
         const criteria = switchItem.criteria as SwitchCriteria;
         if (evaluateCriteria(listing, criteria)) {
           matchedSwitch = switchItem;
           console.log(`[Auto-Report Webhook] Matched switch: ${switchItem.name}`);
-          break; // First match wins (highest priority)
+          break; // One report per listing - first match triggers
         }
       }
 

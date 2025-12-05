@@ -152,12 +152,11 @@ serve(async (req) => {
       );
     }
 
-    // Get enabled switches
+    // Get enabled switches (OR logic - any match triggers report)
     const { data: switches } = await supabase
       .from('auto_report_switches')
       .select('*')
-      .eq('is_enabled', true)
-      .order('priority', { ascending: false });
+      .eq('is_enabled', true);
     
     if (!switches?.length) {
       return new Response(
@@ -216,12 +215,12 @@ serve(async (req) => {
         continue;
       }
 
-      // Find matching switch
+      // Find matching switch (OR logic - first match triggers)
       let matchedSwitch: any = null;
       for (const sw of switches) {
         if (evaluateCriteria(listing, sw.criteria as SwitchCriteria)) {
           matchedSwitch = sw;
-          break;
+          break; // One report per listing
         }
       }
 
