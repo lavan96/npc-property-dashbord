@@ -153,17 +153,16 @@ serve(async (req) => {
     }
 
     // Get enabled switches (OR logic - any match triggers report)
+    // If no switches are enabled, process ALL listings (master switch controls overall automation)
     const { data: switches } = await supabase
       .from('auto_report_switches')
       .select('*')
       .eq('is_enabled', true);
     
-    if (!switches?.length) {
-      return new Response(
-        JSON.stringify({ success: true, message: 'No enabled switches', processed: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const enabledSwitches = switches || [];
+    const processAllListings = enabledSwitches.length === 0;
+    
+    console.log(`[Auto-Report Sync] Mode: ${processAllListings ? 'Process ALL listings (no sub-switches enabled)' : `Filter by ${enabledSwitches.length} enabled switch(es)`}`);
 
     // Get already processed listing IDs
     const { data: processedListings } = await supabase
@@ -217,15 +216,22 @@ serve(async (req) => {
       }
 
       // Find matching switch (OR logic - first match triggers)
+      // If no switches enabled, process all listings automatically
       let matchedSwitch: any = null;
-      for (const sw of switches) {
-        if (evaluateCriteria(listing, sw.criteria as SwitchCriteria)) {
-          matchedSwitch = sw;
-          break; // One report per listing
+      let shouldProcess = processAllListings; // Process all if no switches enabled
+      
+      if (!processAllListings) {
+        // Check against enabled switches
+        for (const sw of enabledSwitches) {
+          if (evaluateCriteria(listing, sw.criteria as SwitchCriteria)) {
+            matchedSwitch = sw;
+            shouldProcess = true;
+            break; // One report per listing
+          }
         }
       }
 
-      if (!matchedSwitch) {
+      if (!shouldProcess) {
         // Record as processed but skipped (no match)
         if (!dryRun) {
           await supabase.from('auto_report_processed_listings').insert({
@@ -239,8 +245,11 @@ serve(async (req) => {
         continue;
       }
 
+      const switchName = matchedSwitch?.name || 'Master Switch (All Listings)';
+      const switchId = matchedSwitch?.id || null;
+
       if (dryRun) {
-        results.push({ listingId: record.id, address, status: 'generated', switchName: matchedSwitch.name });
+        results.push({ listingId: record.id, address, status: 'generated', switchName });
         continue;
       }
 
@@ -252,8 +261,8 @@ serve(async (req) => {
           .insert({
             listing_id: record.id,
             listing_address: address,
-            switch_id: matchedSwitch.id,
-            switch_name: matchedSwitch.name,
+            switch_id: switchId,
+            switch_name: switchName,
             status: 'processing'
           })
           .select()
@@ -285,7 +294,7 @@ serve(async (req) => {
         await supabase.from('auto_report_processed_listings').insert({
           listing_id: record.id,
           listing_address: address,
-          switch_id: matchedSwitch.id,
+          switch_id: switchId,
           report_id: reportResult.reportId,
           skipped: false
         });
@@ -301,7 +310,7 @@ serve(async (req) => {
           listingId: record.id,
           address,
           status: 'generated',
-          switchName: matchedSwitch.name,
+          switchName,
           reportId: reportResult.reportId
         });
 
