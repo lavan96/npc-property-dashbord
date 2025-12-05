@@ -276,11 +276,13 @@ serve(async (req) => {
             'Authorization': `Bearer ${supabaseServiceKey}`,
           },
           body: JSON.stringify({
-            queryType: 'address',
-            address: address,
-            propertyListingId: record.id,
-            propertyType: listing.propertyType,
-            purchasePrice: listing.price,
+            propertyAddress: address,
+            propertyDetails: {
+              queryType: 'address',
+              propertyListingId: record.id,
+              propertyType: listing.propertyType,
+              purchasePrice: listing.price,
+            },
           }),
         });
 
