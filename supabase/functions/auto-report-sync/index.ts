@@ -309,6 +309,13 @@ serve(async (req) => {
         continue;
       }
 
+      // Determine report scope based on available address data
+      // If we have a street address, it's an address-level report
+      // If we only have suburb/location data, it's a suburb-level report
+      const hasStreetAddress = listing.address && listing.address.trim().length > 0;
+      const reportScope = hasStreetAddress ? 'address' : 'suburb';
+      const queryType = hasStreetAddress ? 'address' : 'suburb';
+
       // Generate report
       try {
         // First, create a pending report record in the database
@@ -319,7 +326,7 @@ serve(async (req) => {
             property_listing_id: record.id,
             report_content: '',
             status: 'pending',
-            report_scope: 'address'
+            report_scope: reportScope
           })
           .select()
           .single();
@@ -329,7 +336,7 @@ serve(async (req) => {
         }
 
         const reportId = reportRecord.id;
-        console.log(`[Auto-Report Sync] Created report record: ${reportId} for ${address}`);
+        console.log(`[Auto-Report Sync] Created report record: ${reportId} for ${address} (scope: ${reportScope})`);
 
         // Log the attempt
         const { data: logEntry } = await supabase
@@ -357,7 +364,7 @@ serve(async (req) => {
             reportId: reportId,
             propertyAddress: address,
             propertyDetails: {
-              queryType: 'address',
+              queryType: queryType,
               propertyListingId: record.id,
               propertyType: listing.propertyType,
               price: listing.price, // Required for investment scoring
@@ -365,6 +372,9 @@ serve(async (req) => {
               weeklyRent: listing.estimatedRent || listing.weeklyRent || 0, // Required for scoring
               beds: listing.bedrooms,
               baths: listing.bathrooms,
+              suburb: listing.suburb,
+              state: listing.state,
+              postcode: listing.zipcode,
             },
           }),
         }).catch(err => {
