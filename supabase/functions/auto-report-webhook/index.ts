@@ -9,6 +9,8 @@ const corsHeaders = {
 interface ListingData {
   id: string;
   address?: string;
+  propertyName?: string;  // OR alternative to address
+  property_name?: string; // Snake case variant
   suburb?: string;
   propertyType?: string;
   category?: string;
@@ -229,20 +231,26 @@ serve(async (req) => {
       // Debug: Log all received fields
       console.log(`[Auto-Report Webhook] Received listing data:`, JSON.stringify(listing, null, 2));
       
-      // Construct the best possible address from available data
+      // Construct the best possible address from available data (OR logic: address OR propertyName)
       let listingAddress = '';
+      const propertyName = listing.propertyName || listing.property_name;
       
       if (listing.address && listing.address.trim()) {
-        // Use street address if available
+        // Priority 1: Use street address if available
         listingAddress = listing.address.trim();
+        console.log(`[Auto-Report Webhook] Using street address: ${listingAddress}`);
+      } else if (propertyName && propertyName.trim()) {
+        // Priority 2: Use property name if no street address
+        listingAddress = propertyName.trim();
+        console.log(`[Auto-Report Webhook] No street address, using property name: ${listingAddress}`);
       } else if (listing.suburb && listing.state) {
-        // Fall back to suburb + state
+        // Priority 3: Fall back to suburb + state
         listingAddress = `${listing.suburb}, ${listing.state}`;
-        console.log(`[Auto-Report Webhook] No street address, using suburb/state: ${listingAddress}`);
+        console.log(`[Auto-Report Webhook] No address/propertyName, using suburb/state: ${listingAddress}`);
       } else if (listing.suburb) {
-        // Just suburb
+        // Priority 4: Just suburb
         listingAddress = listing.suburb;
-        console.log(`[Auto-Report Webhook] No street address, using suburb only: ${listingAddress}`);
+        console.log(`[Auto-Report Webhook] No address/propertyName, using suburb only: ${listingAddress}`);
       } else {
         // Last resort
         listingAddress = `Unknown Property (${listing.id})`;
