@@ -226,7 +226,29 @@ serve(async (req) => {
 
     // Process each listing
     for (const listing of listings) {
-      const listingAddress = listing.address || `Listing ${listing.id}`;
+      // Debug: Log all received fields
+      console.log(`[Auto-Report Webhook] Received listing data:`, JSON.stringify(listing, null, 2));
+      
+      // Construct the best possible address from available data
+      let listingAddress = '';
+      
+      if (listing.address && listing.address.trim()) {
+        // Use street address if available
+        listingAddress = listing.address.trim();
+      } else if (listing.suburb && listing.state) {
+        // Fall back to suburb + state
+        listingAddress = `${listing.suburb}, ${listing.state}`;
+        console.log(`[Auto-Report Webhook] No street address, using suburb/state: ${listingAddress}`);
+      } else if (listing.suburb) {
+        // Just suburb
+        listingAddress = listing.suburb;
+        console.log(`[Auto-Report Webhook] No street address, using suburb only: ${listingAddress}`);
+      } else {
+        // Last resort
+        listingAddress = `Unknown Property (${listing.id})`;
+        console.log(`[Auto-Report Webhook] No address data available, using fallback: ${listingAddress}`);
+      }
+      
       console.log(`[Auto-Report Webhook] Evaluating listing: ${listingAddress}`);
 
       let matchedSwitch: AutoReportSwitch | null = null;
