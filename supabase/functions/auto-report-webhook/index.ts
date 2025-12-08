@@ -1138,6 +1138,15 @@ serve(async (req) => {
         const createdReportId = newReport.id;
         console.log(`[Auto-Report Webhook] Created pending report with ID: ${createdReportId}`);
         
+        // Parse price and rent from listing data
+        // Airtable 'price' field is typically the purchase price
+        // Look for weekly rent in dedicated rent fields
+        const purchasePrice = listing.price ? parseFloat(String(listing.price).replace(/[^0-9.]/g, '')) : null;
+        const weeklyRent = listing.weeklyRent || listing.weekly_rent || listing.rent || null;
+        const parsedWeeklyRent = weeklyRent ? parseFloat(String(weeklyRent).replace(/[^0-9.]/g, '')) : null;
+        
+        console.log(`[Auto-Report Webhook] Parsed pricing: purchasePrice=${purchasePrice}, weeklyRent=${parsedWeeklyRent}`);
+        
         // Prepare report generation payload with the reportId and detected location data
         const reportPayload = {
           reportId: createdReportId, // Include reportId so generate-investment-report updates this record
@@ -1147,13 +1156,14 @@ serve(async (req) => {
             suburb: listing.suburb || null,
             state: enrichedListing.state || null,
             postcode: detectedPostcode || null,
+            // Include price in propertyDetails - this is what generate-investment-report checks
+            price: purchasePrice,
+            weeklyRent: parsedWeeklyRent,
+            propertyType: listing.propertyType || null,
+            beds: listing.beds || listing.bedrooms || null,
+            baths: listing.baths || listing.bathrooms || null,
           },
           propertyListingId: listing.id,
-          weeklyRent: listing.price ? listing.price : null, // Use price field as weekly rent if available
-          landSize: null,
-          buildingSize: null,
-          propertyType: listing.propertyType || null,
-          purchasePrice: null,
           // Include detected location for better report generation
           suburb: listing.suburb || null,
           state: enrichedListing.state || null,
