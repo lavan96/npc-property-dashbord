@@ -300,8 +300,10 @@ serve(async (req) => {
         
         // Prepare report generation payload
         const reportPayload = {
-          queryType: 'address',
-          address: listingAddress,
+          propertyAddress: listingAddress, // Must match what generate-investment-report expects
+          propertyDetails: {
+            queryType: 'address',
+          },
           propertyListingId: listing.id,
           weeklyRent: null, // Can be extracted from listing if available
           landSize: null,
