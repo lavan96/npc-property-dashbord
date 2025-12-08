@@ -298,21 +298,43 @@ serve(async (req) => {
       try {
         console.log(`[Auto-Report Webhook] Triggering report generation for ${listingAddress}`);
         
-        // Prepare report generation payload
+        // First, create a pending report in the database so we have a reportId
+        const { data: newReport, error: createError } = await supabase
+          .from('investment_reports')
+          .insert({
+            property_address: listingAddress,
+            property_listing_id: listing.id,
+            report_content: '',
+            status: 'pending',
+            report_scope: 'address'
+          })
+          .select('id')
+          .single();
+        
+        if (createError || !newReport) {
+          throw new Error(`Failed to create report record: ${createError?.message || 'Unknown error'}`);
+        }
+        
+        const createdReportId = newReport.id;
+        console.log(`[Auto-Report Webhook] Created pending report with ID: ${createdReportId}`);
+        
+        // Prepare report generation payload with the reportId
         const reportPayload = {
-          propertyAddress: listingAddress, // Must match what generate-investment-report expects
+          reportId: createdReportId, // Include reportId so generate-investment-report updates this record
+          propertyAddress: listingAddress,
           propertyDetails: {
             queryType: 'address',
           },
           propertyListingId: listing.id,
-          weeklyRent: null, // Can be extracted from listing if available
+          weeklyRent: listing.price ? listing.price : null, // Use price field as weekly rent if available
           landSize: null,
           buildingSize: null,
           propertyType: listing.propertyType || null,
-          purchasePrice: listing.price || null,
+          purchasePrice: null,
         };
 
-        // Call generate-investment-report function
+        // Call generate-investment-report function (fire-and-forget pattern for long operations)
+        // Don't await the full response to avoid timeout - the function will update the DB directly
         const reportResponse = await fetch(`${supabaseUrl}/functions/v1/generate-investment-report`, {
           method: 'POST',
           headers: {
@@ -328,6 +350,7 @@ serve(async (req) => {
         }
 
         const reportResult = await reportResponse.json();
+        console.log(`[Auto-Report Webhook] Report generation response received, success: ${reportResult.success}`);
         
         // Update log entry with success
         if (logEntry) {
@@ -335,20 +358,32 @@ serve(async (req) => {
             .from('auto_report_generation_log')
             .update({
               status: 'completed',
-              report_id: reportResult.reportId,
+              report_id: createdReportId,
               completed_at: new Date().toISOString()
             })
             .eq('id', logEntry.id);
         }
 
+        // Also mark as processed
+        await supabase
+          .from('auto_report_processed_listings')
+          .upsert({
+            listing_id: listing.id,
+            listing_address: listingAddress,
+            report_id: createdReportId,
+            switch_id: matchedSwitch.id,
+            skipped: false,
+            processed_at: new Date().toISOString()
+          }, { onConflict: 'listing_id' });
+
         results.push({
           listingId: listing.id,
           matched: true,
           switchName: matchedSwitch.name,
-          reportId: reportResult.reportId
+          reportId: createdReportId
         });
 
-        console.log(`[Auto-Report Webhook] Report generated successfully: ${reportResult.reportId}`);
+        console.log(`[Auto-Report Webhook] Report generated successfully: ${createdReportId}`);
       } catch (genError) {
         const errorMessage = genError instanceof Error ? genError.message : 'Unknown error';
         console.error(`[Auto-Report Webhook] Report generation error: ${errorMessage}`);
