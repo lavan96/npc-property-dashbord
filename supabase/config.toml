@@ -158,3 +158,6 @@ request_timeout = 180
 [functions.auto-report-sync]
 verify_jwt = false
 request_timeout = 300
+
+[functions.email-copilot]
+verify_jwt = false

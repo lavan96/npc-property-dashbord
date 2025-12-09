@@ -657,6 +657,72 @@ export type Database = {
         }
         Relationships: []
       }
+      email_copilot_emails: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          draft_reply: string | null
+          id: string
+          linked_property_address: string | null
+          linked_report_id: string | null
+          received_at: string | null
+          sender: string
+          status: string
+          subject: string
+          summary: Json | null
+          updated_at: string
+          urgency_level: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          draft_reply?: string | null
+          id?: string
+          linked_property_address?: string | null
+          linked_report_id?: string | null
+          received_at?: string | null
+          sender: string
+          status?: string
+          subject: string
+          summary?: Json | null
+          updated_at?: string
+          urgency_level?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          draft_reply?: string | null
+          id?: string
+          linked_property_address?: string | null
+          linked_report_id?: string | null
+          received_at?: string | null
+          sender?: string
+          status?: string
+          subject?: string
+          summary?: Json | null
+          updated_at?: string
+          urgency_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_copilot_emails_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_copilot_emails_linked_report_id_fkey"
+            columns: ["linked_report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_reports: {
         Row: {
           analytics: Json

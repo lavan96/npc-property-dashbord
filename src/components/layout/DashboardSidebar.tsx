@@ -13,7 +13,8 @@ import {
   Activity,
   Upload,
   ShieldCheck,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import {
   Sidebar,
@@ -34,6 +35,7 @@ const navigationItems = [
   { title: 'Sources', url: '/sources', icon: Mail },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Generated Reports', url: '/generated-reports', icon: FileText },
+  { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles },
   { title: 'Charts', url: '/charts', icon: BarChart3 },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen },
 ];
