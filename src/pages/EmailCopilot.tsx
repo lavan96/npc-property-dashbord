@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { 
   Mail, 
   FileText, 
@@ -28,7 +29,9 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  MessageCircle
+  MessageCircle,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -155,6 +158,16 @@ export default function EmailCopilot() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
   
+  // Notification settings
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('emailNotificationSound');
+    return saved !== 'false';
+  });
+  const [browserNotificationsEnabled, setBrowserNotificationsEnabled] = useState(() => {
+    const saved = localStorage.getItem('emailBrowserNotifications');
+    return saved !== 'false';
+  });
+  
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -170,6 +183,44 @@ export default function EmailCopilot() {
     body: '',
     received_at: new Date().toISOString().split('T')[0]
   });
+
+  // Email notifications hook - refetch emails when new ones arrive
+  const { requestNotificationPermission } = useEmailNotifications({
+    onNewEmail: () => {
+      fetchEmails();
+    },
+    soundEnabled,
+    browserNotificationsEnabled
+  });
+
+  // Save notification preferences
+  useEffect(() => {
+    localStorage.setItem('emailNotificationSound', String(soundEnabled));
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('emailBrowserNotifications', String(browserNotificationsEnabled));
+  }, [browserNotificationsEnabled]);
+
+  const toggleSoundNotifications = () => {
+    setSoundEnabled(!soundEnabled);
+    toast.success(soundEnabled ? 'Sound notifications disabled' : 'Sound notifications enabled');
+  };
+
+  const toggleBrowserNotifications = async () => {
+    if (!browserNotificationsEnabled) {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setBrowserNotificationsEnabled(true);
+        toast.success('Browser notifications enabled');
+      } else {
+        toast.error('Browser notification permission denied');
+      }
+    } else {
+      setBrowserNotificationsEnabled(false);
+      toast.success('Browser notifications disabled');
+    }
+  };
 
   // When selecting an email, ensure we have the latest data from state
   const handleSelectEmail = (email: Email) => {
@@ -543,6 +594,34 @@ export default function EmailCopilot() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Notification toggles */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleSoundNotifications}
+            title={soundEnabled ? 'Disable sound notifications' : 'Enable sound notifications'}
+            className="h-9 w-9"
+          >
+            {soundEnabled ? (
+              <Bell className="h-4 w-4 text-primary" />
+            ) : (
+              <BellOff className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleBrowserNotifications}
+            title={browserNotificationsEnabled ? 'Disable browser notifications' : 'Enable browser notifications'}
+            className="h-9 w-9"
+          >
+            {browserNotificationsEnabled ? (
+              <Bell className="h-4 w-4 text-green-500" />
+            ) : (
+              <BellOff className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
