@@ -16,6 +16,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 interface OutlookMessage {
   id: string;
+  internetMessageId: string;
   subject: string;
   bodyPreview: string;
   body: {
@@ -66,7 +67,7 @@ async function getAccessToken(): Promise<string> {
 async function fetchEmails(accessToken: string, limit: number = 20): Promise<OutlookMessage[]> {
   console.log(`[Outlook Sync] Fetching emails for ${MICROSOFT_MAILBOX_EMAIL}...`);
   
-  const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead`;
+  const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,receivedDateTime,isRead`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -129,21 +130,28 @@ serve(async (req) => {
     // Fetch emails from Outlook
     const outlookEmails = await fetchEmails(accessToken, limit);
 
-    // Get existing email IDs to avoid duplicates
+    // Get existing emails to avoid duplicates - use multiple criteria for robust dedup
     const { data: existingEmails } = await supabase
       .from('email_copilot_emails')
       .select('sender, subject, received_at');
 
-    const existingKeys = new Set(
-      (existingEmails || []).map(e => `${e.sender}|${e.subject}|${e.received_at}`)
-    );
+    // Create a set of composite keys for quick lookup
+    // Use sender + subject + received_at as the unique key
+    const existingKeys = new Set<string>();
+    (existingEmails || []).forEach(e => {
+      // Normalize the received_at to handle timezone differences
+      const normalizedDate = new Date(e.received_at).toISOString();
+      existingKeys.add(`${e.sender?.toLowerCase()}|${e.subject?.toLowerCase()}|${normalizedDate}`);
+    });
+
+    console.log(`[Outlook Sync] Found ${existingKeys.size} existing emails in database`);
 
     // Process and insert new emails
     const newEmails = [];
     for (const email of outlookEmails) {
-      const sender = email.from?.emailAddress?.address || 'unknown';
-      const subject = email.subject || '(No Subject)';
-      const receivedAt = email.receivedDateTime;
+      const sender = (email.from?.emailAddress?.address || 'unknown').toLowerCase();
+      const subject = (email.subject || '(No Subject)').toLowerCase();
+      const receivedAt = new Date(email.receivedDateTime).toISOString();
       
       const key = `${sender}|${subject}|${receivedAt}`;
       
@@ -153,12 +161,15 @@ serve(async (req) => {
           : email.body?.content || email.bodyPreview || '';
 
         newEmails.push({
-          sender,
-          subject,
+          sender: email.from?.emailAddress?.address || 'unknown',
+          subject: email.subject || '(No Subject)',
           body: bodyContent.substring(0, 10000), // Limit body size
-          received_at: receivedAt,
+          received_at: email.receivedDateTime,
           status: 'unread',
         });
+        
+        // Add to existing keys to prevent duplicates within same batch
+        existingKeys.add(key);
       }
     }
 
