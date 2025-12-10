@@ -14,7 +14,15 @@ import {
   RefreshCw,
   Archive,
   Link as LinkIcon,
-  Sparkles
+  Sparkles,
+  User,
+  Calendar,
+  Inbox,
+  Send,
+  MoreVertical,
+  Reply,
+  Star,
+  ChevronRight
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +47,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 
 interface EmailSummary {
   tldr: string;
@@ -61,6 +75,64 @@ interface Email {
   linked_report_id: string | null;
   status: 'unread' | 'read' | 'summarized' | 'drafted' | 'archived';
   created_at: string;
+}
+
+// Helper to extract sender name from email
+function extractSenderName(sender: string): string {
+  // If it looks like "Name <email@domain.com>", extract the name
+  const match = sender.match(/^([^<]+)</);
+  if (match) return match[1].trim();
+  
+  // If it's just an email, extract the part before @
+  const emailMatch = sender.match(/^([^@]+)@/);
+  if (emailMatch) {
+    // Convert to title case
+    return emailMatch[1]
+      .split(/[._-]/)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+  
+  return sender;
+}
+
+// Helper to get initials from sender
+function getSenderInitials(sender: string): string {
+  const name = extractSenderName(sender);
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+// Helper to format date intelligently
+function formatEmailDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isToday(date)) {
+    return format(date, 'h:mm a');
+  }
+  if (isYesterday(date)) {
+    return 'Yesterday';
+  }
+  return format(date, 'MMM d');
+}
+
+// Helper to format full date
+function formatFullDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return format(date, "EEEE, MMMM d, yyyy 'at' h:mm a");
+}
+
+// Helper to format email body with proper paragraphs
+function formatEmailBody(body: string): string {
+  if (!body) return '';
+  
+  // Clean up excessive whitespace but preserve paragraph breaks
+  return body
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 export default function EmailCopilot() {
@@ -93,6 +165,8 @@ export default function EmailCopilot() {
 
       if (data.inserted > 0) {
         toast.success(`Synced ${data.inserted} new emails from Outlook`);
+      } else {
+        toast.info('No new emails to sync');
       }
       fetchEmails();
     } catch (error) {
@@ -299,344 +373,413 @@ export default function EmailCopilot() {
   };
 
   const getUrgencyBadge = (level: string | null) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
-      high: { variant: 'destructive', label: 'High Urgency' },
-      medium: { variant: 'default', label: 'Medium Urgency' },
-      low: { variant: 'secondary', label: 'Low Urgency' }
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; className: string }> = {
+      high: { variant: 'destructive', label: 'High', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+      medium: { variant: 'default', label: 'Medium', className: 'bg-warning/10 text-warning border-warning/20' },
+      low: { variant: 'secondary', label: 'Low', className: 'bg-muted text-muted-foreground' }
     };
     const config = variants[level || 'low'] || variants.low;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant="outline" className={config.className}>{config.label}</Badge>;
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'unread': return <Mail className="h-4 w-4 text-muted-foreground" />;
-      case 'read': return <CheckCircle className="h-4 w-4 text-blue-500" />;
-      case 'summarized': return <FileText className="h-4 w-4 text-green-500" />;
-      case 'drafted': return <MessageSquare className="h-4 w-4 text-purple-500" />;
-      case 'archived': return <Archive className="h-4 w-4 text-muted-foreground" />;
-      default: return <Mail className="h-4 w-4" />;
-    }
+  const getStatusBadge = (status: string) => {
+    const config: Record<string, { label: string; className: string }> = {
+      unread: { label: 'Unread', className: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+      read: { label: 'Read', className: 'bg-muted text-muted-foreground' },
+      summarized: { label: 'Summarized', className: 'bg-green-500/10 text-green-600 border-green-500/20' },
+      drafted: { label: 'Draft Ready', className: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
+      archived: { label: 'Archived', className: 'bg-muted text-muted-foreground' }
+    };
+    const { label, className } = config[status] || config.read;
+    return <Badge variant="outline" className={className}>{label}</Badge>;
   };
+
+  const activeEmails = emails.filter(e => e.status !== 'archived');
+  const unreadCount = activeEmails.filter(e => e.status === 'unread').length;
 
   return (
-    <div className="p-6 h-[calc(100vh-4rem)]">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            Email Copilot
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Draft & Summary Tool — AI-assisted email handling
-          </p>
+      <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Mail className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              Email Copilot
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="text-xs">{unreadCount} new</Badge>
+              )}
+            </h1>
+            <p className="text-xs text-muted-foreground">AI-powered email summaries & draft replies</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSyncOutlook} disabled={isSyncing}>
-            <Mail className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-pulse' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync Outlook'}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSyncOutlook} disabled={isSyncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Syncing...' : 'Sync Inbox'}
           </Button>
-          <Button variant="outline" onClick={fetchEmails} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button onClick={() => setShowAddModal(true)}>
+          <Button size="sm" onClick={() => setShowAddModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Email
           </Button>
         </div>
       </div>
 
-      {/* Disclaimer Banner */}
-      <div className="bg-muted/50 border border-border rounded-lg p-3 mb-6 flex items-start gap-3">
-        <AlertCircle className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-muted-foreground">
-          <strong>Human-in-the-loop:</strong> All AI-generated summaries and replies are drafts only. 
-          Always review, edit, and manually send responses. No emails are sent automatically.
-        </div>
+      {/* Disclaimer */}
+      <div className="px-6 py-2 bg-muted/30 border-b">
+        <p className="text-xs text-muted-foreground flex items-center gap-2">
+          <AlertCircle className="h-3 w-3" />
+          <span><strong>Human-in-the-loop:</strong> All AI outputs are drafts. Review before sending.</span>
+        </p>
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-12 gap-6 h-[calc(100%-160px)]">
-        {/* Email List */}
-        <div className="col-span-4">
-          <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Emails</CardTitle>
-              <CardDescription>
-                {emails.filter(e => e.status !== 'archived').length} active emails
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-380px)]">
-                {isLoading ? (
-                  <div className="p-4 text-center text-muted-foreground">Loading...</div>
-                ) : emails.filter(e => e.status !== 'archived').length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">
-                    <Mail className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No emails yet</p>
-                    <p className="text-sm mt-1">Add an email to get started</p>
-                  </div>
-                ) : (
-                  emails
-                    .filter(e => e.status !== 'archived')
-                    .map((email) => (
-                      <div
-                        key={email.id}
-                        onClick={() => setSelectedEmail(email)}
-                        className={`p-4 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors ${
-                          selectedEmail?.id === email.id ? 'bg-muted' : ''
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getStatusIcon(email.status)}
-                              <span className="font-medium text-sm truncate">
-                                {email.sender}
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium truncate">{email.subject}</p>
-                            <p className="text-xs text-muted-foreground truncate mt-1">
-                              {email.body.slice(0, 60)}...
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(email.received_at), 'MMM d')}
-                            </span>
-                            {email.urgency_level && (
-                              <div className="scale-75 origin-right">
-                                {getUrgencyBadge(email.urgency_level)}
-                              </div>
-                            )}
-                          </div>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Email List Panel */}
+        <div className="w-[380px] border-r flex flex-col bg-background">
+          <div className="px-4 py-3 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Inbox</span>
+                <span className="text-xs text-muted-foreground">({activeEmails.length})</span>
+              </div>
+            </div>
+          </div>
+          
+          <ScrollArea className="flex-1">
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading emails...</p>
+              </div>
+            ) : activeEmails.length === 0 ? (
+              <div className="p-8 text-center">
+                <Inbox className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="text-sm font-medium text-muted-foreground">No emails</p>
+                <p className="text-xs text-muted-foreground mt-1">Sync your inbox or add an email</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {activeEmails.map((email) => (
+                  <div
+                    key={email.id}
+                    onClick={() => setSelectedEmail(email)}
+                    className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
+                      selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                    } ${email.status === 'unread' ? 'bg-primary/5' : ''}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-semibold text-primary">
+                          {getSenderInitials(email.sender)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <span className={`text-sm truncate ${email.status === 'unread' ? 'font-semibold' : 'font-medium'}`}>
+                            {extractSenderName(email.sender)}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {formatEmailDate(email.received_at)}
+                          </span>
+                        </div>
+                        <p className={`text-sm truncate ${email.status === 'unread' ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                          {email.subject || '(No Subject)'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {email.body.slice(0, 80).replace(/\n/g, ' ')}...
+                        </p>
+                        
+                        {/* Status indicators */}
+                        <div className="flex items-center gap-1.5 mt-2">
+                          {email.urgency_level && email.urgency_level !== 'low' && (
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
+                              email.urgency_level === 'high' ? 'text-destructive border-destructive/30' : 'text-warning border-warning/30'
+                            }`}>
+                              {email.urgency_level === 'high' ? '🔴' : '🟡'} {email.urgency_level}
+                            </Badge>
+                          )}
+                          {email.summary && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
+                              <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Summary
+                            </Badge>
+                          )}
+                          {email.draft_reply && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-purple-600 border-purple-500/30">
+                              <MessageSquare className="h-2.5 w-2.5 mr-0.5" /> Draft
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                    ))
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Email Detail & Actions */}
-        <div className="col-span-8">
-          {selectedEmail ? (
-            <Card className="h-full flex flex-col">
-              <CardHeader className="pb-3 flex-shrink-0">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{selectedEmail.subject}</CardTitle>
-                    <CardDescription className="mt-1">
-                      From: {selectedEmail.sender} • {format(new Date(selectedEmail.received_at), 'PPP')}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    {getUrgencyBadge(selectedEmail.urgency_level)}
-                    <Badge variant="outline">{selectedEmail.status}</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="flex-1 overflow-hidden flex flex-col gap-4">
-                {/* Email Body */}
-                <div className="flex-1 min-h-0">
-                  <Label className="text-sm font-medium mb-2 block">Email Content</Label>
-                  <ScrollArea className="h-[200px] border rounded-md p-3 bg-muted/30">
-                    <pre className="whitespace-pre-wrap text-sm font-sans">
-                      {selectedEmail.body}
-                    </pre>
-                  </ScrollArea>
-                </div>
-
-                {/* AI Summary Section */}
-                {selectedEmail.summary && (
-                  <div className="flex-shrink-0">
-                    <Label className="text-sm font-medium mb-2 block flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      AI Summary
-                    </Label>
-                    <div className="border rounded-md p-4 bg-primary/5 space-y-3">
-                      <div>
-                        <span className="text-xs font-semibold text-muted-foreground uppercase">TL;DR</span>
-                        <p className="text-sm mt-1">{selectedEmail.summary.tldr}</p>
-                      </div>
-                      {selectedEmail.summary.keyPoints.length > 0 && (
-                        <div>
-                          <span className="text-xs font-semibold text-muted-foreground uppercase">Key Points</span>
-                          <ul className="list-disc list-inside text-sm mt-1 space-y-1">
-                            {selectedEmail.summary.keyPoints.map((point, i) => (
-                              <li key={i}>{point}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {selectedEmail.summary.requiredActions.length > 0 && (
-                        <div>
-                          <span className="text-xs font-semibold text-muted-foreground uppercase">Required Actions</span>
-                          <ul className="list-disc list-inside text-sm mt-1 space-y-1">
-                            {selectedEmail.summary.requiredActions.map((action, i) => (
-                              <li key={i}>{action}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
 
-                {/* Action Buttons */}
-                <Separator />
-                <div className="flex items-center justify-between flex-shrink-0">
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleSummarize} 
-                      disabled={isSummarizing}
-                      variant="outline"
-                    >
-                      {isSummarizing ? (
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <FileText className="h-4 w-4 mr-2" />
-                      )}
-                      Summarize
-                    </Button>
-                    <Button 
-                      onClick={handleDraftReply} 
-                      disabled={isDrafting}
-                    >
-                      {isDrafting ? (
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                      )}
-                      Draft Reply
-                    </Button>
-                    {selectedEmail.draft_reply && (
-                      <Button 
-                        variant="secondary"
-                        onClick={() => {
-                          setCurrentDraft(selectedEmail.draft_reply || '');
-                          setShowDraftModal(true);
-                        }}
-                      >
-                        View Draft
-                      </Button>
-                    )}
+        {/* Email Detail Panel */}
+        <div className="flex-1 flex flex-col bg-muted/20 overflow-hidden">
+          {selectedEmail ? (
+            <>
+              {/* Email Header */}
+              <div className="px-6 py-4 bg-background border-b">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-base font-semibold text-primary">
+                        {getSenderInitials(selectedEmail.sender)}
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">{selectedEmail.subject || '(No Subject)'}</h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm font-medium">{extractSenderName(selectedEmail.sender)}</span>
+                        <span className="text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>{formatFullDate(selectedEmail.received_at)}</span>
+                        <span className="text-muted-foreground/50">•</span>
+                        <span>{formatDistanceToNow(new Date(selectedEmail.received_at), { addSuffix: true })}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={handleArchiveEmail}>
-                      <Archive className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={handleDeleteEmail}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(selectedEmail.status)}
+                    {selectedEmail.urgency_level && getUrgencyBadge(selectedEmail.urgency_level)}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleArchiveEmail}>
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleDeleteEmail} className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="h-full flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <Mail className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                <p className="text-lg font-medium">Select an email</p>
-                <p className="text-sm mt-1">Choose an email from the list to view details and use AI tools</p>
               </div>
-            </Card>
+
+              {/* Email Content */}
+              <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6">
+                  {/* Email Body */}
+                  <div className="bg-background rounded-lg border p-6">
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      {formatEmailBody(selectedEmail.body).split('\n\n').map((paragraph, i) => (
+                        <p key={i} className="text-sm text-foreground leading-relaxed mb-3 last:mb-0">
+                          {paragraph.split('\n').map((line, j) => (
+                            <span key={j}>
+                              {line}
+                              {j < paragraph.split('\n').length - 1 && <br />}
+                            </span>
+                          ))}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* AI Summary */}
+                  {selectedEmail.summary && (
+                    <div className="bg-background rounded-lg border overflow-hidden">
+                      <div className="px-4 py-3 bg-primary/5 border-b flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">AI Summary</span>
+                      </div>
+                      <div className="p-4 space-y-4">
+                        <div>
+                          <Label className="text-xs uppercase text-muted-foreground font-semibold">TL;DR</Label>
+                          <p className="text-sm mt-1">{selectedEmail.summary.tldr}</p>
+                        </div>
+                        {selectedEmail.summary.keyPoints.length > 0 && (
+                          <div>
+                            <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
+                            <ul className="mt-1 space-y-1">
+                              {selectedEmail.summary.keyPoints.map((point, i) => (
+                                <li key={i} className="text-sm flex items-start gap-2">
+                                  <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                                  <span>{point}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {selectedEmail.summary.requiredActions.length > 0 && (
+                          <div>
+                            <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
+                            <ul className="mt-1 space-y-1">
+                              {selectedEmail.summary.requiredActions.map((action, i) => (
+                                <li key={i} className="text-sm flex items-start gap-2">
+                                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                  <span>{action}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Draft Reply Preview */}
+                  {selectedEmail.draft_reply && (
+                    <div className="bg-background rounded-lg border overflow-hidden">
+                      <div className="px-4 py-3 bg-purple-500/5 border-b flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-medium">Draft Reply</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          setCurrentDraft(selectedEmail.draft_reply || '');
+                          setShowDraftModal(true);
+                        }}>
+                          View Full Draft
+                        </Button>
+                      </div>
+                      <div className="p-4">
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          {selectedEmail.draft_reply}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+
+              {/* Action Bar */}
+              <div className="px-6 py-4 bg-background border-t flex items-center gap-3">
+                <Button 
+                  onClick={handleSummarize} 
+                  disabled={isSummarizing}
+                  variant={selectedEmail.summary ? "outline" : "default"}
+                >
+                  <Sparkles className={`h-4 w-4 mr-2 ${isSummarizing ? 'animate-pulse' : ''}`} />
+                  {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
+                </Button>
+                <Button 
+                  onClick={handleDraftReply} 
+                  disabled={isDrafting}
+                  variant="outline"
+                >
+                  <Reply className={`h-4 w-4 mr-2 ${isDrafting ? 'animate-pulse' : ''}`} />
+                  {isDrafting ? 'Drafting...' : 'Draft Reply'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <Mail className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="text-lg font-medium text-muted-foreground">Select an email</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">Choose an email from the list to view details</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
       {/* Add Email Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Email</DialogTitle>
+            <DialogTitle>Add Email Manually</DialogTitle>
             <DialogDescription>
-              Paste or enter email details manually
+              Paste email content to process with AI
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>From (Sender)</Label>
-                <Input
-                  placeholder="sender@example.com"
-                  value={newEmail.sender}
-                  onChange={(e) => setNewEmail({ ...newEmail, sender: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Received Date</Label>
-                <Input
-                  type="date"
-                  value={newEmail.received_at}
-                  onChange={(e) => setNewEmail({ ...newEmail, received_at: e.target.value })}
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="sender">From (Email Address) *</Label>
+              <Input
+                id="sender"
+                placeholder="sender@example.com"
+                value={newEmail.sender}
+                onChange={(e) => setNewEmail({ ...newEmail, sender: e.target.value })}
+              />
             </div>
             <div>
-              <Label>Subject</Label>
+              <Label htmlFor="subject">Subject *</Label>
               <Input
+                id="subject"
                 placeholder="Email subject"
                 value={newEmail.subject}
                 onChange={(e) => setNewEmail({ ...newEmail, subject: e.target.value })}
               />
             </div>
             <div>
-              <Label>Email Body</Label>
+              <Label htmlFor="received">Received Date</Label>
+              <Input
+                id="received"
+                type="date"
+                value={newEmail.received_at}
+                onChange={(e) => setNewEmail({ ...newEmail, received_at: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="body">Email Body *</Label>
               <Textarea
-                placeholder="Paste the full email content here..."
-                className="min-h-[200px]"
+                id="body"
+                placeholder="Paste the email content here..."
+                className="h-40"
                 value={newEmail.body}
                 onChange={(e) => setNewEmail({ ...newEmail, body: e.target.value })}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddEmail}>
-              Add Email
-            </Button>
+            <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button onClick={handleAddEmail}>Add Email</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Draft Reply Modal */}
       <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI-Generated Draft Reply
+              <MessageSquare className="h-5 w-5 text-purple-600" />
+              Draft Reply
             </DialogTitle>
             <DialogDescription>
-              Review and edit this draft before copying. This will NOT be sent automatically.
+              Review and edit before copying to your email client
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
-              <strong>⚠️ AI-generated.</strong> Please review carefully before use. 
-              Copy and paste into your email client to send manually.
-            </div>
+          <div className="flex-1 overflow-hidden">
             <Textarea
               value={currentDraft}
               onChange={(e) => setCurrentDraft(e.target.value)}
-              className="min-h-[300px] font-mono text-sm"
+              className="h-[400px] resize-none font-sans text-sm"
+              placeholder="Draft reply will appear here..."
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDraftModal(false)}>
-              Close
-            </Button>
-            <Button onClick={handleCopyDraft}>
-              <Copy className="h-4 w-4 mr-2" />
-              Copy to Clipboard
-            </Button>
+          <DialogFooter className="flex justify-between">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Remember to review before sending
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowDraftModal(false)}>Close</Button>
+              <Button onClick={handleCopyDraft}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy to Clipboard
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
