@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Microsoft Graph API credentials
 const MICROSOFT_CLIENT_ID = Deno.env.get('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET = Deno.env.get('MICROSOFT_CLIENT_SECRET');
 const MICROSOFT_TENANT_ID = Deno.env.get('MICROSOFT_TENANT_ID');
@@ -35,7 +34,6 @@ interface OutlookMessage {
   bccRecipients?: EmailRecipient[];
 }
 
-// Get access token from Microsoft
 async function getAccessToken(): Promise<string> {
   const tokenUrl = `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
   
@@ -62,7 +60,6 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-// Fetch a specific email by ID
 async function fetchEmailById(accessToken: string, messageId: string): Promise<OutlookMessage | null> {
   const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages/${messageId}?$select=id,internetMessageId,subject,bodyPreview,body,from,receivedDateTime,ccRecipients,bccRecipients`;
   
@@ -81,26 +78,100 @@ async function fetchEmailById(accessToken: string, messageId: string): Promise<O
   return await response.json();
 }
 
-// Strip HTML tags from content
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
+/**
+ * Structure-preserving HTML to text conversion
+ * Converts HTML to plain text while maintaining formatting structure
+ */
+function convertHtmlToStructuredText(html: string): string {
+  if (!html) return '';
+  
+  let text = html;
+  
+  // Preserve paragraph breaks
+  text = text.replace(/<\/p>/gi, '\n\n');
+  text = text.replace(/<p[^>]*>/gi, '');
+  
+  // Preserve div breaks
+  text = text.replace(/<\/div>/gi, '\n');
+  text = text.replace(/<div[^>]*>/gi, '');
+  
+  // Preserve line breaks
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  
+  // Preserve headings with emphasis
+  text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n**$1**\n\n');
+  
+  // Preserve bold/strong text with markers
+  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '**$2**');
+  
+  // Preserve italic/emphasis text with markers
+  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '_$2_');
+  
+  // Preserve underline text with markers
+  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>');
+  
+  // Preserve unordered list items with bullets
+  text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
+  
+  // Preserve ordered list items (simplified)
+  let listCounter = 0;
+  text = text.replace(/<ol[^>]*>/gi, () => { listCounter = 0; return ''; });
+  text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, (match, content) => {
+    listCounter++;
+    return `${listCounter}. ${content}\n`;
+  });
+  
+  // Remove list wrappers
+  text = text.replace(/<\/?[ou]l[^>]*>/gi, '\n');
+  
+  // Preserve table structure (simplified)
+  text = text.replace(/<tr[^>]*>/gi, '');
+  text = text.replace(/<\/tr>/gi, '\n');
+  text = text.replace(/<t[dh][^>]*>(.*?)<\/t[dh]>/gi, '$1\t');
+  text = text.replace(/<\/?table[^>]*>/gi, '\n');
+  text = text.replace(/<\/?t(head|body|foot)[^>]*>/gi, '');
+  
+  // Preserve blockquotes
+  text = text.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, (match, content) => {
+    return content.split('\n').map((line: string) => `> ${line}`).join('\n') + '\n';
+  });
+  
+  // Preserve horizontal rules
+  text = text.replace(/<hr\s*\/?>/gi, '\n---\n');
+  
+  // Remove remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  text = text.replace(/&rsquo;/g, "'");
+  text = text.replace(/&lsquo;/g, "'");
+  text = text.replace(/&rdquo;/g, '"');
+  text = text.replace(/&ldquo;/g, '"');
+  text = text.replace(/&mdash;/g, '—');
+  text = text.replace(/&ndash;/g, '–');
+  text = text.replace(/&hellip;/g, '...');
+  text = text.replace(/&bull;/g, '•');
+  text = text.replace(/&#(\d+);/g, (match, code) => String.fromCharCode(parseInt(code)));
+  
+  // Clean up excessive whitespace while preserving intentional line breaks
+  text = text.replace(/[ \t]+/g, ' '); // Collapse horizontal whitespace
+  text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
+  text = text.replace(/^\s+|\s+$/gm, ''); // Trim each line
+  
+  return text.trim();
 }
 
-// Extract email addresses from recipients
 function extractEmailAddresses(recipients: EmailRecipient[]): string[] {
   return recipients?.map(r => r.emailAddress?.address).filter(Boolean) || [];
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -108,10 +179,9 @@ serve(async (req) => {
   const url = new URL(req.url);
   
   // Handle Microsoft Graph webhook validation
-  // Microsoft sends a GET request with validationToken query param during subscription setup
   const validationToken = url.searchParams.get('validationToken');
   if (validationToken) {
-    console.log('Validation request received, echoing token');
+    console.log('[Outlook Webhook] Validation request received, echoing token');
     return new Response(validationToken, {
       status: 200,
       headers: { 'Content-Type': 'text/plain' }
@@ -119,53 +189,47 @@ serve(async (req) => {
   }
 
   try {
-    // Handle actual notification
     const body = await req.json();
-    console.log('Webhook notification received:', JSON.stringify(body, null, 2));
+    console.log('[Outlook Webhook] Notification received:', JSON.stringify(body, null, 2));
 
     if (!body.value || !Array.isArray(body.value)) {
-      console.log('No notifications in payload');
+      console.log('[Outlook Webhook] No notifications in payload');
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Validate Microsoft credentials
     if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
-      console.error('Missing Microsoft credentials');
+      console.error('[Outlook Webhook] Missing Microsoft credentials');
       return new Response(JSON.stringify({ error: 'Missing Microsoft credentials' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Get access token
     const accessToken = await getAccessToken();
 
-    // Process each notification
     for (const notification of body.value) {
-      console.log('Processing notification:', notification);
+      console.log('[Outlook Webhook] Processing notification:', notification);
 
-      // Check if this is a mail notification
       if (notification.resourceData?.['@odata.type'] !== '#Microsoft.Graph.Message') {
-        console.log('Skipping non-message notification');
+        console.log('[Outlook Webhook] Skipping non-message notification');
         continue;
       }
 
       const messageId = notification.resourceData?.id;
       if (!messageId) {
-        console.log('No message ID in notification');
+        console.log('[Outlook Webhook] No message ID in notification');
         continue;
       }
 
-      // Fetch the full email
       const email = await fetchEmailById(accessToken, messageId);
       if (!email) {
-        console.log('Failed to fetch email:', messageId);
+        console.log('[Outlook Webhook] Failed to fetch email:', messageId);
         continue;
       }
 
-      // Check for duplicates using internetMessageId
+      // Check for duplicates
       const { data: existing } = await supabase
         .from('email_copilot_emails')
         .select('id')
@@ -175,19 +239,21 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        console.log('Email already exists, skipping:', email.subject);
+        console.log('[Outlook Webhook] Email already exists, skipping:', email.subject);
         continue;
       }
 
-      // Insert the new email
+      // Use structure-preserving HTML conversion
+      const bodyContent = email.body?.contentType === 'html' 
+        ? convertHtmlToStructuredText(email.body.content) 
+        : email.body?.content || email.bodyPreview || '';
+
       const { error: insertError } = await supabase
         .from('email_copilot_emails')
         .insert({
           sender: email.from?.emailAddress?.address || 'Unknown',
           subject: email.subject || '(No subject)',
-          body: email.body?.contentType === 'html' 
-            ? stripHtml(email.body.content) 
-            : email.body?.content || email.bodyPreview || '',
+          body: bodyContent.substring(0, 10000),
           received_at: email.receivedDateTime,
           status: 'unread',
           cc_recipients: extractEmailAddresses(email.ccRecipients || []),
@@ -195,9 +261,9 @@ serve(async (req) => {
         });
 
       if (insertError) {
-        console.error('Error inserting email:', insertError);
+        console.error('[Outlook Webhook] Error inserting email:', insertError);
       } else {
-        console.log('Successfully inserted email:', email.subject);
+        console.log('[Outlook Webhook] Successfully inserted email:', email.subject);
       }
     }
 
@@ -206,8 +272,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Webhook error:', error);
-    // Always return 200 to Microsoft to prevent retries
+    console.error('[Outlook Webhook] Error:', error);
     return new Response(JSON.stringify({ success: true, error: error.message }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
