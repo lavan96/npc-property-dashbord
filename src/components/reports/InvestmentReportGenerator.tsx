@@ -56,6 +56,15 @@ export function InvestmentReportGenerator() {
       return;
     }
 
+    if (!propertyPrice || parseFloat(propertyPrice) <= 0) {
+      toast({
+        title: "Property Price Required",
+        description: "Please enter a valid property price to calculate investment score.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -327,16 +336,18 @@ export function InvestmentReportGenerator() {
               {/* Property Details - Optional but Recommended */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Property Details (Optional)</Label>
-                  <Badge variant="outline" className="text-xs">Enhances Analysis</Badge>
+                  <Label className="text-base font-semibold">Property Details</Label>
+                  <Badge variant="default" className="text-xs">Required for Scoring</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Providing these details enables financial calculations, investment scoring, and location intelligence.
+                  Property price is required for investment scoring. Other details are optional but enhance analysis accuracy.
                 </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="propertyPrice">Property Price ($)</Label>
+                    <Label htmlFor="propertyPrice" className="flex items-center gap-1">
+                      Property Price ($) <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="propertyPrice"
                       type="number"
@@ -344,6 +355,7 @@ export function InvestmentReportGenerator() {
                       onChange={(e) => setPropertyPrice(e.target.value)}
                       placeholder="e.g., 750000"
                       disabled={isGenerating}
+                      required
                     />
                   </div>
 
