@@ -69,6 +69,7 @@ export default function EmailCopilot() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
@@ -84,6 +85,25 @@ export default function EmailCopilot() {
   useEffect(() => {
     fetchEmails();
   }, []);
+
+  const handleSyncOutlook = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('outlook-email-sync', {
+        body: { action: 'sync', limit: 50 }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Synced ${data.inserted} new emails from Outlook`);
+      fetchEmails();
+    } catch (error) {
+      console.error('Error syncing Outlook:', error);
+      toast.error('Failed to sync emails from Outlook');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const fetchEmails = async () => {
     setIsLoading(true);
@@ -310,6 +330,10 @@ export default function EmailCopilot() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSyncOutlook} disabled={isSyncing}>
+            <Mail className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-pulse' : ''}`} />
+            {isSyncing ? 'Syncing...' : 'Sync Outlook'}
+          </Button>
           <Button variant="outline" onClick={fetchEmails} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
