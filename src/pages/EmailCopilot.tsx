@@ -1221,12 +1221,16 @@ export default function EmailCopilot() {
                     {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
                   </Button>
                   <Button 
-                    onClick={() => handleDraftReply()} 
-                    disabled={isDrafting}
+                    onClick={() => {
+                      setCurrentDraft('');
+                      setReplyContext('');
+                      initializeReplyFields();
+                      setShowDraftModal(true);
+                    }} 
                     variant="outline"
                   >
-                    <Reply className={`h-4 w-4 mr-2 ${isDrafting ? 'animate-pulse' : ''}`} />
-                    {isDrafting ? 'Drafting...' : selectedEmail.draft_reply ? 'Re-draft Reply' : 'Draft Reply'}
+                    <Reply className="h-4 w-4 mr-2" />
+                    {selectedEmail.draft_reply ? 'Compose New Reply' : 'Compose Reply'}
                   </Button>
                 </div>
                 
@@ -1390,46 +1394,33 @@ export default function EmailCopilot() {
               
               {/* Reply Context Input */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">AI Context (optional)</Label>
+                <Label className="text-sm font-medium">Reply Context</Label>
+                <p className="text-xs text-muted-foreground">
+                  Describe what you want to say - the AI will generate a professional reply based on your input
+                </p>
                 <div className="flex gap-2">
                   <Textarea
                     value={replyContext}
                     onChange={(e) => setReplyContext(e.target.value)}
-                    placeholder="Describe what you want to reply with... e.g., 'Thank them for their inquiry and schedule a call for next week'"
-                    className="h-16 resize-none flex-1 text-sm"
+                    placeholder="e.g., 'Thank them for their inquiry and let them know I'll send through the property report by end of day'"
+                    className="h-20 resize-none flex-1 text-sm"
                   />
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      variant={isRecording ? "destructive" : "outline"}
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isTranscribing}
-                      title={isRecording ? "Stop recording" : "Start voice input"}
-                    >
-                      {isTranscribing ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : isRecording ? (
-                        <MicOff className="h-3 w-3" />
-                      ) : (
-                        <Mic className="h-3 w-3" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleDraftReply(replyContext)}
-                      disabled={isDrafting || !replyContext}
-                      title="Regenerate with context"
-                    >
-                      {isDrafting ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    variant={isRecording ? "destructive" : "outline"}
+                    size="icon"
+                    className="h-20 w-12"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={isTranscribing}
+                    title={isRecording ? "Stop recording" : "Speak your reply context"}
+                  >
+                    {isTranscribing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isRecording ? (
+                      <MicOff className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
                 {isRecording && (
                   <p className="text-xs text-destructive flex items-center gap-1 animate-pulse">
@@ -1437,6 +1428,23 @@ export default function EmailCopilot() {
                     Recording... Click mic to stop
                   </p>
                 )}
+                <Button
+                  onClick={() => handleDraftReply(replyContext)}
+                  disabled={isDrafting}
+                  className="w-full"
+                >
+                  {isDrafting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating Draft...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      {currentDraft ? 'Regenerate Draft' : 'Generate Draft'}
+                    </>
+                  )}
+                </Button>
               </div>
               
               <Separator />
