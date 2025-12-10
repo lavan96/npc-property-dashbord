@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
+import RichTextBody from '@/components/email/RichTextBody';
 import { 
   Mail, 
   FileText, 
@@ -955,18 +956,10 @@ export default function EmailCopilot() {
                 <div className="p-6 space-y-6">
                   {/* Email Body */}
                   <div className="bg-background rounded-lg border p-6">
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      {formatEmailBody(selectedEmail.body).split('\n\n').map((paragraph, i) => (
-                        <p key={i} className="text-sm text-foreground leading-relaxed mb-3 last:mb-0">
-                          {paragraph.split('\n').map((line, j) => (
-                            <span key={j}>
-                              {line}
-                              {j < paragraph.split('\n').length - 1 && <br />}
-                            </span>
-                          ))}
-                        </p>
-                      ))}
-                    </div>
+                    <RichTextBody 
+                      content={selectedEmail.body}
+                      className="prose prose-sm max-w-none dark:prose-invert"
+                    />
                   </div>
 
                   {/* AI Summary */}
