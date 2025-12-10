@@ -82,10 +82,6 @@ export default function EmailCopilot() {
     received_at: new Date().toISOString().split('T')[0]
   });
 
-  useEffect(() => {
-    fetchEmails();
-  }, []);
-
   const handleSyncOutlook = async () => {
     setIsSyncing(true);
     try {
@@ -95,7 +91,9 @@ export default function EmailCopilot() {
 
       if (error) throw error;
 
-      toast.success(`Synced ${data.inserted} new emails from Outlook`);
+      if (data.inserted > 0) {
+        toast.success(`Synced ${data.inserted} new emails from Outlook`);
+      }
       fetchEmails();
     } catch (error) {
       console.error('Error syncing Outlook:', error);
@@ -104,6 +102,11 @@ export default function EmailCopilot() {
       setIsSyncing(false);
     }
   };
+
+  useEffect(() => {
+    // Auto-sync from Outlook on page load
+    handleSyncOutlook();
+  }, []);
 
   const fetchEmails = async () => {
     setIsLoading(true);
