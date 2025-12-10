@@ -218,6 +218,17 @@ export default function EmailCopilot() {
     body: '',
     received_at: new Date().toISOString().split('T')[0]
   });
+  
+  // Compose new email modal state
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [composeEmail, setComposeEmail] = useState({
+    to: '',
+    subject: '',
+    body: '',
+    cc: '',
+    bcc: ''
+  });
+  const [isComposing, setIsComposing] = useState(false);
 
   // Email notifications hook - refetch emails when new ones arrive
   const { requestNotificationPermission } = useEmailNotifications({
@@ -625,15 +636,32 @@ export default function EmailCopilot() {
   };
 
   // Initialize reply fields when opening draft modal
-  const initializeReplyFields = () => {
+  const initializeReplyFields = (isNewEmail: boolean = false) => {
+    if (isNewEmail) {
+      // For new compose (not a reply)
+      setReplyTo('');
+      setReplySubject('');
+      setReplyCc('');
+      setReplyBcc('');
+      return;
+    }
+    
     if (!selectedEmail) return;
     setReplyTo(extractEmailAddress(selectedEmail.sender));
     const subject = selectedEmail.subject.toLowerCase().startsWith('re:') 
       ? selectedEmail.subject 
       : `Re: ${selectedEmail.subject}`;
     setReplySubject(subject);
-    setReplyCc('');
-    setReplyBcc('');
+    
+    // Carry forward CC/BCC from original email
+    const ccFromOriginal = selectedEmail.cc_recipients?.length 
+      ? selectedEmail.cc_recipients.join(', ') 
+      : '';
+    const bccFromOriginal = selectedEmail.bcc_recipients?.length 
+      ? selectedEmail.bcc_recipients.join(', ') 
+      : '';
+    setReplyCc(ccFromOriginal);
+    setReplyBcc(bccFromOriginal);
   };
 
   // Show send confirmation
@@ -649,7 +677,7 @@ export default function EmailCopilot() {
     setShowSendConfirmModal(true);
   };
 
-  // Send email directly
+  // Send email directly (for reply)
   const handleSendEmail = async () => {
     if (!selectedEmail || !currentDraft) return;
     
@@ -692,6 +720,43 @@ export default function EmailCopilot() {
       toast.error('Failed to send email');
     } finally {
       setIsSendingEmail(false);
+    }
+  };
+
+  // Send new composed email (not a reply)
+  const handleSendComposedEmail = async () => {
+    if (!composeEmail.to || !composeEmail.body) {
+      toast.error('Please fill in recipient and message body');
+      return;
+    }
+    
+    setIsComposing(true);
+    
+    try {
+      const ccList = parseEmailList(composeEmail.cc);
+      const bccList = parseEmailList(composeEmail.bcc);
+
+      const { data, error } = await supabase.functions.invoke('send-email-reply', {
+        body: {
+          to: composeEmail.to,
+          subject: composeEmail.subject || '(No Subject)',
+          body: composeEmail.body,
+          cc: ccList.length > 0 ? ccList : undefined,
+          bcc: bccList.length > 0 ? bccList : undefined
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Email sent successfully!');
+      setShowComposeModal(false);
+      setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
+      fetchSentReplies();
+    } catch (error) {
+      console.error('Error sending composed email:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setIsComposing(false);
     }
   };
 
@@ -861,9 +926,9 @@ export default function EmailCopilot() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Syncing...' : 'Sync Inbox'}
           </Button>
-          <Button size="sm" onClick={() => setShowAddModal(true)}>
+          <Button size="sm" onClick={() => setShowComposeModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Email
+            Compose
           </Button>
         </div>
       </div>
@@ -1217,7 +1282,60 @@ export default function EmailCopilot() {
 
         {/* Email Detail Panel */}
         <div className="flex-1 flex flex-col bg-muted/20 overflow-hidden">
-          {selectedEmail ? (
+          {viewMode === 'sent' && selectedSentReply ? (
+            // Sent Reply Detail View
+            <>
+              <div className="px-6 py-4 bg-background border-b">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Send className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">{selectedSentReply.subject || '(No Subject)'}</h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm font-medium">To:</span>
+                        <span className="text-sm text-muted-foreground">{selectedSentReply.recipient}</span>
+                      </div>
+                      {selectedSentReply.cc_recipients && selectedSentReply.cc_recipients.length > 0 && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/70">CC:</span>
+                          <span>{selectedSentReply.cc_recipients.join(', ')}</span>
+                        </div>
+                      )}
+                      {selectedSentReply.bcc_recipients && selectedSentReply.bcc_recipients.length > 0 && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/70">BCC:</span>
+                          <span>{selectedSentReply.bcc_recipients.join(', ')}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>{formatFullDate(selectedSentReply.sent_at)}</span>
+                        <span className="text-muted-foreground/50">•</span>
+                        <span>{formatDistanceToNow(new Date(selectedSentReply.sent_at), { addSuffix: true })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-green-600 border-green-500/30 bg-green-500/10">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Sent
+                  </Badge>
+                </div>
+              </div>
+
+              <ScrollArea className="flex-1">
+                <div className="p-6">
+                  <div className="bg-background rounded-lg border p-6">
+                    <RichTextBody 
+                      content={selectedSentReply.body}
+                      className="prose prose-sm max-w-none dark:prose-invert"
+                    />
+                  </div>
+                </div>
+              </ScrollArea>
+            </>
+          ) : selectedEmail ? (
             <>
               {/* Email Header */}
               <div className="px-6 py-4 bg-background border-b">
@@ -1348,9 +1466,10 @@ export default function EmailCopilot() {
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => {
                           setCurrentDraft(selectedEmail.draft_reply || '');
+                          initializeReplyFields();
                           setShowDraftModal(true);
                         }}>
-                          View Full Draft
+                          View & Edit Draft
                         </Button>
                       </div>
                       <div className="p-4">
@@ -1411,7 +1530,7 @@ export default function EmailCopilot() {
                       }}
                     >
                       <MessageSquare className="h-4 w-4 mr-2 text-purple-600" />
-                      View Draft
+                      View & Edit Draft
                     </Button>
                   )}
                 </div>
@@ -1421,8 +1540,12 @@ export default function EmailCopilot() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <Mail className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-                <p className="text-lg font-medium text-muted-foreground">Select an email</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">Choose an email from the list to view details</p>
+                <p className="text-lg font-medium text-muted-foreground">
+                  {viewMode === 'sent' ? 'Select a sent email' : 'Select an email'}
+                </p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  {viewMode === 'sent' ? 'Choose a sent email from the list to view details' : 'Choose an email from the list to view details'}
+                </p>
               </div>
             </div>
           )}
@@ -1771,6 +1894,110 @@ export default function EmailCopilot() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSummaryModal(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Compose New Email Modal */}
+      <Dialog open={showComposeModal} onOpenChange={(open) => {
+        setShowComposeModal(open);
+        if (!open) {
+          setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              Compose New Email
+            </DialogTitle>
+            <DialogDescription>
+              Create and send a new email from scratch
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
+              {/* Email Recipients Section */}
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">To: *</Label>
+                  <Input
+                    value={composeEmail.to}
+                    onChange={(e) => setComposeEmail({ ...composeEmail, to: e.target.value })}
+                    placeholder="recipient@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">Subject:</Label>
+                  <Input
+                    value={composeEmail.subject}
+                    onChange={(e) => setComposeEmail({ ...composeEmail, subject: e.target.value })}
+                    placeholder="Email subject"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                  <Input
+                    value={composeEmail.cc}
+                    onChange={(e) => setComposeEmail({ ...composeEmail, cc: e.target.value })}
+                    placeholder="cc@example.com, another@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                  <Input
+                    value={composeEmail.bcc}
+                    onChange={(e) => setComposeEmail({ ...composeEmail, bcc: e.target.value })}
+                    placeholder="bcc@example.com"
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              
+              {/* Email Body */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Message Body *</Label>
+                <Textarea
+                  value={composeEmail.body}
+                  onChange={(e) => setComposeEmail({ ...composeEmail, body: e.target.value })}
+                  className="h-[300px] resize-none font-sans text-sm"
+                  placeholder="Type your email message here..."
+                />
+              </div>
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Review carefully before sending
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowComposeModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSendComposedEmail} 
+                disabled={isComposing || !composeEmail.to || !composeEmail.body}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isComposing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Email
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
