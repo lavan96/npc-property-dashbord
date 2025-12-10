@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,8 +17,7 @@ interface SendEmailRequest {
   body: string;
   cc?: string[];
   bcc?: string[];
-  isReply?: boolean;
-  originalMessageId?: string;
+  originalEmailId?: string;
 }
 
 async function getAccessToken(): Promise<string> {
@@ -58,7 +58,7 @@ serve(async (req) => {
       throw new Error('Microsoft Graph API credentials not configured');
     }
 
-    const { to, subject, body, cc, bcc }: SendEmailRequest = await req.json();
+    const { to, subject, body, cc, bcc, originalEmailId }: SendEmailRequest = await req.json();
 
     if (!to || !subject || !body) {
       throw new Error('Missing required fields: to, subject, body');
@@ -121,6 +121,28 @@ serve(async (req) => {
     }
 
     console.log('[Send Email] Email sent successfully');
+
+    // Store the sent reply in database
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { error: dbError } = await supabase
+      .from('email_copilot_sent_replies')
+      .insert({
+        original_email_id: originalEmailId || null,
+        recipient: to,
+        subject: subject,
+        body: body,
+        cc_recipients: cc || [],
+        bcc_recipients: bcc || [],
+        sent_at: new Date().toISOString()
+      });
+
+    if (dbError) {
+      console.error('[Send Email] Failed to store sent reply:', dbError);
+      // Don't throw - email was still sent successfully
+    }
 
     return new Response(
       JSON.stringify({ success: true, message: 'Email sent successfully' }),
