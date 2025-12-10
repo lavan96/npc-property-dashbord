@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
+import { useIsMobile } from '@/hooks/use-mobile';
 import RichTextBody from '@/components/email/RichTextBody';
 import { 
   Mail, 
@@ -35,7 +36,8 @@ import {
   BellOff,
   Mic,
   MicOff,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -162,8 +164,10 @@ function formatEmailBody(body: string): string {
 }
 
 export default function EmailCopilot() {
+  const isMobile = useIsMobile();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
@@ -273,6 +277,16 @@ export default function EmailCopilot() {
     // Find the email in the current emails array to get latest summary/draft
     const latestEmail = emails.find(e => e.id === email.id);
     setSelectedEmail(latestEmail || email);
+    if (isMobile) {
+      setShowMobileDetail(true);
+    }
+  };
+
+  // Handle back button on mobile
+  const handleMobileBack = () => {
+    setShowMobileDetail(false);
+    setSelectedEmail(null);
+    setSelectedSentReply(null);
   };
   
   // Group emails by thread (based on subject similarity)
@@ -864,29 +878,29 @@ export default function EmailCopilot() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-background">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Mail className="h-5 w-5 text-primary" />
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b bg-background">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
+            <Mail className="h-4 w-4 md:h-5 md:w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
               Email Copilot
               {unreadCount > 0 && (
-                <Badge variant="secondary" className="text-xs">{unreadCount} new</Badge>
+                <Badge variant="secondary" className="text-xs">{unreadCount}</Badge>
               )}
             </h1>
-            <p className="text-xs text-muted-foreground">AI-powered email summaries & draft replies</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">AI-powered email summaries & draft replies</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           {/* Notification toggles */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={toggleSoundNotifications}
             title={soundEnabled ? 'Disable sound notifications' : 'Enable sound notifications'}
-            className="h-9 w-9"
+            className="h-8 w-8 md:h-9 md:w-9"
           >
             {soundEnabled ? (
               <Bell className="h-4 w-4 text-primary" />
@@ -899,7 +913,7 @@ export default function EmailCopilot() {
             size="icon" 
             onClick={toggleBrowserNotifications}
             title={browserNotificationsEnabled ? 'Disable browser notifications' : 'Enable browser notifications'}
-            className="h-9 w-9"
+            className="h-8 w-8 md:h-9 md:w-9"
           >
             {browserNotificationsEnabled ? (
               <Bell className="h-4 w-4 text-green-500" />
@@ -910,9 +924,9 @@ export default function EmailCopilot() {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <MoreVertical className="h-4 w-4 mr-2" />
-                Options
+              <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3">
+                <MoreVertical className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Options</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -922,13 +936,13 @@ export default function EmailCopilot() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" onClick={handleSyncOutlook} disabled={isSyncing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync Inbox'}
+          <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3" onClick={handleSyncOutlook} disabled={isSyncing}>
+            <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
           </Button>
-          <Button size="sm" onClick={() => setShowComposeModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Compose
+          <Button size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3" onClick={() => setShowComposeModal(true)}>
+            <Plus className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Compose</span>
           </Button>
         </div>
       </div>
@@ -942,9 +956,9 @@ export default function EmailCopilot() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Email List Panel */}
-        <div className="w-[380px] border-r flex flex-col bg-background">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Email List Panel - full width on mobile, hidden when detail shown */}
+        <div className={`${isMobile ? 'w-full' : 'w-[380px]'} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''}`}>
           {/* Inbox/Sent Tabs */}
           <div className="px-3 pt-3 border-b">
             <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3">
@@ -1234,7 +1248,10 @@ export default function EmailCopilot() {
                     {sentReplies.map((reply) => (
                       <div
                         key={reply.id}
-                        onClick={() => setSelectedSentReply(reply)}
+                        onClick={() => {
+                          setSelectedSentReply(reply);
+                          if (isMobile) setShowMobileDetail(true);
+                        }}
                         className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
                           selectedSentReply?.id === reply.id ? 'bg-muted border-l-2 border-l-green-500' : ''
                         }`}
@@ -1280,14 +1297,19 @@ export default function EmailCopilot() {
           </ScrollArea>
         </div>
 
-        {/* Email Detail Panel */}
-        <div className="flex-1 flex flex-col bg-muted/20 overflow-hidden">
+        {/* Email Detail Panel - Full screen overlay on mobile */}
+        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1'} flex flex-col bg-muted/20 overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
           {viewMode === 'sent' && selectedSentReply ? (
             // Sent Reply Detail View
             <>
               <div className="px-6 py-4 bg-background border-b">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
+                    {isMobile && (
+                      <Button variant="ghost" size="icon" onClick={handleMobileBack} className="mr-2 -ml-2">
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                    )}
                     <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
                       <Send className="h-5 w-5 text-green-600" />
                     </div>
@@ -1341,6 +1363,11 @@ export default function EmailCopilot() {
               <div className="px-6 py-4 bg-background border-b">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
+                    {isMobile && (
+                      <Button variant="ghost" size="icon" onClick={handleMobileBack} className="mr-2 -ml-2">
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                    )}
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                       <span className="text-base font-semibold text-primary">
                         {getSenderInitials(selectedEmail.sender)}
@@ -1483,12 +1510,14 @@ export default function EmailCopilot() {
               </ScrollArea>
 
               {/* Action Bar */}
-              <div className="px-6 py-4 bg-background border-t flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="px-4 md:px-6 py-3 md:py-4 bg-background border-t flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+                <div className="flex items-center gap-2 md:gap-3">
                   <Button 
                     onClick={handleSummarize} 
                     disabled={isSummarizing}
                     variant={selectedEmail.summary ? "outline" : "default"}
+                    size={isMobile ? "sm" : "default"}
+                    className="flex-1 md:flex-none"
                   >
                     <Sparkles className={`h-4 w-4 mr-2 ${isSummarizing ? 'animate-pulse' : ''}`} />
                     {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
@@ -1501,9 +1530,11 @@ export default function EmailCopilot() {
                       setShowDraftModal(true);
                     }} 
                     variant="outline"
+                    size={isMobile ? "sm" : "default"}
+                    className="flex-1 md:flex-none"
                   >
                     <Reply className="h-4 w-4 mr-2" />
-                    {selectedEmail.draft_reply ? 'Compose New Reply' : 'Compose Reply'}
+                    {isMobile ? 'Reply' : (selectedEmail.draft_reply ? 'Compose New Reply' : 'Compose Reply')}
                   </Button>
                 </div>
                 
@@ -1514,9 +1545,10 @@ export default function EmailCopilot() {
                       variant="secondary" 
                       size="sm"
                       onClick={() => setShowSummaryModal(true)}
+                      className="flex-1 md:flex-none"
                     >
                       <Sparkles className="h-4 w-4 mr-2 text-primary" />
-                      View Summary
+                      {isMobile ? 'Summary' : 'View Summary'}
                     </Button>
                   )}
                   {selectedEmail.draft_reply && (
@@ -1528,9 +1560,10 @@ export default function EmailCopilot() {
                         initializeReplyFields();
                         setShowDraftModal(true);
                       }}
+                      className="flex-1 md:flex-none"
                     >
                       <MessageSquare className="h-4 w-4 mr-2 text-purple-600" />
-                      View & Edit Draft
+                      {isMobile ? 'Edit Draft' : 'View & Edit Draft'}
                     </Button>
                   )}
                 </div>
