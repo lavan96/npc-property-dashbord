@@ -164,3 +164,9 @@ verify_jwt = false
 
 [functions.outlook-email-sync]
 verify_jwt = false
+
+[functions.outlook-email-webhook]
+verify_jwt = false
+
+[functions.outlook-manage-subscription]
+verify_jwt = false
