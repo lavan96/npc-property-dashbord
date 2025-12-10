@@ -729,6 +729,50 @@ export type Database = {
           },
         ]
       }
+      email_copilot_sent_replies: {
+        Row: {
+          bcc_recipients: string[] | null
+          body: string
+          cc_recipients: string[] | null
+          created_by: string | null
+          id: string
+          original_email_id: string | null
+          recipient: string
+          sent_at: string
+          subject: string
+        }
+        Insert: {
+          bcc_recipients?: string[] | null
+          body: string
+          cc_recipients?: string[] | null
+          created_by?: string | null
+          id?: string
+          original_email_id?: string | null
+          recipient: string
+          sent_at?: string
+          subject: string
+        }
+        Update: {
+          bcc_recipients?: string[] | null
+          body?: string
+          cc_recipients?: string[] | null
+          created_by?: string | null
+          id?: string
+          original_email_id?: string | null
+          recipient?: string
+          sent_at?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_copilot_sent_replies_original_email_id_fkey"
+            columns: ["original_email_id"]
+            isOneToOne: false
+            referencedRelation: "email_copilot_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_reports: {
         Row: {
           analytics: Json
