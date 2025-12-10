@@ -33,9 +33,9 @@ serve(async (req) => {
   }
 
   try {
-    const { action, email, emailId, linkedPropertyAddress } = await req.json();
+    const { action, email, emailId, linkedPropertyAddress, replyContext } = await req.json();
     
-    console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}`);
+    console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, Context: ${replyContext ? 'provided' : 'none'}`);
 
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY is not configured');
@@ -49,7 +49,7 @@ serve(async (req) => {
         return await handleSummarize(email, emailId, supabase);
       
       case 'draft_reply':
-        return await handleDraftReply(email, emailId, linkedPropertyAddress, supabase);
+        return await handleDraftReply(email, emailId, linkedPropertyAddress, supabase, replyContext);
       
       case 'save_email':
         return await handleSaveEmail(email, supabase);
@@ -158,12 +158,17 @@ async function handleDraftReply(
   email: EmailData, 
   emailId: string | null, 
   linkedPropertyAddress: string | null,
-  supabase: any
+  supabase: any,
+  replyContext?: string
 ): Promise<Response> {
   console.log('[Email Copilot] Generating draft reply...');
 
   const propertyContext = linkedPropertyAddress 
     ? `\n\nProperty Context: This email may relate to the property at ${linkedPropertyAddress}. Reference this if relevant.`
+    : '';
+
+  const userContextInstruction = replyContext 
+    ? `\n\nUSER CONTEXT: The admin has provided the following guidance for the reply:\n"${replyContext}"\n\nIncorporate this context into your draft reply while maintaining professional tone.`
     : '';
 
   const systemPrompt = `You are an email drafting assistant for NPC Services, a professional property investment advisory company.
@@ -178,6 +183,7 @@ IMPORTANT GUIDELINES:
 - Use proper email formatting with greeting and sign-off
 - Sign off as "NPC Services Team"
 ${propertyContext}
+${userContextInstruction}
 
 This is a DRAFT only. The admin will review and edit before sending.`;
 
@@ -189,6 +195,7 @@ Date: ${email.received_at || 'Not specified'}
 
 Body:
 ${email.body}
+${replyContext ? `\n---\nAdmin guidance for reply: ${replyContext}` : ''}
 
 ---
 Please draft a suitable reply that addresses the sender's concerns or questions.`;

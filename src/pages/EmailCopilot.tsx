@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
@@ -32,7 +32,10 @@ import {
   ChevronUp,
   MessageCircle,
   Bell,
-  BellOff
+  BellOff,
+  Mic,
+  MicOff,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -158,6 +161,14 @@ export default function EmailCopilot() {
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
+  const [replyContext, setReplyContext] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   
   // Notification settings
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -435,11 +446,13 @@ export default function EmailCopilot() {
     }
   };
 
-  const handleDraftReply = async () => {
+  const handleDraftReply = async (contextOverride?: string) => {
     if (!selectedEmail) return;
     
     setIsDrafting(true);
     try {
+      const contextToUse = contextOverride ?? replyContext;
+      
       const { data, error } = await supabase.functions.invoke('email-copilot', {
         body: {
           action: 'draft_reply',
@@ -450,7 +463,8 @@ export default function EmailCopilot() {
             received_at: selectedEmail.received_at
           },
           emailId: selectedEmail.id,
-          linkedPropertyAddress: selectedEmail.linked_property_address
+          linkedPropertyAddress: selectedEmail.linked_property_address,
+          replyContext: contextToUse || undefined
         }
       });
 
@@ -472,6 +486,124 @@ export default function EmailCopilot() {
       toast.error('Failed to draft reply');
     } finally {
       setIsDrafting(false);
+    }
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await transcribeAudio(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      toast.info('Recording started - speak your reply context');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast.error('Could not access microphone');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      
+      const base64Audio = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+      });
+
+      // Call OpenAI Whisper via edge function
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+        body: { audio: base64Audio }
+      });
+
+      if (error) throw error;
+
+      if (data?.text) {
+        setReplyContext(prev => prev ? `${prev} ${data.text}` : data.text);
+        toast.success('Voice transcribed successfully');
+      }
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      toast.error('Failed to transcribe voice');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // Extract recipient email from sender string
+  const extractEmailAddress = (sender: string): string => {
+    const match = sender.match(/<([^>]+)>/);
+    if (match) return match[1];
+    if (sender.includes('@')) return sender.trim();
+    return sender;
+  };
+
+  // Send email directly
+  const handleSendEmail = async () => {
+    if (!selectedEmail || !currentDraft) return;
+    
+    setIsSendingEmail(true);
+    try {
+      const recipientEmail = extractEmailAddress(selectedEmail.sender);
+      const replySubject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+        ? selectedEmail.subject 
+        : `Re: ${selectedEmail.subject}`;
+
+      const { data, error } = await supabase.functions.invoke('send-email-reply', {
+        body: {
+          to: recipientEmail,
+          subject: replySubject,
+          body: currentDraft
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Email sent successfully!');
+      setShowDraftModal(false);
+      setReplyContext('');
+      
+      // Update email status
+      await supabase
+        .from('email_copilot_emails')
+        .update({ status: 'archived' })
+        .eq('id', selectedEmail.id);
+      
+      fetchEmails();
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -1046,7 +1178,7 @@ export default function EmailCopilot() {
                     {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
                   </Button>
                   <Button 
-                    onClick={handleDraftReply} 
+                    onClick={() => handleDraftReply()} 
                     disabled={isDrafting}
                     variant="outline"
                   >
@@ -1151,35 +1283,108 @@ export default function EmailCopilot() {
       </Dialog>
 
       {/* Draft Reply Modal */}
-      <Dialog open={showDraftModal} onOpenChange={setShowDraftModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+      <Dialog open={showDraftModal} onOpenChange={(open) => {
+        setShowDraftModal(open);
+        if (!open) setReplyContext('');
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-purple-600" />
               Draft Reply
             </DialogTitle>
             <DialogDescription>
-              Review and edit before copying to your email client
+              Provide context for what you want to say, then generate or edit the draft
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Reply Context Input */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Reply Context (optional)</Label>
+            <div className="flex gap-2">
+              <Textarea
+                value={replyContext}
+                onChange={(e) => setReplyContext(e.target.value)}
+                placeholder="Describe what you want to reply with... e.g., 'Thank them for their inquiry and schedule a call for next week'"
+                className="h-20 resize-none flex-1"
+              />
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="icon"
+                  className="h-10 w-10"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isTranscribing}
+                  title={isRecording ? "Stop recording" : "Start voice input"}
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleDraftReply(replyContext)}
+                  disabled={isDrafting || !replyContext}
+                  title="Regenerate with context"
+                >
+                  {isDrafting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            {isRecording && (
+              <p className="text-xs text-destructive flex items-center gap-1 animate-pulse">
+                <Mic className="h-3 w-3" />
+                Recording... Click mic to stop
+              </p>
+            )}
+          </div>
+          
+          <Separator className="my-2" />
+          
+          {/* Draft Content */}
           <div className="flex-1 overflow-hidden">
+            <Label className="text-sm font-medium mb-2 block">Draft Reply</Label>
             <Textarea
               value={currentDraft}
               onChange={(e) => setCurrentDraft(e.target.value)}
-              className="h-[400px] resize-none font-sans text-sm"
+              className="h-[300px] resize-none font-sans text-sm"
               placeholder="Draft reply will appear here..."
             />
           </div>
-          <DialogFooter className="flex justify-between">
+          
+          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
-              Remember to review before sending
+              Review carefully before sending
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowDraftModal(false)}>Close</Button>
-              <Button onClick={handleCopyDraft}>
+              <Button variant="outline" onClick={() => setShowDraftModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="outline" onClick={handleCopyDraft}>
                 <Copy className="h-4 w-4 mr-2" />
-                Copy to Clipboard
+                Copy
+              </Button>
+              <Button 
+                onClick={handleSendEmail} 
+                disabled={isSendingEmail || !currentDraft}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isSendingEmail ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                {isSendingEmail ? 'Sending...' : 'Send Reply'}
               </Button>
             </div>
           </DialogFooter>

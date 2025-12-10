@@ -1,0 +1,137 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const clientId = Deno.env.get('MICROSOFT_CLIENT_ID');
+const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
+const tenantId = Deno.env.get('MICROSOFT_TENANT_ID');
+const mailboxEmail = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
+
+interface SendEmailRequest {
+  to: string;
+  subject: string;
+  body: string;
+  cc?: string[];
+  bcc?: string[];
+  isReply?: boolean;
+  originalMessageId?: string;
+}
+
+async function getAccessToken(): Promise<string> {
+  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  
+  const params = new URLSearchParams({
+    client_id: clientId!,
+    client_secret: clientSecret!,
+    scope: 'https://graph.microsoft.com/.default',
+    grant_type: 'client_credentials',
+  });
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[Send Email] Token error:', error);
+    throw new Error('Failed to get access token');
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Validate configuration
+    if (!clientId || !clientSecret || !tenantId || !mailboxEmail) {
+      throw new Error('Microsoft Graph API credentials not configured');
+    }
+
+    const { to, subject, body, cc, bcc }: SendEmailRequest = await req.json();
+
+    if (!to || !subject || !body) {
+      throw new Error('Missing required fields: to, subject, body');
+    }
+
+    console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}`);
+
+    // Get access token
+    const accessToken = await getAccessToken();
+
+    // Prepare email message
+    const message: any = {
+      message: {
+        subject: subject,
+        body: {
+          contentType: 'Text',
+          content: body
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: to
+            }
+          }
+        ]
+      },
+      saveToSentItems: true
+    };
+
+    // Add CC recipients if provided
+    if (cc && cc.length > 0) {
+      message.message.ccRecipients = cc.map(email => ({
+        emailAddress: { address: email }
+      }));
+    }
+
+    // Add BCC recipients if provided
+    if (bcc && bcc.length > 0) {
+      message.message.bccRecipients = bcc.map(email => ({
+        emailAddress: { address: email }
+      }));
+    }
+
+    // Send email via Microsoft Graph API
+    const sendUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/sendMail`;
+    
+    const sendResponse = await fetch(sendUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!sendResponse.ok) {
+      const errorText = await sendResponse.text();
+      console.error('[Send Email] Microsoft Graph error:', sendResponse.status, errorText);
+      throw new Error(`Failed to send email: ${sendResponse.status}`);
+    }
+
+    console.log('[Send Email] Email sent successfully');
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Email sent successfully' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('[Send Email] Error:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
