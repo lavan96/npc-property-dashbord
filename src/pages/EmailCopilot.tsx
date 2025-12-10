@@ -160,9 +160,16 @@ export default function EmailCopilot() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
   const [replyContext, setReplyContext] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  
+  // Email compose state
+  const [replyTo, setReplyTo] = useState('');
+  const [replySubject, setReplySubject] = useState('');
+  const [replyCc, setReplyCc] = useState('');
+  const [replyBcc, setReplyBcc] = useState('');
   
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -471,6 +478,7 @@ export default function EmailCopilot() {
       if (error) throw error;
 
       setCurrentDraft(data.draftReply);
+      initializeReplyFields();
       setShowDraftModal(true);
       
       // Update local state
@@ -567,22 +575,55 @@ export default function EmailCopilot() {
     return sender;
   };
 
+  // Parse comma-separated emails
+  const parseEmailList = (emails: string): string[] => {
+    if (!emails.trim()) return [];
+    return emails.split(',').map(e => e.trim()).filter(e => e.includes('@'));
+  };
+
+  // Initialize reply fields when opening draft modal
+  const initializeReplyFields = () => {
+    if (!selectedEmail) return;
+    setReplyTo(extractEmailAddress(selectedEmail.sender));
+    const subject = selectedEmail.subject.toLowerCase().startsWith('re:') 
+      ? selectedEmail.subject 
+      : `Re: ${selectedEmail.subject}`;
+    setReplySubject(subject);
+    setReplyCc('');
+    setReplyBcc('');
+  };
+
+  // Show send confirmation
+  const handleSendClick = () => {
+    if (!currentDraft.trim()) {
+      toast.error('Cannot send empty email');
+      return;
+    }
+    if (!replyTo.trim() || !replyTo.includes('@')) {
+      toast.error('Please enter a valid recipient email');
+      return;
+    }
+    setShowSendConfirmModal(true);
+  };
+
   // Send email directly
   const handleSendEmail = async () => {
     if (!selectedEmail || !currentDraft) return;
     
     setIsSendingEmail(true);
+    setShowSendConfirmModal(false);
+    
     try {
-      const recipientEmail = extractEmailAddress(selectedEmail.sender);
-      const replySubject = selectedEmail.subject.toLowerCase().startsWith('re:') 
-        ? selectedEmail.subject 
-        : `Re: ${selectedEmail.subject}`;
+      const ccList = parseEmailList(replyCc);
+      const bccList = parseEmailList(replyBcc);
 
       const { data, error } = await supabase.functions.invoke('send-email-reply', {
         body: {
-          to: recipientEmail,
+          to: replyTo,
           subject: replySubject,
-          body: currentDraft
+          body: currentDraft,
+          cc: ccList.length > 0 ? ccList : undefined,
+          bcc: bccList.length > 0 ? bccList : undefined
         }
       });
 
@@ -591,6 +632,8 @@ export default function EmailCopilot() {
       toast.success('Email sent successfully!');
       setShowDraftModal(false);
       setReplyContext('');
+      setReplyCc('');
+      setReplyBcc('');
       
       // Update email status
       await supabase
@@ -1205,6 +1248,7 @@ export default function EmailCopilot() {
                       size="sm"
                       onClick={() => {
                         setCurrentDraft(selectedEmail.draft_reply || '');
+                        initializeReplyFields();
                         setShowDraftModal(true);
                       }}
                     >
@@ -1285,83 +1329,132 @@ export default function EmailCopilot() {
       {/* Draft Reply Modal */}
       <Dialog open={showDraftModal} onOpenChange={(open) => {
         setShowDraftModal(open);
-        if (!open) setReplyContext('');
+        if (!open) {
+          setReplyContext('');
+          setReplyCc('');
+          setReplyBcc('');
+        }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-purple-600" />
-              Draft Reply
+              Compose Reply
             </DialogTitle>
             <DialogDescription>
-              Provide context for what you want to say, then generate or edit the draft
+              Review recipients, edit your message, then send or copy
             </DialogDescription>
           </DialogHeader>
           
-          {/* Reply Context Input */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Reply Context (optional)</Label>
-            <div className="flex gap-2">
-              <Textarea
-                value={replyContext}
-                onChange={(e) => setReplyContext(e.target.value)}
-                placeholder="Describe what you want to reply with... e.g., 'Thank them for their inquiry and schedule a call for next week'"
-                className="h-20 resize-none flex-1"
-              />
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant={isRecording ? "destructive" : "outline"}
-                  size="icon"
-                  className="h-10 w-10"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={isTranscribing}
-                  title={isRecording ? "Stop recording" : "Start voice input"}
-                >
-                  {isTranscribing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isRecording ? (
-                    <MicOff className="h-4 w-4" />
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleDraftReply(replyContext)}
-                  disabled={isDrafting || !replyContext}
-                  title="Regenerate with context"
-                >
-                  {isDrafting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                </Button>
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
+              {/* Email Recipients Section */}
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">To:</Label>
+                  <Input
+                    value={replyTo}
+                    onChange={(e) => setReplyTo(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">Subject:</Label>
+                  <Input
+                    value={replySubject}
+                    onChange={(e) => setReplySubject(e.target.value)}
+                    placeholder="Email subject"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                  <Input
+                    value={replyCc}
+                    onChange={(e) => setReplyCc(e.target.value)}
+                    placeholder="cc@example.com, another@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                  <Input
+                    value={replyBcc}
+                    onChange={(e) => setReplyBcc(e.target.value)}
+                    placeholder="bcc@example.com"
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              
+              {/* Reply Context Input */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">AI Context (optional)</Label>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={replyContext}
+                    onChange={(e) => setReplyContext(e.target.value)}
+                    placeholder="Describe what you want to reply with... e.g., 'Thank them for their inquiry and schedule a call for next week'"
+                    className="h-16 resize-none flex-1 text-sm"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      variant={isRecording ? "destructive" : "outline"}
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isTranscribing}
+                      title={isRecording ? "Stop recording" : "Start voice input"}
+                    >
+                      {isTranscribing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : isRecording ? (
+                        <MicOff className="h-3 w-3" />
+                      ) : (
+                        <Mic className="h-3 w-3" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDraftReply(replyContext)}
+                      disabled={isDrafting || !replyContext}
+                      title="Regenerate with context"
+                    >
+                      {isDrafting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                {isRecording && (
+                  <p className="text-xs text-destructive flex items-center gap-1 animate-pulse">
+                    <Mic className="h-3 w-3" />
+                    Recording... Click mic to stop
+                  </p>
+                )}
+              </div>
+              
+              <Separator />
+              
+              {/* Draft Content */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Message Body</Label>
+                <Textarea
+                  value={currentDraft}
+                  onChange={(e) => setCurrentDraft(e.target.value)}
+                  className="h-[250px] resize-none font-sans text-sm"
+                  placeholder="Draft reply will appear here..."
+                />
               </div>
             </div>
-            {isRecording && (
-              <p className="text-xs text-destructive flex items-center gap-1 animate-pulse">
-                <Mic className="h-3 w-3" />
-                Recording... Click mic to stop
-              </p>
-            )}
-          </div>
+          </ScrollArea>
           
-          <Separator className="my-2" />
-          
-          {/* Draft Content */}
-          <div className="flex-1 overflow-hidden">
-            <Label className="text-sm font-medium mb-2 block">Draft Reply</Label>
-            <Textarea
-              value={currentDraft}
-              onChange={(e) => setCurrentDraft(e.target.value)}
-              className="h-[300px] resize-none font-sans text-sm"
-              placeholder="Draft reply will appear here..."
-            />
-          </div>
-          
-          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between">
+          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
               Review carefully before sending
@@ -1375,18 +1468,84 @@ export default function EmailCopilot() {
                 Copy
               </Button>
               <Button 
-                onClick={handleSendEmail} 
-                disabled={isSendingEmail || !currentDraft}
+                onClick={handleSendClick} 
+                disabled={isSendingEmail || !currentDraft || !replyTo}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {isSendingEmail ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                {isSendingEmail ? 'Sending...' : 'Send Reply'}
+                <Send className="h-4 w-4 mr-2" />
+                Send Reply
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Confirmation Dialog */}
+      <Dialog open={showSendConfirmModal} onOpenChange={setShowSendConfirmModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-green-600" />
+              Confirm Send
+            </DialogTitle>
+            <DialogDescription>
+              Please review the email details before sending
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-4">
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <div className="flex gap-2">
+                <span className="text-sm font-medium w-16">To:</span>
+                <span className="text-sm text-muted-foreground flex-1">{replyTo}</span>
+              </div>
+              {replyCc && (
+                <div className="flex gap-2">
+                  <span className="text-sm font-medium w-16">CC:</span>
+                  <span className="text-sm text-muted-foreground flex-1">{replyCc}</span>
+                </div>
+              )}
+              {replyBcc && (
+                <div className="flex gap-2">
+                  <span className="text-sm font-medium w-16">BCC:</span>
+                  <span className="text-sm text-muted-foreground flex-1">{replyBcc}</span>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <span className="text-sm font-medium w-16">Subject:</span>
+                <span className="text-sm text-muted-foreground flex-1 truncate">{replySubject}</span>
+              </div>
+            </div>
+            
+            <div className="p-3 bg-muted/30 rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">Message preview:</p>
+              <p className="text-sm line-clamp-4">{currentDraft}</p>
+            </div>
+            
+            <div className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+              <p className="text-xs text-yellow-700">
+                This action cannot be undone. The email will be sent from your connected Outlook account.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSendConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isSendingEmail ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              {isSendingEmail ? 'Sending...' : 'Confirm & Send'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
