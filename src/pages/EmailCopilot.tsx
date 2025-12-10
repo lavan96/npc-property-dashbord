@@ -75,6 +75,8 @@ interface Email {
   linked_report_id: string | null;
   status: 'unread' | 'read' | 'summarized' | 'drafted' | 'archived';
   created_at: string;
+  cc_recipients: string[];
+  bcc_recipients: string[];
 }
 
 // Helper to extract sender name from email
@@ -185,6 +187,30 @@ export default function EmailCopilot() {
     }
   };
 
+  const handleClearAllEmails = async () => {
+    if (!confirm('Are you sure you want to clear all emails? This cannot be undone.')) {
+      return;
+    }
+    
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('outlook-email-sync', {
+        body: { action: 'clear' }
+      });
+
+      if (error) throw error;
+
+      toast.success('All emails cleared');
+      setSelectedEmail(null);
+      fetchEmails();
+    } catch (error) {
+      console.error('Error clearing emails:', error);
+      toast.error('Failed to clear emails');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   useEffect(() => {
     // Auto-sync from Outlook on page load
     handleSyncOutlook();
@@ -213,7 +239,9 @@ export default function EmailCopilot() {
         linked_property_address: email.linked_property_address,
         linked_report_id: email.linked_report_id,
         status: email.status as Email['status'],
-        created_at: email.created_at
+        created_at: email.created_at,
+        cc_recipients: (email.cc_recipients as string[]) || [],
+        bcc_recipients: (email.bcc_recipients as string[]) || [],
       }));
       
       setEmails(typedEmails);
@@ -432,6 +460,20 @@ export default function EmailCopilot() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoreVertical className="h-4 w-4 mr-2" />
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleClearAllEmails} className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Emails
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" onClick={handleSyncOutlook} disabled={isSyncing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Syncing...' : 'Sync Inbox'}
@@ -559,6 +601,20 @@ export default function EmailCopilot() {
                         <span className="text-sm font-medium">{extractSenderName(selectedEmail.sender)}</span>
                         <span className="text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>
                       </div>
+                      {/* CC Recipients */}
+                      {selectedEmail.cc_recipients && selectedEmail.cc_recipients.length > 0 && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/70">CC:</span>
+                          <span>{selectedEmail.cc_recipients.join(', ')}</span>
+                        </div>
+                      )}
+                      {/* BCC Recipients */}
+                      {selectedEmail.bcc_recipients && selectedEmail.bcc_recipients.length > 0 && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/70">BCC:</span>
+                          <span>{selectedEmail.bcc_recipients.join(', ')}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3" />
                         <span>{formatFullDate(selectedEmail.received_at)}</span>
@@ -683,23 +739,52 @@ export default function EmailCopilot() {
               </ScrollArea>
 
               {/* Action Bar */}
-              <div className="px-6 py-4 bg-background border-t flex items-center gap-3">
-                <Button 
-                  onClick={handleSummarize} 
-                  disabled={isSummarizing}
-                  variant={selectedEmail.summary ? "outline" : "default"}
-                >
-                  <Sparkles className={`h-4 w-4 mr-2 ${isSummarizing ? 'animate-pulse' : ''}`} />
-                  {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
-                </Button>
-                <Button 
-                  onClick={handleDraftReply} 
-                  disabled={isDrafting}
-                  variant="outline"
-                >
-                  <Reply className={`h-4 w-4 mr-2 ${isDrafting ? 'animate-pulse' : ''}`} />
-                  {isDrafting ? 'Drafting...' : 'Draft Reply'}
-                </Button>
+              <div className="px-6 py-4 bg-background border-t flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button 
+                    onClick={handleSummarize} 
+                    disabled={isSummarizing}
+                    variant={selectedEmail.summary ? "outline" : "default"}
+                  >
+                    <Sparkles className={`h-4 w-4 mr-2 ${isSummarizing ? 'animate-pulse' : ''}`} />
+                    {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
+                  </Button>
+                  <Button 
+                    onClick={handleDraftReply} 
+                    disabled={isDrafting}
+                    variant="outline"
+                  >
+                    <Reply className={`h-4 w-4 mr-2 ${isDrafting ? 'animate-pulse' : ''}`} />
+                    {isDrafting ? 'Drafting...' : selectedEmail.draft_reply ? 'Re-draft Reply' : 'Draft Reply'}
+                  </Button>
+                </div>
+                
+                {/* Quick access buttons for existing summaries/drafts */}
+                <div className="flex items-center gap-2">
+                  {selectedEmail.summary && (
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => setShowSummaryModal(true)}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                      View Summary
+                    </Button>
+                  )}
+                  {selectedEmail.draft_reply && (
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => {
+                        setCurrentDraft(selectedEmail.draft_reply || '');
+                        setShowDraftModal(true);
+                      }}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2 text-purple-600" />
+                      View Draft
+                    </Button>
+                  )}
+                </div>
               </div>
             </>
           ) : (
