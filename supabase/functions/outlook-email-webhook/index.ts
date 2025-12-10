@@ -173,6 +173,10 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/([^\n])(Subject:\s+.+)/gi, '$1\n$2');
   text = text.replace(/([^\n])(Date:\s+.+)/gi, '$1\n$2');
   
+  // Insert line break AFTER Subject: lines before the email body starts
+  // E.g., "Subject: Re: 3,20 huckle buyers docsHi Mick" -> "Subject: Re: 3,20 huckle buyers docs\n\nHi Mick"
+  text = text.replace(/(Subject:\s+(?:Re:\s*|Fw:\s*|Fwd:\s*)?[^\n]+?(?:docs|inquiry|request|update|meeting|question|proposal|offer|contract|agreement|info|information|details))([A-Z][a-z])/gi, '$1\n\n$2');
+  
   // Insert line breaks before common signature elements that got merged
   // E.g., "Kind RegardsMobile:" -> "Kind Regards\n\nMobile:"
   text = text.replace(/(Kind Regards|Best Regards|Regards|Thanks|Thank you|Cheers|Sincerely)([A-Z])/g, '$1\n\n$2');
@@ -184,6 +188,18 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/([^\n])(ABN:\s*[\d\s]+)/gi, '$1\n$2');
   text = text.replace(/([^\n])(ACN:\s*[\d\s]+)/gi, '$1\n$2');
   text = text.replace(/([^\n])(Disclaimer:)/gi, '$1\n\n$2');
+  
+  // Insert line break after Australian postcodes followed by company names
+  // E.g., "NSW 2153Naidu Group" -> "NSW 2153\n\nNaidu Group"
+  text = text.replace(/([A-Z]{2,3}\s+\d{4})([A-Z][a-z]+\s+(Group|Pty|Ltd|Company|Services|Consulting))/g, '$1\n\n$2');
+  
+  // Fix sentence boundaries where period is followed directly by a capital letter (new sentence)
+  // E.g., "your reference.Look forward" -> "your reference.\n\nLook forward"
+  text = text.replace(/(\.)([A-Z][a-z]{2,})/g, '$1\n\n$2');
+  
+  // Fix italic markers showing incorrectly (from HTML conversion)
+  // E.g., "_Disclaimer:_As a" -> "Disclaimer: As a"
+  text = text.replace(/_([^_\n]+)_/g, '$1');
   
   // Insert line breaks before "On ... wrote:" patterns
   text = text.replace(/([^\n])(On\s+\w{3},?\s+\w{3}\s+\d+)/gi, '$1\n\n$2');
