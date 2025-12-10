@@ -353,6 +353,129 @@ function parseEmailThread(body: string): { currentMessage: string; threadHistory
   };
 }
 
+// Signature detection patterns
+const signatureStartPatterns = [
+  /^-{2,}\s*$/,                                    // -- (common signature delimiter)
+  /^_{2,}\s*$/,                                    // __ underscores
+  /^Regards,?\s*$/i,
+  /^Kind\s+regards,?\s*$/i,
+  /^Best\s+regards,?\s*$/i,
+  /^Best,?\s*$/i,
+  /^Thanks,?\s*$/i,
+  /^Thank\s+you,?\s*$/i,
+  /^Cheers,?\s*$/i,
+  /^Sincerely,?\s*$/i,
+  /^Warm\s+regards,?\s*$/i,
+  /^Many\s+thanks,?\s*$/i,
+  /^With\s+thanks,?\s*$/i,
+  /^Yours\s+(sincerely|faithfully|truly),?\s*$/i,
+  /^All\s+the\s+best,?\s*$/i,
+  /^Take\s+care,?\s*$/i,
+  /^Sent\s+from\s+my\s+(iPhone|iPad|Galaxy|Android|Mobile|Samsung|Pixel)/i,
+  /^Get\s+Outlook\s+for\s+(iOS|Android)/i,
+];
+
+// Content that typically appears IN signatures
+const signatureContentPatterns = [
+  /^(M|T|P|F|E|W):\s*.+/i,                        // M: mobile, T: tel, P: phone, E: email, W: website
+  /^(Mobile|Phone|Tel|Fax|Email|Web|Website):\s*.+/i,
+  /^(ABN|ACN|AFSL):\s*[\d\s]+/i,                  // Business numbers
+  /^\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}$/,          // Phone number only line
+  /^www\..+$/i,                                    // Website
+  /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, // Email only line
+  /^\|.*\|.*\|/,                                   // Pipe-separated info
+  /^Level\s+\d+,?\s+\d+/i,                        // Address: Level X, XXX
+  /^\d+\s+[A-Z][a-z]+\s+(Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Boulevard|Blvd)/i, // Street address
+  /^(PO|P\.O\.)\s*Box\s+\d+/i,                    // PO Box
+  /^[A-Z]{2,3}\s+\d{4}$/,                         // State postcode (NSW 2000)
+  /^LinkedIn|Twitter|Facebook|Instagram/i,        // Social media
+];
+
+// Detect if remaining lines look like a signature
+function looksLikeSignature(lines: string[], startIndex: number): boolean {
+  const remainingLines = lines.slice(startIndex).filter(l => l.trim() !== '');
+  
+  // Signature shouldn't be too long (typically 2-12 lines)
+  if (remainingLines.length > 15) return false;
+  if (remainingLines.length === 0) return false;
+  
+  // Count how many lines match signature content patterns
+  let signatureContentMatches = 0;
+  for (const line of remainingLines) {
+    const trimmed = line.trim();
+    if (signatureContentPatterns.some(p => p.test(trimmed))) {
+      signatureContentMatches++;
+    }
+  }
+  
+  // If more than 30% of lines look like signature content, it's likely a signature
+  return signatureContentMatches / remainingLines.length >= 0.3;
+}
+
+// Parse message to separate body from signature
+function parseSignature(message: string): { body: string; signature: string | null } {
+  if (!message) return { body: '', signature: null };
+  
+  const lines = message.split('\n');
+  let signatureStart = -1;
+  
+  // Scan from the end backwards (signatures are at the end)
+  // But also check from start for sign-off patterns
+  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 20); i--) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines at the end
+    if (line === '' && signatureStart === -1) continue;
+    
+    // Check for explicit signature delimiter
+    if (/^-{2,}\s*$/.test(line) || /^_{2,}\s*$/.test(line)) {
+      signatureStart = i;
+      break;
+    }
+  }
+  
+  // If no explicit delimiter, look for sign-off patterns
+  if (signatureStart === -1) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Check for sign-off patterns
+      const isSignOff = signatureStartPatterns.some(p => p.test(line));
+      
+      if (isSignOff) {
+        // Verify the rest looks like a signature
+        if (looksLikeSignature(lines, i) || lines.length - i <= 8) {
+          signatureStart = i;
+          break;
+        }
+      }
+      
+      // Check for "Sent from my..." which is always signature
+      if (/^Sent\s+from\s+my/i.test(line) || /^Get\s+Outlook\s+for/i.test(line)) {
+        signatureStart = i;
+        break;
+      }
+    }
+  }
+  
+  if (signatureStart === -1) {
+    return { body: message, signature: null };
+  }
+  
+  const bodyContent = lines.slice(0, signatureStart).join('\n').trim();
+  const signatureContent = lines.slice(signatureStart).join('\n').trim();
+  
+  // Only treat as signature if body still has content
+  if (!bodyContent) {
+    return { body: message, signature: null };
+  }
+  
+  return {
+    body: bodyContent,
+    signature: signatureContent
+  };
+}
+
 // Smart paragraph detection - groups related lines together
 function smartParagraph(text: string): string[][] {
   if (!text) return [];
@@ -527,14 +650,32 @@ function FormattedContent({ content, isSmall = false }: { content: string; isSma
 
 export default function RichTextBody({ content, className = '' }: RichTextBodyProps) {
   const { currentMessage, threadHistory } = parseEmailThread(content);
+  const { body, signature } = parseSignature(currentMessage);
   
   return (
     <div className={className}>
-      <FormattedContent content={currentMessage} />
+      <FormattedContent content={body} />
+      
+      {signature && (
+        <details className="mt-4 pt-3 border-t border-border/50">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="font-medium">Show signature</span>
+          </summary>
+          <div className="mt-3 pl-3 border-l-2 border-border/30 text-muted-foreground">
+            <FormattedContent content={signature} isSmall />
+          </div>
+        </details>
+      )}
       
       {threadHistory && (
         <details className="mt-6 border-t pt-4">
           <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
             <span className="font-medium">Show previous messages in thread</span>
           </summary>
           <div className="mt-4 pl-4 border-l-2 border-muted text-muted-foreground">
