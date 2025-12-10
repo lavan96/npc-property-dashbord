@@ -157,7 +157,7 @@ serve(async (req) => {
           subject,
           body: bodyContent.substring(0, 10000), // Limit body size
           received_at: receivedAt,
-          status: 'new',
+          status: 'unread',
         });
       }
     }
