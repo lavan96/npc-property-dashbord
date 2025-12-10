@@ -14,6 +14,13 @@ const MICROSOFT_MAILBOX_EMAIL = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+interface EmailRecipient {
+  emailAddress: {
+    name: string;
+    address: string;
+  };
+}
+
 interface OutlookMessage {
   id: string;
   internetMessageId: string;
@@ -29,6 +36,9 @@ interface OutlookMessage {
       address: string;
     };
   };
+  toRecipients: EmailRecipient[];
+  ccRecipients: EmailRecipient[];
+  bccRecipients: EmailRecipient[];
   receivedDateTime: string;
   isRead: boolean;
 }
@@ -67,7 +77,8 @@ async function getAccessToken(): Promise<string> {
 async function fetchEmails(accessToken: string, limit: number = 20): Promise<OutlookMessage[]> {
   console.log(`[Outlook Sync] Fetching emails for ${MICROSOFT_MAILBOX_EMAIL}...`);
   
-  const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,receivedDateTime,isRead`;
+  // Include ccRecipients and bccRecipients in the select
+  const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -101,6 +112,12 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function extractEmailAddresses(recipients: EmailRecipient[]): string[] {
+  return (recipients || [])
+    .map(r => r.emailAddress?.address)
+    .filter(Boolean);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -108,7 +125,37 @@ serve(async (req) => {
   }
 
   try {
-    // Validate environment variables
+    // Initialize Supabase client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { action, limit = 20 } = await req.json().catch(() => ({ action: 'sync', limit: 20 }));
+    
+    console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}`);
+
+    // Handle clear action
+    if (action === 'clear') {
+      console.log('[Outlook Sync] Clearing all emails from database...');
+      const { error: deleteError } = await supabase
+        .from('email_copilot_emails')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (deleteError) {
+        console.error('[Outlook Sync] Delete error:', deleteError);
+        throw new Error(`Failed to clear emails: ${deleteError.message}`);
+      }
+
+      console.log('[Outlook Sync] All emails cleared');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'All emails have been cleared from the database'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate environment variables for sync
     if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
       console.error('[Outlook Sync] Missing Microsoft credentials');
       return new Response(
@@ -116,13 +163,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const { action, limit = 20 } = await req.json().catch(() => ({ action: 'sync', limit: 20 }));
-    
-    console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}`);
-
-    // Initialize Supabase client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get access token
     const accessToken = await getAccessToken();
@@ -160,12 +200,18 @@ serve(async (req) => {
           ? stripHtml(email.body.content)
           : email.body?.content || email.bodyPreview || '';
 
+        // Extract CC and BCC recipients
+        const ccRecipients = extractEmailAddresses(email.ccRecipients);
+        const bccRecipients = extractEmailAddresses(email.bccRecipients);
+
         newEmails.push({
           sender: email.from?.emailAddress?.address || 'unknown',
           subject: email.subject || '(No Subject)',
           body: bodyContent.substring(0, 10000), // Limit body size
           received_at: email.receivedDateTime,
           status: 'unread',
+          cc_recipients: ccRecipients,
+          bcc_recipients: bccRecipients,
         });
         
         // Add to existing keys to prevent duplicates within same batch
