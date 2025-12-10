@@ -195,30 +195,115 @@ function formatEmailBody(body: string): string {
     .trim();
 }
 
+// Detect if a line is a bullet point or list item
+function isBulletLine(line: string): { isBullet: boolean; indent: number; marker: string; content: string } {
+  const trimmed = line.trimStart();
+  const indent = line.length - trimmed.length;
+  
+  // Bullet patterns: -, *, •, >, ▪, ◦
+  const bulletMatch = trimmed.match(/^([-*•>▪◦])\s+(.*)$/);
+  if (bulletMatch) {
+    return { isBullet: true, indent, marker: bulletMatch[1], content: bulletMatch[2] };
+  }
+  
+  // Numbered list patterns: 1., 1), (1), a., a)
+  const numberedMatch = trimmed.match(/^(\d+[.):]|\(\d+\)|[a-zA-Z][.):])\s+(.*)$/);
+  if (numberedMatch) {
+    return { isBullet: true, indent, marker: numberedMatch[1], content: numberedMatch[2] };
+  }
+  
+  return { isBullet: false, indent: 0, marker: '', content: line };
+}
+
+// Group consecutive bullet lines together
+function groupLines(lines: string[]): Array<{ type: 'paragraph' | 'list'; lines: string[] }> {
+  const groups: Array<{ type: 'paragraph' | 'list'; lines: string[] }> = [];
+  let currentGroup: { type: 'paragraph' | 'list'; lines: string[] } | null = null;
+  
+  for (const line of lines) {
+    const { isBullet } = isBulletLine(line);
+    const lineType = isBullet ? 'list' : 'paragraph';
+    
+    if (!currentGroup || currentGroup.type !== lineType) {
+      if (currentGroup) groups.push(currentGroup);
+      currentGroup = { type: lineType, lines: [line] };
+    } else {
+      currentGroup.lines.push(line);
+    }
+  }
+  
+  if (currentGroup) groups.push(currentGroup);
+  return groups;
+}
+
+// Render a list item with proper styling
+function ListItem({ line, isSmall = false }: { line: string; isSmall?: boolean }) {
+  const { marker, content, indent } = isBulletLine(line);
+  const textSize = isSmall ? 'text-xs' : 'text-sm';
+  const markerColor = isSmall ? 'text-muted-foreground' : 'text-muted-foreground';
+  
+  return (
+    <li 
+      className={`${textSize} text-foreground leading-relaxed flex gap-2`}
+      style={{ marginLeft: `${Math.min(indent * 4, 32)}px` }}
+    >
+      <span className={`${markerColor} flex-shrink-0 min-w-[1.25rem]`}>{marker}</span>
+      <span className="flex-1"><RichTextLine text={content} /></span>
+    </li>
+  );
+}
+
+// Render formatted content (paragraphs and lists)
+function FormattedContent({ content, isSmall = false }: { content: string; isSmall?: boolean }) {
+  const formattedBody = formatEmailBody(content);
+  const paragraphs = formattedBody.split(/\n\n+/);
+  const textSize = isSmall ? 'text-xs' : 'text-sm';
+  
+  return (
+    <div className="space-y-4">
+      {paragraphs.map((paragraph, pIndex) => {
+        const lines = paragraph.split('\n').filter(l => l.trim() !== '');
+        const groups = groupLines(lines);
+        
+        return (
+          <div key={pIndex} className="space-y-2">
+            {groups.map((group, gIndex) => {
+              if (group.type === 'list') {
+                return (
+                  <ul key={gIndex} className="space-y-1.5 my-2">
+                    {group.lines.map((line, lIndex) => (
+                      <ListItem key={lIndex} line={line} isSmall={isSmall} />
+                    ))}
+                  </ul>
+                );
+              }
+              
+              // Regular paragraph
+              return (
+                <p key={gIndex} className={`${textSize} text-foreground leading-relaxed`}>
+                  {group.lines.map((line, lIndex) => (
+                    <React.Fragment key={lIndex}>
+                      <RichTextLine text={line} />
+                      {lIndex < group.lines.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function RichTextBody({ content, className = '' }: RichTextBodyProps) {
   const { currentMessage, threadHistory } = parseEmailThread(content);
-  const formattedBody = formatEmailBody(currentMessage);
-  const paragraphs = formattedBody.split(/\n\n+/);
   
   return (
     <div className={className}>
       {/* Current message */}
-      <div className="space-y-4">
-        {paragraphs.map((paragraph, pIndex) => {
-          const lines = paragraph.split('\n');
-          
-          return (
-            <p key={pIndex} className="text-sm text-foreground leading-relaxed">
-              {lines.map((line, lIndex) => (
-                <React.Fragment key={lIndex}>
-                  <RichTextLine text={line} />
-                  {lIndex < lines.length - 1 && <br />}
-                </React.Fragment>
-              ))}
-            </p>
-          );
-        })}
-      </div>
+      <FormattedContent content={currentMessage} />
       
       {/* Thread history (collapsed by default) */}
       {threadHistory && (
@@ -226,21 +311,8 @@ export default function RichTextBody({ content, className = '' }: RichTextBodyPr
           <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2">
             <span className="font-medium">Show previous messages in thread</span>
           </summary>
-          <div className="mt-4 pl-4 border-l-2 border-muted space-y-3 text-muted-foreground">
-            {formatEmailBody(threadHistory).split(/\n\n+/).map((paragraph, pIndex) => {
-              const lines = paragraph.split('\n');
-              
-              return (
-                <p key={pIndex} className="text-xs leading-relaxed">
-                  {lines.map((line, lIndex) => (
-                    <React.Fragment key={lIndex}>
-                      <RichTextLine text={line} />
-                      {lIndex < lines.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                </p>
-              );
-            })}
+          <div className="mt-4 pl-4 border-l-2 border-muted text-muted-foreground">
+            <FormattedContent content={threadHistory} isSmall />
           </div>
         </details>
       )}
