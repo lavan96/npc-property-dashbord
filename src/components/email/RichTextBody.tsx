@@ -208,16 +208,79 @@ function RichTextSpan({ text }: { text: string }) {
   return <>{result}</>;
 }
 
-// Helper to detect email thread separators
+// Comprehensive thread separator patterns for various email clients
 const threadSeparatorPatterns = [
+  // Outlook patterns
   /^-{3,}\s*Original Message\s*-{3,}/i,
+  /^_{3,}\s*$/,
+  /^From:\s+.+\s*$/i,
+  /^Sent:\s+.+\s*$/i,
+  
+  // Gmail patterns
+  /^On\s+.+\s+wrote:\s*$/i,
+  /^On\s+.+\s+at\s+.+,?\s+.+\s+wrote:\s*$/i,
+  
+  // Forwarded message patterns
   /^-{3,}\s*Forwarded message\s*-{3,}/i,
-  /^On .+ wrote:$/,
-  /^From:\s*.+$/m,
-  /^Sent:\s*.+$/,
-  /^To:\s*.+$/,
-  /^Subject:\s*.+$/,
+  /^Begin forwarded message/i,
+  /^-{3,}\s*Forwarded by\s+.+\s*-{3,}/i,
+  
+  // Mobile client patterns
+  /^On\s+\w{3},?\s+\w{3}\s+\d+,?\s+\d{4}/i,
+  /^Sent from my (iPhone|iPad|Galaxy|Android|Mobile)/i,
+  
+  // Quote markers
+  /^>\s*On\s+.+\s+wrote:/i,
+  /^>+\s*From:/i,
+  
+  // Generic reply headers
+  /^Reply to:/i,
+  /^In reply to:/i,
 ];
+
+// Detect if a block of lines looks like quoted/forwarded content
+function isQuotedBlock(lines: string[], startIndex: number): boolean {
+  // Check if multiple consecutive lines start with > (quote marker)
+  let quotedCount = 0;
+  for (let i = startIndex; i < Math.min(startIndex + 5, lines.length); i++) {
+    if (lines[i].trim().startsWith('>')) {
+      quotedCount++;
+    }
+  }
+  return quotedCount >= 2;
+}
+
+// Detect email header block (From, To, Subject, Date pattern)
+function isEmailHeaderBlock(lines: string[], startIndex: number): { isHeader: boolean; endIndex: number } {
+  const headerPatterns = [
+    /^From:\s*.+/i,
+    /^To:\s*.+/i,
+    /^Cc:\s*.+/i,
+    /^Subject:\s*.+/i,
+    /^Date:\s*.+/i,
+    /^Sent:\s*.+/i,
+  ];
+  
+  let matchCount = 0;
+  let lastMatchIndex = startIndex;
+  
+  for (let i = startIndex; i < Math.min(startIndex + 8, lines.length); i++) {
+    const line = lines[i].trim();
+    if (line === '') continue;
+    
+    const isHeader = headerPatterns.some(p => p.test(line));
+    if (isHeader) {
+      matchCount++;
+      lastMatchIndex = i;
+    } else if (matchCount > 0 && !line.startsWith(' ') && !line.startsWith('\t')) {
+      // Non-header line that's not a continuation - stop checking
+      break;
+    }
+  }
+  
+  // Need at least 2 header-like lines to consider it a header block
+  return { isHeader: matchCount >= 2, endIndex: lastMatchIndex };
+}
 
 // Parse email body to separate current message from thread history
 function parseEmailThread(body: string): { currentMessage: string; threadHistory: string | null } {
@@ -228,13 +291,53 @@ function parseEmailThread(body: string): { currentMessage: string; threadHistory
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
     
-    if (
-      /^-{3,}\s*Original Message\s*-{3,}/i.test(line) ||
-      /^-{3,}\s*Forwarded message\s*-{3,}/i.test(line) ||
-      /^On .+ wrote:$/.test(line) ||
-      (/^From:\s*.+/.test(line) && i > 2)
-    ) {
+    // Check for explicit thread separators
+    for (const pattern of threadSeparatorPatterns) {
+      if (pattern.test(line)) {
+        // For "From:" pattern, require it to be after some content and followed by more header-like lines
+        if (/^From:\s*.+/i.test(line)) {
+          if (i < 3) continue; // Too early to be a thread separator
+          const { isHeader } = isEmailHeaderBlock(lines, i);
+          if (!isHeader) continue;
+        }
+        
+        // For "Sent from my..." patterns, it's a signature, not thread separator
+        if (/^Sent from my/i.test(line)) {
+          continue; // Skip - this is a signature
+        }
+        
+        splitIndex = i;
+        break;
+      }
+    }
+    
+    if (splitIndex !== -1) break;
+    
+    // Check for quoted content block
+    if (isQuotedBlock(lines, i)) {
+      splitIndex = i;
+      break;
+    }
+    
+    // Check for email header block starting mid-email
+    if (i > 3 && /^From:\s*.+/i.test(line)) {
+      const { isHeader } = isEmailHeaderBlock(lines, i);
+      if (isHeader) {
+        splitIndex = i;
+        break;
+      }
+    }
+    
+    // "On ... wrote:" pattern (most common)
+    if (/^On\s+.+\s+wrote:\s*$/i.test(line)) {
+      splitIndex = i;
+      break;
+    }
+    
+    // Two-line Gmail pattern: "On Mon, Jan 1, 2024 at 10:00 AM" followed by "Name <email> wrote:"
+    if (/^On\s+\w{3},?\s+\w{3}\s+\d+/i.test(line) && /wrote:\s*$/i.test(nextLine)) {
       splitIndex = i;
       break;
     }
