@@ -144,6 +144,7 @@ export default function EmailCopilot() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDraftModal, setShowDraftModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
   
   // New email form state
@@ -153,6 +154,13 @@ export default function EmailCopilot() {
     body: '',
     received_at: new Date().toISOString().split('T')[0]
   });
+
+  // When selecting an email, ensure we have the latest data from state
+  const handleSelectEmail = (email: Email) => {
+    // Find the email in the current emails array to get latest summary/draft
+    const latestEmail = emails.find(e => e.id === email.id);
+    setSelectedEmail(latestEmail || email);
+  };
 
   const handleSyncOutlook = async () => {
     setIsSyncing(true);
@@ -209,6 +217,14 @@ export default function EmailCopilot() {
       }));
       
       setEmails(typedEmails);
+      
+      // If we have a selected email, update it with the latest data
+      if (selectedEmail) {
+        const updatedSelected = typedEmails.find(e => e.id === selectedEmail.id);
+        if (updatedSelected) {
+          setSelectedEmail(updatedSelected);
+        }
+      }
     } catch (error) {
       console.error('Error fetching emails:', error);
       toast.error('Failed to fetch emails');
@@ -466,7 +482,7 @@ export default function EmailCopilot() {
                 {activeEmails.map((email) => (
                   <div
                     key={email.id}
-                    onClick={() => setSelectedEmail(email)}
+                    onClick={() => handleSelectEmail(email)}
                     className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
                       selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
                     } ${email.status === 'unread' ? 'bg-primary/5' : ''}`}
@@ -597,9 +613,14 @@ export default function EmailCopilot() {
                   {/* AI Summary */}
                   {selectedEmail.summary && (
                     <div className="bg-background rounded-lg border overflow-hidden">
-                      <div className="px-4 py-3 bg-primary/5 border-b flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">AI Summary</span>
+                      <div className="px-4 py-3 bg-primary/5 border-b flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium">AI Summary</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setShowSummaryModal(true)}>
+                          View Full Summary
+                        </Button>
                       </div>
                       <div className="p-4 space-y-4">
                         <div>
@@ -780,6 +801,69 @@ export default function EmailCopilot() {
                 Copy to Clipboard
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Summary Preview Modal */}
+      <Dialog open={showSummaryModal} onOpenChange={setShowSummaryModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Summary
+            </DialogTitle>
+            <DialogDescription>
+              AI-generated summary of the email
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEmail?.summary && (
+            <ScrollArea className="max-h-[50vh]">
+              <div className="space-y-6 pr-4">
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground font-semibold">TL;DR</Label>
+                  <p className="text-sm mt-2 p-3 bg-muted/50 rounded-lg">{selectedEmail.summary.tldr}</p>
+                </div>
+                
+                {selectedEmail.summary.keyPoints.length > 0 && (
+                  <div>
+                    <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
+                    <ul className="mt-2 space-y-2">
+                      {selectedEmail.summary.keyPoints.map((point, i) => (
+                        <li key={i} className="text-sm flex items-start gap-2 p-2 bg-muted/30 rounded-lg">
+                          <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {selectedEmail.summary.requiredActions.length > 0 && (
+                  <div>
+                    <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
+                    <ul className="mt-2 space-y-2">
+                      {selectedEmail.summary.requiredActions.map((action, i) => (
+                        <li key={i} className="text-sm flex items-start gap-2 p-2 bg-green-500/10 rounded-lg">
+                          <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div>
+                  <Label className="text-xs uppercase text-muted-foreground font-semibold">Urgency Level</Label>
+                  <div className="mt-2">
+                    {getUrgencyBadge(selectedEmail.summary.urgencyLevel)}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSummaryModal(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
