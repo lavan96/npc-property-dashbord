@@ -183,6 +183,33 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
   text = text.replace(/^\s+|\s+$/gm, ''); // Trim each line
   
+  // Insert line breaks before email thread headers that got merged with previous content
+  // This handles cases like "...risk profile.From: Name" -> "...risk profile.\n\nFrom: Name"
+  text = text.replace(/([^\n])(From:\s+.+<.+@.+>)/gi, '$1\n\n$2');
+  text = text.replace(/([^\n])(Sent:\s+\w+,?\s+\w+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(To:\s+.+<.+@.+>)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Cc:\s+.+<.+@.+>)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Subject:\s+.+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Date:\s+.+)/gi, '$1\n$2');
+  
+  // Insert line breaks before common signature elements that got merged
+  // E.g., "Kind RegardsMobile:" -> "Kind Regards\n\nMobile:"
+  text = text.replace(/(Kind Regards|Best Regards|Regards|Thanks|Thank you|Cheers|Sincerely)([A-Z])/g, '$1\n\n$2');
+  text = text.replace(/([^\n])(Mobile:\s*[\d\s]+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Phone:\s*[\d\s]+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Email:\s*.+@.+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Website:\s*www\..+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Address:\s+.+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(ABN:\s*[\d\s]+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(ACN:\s*[\d\s]+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(Disclaimer:)/gi, '$1\n\n$2');
+  
+  // Insert line breaks before "On ... wrote:" patterns
+  text = text.replace(/([^\n])(On\s+\w{3},?\s+\w{3}\s+\d+)/gi, '$1\n\n$2');
+  
+  // Clean up any newly created excessive newlines
+  text = text.replace(/\n{3,}/g, '\n\n');
+  
   return text.trim();
 }
 
