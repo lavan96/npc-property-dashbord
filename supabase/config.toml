@@ -161,3 +161,6 @@ request_timeout = 300
 
 [functions.email-copilot]
 verify_jwt = false
+
+[functions.outlook-email-sync]
+verify_jwt = false
