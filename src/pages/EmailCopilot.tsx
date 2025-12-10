@@ -22,7 +22,13 @@ import {
   MoreVertical,
   Reply,
   Star,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Filter,
+  X,
+  ChevronDown,
+  ChevronUp,
+  MessageCircle
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -149,6 +155,14 @@ export default function EmailCopilot() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
   
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showArchived, setShowArchived] = useState(false);
+  
+  // Threading state
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  
   // New email form state
   const [newEmail, setNewEmail] = useState({
     sender: '',
@@ -162,6 +176,44 @@ export default function EmailCopilot() {
     // Find the email in the current emails array to get latest summary/draft
     const latestEmail = emails.find(e => e.id === email.id);
     setSelectedEmail(latestEmail || email);
+  };
+  
+  // Group emails by thread (based on subject similarity)
+  const getThreadKey = (subject: string): string => {
+    // Remove common reply/forward prefixes and normalize
+    return subject
+      .replace(/^(re:|fwd?:|fw:)\s*/gi, '')
+      .toLowerCase()
+      .trim();
+  };
+  
+  const groupEmailsByThread = (emailList: Email[]): Map<string, Email[]> => {
+    const threads = new Map<string, Email[]>();
+    
+    emailList.forEach(email => {
+      const threadKey = getThreadKey(email.subject);
+      if (!threads.has(threadKey)) {
+        threads.set(threadKey, []);
+      }
+      threads.get(threadKey)!.push(email);
+    });
+    
+    // Sort emails within each thread by date (newest first)
+    threads.forEach((emails, key) => {
+      emails.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+    });
+    
+    return threads;
+  };
+  
+  const toggleThread = (threadKey: string) => {
+    const newExpanded = new Set(expandedThreads);
+    if (newExpanded.has(threadKey)) {
+      newExpanded.delete(threadKey);
+    } else {
+      newExpanded.add(threadKey);
+    }
+    setExpandedThreads(newExpanded);
   };
 
   const handleSyncOutlook = async () => {
@@ -438,6 +490,37 @@ export default function EmailCopilot() {
     return <Badge variant="outline" className={className}>{label}</Badge>;
   };
 
+  // Filter and search emails
+  const filteredEmails = emails.filter(email => {
+    // Status filter
+    if (statusFilter === 'all') {
+      if (!showArchived && email.status === 'archived') return false;
+    } else if (statusFilter === 'archived') {
+      if (email.status !== 'archived') return false;
+    } else {
+      if (email.status !== statusFilter) return false;
+    }
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSender = email.sender.toLowerCase().includes(query);
+      const matchesSubject = email.subject.toLowerCase().includes(query);
+      const matchesBody = email.body.toLowerCase().includes(query);
+      if (!matchesSender && !matchesSubject && !matchesBody) return false;
+    }
+    
+    return true;
+  });
+  
+  // Group filtered emails by thread
+  const emailThreads = groupEmailsByThread(filteredEmails);
+  const sortedThreadKeys = Array.from(emailThreads.keys()).sort((a, b) => {
+    const aEmails = emailThreads.get(a)!;
+    const bEmails = emailThreads.get(b)!;
+    return new Date(bEmails[0].received_at).getTime() - new Date(aEmails[0].received_at).getTime();
+  });
+  
   const activeEmails = emails.filter(e => e.status !== 'archived');
   const unreadCount = activeEmails.filter(e => e.status === 'unread').length;
 
@@ -497,12 +580,68 @@ export default function EmailCopilot() {
       <div className="flex-1 flex overflow-hidden">
         {/* Email List Panel */}
         <div className="w-[380px] border-r flex flex-col bg-background">
-          <div className="px-4 py-3 border-b">
+          {/* Search and Filter Bar */}
+          <div className="px-3 py-3 border-b space-y-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search emails..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-8 h-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            {/* Filters */}
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <Filter className="h-3 w-3 mr-1" />
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Emails</SelectItem>
+                  <SelectItem value="unread">Unread</SelectItem>
+                  <SelectItem value="read">Read</SelectItem>
+                  <SelectItem value="summarized">Summarized</SelectItem>
+                  <SelectItem value="drafted">Draft Ready</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Badge 
+                variant={showArchived ? "default" : "outline"} 
+                className="cursor-pointer text-xs h-8 px-3"
+                onClick={() => setShowArchived(!showArchived)}
+              >
+                <Archive className="h-3 w-3 mr-1" />
+                {showArchived ? 'Hiding' : 'Show'} Archived
+              </Badge>
+            </div>
+          </div>
+          
+          {/* Email List Header */}
+          <div className="px-4 py-2 border-b bg-muted/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Inbox className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Inbox</span>
-                <span className="text-xs text-muted-foreground">({activeEmails.length})</span>
+                <span className="text-sm font-medium">
+                  {filteredEmails.length} {filteredEmails.length === 1 ? 'email' : 'emails'}
+                </span>
+                {sortedThreadKeys.length !== filteredEmails.length && (
+                  <span className="text-xs text-muted-foreground">
+                    ({sortedThreadKeys.length} {sortedThreadKeys.length === 1 ? 'thread' : 'threads'})
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -513,70 +652,155 @@ export default function EmailCopilot() {
                 <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">Loading emails...</p>
               </div>
-            ) : activeEmails.length === 0 ? (
+            ) : filteredEmails.length === 0 ? (
               <div className="p-8 text-center">
                 <Inbox className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-sm font-medium text-muted-foreground">No emails</p>
-                <p className="text-xs text-muted-foreground mt-1">Sync your inbox or add an email</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {searchQuery || statusFilter !== 'all' ? 'No matching emails' : 'No emails'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Sync your inbox or add an email'}
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {activeEmails.map((email) => (
-                  <div
-                    key={email.id}
-                    onClick={() => handleSelectEmail(email)}
-                    className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
-                      selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
-                    } ${email.status === 'unread' ? 'bg-primary/5' : ''}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-primary">
-                          {getSenderInitials(email.sender)}
-                        </span>
+                {sortedThreadKeys.map((threadKey) => {
+                  const threadEmails = emailThreads.get(threadKey)!;
+                  const isThreaded = threadEmails.length > 1;
+                  const isExpanded = expandedThreads.has(threadKey);
+                  const latestEmail = threadEmails[0];
+                  const hasUnread = threadEmails.some(e => e.status === 'unread');
+                  const hasSummary = threadEmails.some(e => e.summary);
+                  const hasDraft = threadEmails.some(e => e.draft_reply);
+                  
+                  return (
+                    <div key={threadKey}>
+                      {/* Thread Header / Single Email */}
+                      <div
+                        onClick={() => {
+                          if (isThreaded && !isExpanded) {
+                            toggleThread(threadKey);
+                          } else {
+                            handleSelectEmail(latestEmail);
+                          }
+                        }}
+                        className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
+                          selectedEmail?.id === latestEmail.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                        } ${hasUnread ? 'bg-primary/5' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Avatar */}
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-semibold text-primary">
+                              {getSenderInitials(latestEmail.sender)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                                  {extractSenderName(latestEmail.sender)}
+                                </span>
+                                {isThreaded && (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+                                    <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
+                                    {threadEmails.length}
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                {formatEmailDate(latestEmail.received_at)}
+                              </span>
+                            </div>
+                            <p className={`text-sm truncate ${hasUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                              {latestEmail.subject || '(No Subject)'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {latestEmail.body.slice(0, 80).replace(/\n/g, ' ')}...
+                            </p>
+                            
+                            {/* Status indicators */}
+                            <div className="flex items-center gap-1.5 mt-2">
+                              {latestEmail.urgency_level && latestEmail.urgency_level !== 'low' && (
+                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
+                                  latestEmail.urgency_level === 'high' ? 'text-destructive border-destructive/30' : 'text-warning border-warning/30'
+                                }`}>
+                                  {latestEmail.urgency_level === 'high' ? '🔴' : '🟡'} {latestEmail.urgency_level}
+                                </Badge>
+                              )}
+                              {hasSummary && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
+                                  <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Summary
+                                </Badge>
+                              )}
+                              {hasDraft && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-purple-600 border-purple-500/30">
+                                  <MessageSquare className="h-2.5 w-2.5 mr-0.5" /> Draft
+                                </Badge>
+                              )}
+                              {isThreaded && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleThread(threadKey);
+                                  }}
+                                  className="ml-auto text-muted-foreground hover:text-foreground"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <span className={`text-sm truncate ${email.status === 'unread' ? 'font-semibold' : 'font-medium'}`}>
-                            {extractSenderName(email.sender)}
-                          </span>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
-                            {formatEmailDate(email.received_at)}
-                          </span>
+                      {/* Expanded Thread Emails */}
+                      {isThreaded && isExpanded && (
+                        <div className="bg-muted/20 border-l-2 border-l-muted">
+                          {threadEmails.map((email, index) => (
+                            <div
+                              key={email.id}
+                              onClick={() => handleSelectEmail(email)}
+                              className={`pl-8 pr-4 py-2 cursor-pointer transition-colors hover:bg-muted/50 border-t border-border/50 ${
+                                selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-[10px] font-semibold text-primary">
+                                      {getSenderInitials(email.sender)}
+                                    </span>
+                                  </div>
+                                  <span className={`text-xs truncate ${email.status === 'unread' ? 'font-semibold' : ''}`}>
+                                    {extractSenderName(email.sender)}
+                                  </span>
+                                  {email.summary && (
+                                    <Sparkles className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                  )}
+                                  {email.draft_reply && (
+                                    <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {formatEmailDate(email.received_at)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate mt-1 pl-8">
+                                {email.body.slice(0, 60).replace(/\n/g, ' ')}...
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                        <p className={`text-sm truncate ${email.status === 'unread' ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                          {email.subject || '(No Subject)'}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {email.body.slice(0, 80).replace(/\n/g, ' ')}...
-                        </p>
-                        
-                        {/* Status indicators */}
-                        <div className="flex items-center gap-1.5 mt-2">
-                          {email.urgency_level && email.urgency_level !== 'low' && (
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
-                              email.urgency_level === 'high' ? 'text-destructive border-destructive/30' : 'text-warning border-warning/30'
-                            }`}>
-                              {email.urgency_level === 'high' ? '🔴' : '🟡'} {email.urgency_level}
-                            </Badge>
-                          )}
-                          {email.summary && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
-                              <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Summary
-                            </Badge>
-                          )}
-                          {email.draft_reply && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-purple-600 border-purple-500/30">
-                              <MessageSquare className="h-2.5 w-2.5 mr-0.5" /> Draft
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
