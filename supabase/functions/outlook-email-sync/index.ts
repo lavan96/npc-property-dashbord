@@ -77,7 +77,6 @@ async function getAccessToken(): Promise<string> {
 async function fetchEmails(accessToken: string, limit: number = 20): Promise<OutlookMessage[]> {
   console.log(`[Outlook Sync] Fetching emails for ${MICROSOFT_MAILBOX_EMAIL}...`);
   
-  // Include ccRecipients and bccRecipients in the select
   const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead`;
   
   const response = await fetch(graphUrl, {
@@ -98,18 +97,93 @@ async function fetchEmails(accessToken: string, limit: number = 20): Promise<Out
   return data.value || [];
 }
 
-function stripHtml(html: string): string {
-  // Remove HTML tags and decode common entities
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+/**
+ * Structure-preserving HTML to text conversion
+ * Converts HTML to plain text while maintaining formatting structure
+ */
+function convertHtmlToStructuredText(html: string): string {
+  if (!html) return '';
+  
+  let text = html;
+  
+  // Preserve paragraph breaks
+  text = text.replace(/<\/p>/gi, '\n\n');
+  text = text.replace(/<p[^>]*>/gi, '');
+  
+  // Preserve div breaks
+  text = text.replace(/<\/div>/gi, '\n');
+  text = text.replace(/<div[^>]*>/gi, '');
+  
+  // Preserve line breaks
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  
+  // Preserve headings with emphasis
+  text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n**$1**\n\n');
+  
+  // Preserve bold/strong text with markers
+  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '**$2**');
+  
+  // Preserve italic/emphasis text with markers
+  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '_$2_');
+  
+  // Preserve underline text with markers
+  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>');
+  
+  // Preserve unordered list items with bullets
+  text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
+  
+  // Preserve ordered list items (simplified)
+  let listCounter = 0;
+  text = text.replace(/<ol[^>]*>/gi, () => { listCounter = 0; return ''; });
+  text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, (match, content) => {
+    listCounter++;
+    return `${listCounter}. ${content}\n`;
+  });
+  
+  // Remove list wrappers
+  text = text.replace(/<\/?[ou]l[^>]*>/gi, '\n');
+  
+  // Preserve table structure (simplified)
+  text = text.replace(/<tr[^>]*>/gi, '');
+  text = text.replace(/<\/tr>/gi, '\n');
+  text = text.replace(/<t[dh][^>]*>(.*?)<\/t[dh]>/gi, '$1\t');
+  text = text.replace(/<\/?table[^>]*>/gi, '\n');
+  text = text.replace(/<\/?t(head|body|foot)[^>]*>/gi, '');
+  
+  // Preserve blockquotes
+  text = text.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, (match, content) => {
+    return content.split('\n').map((line: string) => `> ${line}`).join('\n') + '\n';
+  });
+  
+  // Preserve horizontal rules
+  text = text.replace(/<hr\s*\/?>/gi, '\n---\n');
+  
+  // Remove remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  text = text.replace(/&rsquo;/g, "'");
+  text = text.replace(/&lsquo;/g, "'");
+  text = text.replace(/&rdquo;/g, '"');
+  text = text.replace(/&ldquo;/g, '"');
+  text = text.replace(/&mdash;/g, '—');
+  text = text.replace(/&ndash;/g, '–');
+  text = text.replace(/&hellip;/g, '...');
+  text = text.replace(/&bull;/g, '•');
+  text = text.replace(/&#(\d+);/g, (match, code) => String.fromCharCode(parseInt(code)));
+  
+  // Clean up excessive whitespace while preserving intentional line breaks
+  text = text.replace(/[ \t]+/g, ' '); // Collapse horizontal whitespace
+  text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
+  text = text.replace(/^\s+|\s+$/gm, ''); // Trim each line
+  
+  return text.trim();
 }
 
 function extractEmailAddresses(recipients: EmailRecipient[]): string[] {
@@ -119,13 +193,11 @@ function extractEmailAddresses(recipients: EmailRecipient[]): string[] {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { action, limit = 20 } = await req.json().catch(() => ({ action: 'sync', limit: 20 }));
@@ -138,7 +210,7 @@ serve(async (req) => {
       const { error: deleteError } = await supabase
         .from('email_copilot_emails')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        .neq('id', '00000000-0000-0000-0000-000000000000');
 
       if (deleteError) {
         console.error('[Outlook Sync] Delete error:', deleteError);
@@ -170,16 +242,14 @@ serve(async (req) => {
     // Fetch emails from Outlook
     const outlookEmails = await fetchEmails(accessToken, limit);
 
-    // Get existing emails to avoid duplicates - use multiple criteria for robust dedup
+    // Get existing emails to avoid duplicates
     const { data: existingEmails } = await supabase
       .from('email_copilot_emails')
       .select('sender, subject, received_at');
 
     // Create a set of composite keys for quick lookup
-    // Use sender + subject + received_at as the unique key
     const existingKeys = new Set<string>();
     (existingEmails || []).forEach(e => {
-      // Normalize the received_at to handle timezone differences
       const normalizedDate = new Date(e.received_at).toISOString();
       existingKeys.add(`${e.sender?.toLowerCase()}|${e.subject?.toLowerCase()}|${normalizedDate}`);
     });
@@ -196,25 +266,24 @@ serve(async (req) => {
       const key = `${sender}|${subject}|${receivedAt}`;
       
       if (!existingKeys.has(key)) {
+        // Use structure-preserving HTML conversion
         const bodyContent = email.body?.contentType === 'html' 
-          ? stripHtml(email.body.content)
+          ? convertHtmlToStructuredText(email.body.content)
           : email.body?.content || email.bodyPreview || '';
 
-        // Extract CC and BCC recipients
         const ccRecipients = extractEmailAddresses(email.ccRecipients);
         const bccRecipients = extractEmailAddresses(email.bccRecipients);
 
         newEmails.push({
           sender: email.from?.emailAddress?.address || 'unknown',
           subject: email.subject || '(No Subject)',
-          body: bodyContent.substring(0, 10000), // Limit body size
+          body: bodyContent.substring(0, 10000),
           received_at: email.receivedDateTime,
           status: 'unread',
           cc_recipients: ccRecipients,
           bcc_recipients: bccRecipients,
         });
         
-        // Add to existing keys to prevent duplicates within same batch
         existingKeys.add(key);
       }
     }
