@@ -117,17 +117,17 @@ function convertHtmlToStructuredText(html: string): string {
   // Preserve line breaks
   text = text.replace(/<br\s*\/?>/gi, '\n');
   
-  // Preserve headings with emphasis
-  text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n**$1**\n\n');
+  // Preserve headings - just extract text without markers
+  text = text.replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n$1\n\n');
   
-  // Preserve bold/strong text with markers
-  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '**$2**');
+  // Extract bold/strong text content without adding markers (markers cause display issues)
+  text = text.replace(/<(b|strong)[^>]*>(.*?)<\/(b|strong)>/gi, '$2');
   
-  // Preserve italic/emphasis text with markers
-  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '_$2_');
+  // Extract italic/emphasis text content without adding markers
+  text = text.replace(/<(i|em)[^>]*>(.*?)<\/(i|em)>/gi, '$2');
   
-  // Preserve underline text with markers
-  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>');
+  // Extract underline text content without markers
+  text = text.replace(/<u[^>]*>(.*?)<\/u>/gi, '$2');
   
   // Preserve unordered list items with bullets
   text = text.replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n');
@@ -183,18 +183,24 @@ function convertHtmlToStructuredText(html: string): string {
   text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
   text = text.replace(/^\s+|\s+$/gm, ''); // Trim each line
   
+  // Remove any remaining markdown-style formatting markers that slipped through
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1'); // Remove **bold** markers
+  text = text.replace(/_([^_\n]+)_/g, '$1'); // Remove _italic_ markers
+  text = text.replace(/([a-zA-Z0-9])_(\s|$)/g, '$1$2'); // Remove trailing underscores
+  text = text.replace(/(^|\s)_([a-zA-Z])/g, '$1$2'); // Remove leading underscores
+  
   // Insert line breaks before email thread headers that got merged with previous content
   // This handles cases like "...risk profile.From: Name" -> "...risk profile.\n\nFrom: Name"
-  text = text.replace(/([^\n])(From:\s+.+<.+@.+>)/gi, '$1\n\n$2');
-  text = text.replace(/([^\n])(Sent:\s+\w+,?\s+\w+)/gi, '$1\n$2');
-  text = text.replace(/([^\n])(To:\s+.+<.+@.+>)/gi, '$1\n$2');
-  text = text.replace(/([^\n])(Cc:\s+.+<.+@.+>)/gi, '$1\n$2');
-  text = text.replace(/([^\n])(Subject:\s+.+)/gi, '$1\n$2');
-  text = text.replace(/([^\n])(Date:\s+.+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(\s*From:\s+[^\n]+<[^>]+>)/gi, '$1\n\n$2');
+  text = text.replace(/([^\n])(\s*Sent:\s+\w+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(\s*To:\s+[^\n]+<[^>]+>)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(\s*Cc:\s+[^\n]+<[^>]+>)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(\s*Subject:\s+)/gi, '$1\n$2');
+  text = text.replace(/([^\n])(\s*Date:\s+)/gi, '$1\n$2');
   
   // Insert line break AFTER Subject: lines before the email body starts
-  // E.g., "Subject: Re: 3,20 huckle buyers docsHi Mick" -> "Subject: Re: 3,20 huckle buyers docs\n\nHi Mick"
-  text = text.replace(/(Subject:\s+(?:Re:\s*|Fw:\s*|Fwd:\s*)?[^\n]+?(?:docs|inquiry|request|update|meeting|question|proposal|offer|contract|agreement|info|information|details))([A-Z][a-z])/gi, '$1\n\n$2');
+  // Match Subject line followed by any content, then a greeting like "Hi" or "Hello" or "Dear"
+  text = text.replace(/(Subject:\s+[^\n]+)(Hi\s|Hello\s|Dear\s|Hope\s|Thank\s|Good\s|Please\s|I\s|We\s|As\s)/gi, '$1\n\n$2');
   
   // Insert line breaks before common signature elements that got merged
   // E.g., "Kind RegardsMobile:" -> "Kind Regards\n\nMobile:"
@@ -214,11 +220,8 @@ function convertHtmlToStructuredText(html: string): string {
   
   // Fix sentence boundaries where period is followed directly by a capital letter (new sentence)
   // E.g., "your reference.Look forward" -> "your reference.\n\nLook forward"
-  text = text.replace(/(\.)([A-Z][a-z]{2,})/g, '$1\n\n$2');
-  
-  // Fix italic markers showing incorrectly (from HTML conversion)
-  // E.g., "_Disclaimer:_As a" -> "Disclaimer: As a"
-  text = text.replace(/_([^_\n]+)_/g, '$1');
+  // But not for abbreviations like "Mr." or "Dr." or "Ltd."
+  text = text.replace(/([a-z])\.([A-Z][a-z]{2,})/g, '$1.\n\n$2');
   
   // Insert line breaks before "On ... wrote:" patterns
   text = text.replace(/([^\n])(On\s+\w{3},?\s+\w{3}\s+\d+)/gi, '$1\n\n$2');
