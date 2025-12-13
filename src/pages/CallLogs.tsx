@@ -118,6 +118,7 @@ const CallLogs = () => {
   }, [filteredCalls]);
 
   const fetchCalls = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('vapi_call_logs')
