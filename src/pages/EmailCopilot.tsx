@@ -107,6 +107,12 @@ interface Email {
   attachments: EmailAttachment[];
 }
 
+interface SentAttachment {
+  name: string;
+  contentType: string;
+  size: number;
+}
+
 interface SentReply {
   id: string;
   original_email_id: string | null;
@@ -115,6 +121,7 @@ interface SentReply {
   body: string;
   cc_recipients: string[];
   bcc_recipients: string[];
+  attachments: SentAttachment[];
   sent_at: string;
 }
 
@@ -419,6 +426,7 @@ export default function EmailCopilot() {
         body: reply.body,
         cc_recipients: (reply.cc_recipients as string[]) || [],
         bcc_recipients: (reply.bcc_recipients as string[]) || [],
+        attachments: (reply.attachments as unknown as SentAttachment[]) || [],
         sent_at: reply.sent_at,
       }));
       
@@ -1499,7 +1507,43 @@ export default function EmailCopilot() {
               </div>
 
               <ScrollArea className="flex-1">
-                <div className="p-6">
+                <div className="p-6 space-y-4">
+                  {/* Attachments Section */}
+                  {selectedSentReply.attachments && selectedSentReply.attachments.length > 0 && (
+                    <div className="bg-muted/30 rounded-lg p-4">
+                      <Label className="text-xs uppercase text-muted-foreground font-semibold mb-3 block">
+                        Attachments ({selectedSentReply.attachments.length})
+                      </Label>
+                      <div className="space-y-2">
+                        {selectedSentReply.attachments.map((attachment, index) => (
+                          <div 
+                            key={index}
+                            className="flex items-center gap-3 p-2 bg-background rounded-lg border"
+                          >
+                            <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              {attachment.contentType?.startsWith('image/') ? (
+                                <ImageIcon className="h-4 w-4 text-primary" />
+                              ) : (
+                                <FileIcon className="h-4 w-4 text-primary" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{attachment.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {attachment.size < 1024 
+                                  ? `${attachment.size} B`
+                                  : attachment.size < 1024 * 1024
+                                    ? `${(attachment.size / 1024).toFixed(1)} KB`
+                                    : `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="bg-background rounded-lg border p-6">
                     <RichTextBody 
                       content={selectedSentReply.body}

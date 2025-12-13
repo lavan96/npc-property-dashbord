@@ -734,6 +734,7 @@ export type Database = {
       }
       email_copilot_sent_replies: {
         Row: {
+          attachments: Json | null
           bcc_recipients: string[] | null
           body: string
           cc_recipients: string[] | null
@@ -745,6 +746,7 @@ export type Database = {
           subject: string
         }
         Insert: {
+          attachments?: Json | null
           bcc_recipients?: string[] | null
           body: string
           cc_recipients?: string[] | null
@@ -756,6 +758,7 @@ export type Database = {
           subject: string
         }
         Update: {
+          attachments?: Json | null
           bcc_recipients?: string[] | null
           body?: string
           cc_recipients?: string[] | null
