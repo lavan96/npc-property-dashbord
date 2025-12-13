@@ -176,6 +176,9 @@ export default function EmailCopilot() {
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
+  const [showEditDraftModal, setShowEditDraftModal] = useState(false);
+  const [editableDraft, setEditableDraft] = useState('');
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [currentDraft, setCurrentDraft] = useState('');
   const [replyContext, setReplyContext] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -777,6 +780,43 @@ export default function EmailCopilot() {
   const handleCopyDraft = () => {
     navigator.clipboard.writeText(currentDraft);
     toast.success('Draft copied to clipboard');
+  };
+
+  // Open edit draft modal
+  const handleOpenEditDraft = () => {
+    if (!selectedEmail?.draft_reply) return;
+    setEditableDraft(selectedEmail.draft_reply);
+    setShowEditDraftModal(true);
+  };
+
+  // Save edited draft
+  const handleSaveEditedDraft = async () => {
+    if (!selectedEmail) return;
+    
+    setIsSavingDraft(true);
+    try {
+      const { error } = await supabase
+        .from('email_copilot_emails')
+        .update({ draft_reply: editableDraft })
+        .eq('id', selectedEmail.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setSelectedEmail({
+        ...selectedEmail,
+        draft_reply: editableDraft
+      });
+      
+      toast.success('Draft saved successfully');
+      setShowEditDraftModal(false);
+      fetchEmails();
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast.error('Failed to save draft');
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   const handleArchiveEmail = async () => {
@@ -1555,11 +1595,7 @@ export default function EmailCopilot() {
                     <Button 
                       variant="secondary" 
                       size="sm"
-                      onClick={() => {
-                        setCurrentDraft(selectedEmail.draft_reply || '');
-                        initializeReplyFields();
-                        setShowDraftModal(true);
-                      }}
+                      onClick={handleOpenEditDraft}
                       className="flex-1 md:flex-none"
                     >
                       <MessageSquare className="h-4 w-4 mr-2 text-purple-600" />
@@ -2027,6 +2063,57 @@ export default function EmailCopilot() {
                   <>
                     <Send className="h-4 w-4 mr-2" />
                     Send Email
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Draft Modal */}
+      <Dialog open={showEditDraftModal} onOpenChange={setShowEditDraftModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-purple-600" />
+              Edit Draft Reply
+            </DialogTitle>
+            <DialogDescription>
+              Make changes to your draft reply below
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 min-h-0">
+            <Textarea
+              value={editableDraft}
+              onChange={(e) => setEditableDraft(e.target.value)}
+              className="h-[400px] resize-none font-sans text-sm"
+              placeholder="Edit your draft reply..."
+            />
+          </div>
+          
+          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
+            <p className="text-xs text-muted-foreground">
+              {editableDraft.length} characters
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditDraftModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveEditedDraft} 
+                disabled={isSavingDraft || !editableDraft.trim()}
+              >
+                {isSavingDraft ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Save Draft
                   </>
                 )}
               </Button>
