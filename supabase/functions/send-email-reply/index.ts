@@ -11,6 +11,12 @@ const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
 const tenantId = Deno.env.get('MICROSOFT_TENANT_ID');
 const mailboxEmail = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
 
+interface EmailAttachment {
+  name: string;
+  contentType: string;
+  contentBytes: string; // base64 encoded
+}
+
 interface SendEmailRequest {
   to: string;
   subject: string;
@@ -18,6 +24,7 @@ interface SendEmailRequest {
   cc?: string[];
   bcc?: string[];
   originalEmailId?: string;
+  attachments?: EmailAttachment[];
 }
 
 async function getAccessToken(): Promise<string> {
@@ -58,13 +65,13 @@ serve(async (req) => {
       throw new Error('Microsoft Graph API credentials not configured');
     }
 
-    const { to, subject, body, cc, bcc, originalEmailId }: SendEmailRequest = await req.json();
+    const { to, subject, body, cc, bcc, originalEmailId, attachments }: SendEmailRequest = await req.json();
 
     if (!to || !subject || !body) {
       throw new Error('Missing required fields: to, subject, body');
     }
 
-    console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}`);
+    console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Attachments: ${attachments?.length || 0}`);
 
     // Get access token
     const accessToken = await getAccessToken();
@@ -100,6 +107,17 @@ serve(async (req) => {
       message.message.bccRecipients = bcc.map(email => ({
         emailAddress: { address: email }
       }));
+    }
+
+    // Add attachments if provided
+    if (attachments && attachments.length > 0) {
+      message.message.attachments = attachments.map(att => ({
+        '@odata.type': '#microsoft.graph.fileAttachment',
+        name: att.name,
+        contentType: att.contentType,
+        contentBytes: att.contentBytes
+      }));
+      console.log(`[Send Email] Added ${attachments.length} attachments`);
     }
 
     // Send email via Microsoft Graph API
