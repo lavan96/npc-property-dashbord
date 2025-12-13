@@ -249,6 +249,12 @@ export default function EmailCopilot() {
     bcc: ''
   });
   const [isComposing, setIsComposing] = useState(false);
+  
+  // Attachment state for compose and reply
+  const [replyAttachments, setReplyAttachments] = useState<File[]>([]);
+  const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
+  const composeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Email notifications hook - refetch emails when new ones arrive
   const { requestNotificationPermission } = useEmailNotifications({
@@ -708,6 +714,76 @@ export default function EmailCopilot() {
     setShowSendConfirmModal(true);
   };
 
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  // Handle file selection for reply
+  const handleReplyFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024; // 10MB limit per file
+    
+    const validFiles = files.filter(file => {
+      if (file.size > maxSize) {
+        toast.error(`${file.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
+    
+    setReplyAttachments(prev => [...prev, ...validFiles]);
+    if (replyFileInputRef.current) {
+      replyFileInputRef.current.value = '';
+    }
+  };
+
+  // Handle file selection for compose
+  const handleComposeFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024; // 10MB limit per file
+    
+    const validFiles = files.filter(file => {
+      if (file.size > maxSize) {
+        toast.error(`${file.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
+    
+    setComposeAttachments(prev => [...prev, ...validFiles]);
+    if (composeFileInputRef.current) {
+      composeFileInputRef.current.value = '';
+    }
+  };
+
+  // Remove attachment from reply
+  const removeReplyAttachment = (index: number) => {
+    setReplyAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Remove attachment from compose
+  const removeComposeAttachment = (index: number) => {
+    setComposeAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   // Send email directly (for reply)
   const handleSendEmail = async () => {
     if (!selectedEmail || !currentDraft) return;
@@ -719,6 +795,15 @@ export default function EmailCopilot() {
       const ccList = parseEmailList(replyCc);
       const bccList = parseEmailList(replyBcc);
 
+      // Convert attachments to base64
+      const attachmentsData = await Promise.all(
+        replyAttachments.map(async (file) => ({
+          name: file.name,
+          contentType: file.type || 'application/octet-stream',
+          contentBytes: await fileToBase64(file)
+        }))
+      );
+
       const { data, error } = await supabase.functions.invoke('send-email-reply', {
         body: {
           to: replyTo,
@@ -726,7 +811,8 @@ export default function EmailCopilot() {
           body: currentDraft,
           cc: ccList.length > 0 ? ccList : undefined,
           bcc: bccList.length > 0 ? bccList : undefined,
-          originalEmailId: selectedEmail.id
+          originalEmailId: selectedEmail.id,
+          attachments: attachmentsData.length > 0 ? attachmentsData : undefined
         }
       });
 
@@ -737,6 +823,7 @@ export default function EmailCopilot() {
       setReplyContext('');
       setReplyCc('');
       setReplyBcc('');
+      setReplyAttachments([]);
       
       // Update email status
       await supabase
@@ -767,13 +854,23 @@ export default function EmailCopilot() {
       const ccList = parseEmailList(composeEmail.cc);
       const bccList = parseEmailList(composeEmail.bcc);
 
+      // Convert attachments to base64
+      const attachmentsData = await Promise.all(
+        composeAttachments.map(async (file) => ({
+          name: file.name,
+          contentType: file.type || 'application/octet-stream',
+          contentBytes: await fileToBase64(file)
+        }))
+      );
+
       const { data, error } = await supabase.functions.invoke('send-email-reply', {
         body: {
           to: composeEmail.to,
           subject: composeEmail.subject || '(No Subject)',
           body: composeEmail.body,
           cc: ccList.length > 0 ? ccList : undefined,
-          bcc: bccList.length > 0 ? bccList : undefined
+          bcc: bccList.length > 0 ? bccList : undefined,
+          attachments: attachmentsData.length > 0 ? attachmentsData : undefined
         }
       });
 
@@ -782,6 +879,7 @@ export default function EmailCopilot() {
       toast.success('Email sent successfully!');
       setShowComposeModal(false);
       setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
+      setComposeAttachments([]);
       fetchSentReplies();
     } catch (error) {
       console.error('Error sending composed email:', error);
@@ -1883,6 +1981,54 @@ export default function EmailCopilot() {
               
               <Separator />
               
+              {/* Attachments Section */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Attachments</Label>
+                <input
+                  type="file"
+                  ref={replyFileInputRef}
+                  onChange={handleReplyFileSelect}
+                  multiple
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => replyFileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Add Attachments
+                </Button>
+                {replyAttachments.length > 0 && (
+                  <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
+                    {replyAttachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            ({formatFileSize(file.size)})
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeReplyAttachment(index)}
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <Separator />
+              
               {/* Draft Content */}
               <div>
                 <Label className="text-sm font-medium mb-2 block">Message Body</Label>
@@ -1958,6 +2104,20 @@ export default function EmailCopilot() {
                 <span className="text-sm text-muted-foreground flex-1 truncate">{replySubject}</span>
               </div>
             </div>
+            
+            {replyAttachments.length > 0 && (
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Attachments ({replyAttachments.length}):</p>
+                <div className="flex flex-wrap gap-1">
+                  {replyAttachments.map((file, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs">
+                      <Paperclip className="h-3 w-3 mr-1" />
+                      {file.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="p-3 bg-muted/30 rounded-lg">
               <p className="text-xs text-muted-foreground mb-1">Message preview:</p>
@@ -2113,6 +2273,52 @@ export default function EmailCopilot() {
                     className="h-8"
                   />
                 </div>
+              </div>
+              
+              {/* Attachments Section */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Attachments</Label>
+                <input
+                  type="file"
+                  ref={composeFileInputRef}
+                  onChange={handleComposeFileSelect}
+                  multiple
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => composeFileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Add Attachments
+                </Button>
+                {composeAttachments.length > 0 && (
+                  <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
+                    {composeAttachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            ({formatFileSize(file.size)})
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeComposeAttachment(index)}
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
               {/* Email Body */}
