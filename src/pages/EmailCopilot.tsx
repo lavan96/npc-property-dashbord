@@ -42,7 +42,9 @@ import {
   Download,
   Eye,
   FileIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Forward,
+  Upload
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -262,6 +264,21 @@ export default function EmailCopilot() {
   const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
   const replyFileInputRef = useRef<HTMLInputElement>(null);
   const composeFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Drag and drop state
+  const [replyDragActive, setReplyDragActive] = useState(false);
+  const [composeDragActive, setComposeDragActive] = useState(false);
+  
+  // Forward modal state
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardTo, setForwardTo] = useState('');
+  const [forwardCc, setForwardCc] = useState('');
+  const [forwardBcc, setForwardBcc] = useState('');
+  const [forwardBody, setForwardBody] = useState('');
+  const [forwardAttachments, setForwardAttachments] = useState<File[]>([]);
+  const [isForwarding, setIsForwarding] = useState(false);
+  const forwardFileInputRef = useRef<HTMLInputElement>(null);
+  const [forwardDragActive, setForwardDragActive] = useState(false);
 
   // Email notifications hook - refetch emails when new ones arrive
   const { requestNotificationPermission } = useEmailNotifications({
@@ -785,11 +802,149 @@ export default function EmailCopilot() {
     setComposeAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Remove attachment from forward
+  const removeForwardAttachment = (index: number) => {
+    setForwardAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Format file size
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  // Handle drag and drop for any attachment area
+  const handleDragOver = (e: React.DragEvent, setDragActive: (active: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent, setDragActive: (active: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent, addFiles: (files: File[]) => void, setDragActive: (active: boolean) => void) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const maxSize = 10 * 1024 * 1024; // 10MB limit per file
+    
+    const validFiles = files.filter(file => {
+      if (file.size > maxSize) {
+        toast.error(`${file.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
+    
+    if (validFiles.length > 0) {
+      addFiles(validFiles);
+    }
+  };
+
+  // Handle file selection for forward
+  const handleForwardFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024;
+    
+    const validFiles = files.filter(file => {
+      if (file.size > maxSize) {
+        toast.error(`${file.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
+    
+    setForwardAttachments(prev => [...prev, ...validFiles]);
+    if (forwardFileInputRef.current) {
+      forwardFileInputRef.current.value = '';
+    }
+  };
+
+  // Open forward modal
+  const handleOpenForward = async () => {
+    if (!selectedEmail) return;
+    
+    // Build forward body with original message
+    const forwardHeader = `\n\n---------- Forwarded message ----------\nFrom: ${selectedEmail.sender}\nDate: ${formatFullDate(selectedEmail.received_at)}\nSubject: ${selectedEmail.subject}\nTo: (original recipient)\n\n`;
+    setForwardBody(forwardHeader + selectedEmail.body);
+    setForwardTo('');
+    setForwardCc('');
+    setForwardBcc('');
+    
+    // If original email has attachments, we need to download and add them
+    if (selectedEmail.attachments && selectedEmail.attachments.length > 0) {
+      toast.info(`Loading ${selectedEmail.attachments.length} attachment(s)...`);
+      const files: File[] = [];
+      
+      for (const att of selectedEmail.attachments) {
+        try {
+          const response = await fetch(att.storageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], att.name, { type: att.contentType });
+          files.push(file);
+        } catch (error) {
+          console.error('Error loading attachment:', error);
+          toast.error(`Failed to load attachment: ${att.name}`);
+        }
+      }
+      
+      setForwardAttachments(files);
+    } else {
+      setForwardAttachments([]);
+    }
+    
+    setShowForwardModal(true);
+  };
+
+  // Send forwarded email
+  const handleSendForward = async () => {
+    if (!selectedEmail || !forwardTo || !forwardBody) return;
+    
+    setIsForwarding(true);
+    
+    try {
+      const ccList = parseEmailList(forwardCc);
+      const bccList = parseEmailList(forwardBcc);
+
+      // Convert attachments to base64
+      const attachmentsData = await Promise.all(
+        forwardAttachments.map(async (file) => ({
+          name: file.name,
+          contentType: file.type || 'application/octet-stream',
+          contentBytes: await fileToBase64(file)
+        }))
+      );
+
+      const { data, error } = await supabase.functions.invoke('send-email-reply', {
+        body: {
+          to: forwardTo,
+          subject: `Fwd: ${selectedEmail.subject}`,
+          body: forwardBody,
+          cc: ccList.length > 0 ? ccList : undefined,
+          bcc: bccList.length > 0 ? bccList : undefined,
+          attachments: attachmentsData.length > 0 ? attachmentsData : undefined
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Email forwarded successfully!');
+      setShowForwardModal(false);
+      setForwardAttachments([]);
+      fetchSentReplies();
+    } catch (error) {
+      console.error('Error forwarding email:', error);
+      toast.error('Failed to forward email');
+    } finally {
+      setIsForwarding(false);
+    }
   };
 
   // Send email directly (for reply)
@@ -1440,6 +1595,11 @@ export default function EmailCopilot() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent
                               </Badge>
+                              {reply.attachments && reply.attachments.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {reply.attachments.length}
+                                </Badge>
+                              )}
                               {reply.cc_recipients.length > 0 && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                   CC: {reply.cc_recipients.length}
@@ -1806,6 +1966,15 @@ export default function EmailCopilot() {
                     <Reply className="h-4 w-4 mr-2" />
                     {isMobile ? 'Reply' : (selectedEmail.draft_reply ? 'Compose New Reply' : 'Compose Reply')}
                   </Button>
+                  <Button 
+                    onClick={handleOpenForward}
+                    variant="outline"
+                    size={isMobile ? "sm" : "default"}
+                    className="flex-1 md:flex-none"
+                  >
+                    <Forward className="h-4 w-4 mr-2" />
+                    Forward
+                  </Button>
                 </div>
                 
                 {/* Quick access buttons for existing summaries/drafts */}
@@ -2025,7 +2194,7 @@ export default function EmailCopilot() {
               
               <Separator />
               
-              {/* Attachments Section */}
+              {/* Attachments Section with Drag & Drop */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Attachments</Label>
                 <input
@@ -2035,16 +2204,25 @@ export default function EmailCopilot() {
                   multiple
                   className="hidden"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                <div
+                  onDragOver={(e) => handleDragOver(e, setReplyDragActive)}
+                  onDragLeave={(e) => handleDragLeave(e, setReplyDragActive)}
+                  onDrop={(e) => handleDrop(e, (files) => setReplyAttachments(prev => [...prev, ...files]), setReplyDragActive)}
                   onClick={() => replyFileInputRef.current?.click()}
-                  className="w-full"
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                    replyDragActive 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                  }`}
                 >
-                  <Paperclip className="h-4 w-4 mr-2" />
-                  Add Attachments
-                </Button>
+                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop files here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    Max 10MB per file
+                  </p>
+                </div>
                 {replyAttachments.length > 0 && (
                   <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
                     {replyAttachments.map((file, index) => (
@@ -2060,7 +2238,7 @@ export default function EmailCopilot() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeReplyAttachment(index)}
+                          onClick={(e) => { e.stopPropagation(); removeReplyAttachment(index); }}
                           className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                         >
                           <X className="h-4 w-4" />
@@ -2319,7 +2497,7 @@ export default function EmailCopilot() {
                 </div>
               </div>
               
-              {/* Attachments Section */}
+              {/* Attachments Section with Drag & Drop */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Attachments</Label>
                 <input
@@ -2329,16 +2507,25 @@ export default function EmailCopilot() {
                   multiple
                   className="hidden"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                <div
+                  onDragOver={(e) => handleDragOver(e, setComposeDragActive)}
+                  onDragLeave={(e) => handleDragLeave(e, setComposeDragActive)}
+                  onDrop={(e) => handleDrop(e, (files) => setComposeAttachments(prev => [...prev, ...files]), setComposeDragActive)}
                   onClick={() => composeFileInputRef.current?.click()}
-                  className="w-full"
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                    composeDragActive 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                  }`}
                 >
-                  <Paperclip className="h-4 w-4 mr-2" />
-                  Add Attachments
-                </Button>
+                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop files here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    Max 10MB per file
+                  </p>
+                </div>
                 {composeAttachments.length > 0 && (
                   <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
                     {composeAttachments.map((file, index) => (
@@ -2354,7 +2541,7 @@ export default function EmailCopilot() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeComposeAttachment(index)}
+                          onClick={(e) => { e.stopPropagation(); removeComposeAttachment(index); }}
                           className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                         >
                           <X className="h-4 w-4" />
@@ -2452,6 +2639,158 @@ export default function EmailCopilot() {
                   <>
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Save Draft
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forward Email Modal */}
+      <Dialog open={showForwardModal} onOpenChange={(open) => {
+        setShowForwardModal(open);
+        if (!open) {
+          setForwardAttachments([]);
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Forward className="h-5 w-5 text-blue-600" />
+              Forward Email
+            </DialogTitle>
+            <DialogDescription>
+              Forward this email to another recipient
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
+              {/* Recipients Section */}
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">To: *</Label>
+                  <Input
+                    value={forwardTo}
+                    onChange={(e) => setForwardTo(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                  <Input
+                    value={forwardCc}
+                    onChange={(e) => setForwardCc(e.target.value)}
+                    placeholder="cc@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                  <Input
+                    value={forwardBcc}
+                    onChange={(e) => setForwardBcc(e.target.value)}
+                    placeholder="bcc@example.com"
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              
+              {/* Attachments Section with Drag & Drop */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Attachments {forwardAttachments.length > 0 && `(${forwardAttachments.length})`}
+                </Label>
+                <input
+                  type="file"
+                  ref={forwardFileInputRef}
+                  onChange={handleForwardFileSelect}
+                  multiple
+                  className="hidden"
+                />
+                <div
+                  onDragOver={(e) => handleDragOver(e, setForwardDragActive)}
+                  onDragLeave={(e) => handleDragLeave(e, setForwardDragActive)}
+                  onDrop={(e) => handleDrop(e, (files) => setForwardAttachments(prev => [...prev, ...files]), setForwardDragActive)}
+                  onClick={() => forwardFileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                    forwardDragActive 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                  }`}
+                >
+                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop files here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    Original attachments are included. Max 10MB per file.
+                  </p>
+                </div>
+                {forwardAttachments.length > 0 && (
+                  <div className="space-y-2 p-2 bg-muted/30 rounded-lg max-h-32 overflow-y-auto">
+                    {forwardAttachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            ({formatFileSize(file.size)})
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); removeForwardAttachment(index); }}
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Email Body */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Message</Label>
+                <Textarea
+                  value={forwardBody}
+                  onChange={(e) => setForwardBody(e.target.value)}
+                  className="h-[250px] resize-none font-sans text-sm"
+                  placeholder="Add a message before the forwarded content..."
+                />
+              </div>
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Forwarding with {forwardAttachments.length} attachment(s)
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowForwardModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSendForward} 
+                disabled={isForwarding || !forwardTo || !forwardBody}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isForwarding ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Forwarding...
+                  </>
+                ) : (
+                  <>
+                    <Forward className="h-4 w-4 mr-2" />
+                    Forward Email
                   </>
                 )}
               </Button>
