@@ -145,6 +145,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Store attachment metadata (without contentBytes) for tracking
+    const attachmentMetadata = attachments?.map(att => ({
+      name: att.name,
+      contentType: att.contentType,
+      size: Math.ceil((att.contentBytes.length * 3) / 4) // Estimate size from base64
+    })) || [];
+
     const { error: dbError } = await supabase
       .from('email_copilot_sent_replies')
       .insert({
@@ -154,6 +161,7 @@ serve(async (req) => {
         body: body,
         cc_recipients: cc || [],
         bcc_recipients: bcc || [],
+        attachments: attachmentMetadata,
         sent_at: new Date().toISOString()
       });
 
