@@ -26,6 +26,7 @@ import Monitoring from './pages/Monitoring';
 import QualityAssurance from './pages/QualityAssurance';
 import Automation from './pages/Automation';
 import EmailCopilot from './pages/EmailCopilot';
+import CallLogs from './pages/CallLogs';
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="data-import" element={<DataImport />} />
                 <Route path="automation" element={<Automation />} />
                 <Route path="email-copilot" element={<EmailCopilot />} />
+                <Route path="call-logs" element={<CallLogs />} />
                 <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
                 <Route path="settings" element={<Settings />} />
               </Route>
