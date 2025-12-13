@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -28,7 +29,8 @@ import {
   FileText,
   MessageSquare,
   Target,
-  BarChart3
+  BarChart3,
+  PieChart
 } from 'lucide-react';
 
 interface CallLog {
@@ -266,6 +268,25 @@ const CallLogs = () => {
         </Button>
       </div>
 
+      {/* Main Tabs */}
+      <Tabs defaultValue="logs" className="w-full">
+        <TabsList>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Phone className="w-4 h-4" />
+            Call Logs
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <PieChart className="w-4 h-4" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analytics" className="mt-6">
+          <CallAnalyticsDashboard calls={filteredCalls} />
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-6 space-y-6">
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         <Card>
@@ -461,6 +482,8 @@ const CallLogs = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={setShowCallDetail}>
