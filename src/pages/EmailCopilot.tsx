@@ -37,7 +37,12 @@ import {
   Mic,
   MicOff,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Paperclip,
+  Download,
+  Eye,
+  FileIcon,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,6 +82,13 @@ interface EmailSummary {
   urgencyLevel: 'low' | 'medium' | 'high';
 }
 
+interface EmailAttachment {
+  name: string;
+  contentType: string;
+  size: number;
+  storageUrl: string;
+}
+
 interface Email {
   id: string;
   sender: string;
@@ -92,6 +104,7 @@ interface Email {
   created_at: string;
   cc_recipients: string[];
   bcc_recipients: string[];
+  attachments: EmailAttachment[];
 }
 
 interface SentReply {
@@ -435,6 +448,7 @@ export default function EmailCopilot() {
         created_at: email.created_at,
         cc_recipients: (email.cc_recipients as string[]) || [],
         bcc_recipients: (email.bcc_recipients as string[]) || [],
+        attachments: (email.attachments as unknown as EmailAttachment[]) || [],
       }));
       
       setEmails(typedEmails);
@@ -1475,6 +1489,80 @@ export default function EmailCopilot() {
                       className="prose prose-sm max-w-none dark:prose-invert"
                     />
                   </div>
+
+                  {/* Attachments Section */}
+                  {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                    <div className="bg-background rounded-lg border overflow-hidden">
+                      <div className="px-4 py-3 bg-muted/30 border-b flex items-center gap-2">
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          Attachments ({selectedEmail.attachments.length})
+                        </span>
+                      </div>
+                      <div className="p-4 space-y-2">
+                        {selectedEmail.attachments.map((attachment, index) => {
+                          const isImage = attachment.contentType?.startsWith('image/');
+                          const isPdf = attachment.contentType === 'application/pdf';
+                          const fileSize = attachment.size < 1024 
+                            ? `${attachment.size} B` 
+                            : attachment.size < 1024 * 1024 
+                              ? `${(attachment.size / 1024).toFixed(1)} KB`
+                              : `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`;
+                          
+                          return (
+                            <div 
+                              key={index}
+                              className="flex items-center justify-between p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="p-2 rounded-md bg-primary/10">
+                                  {isImage ? (
+                                    <ImageIcon className="h-4 w-4 text-primary" />
+                                  ) : (
+                                    <FileIcon className="h-4 w-4 text-primary" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium truncate">{attachment.name}</p>
+                                  <p className="text-xs text-muted-foreground">{fileSize}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {(isImage || isPdf) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => window.open(attachment.storageUrl, '_blank')}
+                                    title="Preview"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = attachment.storageUrl;
+                                    link.download = attachment.name;
+                                    link.target = '_blank';
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }}
+                                  title="Download"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* AI Summary */}
                   {selectedEmail.summary && (
