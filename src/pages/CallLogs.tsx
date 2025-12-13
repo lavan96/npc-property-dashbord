@@ -138,6 +138,11 @@ const CallLogs = () => {
       });
       setAgents(Array.from(uniqueAgents, ([id, name]) => ({ id, name })));
 
+      toast({
+        title: 'Refreshed',
+        description: `${data?.length || 0} call logs loaded`,
+      });
+
     } catch (error) {
       console.error('Error fetching calls:', error);
       toast({
