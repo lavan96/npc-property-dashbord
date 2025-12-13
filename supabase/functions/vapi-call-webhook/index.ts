@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 
@@ -11,16 +12,13 @@ interface VapiWebhookPayload {
   message: {
     type: string;
     timestamp?: number;
-    // Status update event fields (at message level)
     status?: string;
     endedReason?: string;
-    // Analysis from end-of-call-report (at message level)
     analysis?: {
       summary?: string;
       successEvaluation?: string;
       structuredData?: Record<string, unknown>;
     };
-    // Artifact contains transcript, messages, recording (at message level)
     artifact?: {
       transcript?: string;
       recordingUrl?: string;
@@ -33,7 +31,6 @@ interface VapiWebhookPayload {
         duration?: number;
       }>;
     };
-    // Call object contains core metadata
     call?: {
       id: string;
       orgId?: string;
@@ -59,14 +56,124 @@ interface VapiWebhookPayload {
         type?: string;
         cost?: number;
       }>;
-      // Web calls use 'webCall' type
       webCallUrl?: string;
     };
   };
 }
 
+interface AIAnalysis {
+  customerName: string | null;
+  sentiment: string;
+  keyTopics: string[];
+  actionItems: string[];
+}
+
+// Fetch agent name from Vapi API
+async function fetchAgentName(agentId: string): Promise<string | null> {
+  const vapiApiKey = Deno.env.get('VAPI_API_KEY');
+  if (!vapiApiKey || !agentId) return null;
+
+  try {
+    const response = await fetch(`https://api.vapi.ai/assistant/${agentId}`, {
+      headers: {
+        'Authorization': `Bearer ${vapiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const assistant = await response.json();
+      console.log('[Vapi Webhook] Fetched agent name:', assistant.name);
+      return assistant.name || null;
+    }
+    console.log('[Vapi Webhook] Failed to fetch agent:', response.status);
+  } catch (error) {
+    console.error('[Vapi Webhook] Error fetching agent name:', error);
+  }
+  return null;
+}
+
+// Use AI to analyze transcript for missing data
+async function analyzeTranscriptWithAI(transcript: string, summary: string | null): Promise<AIAnalysis> {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openaiApiKey || !transcript || transcript.length < 50) {
+    return {
+      customerName: null,
+      sentiment: 'neutral',
+      keyTopics: [],
+      actionItems: [],
+    };
+  }
+
+  try {
+    console.log('[Vapi Webhook] Analyzing transcript with AI...');
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert call analyst. Analyze the following call transcript and extract:
+1. Customer name (if mentioned by the user or asked for) - return null if not found
+2. Overall sentiment (positive, negative, neutral, mixed)
+3. Key topics discussed (max 5 topics, short phrases)
+4. Action items or follow-ups needed (max 5 items)
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "customerName": "Name or null",
+  "sentiment": "positive|negative|neutral|mixed",
+  "keyTopics": ["topic1", "topic2"],
+  "actionItems": ["action1", "action2"]
+}`
+          },
+          {
+            role: 'user',
+            content: `Transcript:\n${transcript.substring(0, 8000)}${summary ? `\n\nSummary:\n${summary}` : ''}`
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('[Vapi Webhook] OpenAI API error:', response.status);
+      return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [] };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (content) {
+      // Parse JSON response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log('[Vapi Webhook] AI analysis result:', parsed);
+        return {
+          customerName: parsed.customerName === 'null' ? null : parsed.customerName,
+          sentiment: parsed.sentiment || 'neutral',
+          keyTopics: Array.isArray(parsed.keyTopics) ? parsed.keyTopics.slice(0, 5) : [],
+          actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems.slice(0, 5) : [],
+        };
+      }
+    }
+  } catch (error) {
+    console.error('[Vapi Webhook] AI analysis error:', error);
+  }
+
+  return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [] };
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -99,11 +206,9 @@ serve(async (req) => {
       });
     }
 
-    // Extract status from message level (status-update events) or call level
     const rawStatus = message.status || call.status;
     const rawEndedReason = message.endedReason || call.endedReason;
 
-    // Determine call outcome from endedReason
     const getCallOutcome = (endedReason?: string): string | null => {
       if (!endedReason) return null;
       const reason = endedReason.toLowerCase();
@@ -116,7 +221,6 @@ serve(async (req) => {
       return 'completed';
     };
 
-    // Determine call status
     const getCallStatus = (status?: string): string | null => {
       if (!status) return null;
       const s = status.toLowerCase();
@@ -128,28 +232,24 @@ serve(async (req) => {
       return s;
     };
 
-    // Determine call direction - web calls are typically inbound
     const getCallDirection = (): string => {
-      // Check if it's a web call (no phone numbers, has webCallUrl)
       if (call.type === 'webCall' || call.webCallUrl) {
-        return 'inbound'; // Web calls initiated by users are inbound
+        return 'inbound';
       }
-      // Check for phone direction indicators
       if (call.customer?.number && !call.phoneNumber?.number) {
         return 'outbound';
       }
       return 'inbound';
     };
 
-    // Extract transcript from artifact (correct location in Vapi payload)
+    // Extract transcript
     let transcript: string | null = null;
     if (message.artifact?.transcript) {
       transcript = message.artifact.transcript;
     } else if (message.artifact?.messages?.length) {
-      // Build transcript from messages in artifact
       transcript = message.artifact.messages
         .filter(m => m.message || m.content)
-        .filter(m => m.role !== 'system') // Exclude system prompts
+        .filter(m => m.role !== 'system')
         .map(m => {
           const role = m.role === 'bot' ? 'Assistant' : m.role === 'user' ? 'User' : m.role;
           const content = m.message || m.content;
@@ -158,20 +258,16 @@ serve(async (req) => {
         .join('\n\n');
     }
 
-    // Extract summary from message.analysis (correct location for end-of-call-report)
     const summary = message.analysis?.summary || null;
-
-    // Extract recording URL from artifact
     const recordingUrl = message.artifact?.recordingUrl || null;
 
-    // Calculate duration from timestamps
+    // Calculate duration
     let durationSeconds: number | null = null;
     if (call.startedAt && call.endedAt) {
       const start = new Date(call.startedAt).getTime();
       const end = new Date(call.endedAt).getTime();
       durationSeconds = Math.round((end - start) / 1000);
     } else if (message.artifact?.messages?.length) {
-      // Calculate from message timestamps if available
       const messages = message.artifact.messages;
       const firstMessage = messages.find(m => m.time);
       const lastMessage = [...messages].reverse().find(m => m.endTime || m.time);
@@ -181,18 +277,46 @@ serve(async (req) => {
       }
     }
 
-    // Get customer info
     const phoneNumber = call.customer?.number || call.phoneNumber?.number || null;
-    const customerName = call.customer?.name || null;
+    let customerName = call.customer?.name || null;
 
-    // Get agent info
+    // Get agent info - try fetching from API if name not in webhook
     const agentId = call.assistant?.id || call.assistantId || null;
-    const agentName = call.assistant?.name || null;
+    let agentName = call.assistant?.name || null;
 
-    // Calculate total cost from costs array if individual cost not available
+    // Cost
     let cost: number | null = call.cost || null;
     if (!cost && call.costs?.length) {
       cost = call.costs.reduce((sum, c) => sum + (c.cost || 0), 0);
+    }
+
+    // Initialize AI analysis fields
+    let sentiment: string | null = null;
+    let keyTopics: string[] = [];
+    let actionItems: string[] = [];
+
+    // Only do AI analysis and agent lookup for end-of-call-report (final event)
+    const isEndOfCall = message.type === 'end-of-call-report';
+    
+    if (isEndOfCall) {
+      // Fetch agent name if not provided
+      if (!agentName && agentId) {
+        agentName = await fetchAgentName(agentId);
+      }
+
+      // Run AI analysis on transcript
+      if (transcript) {
+        const aiAnalysis = await analyzeTranscriptWithAI(transcript, summary);
+        
+        // Only use AI customer name if not already set
+        if (!customerName && aiAnalysis.customerName) {
+          customerName = aiAnalysis.customerName;
+        }
+        
+        sentiment = aiAnalysis.sentiment;
+        keyTopics = aiAnalysis.keyTopics;
+        actionItems = aiAnalysis.actionItems;
+      }
     }
 
     const callLogData = {
@@ -210,9 +334,9 @@ serve(async (req) => {
       cost: cost,
       transcript: transcript,
       summary: summary,
-      sentiment: null, // Vapi doesn't provide sentiment in standard webhook
-      key_topics: [],
-      action_items: [],
+      sentiment: sentiment,
+      key_topics: keyTopics,
+      action_items: actionItems,
       recording_url: recordingUrl,
       metadata: {
         orgId: call.orgId,
@@ -220,12 +344,15 @@ serve(async (req) => {
         type: call.type,
         eventType: message.type,
         webCallUrl: call.webCallUrl,
+        aiAnalyzed: isEndOfCall && !!transcript,
       },
     };
 
     console.log('[Vapi Webhook] Extracted call data:', {
       vapi_call_id: callLogData.vapi_call_id,
       agent_id: callLogData.agent_id,
+      agent_name: callLogData.agent_name,
+      customer_name: callLogData.customer_name,
       call_direction: callLogData.call_direction,
       call_status: callLogData.call_status,
       call_outcome: callLogData.call_outcome,
@@ -233,10 +360,13 @@ serve(async (req) => {
       has_transcript: !!callLogData.transcript,
       has_summary: !!callLogData.summary,
       has_recording: !!callLogData.recording_url,
+      sentiment: callLogData.sentiment,
+      key_topics_count: callLogData.key_topics.length,
+      action_items_count: callLogData.action_items.length,
       cost: callLogData.cost,
     });
 
-    // Upsert the call log (update if exists, insert if new)
+    // Upsert the call log
     const { data, error } = await supabase
       .from('vapi_call_logs')
       .upsert(callLogData, { onConflict: 'vapi_call_id' })
