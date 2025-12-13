@@ -1392,6 +1392,81 @@ export type Database = {
           },
         ]
       }
+      vapi_call_logs: {
+        Row: {
+          action_items: string[] | null
+          agent_id: string | null
+          agent_name: string | null
+          call_direction: string | null
+          call_outcome: string | null
+          call_status: string | null
+          cost: number | null
+          created_at: string
+          customer_name: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          key_topics: string[] | null
+          metadata: Json | null
+          phone_number: string | null
+          recording_url: string | null
+          sentiment: string | null
+          started_at: string | null
+          summary: string | null
+          transcript: string | null
+          updated_at: string
+          vapi_call_id: string
+        }
+        Insert: {
+          action_items?: string[] | null
+          agent_id?: string | null
+          agent_name?: string | null
+          call_direction?: string | null
+          call_outcome?: string | null
+          call_status?: string | null
+          cost?: number | null
+          created_at?: string
+          customer_name?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          key_topics?: string[] | null
+          metadata?: Json | null
+          phone_number?: string | null
+          recording_url?: string | null
+          sentiment?: string | null
+          started_at?: string | null
+          summary?: string | null
+          transcript?: string | null
+          updated_at?: string
+          vapi_call_id: string
+        }
+        Update: {
+          action_items?: string[] | null
+          agent_id?: string | null
+          agent_name?: string | null
+          call_direction?: string | null
+          call_outcome?: string | null
+          call_status?: string | null
+          cost?: number | null
+          created_at?: string
+          customer_name?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          key_topics?: string[] | null
+          metadata?: Json | null
+          phone_number?: string | null
+          recording_url?: string | null
+          sentiment?: string | null
+          started_at?: string | null
+          summary?: string | null
+          transcript?: string | null
+          updated_at?: string
+          vapi_call_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

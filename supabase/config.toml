@@ -170,3 +170,12 @@ verify_jwt = false
 
 [functions.outlook-manage-subscription]
 verify_jwt = false
+
+[functions.vapi-call-webhook]
+verify_jwt = false
+
+[functions.voice-to-text]
+verify_jwt = false
+
+[functions.send-email-reply]
+verify_jwt = false
