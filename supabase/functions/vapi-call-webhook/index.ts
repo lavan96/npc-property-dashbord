@@ -261,19 +261,38 @@ serve(async (req) => {
     const summary = message.analysis?.summary || null;
     const recordingUrl = message.artifact?.recordingUrl || null;
 
-    // Calculate duration
+    // Calculate duration and timestamps
     let durationSeconds: number | null = null;
+    let startedAt: string | null = call.startedAt || null;
+    let endedAt: string | null = call.endedAt || null;
+    
     if (call.startedAt && call.endedAt) {
       const start = new Date(call.startedAt).getTime();
       const end = new Date(call.endedAt).getTime();
       durationSeconds = Math.round((end - start) / 1000);
     } else if (message.artifact?.messages?.length) {
+      // For web calls, derive timestamps from message times
       const messages = message.artifact.messages;
-      const firstMessage = messages.find(m => m.time);
-      const lastMessage = [...messages].reverse().find(m => m.endTime || m.time);
-      if (firstMessage?.time && lastMessage) {
-        const endTime = lastMessage.endTime || lastMessage.time || 0;
-        durationSeconds = Math.round((endTime - firstMessage.time) / 1000);
+      const firstMessage = messages.find(m => m.time !== undefined);
+      const lastMessage = [...messages].reverse().find(m => m.endTime !== undefined || m.time !== undefined);
+      
+      if (firstMessage?.time !== undefined) {
+        // Message times are in milliseconds since epoch
+        startedAt = new Date(firstMessage.time).toISOString();
+        
+        if (lastMessage) {
+          const endTime = lastMessage.endTime ?? lastMessage.time ?? 0;
+          endedAt = new Date(endTime).toISOString();
+          durationSeconds = Math.round((endTime - firstMessage.time) / 1000);
+        }
+      }
+    }
+    
+    // Fallback: if we have duration but no timestamps, use current time as end
+    if (durationSeconds && !endedAt) {
+      endedAt = new Date().toISOString();
+      if (!startedAt) {
+        startedAt = new Date(Date.now() - durationSeconds * 1000).toISOString();
       }
     }
 
@@ -328,8 +347,8 @@ serve(async (req) => {
       call_direction: getCallDirection(),
       call_status: getCallStatus(rawStatus),
       call_outcome: getCallOutcome(rawEndedReason),
-      started_at: call.startedAt || null,
-      ended_at: call.endedAt || null,
+      started_at: startedAt,
+      ended_at: endedAt,
       duration_seconds: durationSeconds,
       cost: cost,
       transcript: transcript,
