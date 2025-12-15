@@ -420,12 +420,20 @@ serve(async (req) => {
     const rawStatus = message.status || call.status;
     const rawEndedReason = message.endedReason || call.endedReason;
 
-    // Detect if this is a Squad call
-    const isSquadCall = !!(call.squadId || call.squad);
-    const squadId = call.squadId || call.squad?.id || null;
-    const squadName = call.squad?.name || null;
+    // Hardcoded squad ID for inbound calls
+    const INBOUND_SQUAD_ID = 'a9656ea1-3575-4ac6-b985-fd138be06cc5';
+    const INBOUND_SQUAD_NAME = 'Inbound Reception Squad';
+
+    // Determine call direction early for squad assignment
+    const callType = call.type;
+    const isInboundCall = callType === 'inboundPhoneCall' || callType === 'webCall' || call.webCallUrl;
+
+    // Detect if this is a Squad call - for inbound calls, always use the hardcoded squad
+    const isSquadCall = isInboundCall || !!(call.squadId || call.squad);
+    const squadId = isInboundCall ? INBOUND_SQUAD_ID : (call.squadId || call.squad?.id || null);
+    const squadName = isInboundCall ? INBOUND_SQUAD_NAME : (call.squad?.name || null);
     
-    console.log('[Vapi Webhook] Squad detection:', { isSquadCall, squadId, squadName });
+    console.log('[Vapi Webhook] Squad detection:', { isSquadCall, squadId, squadName, isInboundCall, callType });
 
     const getCallOutcome = (endedReason?: string): string | null => {
       if (!endedReason) return null;
