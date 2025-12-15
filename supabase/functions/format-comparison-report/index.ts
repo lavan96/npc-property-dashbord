@@ -158,7 +158,14 @@ Include:
 - **Exit Strategies**: For each property with specific recommendations
 
 ### 8. COMPETITIVE ADVANTAGES
-For EACH of the ${propertyCount} properties, list 3-5 unique selling points as bullet points.
+For EACH of the ${propertyCount} properties, format as follows:
+**Property X (Full Address)** as a bold header on its own line, followed by 3-5 unique selling points as bullet points.
+
+Example format:
+**Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
+- Unique selling point 1
+- Unique selling point 2
+- Unique selling point 3
 
 ### 9. RED FLAGS & CONCERNS
 For EACH of the ${propertyCount} properties, list specific concerns with severity ratings:
