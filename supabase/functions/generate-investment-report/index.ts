@@ -337,8 +337,45 @@ serve(async (req) => {
         console.log('RBA data fetch failed, using estimates:', error?.message || 'Unknown error');
       }
 
+      // Fetch rent from cache if not provided
+      let weeklyRent = propertyDetails?.weeklyRent;
+      let rentSource = 'user_input';
+      
+      if (!weeklyRent && suburb && state) {
+        try {
+          console.log('📊 Weekly rent not provided, fetching from SQM Research cache...');
+          const rentResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sqm-rent-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+            },
+            body: JSON.stringify({
+              suburb: suburb.replace(/-/g, ' '),
+              state: state,
+              postcode: postcode || '',
+              propertyType: propertyDetails?.propertyType?.toLowerCase() || 'house',
+              bedrooms: propertyDetails?.bedrooms || 3
+            })
+          });
+          
+          if (rentResponse.ok) {
+            const rentData = await rentResponse.json();
+            if (rentData.success && rentData.data?.medianWeeklyRent) {
+              weeklyRent = rentData.data.medianWeeklyRent;
+              rentSource = rentData.source === 'cache' ? 'sqm_cache' : 'sqm_scraped';
+              console.log(`✓ Median weekly rent from ${rentSource}: $${weeklyRent}`);
+            } else {
+              console.log('⚠️ No rent data available from SQM Research');
+            }
+          }
+        } catch (error: any) {
+          console.log('⚠️ SQM rent lookup failed:', error?.message || 'Unknown error');
+        }
+      }
+      
       // Calculate financial projections if property details available
-      if (propertyDetails?.price && propertyDetails?.weeklyRent) {
+      if (propertyDetails?.price && weeklyRent) {
         try {
           const financialResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/financial-calculator-service`, {
             method: 'POST',
@@ -351,7 +388,8 @@ serve(async (req) => {
               deposit: propertyDetails.price * 0.2,
               interestRate: 6.5,
               loanTerm: 30,
-              weeklyRent: propertyDetails.weeklyRent || 500,
+              weeklyRent: weeklyRent,
+              weeklyRentSource: rentSource,
               state: state,
               propertyType: propertyDetails.propertyType || 'house'
             })
