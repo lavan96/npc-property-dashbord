@@ -21,6 +21,10 @@ function sanitizeFormattedContent(content: string): string {
   sanitized = sanitized.replace(/&gt;/g, '>');
   sanitized = sanitized.replace(/&nbsp;/g, ' ');
   
+  // Remove erroneous semicolons in addresses (e.g., "21/11; Rowlands; Street" → "21/11 Rowlands Street")
+  // Match semicolon followed by space and a word (but not after numbers with units like "6.5%;")
+  sanitized = sanitized.replace(/;\s+([A-Za-z])/g, ' $1');
+  
   // Ensure proper markdown heading formatting
   sanitized = sanitized.replace(/^([A-Z][A-Z\s&]+)$/gm, (match) => {
     // If it's an all-caps line without # prefix, add it
@@ -29,10 +33,6 @@ function sanitizeFormattedContent(content: string): string {
     }
     return match;
   });
-  
-  // Fix bullet points that may have been merged in table cells
-  // Convert semicolons followed by capital letters to bullet breaks
-  sanitized = sanitized.replace(/([a-z0-9%)])(\s*)([A-Z][a-z])/g, '$1; $3');
   
   return sanitized;
 }
