@@ -64,6 +64,15 @@ serve(async (req) => {
       `Property ${idx + 1}: ${addr}`
     ).join('\n');
 
+    // Create explicit ranking examples with actual property addresses
+    const rankingExamples = propertyAddresses.map((addr: string, idx: number) => 
+      `**Rank ${idx + 1}: ${addr}**
+- **Score:** [XX.X]/100 | **Grade:** [A/B/C/D]
+- **Best For:** [Investor type]
+- **Key Strengths:** [Strength 1], [Strength 2], [Strength 3]
+- **Key Concerns:** [Concern 1], [Concern 2]`
+    ).join('\n\n');
+
     // Create a comprehensive prompt for Perplexity to format the comparison data
     const prompt = `You are a professional real estate analyst report formatter. Convert the following property comparison analysis data into a beautifully formatted markdown report.
 
@@ -71,7 +80,7 @@ serve(async (req) => {
 
 1. **HTML ENTITIES**: Use actual characters, NOT HTML entities. Write "&" not "&#x26;" or "&amp;". Write "'" not "&#x27;".
 
-2. **COMPLETE RANKINGS TABLE**: The Overall Rankings table MUST include ALL ${propertyCount} properties. Do NOT truncate or split this table. Each row must be complete.
+2. **COMPLETE RANKINGS**: The Overall Rankings section MUST include ALL ${propertyCount} properties with their FULL ADDRESSES.
 
 3. **PROPERTY NUMBERING**: Use consistent property numbering throughout:
 ${numberedProperties}
@@ -98,23 +107,17 @@ ${numberedProperties}
 Write 2-3 paragraphs covering: overview of all ${propertyCount} properties, key findings, critical differentiators, and top recommendation.
 
 ### 2. OVERALL RANKINGS
-Format each property ranking as a paragraph (NOT a table). For each property from Rank 1 to Rank ${propertyCount}:
+Format each property ranking as a paragraph (NOT a table). You MUST use the EXACT property addresses shown below.
 
-**Rank 1: Property X (Full Address)**
-- **Score:** XX.X/100 | **Grade:** A
-- **Best For:** [Investor type]
-- **Key Strengths:** [Strength 1], [Strength 2], [Strength 3]
-- **Key Concerns:** [Concern 1], [Concern 2]
+**IMPORTANT**: The ranking order should be based on the investment scores from the comparison data (highest score = Rank 1). Each property MUST include its FULL ADDRESS in the header.
 
-**Rank 2: Property Y (Full Address)**
-- **Score:** XX.X/100 | **Grade:** A-
-- **Best For:** [Investor type]
-- **Key Strengths:** [Strength 1], [Strength 2], [Strength 3]
-- **Key Concerns:** [Concern 1], [Concern 2]
+${rankingExamples}
 
-... continue this format for ALL ${propertyCount} properties.
-
-**CRITICAL**: Include ALL ${propertyCount} properties with complete details. Do NOT use tables for rankings.
+**CRITICAL**: 
+- Include ALL ${propertyCount} properties with complete details
+- Each property header MUST include the FULL property address (e.g., "21/11 Rowlands Street, Kewdale, WA 6105" NOT just "Property 2")
+- Do NOT use tables for rankings
+- Rankings should be ordered by investment score (highest first)
 
 ### 3. FINANCIAL PERFORMANCE COMPARISON
 Include subsections:
