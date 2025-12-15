@@ -98,15 +98,23 @@ ${numberedProperties}
 Write 2-3 paragraphs covering: overview of all ${propertyCount} properties, key findings, critical differentiators, and top recommendation.
 
 ### 2. OVERALL RANKINGS
-Create ONE complete table with ALL ${propertyCount} properties:
+Format each property ranking as a paragraph (NOT a table). For each property from Rank 1 to Rank ${propertyCount}:
 
-| Rank | Property | Score | Grade | Best For | Key Strengths | Key Concerns |
-|------|----------|-------|-------|----------|---------------|--------------|
-| 1 | Property X: [Full Address] | XX.X | X | [Investor Type] | [Strength 1] • [Strength 2] • [Strength 3] | [Concern 1] • [Concern 2] |
-| 2 | Property Y: [Full Address] | XX.X | X | [Investor Type] | [Strength 1] • [Strength 2] • [Strength 3] | [Concern 1] • [Concern 2] |
-... continue for ALL ${propertyCount} properties
+**Rank 1: Property X (Full Address)**
+- **Score:** XX.X/100 | **Grade:** A
+- **Best For:** [Investor type]
+- **Key Strengths:** [Strength 1], [Strength 2], [Strength 3]
+- **Key Concerns:** [Concern 1], [Concern 2]
 
-**CRITICAL**: This table MUST have exactly ${propertyCount} rows (one per property). Do NOT split this table or leave any rows empty.
+**Rank 2: Property Y (Full Address)**
+- **Score:** XX.X/100 | **Grade:** A-
+- **Best For:** [Investor type]
+- **Key Strengths:** [Strength 1], [Strength 2], [Strength 3]
+- **Key Concerns:** [Concern 1], [Concern 2]
+
+... continue this format for ALL ${propertyCount} properties.
+
+**CRITICAL**: Include ALL ${propertyCount} properties with complete details. Do NOT use tables for rankings.
 
 ### 3. FINANCIAL PERFORMANCE COMPARISON
 Include subsections:
