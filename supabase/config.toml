@@ -189,3 +189,6 @@ request_timeout = 120
 
 [functions.send-call-alert-email]
 verify_jwt = false
+
+[functions.send-weekly-call-report]
+verify_jwt = false

@@ -19,6 +19,7 @@ import { CallAnalyticsTrends } from '@/components/call-logs/CallAnalyticsTrends'
 import { CallTagging, CallTagFilter } from '@/components/call-logs/CallTagging';
 import { CallAlerts } from '@/components/call-logs/CallAlerts';
 import { CallQualityScore, CallQualityBadge } from '@/components/call-logs/CallQualityScore';
+import { WeeklyReportConfig } from '@/components/call-logs/WeeklyReportConfig';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -362,6 +363,7 @@ const CallLogs = () => {
           <p className="text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
         </div>
         <div className="flex items-center gap-2">
+          <WeeklyReportConfig />
           <CallAlerts calls={filteredCalls} />
           <CallLogsExport calls={filteredCalls} stats={stats} />
           <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
