@@ -1778,6 +1778,46 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         for (const paragraph of paragraphs) {
           if (!paragraph.trim()) continue;
 
+          // Check for rank heading marker (___RANK_HEADING___) - used for comparison analysis rankings
+          const isRankHeading = paragraph.includes('___RANK_HEADING___');
+          if (isRankHeading) {
+            // Remove the marker and get the actual heading text
+            const rankText = paragraph.replace('___RANK_HEADING___', '').trim();
+            
+            // Force page break if we're below 200px from bottom (ensure rank + its content fits together)
+            if (yPosition < bottomMargin + 200) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+            }
+            
+            // Draw rank heading with larger font size (14pt vs 10pt for normal text)
+            const rankHeadingSize = 13;
+            const cleanRankText = stripEmojis(rankText.replace(/\*\*/g, ''));
+            
+            // Draw the text (bold)
+            currentPage.drawText(cleanRankText, {
+              x: margin,
+              y: yPosition,
+              size: rankHeadingSize,
+              font: helveticaBold,
+              color: rgb(0.15, 0.15, 0.15),
+            });
+            
+            // Calculate text width for underline
+            const textWidth = helveticaBold.widthOfTextAtSize(cleanRankText, rankHeadingSize);
+            
+            // Draw underline below the text
+            currentPage.drawLine({
+              start: { x: margin, y: yPosition - 3 },
+              end: { x: margin + textWidth, y: yPosition - 3 },
+              thickness: 1,
+              color: rgb(0.15, 0.15, 0.15),
+            });
+            
+            yPosition -= (rankHeadingSize + 12); // Space after rank heading
+            continue;
+          }
+
           // Check for horizontal rule (---)
           if (paragraph.trim().match(/^-{3,}$/)) {
             // Check if we need a new page
