@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
+import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -107,6 +108,8 @@ const CallLogs = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('all');
+  const [selectedSquadType, setSelectedSquadType] = useState<string>('all');
+  const [selectedIntent, setSelectedIntent] = useState<string>('all');
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
@@ -145,7 +148,7 @@ const CallLogs = () => {
 
   useEffect(() => {
     filterCalls();
-  }, [calls, searchQuery, selectedAgent, selectedOutcome]);
+  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedIntent]);
 
   useEffect(() => {
     calculateStats();
@@ -215,6 +218,18 @@ const CallLogs = () => {
 
     if (selectedOutcome !== 'all') {
       filtered = filtered.filter(call => call.call_outcome === selectedOutcome);
+    }
+
+    if (selectedSquadType !== 'all') {
+      if (selectedSquadType === 'squad') {
+        filtered = filtered.filter(call => call.is_squad_call === true);
+      } else if (selectedSquadType === 'non-squad') {
+        filtered = filtered.filter(call => !call.is_squad_call);
+      }
+    }
+
+    if (selectedIntent !== 'all') {
+      filtered = filtered.filter(call => call.call_intent === selectedIntent);
     }
 
     setFilteredCalls(filtered);
@@ -320,10 +335,18 @@ const CallLogs = () => {
             <PieChart className="w-4 h-4" />
             Analytics
           </TabsTrigger>
+          <TabsTrigger value="squad-analytics" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Squad Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="analytics" className="mt-6">
           <CallAnalyticsDashboard calls={filteredCalls} />
+        </TabsContent>
+
+        <TabsContent value="squad-analytics" className="mt-6">
+          <SquadAnalyticsDashboard calls={filteredCalls} />
         </TabsContent>
 
         <TabsContent value="logs" className="mt-6 space-y-6">
@@ -453,6 +476,29 @@ const CallLogs = () => {
                 <SelectItem value="busy">Busy</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
+              <SelectTrigger className="w-[160px]">
+                <Users className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Call Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Call Types</SelectItem>
+                <SelectItem value="squad">Squad Calls</SelectItem>
+                <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedIntent} onValueChange={setSelectedIntent}>
+              <SelectTrigger className="w-[160px]">
+                <Target className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Intent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Intents</SelectItem>
+                <SelectItem value="discovery">Discovery</SelectItem>
+                <SelectItem value="strategy">Strategy</SelectItem>
+                <SelectItem value="finance">Finance</SelectItem>
               </SelectContent>
             </Select>
           </div>
