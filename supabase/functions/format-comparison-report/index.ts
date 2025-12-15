@@ -65,13 +65,15 @@ serve(async (req) => {
     ).join('\n');
 
     // Create explicit ranking examples with actual property addresses
+    // Use special marker ___RANK_HEADING___ to signal PDF generator for special styling
     const rankingExamples = propertyAddresses.map((addr: string, idx: number) => 
-      `**Rank ${idx + 1}: ${addr}**
+      `___RANK_HEADING___**Rank ${idx + 1}: ${addr}**
+
 - **Score:** [XX.X]/100 | **Grade:** [A/B/C/D]
 - **Best For:** [Investor type]
 - **Key Strengths:** [Strength 1], [Strength 2], [Strength 3]
 - **Key Concerns:** [Concern 1], [Concern 2]`
-    ).join('\n\n');
+    ).join('\n\n---\n\n');
 
     // Create a comprehensive prompt for Perplexity to format the comparison data
     const prompt = `You are a professional real estate analyst report formatter. Convert the following property comparison analysis data into a beautifully formatted markdown report.
