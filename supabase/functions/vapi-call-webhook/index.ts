@@ -93,6 +93,90 @@ async function fetchAgentName(agentId: string): Promise<string | null> {
   return null;
 }
 
+// Fetch complete call details from Vapi API (includes cost data)
+async function fetchCallDetails(callId: string): Promise<{ cost: number | null; recordingUrl: string | null }> {
+  const vapiApiKey = Deno.env.get('VAPI_API_KEY');
+  if (!vapiApiKey || !callId) return { cost: null, recordingUrl: null };
+
+  try {
+    console.log('[Vapi Webhook] Fetching call details from Vapi API for call:', callId);
+    
+    const response = await fetch(`https://api.vapi.ai/call/${callId}`, {
+      headers: {
+        'Authorization': `Bearer ${vapiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const callData = await response.json();
+      console.log('[Vapi Webhook] Fetched call details:', {
+        id: callData.id,
+        cost: callData.cost,
+        costBreakdown: callData.costBreakdown,
+        costs: callData.costs,
+      });
+      
+      // Extract cost from various possible locations in the response
+      let cost: number | null = null;
+      if (typeof callData.cost === 'number' && callData.cost > 0) {
+        cost = callData.cost;
+      } else if (callData.costBreakdown?.total) {
+        cost = callData.costBreakdown.total;
+      } else if (callData.costs?.length) {
+        cost = callData.costs.reduce((sum: number, c: { cost?: number }) => sum + (c.cost || 0), 0);
+      }
+      
+      return {
+        cost,
+        recordingUrl: callData.recordingUrl || callData.artifact?.recordingUrl || null,
+      };
+    }
+    console.log('[Vapi Webhook] Failed to fetch call details:', response.status);
+  } catch (error) {
+    console.error('[Vapi Webhook] Error fetching call details:', error);
+  }
+  return { cost: null, recordingUrl: null };
+}
+
+// Background task to fetch and update cost data
+async function updateCallCostInBackground(
+  supabaseUrl: string,
+  supabaseServiceKey: string,
+  callId: string,
+  vapiCallId: string
+): Promise<void> {
+  try {
+    // Wait a few seconds for Vapi to calculate cost
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    const { cost, recordingUrl } = await fetchCallDetails(vapiCallId);
+    
+    if (cost !== null || recordingUrl !== null) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      const updateData: Record<string, unknown> = {};
+      if (cost !== null) updateData.cost = cost;
+      if (recordingUrl !== null) updateData.recording_url = recordingUrl;
+      
+      const { error } = await supabase
+        .from('vapi_call_logs')
+        .update(updateData)
+        .eq('id', callId);
+      
+      if (error) {
+        console.error('[Vapi Webhook] Background update error:', error);
+      } else {
+        console.log('[Vapi Webhook] Background update successful:', { callId, cost, recordingUrl });
+      }
+    } else {
+      console.log('[Vapi Webhook] No cost data available from Vapi API');
+    }
+  } catch (error) {
+    console.error('[Vapi Webhook] Background task error:', error);
+  }
+}
+
 // Use AI to analyze transcript for missing data
 async function analyzeTranscriptWithAI(transcript: string, summary: string | null): Promise<AIAnalysis> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -422,6 +506,15 @@ serve(async (req) => {
     }
 
     console.log('[Vapi Webhook] Successfully saved call log:', data.id);
+
+    // If this is end-of-call and we don't have cost, schedule background fetch
+    if (isEndOfCall && !callLogData.cost) {
+      console.log('[Vapi Webhook] Scheduling background cost fetch for call:', data.id);
+      // Use EdgeRuntime.waitUntil for background task
+      EdgeRuntime.waitUntil(
+        updateCallCostInBackground(supabaseUrl, supabaseServiceKey, data.id, call.id)
+      );
+    }
 
     return new Response(JSON.stringify({ success: true, callLogId: data.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
