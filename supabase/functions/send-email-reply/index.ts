@@ -11,6 +11,11 @@ const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
 const tenantId = Deno.env.get('MICROSOFT_TENANT_ID');
 const mailboxEmail = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
 
+// Cache for signature to avoid fetching on every email
+let cachedSignature: string | null = null;
+let signatureCacheTime: number = 0;
+const SIGNATURE_CACHE_TTL = 3600000; // 1 hour in milliseconds
+
 interface EmailAttachment {
   name: string;
   contentType: string;
@@ -53,6 +58,52 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+async function getOutlookSignature(accessToken: string): Promise<string> {
+  // Check cache first
+  const now = Date.now();
+  if (cachedSignature !== null && (now - signatureCacheTime) < SIGNATURE_CACHE_TTL) {
+    console.log('[Send Email] Using cached signature');
+    return cachedSignature;
+  }
+
+  try {
+    // Fetch mailbox settings which includes signature
+    const settingsUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/mailboxSettings`;
+    
+    const response = await fetch(settingsUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Send Email] Failed to fetch mailbox settings:', response.status, errorText);
+      // Return empty string if we can't get signature - email will still send
+      return '';
+    }
+
+    const settings = await response.json();
+    
+    // The signature is stored in automaticRepliesSetting.internalReplyMessage or we check for signatureContent
+    // Microsoft Graph stores email signature in the user's mailbox settings
+    const signature = settings.signatureContent || '';
+    
+    console.log('[Send Email] Fetched signature from Outlook:', signature ? 'Found' : 'Not found');
+    
+    // Cache the signature
+    cachedSignature = signature;
+    signatureCacheTime = now;
+    
+    return signature;
+  } catch (error) {
+    console.error('[Send Email] Error fetching signature:', error);
+    return '';
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -76,13 +127,41 @@ serve(async (req) => {
     // Get access token
     const accessToken = await getAccessToken();
 
+    // Fetch Outlook signature
+    const signature = await getOutlookSignature(accessToken);
+    
+    // Combine body with signature
+    // If signature is HTML, we need to use HTML content type
+    const hasSignature = signature && signature.trim().length > 0;
+    const isHtmlSignature = hasSignature && (signature.includes('<') && signature.includes('>'));
+    
+    let finalBody: string;
+    let contentType: 'Text' | 'HTML';
+    
+    if (hasSignature) {
+      if (isHtmlSignature) {
+        // Convert plain text body to HTML and append HTML signature
+        const htmlBody = body.replace(/\n/g, '<br>');
+        finalBody = `${htmlBody}<br><br>${signature}`;
+        contentType = 'HTML';
+      } else {
+        // Both are plain text
+        finalBody = `${body}\n\n${signature}`;
+        contentType = 'Text';
+      }
+      console.log('[Send Email] Appended Outlook signature to email');
+    } else {
+      finalBody = body;
+      contentType = 'Text';
+    }
+
     // Prepare email message
     const message: any = {
       message: {
         subject: subject,
         body: {
-          contentType: 'Text',
-          content: body
+          contentType: contentType,
+          content: finalBody
         },
         toRecipients: [
           {
