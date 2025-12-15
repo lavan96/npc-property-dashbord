@@ -233,10 +233,19 @@ serve(async (req) => {
     };
 
     const getCallDirection = (): string => {
+      // Check the call type from Vapi - this is the most reliable source
+      if (call.type === 'inboundPhoneCall') {
+        return 'inbound';
+      }
+      if (call.type === 'outboundPhoneCall') {
+        return 'outbound';
+      }
       if (call.type === 'webCall' || call.webCallUrl) {
         return 'inbound';
       }
-      if (call.customer?.number && !call.phoneNumber?.number) {
+      // Default based on phone number presence
+      if (call.phoneNumber?.number && call.customer?.number) {
+        // If we have both, likely outbound (we called the customer)
         return 'outbound';
       }
       return 'inbound';
@@ -303,11 +312,25 @@ serve(async (req) => {
     const agentId = call.assistant?.id || call.assistantId || null;
     let agentName = call.assistant?.name || null;
 
-    // Cost
-    let cost: number | null = call.cost || null;
-    if (!cost && call.costs?.length) {
+    // Cost - check multiple sources
+    let cost: number | null = null;
+    if (typeof call.cost === 'number' && call.cost > 0) {
+      cost = call.cost;
+    } else if (call.costs?.length) {
       cost = call.costs.reduce((sum, c) => sum + (c.cost || 0), 0);
     }
+    
+    console.log('[Vapi Webhook] Cost extraction:', { 
+      callCost: call.cost, 
+      costsArray: call.costs, 
+      extractedCost: cost 
+    });
+
+    // Helper to capitalize first letter of each string
+    const capitalizeFirst = (str: string): string => {
+      if (!str) return str;
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    };
 
     // Initialize AI analysis fields
     let sentiment: string | null = null;
@@ -333,8 +356,9 @@ serve(async (req) => {
         }
         
         sentiment = aiAnalysis.sentiment;
-        keyTopics = aiAnalysis.keyTopics;
-        actionItems = aiAnalysis.actionItems;
+        // Capitalize first letter of each topic and action item
+        keyTopics = aiAnalysis.keyTopics.map(capitalizeFirst);
+        actionItems = aiAnalysis.actionItems.map(capitalizeFirst);
       }
     }
 
