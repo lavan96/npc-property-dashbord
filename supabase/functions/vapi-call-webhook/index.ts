@@ -283,6 +283,15 @@ serve(async (req) => {
 
     const call = message?.call;
 
+    // Only process end-of-call-report events - ignore intermediate status updates
+    // This prevents unnecessary updates during the call
+    if (message?.type !== 'end-of-call-report') {
+      console.log('[Vapi Webhook] Ignoring non-final event:', message?.type);
+      return new Response(JSON.stringify({ success: true, message: 'Skipping intermediate event' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!call?.id) {
       console.log('[Vapi Webhook] No call ID in payload, skipping');
       return new Response(JSON.stringify({ success: true, message: 'No call data' }), {
