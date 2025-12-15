@@ -916,6 +916,60 @@ export type Database = {
           },
         ]
       }
+      median_rent_cache: {
+        Row: {
+          bedrooms: number
+          created_at: string
+          data_quality: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          median_weekly_rent: number | null
+          postcode: string
+          property_type: string
+          source_url: string | null
+          state: string
+          stock_on_market: number | null
+          suburb: string
+          updated_at: string
+          vacancy_rate: number | null
+        }
+        Insert: {
+          bedrooms: number
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          median_weekly_rent?: number | null
+          postcode: string
+          property_type: string
+          source_url?: string | null
+          state: string
+          stock_on_market?: number | null
+          suburb: string
+          updated_at?: string
+          vacancy_rate?: number | null
+        }
+        Update: {
+          bedrooms?: number
+          created_at?: string
+          data_quality?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          median_weekly_rent?: number | null
+          postcode?: string
+          property_type?: string
+          source_url?: string | null
+          state?: string
+          stock_on_market?: number | null
+          suburb?: string
+          updated_at?: string
+          vacancy_rate?: number | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1277,6 +1331,30 @@ export type Database = {
         }
         Relationships: []
       }
+      suburb_directory: {
+        Row: {
+          created_at: string
+          id: string
+          postcode: string
+          state: string
+          suburb: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          postcode: string
+          state: string
+          suburb: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          postcode?: string
+          state?: string
+          suburb?: string
+        }
+        Relationships: []
+      }
       transport_data_cache: {
         Row: {
           created_at: string
@@ -1480,6 +1558,7 @@ export type Database = {
       cleanup_expired_climate_cache: { Args: never; Returns: undefined }
       cleanup_expired_crime_cache: { Args: never; Returns: undefined }
       cleanup_expired_economic_cache: { Args: never; Returns: undefined }
+      cleanup_expired_rent_cache: { Args: never; Returns: undefined }
       cleanup_expired_risk_cache: { Args: never; Returns: undefined }
       cleanup_expired_sessions: { Args: never; Returns: undefined }
       cleanup_expired_stamp_duty_cache: { Args: never; Returns: undefined }

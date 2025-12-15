@@ -179,3 +179,6 @@ verify_jwt = false
 
 [functions.send-email-reply]
 verify_jwt = false
+
+[functions.sqm-rent-service]
+verify_jwt = false
