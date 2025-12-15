@@ -257,6 +257,37 @@ export default function DataImport() {
     }
   };
 
+  const [importingSuburbs, setImportingSuburbs] = useState(false);
+
+  const handleImportSuburbDirectory = async () => {
+    setImportingSuburbs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('import-suburb-directory', {
+        body: {}
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Suburb Directory Imported",
+          description: `Imported ${data.summary.inserted} suburbs from ${data.summary.source}`,
+        });
+      } else {
+        throw new Error(data?.error || 'Import failed');
+      }
+    } catch (error: any) {
+      console.error('Suburb import error:', error);
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setImportingSuburbs(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
@@ -266,6 +297,43 @@ export default function DataImport() {
             Upload CSV files to populate cache tables and directories
           </p>
         </div>
+
+        {/* Quick Import Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Quick Import from External Sources
+            </CardTitle>
+            <CardDescription>
+              Import data directly from trusted external sources
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              <Button 
+                onClick={handleImportSuburbDirectory}
+                disabled={importingSuburbs}
+                variant="outline"
+              >
+                {importingSuburbs ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importing Suburbs...
+                  </>
+                ) : (
+                  <>
+                    <Database className="mr-2 h-4 w-4" />
+                    Import Australian Suburb Directory
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground self-center">
+                ~18,500 suburbs from matthewproctor.com (community-sourced postcode database)
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

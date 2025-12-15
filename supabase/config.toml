@@ -182,3 +182,7 @@ verify_jwt = false
 
 [functions.sqm-rent-service]
 verify_jwt = false
+
+[functions.import-suburb-directory]
+verify_jwt = false
+request_timeout = 120
