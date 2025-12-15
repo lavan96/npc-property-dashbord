@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Bell, 
@@ -21,7 +22,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   Zap,
-  Settings
+  Settings,
+  Mail,
+  Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -106,6 +109,8 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   const [newOperator, setNewOperator] = useState('equals');
   const [newValue, setNewValue] = useState('');
   const [newIsPositive, setNewIsPositive] = useState(false);
+  const [newNotificationType, setNewNotificationType] = useState('toast');
+  const [emailRecipient, setEmailRecipient] = useState('');
 
   useEffect(() => {
     fetchRules();
@@ -135,6 +140,45 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
     };
   }, []);
 
+  // Check calls against rules and send email notifications if needed
+  const sendEmailNotification = async (rule: AlertRule, call: CallLog, message: string) => {
+    if (rule.notification_type !== 'email' && rule.notification_type !== 'both') return;
+    
+    // Extract email from notification settings (stored as JSON in condition for simplicity)
+    // For this implementation, we'll use a default admin email or stored preference
+    const adminEmail = localStorage.getItem('alertEmailRecipient') || '';
+    if (!adminEmail) {
+      console.log('No email recipient configured for alerts');
+      return;
+    }
+    
+    try {
+      const response = await supabase.functions.invoke('send-call-alert-email', {
+        body: {
+          to: adminEmail,
+          alertName: rule.name,
+          callId: call.id,
+          customerName: call.customer_name,
+          phoneNumber: call.phone_number,
+          sentiment: call.sentiment,
+          duration: call.duration_seconds,
+          outcome: call.call_outcome,
+          cost: call.cost,
+          message,
+          isPositive: rule.is_positive,
+        },
+      });
+      
+      if (response.error) {
+        console.error('Failed to send email notification:', response.error);
+      } else {
+        console.log('Email notification sent successfully');
+      }
+    } catch (error) {
+      console.error('Error sending email notification:', error);
+    }
+  };
+
   // Check calls against rules
   const checkCallsAgainstRules = useCallback(async (callsToCheck: CallLog[]) => {
     const enabledRules = rules.filter(r => r.is_enabled);
@@ -160,6 +204,9 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
               message,
               is_positive: rule.is_positive,
             });
+            
+            // Send email notification if configured
+            await sendEmailNotification(rule, call, message);
           }
         }
       }
@@ -243,6 +290,17 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   const createRule = async () => {
     if (!newRuleName.trim() || !newValue) return;
     
+    // Validate email if email notifications are enabled
+    if ((newNotificationType === 'email' || newNotificationType === 'both') && !emailRecipient) {
+      toast({ title: 'Error', description: 'Please enter an email address for notifications', variant: 'destructive' });
+      return;
+    }
+    
+    // Save email recipient to localStorage for use in notifications
+    if (emailRecipient) {
+      localStorage.setItem('alertEmailRecipient', emailRecipient);
+    }
+    
     setLoading(true);
     try {
       const { error } = await supabase.from('call_alert_rules').insert({
@@ -251,6 +309,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
         condition_operator: newOperator,
         condition_value: newValue,
         is_positive: newIsPositive,
+        notification_type: newNotificationType,
       });
 
       if (error) throw error;
@@ -259,6 +318,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
       setNewRuleName('');
       setNewValue('');
       setNewIsPositive(false);
+      setNewNotificationType('toast');
       fetchRules();
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to create rule', variant: 'destructive' });
@@ -298,6 +358,20 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
     return found ? found.icon : AlertTriangle;
   };
 
+  const getNotificationTypeLabel = (type: string) => {
+    switch (type) {
+      case 'email': return 'Email';
+      case 'both': return 'Toast + Email';
+      default: return 'Toast';
+    }
+  };
+
+  // Load saved email from localStorage
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('alertEmailRecipient');
+    if (savedEmail) setEmailRecipient(savedEmail);
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Alert Bell with Dropdown */}
@@ -318,7 +392,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
               )}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
@@ -327,6 +401,41 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
             </DialogHeader>
             
             <div className="space-y-6">
+              {/* Email Configuration */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Email Notifications
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Configure email address for alert notifications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="admin@example.com"
+                      value={emailRecipient}
+                      onChange={(e) => setEmailRecipient(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        localStorage.setItem('alertEmailRecipient', emailRecipient);
+                        toast({ title: 'Saved', description: 'Email recipient saved' });
+                      }}
+                      disabled={!emailRecipient}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Create New Rule */}
               <Card>
                 <CardHeader className="pb-3">
@@ -394,6 +503,36 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                     )}
                   </div>
                   
+                  {/* Notification Type Selection */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Notification Type</Label>
+                    <Select value={newNotificationType} onValueChange={setNewNotificationType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select notification type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="toast">
+                          <div className="flex items-center gap-2">
+                            <Bell className="w-4 h-4" />
+                            Toast Only
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="email">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4" />
+                            Email Only
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="both">
+                          <div className="flex items-center gap-2">
+                            <Send className="w-4 h-4" />
+                            Toast + Email
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Switch checked={newIsPositive} onCheckedChange={setNewIsPositive} />
@@ -438,9 +577,16 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                               </div>
                               <div>
                                 <p className="text-sm font-medium">{rule.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {rule.condition_type} {rule.condition_operator.replace('_', ' ')} {rule.condition_value}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs text-muted-foreground">
+                                    {rule.condition_type} {rule.condition_operator.replace('_', ' ')} {rule.condition_value}
+                                  </p>
+                                  <Badge variant="outline" className="text-[10px] h-4">
+                                    {rule.notification_type === 'email' && <Mail className="w-3 h-3 mr-1" />}
+                                    {rule.notification_type === 'both' && <Send className="w-3 h-3 mr-1" />}
+                                    {getNotificationTypeLabel(rule.notification_type)}
+                                  </Badge>
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">

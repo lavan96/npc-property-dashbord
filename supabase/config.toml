@@ -186,3 +186,6 @@ verify_jwt = false
 [functions.import-suburb-directory]
 verify_jwt = false
 request_timeout = 120
+
+[functions.send-call-alert-email]
+verify_jwt = false

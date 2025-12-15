@@ -18,6 +18,7 @@ import { LiveCallsMonitor } from '@/components/call-logs/LiveCallsMonitor';
 import { CallAnalyticsTrends } from '@/components/call-logs/CallAnalyticsTrends';
 import { CallTagging, CallTagFilter } from '@/components/call-logs/CallTagging';
 import { CallAlerts } from '@/components/call-logs/CallAlerts';
+import { CallQualityScore, CallQualityBadge } from '@/components/call-logs/CallQualityScore';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -792,6 +793,13 @@ const CallLogs = () => {
                     
                     {/* Right section - badges */}
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <CallQualityBadge
+                        sentiment={call.sentiment}
+                        durationSeconds={call.duration_seconds}
+                        outcome={call.call_outcome}
+                        cost={call.cost}
+                        hasTranscript={!!call.transcript}
+                      />
                       {getSentimentBadge(call.sentiment)}
                       {getOutcomeBadge(call.call_outcome)}
                     </div>
@@ -1089,6 +1097,22 @@ const CallLogs = () => {
                 </TabsContent>
 
                 <TabsContent value="analysis" className="space-y-4 p-1">
+                  {/* Call Quality Score */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Call Quality Score</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CallQualityScore
+                        sentiment={selectedCall.sentiment}
+                        durationSeconds={selectedCall.duration_seconds}
+                        outcome={selectedCall.call_outcome}
+                        cost={selectedCall.cost}
+                        hasTranscript={!!selectedCall.transcript}
+                      />
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">Sentiment</CardTitle>
