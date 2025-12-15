@@ -109,10 +109,12 @@ const CallLogs = () => {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [selectedOutcome, setSelectedOutcome] = useState<string>('all');
   const [selectedSquadType, setSelectedSquadType] = useState<string>('all');
+  const [selectedSquad, setSelectedSquad] = useState<string>('all');
   const [selectedIntent, setSelectedIntent] = useState<string>('all');
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
+  const [squads, setSquads] = useState<{ id: string; name: string }[]>([]);
   const [stats, setStats] = useState<CallStats>({
     totalCalls: 0,
     completedCalls: 0,
@@ -148,7 +150,7 @@ const CallLogs = () => {
 
   useEffect(() => {
     filterCalls();
-  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedIntent]);
+  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedSquad, selectedIntent]);
 
   useEffect(() => {
     calculateStats();
@@ -183,6 +185,15 @@ const CallLogs = () => {
       });
       setAgents(Array.from(uniqueAgents, ([id, name]) => ({ id, name })));
 
+      // Extract unique squads
+      const uniqueSquads = new Map<string, string>();
+      transformedData?.forEach(call => {
+        if (call.squad_id) {
+          uniqueSquads.set(call.squad_id, call.squad_name || call.squad_id);
+        }
+      });
+      setSquads(Array.from(uniqueSquads, ([id, name]) => ({ id, name })));
+
       toast({
         title: 'Refreshed',
         description: `${transformedData?.length || 0} call logs loaded`,
@@ -208,7 +219,8 @@ const CallLogs = () => {
         call.phone_number?.toLowerCase().includes(query) ||
         call.customer_name?.toLowerCase().includes(query) ||
         call.summary?.toLowerCase().includes(query) ||
-        call.agent_name?.toLowerCase().includes(query)
+        call.agent_name?.toLowerCase().includes(query) ||
+        call.squad_name?.toLowerCase().includes(query)
       );
     }
 
@@ -226,6 +238,10 @@ const CallLogs = () => {
       } else if (selectedSquadType === 'non-squad') {
         filtered = filtered.filter(call => !call.is_squad_call);
       }
+    }
+
+    if (selectedSquad !== 'all') {
+      filtered = filtered.filter(call => call.squad_id === selectedSquad);
     }
 
     if (selectedIntent !== 'all') {
@@ -315,11 +331,13 @@ const CallLogs = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Call Logs</h1>
-          <p className="text-muted-foreground">Track and analyze voice agent call outcomes</p>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            Call Logs
+          </h1>
+          <p className="text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
         </div>
-        <Button onClick={fetchCalls} variant="outline" size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
+        <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -352,86 +370,104 @@ const CallLogs = () => {
         <TabsContent value="logs" className="mt-6 space-y-6">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Total Calls</span>
+      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3">
+        <Card className="bg-gradient-to-br from-card to-card/50">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-muted">
+                <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <span className="text-xs text-muted-foreground">Total</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.totalCalls}</p>
+            <p className="text-xl font-bold">{stats.totalCalls}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Completed</span>
+            </div>
+            <p className="text-xl font-bold text-emerald-500">{stats.completedCalls}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-blue-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-blue-500/10">
+                <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Success</span>
+            </div>
+            <p className="text-xl font-bold text-blue-500">{stats.successRate}%</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-muted-foreground">Completed</span>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-muted">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <span className="text-xs text-muted-foreground">Avg Time</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.completedCalls}</p>
+            <p className="text-xl font-bold">{formatDuration(stats.avgDuration)}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-muted-foreground">Success Rate</span>
+        <Card className="bg-gradient-to-br from-amber-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-amber-500/10">
+                <DollarSign className="w-3.5 h-3.5 text-amber-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Cost</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.successRate}%</p>
+            <p className="text-xl font-bold text-amber-500">${stats.totalCost.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Avg Duration</span>
+        <Card className="bg-gradient-to-br from-green-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-green-500/10">
+                <PhoneIncoming className="w-3.5 h-3.5 text-green-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Inbound</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{formatDuration(stats.avgDuration)}</p>
+            <p className="text-xl font-bold text-green-500">{stats.inboundCalls}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-amber-400" />
-              <span className="text-sm text-muted-foreground">Total Cost</span>
+        <Card className="bg-gradient-to-br from-sky-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-sky-500/10">
+                <PhoneOutgoing className="w-3.5 h-3.5 text-sky-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Outbound</span>
             </div>
-            <p className="text-2xl font-bold mt-1">${stats.totalCost.toFixed(2)}</p>
+            <p className="text-xl font-bold text-sky-500">{stats.outboundCalls}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <PhoneIncoming className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-muted-foreground">Inbound</span>
+        <Card className="bg-gradient-to-br from-orange-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-orange-500/10">
+                <Voicemail className="w-3.5 h-3.5 text-orange-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Voicemail</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.inboundCalls}</p>
+            <p className="text-xl font-bold text-orange-500">{stats.voicemails}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <PhoneOutgoing className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-muted-foreground">Outbound</span>
+        <Card className="bg-gradient-to-br from-purple-500/5 to-card">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-purple-500/10">
+                <Users className="w-3.5 h-3.5 text-purple-500" />
+              </div>
+              <span className="text-xs text-muted-foreground">Squad</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.outboundCalls}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Voicemail className="w-4 h-4 text-amber-400" />
-              <span className="text-sm text-muted-foreground">Voicemails</span>
-            </div>
-            <p className="text-2xl font-bold mt-1">{stats.voicemails}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-muted-foreground">Squad Calls</span>
-            </div>
-            <p className="text-2xl font-bold mt-1">{stats.squadCalls}</p>
+            <p className="text-xl font-bold text-purple-500">{stats.squadCalls}</p>
           </CardContent>
         </Card>
       </div>
@@ -489,6 +525,20 @@ const CallLogs = () => {
                 <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
               </SelectContent>
             </Select>
+            {squads.length > 0 && (
+              <Select value={selectedSquad} onValueChange={setSelectedSquad}>
+                <SelectTrigger className="w-[200px]">
+                  <GitBranch className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="All Squads" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Squads</SelectItem>
+                  {squads.map(squad => (
+                    <SelectItem key={squad.id} value={squad.id}>{squad.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={selectedIntent} onValueChange={setSelectedIntent}>
               <SelectTrigger className="w-[160px]">
                 <Target className="w-4 h-4 mr-2" />
@@ -496,9 +546,10 @@ const CallLogs = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Intents</SelectItem>
-                <SelectItem value="discovery">Discovery</SelectItem>
-                <SelectItem value="strategy">Strategy</SelectItem>
-                <SelectItem value="finance">Finance</SelectItem>
+                <SelectItem value="discovery_booking">Discovery</SelectItem>
+                <SelectItem value="strategy_booking">Strategy</SelectItem>
+                <SelectItem value="finance_consult">Finance</SelectItem>
+                <SelectItem value="general_inquiry">General Inquiry</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -507,88 +558,198 @@ const CallLogs = () => {
 
       {/* Call List */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            Call History
-          </CardTitle>
-          <CardDescription>
-            {filteredCalls.length} calls found
-          </CardDescription>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Call History
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+                {calls.length !== filteredCalls.length && (
+                  <span className="text-muted-foreground"> (filtered from {calls.length})</span>
+                )}
+              </CardDescription>
+            </div>
+            {/* Active filters summary */}
+            {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {searchQuery && (
+                  <Badge variant="secondary" className="text-xs">
+                    Search: "{searchQuery}"
+                  </Badge>
+                )}
+                {selectedSquad !== 'all' && (
+                  <Badge className="bg-purple-500/20 text-purple-400 text-xs">
+                    Squad: {squads.find(s => s.id === selectedSquad)?.name}
+                  </Badge>
+                )}
+                {selectedIntent !== 'all' && (
+                  <Badge className="bg-amber-500/10 text-amber-500 text-xs">
+                    Intent: {selectedIntent.replace(/_/g, ' ')}
+                  </Badge>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 px-2 text-xs"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedAgent('all');
+                    setSelectedOutcome('all');
+                    setSelectedSquadType('all');
+                    setSelectedSquad('all');
+                    setSelectedIntent('all');
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading call logs...</p>
             </div>
           ) : filteredCalls.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Phone className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No call logs found</p>
-              <p className="text-sm mt-2">Calls will appear here once your Vapi agents start making calls</p>
+            <div className="text-center py-16">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                <Phone className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-foreground mb-1">No call logs found</p>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                {calls.length > 0 
+                  ? 'Try adjusting your filters to see more results'
+                  : 'Calls will appear here once your Vapi agents start making calls'}
+              </p>
+              {calls.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-4"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedAgent('all');
+                    setSelectedOutcome('all');
+                    setSelectedSquadType('all');
+                    setSelectedSquad('all');
+                    setSelectedIntent('all');
+                  }}
+                >
+                  Clear all filters
+                </Button>
+              )}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+                  className={`group relative p-4 rounded-xl border bg-card hover:bg-muted/30 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
+                  }`}
                   onClick={() => openCallDetail(call)}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-full bg-muted">
-                      {call.call_direction === 'inbound' ? (
-                        <PhoneIncoming className="w-4 h-4 text-green-400" />
-                      ) : (
-                        <PhoneOutgoing className="w-4 h-4 text-blue-400" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{call.customer_name || call.phone_number || 'Unknown'}</span>
-                        {call.is_squad_call && (
-                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
-                            <Users className="w-3 h-3 mr-1" />
-                            Squad
-                          </Badge>
-                        )}
-                        {call.call_intent && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Target className="w-3 h-3 mr-1" />
-                            {call.call_intent.replace(/_/g, ' ')}
-                          </Badge>
-                        )}
-                        {call.agent_name && !call.is_squad_call && (
-                          <Badge variant="outline" className="text-xs">{call.agent_name}</Badge>
-                        )}
-                        {call.is_squad_call && call.assistants_involved && call.assistants_involved.length > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            <GitBranch className="w-3 h-3 mr-1" />
-                            {call.assistants_involved.length} agents
-                          </Badge>
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left section */}
+                    <div className="flex items-start gap-4 flex-1">
+                      {/* Direction icon */}
+                      <div className={`p-2.5 rounded-xl ${
+                        call.call_direction === 'inbound' 
+                          ? 'bg-emerald-500/10 text-emerald-500' 
+                          : 'bg-blue-500/10 text-blue-500'
+                      }`}>
+                        {call.call_direction === 'inbound' ? (
+                          <PhoneIncoming className="w-5 h-5" />
+                        ) : (
+                          <PhoneOutgoing className="w-5 h-5" />
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                        {call.phone_number && call.customer_name && (
-                          <span>{call.phone_number}</span>
-                        )}
-                        <span>{call.started_at ? format(new Date(call.started_at), 'MMM d, yyyy h:mm a') : '-'}</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDuration(call.duration_seconds)}
-                        </span>
-                        {call.cost !== null && (
-                          <span className="flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" />
-                            ${call.cost.toFixed(3)}
+                      
+                      {/* Main content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Header row */}
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-semibold text-foreground">
+                            {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
+                          
+                          {/* Squad badge with name */}
+                          {call.is_squad_call && (
+                            <Badge className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 text-purple-400 border-purple-500/30 text-xs font-medium">
+                              <Users className="w-3 h-3 mr-1" />
+                              {call.squad_name || 'Squad Call'}
+                            </Badge>
+                          )}
+                          
+                          {/* Intent badge */}
+                          {call.call_intent && (
+                            <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs">
+                              <Target className="w-3 h-3 mr-1" />
+                              {call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </Badge>
+                          )}
+                          
+                          {/* Agent badge for non-squad calls */}
+                          {call.agent_name && !call.is_squad_call && (
+                            <Badge variant="outline" className="text-xs">{call.agent_name}</Badge>
+                          )}
+                        </div>
+                        
+                        {/* Handoff flow visualization for squad calls */}
+                        {call.is_squad_call && call.assistants_involved && call.assistants_involved.length > 0 && (
+                          <div className="flex items-center gap-1 mb-2 flex-wrap">
+                            {call.assistants_involved.map((assistant, i) => (
+                              <div key={assistant.id} className="flex items-center">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-xs font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                                  {assistant.name || `Agent ${i + 1}`}
+                                </span>
+                                {i < call.assistants_involved!.length - 1 && (
+                                  <ArrowRight className="w-3 h-3 text-muted-foreground mx-1" />
+                                )}
+                              </div>
+                            ))}
+                            {call.handoff_sequence && call.handoff_sequence.length > 0 && (
+                              <Badge variant="secondary" className="text-xs ml-2">
+                                <GitBranch className="w-3 h-3 mr-1" />
+                                {call.handoff_sequence.length} handoff{call.handoff_sequence.length > 1 ? 's' : ''}
+                              </Badge>
+                            )}
+                          </div>
                         )}
+                        
+                        {/* Meta info row */}
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                          {call.phone_number && call.customer_name && (
+                            <span className="font-mono text-xs">{call.phone_number}</span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {call.started_at ? format(new Date(call.started_at), 'MMM d, h:mm a') : '-'}
+                          </span>
+                          <span className="flex items-center gap-1 font-medium">
+                            {formatDuration(call.duration_seconds)}
+                          </span>
+                          {call.cost !== null && call.cost > 0 && (
+                            <span className="flex items-center gap-1 text-amber-500">
+                              <DollarSign className="w-3 h-3" />
+                              ${call.cost.toFixed(3)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getSentimentBadge(call.sentiment)}
-                    {getOutcomeBadge(call.call_outcome)}
+                    
+                    {/* Right section - badges */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {getSentimentBadge(call.sentiment)}
+                      {getOutcomeBadge(call.call_outcome)}
+                    </div>
                   </div>
                 </div>
               ))}
