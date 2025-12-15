@@ -12,6 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
+import { CallRecordingPlayer } from '@/components/call-logs/CallRecordingPlayer';
+import { CallLogsExport } from '@/components/call-logs/CallLogsExport';
+import { LiveCallsMonitor } from '@/components/call-logs/LiveCallsMonitor';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -34,7 +37,8 @@ import {
   PieChart,
   GitBranch,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Radio
 } from 'lucide-react';
 
 interface SquadAssistant {
@@ -336,10 +340,13 @@ const CallLogs = () => {
           </h1>
           <p className="text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
         </div>
-        <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <CallLogsExport calls={filteredCalls} stats={stats} />
+          <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Main Tabs */}
@@ -348,6 +355,10 @@ const CallLogs = () => {
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <Phone className="w-4 h-4" />
             Call Logs
+          </TabsTrigger>
+          <TabsTrigger value="live" className="flex items-center gap-2">
+            <Radio className="w-4 h-4" />
+            Live Monitor
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <PieChart className="w-4 h-4" />
@@ -358,6 +369,10 @@ const CallLogs = () => {
             Squad Analytics
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="live" className="mt-6">
+          <LiveCallsMonitor />
+        </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">
           <CallAnalyticsDashboard calls={filteredCalls} />
@@ -891,19 +906,10 @@ const CallLogs = () => {
                   )}
 
                   {selectedCall.recording_url && (
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Recording</span>
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={selectedCall.recording_url} target="_blank" rel="noopener noreferrer">
-                              <Play className="w-4 h-4 mr-2" />
-                              Play Recording
-                            </a>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <CallRecordingPlayer 
+                      recordingUrl={selectedCall.recording_url} 
+                      duration={selectedCall.duration_seconds}
+                    />
                   )}
                 </TabsContent>
 
