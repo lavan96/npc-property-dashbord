@@ -988,10 +988,10 @@ export default function EmailCopilot() {
       setReplyBcc('');
       setReplyAttachments([]);
       
-      // Update email status
+      // Update email status to 'read' (not 'archived') so it remains visible in thread
       await supabase
         .from('email_copilot_emails')
-        .update({ status: 'archived' })
+        .update({ status: 'read' })
         .eq('id', selectedEmail.id);
       
       fetchEmails();
