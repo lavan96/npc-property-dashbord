@@ -146,20 +146,35 @@ Include:
 - **Highest Risk**: Property X (with explanation)
 
 ### 6. INVESTOR PROFILE MATCHING
-For EACH of the ${propertyCount} properties, include:
-- **Property X (Full Address)**:
-  - Investor Types: [list suitable investor types]
-  - Reasoning: [detailed explanation]
+For EACH of the ${propertyCount} properties, format as follows:
+
+**Property X (Full Address)** as a bold header on its own line, then:
+- Investor Types: [list suitable investor types]
+- Reasoning: [detailed explanation]
+
+Example format:
+**Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
+- Investor Types: Lifestyle-Oriented Capital Growth Investor, Balanced Portfolio Investor
+- Reasoning: Strong lifestyle attributes and walkability suit investors prioritising quality-of-life.
 
 ### 7. MARKET TIMING & STRATEGY
-Include:
-- **Buy Order Priority**: Which property to buy first and why
-- **Recommended Holding Periods**: For each property with timeframe and reasoning
-- **Exit Strategies**: For each property with specific recommendations
+Format with clear subsections and property headers:
+
+**Buy Order Priority:**
+1. Property X - Full Address (reason)
+2. Property Y - Full Address (reason)
+
+**Recommended Holding Periods:**
+For each property, use bold header format:
+**Property 1 - Full Address:** X-Y years - [reasoning]
+
+**Exit Strategies:**
+For each property, use bold header format:
+**Property 1 - Full Address:** [specific exit strategy recommendations]
 
 ### 8. COMPETITIVE ADVANTAGES
 For EACH of the ${propertyCount} properties, format as follows:
-**Property X (Full Address)** as a bold header on its own line, followed by 3-5 unique selling points as bullet points.
+**Property X - Full Address** as a bold header on its own line, followed by 3-5 unique selling points as bullet points.
 
 Example format:
 **Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
@@ -168,14 +183,30 @@ Example format:
 - Unique selling point 3
 
 ### 9. RED FLAGS & CONCERNS
-For EACH of the ${propertyCount} properties, list specific concerns with severity ratings:
-- Use format: "[Concern description] (SEVERITY)" where SEVERITY is LOW, MEDIUM, HIGH, or CRITICAL
+For EACH of the ${propertyCount} properties, format as follows:
+**Property X - Full Address** as a bold header on its own line, followed by concerns as bullet points with severity ratings.
+
+Example format:
+**Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
+- Lower yield compared to other options (MEDIUM)
+- Unit market susceptible to oversupply (MEDIUM)
 
 ### 10. FINAL RECOMMENDATION
-- **Best Overall Property**: Property X (Full Address) with clear reasoning
-- **Runner-ups**: List with brief explanations
-- **Properties to Avoid/Reconsider**: If any, with reasoning
-- **Alternative Scenarios**: Different recommendations for different investor priorities
+Format with clear subsections:
+
+**Best Overall Property:**
+Property X - Full Address: [clear reasoning paragraph]
+
+**Runner-ups:**
+- Property Y - Full Address: [brief explanation]
+- Property Z - Full Address: [brief explanation]
+
+**Properties to Avoid/Reconsider:**
+- Property W - Full Address: [reasoning if applicable]
+
+**Alternative Scenarios:**
+- Income-first investor: Prioritise Property X then Property Y
+- Growth-first investor: Prioritise Property Z then Property W
 
 ---
 
