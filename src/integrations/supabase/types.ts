@@ -366,6 +366,117 @@ export type Database = {
         }
         Relationships: []
       }
+      call_alert_history: {
+        Row: {
+          call_id: string | null
+          id: string
+          is_positive: boolean
+          is_read: boolean
+          message: string
+          rule_id: string | null
+          rule_name: string
+          triggered_at: string
+        }
+        Insert: {
+          call_id?: string | null
+          id?: string
+          is_positive?: boolean
+          is_read?: boolean
+          message: string
+          rule_id?: string | null
+          rule_name: string
+          triggered_at?: string
+        }
+        Update: {
+          call_id?: string | null
+          id?: string
+          is_positive?: boolean
+          is_read?: boolean
+          message?: string
+          rule_id?: string | null
+          rule_name?: string
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_alert_history_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "vapi_call_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_alert_history_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "call_alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_alert_rules: {
+        Row: {
+          condition_operator: string
+          condition_type: string
+          condition_value: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          is_positive: boolean
+          name: string
+          notification_type: string
+          updated_at: string
+        }
+        Insert: {
+          condition_operator: string
+          condition_type: string
+          condition_value: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          is_positive?: boolean
+          name: string
+          notification_type?: string
+          updated_at?: string
+        }
+        Update: {
+          condition_operator?: string
+          condition_type?: string
+          condition_value?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          is_positive?: boolean
+          name?: string
+          notification_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      call_tags: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       chart_analysis: {
         Row: {
           analysis_text: string
@@ -1498,6 +1609,7 @@ export type Database = {
           started_at: string | null
           structured_data_multi: Json | null
           summary: string | null
+          tags: string[] | null
           transcript: string | null
           updated_at: string
           vapi_call_id: string
@@ -1529,6 +1641,7 @@ export type Database = {
           started_at?: string | null
           structured_data_multi?: Json | null
           summary?: string | null
+          tags?: string[] | null
           transcript?: string | null
           updated_at?: string
           vapi_call_id: string
@@ -1560,6 +1673,7 @@ export type Database = {
           started_at?: string | null
           structured_data_multi?: Json | null
           summary?: string | null
+          tags?: string[] | null
           transcript?: string | null
           updated_at?: string
           vapi_call_id?: string

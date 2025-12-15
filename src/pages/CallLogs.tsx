@@ -15,6 +15,9 @@ import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDa
 import { CallRecordingPlayer } from '@/components/call-logs/CallRecordingPlayer';
 import { CallLogsExport } from '@/components/call-logs/CallLogsExport';
 import { LiveCallsMonitor } from '@/components/call-logs/LiveCallsMonitor';
+import { CallAnalyticsTrends } from '@/components/call-logs/CallAnalyticsTrends';
+import { CallTagging, CallTagFilter } from '@/components/call-logs/CallTagging';
+import { CallAlerts } from '@/components/call-logs/CallAlerts';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -38,7 +41,9 @@ import {
   GitBranch,
   Zap,
   ArrowRight,
-  Radio
+  Radio,
+  LineChart,
+  Tag
 } from 'lucide-react';
 
 interface SquadAssistant {
@@ -82,6 +87,7 @@ interface CallLog {
   recording_url: string | null;
   metadata: unknown;
   created_at: string;
+  tags: string[] | null;
   // Squad-specific fields
   is_squad_call: boolean | null;
   squad_id: string | null;
@@ -115,6 +121,7 @@ const CallLogs = () => {
   const [selectedSquadType, setSelectedSquadType] = useState<string>('all');
   const [selectedSquad, setSelectedSquad] = useState<string>('all');
   const [selectedIntent, setSelectedIntent] = useState<string>('all');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
@@ -154,7 +161,7 @@ const CallLogs = () => {
 
   useEffect(() => {
     filterCalls();
-  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedSquad, selectedIntent]);
+  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedSquad, selectedIntent, selectedTags]);
 
   useEffect(() => {
     calculateStats();
@@ -252,7 +259,20 @@ const CallLogs = () => {
       filtered = filtered.filter(call => call.call_intent === selectedIntent);
     }
 
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter(call => 
+        selectedTags.some(tag => call.tags?.includes(tag))
+      );
+    }
+
     setFilteredCalls(filtered);
+  };
+
+  const updateCallTags = (callId: string, newTags: string[]) => {
+    setCalls(prev => prev.map(c => c.id === callId ? { ...c, tags: newTags } : c));
+    if (selectedCall?.id === callId) {
+      setSelectedCall(prev => prev ? { ...prev, tags: newTags } : null);
+    }
   };
 
   const calculateStats = () => {
@@ -341,6 +361,7 @@ const CallLogs = () => {
           <p className="text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
         </div>
         <div className="flex items-center gap-2">
+          <CallAlerts calls={filteredCalls} />
           <CallLogsExport calls={filteredCalls} stats={stats} />
           <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -360,6 +381,10 @@ const CallLogs = () => {
             <Radio className="w-4 h-4" />
             Live Monitor
           </TabsTrigger>
+          <TabsTrigger value="trends" className="flex items-center gap-2">
+            <LineChart className="w-4 h-4" />
+            Trends
+          </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <PieChart className="w-4 h-4" />
             Analytics
@@ -372,6 +397,10 @@ const CallLogs = () => {
 
         <TabsContent value="live" className="mt-6">
           <LiveCallsMonitor />
+        </TabsContent>
+
+        <TabsContent value="trends" className="mt-6">
+          <CallAnalyticsTrends calls={filteredCalls} />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">
@@ -567,6 +596,7 @@ const CallLogs = () => {
                 <SelectItem value="general_inquiry">General Inquiry</SelectItem>
               </SelectContent>
             </Select>
+            <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
           </div>
         </CardContent>
       </Card>
