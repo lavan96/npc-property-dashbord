@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const DATA_TYPES = [
+  { value: 'suburb_directory', label: 'Suburb Directory', table: 'suburb_directory', requiresState: false },
   { value: 'schools', label: 'Schools Directory', table: 'schools_directory', requiresState: true },
   { value: 'abs_census', label: 'ABS Census Data', table: 'abs_census_cache', requiresState: true },
   { value: 'crime_stats', label: 'Crime Statistics', table: 'crime_statistics_cache', requiresState: true },
@@ -17,6 +18,7 @@ const DATA_TYPES = [
   { value: 'transport', label: 'Transport Data', table: 'transport_data_cache', requiresState: true },
   { value: 'risk', label: 'Risk Assessment', table: 'risk_assessment_cache', requiresState: true },
   { value: 'climate', label: 'Climate Data', table: 'climate_data_cache', requiresState: true },
+  { value: 'median_rent', label: 'Median Rent Cache', table: 'median_rent_cache', requiresState: false },
 ];
 
 const AUSTRALIAN_STATES = [
@@ -140,6 +142,25 @@ export default function DataImport() {
           };
 
           switch (selectedType) {
+            case 'suburb_directory':
+              return {
+                suburb: r.suburb?.trim(),
+                postcode: r.postcode?.trim(),
+                state: r.state?.toUpperCase()?.trim()
+              };
+            case 'median_rent':
+              return {
+                ...base,
+                suburb: r.suburb?.toLowerCase()?.trim(),
+                postcode: r.postcode?.trim(),
+                state: r.state?.toUpperCase()?.trim(),
+                property_type: r.property_type?.toLowerCase()?.trim() || 'house',
+                bedrooms: r.bedrooms ? parseInt(r.bedrooms) : 3,
+                median_weekly_rent: r.median_weekly_rent ? parseFloat(r.median_weekly_rent) : null,
+                vacancy_rate: r.vacancy_rate ? parseFloat(r.vacancy_rate) : null,
+                stock_on_market: r.stock_on_market ? parseInt(r.stock_on_market) : null,
+                source_url: r.source_url || null
+              };
             case 'abs_census':
               return {
                 ...base,
@@ -386,6 +407,22 @@ export default function DataImport() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
+              <div>
+                <h4 className="font-medium mb-2">📍 Suburb Directory:</h4>
+                <p className="text-xs text-muted-foreground mb-1">All Australian suburbs - no state selection needed</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  suburb,postcode,state
+                </code>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">💵 Median Rent Cache:</h4>
+                <p className="text-xs text-muted-foreground mb-1">Pre-cached rent data - no state selection needed</p>
+                <code className="block bg-muted p-2 rounded text-xs overflow-x-auto whitespace-pre">
+                  suburb,postcode,state,property_type,bedrooms,median_weekly_rent,vacancy_rate,stock_on_market,source_url
+                </code>
+              </div>
+              
               <div>
                 <h4 className="font-medium mb-2">🏫 Schools Directory:</h4>
                 <p className="text-xs text-muted-foreground mb-1">State-specific (select state above)</p>
