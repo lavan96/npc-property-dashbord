@@ -102,7 +102,7 @@ interface Email {
   urgency_level: 'low' | 'medium' | 'high' | null;
   linked_property_address: string | null;
   linked_report_id: string | null;
-  status: 'unread' | 'read' | 'summarized' | 'drafted' | 'archived';
+  status: 'unread' | 'read' | 'summarized' | 'drafted' | 'replied' | 'archived';
   created_at: string;
   cc_recipients: string[];
   bcc_recipients: string[];
@@ -988,10 +988,10 @@ export default function EmailCopilot() {
       setReplyBcc('');
       setReplyAttachments([]);
       
-      // Update email status to 'read' (not 'archived') so it remains visible in thread
+      // Update email status to 'replied' so it shows badge and remains visible in thread
       await supabase
         .from('email_copilot_emails')
-        .update({ status: 'read' })
+        .update({ status: 'replied' })
         .eq('id', selectedEmail.id);
       
       fetchEmails();
@@ -1342,6 +1342,7 @@ export default function EmailCopilot() {
                       <SelectItem value="read">Read</SelectItem>
                       <SelectItem value="summarized">Summarized</SelectItem>
                       <SelectItem value="drafted">Draft Ready</SelectItem>
+                      <SelectItem value="replied">Replied</SelectItem>
                       <SelectItem value="archived">Archived</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1480,6 +1481,11 @@ export default function EmailCopilot() {
                                   {hasDraft && (
                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-purple-600 border-purple-500/30">
                                       <MessageSquare className="h-2.5 w-2.5 mr-0.5" /> Draft
+                                    </Badge>
+                                  )}
+                                  {latestEmail.status === 'replied' && (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-600 border-blue-500/30">
+                                      <Reply className="h-2.5 w-2.5 mr-0.5" /> Replied
                                     </Badge>
                                   )}
                                   {isThreaded && (
