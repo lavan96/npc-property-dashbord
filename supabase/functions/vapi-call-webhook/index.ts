@@ -7,6 +7,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Vapi Squad assistant info
+interface SquadAssistant {
+  id: string;
+  name?: string;
+  role?: string;
+  handoffTimestamp?: string;
+}
+
+// Structured data from each assistant in a squad
+interface StructuredDataMultiItem {
+  assistant: string;
+  data: Record<string, unknown>;
+}
+
+// Handoff event in the sequence
+interface HandoffEvent {
+  fromAssistant: string;
+  toAssistant: string;
+  timestamp: string;
+  reason?: string;
+}
+
 // Vapi webhook payload can have data at different levels depending on event type
 interface VapiWebhookPayload {
   message: {
@@ -18,6 +40,7 @@ interface VapiWebhookPayload {
       summary?: string;
       successEvaluation?: string;
       structuredData?: Record<string, unknown>;
+      structuredDataMulti?: StructuredDataMultiItem[];
     };
     artifact?: {
       transcript?: string;
@@ -29,6 +52,9 @@ interface VapiWebhookPayload {
         time?: number;
         endTime?: number;
         duration?: number;
+        // Squad-specific fields
+        assistantId?: string;
+        assistantName?: string;
       }>;
     };
     call?: {
@@ -39,6 +65,19 @@ interface VapiWebhookPayload {
       assistant?: {
         id?: string;
         name?: string;
+      };
+      // Squad-specific fields
+      squadId?: string;
+      squad?: {
+        id?: string;
+        name?: string;
+        members?: Array<{
+          assistantId?: string;
+          assistant?: {
+            id?: string;
+            name?: string;
+          };
+        }>;
       };
       customer?: {
         number?: string;
@@ -66,6 +105,7 @@ interface AIAnalysis {
   sentiment: string;
   keyTopics: string[];
   actionItems: string[];
+  callIntent: string | null;
 }
 
 // Fetch agent name from Vapi API
@@ -178,7 +218,7 @@ async function updateCallCostInBackground(
 }
 
 // Use AI to analyze transcript for missing data
-async function analyzeTranscriptWithAI(transcript: string, summary: string | null): Promise<AIAnalysis> {
+async function analyzeTranscriptWithAI(transcript: string, summary: string | null, isSquadCall: boolean): Promise<AIAnalysis> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   
   if (!openaiApiKey || !transcript || transcript.length < 50) {
@@ -187,11 +227,20 @@ async function analyzeTranscriptWithAI(transcript: string, summary: string | nul
       sentiment: 'neutral',
       keyTopics: [],
       actionItems: [],
+      callIntent: null,
     };
   }
 
   try {
     console.log('[Vapi Webhook] Analyzing transcript with AI...');
+    
+    const intentInstructions = isSquadCall 
+      ? `5. Call intent - what type of appointment/service was the caller interested in (e.g., "discovery_booking", "strategy_booking", "finance_consult", "general_inquiry"). Return null if unclear.`
+      : '';
+    
+    const intentFormat = isSquadCall 
+      ? `,\n  "callIntent": "intent_type or null"`
+      : '';
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -209,13 +258,14 @@ async function analyzeTranscriptWithAI(transcript: string, summary: string | nul
 2. Overall sentiment (positive, negative, neutral, mixed)
 3. Key topics discussed (max 5 topics, short phrases)
 4. Action items or follow-ups needed (max 5 items)
+${intentInstructions}
 
 Respond ONLY with valid JSON in this exact format:
 {
   "customerName": "Name or null",
   "sentiment": "positive|negative|neutral|mixed",
   "keyTopics": ["topic1", "topic2"],
-  "actionItems": ["action1", "action2"]
+  "actionItems": ["action1", "action2"]${intentFormat}
 }`
           },
           {
@@ -230,7 +280,7 @@ Respond ONLY with valid JSON in this exact format:
 
     if (!response.ok) {
       console.error('[Vapi Webhook] OpenAI API error:', response.status);
-      return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [] };
+      return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [], callIntent: null };
     }
 
     const data = await response.json();
@@ -247,6 +297,7 @@ Respond ONLY with valid JSON in this exact format:
           sentiment: parsed.sentiment || 'neutral',
           keyTopics: Array.isArray(parsed.keyTopics) ? parsed.keyTopics.slice(0, 5) : [],
           actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems.slice(0, 5) : [],
+          callIntent: parsed.callIntent === 'null' ? null : (parsed.callIntent || null),
         };
       }
     }
@@ -254,7 +305,72 @@ Respond ONLY with valid JSON in this exact format:
     console.error('[Vapi Webhook] AI analysis error:', error);
   }
 
-  return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [] };
+  return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [], callIntent: null };
+}
+
+// Extract handoff sequence from transcript messages
+function extractHandoffSequence(messages: VapiWebhookPayload['message']['artifact']['messages']): HandoffEvent[] {
+  if (!messages || messages.length === 0) return [];
+  
+  const handoffs: HandoffEvent[] = [];
+  let previousAssistantId: string | null = null;
+  
+  for (const msg of messages) {
+    if (msg.role === 'bot' && msg.assistantId && msg.assistantId !== previousAssistantId) {
+      if (previousAssistantId) {
+        handoffs.push({
+          fromAssistant: previousAssistantId,
+          toAssistant: msg.assistantId,
+          timestamp: msg.time ? new Date(msg.time).toISOString() : new Date().toISOString(),
+          reason: 'Transfer detected from transcript'
+        });
+      }
+      previousAssistantId = msg.assistantId;
+    }
+  }
+  
+  return handoffs;
+}
+
+// Extract all assistants involved from messages
+function extractAssistantsInvolved(
+  messages: VapiWebhookPayload['message']['artifact']['messages'],
+  squadMembers?: VapiWebhookPayload['message']['call']['squad']['members']
+): SquadAssistant[] {
+  const assistantMap = new Map<string, SquadAssistant>();
+  
+  // First, add squad members if available
+  if (squadMembers) {
+    for (const member of squadMembers) {
+      const id = member.assistantId || member.assistant?.id;
+      if (id) {
+        assistantMap.set(id, {
+          id,
+          name: member.assistant?.name || undefined,
+        });
+      }
+    }
+  }
+  
+  // Then extract from messages to capture actual participation and timing
+  if (messages) {
+    for (const msg of messages) {
+      if (msg.role === 'bot' && msg.assistantId) {
+        const existing = assistantMap.get(msg.assistantId);
+        if (!existing) {
+          assistantMap.set(msg.assistantId, {
+            id: msg.assistantId,
+            name: msg.assistantName || undefined,
+            handoffTimestamp: msg.time ? new Date(msg.time).toISOString() : undefined,
+          });
+        } else if (!existing.handoffTimestamp && msg.time) {
+          existing.handoffTimestamp = new Date(msg.time).toISOString();
+        }
+      }
+    }
+  }
+  
+  return Array.from(assistantMap.values());
 }
 
 serve(async (req) => {
@@ -279,6 +395,8 @@ serve(async (req) => {
       callId: message?.call?.id,
       status: message?.status || message?.call?.status,
       endedReason: message?.endedReason || message?.call?.endedReason,
+      hasSquad: !!message?.call?.squad || !!message?.call?.squadId,
+      hasStructuredDataMulti: !!message?.analysis?.structuredDataMulti,
     });
 
     const call = message?.call;
@@ -301,6 +419,13 @@ serve(async (req) => {
 
     const rawStatus = message.status || call.status;
     const rawEndedReason = message.endedReason || call.endedReason;
+
+    // Detect if this is a Squad call
+    const isSquadCall = !!(call.squadId || call.squad);
+    const squadId = call.squadId || call.squad?.id || null;
+    const squadName = call.squad?.name || null;
+    
+    console.log('[Vapi Webhook] Squad detection:', { isSquadCall, squadId, squadName });
 
     const getCallOutcome = (endedReason?: string): string | null => {
       if (!endedReason) return null;
@@ -355,13 +480,30 @@ serve(async (req) => {
         .map(m => {
           const role = m.role === 'bot' ? 'Assistant' : m.role === 'user' ? 'User' : m.role;
           const content = m.message || m.content;
-          return `${role}: ${content}`;
+          // Include assistant name for squad calls
+          const assistantLabel = isSquadCall && m.assistantName ? ` (${m.assistantName})` : '';
+          return `${role}${assistantLabel}: ${content}`;
         })
         .join('\n\n');
     }
 
     const summary = message.analysis?.summary || null;
     const recordingUrl = message.artifact?.recordingUrl || null;
+    
+    // Extract Squad-specific data
+    const structuredDataMulti = message.analysis?.structuredDataMulti || [];
+    const assistantsInvolved = isSquadCall 
+      ? extractAssistantsInvolved(message.artifact?.messages, call.squad?.members)
+      : [];
+    const handoffSequence = isSquadCall 
+      ? extractHandoffSequence(message.artifact?.messages)
+      : [];
+    
+    console.log('[Vapi Webhook] Squad data extracted:', {
+      assistantsInvolvedCount: assistantsInvolved.length,
+      handoffCount: handoffSequence.length,
+      structuredDataMultiCount: structuredDataMulti.length,
+    });
 
     // Calculate duration and timestamps
     let durationSeconds: number | null = null;
@@ -401,9 +543,9 @@ serve(async (req) => {
     const phoneNumber = call.customer?.number || call.phoneNumber?.number || null;
     let customerName = call.customer?.name || null;
 
-    // Get agent info - try fetching from API if name not in webhook
-    const agentId = call.assistant?.id || call.assistantId || null;
-    let agentName = call.assistant?.name || null;
+    // Get agent info - for squad calls, use the first assistant or primary
+    const agentId = call.assistant?.id || call.assistantId || (assistantsInvolved[0]?.id) || null;
+    let agentName = call.assistant?.name || (assistantsInvolved[0]?.name) || null;
 
     // Cost - check multiple sources
     let cost: number | null = null;
@@ -429,6 +571,7 @@ serve(async (req) => {
     let sentiment: string | null = null;
     let keyTopics: string[] = [];
     let actionItems: string[] = [];
+    let callIntent: string | null = null;
 
     // Only do AI analysis and agent lookup for end-of-call-report (final event)
     const isEndOfCall = message.type === 'end-of-call-report';
@@ -438,10 +581,20 @@ serve(async (req) => {
       if (!agentName && agentId) {
         agentName = await fetchAgentName(agentId);
       }
+      
+      // For squad calls, try to fetch names for all assistants
+      if (isSquadCall && assistantsInvolved.length > 0) {
+        for (const assistant of assistantsInvolved) {
+          if (!assistant.name && assistant.id) {
+            const name = await fetchAgentName(assistant.id);
+            if (name) assistant.name = name;
+          }
+        }
+      }
 
       // Run AI analysis on transcript
       if (transcript) {
-        const aiAnalysis = await analyzeTranscriptWithAI(transcript, summary);
+        const aiAnalysis = await analyzeTranscriptWithAI(transcript, summary, isSquadCall);
         
         // Only use AI customer name if not already set
         if (!customerName && aiAnalysis.customerName) {
@@ -452,6 +605,7 @@ serve(async (req) => {
         // Capitalize first letter of each topic and action item
         keyTopics = aiAnalysis.keyTopics.map(capitalizeFirst);
         actionItems = aiAnalysis.actionItems.map(capitalizeFirst);
+        callIntent = aiAnalysis.callIntent;
       }
     }
 
@@ -474,6 +628,14 @@ serve(async (req) => {
       key_topics: keyTopics,
       action_items: actionItems,
       recording_url: recordingUrl,
+      // Squad-specific fields
+      is_squad_call: isSquadCall,
+      squad_id: squadId,
+      squad_name: squadName,
+      call_intent: callIntent,
+      assistants_involved: assistantsInvolved,
+      handoff_sequence: handoffSequence,
+      structured_data_multi: structuredDataMulti,
       metadata: {
         orgId: call.orgId,
         endedReason: rawEndedReason,
@@ -481,6 +643,7 @@ serve(async (req) => {
         eventType: message.type,
         webCallUrl: call.webCallUrl,
         aiAnalyzed: isEndOfCall && !!transcript,
+        isSquadCall: isSquadCall,
       },
     };
 
@@ -500,6 +663,12 @@ serve(async (req) => {
       key_topics_count: callLogData.key_topics.length,
       action_items_count: callLogData.action_items.length,
       cost: callLogData.cost,
+      // Squad fields
+      is_squad_call: callLogData.is_squad_call,
+      squad_id: callLogData.squad_id,
+      call_intent: callLogData.call_intent,
+      assistants_involved_count: callLogData.assistants_involved.length,
+      handoff_count: callLogData.handoff_sequence.length,
     });
 
     // Upsert the call log

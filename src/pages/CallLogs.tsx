@@ -30,8 +30,30 @@ import {
   MessageSquare,
   Target,
   BarChart3,
-  PieChart
+  PieChart,
+  GitBranch,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
+
+interface SquadAssistant {
+  id: string;
+  name?: string;
+  role?: string;
+  handoffTimestamp?: string;
+}
+
+interface HandoffEvent {
+  fromAssistant: string;
+  toAssistant: string;
+  timestamp: string;
+  reason?: string;
+}
+
+interface StructuredDataMultiItem {
+  assistant: string;
+  data: Record<string, unknown>;
+}
 
 interface CallLog {
   id: string;
@@ -55,6 +77,14 @@ interface CallLog {
   recording_url: string | null;
   metadata: unknown;
   created_at: string;
+  // Squad-specific fields
+  is_squad_call: boolean | null;
+  squad_id: string | null;
+  squad_name: string | null;
+  call_intent: string | null;
+  assistants_involved: SquadAssistant[] | null;
+  handoff_sequence: HandoffEvent[] | null;
+  structured_data_multi: StructuredDataMultiItem[] | null;
 }
 
 interface CallStats {
@@ -66,6 +96,7 @@ interface CallStats {
   inboundCalls: number;
   outboundCalls: number;
   voicemails: number;
+  squadCalls: number;
 }
 
 const CallLogs = () => {
@@ -88,6 +119,7 @@ const CallLogs = () => {
     inboundCalls: 0,
     outboundCalls: 0,
     voicemails: 0,
+    squadCalls: 0,
   });
 
   useEffect(() => {
@@ -129,11 +161,19 @@ const CallLogs = () => {
 
       if (error) throw error;
 
-      setCalls(data || []);
+      // Transform data to match our interface types
+      const transformedData: CallLog[] = (data || []).map(call => ({
+        ...call,
+        assistants_involved: (call.assistants_involved as unknown as SquadAssistant[]) || null,
+        handoff_sequence: (call.handoff_sequence as unknown as HandoffEvent[]) || null,
+        structured_data_multi: (call.structured_data_multi as unknown as StructuredDataMultiItem[]) || null,
+      }));
+
+      setCalls(transformedData);
 
       // Extract unique agents
       const uniqueAgents = new Map<string, string>();
-      data?.forEach(call => {
+      transformedData?.forEach(call => {
         if (call.agent_id) {
           uniqueAgents.set(call.agent_id, call.agent_name || call.agent_id);
         }
@@ -142,7 +182,7 @@ const CallLogs = () => {
 
       toast({
         title: 'Refreshed',
-        description: `${data?.length || 0} call logs loaded`,
+        description: `${transformedData?.length || 0} call logs loaded`,
       });
 
     } catch (error) {
@@ -159,7 +199,6 @@ const CallLogs = () => {
 
   const filterCalls = () => {
     let filtered = [...calls];
-
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(call =>
@@ -195,6 +234,7 @@ const CallLogs = () => {
     const inboundCalls = filteredCalls.filter(c => c.call_direction === 'inbound').length;
     const outboundCalls = filteredCalls.filter(c => c.call_direction === 'outbound').length;
     const voicemails = filteredCalls.filter(c => c.call_outcome === 'voicemail').length;
+    const squadCalls = filteredCalls.filter(c => c.is_squad_call).length;
 
     setStats({
       totalCalls,
@@ -205,6 +245,7 @@ const CallLogs = () => {
       inboundCalls,
       outboundCalls,
       voicemails,
+      squadCalls,
     });
   };
 
@@ -288,7 +329,7 @@ const CallLogs = () => {
         <TabsContent value="logs" className="mt-6 space-y-6">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-9 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -359,6 +400,15 @@ const CallLogs = () => {
               <span className="text-sm text-muted-foreground">Voicemails</span>
             </div>
             <p className="text-2xl font-bold mt-1">{stats.voicemails}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-muted-foreground">Squad Calls</span>
+            </div>
+            <p className="text-2xl font-bold mt-1">{stats.squadCalls}</p>
           </CardContent>
         </Card>
       </div>
@@ -448,10 +498,28 @@ const CallLogs = () => {
                       )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{call.customer_name || call.phone_number || 'Unknown'}</span>
-                        {call.agent_name && (
+                        {call.is_squad_call && (
+                          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                            <Users className="w-3 h-3 mr-1" />
+                            Squad
+                          </Badge>
+                        )}
+                        {call.call_intent && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Target className="w-3 h-3 mr-1" />
+                            {call.call_intent.replace(/_/g, ' ')}
+                          </Badge>
+                        )}
+                        {call.agent_name && !call.is_squad_call && (
                           <Badge variant="outline" className="text-xs">{call.agent_name}</Badge>
+                        )}
+                        {call.is_squad_call && call.assistants_involved && call.assistants_involved.length > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <GitBranch className="w-3 h-3 mr-1" />
+                            {call.assistants_involved.length} agents
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
@@ -496,8 +564,14 @@ const CallLogs = () => {
           </DialogHeader>
           {selectedCall && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className={`grid w-full ${selectedCall.is_squad_call ? 'grid-cols-5' : 'grid-cols-4'}`}>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                {selectedCall.is_squad_call && (
+                  <TabsTrigger value="squad" className="flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    Squad
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="metadata">Metadata</TabsTrigger>
@@ -505,6 +579,25 @@ const CallLogs = () => {
               
               <ScrollArea className="h-[60vh] mt-4">
                 <TabsContent value="overview" className="space-y-4 p-1">
+                  {/* Squad badge if applicable */}
+                  {selectedCall.is_squad_call && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                        <Users className="w-3 h-3 mr-1" />
+                        Squad Call
+                      </Badge>
+                      {selectedCall.squad_name && (
+                        <Badge variant="outline">{selectedCall.squad_name}</Badge>
+                      )}
+                      {selectedCall.call_intent && (
+                        <Badge variant="secondary">
+                          <Target className="w-3 h-3 mr-1" />
+                          {selectedCall.call_intent.replace(/_/g, ' ')}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <Card>
                       <CardContent className="p-4">
@@ -515,7 +608,9 @@ const CallLogs = () => {
                     </Card>
                     <Card>
                       <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">Agent</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}
+                        </p>
                         <p className="font-medium">{selectedCall.agent_name || 'Unknown'}</p>
                         <p className="text-sm text-muted-foreground">{selectedCall.agent_id || '-'}</p>
                       </CardContent>
@@ -604,6 +699,131 @@ const CallLogs = () => {
                     </Card>
                   )}
                 </TabsContent>
+
+                {/* Squad Tab - Only shown for squad calls */}
+                {selectedCall.is_squad_call && (
+                  <TabsContent value="squad" className="space-y-4 p-1">
+                    {/* Call Intent */}
+                    {selectedCall.call_intent && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Target className="w-4 h-4" />
+                            Call Intent
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <Badge variant="secondary" className="text-sm">
+                            {selectedCall.call_intent.replace(/_/g, ' ')}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Assistants Involved */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          Assistants Involved ({selectedCall.assistants_involved?.length || 0})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {selectedCall.assistants_involved && selectedCall.assistants_involved.length > 0 ? (
+                          <div className="space-y-2">
+                            {selectedCall.assistants_involved.map((assistant, i) => (
+                              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                    <span className="text-purple-400 font-medium text-sm">{i + 1}</span>
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{assistant.name || 'Unknown Assistant'}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">{assistant.id}</p>
+                                  </div>
+                                </div>
+                                {assistant.handoffTimestamp && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(new Date(assistant.handoffTimestamp), 'h:mm:ss a')}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No assistant data available</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Handoff Sequence */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <GitBranch className="w-4 h-4" />
+                          Handoff Sequence
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {selectedCall.handoff_sequence && selectedCall.handoff_sequence.length > 0 ? (
+                          <div className="space-y-3">
+                            {selectedCall.handoff_sequence.map((handoff, i) => {
+                              const fromAssistant = selectedCall.assistants_involved?.find(a => a.id === handoff.fromAssistant);
+                              const toAssistant = selectedCall.assistants_involved?.find(a => a.id === handoff.toAssistant);
+                              return (
+                                <div key={i} className="flex items-center gap-2 text-sm">
+                                  <Badge variant="outline" className="font-normal">
+                                    {fromAssistant?.name || handoff.fromAssistant.slice(0, 8)}
+                                  </Badge>
+                                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                                  <Badge variant="outline" className="font-normal">
+                                    {toAssistant?.name || handoff.toAssistant.slice(0, 8)}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground ml-auto">
+                                    {format(new Date(handoff.timestamp), 'h:mm:ss a')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No handoffs recorded</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Structured Data from Each Assistant */}
+                    {selectedCall.structured_data_multi && selectedCall.structured_data_multi.length > 0 && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Zap className="w-4 h-4" />
+                            Collected Data
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {selectedCall.structured_data_multi.map((item, i) => {
+                              const assistant = selectedCall.assistants_involved?.find(a => a.id === item.assistant);
+                              return (
+                                <div key={i} className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {assistant?.name || item.assistant.slice(0, 8)}
+                                    </Badge>
+                                  </div>
+                                  <pre className="whitespace-pre-wrap text-xs font-mono bg-muted p-3 rounded-lg overflow-auto">
+                                    {JSON.stringify(item.data, null, 2)}
+                                  </pre>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </TabsContent>
+                )}
 
                 <TabsContent value="transcript" className="p-1">
                   <Card>
