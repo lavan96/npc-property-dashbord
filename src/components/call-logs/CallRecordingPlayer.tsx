@@ -13,6 +13,7 @@ interface CallRecordingPlayerProps {
 export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPlayerProps) => {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
+  const isInitializedRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -24,12 +25,18 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
 
   // Initialize WaveSurfer
   useEffect(() => {
-    if (!waveformRef.current) return;
+    // Prevent double initialization
+    if (!waveformRef.current || isInitializedRef.current) return;
+    
+    // Clear any existing content in the container
+    waveformRef.current.innerHTML = '';
+    
+    isInitializedRef.current = true;
 
     const wavesurfer = WaveSurfer.create({
       container: waveformRef.current,
       waveColor: '#000000',
-      progressColor: '#374151',
+      progressColor: '#6b7280',
       cursorColor: '#ef4444',
       cursorWidth: 1,
       height: 80,
@@ -42,10 +49,8 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
       interact: true,
       dragToSeek: true,
       hideScrollbar: true,
-      autoScroll: true,
+      autoScroll: false,
       backend: 'WebAudio',
-      minPxPerSec: 50,
-      sampleRate: 16000,
     });
 
     wavesurferRef.current = wavesurfer;
@@ -86,7 +91,11 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
     });
 
     return () => {
-      wavesurfer.destroy();
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+      }
+      isInitializedRef.current = false;
     };
   }, [recordingUrl]);
 
@@ -96,7 +105,7 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
   }, [isReady]);
 
   const handleSeek = useCallback((value: number[]) => {
-    if (!wavesurferRef.current || !isReady) return;
+    if (!wavesurferRef.current || !isReady || audioDuration === 0) return;
     const newTime = value[0];
     wavesurferRef.current.seekTo(newTime / audioDuration);
     setCurrentTime(newTime);
@@ -122,7 +131,7 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
   }, [isMuted, volume]);
 
   const skipTime = useCallback((seconds: number) => {
-    if (!wavesurferRef.current || !isReady) return;
+    if (!wavesurferRef.current || !isReady || audioDuration === 0) return;
     const newTime = Math.max(0, Math.min(currentTime + seconds, audioDuration));
     wavesurferRef.current.seekTo(newTime / audioDuration);
     setCurrentTime(newTime);
