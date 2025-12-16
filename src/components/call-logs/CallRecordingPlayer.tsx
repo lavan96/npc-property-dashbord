@@ -24,78 +24,101 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Draw static waveform visualization when idle
-  const drawStaticWaveform = useCallback(() => {
+  const timeRef = useRef(0);
+  const staticAnimationRef = useRef<number>();
+
+  // Draw sonic-style waveform visualization
+  const drawSonicWaveform = useCallback((isAnimating: boolean = false) => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas with gradient background
-    const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bgGradient.addColorStop(0, 'hsl(222, 47%, 11%)');
-    bgGradient.addColorStop(1, 'hsl(222, 47%, 8%)');
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const draw = () => {
+      // Clear with fade effect for trail
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw decorative static waveform bars
-    const barCount = 60;
-    const barWidth = canvas.width / barCount;
-    const centerY = canvas.height / 2;
+      // Draw dark gradient base
+      const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      bgGradient.addColorStop(0, 'rgba(15, 23, 42, 0.9)');
+      bgGradient.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    for (let i = 0; i < barCount; i++) {
-      // Create a natural-looking waveform pattern
-      const progress = currentTime / (audioDuration || 1);
-      const playedBars = Math.floor(progress * barCount);
-      
-      // Generate pseudo-random heights for visual interest
-      const seed = i * 7 + 13;
-      const baseHeight = (Math.sin(seed * 0.3) * 0.3 + 0.5) * canvas.height * 0.6;
-      const variation = Math.sin(seed * 0.7) * 10;
-      const barHeight = Math.max(4, baseHeight + variation);
+      const lineCount = 8;
+      const segmentCount = 60;
+      const centerY = canvas.height / 2;
+      const progress = audioDuration > 0 ? currentTime / audioDuration : 0;
 
-      // Color based on playback progress
-      if (i < playedBars) {
-        const gradient = ctx.createLinearGradient(0, centerY - barHeight / 2, 0, centerY + barHeight / 2);
-        gradient.addColorStop(0, 'hsl(217, 91%, 60%)');
-        gradient.addColorStop(0.5, 'hsl(217, 91%, 50%)');
-        gradient.addColorStop(1, 'hsl(217, 91%, 40%)');
-        ctx.fillStyle = gradient;
-      } else {
-        const gradient = ctx.createLinearGradient(0, centerY - barHeight / 2, 0, centerY + barHeight / 2);
-        gradient.addColorStop(0, 'hsl(215, 20%, 45%)');
-        gradient.addColorStop(0.5, 'hsl(215, 20%, 35%)');
-        gradient.addColorStop(1, 'hsl(215, 20%, 25%)');
-        ctx.fillStyle = gradient;
+      for (let i = 0; i < lineCount; i++) {
+        ctx.beginPath();
+        const lineProgress = i / lineCount;
+        const colorIntensity = Math.sin(lineProgress * Math.PI);
+        
+        // Teal/cyan color scheme
+        ctx.strokeStyle = `rgba(0, 200, 150, ${colorIntensity * 0.4})`;
+        ctx.lineWidth = 1.5;
+
+        for (let j = 0; j <= segmentCount; j++) {
+          const x = (j / segmentCount) * canvas.width;
+          const segmentProgress = j / segmentCount;
+          
+          // Check if this segment is played
+          const isPlayed = segmentProgress <= progress;
+
+          // Wave calculation with time-based animation
+          const noise = Math.sin(j * 0.15 + timeRef.current + i * 0.3) * 15;
+          const spike = Math.cos(j * 0.25 + timeRef.current + i * 0.15) * Math.sin(j * 0.08 + timeRef.current) * 25;
+          
+          // Amplify if playing
+          const amplitudeMultiplier = isAnimating ? 1.5 : 0.8;
+          const y = centerY + (noise + spike) * amplitudeMultiplier;
+
+          if (j === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
       }
 
-      // Draw rounded bars
-      const x = i * barWidth + barWidth * 0.15;
-      const y = centerY - barHeight / 2;
-      const width = barWidth * 0.7;
-      const radius = Math.min(width / 2, 3);
+      // Draw progress overlay with glow
+      if (progress > 0) {
+        const progressX = progress * canvas.width;
+        
+        // Played section overlay
+        ctx.fillStyle = 'rgba(0, 200, 150, 0.1)';
+        ctx.fillRect(0, 0, progressX, canvas.height);
+        
+        // Playhead line with glow
+        ctx.shadowColor = 'rgba(0, 255, 192, 0.8)';
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = 'rgba(0, 255, 192, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(progressX, 0);
+        ctx.lineTo(progressX, canvas.height);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
 
-      ctx.beginPath();
-      ctx.roundRect(x, y, width, barHeight, radius);
-      ctx.fill();
-    }
+      // Update time for animation
+      timeRef.current += isAnimating ? 0.04 : 0.015;
 
-    // Draw playhead indicator
-    if (audioDuration > 0) {
-      const playheadX = (currentTime / audioDuration) * canvas.width;
-      ctx.fillStyle = 'hsl(217, 91%, 60%)';
-      ctx.fillRect(playheadX - 1, 0, 2, canvas.height);
-      
-      // Glow effect
-      ctx.shadowColor = 'hsl(217, 91%, 60%)';
-      ctx.shadowBlur = 8;
-      ctx.fillRect(playheadX - 1, 0, 2, canvas.height);
-      ctx.shadowBlur = 0;
-    }
-  }, [currentTime, audioDuration]);
+      if (isAnimating && isPlaying) {
+        animationRef.current = requestAnimationFrame(draw);
+      } else if (!isAnimating) {
+        staticAnimationRef.current = requestAnimationFrame(draw);
+      }
+    };
 
-  // Draw dynamic waveform during playback
+    draw();
+  }, [currentTime, audioDuration, isPlaying]);
+
+  // Draw dynamic waveform during playback with frequency data
   const drawDynamicWaveform = useCallback(() => {
     if (!canvasRef.current || !analyserRef.current) return;
 
@@ -109,58 +132,87 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
 
     const draw = () => {
       if (!isPlaying) {
-        drawStaticWaveform();
+        drawSonicWaveform(false);
         return;
       }
       
       animationRef.current = requestAnimationFrame(draw);
       analyser.getByteFrequencyData(dataArray);
 
-      // Dark gradient background
-      const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      bgGradient.addColorStop(0, 'hsl(222, 47%, 11%)');
-      bgGradient.addColorStop(1, 'hsl(222, 47%, 8%)');
-      ctx.fillStyle = bgGradient;
+      // Clear with fade for trail effect
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.2)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const barWidth = (canvas.width / bufferLength) * 2.5;
       const centerY = canvas.height / 2;
-      let x = 0;
+      const progress = audioDuration > 0 ? currentTime / audioDuration : 0;
 
-      for (let i = 0; i < bufferLength; i++) {
-        const barHeight = Math.max(4, (dataArray[i] / 255) * canvas.height * 0.85);
+      // Draw multiple wave lines based on frequency data
+      const lineCount = 6;
+      for (let line = 0; line < lineCount; line++) {
+        ctx.beginPath();
+        const lineProgress = line / lineCount;
+        const colorIntensity = Math.sin(lineProgress * Math.PI);
         
-        // Create gradient for each bar
-        const gradient = ctx.createLinearGradient(0, centerY - barHeight / 2, 0, centerY + barHeight / 2);
-        gradient.addColorStop(0, 'hsl(217, 91%, 70%)');
-        gradient.addColorStop(0.5, 'hsl(217, 91%, 55%)');
-        gradient.addColorStop(1, 'hsl(217, 91%, 40%)');
+        // Dynamic opacity based on audio levels
+        const avgLevel = dataArray.reduce((a, b) => a + b, 0) / bufferLength / 255;
+        const opacity = (colorIntensity * 0.5) + (avgLevel * 0.3);
+        
+        ctx.strokeStyle = `rgba(0, 255, 192, ${opacity})`;
+        ctx.lineWidth = 1.5 + avgLevel;
+
+        const segmentCount = Math.min(bufferLength, 80);
+        for (let i = 0; i <= segmentCount; i++) {
+          const x = (i / segmentCount) * canvas.width;
+          const dataIndex = Math.floor((i / segmentCount) * bufferLength);
+          
+          // Combine frequency data with wave animation
+          const freqAmplitude = (dataArray[dataIndex] / 255) * canvas.height * 0.35;
+          const waveOffset = Math.sin(i * 0.15 + timeRef.current + line * 0.4) * 10;
+          const y = centerY + waveOffset + (freqAmplitude * Math.sin(line * 0.5 + timeRef.current));
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Draw frequency bars at bottom
+      const barCount = 40;
+      const barWidth = canvas.width / barCount;
+      for (let i = 0; i < barCount; i++) {
+        const dataIndex = Math.floor((i / barCount) * bufferLength);
+        const barHeight = (dataArray[dataIndex] / 255) * canvas.height * 0.3;
+        
+        const gradient = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - barHeight);
+        gradient.addColorStop(0, 'rgba(0, 255, 192, 0.6)');
+        gradient.addColorStop(1, 'rgba(0, 200, 150, 0.1)');
         
         ctx.fillStyle = gradient;
-        
-        // Draw mirrored bars from center
-        const radius = Math.min(barWidth / 2, 2);
-        const barX = x;
-        const barY = centerY - barHeight / 2;
-        
-        ctx.beginPath();
-        ctx.roundRect(barX, barY, barWidth - 2, barHeight, radius);
-        ctx.fill();
-        
-        // Add subtle glow effect for active bars
-        if (dataArray[i] > 128) {
-          ctx.shadowColor = 'hsl(217, 91%, 60%)';
-          ctx.shadowBlur = 4;
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-        
-        x += barWidth;
+        ctx.fillRect(i * barWidth + 1, canvas.height - barHeight, barWidth - 2, barHeight);
       }
+
+      // Progress indicator
+      if (progress > 0) {
+        const progressX = progress * canvas.width;
+        ctx.shadowColor = 'rgba(0, 255, 192, 0.9)';
+        ctx.shadowBlur = 15;
+        ctx.strokeStyle = 'rgba(0, 255, 192, 1)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(progressX, 0);
+        ctx.lineTo(progressX, canvas.height);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      timeRef.current += 0.05;
     };
 
     draw();
-  }, [isPlaying, drawStaticWaveform]);
+  }, [isPlaying, currentTime, audioDuration, drawSonicWaveform]);
 
   useEffect(() => {
     return () => {
@@ -173,12 +225,17 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
     };
   }, []);
 
-  // Draw static waveform on mount and when time updates
+  // Draw sonic waveform on mount and when time updates
   useEffect(() => {
     if (!isPlaying) {
-      drawStaticWaveform();
+      drawSonicWaveform(false);
     }
-  }, [isPlaying, currentTime, audioDuration, drawStaticWaveform]);
+    return () => {
+      if (staticAnimationRef.current) {
+        cancelAnimationFrame(staticAnimationRef.current);
+      }
+    };
+  }, [isPlaying, currentTime, audioDuration, drawSonicWaveform]);
 
   const initAudioContext = () => {
     if (!audioRef.current || audioContextRef.current) return;
@@ -201,8 +258,8 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
     if (audioRef.current) {
       setAudioDuration(audioRef.current.duration);
       setIsLoading(false);
-      // Draw initial static waveform
-      drawStaticWaveform();
+      // Draw initial sonic waveform
+      drawSonicWaveform(false);
     }
   };
 
@@ -231,8 +288,8 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
         if (animationRef.current) {
           cancelAnimationFrame(animationRef.current);
         }
-        // Redraw static waveform after pause
-        setTimeout(() => drawStaticWaveform(), 50);
+        // Redraw sonic waveform after pause
+        setTimeout(() => drawSonicWaveform(false), 50);
       } else {
         // Play the audio
         await audioRef.current.play();
@@ -288,8 +345,8 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-    // Redraw static waveform when ended
-    setTimeout(() => drawStaticWaveform(), 50);
+    // Redraw sonic waveform when ended
+    setTimeout(() => drawSonicWaveform(false), 50);
   };
 
   return (
