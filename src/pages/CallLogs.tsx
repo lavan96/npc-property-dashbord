@@ -966,8 +966,8 @@ const CallLogs = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Badge variant="secondary" className="text-sm">
-                            {selectedCall.call_intent.replace(/_/g, ' ')}
+                          <Badge variant="secondary" className="text-sm capitalize">
+                            {selectedCall.call_intent.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                           </Badge>
                         </CardContent>
                       </Card>
