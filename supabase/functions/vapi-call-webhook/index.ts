@@ -423,15 +423,41 @@ serve(async (req) => {
     // Hardcoded squad configuration for inbound calls
     const INBOUND_SQUAD_ID = 'a9656ea1-3575-4ac6-b985-fd138be06cc5';
     const INBOUND_SQUAD_NAME = 'Inbound Reception Squad';
-    const PRIMARY_INBOUND_AGENT = 'NPC inbound agent';
+    const PRIMARY_INBOUND_AGENT = 'NPC Inbound Agent';
     
-    // Known squad members for the inbound reception squad
-    const INBOUND_SQUAD_MEMBERS: SquadAssistant[] = [
-      { id: 'npc-inbound-agent', name: 'NPC inbound agent', role: 'receptionist' },
-      { id: 'discovery-booking-agent', name: 'Discovery Booking Agent', role: 'booking' },
-      { id: 'strategy-booking-agent', name: 'Strategy Session Agent', role: 'booking' },
-      { id: 'finance-consult-agent', name: 'Finance Consult Agent', role: 'booking' },
-    ];
+    // Primary frontdesk agent (always involved in inbound squad calls)
+    const FRONTDESK_AGENT: SquadAssistant = { 
+      id: 'npc-inbound-agent', 
+      name: 'NPC Inbound Agent', 
+      role: 'receptionist' 
+    };
+    
+    // Booking agents mapped by call intent
+    const BOOKING_AGENTS: Record<string, SquadAssistant> = {
+      'discovery_booking': { id: 'discovery-booking-agent', name: 'Discovery Booking Agent', role: 'booking' },
+      'strategy_booking': { id: 'strategy-booking-agent', name: 'Strategy Session Agent', role: 'booking' },
+      'finance_consult': { id: 'finance-consult-agent', name: 'Finance Consult Agent', role: 'booking' },
+    };
+    
+    // Helper function to get assistants based on call intent
+    const getAssistantsForIntent = (intent: string | null): SquadAssistant[] => {
+      const assistants: SquadAssistant[] = [FRONTDESK_AGENT];
+      if (intent && BOOKING_AGENTS[intent]) {
+        assistants.push(BOOKING_AGENTS[intent]);
+      }
+      return assistants;
+    };
+    
+    // Helper function to create handoff sequence based on intent
+    const createHandoffSequence = (intent: string | null): HandoffEvent[] => {
+      if (!intent || !BOOKING_AGENTS[intent]) return [];
+      return [{
+        fromAssistant: FRONTDESK_AGENT.id,
+        toAssistant: BOOKING_AGENTS[intent].id,
+        timestamp: new Date().toISOString(),
+        reason: `Call transferred based on intent: ${intent.replace(/_/g, ' ')}`
+      }];
+    };
 
     // Determine call direction early for squad assignment
     const callType = call.type;
@@ -510,23 +536,17 @@ serve(async (req) => {
     // Extract Squad-specific data
     const structuredDataMulti = message.analysis?.structuredDataMulti || [];
     
-    // Try to extract from messages first, fall back to known squad members for inbound calls
-    let assistantsInvolved = isSquadCall 
+    // Initialize assistants - will be populated based on call intent after AI analysis
+    let assistantsInvolved: SquadAssistant[] = isSquadCall 
       ? extractAssistantsInvolved(message.artifact?.messages, call.squad?.members)
       : [];
     
-    // If no assistants extracted and this is an inbound squad call, use known members
-    if (assistantsInvolved.length === 0 && isInboundCall && isSquadCall) {
-      assistantsInvolved = [...INBOUND_SQUAD_MEMBERS];
-      console.log('[Vapi Webhook] Using hardcoded squad members for inbound call');
-    }
-    
-    // Extract handoff sequence - try from messages, fall back to inferring from call intent
-    let handoffSequence = isSquadCall 
+    // Extract handoff sequence - will be populated based on call intent after AI analysis
+    let handoffSequence: HandoffEvent[] = isSquadCall 
       ? extractHandoffSequence(message.artifact?.messages)
       : [];
     
-    console.log('[Vapi Webhook] Squad data extracted:', {
+    console.log('[Vapi Webhook] Initial squad data extracted:', {
       assistantsInvolvedCount: assistantsInvolved.length,
       handoffCount: handoffSequence.length,
       structuredDataMultiCount: structuredDataMulti.length,
@@ -635,6 +655,17 @@ serve(async (req) => {
         keyTopics = aiAnalysis.keyTopics.map(capitalizeFirst);
         actionItems = aiAnalysis.actionItems.map(capitalizeFirst);
         callIntent = aiAnalysis.callIntent;
+        
+        // For inbound squad calls, populate assistants and handoff based on detected intent
+        if (isInboundCall && isSquadCall && assistantsInvolved.length === 0) {
+          assistantsInvolved = getAssistantsForIntent(callIntent);
+          handoffSequence = createHandoffSequence(callIntent);
+          console.log('[Vapi Webhook] Populated assistants based on intent:', {
+            callIntent,
+            assistantsCount: assistantsInvolved.length,
+            handoffCount: handoffSequence.length,
+          });
+        }
       }
     }
 
