@@ -669,6 +669,10 @@ serve(async (req) => {
       }
     }
 
+    // For end-of-call-report events, the call is definitively ended
+    // Force status to 'ended' regardless of what the payload says
+    const finalCallStatus = isEndOfCall ? 'ended' : getCallStatus(rawStatus);
+
     const callLogData = {
       vapi_call_id: call.id,
       agent_id: agentId,
@@ -676,7 +680,7 @@ serve(async (req) => {
       phone_number: phoneNumber,
       customer_name: customerName,
       call_direction: getCallDirection(),
-      call_status: getCallStatus(rawStatus),
+      call_status: finalCallStatus,
       call_outcome: getCallOutcome(rawEndedReason),
       started_at: startedAt,
       ended_at: endedAt,
