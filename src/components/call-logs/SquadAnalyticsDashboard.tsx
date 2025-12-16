@@ -36,9 +36,28 @@ interface SquadAnalyticsDashboardProps {
 
 const INTENT_COLORS: Record<string, string> = {
   discovery: '#3b82f6',
+  discovery_booking: '#3b82f6',
   strategy: '#8b5cf6',
+  strategy_session: '#8b5cf6',
   finance: '#10b981',
+  finance_consult: '#10b981',
   unknown: '#6b7280',
+};
+
+// Fallback colors for any intents not in the map
+const FALLBACK_COLORS = ['#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16', '#f97316'];
+
+const getIntentColor = (intent: string, index: number): string => {
+  const normalizedIntent = intent.toLowerCase().replace(/\s+/g, '_');
+  if (INTENT_COLORS[normalizedIntent]) {
+    return INTENT_COLORS[normalizedIntent];
+  }
+  // Check for partial matches
+  if (normalizedIntent.includes('discovery')) return '#3b82f6';
+  if (normalizedIntent.includes('strategy')) return '#8b5cf6';
+  if (normalizedIntent.includes('finance')) return '#10b981';
+  // Use fallback color based on index
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 };
 
 export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps) => {
@@ -69,10 +88,10 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
     });
     return Object.entries(counts)
       .filter(([_, count]) => count > 0)
-      .map(([name, value]) => ({
+      .map(([name, value], index) => ({
         name: name.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
         value,
-        color: INTENT_COLORS[name.toLowerCase()] || INTENT_COLORS.unknown,
+        color: getIntentColor(name, index),
       }))
       .sort((a, b) => b.value - a.value);
   }, [squadCalls]);
