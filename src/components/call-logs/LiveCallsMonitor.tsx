@@ -197,8 +197,8 @@ export const LiveCallsMonitor = () => {
                         </div>
 
                         {call.call_intent && (
-                          <Badge variant="secondary" className="text-xs">
-                            {call.call_intent.replace(/_/g, ' ')}
+                          <Badge variant="secondary" className="text-xs capitalize">
+                            {call.call_intent.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                           </Badge>
                         )}
                       </div>

@@ -420,9 +420,18 @@ serve(async (req) => {
     const rawStatus = message.status || call.status;
     const rawEndedReason = message.endedReason || call.endedReason;
 
-    // Hardcoded squad ID for inbound calls
+    // Hardcoded squad configuration for inbound calls
     const INBOUND_SQUAD_ID = 'a9656ea1-3575-4ac6-b985-fd138be06cc5';
     const INBOUND_SQUAD_NAME = 'Inbound Reception Squad';
+    const PRIMARY_INBOUND_AGENT = 'NPC inbound agent';
+    
+    // Known squad members for the inbound reception squad
+    const INBOUND_SQUAD_MEMBERS: SquadAssistant[] = [
+      { id: 'npc-inbound-agent', name: 'NPC inbound agent', role: 'receptionist' },
+      { id: 'discovery-booking-agent', name: 'Discovery Booking Agent', role: 'booking' },
+      { id: 'strategy-booking-agent', name: 'Strategy Session Agent', role: 'booking' },
+      { id: 'finance-consult-agent', name: 'Finance Consult Agent', role: 'booking' },
+    ];
 
     // Determine call direction early for squad assignment
     const callType = call.type;
@@ -500,10 +509,20 @@ serve(async (req) => {
     
     // Extract Squad-specific data
     const structuredDataMulti = message.analysis?.structuredDataMulti || [];
-    const assistantsInvolved = isSquadCall 
+    
+    // Try to extract from messages first, fall back to known squad members for inbound calls
+    let assistantsInvolved = isSquadCall 
       ? extractAssistantsInvolved(message.artifact?.messages, call.squad?.members)
       : [];
-    const handoffSequence = isSquadCall 
+    
+    // If no assistants extracted and this is an inbound squad call, use known members
+    if (assistantsInvolved.length === 0 && isInboundCall && isSquadCall) {
+      assistantsInvolved = [...INBOUND_SQUAD_MEMBERS];
+      console.log('[Vapi Webhook] Using hardcoded squad members for inbound call');
+    }
+    
+    // Extract handoff sequence - try from messages, fall back to inferring from call intent
+    let handoffSequence = isSquadCall 
       ? extractHandoffSequence(message.artifact?.messages)
       : [];
     
@@ -551,9 +570,11 @@ serve(async (req) => {
     const phoneNumber = call.customer?.number || call.phoneNumber?.number || null;
     let customerName = call.customer?.name || null;
 
-    // Get agent info - for squad calls, use the first assistant or primary
+    // Get agent info - for inbound squad calls, always use NPC inbound agent as primary
     const agentId = call.assistant?.id || call.assistantId || (assistantsInvolved[0]?.id) || null;
-    let agentName = call.assistant?.name || (assistantsInvolved[0]?.name) || null;
+    let agentName = isInboundCall && isSquadCall 
+      ? PRIMARY_INBOUND_AGENT 
+      : (call.assistant?.name || (assistantsInvolved[0]?.name) || null);
 
     // Cost - check multiple sources
     let cost: number | null = null;
