@@ -28,15 +28,15 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
 
     const wavesurfer = WaveSurfer.create({
       container: waveformRef.current,
-      waveColor: 'hsl(217, 91%, 60%)',
-      progressColor: 'hsl(217, 91%, 40%)',
-      cursorColor: 'hsl(0, 0%, 100%)',
-      cursorWidth: 2,
+      waveColor: '#000000',
+      progressColor: '#374151',
+      cursorColor: '#ef4444',
+      cursorWidth: 1,
       height: 80,
-      barWidth: 3,
+      barWidth: 1,
       barHeight: 1,
-      barGap: 2,
-      barRadius: 3,
+      barGap: 1,
+      barRadius: 0,
       normalize: true,
       fillParent: true,
       interact: true,
@@ -44,6 +44,8 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
       hideScrollbar: true,
       autoScroll: true,
       backend: 'WebAudio',
+      minPxPerSec: 50,
+      sampleRate: 16000,
     });
 
     wavesurferRef.current = wavesurfer;
@@ -142,13 +144,13 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
       </CardHeader>
       <CardContent className="space-y-4">
         {/* WaveSurfer Waveform */}
-        <div className="relative rounded-lg overflow-hidden border border-border/50 shadow-inner bg-slate-900/50 p-2">
+        <div className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-white p-2">
           <div 
             ref={waveformRef} 
             className="w-full min-h-[80px]"
           />
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                 <span className="text-sm text-muted-foreground">Loading audio...</span>
