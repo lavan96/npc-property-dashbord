@@ -401,8 +401,68 @@ serve(async (req) => {
 
     const call = message?.call;
 
-    // Only process end-of-call-report events - ignore intermediate status updates
-    // This prevents unnecessary updates during the call
+    // Handle status-update events for live call tracking
+    if (message?.type === 'status-update') {
+      const currentStatus = message.status || call?.status;
+      
+      // Only track calls that are starting or in progress
+      if (call?.id && ['in-progress', 'ringing', 'queued'].includes(currentStatus?.toLowerCase())) {
+        console.log('[Vapi Webhook] Processing status-update for live tracking:', { callId: call.id, status: currentStatus });
+        
+        // Determine call direction
+        const isInbound = call.type === 'inboundPhoneCall' || call.type === 'webCall';
+        const callDirection = isInbound ? 'inbound' : 'outbound';
+        
+        // Squad detection for inbound calls
+        const INBOUND_SQUAD_ID = 'a9656ea1-3575-4ac6-b985-fd138be06cc5';
+        const INBOUND_SQUAD_NAME = 'Inbound Reception Squad';
+        const PRIMARY_INBOUND_AGENT = 'NPC Inbound Agent';
+        
+        const isSquadCall = isInbound || !!(call.squadId || call.squad);
+        const squadId = isInbound ? INBOUND_SQUAD_ID : (call.squadId || call.squad?.id || null);
+        const squadName = isInbound ? INBOUND_SQUAD_NAME : (call.squad?.name || null);
+        const agentName = isInbound ? PRIMARY_INBOUND_AGENT : (call.assistant?.name || null);
+        
+        // Upsert minimal call record for live tracking
+        const { error: upsertError } = await supabase
+          .from('vapi_call_logs')
+          .upsert({
+            vapi_call_id: call.id,
+            call_status: currentStatus.toLowerCase(),
+            call_direction: callDirection,
+            agent_name: agentName,
+            agent_id: call.assistantId || call.assistant?.id || null,
+            phone_number: call.customer?.number || null,
+            started_at: call.startedAt || new Date().toISOString(),
+            is_squad_call: isSquadCall,
+            squad_id: squadId,
+            squad_name: squadName,
+          }, {
+            onConflict: 'vapi_call_id',
+            ignoreDuplicates: false,
+          });
+        
+        if (upsertError) {
+          console.error('[Vapi Webhook] Error upserting live call:', upsertError);
+        } else {
+          console.log('[Vapi Webhook] Live call tracking record created/updated for:', call.id);
+        }
+        
+        return new Response(JSON.stringify({ success: true, message: 'Live call tracked' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // If it's a status-update for 'ended', let it fall through to be ignored
+      // (the end-of-call-report will handle the final update)
+      console.log('[Vapi Webhook] Ignoring status-update:', currentStatus);
+      return new Response(JSON.stringify({ success: true, message: 'Skipping status-update' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Only process end-of-call-report events for full call data
+    // Ignore other intermediate events like speech-update, conversation-update
     if (message?.type !== 'end-of-call-report') {
       console.log('[Vapi Webhook] Ignoring non-final event:', message?.type);
       return new Response(JSON.stringify({ success: true, message: 'Skipping intermediate event' }), {
