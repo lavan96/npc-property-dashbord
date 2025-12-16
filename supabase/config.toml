@@ -192,3 +192,6 @@ verify_jwt = false
 
 [functions.send-weekly-call-report]
 verify_jwt = false
+
+[functions.cleanup-stale-calls]
+verify_jwt = false
