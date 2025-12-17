@@ -92,7 +92,7 @@ export default function GeneratedReports() {
   const [scopeFilter, setScopeFilter] = useState<string>('all'); // Filter by scope
   const [gradeFilter, setGradeFilter] = useState<string>('all'); // Filter by investment grade
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]); // Filter by score range
-  const reportsPerPage = 9;
+  const reportsPerPage = 50;
   
   const navigate = useNavigate();
   const { toast } = useToast();
