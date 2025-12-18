@@ -305,9 +305,9 @@ No investment report has been uploaded. You are having an open conversation abou
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "openai/gpt-5",
+          model: "google/gemini-2.5-flash",
           messages,
-          max_completion_tokens: 4096,
+          max_tokens: 4096,
         }),
       });
 
