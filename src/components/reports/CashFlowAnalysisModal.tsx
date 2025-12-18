@@ -127,6 +127,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // AI-powered comparison analysis state
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [isGeneratingAiAnalysis, setIsGeneratingAiAnalysis] = useState(false);
+  const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
+  const [isSavingAnalysis, setIsSavingAnalysis] = useState(false);
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
 
   // Comparison chart colors for up to 5 properties
   const COMPARISON_COLORS = [
@@ -148,8 +151,50 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setSelectedComparisonReportIds([]);
       setComparisonReports([]);
       setAiAnalysis(null);
+      setSavedAnalysisId(null);
     }
   }, [report, isOpen]);
+
+  // Load saved AI analysis when comparison reports are selected
+  useEffect(() => {
+    if (comparisonMode && report && selectedComparisonReportIds.length > 0) {
+      const loadSavedAnalysis = async () => {
+        setIsLoadingAnalysis(true);
+        try {
+          const sortedComparisonIds = [...selectedComparisonReportIds].sort();
+          
+          const { data, error } = await supabase
+            .from('cash_flow_analyses')
+            .select('*')
+            .eq('primary_report_id', report.id)
+            .contains('comparison_report_ids', sortedComparisonIds)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (error) throw error;
+          
+          if (data && data.comparison_report_ids.length === sortedComparisonIds.length) {
+            setAiAnalysis(data.analysis_data);
+            setSavedAnalysisId(data.id);
+            setInvestorProfile((data.investor_profile as 'growth' | 'income' | 'balanced') || 'balanced');
+            toast({
+              title: "Analysis Loaded",
+              description: "Previously saved analysis has been loaded.",
+            });
+          } else {
+            setAiAnalysis(null);
+            setSavedAnalysisId(null);
+          }
+        } catch (error) {
+          console.error('Error loading saved analysis:', error);
+        } finally {
+          setIsLoadingAnalysis(false);
+        }
+      };
+      loadSavedAnalysis();
+    }
+  }, [comparisonMode, report, selectedComparisonReportIds, toast]);
 
   // Fetch available reports for comparison when comparison mode is enabled
   useEffect(() => {
@@ -842,6 +887,64 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setIsGeneratingAiAnalysis(false);
     }
   }, [report, comparisonReports, projections, primaryMetrics, allComparisonProjections, allComparisonMetrics, investorProfile, toast]);
+
+  // Save AI analysis to database
+  const saveAiAnalysis = useCallback(async () => {
+    if (!report || !aiAnalysis || comparisonReports.length === 0) return;
+    
+    setIsSavingAnalysis(true);
+    try {
+      const sortedComparisonIds = comparisonReports.map(r => r.id).sort();
+      
+      if (savedAnalysisId) {
+        // Update existing
+        const { error } = await supabase
+          .from('cash_flow_analyses')
+          .update({
+            analysis_data: aiAnalysis,
+            investor_profile: investorProfile,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', savedAnalysisId);
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Analysis Updated",
+          description: "Your cash flow analysis has been updated.",
+        });
+      } else {
+        // Insert new
+        const { data, error } = await supabase
+          .from('cash_flow_analyses')
+          .insert({
+            primary_report_id: report.id,
+            comparison_report_ids: sortedComparisonIds,
+            analysis_data: aiAnalysis,
+            investor_profile: investorProfile,
+          })
+          .select('id')
+          .single();
+        
+        if (error) throw error;
+        
+        setSavedAnalysisId(data.id);
+        toast({
+          title: "Analysis Saved",
+          description: "Your cash flow analysis has been saved and can be viewed later.",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error saving AI analysis:', error);
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save the analysis.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingAnalysis(false);
+    }
+  }, [report, aiAnalysis, comparisonReports, savedAnalysisId, investorProfile, toast]);
 
   const propertyRecommendation = useMemo(() => {
     if (!primaryMetrics || comparisonReports.length === 0 || !report) return null;
@@ -2258,21 +2361,49 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       AI-Powered Cash Flow Analysis
                     </CardTitle>
                     <div className="flex items-center gap-2">
+                      {isLoadingAnalysis && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <RotateCcw className="h-3 w-3 animate-spin" />
+                          Loading...
+                        </Badge>
+                      )}
+                      {savedAnalysisId && (
+                        <Badge variant="secondary" className="text-xs gap-1">
+                          <Save className="h-3 w-3" />
+                          Saved
+                        </Badge>
+                      )}
                       {aiAnalysis && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={exportAiAnalysisPDF}
-                          className="gap-1"
-                        >
-                          <Download className="h-3 w-3" />
-                          Export AI Analysis
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={saveAiAnalysis}
+                            disabled={isSavingAnalysis}
+                            className="gap-1"
+                          >
+                            {isSavingAnalysis ? (
+                              <RotateCcw className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Save className="h-3 w-3" />
+                            )}
+                            {savedAnalysisId ? 'Update' : 'Save'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={exportAiAnalysisPDF}
+                            className="gap-1"
+                          >
+                            <Download className="h-3 w-3" />
+                            Export PDF
+                          </Button>
+                        </>
                       )}
                       <Button
                         size="sm"
                         onClick={generateAiAnalysis}
-                        disabled={isGeneratingAiAnalysis}
+                        disabled={isGeneratingAiAnalysis || isLoadingAnalysis}
                         className="bg-blue-600 hover:bg-blue-700"
                       >
                         {isGeneratingAiAnalysis ? (
