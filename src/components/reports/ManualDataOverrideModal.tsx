@@ -6,9 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator } from 'lucide-react';
 
 interface InvestmentReport {
   id: string;
@@ -31,6 +33,9 @@ interface OverrideField {
   overrideValue: number | string | null;
   prefix?: string;
   suffix?: string;
+  type?: 'number' | 'select';
+  options?: { value: string; label: string }[];
+  isCashFlowField?: boolean; // New fields for cash flow analysis
 }
 
 export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: ManualDataOverrideModalProps) {
@@ -38,9 +43,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [saving, setSaving] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number | string>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
 
   // Define the confirmed input fields for manual overrides
-  const fields: OverrideField[] = [
+  // Grouped by category for better organization
+  const purchaseLoanFields: OverrideField[] = [
     {
       key: 'purchasePrice',
       label: 'Purchase Price',
@@ -63,6 +70,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$'
     },
     {
+      key: 'marketValueNow',
+      label: 'Market Value Now',
+      originalValue: report?.financial_calculations?.marketValueNow || null,
+      overrideValue: report?.manual_overrides?.marketValueNow || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
       key: 'depositValue',
       label: 'Deposit Value',
       originalValue: report?.financial_calculations?.depositValue || null,
@@ -70,11 +85,39 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$'
     },
     {
+      key: 'loanAmount',
+      label: 'Loan Amount',
+      originalValue: report?.financial_calculations?.loanAmount || null,
+      overrideValue: report?.manual_overrides?.loanAmount || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
       key: 'loanToValueRatio',
       label: 'Loan to Value Ratio',
       originalValue: report?.financial_calculations?.loanToValueRatio || null,
       overrideValue: report?.manual_overrides?.loanToValueRatio || null,
       suffix: '%'
+    },
+    {
+      key: 'loanType',
+      label: 'Loan Type',
+      originalValue: report?.financial_calculations?.loanType || null,
+      overrideValue: report?.manual_overrides?.loanType || null,
+      type: 'select',
+      options: [
+        { value: 'interest_only', label: 'Interest Only' },
+        { value: 'principal_interest', label: 'Principal & Interest' }
+      ],
+      isCashFlowField: true
+    },
+    {
+      key: 'loanTermYears',
+      label: 'Loan Term',
+      originalValue: report?.financial_calculations?.loanTermYears || null,
+      overrideValue: report?.manual_overrides?.loanTermYears || null,
+      suffix: 'years',
+      isCashFlowField: true
     },
     {
       key: 'interestRate',
@@ -90,6 +133,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.capitalGrowth || null,
       suffix: '%'
     },
+  ];
+
+  const rentalIncomeFields: OverrideField[] = [
     {
       key: 'weeklyRent',
       label: 'Weekly Rent',
@@ -97,6 +143,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.weeklyRent || null,
       prefix: '$'
     },
+    {
+      key: 'occupancyRate',
+      label: 'Occupancy Rate',
+      originalValue: report?.financial_calculations?.occupancyRate || 52,
+      overrideValue: report?.manual_overrides?.occupancyRate || null,
+      suffix: 'weeks/year',
+      isCashFlowField: true
+    },
+  ];
+
+  const annualExpenseFields: OverrideField[] = [
     {
       key: 'stampDuty',
       label: 'Stamp Duty',
@@ -167,6 +224,43 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.lettingFees || null,
       prefix: '$'
     },
+  ];
+
+  const taxGrowthFields: OverrideField[] = [
+    {
+      key: 'cpiGrowthRate',
+      label: 'CPI / Expense Growth Rate',
+      originalValue: report?.financial_calculations?.cpiGrowthRate || 3,
+      overrideValue: report?.manual_overrides?.cpiGrowthRate || null,
+      suffix: '%',
+      isCashFlowField: true
+    },
+    {
+      key: 'depreciation',
+      label: 'Annual Depreciation',
+      originalValue: report?.financial_calculations?.depreciation || null,
+      overrideValue: report?.manual_overrides?.depreciation || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
+      key: 'taxRate',
+      label: 'Tax Rate (Marginal)',
+      originalValue: report?.financial_calculations?.taxRate || 30,
+      overrideValue: report?.manual_overrides?.taxRate || null,
+      suffix: '%',
+      isCashFlowField: true
+    },
+    {
+      key: 'constructionYear',
+      label: 'Construction Year',
+      originalValue: report?.financial_calculations?.constructionYear || null,
+      overrideValue: report?.manual_overrides?.constructionYear || null,
+      isCashFlowField: true
+    },
+  ];
+
+  const propertySpecFields: OverrideField[] = [
     {
       key: 'landSizeSqm',
       label: 'Land Size',
@@ -183,19 +277,50 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }
   ];
 
+  // Combined fields for legacy support
+  const fields: OverrideField[] = [
+    ...purchaseLoanFields,
+    ...rentalIncomeFields,
+    ...annualExpenseFields,
+    ...taxGrowthFields,
+    ...propertySpecFields
+  ];
+
   useEffect(() => {
     if (report && isOpen) {
       // Initialize overrides from existing manual_overrides
       setOverrides(report.manual_overrides || {});
+      // Initialize cash flow field toggles (default: don't include new fields in investment report)
+      const defaultToggles: Record<string, boolean> = {};
+      fields.filter(f => f.isCashFlowField).forEach(f => {
+        defaultToggles[f.key] = report.manual_overrides?.cashFlowFieldToggles?.[f.key] ?? false;
+      });
+      setCashFlowFieldToggles(defaultToggles);
       setHasChanges(false);
     }
   }, [report, isOpen]);
 
   const handleOverrideChange = (key: string, value: string) => {
-    const numValue = value === '' ? null : parseFloat(value);
-    setOverrides(prev => ({
+    const field = fields.find(f => f.key === key);
+    if (field?.type === 'select') {
+      setOverrides(prev => ({
+        ...prev,
+        [key]: value || null
+      }));
+    } else {
+      const numValue = value === '' ? null : parseFloat(value);
+      setOverrides(prev => ({
+        ...prev,
+        [key]: numValue
+      }));
+    }
+    setHasChanges(true);
+  };
+
+  const handleToggleChange = (key: string, enabled: boolean) => {
+    setCashFlowFieldToggles(prev => ({
       ...prev,
-      [key]: numValue
+      [key]: enabled
     }));
     setHasChanges(true);
   };
@@ -209,6 +334,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   const handleResetAll = () => {
     setOverrides({});
+    const defaultToggles: Record<string, boolean> = {};
+    fields.filter(f => f.isCashFlowField).forEach(f => {
+      defaultToggles[f.key] = false;
+    });
+    setCashFlowFieldToggles(defaultToggles);
     setHasChanges(true);
   };
 
@@ -243,7 +373,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         'buildPrice': 'initialCosts.buildPrice',
         'landPrice': 'initialCosts.landPrice',
         'landSizeSqm': 'propertySpecs.landSizeSqm',
-        'buildSizeSqm': 'propertySpecs.buildSizeSqm'
+        'buildSizeSqm': 'propertySpecs.buildSizeSqm',
+        // New cash flow fields
+        'marketValueNow': 'cashFlow.marketValueNow',
+        'loanAmount': 'cashFlow.loanAmount',
+        'loanType': 'cashFlow.loanType',
+        'loanTermYears': 'cashFlow.loanTermYears',
+        'occupancyRate': 'cashFlow.occupancyRate',
+        'cpiGrowthRate': 'cashFlow.cpiGrowthRate',
+        'depreciation': 'cashFlow.depreciation',
+        'taxRate': 'cashFlow.taxRate',
+        'constructionYear': 'cashFlow.constructionYear'
       };
       
       // Apply overrides to nested structure
@@ -299,11 +439,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       
       console.log('📊 Recalculated totalAnnual:', mergedFinancialData.annualCosts.totalAnnual);
       
+      // Save overrides with cash flow field toggles
+      const overridesWithToggles = {
+        ...overrides,
+        cashFlowFieldToggles
+      };
+      
       // Update database with merged data (NO Perplexity call)
       const { error: updateError } = await supabase
         .from('investment_reports')
         .update({ 
-          manual_overrides: overrides,
+          manual_overrides: overridesWithToggles,
           financial_calculations: mergedFinancialData,
           updated_at: new Date().toISOString()
         })
@@ -338,6 +484,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   const formatValue = (value: number | string | null, prefix?: string, suffix?: string) => {
     if (value === null || value === undefined) return 'Not available';
+    if (typeof value === 'string') {
+      // For select fields, display the label
+      if (value === 'interest_only') return 'Interest Only';
+      if (value === 'principal_interest') return 'Principal & Interest';
+      return value;
+    }
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     return `${prefix || ''}${numValue.toLocaleString()}${suffix || ''}`;
   };
@@ -354,6 +506,100 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     return overrides[key] !== undefined && overrides[key] !== null;
   };
 
+  const renderField = (field: OverrideField, showSeparator: boolean = true) => (
+    <div key={field.key} className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Label className="text-base font-semibold">{field.label}</Label>
+          {hasOverride(field.key) && (
+            <Badge variant="secondary" className="text-xs">
+              Overridden
+            </Badge>
+          )}
+          {field.isCashFlowField && (
+            <Badge variant="outline" className="text-xs bg-primary/10">
+              <Calculator className="h-3 w-3 mr-1" />
+              Cash Flow
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {field.isCashFlowField && (
+            <div className="flex items-center gap-2 mr-2">
+              <Label className="text-xs text-muted-foreground">Include in Report</Label>
+              <Switch
+                checked={cashFlowFieldToggles[field.key] || false}
+                onCheckedChange={(checked) => handleToggleChange(field.key, checked)}
+              />
+            </div>
+          )}
+          {hasOverride(field.key) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleReset(field.key)}
+              className="h-8 text-xs"
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Original Value */}
+        <div className="space-y-2">
+          <Label className="text-sm text-muted-foreground">Original Value (API)</Label>
+          <div className="flex items-center h-10 px-3 py-2 rounded-md border bg-muted/50 text-muted-foreground">
+            {formatValue(field.originalValue, field.prefix, field.suffix)}
+          </div>
+        </div>
+
+        {/* Override Value */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Manual Override</Label>
+          <div className="flex items-center gap-2">
+            {field.type === 'select' ? (
+              <Select
+                value={getFieldValue(field) as string || ''}
+                onValueChange={(value) => handleOverrideChange(field.key, value)}
+              >
+                <SelectTrigger className={hasOverride(field.key) ? 'border-primary' : ''}>
+                  <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {field.options?.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <>
+                {field.prefix && (
+                  <span className="text-muted-foreground">{field.prefix}</span>
+                )}
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  value={getFieldValue(field)}
+                  onChange={(e) => handleOverrideChange(field.key, e.target.value)}
+                  className={hasOverride(field.key) ? 'border-primary' : ''}
+                />
+                {field.suffix && (
+                  <span className="text-muted-foreground text-sm whitespace-nowrap">{field.suffix}</span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showSeparator && <Separator className="mt-4" />}
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col gap-0 p-0">
@@ -364,7 +610,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
               Manual Data Override
             </DialogTitle>
             <DialogDescription>
-              Override inaccurate data from external sources. Original values are preserved for reference.
+              Override inaccurate data from external sources. Fields marked with <Calculator className="h-3 w-3 inline mx-1" /> are for 10-year cash flow analysis - toggle "Include in Report" to show them in the investment report PDF.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -373,64 +619,68 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
         <ScrollArea className="flex-1 overflow-y-auto px-6">
           <div className="space-y-6 py-4">
-            {fields.map((field, index) => (
-              <div key={field.key} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-base font-semibold">{field.label}</Label>
-                    {hasOverride(field.key) && (
-                      <Badge variant="secondary" className="text-xs">
-                        Overridden
-                      </Badge>
-                    )}
-                  </div>
-                  {hasOverride(field.key) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleReset(field.key)}
-                      className="h-8 text-xs"
-                    >
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Reset
-                    </Button>
-                  )}
-                </div>
+            {/* Purchase & Loan Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full"></span>
+                Purchase & Loan Details
+              </h3>
+              {purchaseLoanFields.map((field, index) => 
+                renderField(field, index < purchaseLoanFields.length - 1)
+              )}
+            </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Original Value */}
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">Original Value (API)</Label>
-                    <div className="flex items-center h-10 px-3 py-2 rounded-md border bg-muted/50 text-muted-foreground">
-                      {formatValue(field.originalValue, field.prefix, field.suffix)}
-                    </div>
-                  </div>
+            <Separator className="my-6" />
 
-                  {/* Override Value */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Manual Override</Label>
-                    <div className="flex items-center gap-2">
-                      {field.prefix && (
-                        <span className="text-muted-foreground">{field.prefix}</span>
-                      )}
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder={`Enter ${field.label.toLowerCase()}`}
-                        value={getFieldValue(field)}
-                        onChange={(e) => handleOverrideChange(field.key, e.target.value)}
-                        className={hasOverride(field.key) ? 'border-primary' : ''}
-                      />
-                      {field.suffix && (
-                        <span className="text-muted-foreground text-sm whitespace-nowrap">{field.suffix}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+            {/* Rental Income Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full"></span>
+                Rental Income
+              </h3>
+              {rentalIncomeFields.map((field, index) => 
+                renderField(field, index < rentalIncomeFields.length - 1)
+              )}
+            </div>
 
-                {index < fields.length - 1 && <Separator className="mt-4" />}
-              </div>
-            ))}
+            <Separator className="my-6" />
+
+            {/* Annual Operating Expenses Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full"></span>
+                Annual Operating Expenses
+              </h3>
+              {annualExpenseFields.map((field, index) => 
+                renderField(field, index < annualExpenseFields.length - 1)
+              )}
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Tax & Growth Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full"></span>
+                Tax & Growth Settings
+              </h3>
+              {taxGrowthFields.map((field, index) => 
+                renderField(field, index < taxGrowthFields.length - 1)
+              )}
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Property Specifications Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <span className="w-2 h-2 bg-primary rounded-full"></span>
+                Property Specifications
+              </h3>
+              {propertySpecFields.map((field, index) => 
+                renderField(field, index < propertySpecFields.length - 1)
+              )}
+            </div>
           </div>
         </ScrollArea>
 
