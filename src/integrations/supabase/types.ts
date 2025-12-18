@@ -477,6 +477,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_flow_analyses: {
+        Row: {
+          analysis_data: Json
+          comparison_report_ids: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          investor_profile: string | null
+          primary_report_id: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_data: Json
+          comparison_report_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          investor_profile?: string | null
+          primary_report_id: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_data?: Json
+          comparison_report_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          investor_profile?: string | null
+          primary_report_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_flow_analyses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_flow_analyses_primary_report_id_fkey"
+            columns: ["primary_report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chart_analysis: {
         Row: {
           analysis_text: string
