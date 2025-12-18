@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface InvestmentReport {
@@ -122,6 +122,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [selectedComparisonReportId, setSelectedComparisonReportId] = useState<string | null>(null);
   const [comparisonReport, setComparisonReport] = useState<InvestmentReport | null>(null);
   const [loadingReports, setLoadingReports] = useState(false);
+  const [investorProfile, setInvestorProfile] = useState<'growth' | 'income' | 'balanced'>('balanced');
 
   // Initialize overrides from report when modal opens
   useEffect(() => {
@@ -746,6 +747,129 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     
     return calculateAdvancedMetrics(comparisonProjections, compBaseData);
   }, [comparisonReport, comparisonProjections, calculateAdvancedMetrics]);
+
+  // Property recommendation engine based on investor profile
+  const propertyRecommendation = useMemo(() => {
+    if (!primaryMetrics || !comparisonMetrics || !report || !comparisonReport) return null;
+
+    const primaryName = report.property_address.split(',')[0];
+    const compName = comparisonReport.property_address.split(',')[0];
+
+    // Calculate profile-specific scores
+    const getProfileScore = (metrics: typeof primaryMetrics, profile: 'growth' | 'income' | 'balanced') => {
+      if (!metrics) return 0;
+      
+      switch (profile) {
+        case 'growth':
+          // Growth investors prioritize: Capital Gain, ROI, Total Return, Equity Growth
+          return (
+            (metrics.capitalGain / 100000) * 30 +  // Capital gain weight
+            (metrics.roi) * 25 +                    // ROI weight
+            (metrics.annualizedRoi) * 20 +          // Annualized ROI weight
+            (metrics.equityMultiple) * 25           // Equity multiple weight
+          );
+        case 'income':
+          // Income investors prioritize: Cash Flow, Cash-on-Cash, Early Break-even
+          return (
+            (metrics.totalCashFlow > 0 ? metrics.totalCashFlow / 1000 : metrics.totalCashFlow / 500) * 35 +  // Cash flow weight
+            (metrics.cashOnCash * 10) * 30 +        // Cash-on-cash weight
+            ((10 - (metrics.breakEvenYear || 10)) * 10) * 20 +  // Break-even (earlier is better)
+            (projections[1]?.grossYield || 0) * 15  // Year 1 yield weight
+          );
+        case 'balanced':
+          // Balanced investors want good mix of both
+          return (
+            (metrics.capitalGain / 100000) * 20 +
+            (metrics.roi) * 15 +
+            (metrics.totalCashFlow > 0 ? metrics.totalCashFlow / 1000 : metrics.totalCashFlow / 500) * 25 +
+            (metrics.cashOnCash * 10) * 15 +
+            (metrics.equityMultiple) * 15 +
+            ((10 - (metrics.breakEvenYear || 10)) * 5) * 10
+          );
+      }
+    };
+
+    const primaryScore = getProfileScore(primaryMetrics, investorProfile);
+    const compScore = getProfileScore(comparisonMetrics, investorProfile);
+
+    const winner = primaryScore > compScore ? 'primary' : 'comparison';
+    const winnerName = winner === 'primary' ? primaryName : compName;
+    const loserName = winner === 'primary' ? compName : primaryName;
+    const scoreDiff = Math.abs(primaryScore - compScore);
+    const confidence = scoreDiff > 50 ? 'high' : scoreDiff > 20 ? 'moderate' : 'marginal';
+
+    // Generate profile-specific insights
+    const getInsights = () => {
+      const winnerMetrics = winner === 'primary' ? primaryMetrics : comparisonMetrics;
+      const loserMetrics = winner === 'primary' ? comparisonMetrics : primaryMetrics;
+
+      const insights: string[] = [];
+
+      switch (investorProfile) {
+        case 'growth':
+          if ((winnerMetrics?.capitalGain || 0) > (loserMetrics?.capitalGain || 0)) {
+            insights.push(`${winnerName} delivers $${((winnerMetrics?.capitalGain || 0) - (loserMetrics?.capitalGain || 0)).toLocaleString()} more in capital gains over 10 years`);
+          }
+          if ((winnerMetrics?.roi || 0) > (loserMetrics?.roi || 0)) {
+            insights.push(`Higher overall ROI of ${winnerMetrics?.roi?.toFixed(1)}% vs ${loserMetrics?.roi?.toFixed(1)}%`);
+          }
+          if ((winnerMetrics?.equityMultiple || 0) > (loserMetrics?.equityMultiple || 0)) {
+            insights.push(`Better equity growth with ${winnerMetrics?.equityMultiple?.toFixed(2)}x equity multiple`);
+          }
+          break;
+        case 'income':
+          if ((winnerMetrics?.totalCashFlow || 0) > (loserMetrics?.totalCashFlow || 0)) {
+            insights.push(`${winnerName} generates $${((winnerMetrics?.totalCashFlow || 0) - (loserMetrics?.totalCashFlow || 0)).toLocaleString()} more in total cash flow`);
+          }
+          if ((winnerMetrics?.cashOnCash || 0) > (loserMetrics?.cashOnCash || 0)) {
+            insights.push(`Superior Year 1 cash-on-cash return of ${winnerMetrics?.cashOnCash?.toFixed(2)}%`);
+          }
+          if ((winnerMetrics?.breakEvenYear || 99) < (loserMetrics?.breakEvenYear || 99)) {
+            insights.push(`Achieves positive cash flow ${(loserMetrics?.breakEvenYear || 10) - (winnerMetrics?.breakEvenYear || 10)} years earlier`);
+          }
+          break;
+        case 'balanced':
+          insights.push(`${winnerName} offers the best balance of growth and income potential`);
+          if ((winnerMetrics?.totalReturn || 0) > (loserMetrics?.totalReturn || 0)) {
+            insights.push(`Total 10-year return is $${((winnerMetrics?.totalReturn || 0) - (loserMetrics?.totalReturn || 0)).toLocaleString()} higher`);
+          }
+          break;
+      }
+
+      return insights.slice(0, 3);
+    };
+
+    // Generate considerations (pros of the loser property)
+    const getConsiderations = () => {
+      const winnerMetrics = winner === 'primary' ? primaryMetrics : comparisonMetrics;
+      const loserMetrics = winner === 'primary' ? comparisonMetrics : primaryMetrics;
+
+      const considerations: string[] = [];
+
+      if ((loserMetrics?.totalCashFlow || 0) > (winnerMetrics?.totalCashFlow || 0)) {
+        considerations.push(`${loserName} has better cash flow characteristics`);
+      }
+      if ((loserMetrics?.capitalGain || 0) > (winnerMetrics?.capitalGain || 0)) {
+        considerations.push(`${loserName} has higher capital growth potential`);
+      }
+      if ((loserMetrics?.breakEvenYear || 99) < (winnerMetrics?.breakEvenYear || 99)) {
+        considerations.push(`${loserName} reaches positive cash flow sooner`);
+      }
+
+      return considerations.slice(0, 2);
+    };
+
+    return {
+      winner,
+      winnerName,
+      loserName,
+      primaryScore: Math.round(primaryScore),
+      compScore: Math.round(compScore),
+      confidence,
+      insights: getInsights(),
+      considerations: getConsiderations()
+    };
+  }, [primaryMetrics, comparisonMetrics, report, comparisonReport, investorProfile, projections]);
 
   // PDF Export function for comparison
   const exportComparisonPDF = useCallback(async () => {
@@ -1667,6 +1791,134 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </Table>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Property Recommendation Engine */}
+            {comparisonMode && comparisonReport && propertyRecommendation && (
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Target className="h-4 w-4 text-amber-600" />
+                      Investment Recommendation Engine
+                    </CardTitle>
+                    <Select value={investorProfile} onValueChange={(v) => setInvestorProfile(v as any)}>
+                      <SelectTrigger className="w-[180px] h-8">
+                        <SelectValue placeholder="Select Profile" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="growth">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-3 w-3 text-blue-500" />
+                            Growth Focused
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="income">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-3 w-3 text-green-500" />
+                            Income Focused
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="balanced">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-3 w-3 text-purple-500" />
+                            Balanced
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Profile Description */}
+                  <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                    {investorProfile === 'growth' && (
+                      <span><strong>Growth Focused:</strong> Prioritizes capital appreciation, ROI, and equity growth over immediate cash flow.</span>
+                    )}
+                    {investorProfile === 'income' && (
+                      <span><strong>Income Focused:</strong> Prioritizes positive cash flow, high rental yields, and early break-even.</span>
+                    )}
+                    {investorProfile === 'balanced' && (
+                      <span><strong>Balanced:</strong> Seeks optimal mix of capital growth and income generation.</span>
+                    )}
+                  </div>
+
+                  {/* Recommendation Result */}
+                  <div className="flex items-start gap-4 p-4 rounded-lg border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 to-transparent">
+                    <Award className={`h-10 w-10 ${propertyRecommendation.confidence === 'high' ? 'text-amber-500' : propertyRecommendation.confidence === 'moderate' ? 'text-amber-400' : 'text-amber-300'}`} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-lg">
+                          {propertyRecommendation.winnerName}
+                        </h4>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            propertyRecommendation.confidence === 'high' 
+                              ? 'border-green-500 text-green-600' 
+                              : propertyRecommendation.confidence === 'moderate'
+                              ? 'border-amber-500 text-amber-600'
+                              : 'border-gray-500 text-gray-600'
+                          }`}
+                        >
+                          {propertyRecommendation.confidence} confidence
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Best suited for {investorProfile === 'growth' ? 'growth-focused' : investorProfile === 'income' ? 'income-focused' : 'balanced'} investors
+                      </p>
+                      
+                      {/* Score comparison */}
+                      <div className="flex gap-4 mb-3">
+                        <div className={`text-center px-3 py-1 rounded ${propertyRecommendation.winner === 'primary' ? 'bg-green-500/20 border border-green-500/40' : 'bg-muted/50'}`}>
+                          <div className="text-xs text-muted-foreground">{report?.property_address.split(',')[0]}</div>
+                          <div className="font-semibold">{propertyRecommendation.primaryScore} pts</div>
+                        </div>
+                        <div className={`text-center px-3 py-1 rounded ${propertyRecommendation.winner === 'comparison' ? 'bg-green-500/20 border border-green-500/40' : 'bg-muted/50'}`}>
+                          <div className="text-xs text-muted-foreground">{comparisonReport.property_address.split(',')[0]}</div>
+                          <div className="font-semibold">{propertyRecommendation.compScore} pts</div>
+                        </div>
+                      </div>
+
+                      {/* Key Insights */}
+                      {propertyRecommendation.insights.length > 0 && (
+                        <div className="mb-3">
+                          <div className="text-xs font-semibold text-green-600 mb-1">Key Advantages:</div>
+                          <ul className="text-xs space-y-1">
+                            {propertyRecommendation.insights.map((insight, i) => (
+                              <li key={i} className="flex items-start gap-1">
+                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span>{insight}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Considerations */}
+                      {propertyRecommendation.considerations.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-amber-600 mb-1">Considerations:</div>
+                          <ul className="text-xs space-y-1">
+                            {propertyRecommendation.considerations.map((consideration, i) => (
+                              <li key={i} className="flex items-start gap-1">
+                                <span className="text-amber-500 mt-0.5">•</span>
+                                <span>{consideration}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Disclaimer */}
+                  <p className="text-[10px] text-muted-foreground italic">
+                    This recommendation is based on projected data and the selected investor profile. Actual results may vary. 
+                    Always conduct thorough due diligence before making investment decisions.
+                  </p>
                 </CardContent>
               </Card>
             )}
