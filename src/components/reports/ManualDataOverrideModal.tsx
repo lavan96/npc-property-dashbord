@@ -8,9 +8,10 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface InvestmentReport {
   id: string;
@@ -45,6 +46,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [hasChanges, setHasChanges] = useState(false);
   const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
   const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
+  const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
 
   // Define the confirmed input fields for manual overrides
   // Grouped by category for better organization
@@ -688,6 +690,71 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                   }}
                 />
               </div>
+
+              {/* Washington Brown Depreciation Calculator */}
+              <Collapsible 
+                open={showDepreciationCalculator} 
+                onOpenChange={setShowDepreciationCalculator}
+                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Calculator className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-foreground">Washington Brown Depreciation Calculator</p>
+                        <p className="text-sm text-muted-foreground">
+                          Calculate accurate tax depreciation estimates for this property
+                        </p>
+                      </div>
+                    </div>
+                    {showDepreciationCalculator ? (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <Separator />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ExternalLink className="h-4 w-4" />
+                      <span>Powered by Washington Brown - Australia's leading quantity surveyors</span>
+                    </div>
+                    
+                    {/* Iframe Container */}
+                    <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
+                      <iframe 
+                        src="https://www.washingtonbrown.com.au/public/static/external/"
+                        className="w-full border-0"
+                        style={{ 
+                          height: '680px',
+                          minHeight: '680px'
+                        }}
+                        title="Washington Brown Depreciation Calculator"
+                        loading="lazy"
+                      />
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
+                      <p className="text-sm font-medium text-foreground">How to use:</p>
+                      <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                        <li>Enter the property details in the calculator above</li>
+                        <li>Click "Calculate" to get the depreciation estimate</li>
+                        <li>Copy the <strong>Year 1</strong> depreciation value (either Diminishing Value or Prime Cost)</li>
+                        <li>Enter that value in the "Annual Depreciation" field below</li>
+                      </ol>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
               
               {taxGrowthFields.map((field, index) => 
                 renderField(field, index < taxGrowthFields.length - 1)
