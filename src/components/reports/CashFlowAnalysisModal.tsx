@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface InvestmentReport {
   id: string;
@@ -753,6 +754,82 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </CardContent>
               </Card>
             </div>
+
+            {/* Cash Flow Trends Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  10-Year Cash Flow Trends
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={projections.filter(p => p.year >= 1).map(p => ({
+                        year: `Year ${p.year}`,
+                        'Property Value': p.propertyMarketValue,
+                        'Rental Income': p.rentalIncome,
+                        'Cash Flow (After Tax)': p.afterTaxCashFlowPA,
+                        'Equity': p.equityInProperty,
+                      }))}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="year" className="text-xs" tick={{ fontSize: 11 }} />
+                      <YAxis 
+                        className="text-xs" 
+                        tick={{ fontSize: 11 }} 
+                        tickFormatter={(value) => {
+                          if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+                          if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+                          return `$${value}`;
+                        }}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [`$${value.toLocaleString()}`, undefined]}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--background))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Property Value" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Equity" 
+                        stroke="#22c55e" 
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Rental Income" 
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="Cash Flow (After Tax)" 
+                        stroke="#8b5cf6" 
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Edit Instructions */}
             <Card className="border-primary/20 bg-primary/5">
