@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   Zap,
   Sparkles,
-  Phone
+  Phone,
+  MessageSquareText
 } from 'lucide-react';
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const navigationItems = [
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Generated Reports', url: '/generated-reports', icon: FileText },
   { title: 'Cash Flow Analysis', url: '/cash-flow-analysis', icon: Activity },
+  { title: 'Report Q&A', url: '/report-qa', icon: MessageSquareText },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles },
   { title: 'Call Logs', url: '/call-logs', icon: Phone },
   { title: 'Charts', url: '/charts', icon: BarChart3 },
