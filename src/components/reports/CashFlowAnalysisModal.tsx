@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -225,41 +226,243 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
   };
 
   const handleExportExcel = () => {
-    // Create CSV data
-    const headers = ['Year', 'Property Value', 'Loan Amount', 'Equity', 'LVR %', 'Rental Income', 'Gross Yield %', 'Net Yield %', 'Expenses', 'Interest', 'Pre-Tax CF', 'After-Tax CF'];
-    const rows = projections.map(p => [
-      p.year === 0 ? 'Today' : `Year ${p.year}`,
-      p.propertyMarketValue,
-      p.loanAmount,
-      p.equityInProperty,
-      p.loanToValueRatio,
-      p.rentalIncome,
-      p.grossYield,
-      p.netYield,
-      p.propertyExpenses,
-      p.interestPayments,
-      p.preTaxCashFlowPA,
-      p.afterTaxCashFlowPA
-    ]);
+    if (!financialData || !report) return;
 
-    const csvContent = [
-      `10 Year Cash Flow Analysis - ${report?.property_address}`,
-      '',
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+    // Create workbook
+    const wb = XLSX.utils.book_new();
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cash-flow-analysis-${report?.property_address?.replace(/[^a-z0-9]/gi, '-')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // ==================== SHEET 1: Cash Flow Analysis ====================
+    const analysisData: (string | number | null)[][] = [];
+    
+    // Title
+    analysisData.push(['10 Year Cash Flow Analysis']);
+    analysisData.push([report.property_address]);
+    analysisData.push([]);
+    
+    // ---- INPUT PARAMETERS SECTION ----
+    analysisData.push(['INPUT PARAMETERS']);
+    analysisData.push([]);
+    
+    // Purchase & Loan Details
+    analysisData.push(['PURCHASE & LOAN DETAILS']);
+    analysisData.push(['Purchase Price', financialData.purchasePrice]);
+    analysisData.push(['Land Price', financialData.landPrice]);
+    analysisData.push(['Build Price', financialData.buildPrice]);
+    analysisData.push(['Market Value Now', financialData.marketValueNow]);
+    analysisData.push(['Deposit', financialData.depositValue]);
+    analysisData.push(['Loan Amount', financialData.loanAmount || (financialData.purchasePrice * (financialData.loanToValueRatio / 100))]);
+    analysisData.push(['LVR %', financialData.loanToValueRatio]);
+    analysisData.push(['Interest Rate %', financialData.interestRate]);
+    analysisData.push(['Loan Type', financialData.loanType === 'interest_only' ? 'Interest Only' : 'Principal & Interest']);
+    analysisData.push(['Loan Term (Years)', financialData.loanTermYears]);
+    analysisData.push([]);
+    
+    // Rental Income
+    analysisData.push(['RENTAL INCOME']);
+    analysisData.push(['Weekly Rent', financialData.weeklyRent]);
+    analysisData.push(['Annual Rent', financialData.weeklyRent * financialData.occupancyRate]);
+    analysisData.push(['Occupancy (Weeks/Year)', financialData.occupancyRate]);
+    analysisData.push([]);
+    
+    // Expenses
+    analysisData.push(['ANNUAL EXPENSES']);
+    analysisData.push(['Stamp Duty (One-off)', financialData.stampDuty]);
+    analysisData.push(['Council Rates', financialData.councilRates]);
+    analysisData.push(['Water Rates', financialData.waterRates]);
+    analysisData.push(['Body Corporate/Strata', financialData.bodyCorporateFees]);
+    analysisData.push(['Building & Landlord Insurance', financialData.buildingLandlordInsurance]);
+    analysisData.push(['Property Management %', financialData.propertyManagementFees]);
+    analysisData.push(['Repairs & Maintenance', financialData.repairsMaintenance]);
+    analysisData.push(['Letting Fees', financialData.lettingFees]);
+    analysisData.push(['Land Tax', financialData.landTax]);
+    analysisData.push(['Solicitor Fees (One-off)', financialData.solicitorFees]);
+    analysisData.push([]);
+    
+    // Growth & Tax
+    analysisData.push(['GROWTH & TAX']);
+    analysisData.push(['Capital Growth Rate %', financialData.capitalGrowth]);
+    analysisData.push(['CPI/Expense Growth %', financialData.cpiGrowthRate]);
+    analysisData.push(['Depreciation p.a.', financialData.depreciation]);
+    analysisData.push(['Marginal Tax Rate %', financialData.taxRate]);
+    analysisData.push(['Construction Year', financialData.constructionYear]);
+    analysisData.push([]);
+    analysisData.push([]);
+    
+    // ---- 10-YEAR PROJECTION TABLE ----
+    analysisData.push(['10-YEAR PROJECTION']);
+    analysisData.push([]);
+    
+    // Headers
+    const projectionHeaders = ['Overview', 'Today', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10'];
+    analysisData.push(projectionHeaders);
+    
+    // Data rows for projection
+    const addProjectionRow = (label: string, getter: (p: YearlyProjection) => number | string) => {
+      const row: (string | number)[] = [label];
+      projections.forEach(p => row.push(getter(p)));
+      analysisData.push(row);
+    };
+    
+    addProjectionRow('Capital Growth %', p => p.capitalGrowthRate);
+    addProjectionRow('Property Market Value $', p => p.propertyMarketValue);
+    addProjectionRow('Loan Amount $', p => p.loanAmount);
+    addProjectionRow('Equity in Property $', p => p.equityInProperty);
+    addProjectionRow('Loan to Value Ratio %', p => p.loanToValueRatio);
+    analysisData.push([]);
+    addProjectionRow('Rental Income p.a. $', p => p.rentalIncome);
+    addProjectionRow('Gross Yield %', p => p.grossYield);
+    addProjectionRow('Net Yield %', p => p.netYield);
+    analysisData.push([]);
+    addProjectionRow('Property Expenses p.a. $', p => p.propertyExpenses);
+    addProjectionRow('Interest Rate %', p => p.interestRate);
+    addProjectionRow('Interest Payments $', p => p.interestPayments);
+    addProjectionRow('Principal Payments $', p => p.principalPayments);
+    analysisData.push([]);
+    addProjectionRow('Pre-Tax Cash Flow p.a. $', p => p.preTaxCashFlowPA);
+    addProjectionRow('Pre-Tax Cash Flow p.w. $', p => p.preTaxCashFlowPW);
+    analysisData.push([]);
+    addProjectionRow('Depreciation $', p => p.depreciation);
+    addProjectionRow('Total Deductions $', p => p.totalDeductions);
+    addProjectionRow('Net Profit/Loss $', p => p.netProfitLoss);
+    addProjectionRow('Tax Refund $', p => p.taxRefund);
+    addProjectionRow('Land Tax $', p => p.landTax);
+    analysisData.push([]);
+    addProjectionRow('After-Tax Cash Flow p.a. $', p => p.afterTaxCashFlowPA);
+    addProjectionRow('After-Tax Cash Flow p.w. $', p => p.afterTaxCashFlowPW);
+    
+    // Create worksheet
+    const ws1 = XLSX.utils.aoa_to_sheet(analysisData);
+    
+    // Set column widths
+    ws1['!cols'] = [
+      { wch: 30 }, // Label column
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws1, 'Cash Flow Analysis');
+    
+    // ==================== SHEET 2: Construction Staging ====================
+    const constructionData: (string | number | null)[][] = [];
+    
+    constructionData.push(['CONSTRUCTION STAGING BREAKDOWN']);
+    constructionData.push([report.property_address]);
+    constructionData.push([]);
+    
+    // Calculate construction staging (typical breakdown)
+    const landPrice = financialData.landPrice || financialData.purchasePrice * 0.35;
+    const buildPrice = financialData.buildPrice || financialData.purchasePrice * 0.65;
+    
+    // Typical construction stages
+    const stages = [
+      { stage: 'Land Purchase', percent: 100, description: 'Full land payment at settlement' },
+      { stage: 'Deposit (Build)', percent: 5, description: 'Initial deposit to builder' },
+      { stage: 'Base Stage', percent: 15, description: 'Foundation and slab complete' },
+      { stage: 'Frame Stage', percent: 20, description: 'Wall frames and roof trusses erected' },
+      { stage: 'Lock-up Stage', percent: 20, description: 'External walls, windows, doors installed' },
+      { stage: 'Fixing Stage', percent: 25, description: 'Internal fit-out, plumbing, electrical' },
+      { stage: 'Completion Stage', percent: 15, description: 'Final finishes and handover' },
+    ];
+    
+    constructionData.push(['LAND PAYMENT']);
+    constructionData.push(['Stage', 'Percentage', 'Amount', 'Description']);
+    constructionData.push(['Land Settlement', '100%', landPrice, 'Full land payment at settlement']);
+    constructionData.push([]);
+    
+    constructionData.push(['BUILD PAYMENT STAGES']);
+    constructionData.push(['Stage', 'Percentage', 'Amount', 'Cumulative', 'Description']);
+    
+    let cumulativeAmount = 0;
+    stages.slice(1).forEach(stage => {
+      const amount = Math.round(buildPrice * (stage.percent / 100));
+      cumulativeAmount += amount;
+      constructionData.push([stage.stage, `${stage.percent}%`, amount, cumulativeAmount, stage.description]);
+    });
+    
+    constructionData.push([]);
+    constructionData.push(['TOTAL BUILD COST', '', buildPrice]);
+    constructionData.push(['TOTAL PROJECT COST', '', financialData.purchasePrice]);
+    constructionData.push([]);
+    
+    // Loan Draw Schedule
+    constructionData.push(['LOAN DRAW SCHEDULE']);
+    constructionData.push(['Stage', 'Draw Amount', 'Total Drawn', 'Interest (Monthly)', 'Notes']);
+    
+    const loanAmount = financialData.loanAmount || (financialData.purchasePrice * (financialData.loanToValueRatio / 100));
+    const monthlyInterestRate = (financialData.interestRate / 100) / 12;
+    
+    // Land loan draw
+    const landLoanDraw = Math.min(landPrice, loanAmount);
+    let totalDrawn = landLoanDraw;
+    constructionData.push(['Land Settlement', landLoanDraw, totalDrawn, Math.round(totalDrawn * monthlyInterestRate), 'Interest starts on land draw']);
+    
+    // Construction draws
+    const remainingLoan = loanAmount - landLoanDraw;
+    let constructionDrawn = 0;
+    stages.slice(1).forEach(stage => {
+      const buildAmount = Math.round(buildPrice * (stage.percent / 100));
+      const drawAmount = Math.min(buildAmount, remainingLoan - constructionDrawn);
+      constructionDrawn += drawAmount;
+      totalDrawn = landLoanDraw + constructionDrawn;
+      const monthlyInterest = Math.round(totalDrawn * monthlyInterestRate);
+      constructionData.push([stage.stage, drawAmount, totalDrawn, monthlyInterest, stage.description]);
+    });
+    
+    constructionData.push([]);
+    constructionData.push(['FINAL LOAN AMOUNT', '', loanAmount]);
+    constructionData.push(['ESTIMATED MONTHLY INTEREST (FULL DRAW)', '', Math.round(loanAmount * monthlyInterestRate)]);
+    
+    // Create construction worksheet
+    const ws2 = XLSX.utils.aoa_to_sheet(constructionData);
+    ws2['!cols'] = [
+      { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 }
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws2, 'Construction Staging');
+    
+    // ==================== SHEET 3: Summary ====================
+    const summaryData: (string | number | null)[][] = [];
+    
+    summaryData.push(['INVESTMENT SUMMARY']);
+    summaryData.push([report.property_address]);
+    summaryData.push([]);
+    
+    const year10 = projections[10];
+    const year1 = projections[1];
+    
+    summaryData.push(['KEY METRICS']);
+    summaryData.push(['Metric', 'Value']);
+    summaryData.push(['Total Investment', financialData.purchasePrice + financialData.stampDuty + financialData.solicitorFees]);
+    summaryData.push(['Deposit Required', financialData.depositValue]);
+    summaryData.push(['Loan Amount', loanAmount]);
+    summaryData.push([]);
+    summaryData.push(['YEAR 1 PERFORMANCE']);
+    summaryData.push(['Annual Rental Income', year1?.rentalIncome || 0]);
+    summaryData.push(['Annual Expenses', year1?.propertyExpenses || 0]);
+    summaryData.push(['Pre-Tax Cash Flow', year1?.preTaxCashFlowPA || 0]);
+    summaryData.push(['After-Tax Cash Flow', year1?.afterTaxCashFlowPA || 0]);
+    summaryData.push(['Gross Yield', `${year1?.grossYield || 0}%`]);
+    summaryData.push(['Net Yield', `${year1?.netYield || 0}%`]);
+    summaryData.push([]);
+    summaryData.push(['YEAR 10 PROJECTION']);
+    summaryData.push(['Property Value', year10?.propertyMarketValue || 0]);
+    summaryData.push(['Equity Position', year10?.equityInProperty || 0]);
+    summaryData.push(['Annual Rental Income', year10?.rentalIncome || 0]);
+    summaryData.push(['After-Tax Cash Flow', year10?.afterTaxCashFlowPA || 0]);
+    summaryData.push(['Capital Growth (Total)', year10 ? year10.propertyMarketValue - financialData.purchasePrice : 0]);
+    
+    const ws3 = XLSX.utils.aoa_to_sheet(summaryData);
+    ws3['!cols'] = [{ wch: 30 }, { wch: 20 }];
+    
+    XLSX.utils.book_append_sheet(wb, ws3, 'Summary');
+    
+    // Export workbook
+    const fileName = `Cash-Flow-Analysis-${report.property_address?.replace(/[^a-z0-9]/gi, '-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
 
     toast({
       title: "Export Complete",
-      description: "Cash flow analysis exported to CSV file.",
+      description: "Cash flow analysis exported to Excel file with construction staging.",
     });
   };
 
