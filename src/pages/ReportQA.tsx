@@ -746,6 +746,14 @@ export default function ReportQA() {
                             : 'bg-muted'
                         }`}
                       >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs opacity-60">
+                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-xs opacity-40">
+                            {message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                         {message.role === 'assistant' && (
                           <div className="flex gap-2 mt-2 pt-2 border-t border-border/50">
