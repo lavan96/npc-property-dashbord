@@ -325,6 +325,11 @@ export default function ReportQA() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Refresh conversation list to pick up dynamic title (after first exchange)
+      if (messages.length === 0) {
+        setTimeout(() => loadSavedConversations(), 1000);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       toast({

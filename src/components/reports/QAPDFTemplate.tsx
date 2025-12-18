@@ -9,8 +9,8 @@ interface QAPDFTemplateProps {
 
 export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
   ({ title, content, reportNames, generatedAt }, ref) => {
-    // Split content into pages (approx 3000 chars per page to avoid overflow)
-    const contentPages = splitContentIntoPages(content, 2800);
+    // Split content into pages (approx 2400 chars per page for better formatting)
+    const contentPages = splitContentIntoPages(content, 2400);
 
     return (
       <div ref={ref} className="qa-pdf-export" style={{ width: '794px' }}>
@@ -135,7 +135,7 @@ export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
           >
             <h1
               style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: 'Georgia, "Times New Roman", serif',
                 fontSize: '42px',
                 color: '#c9a227',
                 fontWeight: 'normal',
@@ -148,7 +148,7 @@ export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
             </h1>
             <h1
               style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: 'Georgia, "Times New Roman", serif',
                 fontSize: '42px',
                 color: '#c9a227',
                 fontWeight: 'normal',
@@ -193,7 +193,7 @@ export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
             </div>
             <p
               style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: 'Georgia, "Times New Roman", serif',
                 fontSize: '16px',
                 color: '#c9a227',
                 letterSpacing: '3px',
@@ -217,11 +217,12 @@ export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
           >
             <h2
               style={{
-                fontFamily: 'Arial, sans-serif',
-                fontSize: '24px',
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                fontSize: '26px',
                 color: '#ffffff',
                 fontWeight: 'normal',
                 marginBottom: '20px',
+                letterSpacing: '1px',
               }}
             >
               {title}
@@ -229,7 +230,7 @@ export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
             {reportNames.length > 0 && (
               <p
                 style={{
-                  fontFamily: 'Arial, sans-serif',
+                  fontFamily: 'Georgia, "Times New Roman", serif',
                   fontSize: '14px',
                   color: '#888888',
                   marginTop: '10px',
@@ -240,7 +241,7 @@ export const QAPDFTemplate = forwardRef<HTMLDivElement, QAPDFTemplateProps>(
             )}
             <p
               style={{
-                fontFamily: 'Arial, sans-serif',
+                fontFamily: 'Georgia, "Times New Roman", serif',
                 fontSize: '12px',
                 color: '#666666',
                 marginTop: '30px',
@@ -276,6 +277,9 @@ interface ContentPageProps {
 }
 
 const ContentPage: React.FC<ContentPageProps> = ({ content, pageNumber, totalPages, isLastPage }) => {
+  // Parse markdown-like content for better formatting
+  const formattedContent = formatContent(content);
+
   return (
     <div
       style={{
@@ -331,19 +335,15 @@ const ContentPage: React.FC<ContentPageProps> = ({ content, pageNumber, totalPag
           overflow: 'hidden',
         }}
       >
-        <pre
+        <div
           style={{
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '11px',
-            lineHeight: '1.6',
-            color: '#333333',
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-            margin: 0,
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: '11.5px',
+            lineHeight: '1.7',
+            color: '#1a1a1a',
           }}
-        >
-          {content}
-        </pre>
+          dangerouslySetInnerHTML={{ __html: formattedContent }}
+        />
       </div>
 
       {/* Footer */}
@@ -360,10 +360,10 @@ const ContentPage: React.FC<ContentPageProps> = ({ content, pageNumber, totalPag
           paddingTop: '15px',
         }}
       >
-        <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#888888' }}>
+        <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '10px', color: '#888888' }}>
           NPC Services | npcservices.com.au
         </span>
-        <span style={{ fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#888888' }}>
+        <span style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '10px', color: '#888888' }}>
           Page {pageNumber} of {totalPages}
         </span>
       </div>
@@ -382,20 +382,20 @@ const ContentPage: React.FC<ContentPageProps> = ({ content, pageNumber, totalPag
         >
           <p
             style={{
-              fontFamily: 'Arial, sans-serif',
+              fontFamily: 'Georgia, "Times New Roman", serif',
               fontSize: '11px',
               color: '#666666',
               textAlign: 'center',
               margin: 0,
             }}
           >
-            <strong>Contact NPC Services</strong>
+            <strong style={{ color: '#1a1a1a' }}>Contact NPC Services</strong>
             <br />
             Phone: 0433 005 110 | Email: admin@npcservices.com.au | Website: npcservices.com.au
           </p>
           <p
             style={{
-              fontFamily: 'Arial, sans-serif',
+              fontFamily: 'Georgia, "Times New Roman", serif',
               fontSize: '9px',
               color: '#999999',
               textAlign: 'center',
@@ -412,6 +412,113 @@ const ContentPage: React.FC<ContentPageProps> = ({ content, pageNumber, totalPag
   );
 };
 
+// Helper function to format content with proper typography
+function formatContent(content: string): string {
+  let formatted = content;
+
+  // Escape HTML first
+  formatted = formatted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Headers - ## Header becomes styled h3
+  formatted = formatted.replace(
+    /^##\s+(.+)$/gm,
+    '<h3 style="font-family: Georgia, serif; font-size: 16px; font-weight: 600; color: #1a1a1a; margin: 20px 0 12px 0; padding-bottom: 6px; border-bottom: 1px solid #c9a227;">$1</h3>'
+  );
+
+  // Headers - # Header becomes styled h2
+  formatted = formatted.replace(
+    /^#\s+(.+)$/gm,
+    '<h2 style="font-family: Georgia, serif; font-size: 18px; font-weight: 600; color: #1a1a1a; margin: 24px 0 14px 0; padding-bottom: 8px; border-bottom: 2px solid #c9a227;">$1</h2>'
+  );
+
+  // Bold text - **text** or __text__
+  formatted = formatted.replace(
+    /\*\*(.+?)\*\*/g,
+    '<strong style="font-weight: 600; color: #1a1a1a;">$1</strong>'
+  );
+  formatted = formatted.replace(
+    /__(.+?)__/g,
+    '<strong style="font-weight: 600; color: #1a1a1a;">$1</strong>'
+  );
+
+  // Italic text - *text* or _text_
+  formatted = formatted.replace(
+    /\*([^*]+)\*/g,
+    '<em style="font-style: italic;">$1</em>'
+  );
+  formatted = formatted.replace(
+    /_([^_]+)_/g,
+    '<em style="font-style: italic;">$1</em>'
+  );
+
+  // Bullet points - convert • or - or * at start of line
+  formatted = formatted.replace(
+    /^[•\-\*]\s+(.+)$/gm,
+    '<div style="display: flex; margin: 6px 0; padding-left: 8px;"><span style="color: #c9a227; margin-right: 10px; font-weight: bold;">•</span><span style="flex: 1;">$1</span></div>'
+  );
+
+  // Numbered lists
+  formatted = formatted.replace(
+    /^(\d+)\.\s+(.+)$/gm,
+    '<div style="display: flex; margin: 6px 0; padding-left: 8px;"><span style="color: #c9a227; margin-right: 10px; font-weight: 600; min-width: 20px;">$1.</span><span style="flex: 1;">$2</span></div>'
+  );
+
+  // Tables - simple markdown table support
+  formatted = formatTables(formatted);
+
+  // Line breaks - double newline becomes paragraph break
+  formatted = formatted.replace(/\n\n+/g, '</p><p style="margin: 12px 0;">');
+
+  // Single newlines within paragraphs
+  formatted = formatted.replace(/\n/g, '<br/>');
+
+  // Wrap in paragraph tags
+  formatted = '<p style="margin: 12px 0;">' + formatted + '</p>';
+
+  // Clean up empty paragraphs
+  formatted = formatted.replace(/<p style="margin: 12px 0;"><\/p>/g, '');
+
+  return formatted;
+}
+
+// Helper function to format markdown tables
+function formatTables(content: string): string {
+  const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;
+  
+  return content.replace(tableRegex, (match, headerRow, bodyRows) => {
+    const headers = headerRow.split('|').filter((h: string) => h.trim());
+    const rows = bodyRows.trim().split('\n').map((row: string) => 
+      row.split('|').filter((c: string) => c.trim())
+    );
+
+    let tableHtml = '<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10.5px;">';
+    
+    // Header row
+    tableHtml += '<thead><tr>';
+    headers.forEach((header: string) => {
+      tableHtml += `<th style="background: #f8f9fa; border: 1px solid #e5e7eb; padding: 10px 12px; text-align: left; font-weight: 600; color: #1a1a1a;">${header.trim()}</th>`;
+    });
+    tableHtml += '</tr></thead>';
+
+    // Body rows
+    tableHtml += '<tbody>';
+    rows.forEach((row: string[], idx: number) => {
+      const bgColor = idx % 2 === 0 ? '#ffffff' : '#fafafa';
+      tableHtml += '<tr>';
+      row.forEach((cell: string) => {
+        tableHtml += `<td style="border: 1px solid #e5e7eb; padding: 8px 12px; background: ${bgColor};">${cell.trim()}</td>`;
+      });
+      tableHtml += '</tr>';
+    });
+    tableHtml += '</tbody></table>';
+
+    return tableHtml;
+  });
+}
+
 // Helper function to split content into pages
 function splitContentIntoPages(content: string, charsPerPage: number): string[] {
   const pages: string[] = [];
@@ -422,14 +529,21 @@ function splitContentIntoPages(content: string, charsPerPage: number): string[] 
   for (const line of lines) {
     const lineLength = line.length + 1; // +1 for newline
 
+    // Check if this is a header line - try to keep headers with following content
+    const isHeader = line.startsWith('#') || line.startsWith('##');
+    
     if (currentLength + lineLength > charsPerPage && currentPage.trim()) {
-      pages.push(currentPage.trim());
-      currentPage = line + '\n';
-      currentLength = lineLength;
-    } else {
-      currentPage += line + '\n';
-      currentLength += lineLength;
+      // Don't break right after a header
+      if (!isHeader) {
+        pages.push(currentPage.trim());
+        currentPage = line + '\n';
+        currentLength = lineLength;
+        continue;
+      }
     }
+    
+    currentPage += line + '\n';
+    currentLength += lineLength;
   }
 
   if (currentPage.trim()) {
