@@ -332,7 +332,20 @@ No investment report has been uploaded. You are having an open conversation abou
       }
 
       const aiResponse = await response.json();
-      const responseText = aiResponse.choices?.[0]?.message?.content || "I couldn't generate a response.";
+      console.log(`[report-qa] AI Response structure:`, JSON.stringify(aiResponse, null, 2));
+      
+      // GPT-5 may return content in different paths
+      let responseText = 
+        aiResponse.choices?.[0]?.message?.content ||
+        aiResponse.choices?.[0]?.text ||
+        aiResponse.content ||
+        aiResponse.message?.content ||
+        "";
+      
+      if (!responseText || responseText.trim() === "") {
+        console.error(`[report-qa] Empty response from AI. Full response:`, JSON.stringify(aiResponse));
+        responseText = "I couldn't generate a response. Please try again.";
+      }
 
       // Save messages to database if conversationId provided
       if (conversationId) {
