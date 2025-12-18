@@ -264,10 +264,10 @@ export default function ReportQA() {
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || uploadedReports.length === 0 || isProcessing) return;
+    if (!inputMessage.trim() || isProcessing) return;
 
-    // Start conversation if not already started
-    if (!conversationId) {
+    // Start conversation if not already started (only if reports are uploaded)
+    if (!conversationId && uploadedReports.length > 0) {
       await startNewConversation();
     }
 
@@ -754,32 +754,39 @@ export default function ReportQA() {
             </ScrollArea>
 
             {/* Input */}
-            <div className="flex gap-2 pt-2 border-t">
-              <Input
+            <div className="flex gap-2 pt-2 border-t items-end">
+              <Textarea
                 placeholder={
                   uploadedReports.length === 0 
-                    ? 'Upload a report first' 
+                    ? 'Ask anything or upload a report for context...' 
                     : uploadedReports.length > 1 
                       ? 'Ask a comparison question...'
-                      : 'Ask a question...'
+                      : 'Ask a question about the report...'
                 }
                 value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={(e) => {
+                  setInputMessage(e.target.value);
+                  // Auto-resize textarea
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSendMessage();
                   }
                 }}
-                disabled={uploadedReports.length === 0 || isProcessing || isRecording || isTranscribing}
-                className="flex-1"
+                disabled={isProcessing || isRecording || isTranscribing}
+                className="flex-1 min-h-[40px] max-h-[150px] resize-none overflow-y-auto"
+                rows={1}
               />
               <Button
                 variant={isRecording ? "destructive" : "outline"}
                 size="icon"
                 onClick={isRecording ? stopRecording : startRecording}
-                disabled={uploadedReports.length === 0 || isProcessing || isTranscribing}
+                disabled={isProcessing || isTranscribing}
                 title={isRecording ? 'Stop recording' : 'Voice input'}
+                className="h-10 w-10 flex-shrink-0"
               >
                 {isTranscribing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -791,7 +798,8 @@ export default function ReportQA() {
               </Button>
               <Button
                 onClick={handleSendMessage}
-                disabled={uploadedReports.length === 0 || !inputMessage.trim() || isProcessing || isRecording}
+                disabled={!inputMessage.trim() || isProcessing || isRecording}
+                className="h-10 flex-shrink-0"
               >
                 <Send className="h-4 w-4" />
               </Button>
