@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,8 +7,11 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Calculator, Download, TrendingUp, TrendingDown, DollarSign, Percent, Home, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, Edit2 } from 'lucide-react';
 
 interface InvestmentReport {
   id: string;
@@ -21,6 +24,7 @@ interface CashFlowAnalysisModalProps {
   report: InvestmentReport | null;
   isOpen: boolean;
   onClose: () => void;
+  onReportUpdated?: () => void;
 }
 
 interface YearlyProjection {
@@ -48,11 +52,63 @@ interface YearlyProjection {
   afterTaxCashFlowPW: number;
 }
 
-export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnalysisModalProps) {
-  const { toast } = useToast();
+// Cash flow specific overrides
+interface CashFlowOverrides {
+  capitalGrowthRate: number | null;
+  cpiGrowthRate: number | null;
+  propertyMarketValue: number | null;
+  rentalIncome: number | null;
+  propertyExpenses: number | null;
+  interestRate: number | null;
+  interestPayment: number | null;
+  principalPayment: number | null;
+  depreciation: number | null;
+  landTax: number | null;
+}
 
-  // Extract financial data from report with manual overrides taking precedence
-  const financialData = useMemo(() => {
+export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated }: CashFlowAnalysisModalProps) {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  // Local cash flow overrides state
+  const [cashFlowOverrides, setCashFlowOverrides] = useState<CashFlowOverrides>({
+    capitalGrowthRate: null,
+    cpiGrowthRate: null,
+    propertyMarketValue: null,
+    rentalIncome: null,
+    propertyExpenses: null,
+    interestRate: null,
+    interestPayment: null,
+    principalPayment: null,
+    depreciation: null,
+    landTax: null,
+  });
+
+  // Initialize overrides from report when modal opens
+  useEffect(() => {
+    if (report && isOpen) {
+      const cfOverrides = report.manual_overrides?.cashFlowAnalysisOverrides || {};
+      setCashFlowOverrides({
+        capitalGrowthRate: cfOverrides.capitalGrowthRate ?? null,
+        cpiGrowthRate: cfOverrides.cpiGrowthRate ?? null,
+        propertyMarketValue: cfOverrides.propertyMarketValue ?? null,
+        rentalIncome: cfOverrides.rentalIncome ?? null,
+        propertyExpenses: cfOverrides.propertyExpenses ?? null,
+        interestRate: cfOverrides.interestRate ?? null,
+        interestPayment: cfOverrides.interestPayment ?? null,
+        principalPayment: cfOverrides.principalPayment ?? null,
+        depreciation: cfOverrides.depreciation ?? null,
+        landTax: cfOverrides.landTax ?? null,
+      });
+      setHasChanges(false);
+      setIsEditing(false);
+    }
+  }, [report, isOpen]);
+
+  // Extract base financial data from report
+  const baseFinancialData = useMemo(() => {
     if (!report) return null;
 
     const fc = report.financial_calculations || {};
@@ -60,7 +116,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
     const cashFlow = fc.cashFlow || {};
 
     // Check if depreciation should be included in cash flow analysis
-    const includeDepreciation = mo.includeDepreciationInCashFlow !== false; // Default to true
+    const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
 
     return {
       // Purchase & Loan
@@ -103,6 +159,79 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
     };
   }, [report]);
 
+  // Merged financial data with cash flow overrides taking precedence
+  const financialData = useMemo(() => {
+    if (!baseFinancialData) return null;
+
+    return {
+      ...baseFinancialData,
+      // Apply cash flow specific overrides
+      capitalGrowth: cashFlowOverrides.capitalGrowthRate ?? baseFinancialData.capitalGrowth,
+      cpiGrowthRate: cashFlowOverrides.cpiGrowthRate ?? baseFinancialData.cpiGrowthRate,
+      marketValueNow: cashFlowOverrides.propertyMarketValue ?? baseFinancialData.marketValueNow,
+      interestRate: cashFlowOverrides.interestRate ?? baseFinancialData.interestRate,
+      depreciation: cashFlowOverrides.depreciation ?? baseFinancialData.depreciation,
+      landTax: cashFlowOverrides.landTax ?? baseFinancialData.landTax,
+      // These are calculated values that can be overridden
+      _rentalIncomeOverride: cashFlowOverrides.rentalIncome,
+      _propertyExpensesOverride: cashFlowOverrides.propertyExpenses,
+      _interestPaymentOverride: cashFlowOverrides.interestPayment,
+      _principalPaymentOverride: cashFlowOverrides.principalPayment,
+    };
+  }, [baseFinancialData, cashFlowOverrides]);
+
+  // Handle override field change
+  const handleOverrideChange = useCallback((field: keyof CashFlowOverrides, value: string) => {
+    const numValue = value === '' ? null : parseFloat(value);
+    setCashFlowOverrides(prev => ({
+      ...prev,
+      [field]: numValue
+    }));
+    setHasChanges(true);
+  }, []);
+
+  // Save overrides to database
+  const handleSaveOverrides = async () => {
+    if (!report) return;
+
+    setIsSaving(true);
+    try {
+      const existingOverrides = report.manual_overrides || {};
+      const updatedOverrides = {
+        ...existingOverrides,
+        cashFlowAnalysisOverrides: cashFlowOverrides
+      };
+
+      const { error } = await supabase
+        .from('investment_reports')
+        .update({
+          manual_overrides: updatedOverrides,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', report.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Overrides Saved",
+        description: "Cash flow analysis overrides have been saved successfully.",
+      });
+
+      setHasChanges(false);
+      setIsEditing(false);
+      onReportUpdated?.();
+    } catch (error) {
+      console.error('Error saving overrides:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save cash flow analysis overrides.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Calculate 10-year projections
   const projections = useMemo(() => {
     if (!financialData) return [];
@@ -131,47 +260,78 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
     // Calculate property management as percentage of rent
     const propertyManagementPercent = financialData.propertyManagementFees / 100;
 
+    // Base calculated values for Year 1
+    const baseAnnualRent = weeklyRent * occupancyRate;
+    const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
+    const baseInterestPayment = loanAmount * interestRate;
+    const basePrincipalPayment = isInterestOnly ? 0 : 0;
+
     for (let year = 0; year <= 10; year++) {
-      // Property value grows with capital growth
-      const propertyValue = year === 0 
-        ? financialData.marketValueNow || purchasePrice 
-        : purchasePrice * Math.pow(1 + capitalGrowthRate, year);
+      // Property value - use override for Year 1, otherwise calculate
+      let propertyValue: number;
+      if (year === 0) {
+        propertyValue = financialData.marketValueNow || purchasePrice;
+      } else if (year === 1 && financialData._rentalIncomeOverride !== null && cashFlowOverrides.propertyMarketValue !== null) {
+        propertyValue = cashFlowOverrides.propertyMarketValue;
+      } else {
+        propertyValue = purchasePrice * Math.pow(1 + capitalGrowthRate, year);
+      }
 
-      // Loan balance (stays same for interest-only, decreases for P&I)
-      const currentLoanAmount = isInterestOnly ? loanAmount : loanAmount; // Simplified - would need amortization calc
+      // Loan balance
+      const currentLoanAmount = isInterestOnly ? loanAmount : loanAmount;
 
-      // Equity = Property Value - Loan Amount
+      // Equity
       const equity = propertyValue - currentLoanAmount;
 
       // LVR
       const lvr = (currentLoanAmount / propertyValue) * 100;
 
-      // Rental income grows with CPI
-      const annualRent = year === 0 
-        ? weeklyRent * occupancyRate 
-        : weeklyRent * occupancyRate * Math.pow(1 + cpiRate, year);
+      // Rental income - use override for Year 1
+      let annualRent: number;
+      if (year === 0) {
+        annualRent = baseAnnualRent;
+      } else if (year === 1 && financialData._rentalIncomeOverride !== null) {
+        annualRent = financialData._rentalIncomeOverride;
+      } else {
+        annualRent = baseAnnualRent * Math.pow(1 + cpiRate, year);
+      }
 
-      // Expenses grow with CPI
-      const expenses = year === 0 
-        ? baseExpenses 
-        : baseExpenses * Math.pow(1 + cpiRate, year);
+      // Property expenses - use override for Year 1
+      let totalExpenses: number;
+      if (year === 0) {
+        totalExpenses = basePropertyExpenses;
+      } else if (year === 1 && financialData._propertyExpensesOverride !== null) {
+        totalExpenses = financialData._propertyExpensesOverride;
+      } else {
+        const expenses = baseExpenses * Math.pow(1 + cpiRate, year);
+        const propertyManagement = annualRent * propertyManagementPercent;
+        totalExpenses = expenses + propertyManagement;
+      }
 
-      // Property management based on rent
-      const propertyManagement = annualRent * propertyManagementPercent;
+      // Interest payments - use override for Year 1
+      let interestPayments: number;
+      if (year === 0) {
+        interestPayments = 0;
+      } else if (year === 1 && financialData._interestPaymentOverride !== null) {
+        interestPayments = financialData._interestPaymentOverride;
+      } else {
+        interestPayments = currentLoanAmount * interestRate;
+      }
 
-      // Total property expenses
-      const totalExpenses = expenses + propertyManagement;
-
-      // Interest payments
-      const interestPayments = currentLoanAmount * interestRate;
-
-      // Principal payments (0 for interest-only)
-      const principalPayments = isInterestOnly ? 0 : 0; // Simplified
+      // Principal payments - use override for Year 1
+      let principalPayments: number;
+      if (year === 0) {
+        principalPayments = 0;
+      } else if (year === 1 && financialData._principalPaymentOverride !== null) {
+        principalPayments = financialData._principalPaymentOverride;
+      } else {
+        principalPayments = basePrincipalPayment;
+      }
 
       // Gross yield
       const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
 
-      // Net yield (after expenses, before interest)
+      // Net yield
       const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
 
       // Pre-tax cash flow
@@ -180,13 +340,16 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
       // Depreciation
       const depreciation = year === 0 ? 0 : financialData.depreciation;
 
+      // Land tax
+      const landTax = financialData.landTax;
+
       // Total deductions
       const totalDeductions = totalExpenses + interestPayments + depreciation;
 
-      // Net profit/loss (for tax purposes)
+      // Net profit/loss
       const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
 
-      // Tax refund (if negative gearing)
+      // Tax refund
       const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
 
       // After-tax cash flow
@@ -595,6 +758,280 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
                   <div>
                     <p className="text-muted-foreground">Tax Rate</p>
                     <p className="font-medium">{formatPercent(financialData.taxRate)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cash Flow Overrides Section */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Edit2 className="h-4 w-4" />
+                  Cash Flow Analysis Overrides
+                  {hasChanges && <Badge variant="secondary" className="ml-2">Unsaved</Badge>}
+                </CardTitle>
+                <div className="flex gap-2">
+                  {isEditing ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Reset to original values
+                          const cfOverrides = report.manual_overrides?.cashFlowAnalysisOverrides || {};
+                          setCashFlowOverrides({
+                            capitalGrowthRate: cfOverrides.capitalGrowthRate ?? null,
+                            cpiGrowthRate: cfOverrides.cpiGrowthRate ?? null,
+                            propertyMarketValue: cfOverrides.propertyMarketValue ?? null,
+                            rentalIncome: cfOverrides.rentalIncome ?? null,
+                            propertyExpenses: cfOverrides.propertyExpenses ?? null,
+                            interestRate: cfOverrides.interestRate ?? null,
+                            interestPayment: cfOverrides.interestPayment ?? null,
+                            principalPayment: cfOverrides.principalPayment ?? null,
+                            depreciation: cfOverrides.depreciation ?? null,
+                            landTax: cfOverrides.landTax ?? null,
+                          });
+                          setHasChanges(false);
+                          setIsEditing(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveOverrides}
+                        disabled={isSaving || !hasChanges}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit Overrides
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Override specific values to customize the cash flow projections. Changes apply to Year 1 calculations and cascade through subsequent years.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {/* Capital Growth Rate */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Capital Growth Rate (%)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder={String(baseFinancialData?.capitalGrowth || 5)}
+                        value={cashFlowOverrides.capitalGrowthRate ?? ''}
+                        onChange={(e) => handleOverrideChange('capitalGrowthRate', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.capitalGrowthRate !== null 
+                          ? `${cashFlowOverrides.capitalGrowthRate}%` 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* CPI Growth Rate */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Consumer Price Index (%)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder={String(baseFinancialData?.cpiGrowthRate || 3)}
+                        value={cashFlowOverrides.cpiGrowthRate ?? ''}
+                        onChange={(e) => handleOverrideChange('cpiGrowthRate', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.cpiGrowthRate !== null 
+                          ? `${cashFlowOverrides.cpiGrowthRate}%` 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Property Market Value */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Property Market Value ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="1000"
+                        placeholder={String(baseFinancialData?.marketValueNow || 0)}
+                        value={cashFlowOverrides.propertyMarketValue ?? ''}
+                        onChange={(e) => handleOverrideChange('propertyMarketValue', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.propertyMarketValue !== null 
+                          ? formatCurrency(cashFlowOverrides.propertyMarketValue) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Rental Income */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Rental Income p.a. ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="100"
+                        placeholder={String((baseFinancialData?.weeklyRent || 0) * 52)}
+                        value={cashFlowOverrides.rentalIncome ?? ''}
+                        onChange={(e) => handleOverrideChange('rentalIncome', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.rentalIncome !== null 
+                          ? formatCurrency(cashFlowOverrides.rentalIncome) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Property Expenses */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Property Expenses p.a. ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="100"
+                        placeholder="Enter amount"
+                        value={cashFlowOverrides.propertyExpenses ?? ''}
+                        onChange={(e) => handleOverrideChange('propertyExpenses', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.propertyExpenses !== null 
+                          ? formatCurrency(cashFlowOverrides.propertyExpenses) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Interest Rate */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Interest Rate (%)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder={String(baseFinancialData?.interestRate || 5.5)}
+                        value={cashFlowOverrides.interestRate ?? ''}
+                        onChange={(e) => handleOverrideChange('interestRate', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.interestRate !== null 
+                          ? `${cashFlowOverrides.interestRate}%` 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Interest Payment */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Interest Payment p.a. ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="100"
+                        placeholder="Enter amount"
+                        value={cashFlowOverrides.interestPayment ?? ''}
+                        onChange={(e) => handleOverrideChange('interestPayment', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.interestPayment !== null 
+                          ? formatCurrency(cashFlowOverrides.interestPayment) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Principal Payment */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Principal Payment p.a. ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="100"
+                        placeholder="Enter amount"
+                        value={cashFlowOverrides.principalPayment ?? ''}
+                        onChange={(e) => handleOverrideChange('principalPayment', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.principalPayment !== null 
+                          ? formatCurrency(cashFlowOverrides.principalPayment) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Depreciation */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Depreciation p.a. ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="100"
+                        placeholder={String(baseFinancialData?.depreciation || 6000)}
+                        value={cashFlowOverrides.depreciation ?? ''}
+                        onChange={(e) => handleOverrideChange('depreciation', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.depreciation !== null 
+                          ? formatCurrency(cashFlowOverrides.depreciation) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Land Tax */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Land Tax p.a. ($)</Label>
+                    {isEditing ? (
+                      <Input
+                        type="number"
+                        step="100"
+                        placeholder={String(baseFinancialData?.landTax || 0)}
+                        value={cashFlowOverrides.landTax ?? ''}
+                        onChange={(e) => handleOverrideChange('landTax', e.target.value)}
+                        className="h-9"
+                      />
+                    ) : (
+                      <p className="font-medium text-lg">
+                        {cashFlowOverrides.landTax !== null 
+                          ? formatCurrency(cashFlowOverrides.landTax) 
+                          : <span className="text-muted-foreground">—</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
