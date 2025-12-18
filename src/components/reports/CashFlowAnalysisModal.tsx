@@ -123,6 +123,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [comparisonReports, setComparisonReports] = useState<InvestmentReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
   const [investorProfile, setInvestorProfile] = useState<'growth' | 'income' | 'balanced'>('balanced');
+  
+  // AI-powered comparison analysis state
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isGeneratingAiAnalysis, setIsGeneratingAiAnalysis] = useState(false);
 
   // Comparison chart colors for up to 5 properties
   const COMPARISON_COLORS = [
@@ -143,6 +147,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setComparisonMode(false);
       setSelectedComparisonReportIds([]);
       setComparisonReports([]);
+      setAiAnalysis(null);
     }
   }, [report, isOpen]);
 
@@ -196,7 +201,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     });
   }, [toast]);
 
-  // PNG export function
   const exportChartAsPNG = useCallback(async (chartRef: React.RefObject<HTMLDivElement>, filename: string) => {
     if (!chartRef.current) return;
     
@@ -773,7 +777,72 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     });
   }, [allComparisonProjections, calculateAdvancedMetrics]);
 
-  // Property recommendation engine based on investor profile (supports multiple properties)
+  // Generate AI-powered comparison analysis
+  const generateAiAnalysis = useCallback(async () => {
+    if (!report || comparisonReports.length === 0) return;
+    
+    setIsGeneratingAiAnalysis(true);
+    setAiAnalysis(null);
+    
+    try {
+      const allReportIds = [report.id, ...comparisonReports.map(r => r.id)];
+      
+      // Prepare projection data for each report
+      const projectionData: Record<string, any> = {};
+      
+      // Add primary report projection summary
+      if (projections.length > 0) {
+        projectionData[report.id] = {
+          year1: projections[1] || {},
+          year5: projections[5] || {},
+          year10: projections[10] || {},
+          metrics: primaryMetrics,
+        };
+      }
+      
+      // Add comparison reports projection summaries
+      allComparisonProjections.forEach(({ report: compReport, projections: compProjs }) => {
+        const compMetrics = allComparisonMetrics.find(m => m.report.id === compReport.id);
+        projectionData[compReport.id] = {
+          year1: compProjs[1] || {},
+          year5: compProjs[5] || {},
+          year10: compProjs[10] || {},
+          metrics: compMetrics?.metrics || {},
+        };
+      });
+      
+      const { data, error } = await supabase.functions.invoke('compare-cash-flow-reports', {
+        body: {
+          reportIds: allReportIds,
+          projectionData,
+          investorProfile,
+          timeHorizon: '10 years',
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.analysis) {
+        setAiAnalysis(data.analysis);
+        toast({
+          title: "AI Analysis Complete",
+          description: "Cash flow comparison analysis has been generated.",
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to generate analysis');
+      }
+    } catch (error: any) {
+      console.error('Error generating AI analysis:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to generate AI comparison analysis.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAiAnalysis(false);
+    }
+  }, [report, comparisonReports, projections, primaryMetrics, allComparisonProjections, allComparisonMetrics, investorProfile, toast]);
+
   const propertyRecommendation = useMemo(() => {
     if (!primaryMetrics || comparisonReports.length === 0 || !report) return null;
 
@@ -1840,7 +1909,140 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             )}
 
-            {/* Edit Instructions */}
+            {/* AI-Powered Comparison Analysis */}
+            {comparisonMode && comparisonReports.length > 0 && (
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-blue-600" />
+                      AI-Powered Cash Flow Analysis
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={generateAiAnalysis}
+                      disabled={isGeneratingAiAnalysis}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isGeneratingAiAnalysis ? (
+                        <>
+                          <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="h-3 w-3 mr-1" />
+                          Generate AI Analysis
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!aiAnalysis && !isGeneratingAiAnalysis && (
+                    <p className="text-sm text-muted-foreground">
+                      Click "Generate AI Analysis" to get an in-depth AI-powered comparison of cash flow projections, 
+                      investment potential, and personalized recommendations based on your investor profile.
+                    </p>
+                  )}
+                  
+                  {isGeneratingAiAnalysis && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <RotateCcw className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-500" />
+                        <p className="text-sm text-muted-foreground">Analyzing cash flow projections...</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {aiAnalysis && (
+                    <div className="space-y-4">
+                      {/* Executive Summary */}
+                      {aiAnalysis.executiveSummary && (
+                        <div className="p-3 rounded-lg bg-muted/50">
+                          <h4 className="font-semibold text-sm mb-2">Executive Summary</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-line">{aiAnalysis.executiveSummary}</p>
+                        </div>
+                      )}
+                      
+                      {/* Final Rankings */}
+                      {aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0 && (
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20">
+                          <h4 className="font-semibold text-sm mb-3">Final Rankings</h4>
+                          <div className="space-y-2">
+                            {aiAnalysis.finalRankings.map((ranking: any, idx: number) => (
+                              <div key={idx} className={`p-2 rounded ${idx === 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30'}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge variant={idx === 0 ? 'default' : 'outline'} className="text-xs">
+                                    #{ranking.rank}
+                                  </Badge>
+                                  <span className="font-medium text-sm">{ranking.address}</span>
+                                  {ranking.score && (
+                                    <Badge variant="secondary" className="text-xs ml-auto">
+                                      Score: {typeof ranking.score === 'number' ? ranking.score.toFixed(1) : ranking.score}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {ranking.verdict && (
+                                  <p className="text-xs text-muted-foreground mt-1">{ranking.verdict}</p>
+                                )}
+                                {ranking.strengths && ranking.strengths.length > 0 && (
+                                  <div className="mt-2">
+                                    <span className="text-[10px] text-green-600 font-medium">Strengths: </span>
+                                    <span className="text-[10px] text-muted-foreground">{ranking.strengths.join(', ')}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Investor Recommendations */}
+                      {aiAnalysis.investorRecommendations && (
+                        <div className="p-3 rounded-lg bg-muted/30">
+                          <h4 className="font-semibold text-sm mb-2">Investor Profile Recommendations</h4>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {aiAnalysis.investorRecommendations.growthFocused && (
+                              <div className="p-2 bg-blue-500/10 rounded">
+                                <span className="font-medium text-blue-600">Growth Focused:</span>
+                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
+                              </div>
+                            )}
+                            {aiAnalysis.investorRecommendations.incomeFocused && (
+                              <div className="p-2 bg-green-500/10 rounded">
+                                <span className="font-medium text-green-600">Income Focused:</span>
+                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
+                              </div>
+                            )}
+                            {aiAnalysis.investorRecommendations.balanced && (
+                              <div className="p-2 bg-purple-500/10 rounded">
+                                <span className="font-medium text-purple-600">Balanced:</span>
+                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.balanced.reason}</p>
+                              </div>
+                            )}
+                            {aiAnalysis.investorRecommendations.riskAverse && (
+                              <div className="p-2 bg-amber-500/10 rounded">
+                                <span className="font-medium text-amber-600">Risk Averse:</span>
+                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Overall Recommendation */}
+                      {aiAnalysis.overallRecommendation?.bestProperty && (
+                        <div className="p-3 rounded-lg border-2 border-green-500/40 bg-green-500/5">
+                          <h4 className="font-semibold text-sm text-green-600 mb-1">Best Overall Property</h4>
+                          <p className="text-sm">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="py-3">
                 <p className="text-sm text-muted-foreground">
