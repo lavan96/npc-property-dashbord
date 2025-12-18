@@ -195,3 +195,7 @@ verify_jwt = false
 
 [functions.cleanup-stale-calls]
 verify_jwt = false
+
+[functions.compare-cash-flow-reports]
+verify_jwt = false
+request_timeout = 120
