@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -9,9 +10,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3 } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface InvestmentReport {
@@ -108,6 +110,18 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // Per-year overrides state (years 2-10)
   const [yearlyOverrides, setYearlyOverrides] = useState<YearlyOverrides>({});
 
+  // Chart refs for PNG export
+  const cashFlowChartRef = useRef<HTMLDivElement>(null);
+  const yieldChartRef = useRef<HTMLDivElement>(null);
+  const comparisonChartRef = useRef<HTMLDivElement>(null);
+
+  // Comparison mode state
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [availableReports, setAvailableReports] = useState<InvestmentReport[]>([]);
+  const [selectedComparisonReportId, setSelectedComparisonReportId] = useState<string | null>(null);
+  const [comparisonReport, setComparisonReport] = useState<InvestmentReport | null>(null);
+  const [loadingReports, setLoadingReports] = useState(false);
+
   // Initialize overrides from report when modal opens
   useEffect(() => {
     if (report && isOpen) {
@@ -115,8 +129,188 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setYearlyOverrides(cfOverrides);
       setHasChanges(false);
       setEditingCell(null);
+      setComparisonMode(false);
+      setSelectedComparisonReportId(null);
+      setComparisonReport(null);
     }
   }, [report, isOpen]);
+
+  // Fetch available reports for comparison when comparison mode is enabled
+  useEffect(() => {
+    if (comparisonMode && isOpen && report) {
+      const fetchReports = async () => {
+        setLoadingReports(true);
+        try {
+          const { data, error } = await supabase
+            .from('investment_reports')
+            .select('id, property_address, financial_calculations, manual_overrides')
+            .eq('status', 'completed')
+            .neq('id', report.id)
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+          if (error) throw error;
+          setAvailableReports(data || []);
+        } catch (error) {
+          console.error('Error fetching reports:', error);
+        } finally {
+          setLoadingReports(false);
+        }
+      };
+      fetchReports();
+    }
+  }, [comparisonMode, isOpen, report]);
+
+  // Fetch selected comparison report details
+  useEffect(() => {
+    if (selectedComparisonReportId) {
+      const selectedReport = availableReports.find(r => r.id === selectedComparisonReportId);
+      setComparisonReport(selectedReport || null);
+    } else {
+      setComparisonReport(null);
+    }
+  }, [selectedComparisonReportId, availableReports]);
+
+  // PNG export function
+  const exportChartAsPNG = useCallback(async (chartRef: React.RefObject<HTMLDivElement>, filename: string) => {
+    if (!chartRef.current) return;
+    
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `${filename}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast({
+        title: "Chart Exported",
+        description: `${filename}.png has been downloaded.`,
+      });
+    } catch (error) {
+      console.error('Error exporting chart:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export chart as PNG.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
+  // Calculate projections for comparison report
+  const comparisonProjections = useMemo(() => {
+    if (!comparisonReport) return [];
+
+    const fc = comparisonReport.financial_calculations || {};
+    const mo = comparisonReport.manual_overrides || {};
+    const cashFlow = fc.cashFlow || {};
+    const cfOverrides = mo.cashFlowYearlyOverrides || {};
+    const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
+
+    const purchasePrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0;
+    const loanAmount = mo.loanAmount || cashFlow.loanAmount || (purchasePrice * ((mo.loanToValueRatio || fc.loanToValueRatio || 80) / 100));
+    const weeklyRent = mo.weeklyRent || fc.weeklyRent || 0;
+    const occupancyRate = mo.occupancyRate || cashFlow.occupancyRate || 52;
+    const baseCapitalGrowthRate = (mo.capitalGrowth || fc.capitalGrowth || 5) / 100;
+    const baseInterestRate = (mo.interestRate || fc.interestRate || 5.5) / 100;
+    const baseCpiRate = (mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3) / 100;
+    const taxRate = (mo.taxRate || cashFlow.taxRate || 30) / 100;
+    const isInterestOnly = (mo.loanType || cashFlow.loanType || 'interest_only') === 'interest_only';
+    const baseDepreciation = includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0;
+    const baseLandTax = mo.landTax || fc.landTax || 0;
+    const marketValueNow = mo.marketValueNow || cashFlow.marketValueNow || purchasePrice;
+
+    const baseExpenses = 
+      (mo.councilRates || fc.councilRates || 0) +
+      (mo.waterRates || fc.waterRates || 0) +
+      (mo.bodyCorporateFees || fc.bodyCorporateFees || 0) +
+      (mo.buildingLandlordInsurance || fc.buildingLandlordInsurance || 0) +
+      (mo.repairsMaintenance || fc.repairsMaintenance || 0);
+    const propertyManagementPercent = (mo.propertyManagementFees || fc.propertyManagementFees || 7) / 100;
+    const baseAnnualRent = weeklyRent * occupancyRate;
+    const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
+
+    const results: YearlyProjection[] = [];
+    let previousPropertyValue = marketValueNow;
+
+    for (let year = 0; year <= 10; year++) {
+      const yearOverrides = cfOverrides[year] || {};
+      
+      const yearCapitalGrowthRate = year >= 2 && yearOverrides.capitalGrowthRate != null
+        ? yearOverrides.capitalGrowthRate / 100 : baseCapitalGrowthRate;
+      const yearCpiRate = year >= 2 && yearOverrides.cpiGrowthRate != null
+        ? yearOverrides.cpiGrowthRate / 100 : baseCpiRate;
+      const yearInterestRate = year >= 2 && yearOverrides.interestRate != null
+        ? yearOverrides.interestRate / 100 : baseInterestRate;
+
+      let propertyValue: number;
+      if (year === 0) propertyValue = marketValueNow;
+      else if (year === 1) propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
+      else if (yearOverrides.propertyMarketValue != null) propertyValue = yearOverrides.propertyMarketValue;
+      else propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
+      previousPropertyValue = propertyValue;
+
+      const currentLoanAmount = loanAmount;
+      const equity = propertyValue - currentLoanAmount;
+      const lvr = (currentLoanAmount / propertyValue) * 100;
+
+      let annualRent: number;
+      if (year === 0) annualRent = baseAnnualRent;
+      else if (year === 1) annualRent = baseAnnualRent * (1 + baseCpiRate);
+      else if (yearOverrides.rentalIncome != null) annualRent = yearOverrides.rentalIncome;
+      else annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
+
+      let totalExpenses: number;
+      if (year === 0) totalExpenses = basePropertyExpenses;
+      else if (year === 1) totalExpenses = baseExpenses * (1 + baseCpiRate) + annualRent * propertyManagementPercent;
+      else if (yearOverrides.propertyExpenses != null) totalExpenses = yearOverrides.propertyExpenses;
+      else totalExpenses = baseExpenses * Math.pow(1 + yearCpiRate, year) + annualRent * propertyManagementPercent;
+
+      let interestPayments = year === 0 ? 0 : year === 1 ? currentLoanAmount * baseInterestRate :
+        yearOverrides.interestPayment != null ? yearOverrides.interestPayment : currentLoanAmount * yearInterestRate;
+      let principalPayments = year === 0 ? 0 : yearOverrides.principalPayment ?? 0;
+      let depreciation = year === 0 ? 0 : yearOverrides.depreciation ?? baseDepreciation;
+      let landTax = year === 0 ? 0 : yearOverrides.landTax ?? baseLandTax;
+
+      const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
+      const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
+      const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments;
+      const totalDeductions = totalExpenses + interestPayments + depreciation;
+      const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
+      const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
+      const afterTaxCashFlow = year === 0 ? 0 : preTaxCashFlow + taxRefund;
+
+      results.push({
+        year,
+        capitalGrowthRate: year === 0 ? 0 : yearCapitalGrowthRate * 100,
+        cpiGrowthRate: year === 0 ? 0 : yearCpiRate * 100,
+        propertyMarketValue: Math.round(propertyValue),
+        loanAmount: Math.round(currentLoanAmount),
+        equityInProperty: Math.round(equity),
+        loanToValueRatio: Math.round(lvr * 100) / 100,
+        rentalIncome: Math.round(annualRent),
+        grossYield: Math.round(grossYield * 100) / 100,
+        netYield: Math.round(netYield * 100) / 100,
+        propertyExpenses: Math.round(totalExpenses),
+        interestRate: year === 0 ? 0 : yearInterestRate * 100,
+        interestPayments: Math.round(interestPayments),
+        principalPayments: Math.round(principalPayments),
+        preTaxCashFlowPA: Math.round(preTaxCashFlow),
+        preTaxCashFlowPW: Math.round(preTaxCashFlow / 52),
+        depreciation: Math.round(depreciation),
+        totalDeductions: Math.round(totalDeductions),
+        netProfitLoss: Math.round(netProfitLoss),
+        taxRefund: Math.round(taxRefund),
+        landTax: Math.round(landTax),
+        afterTaxCashFlowPA: Math.round(afterTaxCashFlow),
+        afterTaxCashFlowPW: Math.round(afterTaxCashFlow / 52),
+      });
+    }
+    return results;
+  }, [comparisonReport]);
 
   // Extract base financial data from report
   const baseFinancialData = useMemo(() => {
@@ -763,68 +957,112 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             </div>
 
+            {/* Comparison Mode Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={comparisonMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setComparisonMode(!comparisonMode)}
+                  className="gap-2"
+                >
+                  <GitCompare className="h-4 w-4" />
+                  {comparisonMode ? "Exit Comparison" : "Compare Reports"}
+                </Button>
+                {comparisonMode && (
+                  <Select
+                    value={selectedComparisonReportId || ""}
+                    onValueChange={(value) => setSelectedComparisonReportId(value || null)}
+                  >
+                    <SelectTrigger className="w-[280px]">
+                      <SelectValue placeholder={loadingReports ? "Loading reports..." : "Select report to compare"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableReports.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.property_address.length > 40 
+                            ? r.property_address.substring(0, 40) + '...' 
+                            : r.property_address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
             {/* Cash Flow Trends Chart */}
             <Card>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
                     10-Year Cash Flow Trends
                   </CardTitle>
-                  <div className="flex items-center gap-3 text-xs">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={chartMetrics.propertyValue}
-                        onChange={(e) => setChartMetrics(prev => ({ ...prev, propertyValue: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
-                        Property Value
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={chartMetrics.equity}
-                        onChange={(e) => setChartMetrics(prev => ({ ...prev, equity: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-green-500" />
-                        Equity
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={chartMetrics.rentalIncome}
-                        onChange={(e) => setChartMetrics(prev => ({ ...prev, rentalIncome: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        Rental Income
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={chartMetrics.cashFlow}
-                        onChange={(e) => setChartMetrics(prev => ({ ...prev, cashFlow: e.target.checked }))}
-                        className="rounded border-border"
-                      />
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-violet-500" />
-                        Cash Flow
-                      </span>
-                    </label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3 text-xs">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={chartMetrics.propertyValue}
+                          onChange={(e) => setChartMetrics(prev => ({ ...prev, propertyValue: e.target.checked }))}
+                          className="rounded border-border"
+                        />
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+                          Property Value
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={chartMetrics.equity}
+                          onChange={(e) => setChartMetrics(prev => ({ ...prev, equity: e.target.checked }))}
+                          className="rounded border-border"
+                        />
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          Equity
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={chartMetrics.rentalIncome}
+                          onChange={(e) => setChartMetrics(prev => ({ ...prev, rentalIncome: e.target.checked }))}
+                          className="rounded border-border"
+                        />
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          Rental Income
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={chartMetrics.cashFlow}
+                          onChange={(e) => setChartMetrics(prev => ({ ...prev, cashFlow: e.target.checked }))}
+                          className="rounded border-border"
+                        />
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-violet-500" />
+                          Cash Flow
+                        </span>
+                      </label>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => exportChartAsPNG(cashFlowChartRef, 'cash-flow-trends')}
+                      className="h-7 px-2"
+                    >
+                      <Image className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="h-[280px] w-full">
+                <div ref={cashFlowChartRef} className="h-[280px] w-full bg-background p-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={projections.filter(p => p.year >= 1).map(p => ({
@@ -901,14 +1139,24 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Yield Percentages Chart */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Percent className="h-4 w-4" />
-                  Yield Percentages Over 10 Years
-                </CardTitle>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Percent className="h-4 w-4" />
+                    Yield Percentages Over 10 Years
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => exportChartAsPNG(yieldChartRef, 'yield-percentages')}
+                    className="h-7 px-2"
+                  >
+                    <Image className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="h-[220px] w-full">
+                <div ref={yieldChartRef} className="h-[220px] w-full bg-background p-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={projections.filter(p => p.year >= 1).map(p => ({
@@ -955,6 +1203,147 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardContent>
             </Card>
+
+            {/* Comparison Chart - Side by Side */}
+            {comparisonMode && comparisonReport && comparisonProjections.length > 0 && (
+              <Card className="border-primary/30">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <GitCompare className="h-4 w-4" />
+                      Property Comparison: Cash Flow
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {report?.property_address.split(',')[0]} vs {comparisonReport.property_address.split(',')[0]}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => exportChartAsPNG(comparisonChartRef, 'property-comparison')}
+                        className="h-7 px-2"
+                      >
+                        <Image className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div ref={comparisonChartRef} className="h-[320px] w-full bg-background p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={projections.filter(p => p.year >= 1).map((p, i) => ({
+                          year: `Year ${p.year}`,
+                          [`${report?.property_address.split(',')[0]} - Value`]: p.propertyMarketValue,
+                          [`${report?.property_address.split(',')[0]} - Cash Flow`]: p.afterTaxCashFlowPA,
+                          [`${comparisonReport.property_address.split(',')[0]} - Value`]: comparisonProjections[i + 1]?.propertyMarketValue || 0,
+                          [`${comparisonReport.property_address.split(',')[0]} - Cash Flow`]: comparisonProjections[i + 1]?.afterTaxCashFlowPA || 0,
+                        }))}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="year" className="text-xs" tick={{ fontSize: 11 }} />
+                        <YAxis 
+                          className="text-xs" 
+                          tick={{ fontSize: 11 }} 
+                          tickFormatter={(value) => {
+                            if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+                            if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+                            return `$${value}`;
+                          }}
+                        />
+                        <Tooltip 
+                          formatter={(value: number) => [`$${value.toLocaleString()}`, undefined]}
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--background))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '6px',
+                            fontSize: '11px'
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <Line 
+                          type="monotone" 
+                          dataKey={`${report?.property_address.split(',')[0]} - Value`}
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey={`${report?.property_address.split(',')[0]} - Cash Flow`}
+                          stroke="#8b5cf6" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey={`${comparisonReport.property_address.split(',')[0]} - Value`}
+                          stroke="#f97316" 
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={{ r: 3 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey={`${comparisonReport.property_address.split(',')[0]} - Cash Flow`}
+                          stroke="#14b8a6" 
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={{ r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Side-by-side summary */}
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <Card className="border-primary/20">
+                      <CardContent className="pt-4">
+                        <p className="text-xs font-medium text-muted-foreground mb-2 truncate">{report?.property_address}</p>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Year 10 Value:</span>
+                            <span className="font-medium text-green-600">${(projections[10]?.propertyMarketValue || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Year 10 Cash Flow:</span>
+                            <span className={`font-medium ${(projections[10]?.afterTaxCashFlowPA || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              ${(projections[10]?.afterTaxCashFlowPA || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Year 10 Equity:</span>
+                            <span className="font-medium">${(projections[10]?.equityInProperty || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-orange-500/20">
+                      <CardContent className="pt-4">
+                        <p className="text-xs font-medium text-muted-foreground mb-2 truncate">{comparisonReport.property_address}</p>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Year 10 Value:</span>
+                            <span className="font-medium text-green-600">${(comparisonProjections[10]?.propertyMarketValue || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Year 10 Cash Flow:</span>
+                            <span className={`font-medium ${(comparisonProjections[10]?.afterTaxCashFlowPA || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              ${(comparisonProjections[10]?.afterTaxCashFlowPA || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Year 10 Equity:</span>
+                            <span className="font-medium">${(comparisonProjections[10]?.equityInProperty || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Edit Instructions */}
             <Card className="border-primary/20 bg-primary/5">
