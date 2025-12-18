@@ -307,8 +307,7 @@ No investment report has been uploaded. You are having an open conversation abou
         body: JSON.stringify({
           model: "openai/gpt-5",
           messages,
-          temperature: 0.7,
-          max_tokens: 4096,
+          max_completion_tokens: 4096,
         }),
       });
 
