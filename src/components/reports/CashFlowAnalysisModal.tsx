@@ -1681,6 +1681,173 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     });
   };
 
+  // Export single report 10-year cash flow as PDF
+  const exportSingleReportPDF = useCallback(async () => {
+    if (!report || !baseFinancialData) return;
+
+    try {
+      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape for wide table
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = margin;
+
+      // Header
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('10-Year Cash Flow Analysis', margin, yPos);
+      yPos += 8;
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(report.property_address, margin, yPos);
+      yPos += 6;
+
+      pdf.setFontSize(9);
+      pdf.setTextColor(100);
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPos);
+      pdf.setTextColor(0);
+      yPos += 12;
+
+      // Key metrics row
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      const keyMetrics = [
+        `Purchase Price: ${formatCurrency(baseFinancialData.purchasePrice)}`,
+        `Weekly Rent: ${formatCurrency(baseFinancialData.weeklyRent)}`,
+        `Interest Rate: ${baseFinancialData.interestRate}%`,
+        `Capital Growth: ${baseFinancialData.capitalGrowth}%`,
+      ];
+      pdf.text(keyMetrics.join('   |   '), margin, yPos);
+      yPos += 10;
+
+      // Table configuration
+      const colWidths = [45, ...Array(11).fill((pageWidth - margin * 2 - 45) / 11)];
+      const rowHeight = 5.5;
+      
+      // Helper to draw a row
+      const drawRow = (cells: string[], isHeader = false, isSection = false, highlight = false) => {
+        if (yPos > pageHeight - 20) {
+          pdf.addPage();
+          yPos = margin;
+        }
+
+        if (isSection) {
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+        } else if (isHeader) {
+          pdf.setFillColor(59, 130, 246);
+          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+          pdf.setTextColor(255);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(7);
+        } else if (highlight) {
+          pdf.setFillColor(254, 249, 195);
+          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+        }
+
+        let xPos = margin;
+        cells.forEach((cell, idx) => {
+          const cellWidth = colWidths[idx];
+          if (idx === 0) {
+            pdf.text(cell, xPos + 1, yPos);
+          } else {
+            pdf.text(cell, xPos + cellWidth - 1, yPos, { align: 'right' });
+          }
+          xPos += cellWidth;
+        });
+
+        if (isHeader) pdf.setTextColor(0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7);
+        yPos += rowHeight;
+      };
+
+      // Header row
+      const headers = ['Metric', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
+      drawRow(headers, true);
+
+      // Check if year has override
+      const hasOverride = (year: number, field: string) => {
+        return year >= 2 && yearlyOverrides[year]?.[field as keyof YearOverrides] != null;
+      };
+
+      // Data rows
+      drawRow(['Capital Growth %', '', ...projections.slice(1).map((p, i) => p.capitalGrowthRate.toFixed(1))], false, false, false);
+      drawRow(['CPI Growth %', '', ...projections.slice(1).map(p => p.cpiGrowthRate.toFixed(1))]);
+      drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...projections.slice(1).map(p => formatCurrency(p.propertyMarketValue))]);
+      drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
+      
+      yPos += 2;
+      drawRow(['STATISTICS'], false, true);
+      drawRow(['Equity $', formatCurrency(projections[0].equityInProperty), ...projections.slice(1).map(p => formatCurrency(p.equityInProperty))]);
+      drawRow(['LVR %', projections[0].loanToValueRatio.toFixed(1), ...projections.slice(1).map(p => p.loanToValueRatio.toFixed(1))]);
+      drawRow(['Rental Income $', `${formatCurrency(baseFinancialData.weeklyRent)}pw`, ...projections.slice(1).map(p => formatCurrency(p.rentalIncome))]);
+      drawRow(['Gross Yield %', '', ...projections.slice(1).map(p => p.grossYield.toFixed(2))]);
+      drawRow(['Net Yield %', '', ...projections.slice(1).map(p => p.netYield.toFixed(2))]);
+      
+      yPos += 2;
+      drawRow(['CASH DEDUCTIONS'], false, true);
+      drawRow(['Property Expenses $', '$0', ...projections.slice(1).map(p => formatCurrency(p.propertyExpenses))]);
+      drawRow(['Interest Rate %', '', ...projections.slice(1).map(p => p.interestRate.toFixed(2))]);
+      drawRow(['Interest Payments $', '$0', ...projections.slice(1).map(p => formatCurrency(p.interestPayments))]);
+      drawRow(['Principal Payments $', formatCurrency(projections[0].principalPayments), ...projections.slice(1).map(p => formatCurrency(p.principalPayments))]);
+      drawRow(['Pre-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPA))]);
+      drawRow(['Pre-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPW))]);
+      
+      yPos += 2;
+      drawRow(['NON-CASH DEDUCTIONS'], false, true);
+      drawRow(['Depreciation $', '', ...projections.slice(1).map(p => formatCurrency(p.depreciation))]);
+      
+      yPos += 2;
+      drawRow(['SUMMARY'], false, true);
+      drawRow(['Total Deductions $', '', ...projections.slice(1).map(p => formatCurrency(p.totalDeductions))]);
+      drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))]);
+      drawRow(['Tax Refund $', '', ...projections.slice(1).map(p => formatCurrency(p.taxRefund))]);
+      drawRow(['Land Tax $', '', ...projections.slice(1).map(p => formatCurrency(p.landTax))]);
+      drawRow(['After-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPA))]);
+      drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))]);
+
+      // Footer with key summary metrics
+      yPos += 8;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      const year10 = projections[10];
+      const year1 = projections[1];
+      const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
+      const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
+      
+      pdf.text('10-Year Summary:', margin, yPos);
+      yPos += 5;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Year 10 Property Value: ${formatCurrency(year10.propertyMarketValue)}  |  Year 10 Equity: ${formatCurrency(year10.equityInProperty)}  |  Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}  |  Capital Gain: ${formatCurrency(capitalGain)}`, margin, yPos);
+
+      // Footer disclaimer
+      yPos = pageHeight - 10;
+      pdf.setFontSize(7);
+      pdf.setTextColor(120);
+      pdf.text('This analysis is for informational purposes only and does not constitute financial advice. Projections are estimates based on assumed growth rates.', margin, yPos);
+
+      // Save PDF
+      const fileName = `Cash_Flow_10Year_${report.property_address.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "PDF Exported",
+        description: "10-year cash flow analysis PDF has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [report, baseFinancialData, projections, yearlyOverrides, toast]);
+
   if (!report || !baseFinancialData) return null;
 
   return (
@@ -1726,6 +1893,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <Button variant="outline" size="sm" onClick={handleExportExcel}>
                   <Download className="h-4 w-4 mr-2" />
                   Export Excel
+                </Button>
+                <Button variant="outline" size="sm" onClick={exportSingleReportPDF}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export PDF
                 </Button>
               </div>
             </div>
