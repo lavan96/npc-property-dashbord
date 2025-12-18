@@ -1030,15 +1030,154 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos += 6;
       }
 
+      // Add AI Analysis section if available
+      if (aiAnalysis) {
+        pdf.addPage();
+        yPos = margin;
+
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('AI-Powered Cash Flow Analysis', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 12;
+
+        // Helper function to add wrapped text
+        const addWrappedText = (text: string, fontSize: number, maxWidth: number, lineHeight: number = 5) => {
+          pdf.setFontSize(fontSize);
+          const lines = pdf.splitTextToSize(text, maxWidth);
+          for (const line of lines) {
+            if (yPos + lineHeight > pageHeight - margin) {
+              pdf.addPage();
+              yPos = margin;
+            }
+            pdf.text(line, margin, yPos);
+            yPos += lineHeight;
+          }
+        };
+
+        // Executive Summary
+        if (aiAnalysis.executiveSummary) {
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Executive Summary', margin, yPos);
+          yPos += 7;
+          pdf.setFont('helvetica', 'normal');
+          addWrappedText(aiAnalysis.executiveSummary, 9, pageWidth - (margin * 2), 4.5);
+          yPos += 8;
+        }
+
+        // Final Rankings
+        if (aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0) {
+          if (yPos > pageHeight - 60) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Final Rankings', margin, yPos);
+          yPos += 7;
+
+          pdf.setFontSize(9);
+          for (const ranking of aiAnalysis.finalRankings) {
+            if (yPos + 20 > pageHeight - margin) {
+              pdf.addPage();
+              yPos = margin;
+            }
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`#${ranking.rank} - ${ranking.propertyAddress}`, margin, yPos);
+            yPos += 5;
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Score: ${ranking.overallScore}/100`, margin + 5, yPos);
+            yPos += 4;
+            
+            if (ranking.strengths && ranking.strengths.length > 0) {
+              pdf.text(`Strengths: ${ranking.strengths.join(', ')}`, margin + 5, yPos);
+              yPos += 4;
+            }
+            if (ranking.weaknesses && ranking.weaknesses.length > 0) {
+              pdf.text(`Weaknesses: ${ranking.weaknesses.join(', ')}`, margin + 5, yPos);
+              yPos += 4;
+            }
+            yPos += 3;
+          }
+          yPos += 5;
+        }
+
+        // Investor Recommendations
+        if (aiAnalysis.investorRecommendations) {
+          if (yPos > pageHeight - 80) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Investor Profile Recommendations', margin, yPos);
+          yPos += 7;
+
+          pdf.setFontSize(9);
+          const recommendations = [
+            { key: 'growthFocused', label: 'Growth Focused' },
+            { key: 'incomeFocused', label: 'Income Focused' },
+            { key: 'balancedApproach', label: 'Balanced Approach' },
+            { key: 'riskAverse', label: 'Risk Averse' },
+          ];
+
+          for (const rec of recommendations) {
+            const recData = aiAnalysis.investorRecommendations[rec.key];
+            if (recData) {
+              if (yPos + 15 > pageHeight - margin) {
+                pdf.addPage();
+                yPos = margin;
+              }
+              
+              pdf.setFont('helvetica', 'bold');
+              pdf.text(`${rec.label}: ${recData.recommendation || 'N/A'}`, margin, yPos);
+              yPos += 4.5;
+              
+              if (recData.reason) {
+                pdf.setFont('helvetica', 'normal');
+                addWrappedText(recData.reason, 8, pageWidth - (margin * 2) - 5, 4);
+              }
+              yPos += 3;
+            }
+          }
+          yPos += 5;
+        }
+
+        // Overall Recommendation
+        if (aiAnalysis.overallRecommendation) {
+          if (yPos > pageHeight - 40) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Overall Recommendation', margin, yPos);
+          yPos += 7;
+          
+          pdf.setFont('helvetica', 'normal');
+          addWrappedText(aiAnalysis.overallRecommendation, 9, pageWidth - (margin * 2), 4.5);
+        }
+      }
+
       pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
       yPos += 10;
+      if (yPos > pageHeight - 20) {
+        pdf.addPage();
+        yPos = margin;
+      }
       pdf.text('This comparison is for informational purposes only.', margin, yPos);
 
       pdf.save(`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`);
 
       toast({
         title: "PDF Exported",
-        description: "Comparison PDF has been downloaded successfully.",
+        description: aiAnalysis ? "Comparison PDF with AI analysis has been downloaded." : "Comparison PDF has been downloaded successfully.",
       });
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -1048,7 +1187,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, comparisonReports, allComparisonMetrics, primaryMetrics, toast]);
+  }, [report, comparisonReports, allComparisonMetrics, primaryMetrics, aiAnalysis, toast]);
 
   const formatCurrency = (value: number) => {
     if (value === 0) return '-';
