@@ -353,6 +353,58 @@ No investment report has been uploaded. You are having an open conversation abou
           { conversation_id: conversationId, role: "user", content: question },
           { conversation_id: conversationId, role: "assistant", content: responseText },
         ]);
+
+        // Check if this is the first message and generate a dynamic title
+        const { count } = await supabase
+          .from("report_qa_messages")
+          .select("*", { count: "exact", head: true })
+          .eq("conversation_id", conversationId);
+
+        // Generate dynamic title after first exchange (2 messages = user + assistant)
+        if (count && count <= 2) {
+          console.log(`[report-qa] First exchange detected, generating dynamic title...`);
+          
+          try {
+            const titleResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  {
+                    role: "system",
+                    content: `Generate a short, descriptive title (max 6 words) for a property investment Q&A conversation. The title should capture the main topic being discussed. Return ONLY the title text, no quotes or punctuation at the end.`,
+                  },
+                  {
+                    role: "user",
+                    content: `User question: "${question}"\n\nAI response (first 200 chars): "${responseText.substring(0, 200)}..."`,
+                  },
+                ],
+                max_tokens: 50,
+              }),
+            });
+
+            if (titleResponse.ok) {
+              const titleData = await titleResponse.json();
+              const generatedTitle = (titleData.choices?.[0]?.message?.content || "").trim().replace(/['"]+/g, '');
+              
+              if (generatedTitle && generatedTitle.length > 0 && generatedTitle.length <= 60) {
+                await supabase
+                  .from("report_qa_conversations")
+                  .update({ title: generatedTitle })
+                  .eq("id", conversationId);
+                
+                console.log(`[report-qa] Updated conversation title to: ${generatedTitle}`);
+              }
+            }
+          } catch (titleError) {
+            console.error(`[report-qa] Failed to generate dynamic title:`, titleError);
+            // Continue without failing - title generation is non-critical
+          }
+        }
       }
 
       console.log(`[report-qa] Generated response: ${responseText.length} characters`);
