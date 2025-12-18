@@ -199,24 +199,27 @@ export default function ReportQA() {
     setUploadedReports(prev => prev.filter(r => r.name !== name));
   };
 
-  const startNewConversation = async () => {
-    if (uploadedReports.length === 0) return;
-
+  const startNewConversation = async (): Promise<string | null> => {
     try {
+      const title = uploadedReports.length > 1 
+        ? `Comparison: ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(' vs ')}`
+        : uploadedReports.length === 1
+          ? `Q&A: ${uploadedReports[0].name}`
+          : `Open Chat: ${new Date().toLocaleDateString()}`;
+
       const { data, error } = await supabase.functions.invoke('report-qa', {
         body: {
           action: 'create-conversation',
           reportNames: uploadedReports.map(r => r.name),
           reportContents: uploadedReports.map(r => r.content),
-          title: uploadedReports.length > 1 
-            ? `Comparison: ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(' vs ')}`
-            : `Q&A: ${uploadedReports[0].name}`,
+          title,
         },
       });
 
       if (error) throw error;
 
-      setConversationId(data.conversation.id);
+      const newConversationId = data.conversation.id;
+      setConversationId(newConversationId);
       setMessages([]);
       loadSavedConversations();
       
@@ -224,8 +227,11 @@ export default function ReportQA() {
         title: 'Conversation started',
         description: 'Your chat will be saved automatically',
       });
+
+      return newConversationId;
     } catch (error) {
       console.error('Failed to create conversation:', error);
+      return null;
     }
   };
 
@@ -272,9 +278,18 @@ export default function ReportQA() {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isProcessing) return;
 
-    // Start conversation if not already started (only if reports are uploaded)
-    if (!conversationId && uploadedReports.length > 0) {
-      await startNewConversation();
+    // Get or create conversation ID
+    let activeConversationId = conversationId;
+    if (!activeConversationId) {
+      activeConversationId = await startNewConversation();
+      if (!activeConversationId) {
+        toast({
+          title: 'Error',
+          description: 'Failed to start conversation. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     const userMessage: ChatMessage = {
@@ -296,7 +311,7 @@ export default function ReportQA() {
           reportNames: uploadedReports.map(r => r.name),
           question: userMessage.content,
           chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
-          conversationId,
+          conversationId: activeConversationId,
         },
       });
 
