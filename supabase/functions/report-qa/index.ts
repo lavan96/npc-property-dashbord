@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,29 +8,33 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, fileData, fileName, reportContent, question, chatHistory, content, reportName } = await req.json();
+    const body = await req.json();
+    const { action } = body;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
     console.log(`[report-qa] Action: ${action}`);
 
     // Handle PDF text extraction
     if (action === "extract") {
+      const { fileData, fileName } = body;
       console.log(`[report-qa] Extracting text from: ${fileName}`);
       
-      // Remove data URL prefix if present
       const base64Data = fileData.replace(/^data:application\/pdf;base64,/, "");
       
-      // Use AI to extract and summarize the PDF content
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -68,8 +74,6 @@ If you cannot read the document, describe what you can see.`,
         const errorText = await response.text();
         console.error(`[report-qa] AI extraction error: ${response.status} - ${errorText}`);
         
-        // Fallback: return a placeholder for the content
-        // The AI might not be able to process PDFs directly, so we'll handle this gracefully
         if (response.status === 400 || response.status === 422) {
           return new Response(
             JSON.stringify({
@@ -97,11 +101,40 @@ If you cannot read the document, describe what you can see.`,
       );
     }
 
-    // Handle chat Q&A
+    // Handle chat Q&A (single or multi-report)
     if (action === "chat") {
+      const { reportContents, reportNames, question, chatHistory, conversationId } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
+      console.log(`[report-qa] Reports count: ${reportContents?.length || 1}`);
 
-      const systemPrompt = `You are an expert investment property analyst assistant. You have been provided with the content of an investment report. Your role is to:
+      const isMultiReport = reportContents && reportContents.length > 1;
+      
+      let contextSection = "";
+      if (isMultiReport) {
+        contextSection = reportContents.map((content: string, idx: number) => 
+          `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${content}\n`
+        ).join("\n\n");
+      } else {
+        contextSection = reportContents?.[0] || body.reportContent || "";
+      }
+
+      const systemPrompt = isMultiReport 
+        ? `You are an expert investment property analyst assistant. You have been provided with ${reportContents.length} investment reports for comparison. Your role is to:
+
+1. Answer questions by comparing and contrasting information across all reports
+2. Highlight similarities and differences between properties
+3. Provide comparative analysis when asked
+4. Format responses professionally for potential email use
+5. If information is not available in any report, clearly state that
+
+When providing comparisons:
+- Use clear headings for each property
+- Highlight which property performs better in specific metrics
+- Provide a summary recommendation when relevant
+
+Reports Content:
+${contextSection}`
+        : `You are an expert investment property analyst assistant. You have been provided with the content of an investment report. Your role is to:
 
 1. Answer questions accurately based on the report content
 2. Provide concise, clear summaries when asked
@@ -116,7 +149,7 @@ When providing TLDRs or summaries:
 - Highlight any notable risks or opportunities
 
 Report Content:
-${reportContent}`;
+${contextSection}`;
 
       const messages = [
         { role: "system", content: systemPrompt },
@@ -159,6 +192,14 @@ ${reportContent}`;
       const aiResponse = await response.json();
       const responseText = aiResponse.choices?.[0]?.message?.content || "I couldn't generate a response.";
 
+      // Save messages to database if conversationId provided
+      if (conversationId) {
+        await supabase.from("report_qa_messages").insert([
+          { conversation_id: conversationId, role: "user", content: question },
+          { conversation_id: conversationId, role: "assistant", content: responseText },
+        ]);
+      }
+
       console.log(`[report-qa] Generated response: ${responseText.length} characters`);
 
       return new Response(
@@ -167,16 +208,140 @@ ${reportContent}`;
       );
     }
 
+    // Handle conversation creation
+    if (action === "create-conversation") {
+      const { reportNames, reportContents, title } = body;
+      
+      const { data, error } = await supabase
+        .from("report_qa_conversations")
+        .insert({
+          report_names: reportNames,
+          report_contents: reportContents,
+          title: title || `Q&A: ${reportNames.join(", ")}`,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log(`[report-qa] Created conversation: ${data.id}`);
+
+      return new Response(
+        JSON.stringify({ success: true, conversation: data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle fetching conversation history
+    if (action === "get-conversations") {
+      const { data, error } = await supabase
+        .from("report_qa_conversations")
+        .select(`
+          *,
+          messages:report_qa_messages(*)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, conversations: data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle loading a specific conversation
+    if (action === "load-conversation") {
+      const { conversationId } = body;
+      
+      const { data: conversation, error: convError } = await supabase
+        .from("report_qa_conversations")
+        .select("*")
+        .eq("id", conversationId)
+        .single();
+
+      if (convError) throw convError;
+
+      const { data: messages, error: msgError } = await supabase
+        .from("report_qa_messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+
+      if (msgError) throw msgError;
+
+      return new Response(
+        JSON.stringify({ success: true, conversation, messages }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle email sending
+    if (action === "send-email") {
+      const { to, subject, content, reportNames } = body;
+
+      if (!RESEND_API_KEY) {
+        throw new Error("RESEND_API_KEY is not configured");
+      }
+
+      const resend = new Resend(RESEND_API_KEY);
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a365d; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9fafb; }
+            .footer { padding: 15px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #e5e7eb; }
+            pre { white-space: pre-wrap; word-wrap: break-word; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Investment Report Summary</h1>
+              ${reportNames?.length ? `<p>Reports: ${reportNames.join(", ")}</p>` : ""}
+            </div>
+            <div class="content">
+              <pre>${content}</pre>
+            </div>
+            <div class="footer">
+              <p>NPC Services</p>
+              <p>Phone: 0433 005 110 | Email: admin@npcservices.com.au</p>
+              <p>Website: npcservices.com.au</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const emailResponse = await resend.emails.send({
+        from: "NPC Services <onboarding@resend.dev>",
+        to: [to],
+        subject: subject || "Investment Report Summary",
+        html: htmlContent,
+      });
+
+      console.log(`[report-qa] Email sent to: ${to}`);
+
+      return new Response(
+        JSON.stringify({ success: true, emailResponse }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle PDF export
     if (action === "export-pdf") {
+      const { content, reportName } = body;
       console.log(`[report-qa] Generating PDF for: ${reportName}`);
 
-      // Generate a simple PDF with the content
-      // Using a basic PDF structure
-      const cleanContent = content.replace(/[^\x00-\x7F]/g, ""); // Remove non-ASCII chars
+      const cleanContent = content.replace(/[^\x00-\x7F]/g, "");
       const timestamp = new Date().toLocaleString();
       
-      // Create PDF content manually (simple approach)
       const pdfContent = `
 %PDF-1.4
 1 0 obj
@@ -202,7 +367,7 @@ BT
 (Source: ${reportName || 'Investment Report'}) Tj
 0 -30 Td
 /F1 11 Tf
-${cleanContent.split('\n').slice(0, 50).map((line, i) => `0 -14 Td (${line.replace(/[()\\]/g, '\\$&').substring(0, 80)}) Tj`).join('\n')}
+${cleanContent.split('\n').slice(0, 50).map((line: string, i: number) => `0 -14 Td (${line.replace(/[()\\]/g, '\\$&').substring(0, 80)}) Tj`).join('\n')}
 ET
 endstream
 endobj
@@ -222,8 +387,6 @@ startxref
 ${cleanContent.length + 500}
 %%EOF`;
 
-      // For now, return a data URL that can be downloaded
-      // In production, you'd want to use a proper PDF library
       const base64Pdf = btoa(pdfContent);
       
       return new Response(
