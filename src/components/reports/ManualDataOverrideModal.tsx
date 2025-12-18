@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table } from 'lucide-react';
+import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface InvestmentReport {
   id: string;
@@ -42,11 +43,17 @@ interface OverrideField {
 export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: ManualDataOverrideModalProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [overrides, setOverrides] = useState<Record<string, number | string>>({});
+  const [overrides, setOverrides] = useState<Record<string, any>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
   const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
   const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
+  
+  // Depreciation Schedule Builder state
+  const [showDepreciationSchedule, setShowDepreciationSchedule] = useState(false);
+  const [depreciationMethod, setDepreciationMethod] = useState<'prime_cost' | 'diminishing_value'>('prime_cost');
+  const [depreciationSchedule, setDepreciationSchedule] = useState<Record<number, number>>({});
+  const [year1Depreciation, setYear1Depreciation] = useState<number>(0);
 
   // Define the confirmed input fields for manual overrides
   // Grouped by category for better organization
@@ -301,9 +308,106 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       setCashFlowFieldToggles(defaultToggles);
       // Initialize depreciation master toggle (default: include in cash flow analysis)
       setIncludeDepreciationInCashFlow(report.manual_overrides?.includeDepreciationInCashFlow ?? true);
+      
+      // Initialize depreciation schedule builder from existing data
+      const existingSchedule = report.manual_overrides?.depreciationSchedule || {};
+      setDepreciationSchedule(existingSchedule);
+      setYear1Depreciation(existingSchedule[1] || report.manual_overrides?.depreciation || 0);
+      setDepreciationMethod(report.manual_overrides?.depreciationMethod || 'prime_cost');
+      
       setHasChanges(false);
     }
   }, [report, isOpen]);
+
+  // Calculate Prime Cost depreciation schedule (constant annual depreciation)
+  const calculatePrimeCostSchedule = (year1Value: number) => {
+    const schedule: Record<number, number> = {};
+    for (let year = 1; year <= 10; year++) {
+      schedule[year] = year1Value; // Prime Cost = same value each year
+    }
+    return schedule;
+  };
+
+  // Calculate Diminishing Value depreciation schedule (declining balance)
+  const calculateDiminishingValueSchedule = (year1Value: number) => {
+    const schedule: Record<number, number> = {};
+    let currentValue = year1Value;
+    const declineRate = 0.85; // 15% decline each year typical for diminishing value
+    for (let year = 1; year <= 10; year++) {
+      schedule[year] = Math.round(currentValue);
+      currentValue = currentValue * declineRate;
+    }
+    return schedule;
+  };
+
+  // Update schedule when year 1 value or method changes
+  const handleYear1DepreciationChange = (value: number) => {
+    setYear1Depreciation(value);
+    if (depreciationMethod === 'prime_cost') {
+      setDepreciationSchedule(calculatePrimeCostSchedule(value));
+    } else {
+      setDepreciationSchedule(calculateDiminishingValueSchedule(value));
+    }
+    setHasChanges(true);
+  };
+
+  // Update schedule when method changes
+  const handleDepreciationMethodChange = (method: 'prime_cost' | 'diminishing_value') => {
+    setDepreciationMethod(method);
+    if (year1Depreciation > 0) {
+      if (method === 'prime_cost') {
+        setDepreciationSchedule(calculatePrimeCostSchedule(year1Depreciation));
+      } else {
+        setDepreciationSchedule(calculateDiminishingValueSchedule(year1Depreciation));
+      }
+    }
+    setHasChanges(true);
+  };
+
+  // Update individual year in schedule (for manual adjustments)
+  const handleScheduleYearChange = (year: number, value: number) => {
+    setDepreciationSchedule(prev => ({
+      ...prev,
+      [year]: value
+    }));
+    setHasChanges(true);
+  };
+
+  // Apply depreciation schedule to cash flow yearly overrides
+  const applyDepreciationToCashFlow = () => {
+    // Get existing cash flow yearly overrides or create new
+    const existingCashFlowOverrides = overrides.cashFlowYearlyOverrides as Record<string, Record<string, number>> || {};
+    
+    // Create new overrides with depreciation values for years 2-10
+    const updatedCashFlowOverrides = { ...existingCashFlowOverrides };
+    
+    for (let year = 2; year <= 10; year++) {
+      const depValue = depreciationSchedule[year] || 0;
+      if (!updatedCashFlowOverrides[year]) {
+        updatedCashFlowOverrides[year] = {};
+      }
+      updatedCashFlowOverrides[year] = {
+        ...updatedCashFlowOverrides[year],
+        depreciation: depValue
+      };
+    }
+
+    // Also set Year 1 depreciation in main overrides
+    setOverrides(prev => ({
+      ...prev,
+      depreciation: depreciationSchedule[1] || year1Depreciation,
+      cashFlowYearlyOverrides: updatedCashFlowOverrides,
+      depreciationSchedule,
+      depreciationMethod
+    }));
+
+    setHasChanges(true);
+
+    toast({
+      title: "Depreciation Applied",
+      description: "10-year depreciation schedule has been applied to cash flow analysis.",
+    });
+  };
 
   const handleOverrideChange = (key: string, value: string) => {
     const field = fields.find(f => f.key === key);
@@ -752,6 +856,171 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         <li>Enter that value in the "Annual Depreciation" field below</li>
                       </ol>
                     </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Depreciation Schedule Builder */}
+              <Collapsible 
+                open={showDepreciationSchedule} 
+                onOpenChange={setShowDepreciationSchedule}
+                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-500/10">
+                        <Table className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-foreground">Depreciation Schedule Builder</p>
+                        <p className="text-sm text-muted-foreground">
+                          Create 10-year depreciation schedule and apply to cash flow analysis
+                        </p>
+                      </div>
+                    </div>
+                    {showDepreciationSchedule ? (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <Separator />
+                    
+                    {/* Method Selection */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Depreciation Method</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDepreciationMethodChange('prime_cost')}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            depreciationMethod === 'prime_cost'
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-muted-foreground'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {depreciationMethod === 'prime_cost' && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                            <span className="font-semibold">Prime Cost</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Same depreciation amount each year (straight-line)
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDepreciationMethodChange('diminishing_value')}
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${
+                            depreciationMethod === 'diminishing_value'
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-muted-foreground'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {depreciationMethod === 'diminishing_value' && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                            <span className="font-semibold">Diminishing Value</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Higher depreciation early, decreasing over time
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Year 1 Input */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Year 1 Depreciation (from Washington Brown)</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">$</span>
+                        <Input
+                          type="number"
+                          placeholder="Enter Year 1 depreciation value"
+                          value={year1Depreciation || ''}
+                          onChange={(e) => handleYear1DepreciationChange(parseFloat(e.target.value) || 0)}
+                          className="max-w-[200px]"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Copy the Year 1 value from Washington Brown calculator above
+                      </p>
+                    </div>
+
+                    {/* 10-Year Schedule Table */}
+                    {year1Depreciation > 0 && (
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">10-Year Depreciation Schedule</Label>
+                        <div className="rounded-lg border overflow-hidden">
+                          <UITable>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="w-[100px] font-semibold">Year</TableHead>
+                                <TableHead className="font-semibold">Depreciation Amount</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {Array.from({ length: 10 }, (_, i) => i + 1).map((year) => (
+                                <TableRow key={year} className={year === 1 ? 'bg-primary/5' : ''}>
+                                  <TableCell className="font-medium">
+                                    Year {year}
+                                    {year === 1 && (
+                                      <Badge variant="outline" className="ml-2 text-xs">Base</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground">$</span>
+                                      <Input
+                                        type="number"
+                                        value={depreciationSchedule[year] || ''}
+                                        onChange={(e) => handleScheduleYearChange(year, parseFloat(e.target.value) || 0)}
+                                        className="max-w-[150px] h-8"
+                                      />
+                                      {depreciationMethod === 'diminishing_value' && year > 1 && (
+                                        <span className="text-xs text-muted-foreground">
+                                          ({((depreciationSchedule[year] / depreciationSchedule[1]) * 100).toFixed(0)}% of Y1)
+                                        </span>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </UITable>
+                        </div>
+
+                        {/* Total Depreciation Summary */}
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                          <span className="text-sm font-medium">Total 10-Year Depreciation</span>
+                          <span className="text-lg font-bold text-primary">
+                            ${Object.values(depreciationSchedule).reduce((sum, val) => sum + (val || 0), 0).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {/* Apply to Cash Flow Button */}
+                        <Button
+                          onClick={applyDepreciationToCashFlow}
+                          className="w-full"
+                          size="lg"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          Apply to Cash Flow Analysis
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          This will inject the depreciation values into your 10-year cash flow projections
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
