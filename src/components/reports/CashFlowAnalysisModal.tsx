@@ -59,6 +59,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
     const mo = report.manual_overrides || {};
     const cashFlow = fc.cashFlow || {};
 
+    // Check if depreciation should be included in cash flow analysis
+    const includeDepreciation = mo.includeDepreciationInCashFlow !== false; // Default to true
+
     return {
       // Purchase & Loan
       purchasePrice: mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0,
@@ -91,9 +94,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose }: CashFlowAnaly
 
       // Tax & Growth
       cpiGrowthRate: mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3,
-      depreciation: mo.depreciation || cashFlow.depreciation || 6000,
+      depreciation: includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0,
       taxRate: mo.taxRate || cashFlow.taxRate || 30,
       constructionYear: mo.constructionYear || cashFlow.constructionYear || new Date().getFullYear(),
+      
+      // Toggle state
+      includeDepreciationInCashFlow: includeDepreciation,
     };
   }, [report]);
 

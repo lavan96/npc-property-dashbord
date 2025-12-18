@@ -44,6 +44,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [overrides, setOverrides] = useState<Record<string, number | string>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
+  const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
 
   // Define the confirmed input fields for manual overrides
   // Grouped by category for better organization
@@ -296,6 +297,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         defaultToggles[f.key] = report.manual_overrides?.cashFlowFieldToggles?.[f.key] ?? false;
       });
       setCashFlowFieldToggles(defaultToggles);
+      // Initialize depreciation master toggle (default: include in cash flow analysis)
+      setIncludeDepreciationInCashFlow(report.manual_overrides?.includeDepreciationInCashFlow ?? true);
       setHasChanges(false);
     }
   }, [report, isOpen]);
@@ -339,6 +342,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       defaultToggles[f.key] = false;
     });
     setCashFlowFieldToggles(defaultToggles);
+    setIncludeDepreciationInCashFlow(true);
     setHasChanges(true);
   };
 
@@ -439,10 +443,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       
       console.log('📊 Recalculated totalAnnual:', mergedFinancialData.annualCosts.totalAnnual);
       
-      // Save overrides with cash flow field toggles
+      // Save overrides with cash flow field toggles and depreciation master toggle
       const overridesWithToggles = {
         ...overrides,
-        cashFlowFieldToggles
+        cashFlowFieldToggles,
+        includeDepreciationInCashFlow
       };
       
       // Update database with merged data (NO Perplexity call)
@@ -660,10 +665,30 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
             {/* Tax & Growth Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                <span className="w-2 h-2 bg-primary rounded-full"></span>
-                Tax & Growth Settings
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
+                  Tax & Growth Settings
+                </h3>
+              </div>
+              
+              {/* Master Depreciation Toggle for Cash Flow Analysis */}
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold">Include Depreciation in Cash Flow Analysis</Label>
+                  <p className="text-sm text-muted-foreground">
+                    When enabled, depreciation values will be factored into the 10-year cash flow projections
+                  </p>
+                </div>
+                <Switch
+                  checked={includeDepreciationInCashFlow}
+                  onCheckedChange={(checked) => {
+                    setIncludeDepreciationInCashFlow(checked);
+                    setHasChanges(true);
+                  }}
+                />
+              </div>
+              
               {taxGrowthFields.map((field, index) => 
                 renderField(field, index < taxGrowthFields.length - 1)
               )}
