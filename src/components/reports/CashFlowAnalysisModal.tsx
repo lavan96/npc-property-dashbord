@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, Edit2 } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, Edit2, RotateCcw } from 'lucide-react';
 
 interface InvestmentReport {
   id: string;
@@ -775,10 +775,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   {isEditing ? (
                     <>
                       <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Clear all overrides to defaults
+                          setCashFlowOverrides({
+                            capitalGrowthRate: null,
+                            cpiGrowthRate: null,
+                            propertyMarketValue: null,
+                            rentalIncome: null,
+                            propertyExpenses: null,
+                            interestRate: null,
+                            interestPayment: null,
+                            principalPayment: null,
+                            depreciation: null,
+                            landTax: null,
+                          });
+                          setHasChanges(true);
+                        }}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset All
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          // Reset to original values
+                          // Reset to saved values (cancel changes)
                           const cfOverrides = report.manual_overrides?.cashFlowAnalysisOverrides || {};
                           setCashFlowOverrides({
                             capitalGrowthRate: cfOverrides.capitalGrowthRate ?? null,
