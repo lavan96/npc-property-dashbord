@@ -36,6 +36,7 @@ const navigationItems = [
   { title: 'Sources', url: '/sources', icon: Mail },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Generated Reports', url: '/generated-reports', icon: FileText },
+  { title: 'Cash Flow Analysis', url: '/cash-flow-analysis', icon: Activity },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles },
   { title: 'Call Logs', url: '/call-logs', icon: Phone },
   { title: 'Charts', url: '/charts', icon: BarChart3 },
