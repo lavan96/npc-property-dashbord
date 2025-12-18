@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface InvestmentReport {
@@ -1681,7 +1681,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     });
   };
 
-  // Export single report 10-year cash flow as PDF
+  // Export single report 10-year cash flow as PDF with charts
   const exportSingleReportPDF = useCallback(async () => {
     if (!report || !baseFinancialData) return;
 
@@ -1691,6 +1691,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 15;
       let yPos = margin;
+
+      // Capture charts first
+      let cashFlowChartImage: string | null = null;
+      if (cashFlowChartRef.current) {
+        try {
+          const canvas = await html2canvas(cashFlowChartRef.current, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+          });
+          cashFlowChartImage = canvas.toDataURL('image/png');
+        } catch (e) {
+          console.warn('Failed to capture chart:', e);
+        }
+      }
 
       // Header
       pdf.setFontSize(18);
@@ -1726,7 +1740,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const rowHeight = 5.5;
       
       // Helper to draw a row
-      const drawRow = (cells: string[], isHeader = false, isSection = false, highlight = false) => {
+      const drawRow = (cells: string[], isHeader = false, isSection = false) => {
         if (yPos > pageHeight - 20) {
           pdf.addPage();
           yPos = margin;
@@ -1743,9 +1757,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.setTextColor(255);
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(7);
-        } else if (highlight) {
-          pdf.setFillColor(254, 249, 195);
-          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
         }
 
         let xPos = margin;
@@ -1769,13 +1780,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const headers = ['Metric', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
       drawRow(headers, true);
 
-      // Check if year has override
-      const hasOverride = (year: number, field: string) => {
-        return year >= 2 && yearlyOverrides[year]?.[field as keyof YearOverrides] != null;
-      };
-
       // Data rows
-      drawRow(['Capital Growth %', '', ...projections.slice(1).map((p, i) => p.capitalGrowthRate.toFixed(1))], false, false, false);
+      drawRow(['Capital Growth %', '', ...projections.slice(1).map(p => p.capitalGrowthRate.toFixed(1))]);
       drawRow(['CPI Growth %', '', ...projections.slice(1).map(p => p.cpiGrowthRate.toFixed(1))]);
       drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...projections.slice(1).map(p => formatCurrency(p.propertyMarketValue))]);
       drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
@@ -1815,7 +1821,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       const year10 = projections[10];
-      const year1 = projections[1];
       const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
       const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
       
@@ -1824,7 +1829,29 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Year 10 Property Value: ${formatCurrency(year10.propertyMarketValue)}  |  Year 10 Equity: ${formatCurrency(year10.equityInProperty)}  |  Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}  |  Capital Gain: ${formatCurrency(capitalGain)}`, margin, yPos);
 
-      // Footer disclaimer
+      // Add charts on a new page
+      if (cashFlowChartImage) {
+        pdf.addPage();
+        yPos = margin;
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Cash Flow & Property Value Trends', margin, yPos);
+        yPos += 10;
+        
+        // Add chart image
+        const chartWidth = pageWidth - margin * 2;
+        const chartHeight = 80;
+        pdf.addImage(cashFlowChartImage, 'PNG', margin, yPos, chartWidth, chartHeight);
+        yPos += chartHeight + 10;
+        
+        // Add chart legend
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('Chart shows Property Value, Equity, Rental Income, and After-Tax Cash Flow trends over 10 years.', margin, yPos);
+      }
+
+      // Footer disclaimer on last page
       yPos = pageHeight - 10;
       pdf.setFontSize(7);
       pdf.setTextColor(120);
@@ -1836,7 +1863,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
       toast({
         title: "PDF Exported",
-        description: "10-year cash flow analysis PDF has been downloaded.",
+        description: "10-year cash flow analysis PDF with charts has been downloaded.",
       });
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -1846,7 +1873,234 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, baseFinancialData, projections, yearlyOverrides, toast]);
+  }, [report, baseFinancialData, projections, toast]);
+
+  // Print-friendly view in new window
+  const openPrintView = useCallback(() => {
+    if (!report || !baseFinancialData) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Popup Blocked",
+        description: "Please allow popups to open the print view.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>10-Year Cash Flow Analysis - ${report.property_address}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
+          h1 { font-size: 24px; margin-bottom: 8px; }
+          h2 { font-size: 18px; color: #666; margin-bottom: 16px; }
+          .meta { color: #888; font-size: 12px; margin-bottom: 24px; }
+          .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+          .metric { background: #f5f5f5; padding: 16px; border-radius: 8px; }
+          .metric-label { font-size: 12px; color: #666; margin-bottom: 4px; }
+          .metric-value { font-size: 24px; font-weight: bold; }
+          .metric-sub { font-size: 11px; color: #888; }
+          table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 24px; }
+          th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee; }
+          th { background: #3b82f6; color: white; font-weight: 600; }
+          td:first-child, th:first-child { text-align: left; font-weight: 500; }
+          .section-header { background: #f0f0f0; font-weight: bold; }
+          .summary { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px; }
+          .summary h3 { font-size: 14px; margin-bottom: 8px; }
+          .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+          .summary-item { text-align: center; }
+          .summary-label { font-size: 11px; color: #666; }
+          .summary-value { font-size: 18px; font-weight: bold; color: #3b82f6; }
+          .disclaimer { font-size: 10px; color: #888; margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; }
+          @media print { 
+            body { padding: 0; }
+            .no-print { display: none; }
+            table { page-break-inside: avoid; }
+          }
+          .print-btn { position: fixed; top: 20px; right: 20px; background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 500; }
+          .print-btn:hover { background: #2563eb; }
+        </style>
+      </head>
+      <body>
+        <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+        
+        <h1>10-Year Cash Flow Analysis</h1>
+        <h2>${report.property_address}</h2>
+        <p class="meta">Generated: ${new Date().toLocaleDateString()}</p>
+        
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Property Value</div>
+            <div class="metric-value">${formatCurrency(baseFinancialData.marketValueNow)}</div>
+            <div class="metric-sub">Current market value</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Loan Amount</div>
+            <div class="metric-value">${formatCurrency(baseFinancialData.loanAmount)}</div>
+            <div class="metric-sub">${baseFinancialData.loanToValueRatio}% LVR</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Weekly Rent</div>
+            <div class="metric-value">${formatCurrency(baseFinancialData.weeklyRent)}</div>
+            <div class="metric-sub">${formatCurrency(baseFinancialData.weeklyRent * 52)} p.a.</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Year 10 Value</div>
+            <div class="metric-value">${formatCurrency(projections[10]?.propertyMarketValue || 0)}</div>
+            <div class="metric-sub">Projected @ ${baseFinancialData.capitalGrowth}% growth</div>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Today</th>
+              ${Array.from({ length: 10 }, (_, i) => `<th>Yr ${i + 1}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Capital Growth %</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${p.capitalGrowthRate.toFixed(1)}%</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Property Value $</td>
+              <td>${formatCurrency(projections[0].propertyMarketValue)}</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.propertyMarketValue)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Loan Amount $</td>
+              <td>${formatCurrency(projections[0].loanAmount)}</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.loanAmount)}</td>`).join('')}
+            </tr>
+            <tr class="section-header"><td colspan="12">STATISTICS</td></tr>
+            <tr>
+              <td>Equity $</td>
+              <td>${formatCurrency(projections[0].equityInProperty)}</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.equityInProperty)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>LVR %</td>
+              <td>${projections[0].loanToValueRatio.toFixed(1)}%</td>
+              ${projections.slice(1).map(p => `<td>${p.loanToValueRatio.toFixed(1)}%</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Rental Income $</td>
+              <td>${formatCurrency(baseFinancialData.weeklyRent)}pw</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.rentalIncome)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Gross Yield %</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${p.grossYield.toFixed(2)}%</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Net Yield %</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${p.netYield.toFixed(2)}%</td>`).join('')}
+            </tr>
+            <tr class="section-header"><td colspan="12">CASH DEDUCTIONS</td></tr>
+            <tr>
+              <td>Property Expenses $</td>
+              <td>$0</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.propertyExpenses)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Interest Rate %</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${p.interestRate.toFixed(2)}%</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Interest Payments $</td>
+              <td>$0</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.interestPayments)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Pre-Tax Cash Flow p/a $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.preTaxCashFlowPA)}</td>`).join('')}
+            </tr>
+            <tr class="section-header"><td colspan="12">NON-CASH DEDUCTIONS</td></tr>
+            <tr>
+              <td>Depreciation $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.depreciation)}</td>`).join('')}
+            </tr>
+            <tr class="section-header"><td colspan="12">SUMMARY</td></tr>
+            <tr>
+              <td>Total Deductions $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.totalDeductions)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Net Profit/Loss $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.netProfitLoss)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Tax Refund $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.taxRefund)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Land Tax $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.landTax)}</td>`).join('')}
+            </tr>
+            <tr style="background: #eff6ff; font-weight: bold;">
+              <td>After-Tax Cash Flow p/a $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.afterTaxCashFlowPA)}</td>`).join('')}
+            </tr>
+            <tr style="background: #eff6ff; font-weight: bold;">
+              <td>After-Tax Cash Flow p/w $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.afterTaxCashFlowPW)}</td>`).join('')}
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="summary">
+          <h3>10-Year Investment Summary</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-label">Year 10 Property Value</div>
+              <div class="summary-value">${formatCurrency(projections[10]?.propertyMarketValue || 0)}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Year 10 Equity</div>
+              <div class="summary-value">${formatCurrency(projections[10]?.equityInProperty || 0)}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Total After-Tax Cash Flow</div>
+              <div class="summary-value">${formatCurrency(projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0))}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Capital Gain</div>
+              <div class="summary-value">${formatCurrency((projections[10]?.propertyMarketValue || 0) - baseFinancialData.purchasePrice)}</div>
+            </div>
+          </div>
+        </div>
+        
+        <p class="disclaimer">
+          This analysis is for informational purposes only and does not constitute financial advice. 
+          Projections are estimates based on assumed growth rates and may not reflect actual future performance.
+          Please consult with a qualified financial advisor before making investment decisions.
+        </p>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  }, [report, baseFinancialData, projections, toast]);
 
   if (!report || !baseFinancialData) return null;
 
@@ -1897,6 +2151,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <Button variant="outline" size="sm" onClick={exportSingleReportPDF}>
                   <FileText className="h-4 w-4 mr-2" />
                   Export PDF
+                </Button>
+                <Button variant="outline" size="sm" onClick={openPrintView}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print View
                 </Button>
               </div>
             </div>
