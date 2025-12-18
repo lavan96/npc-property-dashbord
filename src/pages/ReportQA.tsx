@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { QAPDFTemplate } from '@/components/reports/QAPDFTemplate';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { 
   Upload, 
   FileText, 
@@ -69,9 +72,12 @@ export default function ReportQA() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [pdfContent, setPdfContent] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfTemplateRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Load saved conversations on mount
@@ -469,27 +475,56 @@ export default function ReportQA() {
 
   const handleExportToPDF = async (content: string) => {
     try {
+      setIsGeneratingPDF(true);
+      setPdfContent(content);
+      
       toast({
         title: 'Generating PDF',
-        description: 'Creating PDF document...',
+        description: 'Creating professional PDF document...',
       });
 
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          action: 'export-pdf',
-          content: content,
-          reportName: uploadedReports.map(r => r.name).join(', '),
-        },
+      // Wait for template to render
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      if (!pdfTemplateRef.current) {
+        throw new Error('PDF template not ready');
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [794, 1123],
       });
 
-      if (error) throw error;
+      // Get all page elements
+      const pages = pdfTemplateRef.current.children;
+      
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: i === 0 ? '#0a0a0a' : '#ffffff',
+          width: 794,
+          height: 1123,
+        });
 
-      const link = document.createElement('a');
-      link.href = data.pdfDataUrl;
-      link.download = `Summary - ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ')}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        
+        if (i > 0) {
+          pdf.addPage([794, 1123]);
+        }
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, 794, 1123);
+      }
+
+      const fileName = uploadedReports.length > 0 
+        ? `Summary - ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ')}.pdf`
+        : `Q&A Summary - ${new Date().toLocaleDateString()}.pdf`;
+      
+      pdf.save(fileName);
 
       toast({
         title: 'PDF Downloaded',
@@ -502,6 +537,9 @@ export default function ReportQA() {
         description: 'Failed to generate PDF',
         variant: 'destructive',
       });
+    } finally {
+      setIsGeneratingPDF(false);
+      setPdfContent(null);
     }
   };
 
@@ -898,6 +936,30 @@ export default function ReportQA() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hidden PDF Template for export */}
+      {pdfContent && (
+        <div
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: 0,
+            visibility: 'hidden',
+          }}
+        >
+          <QAPDFTemplate
+            ref={pdfTemplateRef}
+            title={uploadedReports.length > 1 
+              ? 'Property Comparison Summary'
+              : uploadedReports.length === 1 
+                ? 'Investment Report Summary'
+                : 'Property Investment Analysis'}
+            content={pdfContent}
+            reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
+            generatedAt={new Date().toLocaleString()}
+          />
+        </div>
+      )}
     </div>
   );
 }
