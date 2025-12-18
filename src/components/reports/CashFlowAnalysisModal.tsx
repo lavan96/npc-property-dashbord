@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface InvestmentReport {
@@ -663,6 +664,227 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     return results;
   }, [baseFinancialData, yearlyOverrides]);
 
+  // Calculate advanced comparison metrics
+  const calculateAdvancedMetrics = useCallback((
+    projs: YearlyProjection[],
+    baseData: any
+  ) => {
+    if (!baseData || projs.length < 11) return null;
+
+    const purchasePrice = baseData.purchasePrice;
+    const depositValue = baseData.depositValue || (purchasePrice * (1 - baseData.loanToValueRatio / 100));
+    const stampDuty = baseData.stampDuty;
+    const totalInitialInvestment = depositValue + stampDuty + (baseData.solicitorFees || 2000);
+
+    // Total cash flow over 10 years
+    const totalCashFlow = projs.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
+
+    // Capital gain
+    const capitalGain = projs[10].propertyMarketValue - purchasePrice;
+
+    // Total return (capital gain + cash flow)
+    const totalReturn = capitalGain + totalCashFlow;
+
+    // ROI = Total Return / Initial Investment * 100
+    const roi = totalInitialInvestment > 0 ? (totalReturn / totalInitialInvestment) * 100 : 0;
+
+    // Annualized ROI
+    const annualizedRoi = Math.pow(1 + roi / 100, 1 / 10) * 100 - 100;
+
+    // Break-even year (when cumulative cash flow becomes positive)
+    let cumulativeCashFlow = 0;
+    let breakEvenYear: number | null = null;
+    for (let i = 1; i <= 10; i++) {
+      cumulativeCashFlow += projs[i].afterTaxCashFlowPA;
+      if (cumulativeCashFlow >= 0 && breakEvenYear === null) {
+        breakEvenYear = i;
+      }
+    }
+
+    // Cash-on-cash return (Year 1)
+    const cashOnCash = totalInitialInvestment > 0 
+      ? (projs[1].afterTaxCashFlowPA / totalInitialInvestment) * 100 
+      : 0;
+
+    // Equity multiple
+    const equityMultiple = totalInitialInvestment > 0 
+      ? (projs[10].equityInProperty + totalCashFlow) / totalInitialInvestment 
+      : 0;
+
+    return {
+      totalInitialInvestment,
+      totalCashFlow,
+      capitalGain,
+      totalReturn,
+      roi,
+      annualizedRoi,
+      breakEvenYear,
+      cashOnCash,
+      equityMultiple
+    };
+  }, []);
+
+  // Memoized metrics for both properties
+  const primaryMetrics = useMemo(() => 
+    calculateAdvancedMetrics(projections, baseFinancialData),
+    [projections, baseFinancialData, calculateAdvancedMetrics]
+  );
+
+  const comparisonMetrics = useMemo(() => {
+    if (!comparisonReport || comparisonProjections.length < 11) return null;
+    
+    const fc = comparisonReport.financial_calculations || {};
+    const mo = comparisonReport.manual_overrides || {};
+    
+    const compBaseData = {
+      purchasePrice: mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0,
+      depositValue: mo.depositValue || fc.depositValue || 0,
+      stampDuty: mo.stampDuty || fc.stampDuty || 0,
+      solicitorFees: mo.solicitorFees || fc.solicitorFees || 2000,
+      loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
+    };
+    
+    return calculateAdvancedMetrics(comparisonProjections, compBaseData);
+  }, [comparisonReport, comparisonProjections, calculateAdvancedMetrics]);
+
+  // PDF Export function for comparison
+  const exportComparisonPDF = useCallback(async () => {
+    if (!report || !comparisonReport) return;
+
+    try {
+      toast({
+        title: "Generating PDF",
+        description: "Please wait while charts are being captured...",
+      });
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = margin;
+
+      // Title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Cash Flow Analysis Comparison', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 10;
+
+      // Properties being compared
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Property 1: ${report.property_address}`, margin, yPos);
+      yPos += 5;
+      pdf.text(`Property 2: ${comparisonReport.property_address}`, margin, yPos);
+      yPos += 5;
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPos);
+      yPos += 10;
+
+      // Capture and add charts
+      const chartRefs = [
+        { ref: cashFlowChartRef, title: 'Cash Flow Trends' },
+        { ref: yieldChartRef, title: 'Yield Percentages' },
+        { ref: comparisonChartRef, title: 'Property Comparison' }
+      ];
+
+      for (const chart of chartRefs) {
+        if (chart.ref.current) {
+          const canvas = await html2canvas(chart.ref.current, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = pageWidth - (margin * 2);
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          if (yPos + imgHeight > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+          }
+
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(chart.title, margin, yPos);
+          yPos += 5;
+          
+          pdf.addImage(imgData, 'PNG', margin, yPos, imgWidth, imgHeight);
+          yPos += imgHeight + 10;
+        }
+      }
+
+      // Add comparison metrics table
+      pdf.addPage();
+      yPos = margin;
+
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Investment Comparison Metrics', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 10;
+
+      const metrics = [
+        { label: '10-Year Total Return', p1: primaryMetrics?.totalReturn, p2: comparisonMetrics?.totalReturn, format: 'currency' },
+        { label: 'ROI (10-Year)', p1: primaryMetrics?.roi, p2: comparisonMetrics?.roi, format: 'percent' },
+        { label: 'Annualized ROI', p1: primaryMetrics?.annualizedRoi, p2: comparisonMetrics?.annualizedRoi, format: 'percent' },
+        { label: 'Break-Even Year', p1: primaryMetrics?.breakEvenYear, p2: comparisonMetrics?.breakEvenYear, format: 'year' },
+        { label: 'Cash-on-Cash Return (Y1)', p1: primaryMetrics?.cashOnCash, p2: comparisonMetrics?.cashOnCash, format: 'percent' },
+        { label: 'Equity Multiple', p1: primaryMetrics?.equityMultiple, p2: comparisonMetrics?.equityMultiple, format: 'multiple' },
+        { label: 'Total Cash Flow (10Y)', p1: primaryMetrics?.totalCashFlow, p2: comparisonMetrics?.totalCashFlow, format: 'currency' },
+        { label: 'Capital Gain', p1: primaryMetrics?.capitalGain, p2: comparisonMetrics?.capitalGain, format: 'currency' },
+        { label: 'Year 10 Property Value', p1: projections[10]?.propertyMarketValue, p2: comparisonProjections[10]?.propertyMarketValue, format: 'currency' },
+        { label: 'Year 10 Equity', p1: projections[10]?.equityInProperty, p2: comparisonProjections[10]?.equityInProperty, format: 'currency' },
+      ];
+
+      const formatValue = (value: number | null | undefined, format: string) => {
+        if (value === null || value === undefined) return 'N/A';
+        switch (format) {
+          case 'currency': return `$${Math.round(value).toLocaleString()}`;
+          case 'percent': return `${value.toFixed(2)}%`;
+          case 'year': return value === null ? 'N/A' : `Year ${value}`;
+          case 'multiple': return `${value.toFixed(2)}x`;
+          default: return String(value);
+        }
+      };
+
+      // Table header
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Metric', margin, yPos);
+      pdf.text('Property 1', margin + 70, yPos);
+      pdf.text('Property 2', margin + 120, yPos);
+      yPos += 2;
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 5;
+
+      // Table rows
+      pdf.setFont('helvetica', 'normal');
+      for (const metric of metrics) {
+        pdf.text(metric.label, margin, yPos);
+        pdf.text(formatValue(metric.p1, metric.format), margin + 70, yPos);
+        pdf.text(formatValue(metric.p2, metric.format), margin + 120, yPos);
+        yPos += 6;
+      }
+
+      // Footer
+      yPos += 10;
+      pdf.setFontSize(8);
+      pdf.text('This comparison is for informational purposes only.', margin, yPos);
+
+      pdf.save(`cash-flow-comparison-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: "PDF Exported",
+        description: "Comparison PDF has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate comparison PDF.",
+        variant: "destructive"
+      });
+    }
+  }, [report, comparisonReport, projections, comparisonProjections, primaryMetrics, comparisonMetrics, toast]);
+
   const formatCurrency = (value: number) => {
     if (value === 0) return '-';
     const formatted = Math.abs(value).toLocaleString('en-AU', { maximumFractionDigits: 0 });
@@ -1296,50 +1518,154 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     </ResponsiveContainer>
                   </div>
                   
-                  {/* Side-by-side summary */}
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <Card className="border-primary/20">
-                      <CardContent className="pt-4">
-                        <p className="text-xs font-medium text-muted-foreground mb-2 truncate">{report?.property_address}</p>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Year 10 Value:</span>
-                            <span className="font-medium text-green-600">${(projections[10]?.propertyMarketValue || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Year 10 Cash Flow:</span>
-                            <span className={`font-medium ${(projections[10]?.afterTaxCashFlowPA || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                              ${(projections[10]?.afterTaxCashFlowPA || 0).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Year 10 Equity:</span>
-                            <span className="font-medium">${(projections[10]?.equityInProperty || 0).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-orange-500/20">
-                      <CardContent className="pt-4">
-                        <p className="text-xs font-medium text-muted-foreground mb-2 truncate">{comparisonReport.property_address}</p>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Year 10 Value:</span>
-                            <span className="font-medium text-green-600">${(comparisonProjections[10]?.propertyMarketValue || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Year 10 Cash Flow:</span>
-                            <span className={`font-medium ${(comparisonProjections[10]?.afterTaxCashFlowPA || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                              ${(comparisonProjections[10]?.afterTaxCashFlowPA || 0).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Year 10 Equity:</span>
-                            <span className="font-medium">${(comparisonProjections[10]?.equityInProperty || 0).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  {/* Advanced Investment Metrics Comparison */}
+                  <div className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold">Investment Metrics Comparison</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportComparisonPDF}
+                        className="gap-2"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Export PDF
+                      </Button>
+                    </div>
+                    
+                    {/* Metrics Table */}
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[180px]">Metric</TableHead>
+                            <TableHead className="text-center min-w-[140px]">{report?.property_address.split(',')[0]}</TableHead>
+                            <TableHead className="text-center min-w-[140px]">{comparisonReport.property_address.split(',')[0]}</TableHead>
+                            <TableHead className="text-center min-w-[100px]">Difference</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="font-medium">10-Year ROI</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.roi || 0) > (comparisonMetrics?.roi || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {primaryMetrics?.roi?.toFixed(1)}%
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.roi || 0) > (primaryMetrics?.roi || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {comparisonMetrics?.roi?.toFixed(1)}%
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {((primaryMetrics?.roi || 0) - (comparisonMetrics?.roi || 0)).toFixed(1)}%
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Annualized ROI</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.annualizedRoi || 0) > (comparisonMetrics?.annualizedRoi || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {primaryMetrics?.annualizedRoi?.toFixed(2)}%
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.annualizedRoi || 0) > (primaryMetrics?.annualizedRoi || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {comparisonMetrics?.annualizedRoi?.toFixed(2)}%
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {((primaryMetrics?.annualizedRoi || 0) - (comparisonMetrics?.annualizedRoi || 0)).toFixed(2)}%
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Total Return (10Y)</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.totalReturn || 0) > (comparisonMetrics?.totalReturn || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(primaryMetrics?.totalReturn || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.totalReturn || 0) > (primaryMetrics?.totalReturn || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(comparisonMetrics?.totalReturn || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              ${((primaryMetrics?.totalReturn || 0) - (comparisonMetrics?.totalReturn || 0)).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Break-Even Year</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.breakEvenYear || 99) < (comparisonMetrics?.breakEvenYear || 99) ? 'text-green-600 font-semibold' : ''}`}>
+                              {primaryMetrics?.breakEvenYear ? `Year ${primaryMetrics.breakEvenYear}` : 'N/A'}
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.breakEvenYear || 99) < (primaryMetrics?.breakEvenYear || 99) ? 'text-green-600 font-semibold' : ''}`}>
+                              {comparisonMetrics?.breakEvenYear ? `Year ${comparisonMetrics.breakEvenYear}` : 'N/A'}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">-</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Cash-on-Cash (Y1)</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.cashOnCash || 0) > (comparisonMetrics?.cashOnCash || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {primaryMetrics?.cashOnCash?.toFixed(2)}%
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.cashOnCash || 0) > (primaryMetrics?.cashOnCash || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {comparisonMetrics?.cashOnCash?.toFixed(2)}%
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {((primaryMetrics?.cashOnCash || 0) - (comparisonMetrics?.cashOnCash || 0)).toFixed(2)}%
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Equity Multiple</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.equityMultiple || 0) > (comparisonMetrics?.equityMultiple || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {primaryMetrics?.equityMultiple?.toFixed(2)}x
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.equityMultiple || 0) > (primaryMetrics?.equityMultiple || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              {comparisonMetrics?.equityMultiple?.toFixed(2)}x
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {((primaryMetrics?.equityMultiple || 0) - (comparisonMetrics?.equityMultiple || 0)).toFixed(2)}x
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Capital Gain</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.capitalGain || 0) > (comparisonMetrics?.capitalGain || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(primaryMetrics?.capitalGain || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.capitalGain || 0) > (primaryMetrics?.capitalGain || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(comparisonMetrics?.capitalGain || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              ${((primaryMetrics?.capitalGain || 0) - (comparisonMetrics?.capitalGain || 0)).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Total Cash Flow (10Y)</TableCell>
+                            <TableCell className={`text-center ${(primaryMetrics?.totalCashFlow || 0) > (comparisonMetrics?.totalCashFlow || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(primaryMetrics?.totalCashFlow || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonMetrics?.totalCashFlow || 0) > (primaryMetrics?.totalCashFlow || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(comparisonMetrics?.totalCashFlow || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              ${((primaryMetrics?.totalCashFlow || 0) - (comparisonMetrics?.totalCashFlow || 0)).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-muted/30">
+                            <TableCell className="font-medium">Year 10 Property Value</TableCell>
+                            <TableCell className={`text-center ${(projections[10]?.propertyMarketValue || 0) > (comparisonProjections[10]?.propertyMarketValue || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(projections[10]?.propertyMarketValue || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonProjections[10]?.propertyMarketValue || 0) > (projections[10]?.propertyMarketValue || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(comparisonProjections[10]?.propertyMarketValue || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              ${((projections[10]?.propertyMarketValue || 0) - (comparisonProjections[10]?.propertyMarketValue || 0)).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow className="bg-muted/30">
+                            <TableCell className="font-medium">Year 10 Equity</TableCell>
+                            <TableCell className={`text-center ${(projections[10]?.equityInProperty || 0) > (comparisonProjections[10]?.equityInProperty || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(projections[10]?.equityInProperty || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className={`text-center ${(comparisonProjections[10]?.equityInProperty || 0) > (projections[10]?.equityInProperty || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                              ${(comparisonProjections[10]?.equityInProperty || 0).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              ${((projections[10]?.equityInProperty || 0) - (comparisonProjections[10]?.equityInProperty || 0)).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
