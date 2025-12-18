@@ -26,7 +26,9 @@ import {
   History,
   Plus,
   Trash2,
-  GitCompare
+  GitCompare,
+  Mic,
+  MicOff
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -65,6 +67,10 @@ export default function ReportQA() {
   const [emailSubject, setEmailSubject] = useState('Investment Report Summary');
   const [emailContent, setEmailContent] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -356,6 +362,108 @@ export default function ReportQA() {
       });
     } finally {
       setIsSendingEmail(false);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        } 
+      });
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          await transcribeAudio(audioBlob);
+        }
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      toast({
+        title: 'Recording',
+        description: 'Speak your question...',
+      });
+    } catch (error) {
+      console.error('Microphone error:', error);
+      toast({
+        title: 'Microphone access denied',
+        description: 'Please allow microphone access to use voice input',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+      });
+      reader.readAsDataURL(audioBlob);
+      const base64Audio = await base64Promise;
+      
+      const { data, error } = await supabase.functions.invoke('report-qa', {
+        body: {
+          action: 'transcribe',
+          audio: base64Audio,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.text) {
+        setInputMessage(data.text);
+        toast({
+          title: 'Transcribed',
+          description: 'Voice converted to text',
+        });
+      } else {
+        throw new Error('No transcription result');
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      toast({
+        title: 'Transcription failed',
+        description: 'Could not convert voice to text',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTranscribing(false);
     }
   };
 
@@ -663,12 +771,27 @@ export default function ReportQA() {
                     handleSendMessage();
                   }
                 }}
-                disabled={uploadedReports.length === 0 || isProcessing}
+                disabled={uploadedReports.length === 0 || isProcessing || isRecording || isTranscribing}
                 className="flex-1"
               />
               <Button
+                variant={isRecording ? "destructive" : "outline"}
+                size="icon"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={uploadedReports.length === 0 || isProcessing || isTranscribing}
+                title={isRecording ? 'Stop recording' : 'Voice input'}
+              >
+                {isTranscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isRecording ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
                 onClick={handleSendMessage}
-                disabled={uploadedReports.length === 0 || !inputMessage.trim() || isProcessing}
+                disabled={uploadedReports.length === 0 || !inputMessage.trim() || isProcessing || isRecording}
               >
                 <Send className="h-4 w-4" />
               </Button>
