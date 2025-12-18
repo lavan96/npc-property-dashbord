@@ -252,6 +252,20 @@ export default function CashFlowAnalysis() {
             setAnalysisModalOpen(false);
             setSelectedReport(null);
           }}
+          onReportUpdated={() => {
+            fetchReports();
+            // Also update the selected report if it was modified
+            if (selectedReport) {
+              supabase
+                .from('investment_reports')
+                .select('id, property_address, created_at, status, manual_overrides, financial_calculations, investment_score')
+                .eq('id', selectedReport.id)
+                .single()
+                .then(({ data }) => {
+                  if (data) setSelectedReport(data);
+                });
+            }
+          }}
         />
     </div>
   );
