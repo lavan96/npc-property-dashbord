@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
 import { format } from 'date-fns';
 import { Calculator, Search, Eye, FileText, TrendingUp, DollarSign, ArrowRight } from 'lucide-react';
@@ -93,8 +92,7 @@ export default function CashFlowAnalysis() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6 p-6">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -245,17 +243,16 @@ export default function CashFlowAnalysis() {
             })}
           </div>
         )}
-      </div>
 
-      {/* Cash Flow Analysis Modal */}
-      <CashFlowAnalysisModal
-        report={selectedReport}
-        isOpen={analysisModalOpen}
-        onClose={() => {
-          setAnalysisModalOpen(false);
-          setSelectedReport(null);
-        }}
-      />
-    </DashboardLayout>
+        {/* Cash Flow Analysis Modal */}
+        <CashFlowAnalysisModal
+          report={selectedReport}
+          isOpen={analysisModalOpen}
+          onClose={() => {
+            setAnalysisModalOpen(false);
+            setSelectedReport(null);
+          }}
+        />
+    </div>
   );
 }
