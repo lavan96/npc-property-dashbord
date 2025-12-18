@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -71,6 +72,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Local cash flow overrides state
   const [cashFlowOverrides, setCashFlowOverrides] = useState<CashFlowOverrides>({
@@ -638,6 +640,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   if (!report || !financialData) return null;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0">
         <div className="px-6 pt-6 pb-4">
@@ -777,22 +780,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          // Clear all overrides to defaults
-                          setCashFlowOverrides({
-                            capitalGrowthRate: null,
-                            cpiGrowthRate: null,
-                            propertyMarketValue: null,
-                            rentalIncome: null,
-                            propertyExpenses: null,
-                            interestRate: null,
-                            interestPayment: null,
-                            principalPayment: null,
-                            depreciation: null,
-                            landTax: null,
-                          });
-                          setHasChanges(true);
-                        }}
+                        onClick={() => setShowResetConfirm(true)}
                         className="text-destructive hover:text-destructive"
                       >
                         <RotateCcw className="h-4 w-4 mr-2" />
@@ -1256,5 +1244,43 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Reset Confirmation Dialog */}
+    <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reset All Overrides?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will clear all custom override values and revert to calculated defaults. 
+            You'll still need to click "Save Changes" to persist the reset.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setCashFlowOverrides({
+                capitalGrowthRate: null,
+                cpiGrowthRate: null,
+                propertyMarketValue: null,
+                rentalIncome: null,
+                propertyExpenses: null,
+                interestRate: null,
+                interestPayment: null,
+                principalPayment: null,
+                depreciation: null,
+                landTax: null,
+              });
+              setHasChanges(true);
+              setShowResetConfirm(false);
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Reset All
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }
