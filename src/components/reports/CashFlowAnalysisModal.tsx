@@ -116,13 +116,22 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const yieldChartRef = useRef<HTMLDivElement>(null);
   const comparisonChartRef = useRef<HTMLDivElement>(null);
 
-  // Comparison mode state
+  // Comparison mode state - support up to 5 properties (1 primary + 4 comparison)
   const [comparisonMode, setComparisonMode] = useState(false);
   const [availableReports, setAvailableReports] = useState<InvestmentReport[]>([]);
-  const [selectedComparisonReportId, setSelectedComparisonReportId] = useState<string | null>(null);
-  const [comparisonReport, setComparisonReport] = useState<InvestmentReport | null>(null);
+  const [selectedComparisonReportIds, setSelectedComparisonReportIds] = useState<string[]>([]);
+  const [comparisonReports, setComparisonReports] = useState<InvestmentReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
   const [investorProfile, setInvestorProfile] = useState<'growth' | 'income' | 'balanced'>('balanced');
+
+  // Comparison chart colors for up to 5 properties
+  const COMPARISON_COLORS = [
+    { value: 'hsl(var(--primary))', cashFlow: '#8b5cf6' }, // Primary
+    { value: '#f97316', cashFlow: '#14b8a6' }, // Comparison 1
+    { value: '#ef4444', cashFlow: '#06b6d4' }, // Comparison 2
+    { value: '#eab308', cashFlow: '#84cc16' }, // Comparison 3
+    { value: '#a855f7', cashFlow: '#f43f5e' }, // Comparison 4
+  ];
 
   // Initialize overrides from report when modal opens
   useEffect(() => {
@@ -132,8 +141,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setHasChanges(false);
       setEditingCell(null);
       setComparisonMode(false);
-      setSelectedComparisonReportId(null);
-      setComparisonReport(null);
+      setSelectedComparisonReportIds([]);
+      setComparisonReports([]);
     }
   }, [report, isOpen]);
 
@@ -163,15 +172,29 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     }
   }, [comparisonMode, isOpen, report]);
 
-  // Fetch selected comparison report details
+  // Fetch selected comparison reports details
   useEffect(() => {
-    if (selectedComparisonReportId) {
-      const selectedReport = availableReports.find(r => r.id === selectedComparisonReportId);
-      setComparisonReport(selectedReport || null);
-    } else {
-      setComparisonReport(null);
-    }
-  }, [selectedComparisonReportId, availableReports]);
+    const selectedReports = availableReports.filter(r => selectedComparisonReportIds.includes(r.id));
+    setComparisonReports(selectedReports);
+  }, [selectedComparisonReportIds, availableReports]);
+
+  // Handle adding/removing comparison reports
+  const handleToggleComparisonReport = useCallback((reportId: string) => {
+    setSelectedComparisonReportIds(prev => {
+      if (prev.includes(reportId)) {
+        return prev.filter(id => id !== reportId);
+      }
+      if (prev.length >= 4) {
+        toast({
+          title: "Maximum reached",
+          description: "You can compare up to 5 properties total (including the primary).",
+          variant: "destructive"
+        });
+        return prev;
+      }
+      return [...prev, reportId];
+    });
+  }, [toast]);
 
   // PNG export function
   const exportChartAsPNG = useCallback(async (chartRef: React.RefObject<HTMLDivElement>, filename: string) => {
@@ -202,117 +225,116 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     }
   }, [toast]);
 
-  // Calculate projections for comparison report
-  const comparisonProjections = useMemo(() => {
-    if (!comparisonReport) return [];
+  // Calculate projections for all comparison reports
+  const allComparisonProjections = useMemo(() => {
+    return comparisonReports.map(compReport => {
+      const fc = compReport.financial_calculations || {};
+      const mo = compReport.manual_overrides || {};
+      const cashFlow = fc.cashFlow || {};
+      const cfOverrides = mo.cashFlowYearlyOverrides || {};
+      const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
 
-    const fc = comparisonReport.financial_calculations || {};
-    const mo = comparisonReport.manual_overrides || {};
-    const cashFlow = fc.cashFlow || {};
-    const cfOverrides = mo.cashFlowYearlyOverrides || {};
-    const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
+      const purchasePrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0;
+      const loanAmount = mo.loanAmount || cashFlow.loanAmount || (purchasePrice * ((mo.loanToValueRatio || fc.loanToValueRatio || 80) / 100));
+      const weeklyRent = mo.weeklyRent || fc.weeklyRent || 0;
+      const occupancyRate = mo.occupancyRate || cashFlow.occupancyRate || 52;
+      const baseCapitalGrowthRate = (mo.capitalGrowth || fc.capitalGrowth || 5) / 100;
+      const baseInterestRate = (mo.interestRate || fc.interestRate || 5.5) / 100;
+      const baseCpiRate = (mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3) / 100;
+      const taxRate = (mo.taxRate || cashFlow.taxRate || 30) / 100;
+      const baseDepreciation = includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0;
+      const baseLandTax = mo.landTax || fc.landTax || 0;
+      const marketValueNow = mo.marketValueNow || cashFlow.marketValueNow || purchasePrice;
 
-    const purchasePrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0;
-    const loanAmount = mo.loanAmount || cashFlow.loanAmount || (purchasePrice * ((mo.loanToValueRatio || fc.loanToValueRatio || 80) / 100));
-    const weeklyRent = mo.weeklyRent || fc.weeklyRent || 0;
-    const occupancyRate = mo.occupancyRate || cashFlow.occupancyRate || 52;
-    const baseCapitalGrowthRate = (mo.capitalGrowth || fc.capitalGrowth || 5) / 100;
-    const baseInterestRate = (mo.interestRate || fc.interestRate || 5.5) / 100;
-    const baseCpiRate = (mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3) / 100;
-    const taxRate = (mo.taxRate || cashFlow.taxRate || 30) / 100;
-    const isInterestOnly = (mo.loanType || cashFlow.loanType || 'interest_only') === 'interest_only';
-    const baseDepreciation = includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0;
-    const baseLandTax = mo.landTax || fc.landTax || 0;
-    const marketValueNow = mo.marketValueNow || cashFlow.marketValueNow || purchasePrice;
+      const baseExpenses = 
+        (mo.councilRates || fc.councilRates || 0) +
+        (mo.waterRates || fc.waterRates || 0) +
+        (mo.bodyCorporateFees || fc.bodyCorporateFees || 0) +
+        (mo.buildingLandlordInsurance || fc.buildingLandlordInsurance || 0) +
+        (mo.repairsMaintenance || fc.repairsMaintenance || 0);
+      const propertyManagementPercent = (mo.propertyManagementFees || fc.propertyManagementFees || 7) / 100;
+      const baseAnnualRent = weeklyRent * occupancyRate;
+      const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
 
-    const baseExpenses = 
-      (mo.councilRates || fc.councilRates || 0) +
-      (mo.waterRates || fc.waterRates || 0) +
-      (mo.bodyCorporateFees || fc.bodyCorporateFees || 0) +
-      (mo.buildingLandlordInsurance || fc.buildingLandlordInsurance || 0) +
-      (mo.repairsMaintenance || fc.repairsMaintenance || 0);
-    const propertyManagementPercent = (mo.propertyManagementFees || fc.propertyManagementFees || 7) / 100;
-    const baseAnnualRent = weeklyRent * occupancyRate;
-    const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
+      const results: YearlyProjection[] = [];
+      let previousPropertyValue = marketValueNow;
 
-    const results: YearlyProjection[] = [];
-    let previousPropertyValue = marketValueNow;
+      for (let year = 0; year <= 10; year++) {
+        const yearOverrides = cfOverrides[year] || {};
+        
+        const yearCapitalGrowthRate = year >= 2 && yearOverrides.capitalGrowthRate != null
+          ? yearOverrides.capitalGrowthRate / 100 : baseCapitalGrowthRate;
+        const yearCpiRate = year >= 2 && yearOverrides.cpiGrowthRate != null
+          ? yearOverrides.cpiGrowthRate / 100 : baseCpiRate;
+        const yearInterestRate = year >= 2 && yearOverrides.interestRate != null
+          ? yearOverrides.interestRate / 100 : baseInterestRate;
 
-    for (let year = 0; year <= 10; year++) {
-      const yearOverrides = cfOverrides[year] || {};
-      
-      const yearCapitalGrowthRate = year >= 2 && yearOverrides.capitalGrowthRate != null
-        ? yearOverrides.capitalGrowthRate / 100 : baseCapitalGrowthRate;
-      const yearCpiRate = year >= 2 && yearOverrides.cpiGrowthRate != null
-        ? yearOverrides.cpiGrowthRate / 100 : baseCpiRate;
-      const yearInterestRate = year >= 2 && yearOverrides.interestRate != null
-        ? yearOverrides.interestRate / 100 : baseInterestRate;
+        let propertyValue: number;
+        if (year === 0) propertyValue = marketValueNow;
+        else if (year === 1) propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
+        else if (yearOverrides.propertyMarketValue != null) propertyValue = yearOverrides.propertyMarketValue;
+        else propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
+        previousPropertyValue = propertyValue;
 
-      let propertyValue: number;
-      if (year === 0) propertyValue = marketValueNow;
-      else if (year === 1) propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
-      else if (yearOverrides.propertyMarketValue != null) propertyValue = yearOverrides.propertyMarketValue;
-      else propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
-      previousPropertyValue = propertyValue;
+        const currentLoanAmount = loanAmount;
+        const equity = propertyValue - currentLoanAmount;
+        const lvr = (currentLoanAmount / propertyValue) * 100;
 
-      const currentLoanAmount = loanAmount;
-      const equity = propertyValue - currentLoanAmount;
-      const lvr = (currentLoanAmount / propertyValue) * 100;
+        let annualRent: number;
+        if (year === 0) annualRent = baseAnnualRent;
+        else if (year === 1) annualRent = baseAnnualRent * (1 + baseCpiRate);
+        else if (yearOverrides.rentalIncome != null) annualRent = yearOverrides.rentalIncome;
+        else annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
 
-      let annualRent: number;
-      if (year === 0) annualRent = baseAnnualRent;
-      else if (year === 1) annualRent = baseAnnualRent * (1 + baseCpiRate);
-      else if (yearOverrides.rentalIncome != null) annualRent = yearOverrides.rentalIncome;
-      else annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
+        let totalExpenses: number;
+        if (year === 0) totalExpenses = basePropertyExpenses;
+        else if (year === 1) totalExpenses = baseExpenses * (1 + baseCpiRate) + annualRent * propertyManagementPercent;
+        else if (yearOverrides.propertyExpenses != null) totalExpenses = yearOverrides.propertyExpenses;
+        else totalExpenses = baseExpenses * Math.pow(1 + yearCpiRate, year) + annualRent * propertyManagementPercent;
 
-      let totalExpenses: number;
-      if (year === 0) totalExpenses = basePropertyExpenses;
-      else if (year === 1) totalExpenses = baseExpenses * (1 + baseCpiRate) + annualRent * propertyManagementPercent;
-      else if (yearOverrides.propertyExpenses != null) totalExpenses = yearOverrides.propertyExpenses;
-      else totalExpenses = baseExpenses * Math.pow(1 + yearCpiRate, year) + annualRent * propertyManagementPercent;
+        let interestPayments = year === 0 ? 0 : year === 1 ? currentLoanAmount * baseInterestRate :
+          yearOverrides.interestPayment != null ? yearOverrides.interestPayment : currentLoanAmount * yearInterestRate;
+        let principalPayments = year === 0 ? 0 : yearOverrides.principalPayment ?? 0;
+        let depreciation = year === 0 ? 0 : yearOverrides.depreciation ?? baseDepreciation;
+        let landTax = year === 0 ? 0 : yearOverrides.landTax ?? baseLandTax;
 
-      let interestPayments = year === 0 ? 0 : year === 1 ? currentLoanAmount * baseInterestRate :
-        yearOverrides.interestPayment != null ? yearOverrides.interestPayment : currentLoanAmount * yearInterestRate;
-      let principalPayments = year === 0 ? 0 : yearOverrides.principalPayment ?? 0;
-      let depreciation = year === 0 ? 0 : yearOverrides.depreciation ?? baseDepreciation;
-      let landTax = year === 0 ? 0 : yearOverrides.landTax ?? baseLandTax;
+        const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
+        const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
+        const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments;
+        const totalDeductions = totalExpenses + interestPayments + depreciation;
+        const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
+        const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
+        const afterTaxCashFlow = year === 0 ? 0 : preTaxCashFlow + taxRefund;
 
-      const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
-      const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
-      const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments;
-      const totalDeductions = totalExpenses + interestPayments + depreciation;
-      const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
-      const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
-      const afterTaxCashFlow = year === 0 ? 0 : preTaxCashFlow + taxRefund;
-
-      results.push({
-        year,
-        capitalGrowthRate: year === 0 ? 0 : yearCapitalGrowthRate * 100,
-        cpiGrowthRate: year === 0 ? 0 : yearCpiRate * 100,
-        propertyMarketValue: Math.round(propertyValue),
-        loanAmount: Math.round(currentLoanAmount),
-        equityInProperty: Math.round(equity),
-        loanToValueRatio: Math.round(lvr * 100) / 100,
-        rentalIncome: Math.round(annualRent),
-        grossYield: Math.round(grossYield * 100) / 100,
-        netYield: Math.round(netYield * 100) / 100,
-        propertyExpenses: Math.round(totalExpenses),
-        interestRate: year === 0 ? 0 : yearInterestRate * 100,
-        interestPayments: Math.round(interestPayments),
-        principalPayments: Math.round(principalPayments),
-        preTaxCashFlowPA: Math.round(preTaxCashFlow),
-        preTaxCashFlowPW: Math.round(preTaxCashFlow / 52),
-        depreciation: Math.round(depreciation),
-        totalDeductions: Math.round(totalDeductions),
-        netProfitLoss: Math.round(netProfitLoss),
-        taxRefund: Math.round(taxRefund),
-        landTax: Math.round(landTax),
-        afterTaxCashFlowPA: Math.round(afterTaxCashFlow),
-        afterTaxCashFlowPW: Math.round(afterTaxCashFlow / 52),
-      });
-    }
-    return results;
-  }, [comparisonReport]);
+        results.push({
+          year,
+          capitalGrowthRate: year === 0 ? 0 : yearCapitalGrowthRate * 100,
+          cpiGrowthRate: year === 0 ? 0 : yearCpiRate * 100,
+          propertyMarketValue: Math.round(propertyValue),
+          loanAmount: Math.round(currentLoanAmount),
+          equityInProperty: Math.round(equity),
+          loanToValueRatio: Math.round(lvr * 100) / 100,
+          rentalIncome: Math.round(annualRent),
+          grossYield: Math.round(grossYield * 100) / 100,
+          netYield: Math.round(netYield * 100) / 100,
+          propertyExpenses: Math.round(totalExpenses),
+          interestRate: year === 0 ? 0 : yearInterestRate * 100,
+          interestPayments: Math.round(interestPayments),
+          principalPayments: Math.round(principalPayments),
+          preTaxCashFlowPA: Math.round(preTaxCashFlow),
+          preTaxCashFlowPW: Math.round(preTaxCashFlow / 52),
+          depreciation: Math.round(depreciation),
+          totalDeductions: Math.round(totalDeductions),
+          netProfitLoss: Math.round(netProfitLoss),
+          taxRefund: Math.round(taxRefund),
+          landTax: Math.round(landTax),
+          afterTaxCashFlowPA: Math.round(afterTaxCashFlow),
+          afterTaxCashFlowPW: Math.round(afterTaxCashFlow / 52),
+        });
+      }
+      return { report: compReport, projections: results };
+    });
+  }, [comparisonReports]);
 
   // Extract base financial data from report
   const baseFinancialData = useMemo(() => {
@@ -725,35 +747,35 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     };
   }, []);
 
-  // Memoized metrics for both properties
+  // Memoized metrics for primary property
   const primaryMetrics = useMemo(() => 
     calculateAdvancedMetrics(projections, baseFinancialData),
     [projections, baseFinancialData, calculateAdvancedMetrics]
   );
 
-  const comparisonMetrics = useMemo(() => {
-    if (!comparisonReport || comparisonProjections.length < 11) return null;
-    
-    const fc = comparisonReport.financial_calculations || {};
-    const mo = comparisonReport.manual_overrides || {};
-    
-    const compBaseData = {
-      purchasePrice: mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0,
-      depositValue: mo.depositValue || fc.depositValue || 0,
-      stampDuty: mo.stampDuty || fc.stampDuty || 0,
-      solicitorFees: mo.solicitorFees || fc.solicitorFees || 2000,
-      loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
-    };
-    
-    return calculateAdvancedMetrics(comparisonProjections, compBaseData);
-  }, [comparisonReport, comparisonProjections, calculateAdvancedMetrics]);
+  // Memoized metrics for all comparison properties
+  const allComparisonMetrics = useMemo(() => {
+    return allComparisonProjections.map(({ report: compReport, projections: compProjs }) => {
+      if (compProjs.length < 11) return { report: compReport, metrics: null };
+      
+      const fc = compReport.financial_calculations || {};
+      const mo = compReport.manual_overrides || {};
+      
+      const compBaseData = {
+        purchasePrice: mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0,
+        depositValue: mo.depositValue || fc.depositValue || 0,
+        stampDuty: mo.stampDuty || fc.stampDuty || 0,
+        solicitorFees: mo.solicitorFees || fc.solicitorFees || 2000,
+        loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
+      };
+      
+      return { report: compReport, metrics: calculateAdvancedMetrics(compProjs, compBaseData), projections: compProjs };
+    });
+  }, [allComparisonProjections, calculateAdvancedMetrics]);
 
-  // Property recommendation engine based on investor profile
+  // Property recommendation engine based on investor profile (supports multiple properties)
   const propertyRecommendation = useMemo(() => {
-    if (!primaryMetrics || !comparisonMetrics || !report || !comparisonReport) return null;
-
-    const primaryName = report.property_address.split(',')[0];
-    const compName = comparisonReport.property_address.split(',')[0];
+    if (!primaryMetrics || comparisonReports.length === 0 || !report) return null;
 
     // Calculate profile-specific scores
     const getProfileScore = (metrics: typeof primaryMetrics, profile: 'growth' | 'income' | 'balanced') => {
@@ -761,23 +783,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       
       switch (profile) {
         case 'growth':
-          // Growth investors prioritize: Capital Gain, ROI, Total Return, Equity Growth
           return (
-            (metrics.capitalGain / 100000) * 30 +  // Capital gain weight
-            (metrics.roi) * 25 +                    // ROI weight
-            (metrics.annualizedRoi) * 20 +          // Annualized ROI weight
-            (metrics.equityMultiple) * 25           // Equity multiple weight
+            (metrics.capitalGain / 100000) * 30 +
+            (metrics.roi) * 25 +
+            (metrics.annualizedRoi) * 20 +
+            (metrics.equityMultiple) * 25
           );
         case 'income':
-          // Income investors prioritize: Cash Flow, Cash-on-Cash, Early Break-even
           return (
-            (metrics.totalCashFlow > 0 ? metrics.totalCashFlow / 1000 : metrics.totalCashFlow / 500) * 35 +  // Cash flow weight
-            (metrics.cashOnCash * 10) * 30 +        // Cash-on-cash weight
-            ((10 - (metrics.breakEvenYear || 10)) * 10) * 20 +  // Break-even (earlier is better)
-            (projections[1]?.grossYield || 0) * 15  // Year 1 yield weight
+            (metrics.totalCashFlow > 0 ? metrics.totalCashFlow / 1000 : metrics.totalCashFlow / 500) * 35 +
+            (metrics.cashOnCash * 10) * 30 +
+            ((10 - (metrics.breakEvenYear || 10)) * 10) * 20 +
+            (projections[1]?.grossYield || 0) * 15
           );
         case 'balanced':
-          // Balanced investors want good mix of both
           return (
             (metrics.capitalGain / 100000) * 20 +
             (metrics.roi) * 15 +
@@ -789,91 +808,41 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
     };
 
-    const primaryScore = getProfileScore(primaryMetrics, investorProfile);
-    const compScore = getProfileScore(comparisonMetrics, investorProfile);
+    // Build all property scores
+    const allScores = [
+      { 
+        name: report.property_address.split(',')[0], 
+        score: getProfileScore(primaryMetrics, investorProfile),
+        isPrimary: true,
+        metrics: primaryMetrics
+      },
+      ...allComparisonMetrics.map(({ report: compReport, metrics }) => ({
+        name: compReport.property_address.split(',')[0],
+        score: getProfileScore(metrics, investorProfile),
+        isPrimary: false,
+        metrics
+      }))
+    ].sort((a, b) => b.score - a.score);
 
-    const winner = primaryScore > compScore ? 'primary' : 'comparison';
-    const winnerName = winner === 'primary' ? primaryName : compName;
-    const loserName = winner === 'primary' ? compName : primaryName;
-    const scoreDiff = Math.abs(primaryScore - compScore);
+    const winner = allScores[0];
+    const scoreDiff = allScores.length > 1 ? allScores[0].score - allScores[1].score : 0;
     const confidence = scoreDiff > 50 ? 'high' : scoreDiff > 20 ? 'moderate' : 'marginal';
 
-    // Generate profile-specific insights
-    const getInsights = () => {
-      const winnerMetrics = winner === 'primary' ? primaryMetrics : comparisonMetrics;
-      const loserMetrics = winner === 'primary' ? comparisonMetrics : primaryMetrics;
-
-      const insights: string[] = [];
-
-      switch (investorProfile) {
-        case 'growth':
-          if ((winnerMetrics?.capitalGain || 0) > (loserMetrics?.capitalGain || 0)) {
-            insights.push(`${winnerName} delivers $${((winnerMetrics?.capitalGain || 0) - (loserMetrics?.capitalGain || 0)).toLocaleString()} more in capital gains over 10 years`);
-          }
-          if ((winnerMetrics?.roi || 0) > (loserMetrics?.roi || 0)) {
-            insights.push(`Higher overall ROI of ${winnerMetrics?.roi?.toFixed(1)}% vs ${loserMetrics?.roi?.toFixed(1)}%`);
-          }
-          if ((winnerMetrics?.equityMultiple || 0) > (loserMetrics?.equityMultiple || 0)) {
-            insights.push(`Better equity growth with ${winnerMetrics?.equityMultiple?.toFixed(2)}x equity multiple`);
-          }
-          break;
-        case 'income':
-          if ((winnerMetrics?.totalCashFlow || 0) > (loserMetrics?.totalCashFlow || 0)) {
-            insights.push(`${winnerName} generates $${((winnerMetrics?.totalCashFlow || 0) - (loserMetrics?.totalCashFlow || 0)).toLocaleString()} more in total cash flow`);
-          }
-          if ((winnerMetrics?.cashOnCash || 0) > (loserMetrics?.cashOnCash || 0)) {
-            insights.push(`Superior Year 1 cash-on-cash return of ${winnerMetrics?.cashOnCash?.toFixed(2)}%`);
-          }
-          if ((winnerMetrics?.breakEvenYear || 99) < (loserMetrics?.breakEvenYear || 99)) {
-            insights.push(`Achieves positive cash flow ${(loserMetrics?.breakEvenYear || 10) - (winnerMetrics?.breakEvenYear || 10)} years earlier`);
-          }
-          break;
-        case 'balanced':
-          insights.push(`${winnerName} offers the best balance of growth and income potential`);
-          if ((winnerMetrics?.totalReturn || 0) > (loserMetrics?.totalReturn || 0)) {
-            insights.push(`Total 10-year return is $${((winnerMetrics?.totalReturn || 0) - (loserMetrics?.totalReturn || 0)).toLocaleString()} higher`);
-          }
-          break;
-      }
-
-      return insights.slice(0, 3);
-    };
-
-    // Generate considerations (pros of the loser property)
-    const getConsiderations = () => {
-      const winnerMetrics = winner === 'primary' ? primaryMetrics : comparisonMetrics;
-      const loserMetrics = winner === 'primary' ? comparisonMetrics : primaryMetrics;
-
-      const considerations: string[] = [];
-
-      if ((loserMetrics?.totalCashFlow || 0) > (winnerMetrics?.totalCashFlow || 0)) {
-        considerations.push(`${loserName} has better cash flow characteristics`);
-      }
-      if ((loserMetrics?.capitalGain || 0) > (winnerMetrics?.capitalGain || 0)) {
-        considerations.push(`${loserName} has higher capital growth potential`);
-      }
-      if ((loserMetrics?.breakEvenYear || 99) < (winnerMetrics?.breakEvenYear || 99)) {
-        considerations.push(`${loserName} reaches positive cash flow sooner`);
-      }
-
-      return considerations.slice(0, 2);
-    };
-
     return {
-      winner,
-      winnerName,
-      loserName,
-      primaryScore: Math.round(primaryScore),
-      compScore: Math.round(compScore),
+      winner: winner.name,
+      rankings: allScores.map((s, i) => ({ rank: i + 1, name: s.name, score: Math.round(s.score) })),
       confidence,
-      insights: getInsights(),
-      considerations: getConsiderations()
+      insights: [
+        `${winner.name} scores highest for ${investorProfile}-focused investors`,
+        winner.metrics?.roi ? `10-Year ROI: ${winner.metrics.roi.toFixed(1)}%` : '',
+        winner.metrics?.totalCashFlow ? `Total Cash Flow: $${winner.metrics.totalCashFlow.toLocaleString()}` : ''
+      ].filter(Boolean).slice(0, 3)
     };
-  }, [primaryMetrics, comparisonMetrics, report, comparisonReport, investorProfile, projections]);
+  }, [primaryMetrics, allComparisonMetrics, report, comparisonReports, investorProfile, projections]);
 
-  // PDF Export function for comparison
+  // PDF Export function for comparison (supports multiple properties)
   const exportComparisonPDF = useCallback(async () => {
-    if (!report || !comparisonReport) return;
+    if (!report || comparisonReports.length === 0) return;
 
     try {
       toast({
@@ -896,10 +865,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       // Properties being compared
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Property 1: ${report.property_address}`, margin, yPos);
+      pdf.text(`Property 1 (Primary): ${report.property_address}`, margin, yPos);
       yPos += 5;
-      pdf.text(`Property 2: ${comparisonReport.property_address}`, margin, yPos);
-      yPos += 5;
+      comparisonReports.forEach((compReport, idx) => {
+        pdf.text(`Property ${idx + 2}: ${compReport.property_address}`, margin, yPos);
+        yPos += 5;
+      });
       pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPos);
       yPos += 10;
 
@@ -945,19 +916,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.text('Investment Comparison Metrics', pageWidth / 2, yPos, { align: 'center' });
       yPos += 10;
 
-      const metrics = [
-        { label: '10-Year Total Return', p1: primaryMetrics?.totalReturn, p2: comparisonMetrics?.totalReturn, format: 'currency' },
-        { label: 'ROI (10-Year)', p1: primaryMetrics?.roi, p2: comparisonMetrics?.roi, format: 'percent' },
-        { label: 'Annualized ROI', p1: primaryMetrics?.annualizedRoi, p2: comparisonMetrics?.annualizedRoi, format: 'percent' },
-        { label: 'Break-Even Year', p1: primaryMetrics?.breakEvenYear, p2: comparisonMetrics?.breakEvenYear, format: 'year' },
-        { label: 'Cash-on-Cash Return (Y1)', p1: primaryMetrics?.cashOnCash, p2: comparisonMetrics?.cashOnCash, format: 'percent' },
-        { label: 'Equity Multiple', p1: primaryMetrics?.equityMultiple, p2: comparisonMetrics?.equityMultiple, format: 'multiple' },
-        { label: 'Total Cash Flow (10Y)', p1: primaryMetrics?.totalCashFlow, p2: comparisonMetrics?.totalCashFlow, format: 'currency' },
-        { label: 'Capital Gain', p1: primaryMetrics?.capitalGain, p2: comparisonMetrics?.capitalGain, format: 'currency' },
-        { label: 'Year 10 Property Value', p1: projections[10]?.propertyMarketValue, p2: comparisonProjections[10]?.propertyMarketValue, format: 'currency' },
-        { label: 'Year 10 Equity', p1: projections[10]?.equityInProperty, p2: comparisonProjections[10]?.equityInProperty, format: 'currency' },
-      ];
-
       const formatValue = (value: number | null | undefined, format: string) => {
         if (value === null || value === undefined) return 'N/A';
         switch (format) {
@@ -970,30 +928,44 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       };
 
       // Table header
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Metric', margin, yPos);
-      pdf.text('Property 1', margin + 70, yPos);
-      pdf.text('Property 2', margin + 120, yPos);
+      pdf.text('Primary', margin + 55, yPos);
+      allComparisonMetrics.slice(0, 4).forEach((_, idx) => {
+        pdf.text(`Prop ${idx + 2}`, margin + 85 + (idx * 25), yPos);
+      });
       yPos += 2;
       pdf.line(margin, yPos, pageWidth - margin, yPos);
       yPos += 5;
+
+      const metrics = [
+        { label: '10-Year ROI', key: 'roi', format: 'percent' },
+        { label: 'Annualized ROI', key: 'annualizedRoi', format: 'percent' },
+        { label: 'Total Return', key: 'totalReturn', format: 'currency' },
+        { label: 'Break-Even Year', key: 'breakEvenYear', format: 'year' },
+        { label: 'Cash-on-Cash (Y1)', key: 'cashOnCash', format: 'percent' },
+        { label: 'Equity Multiple', key: 'equityMultiple', format: 'multiple' },
+        { label: 'Total Cash Flow', key: 'totalCashFlow', format: 'currency' },
+        { label: 'Capital Gain', key: 'capitalGain', format: 'currency' },
+      ];
 
       // Table rows
       pdf.setFont('helvetica', 'normal');
       for (const metric of metrics) {
         pdf.text(metric.label, margin, yPos);
-        pdf.text(formatValue(metric.p1, metric.format), margin + 70, yPos);
-        pdf.text(formatValue(metric.p2, metric.format), margin + 120, yPos);
+        pdf.text(formatValue((primaryMetrics as any)?.[metric.key], metric.format), margin + 55, yPos);
+        allComparisonMetrics.slice(0, 4).forEach(({ metrics: compMetrics }, idx) => {
+          pdf.text(formatValue((compMetrics as any)?.[metric.key], metric.format), margin + 85 + (idx * 25), yPos);
+        });
         yPos += 6;
       }
 
-      // Footer
-      yPos += 10;
       pdf.setFontSize(8);
+      yPos += 10;
       pdf.text('This comparison is for informational purposes only.', margin, yPos);
 
-      pdf.save(`cash-flow-comparison-${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`);
 
       toast({
         title: "PDF Exported",
@@ -1007,7 +979,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, comparisonReport, projections, comparisonProjections, primaryMetrics, comparisonMetrics, toast]);
+  }, [report, comparisonReports, allComparisonMetrics, primaryMetrics, toast]);
 
   const formatCurrency = (value: number) => {
     if (value === 0) return '-';
@@ -1305,7 +1277,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Comparison Mode Toggle */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   variant={comparisonMode ? "default" : "outline"}
                   size="sm"
@@ -1316,23 +1288,44 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   {comparisonMode ? "Exit Comparison" : "Compare Reports"}
                 </Button>
                 {comparisonMode && (
-                  <Select
-                    value={selectedComparisonReportId || ""}
-                    onValueChange={(value) => setSelectedComparisonReportId(value || null)}
-                  >
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder={loadingReports ? "Loading reports..." : "Select report to compare"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableReports.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.property_address.length > 40 
-                            ? r.property_address.substring(0, 40) + '...' 
-                            : r.property_address}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground">Select up to 4 reports:</span>
+                    {selectedComparisonReportIds.length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {selectedComparisonReportIds.map((id) => {
+                          const r = availableReports.find(rep => rep.id === id);
+                          return r ? (
+                            <Badge key={id} variant="secondary" className="text-xs flex items-center gap-1">
+                              {r.property_address.split(',')[0].substring(0, 20)}
+                              <X 
+                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                onClick={() => handleToggleComparisonReport(id)}
+                              />
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                    <Select
+                      value=""
+                      onValueChange={(value) => handleToggleComparisonReport(value)}
+                    >
+                      <SelectTrigger className="w-[280px]">
+                        <SelectValue placeholder={loadingReports ? "Loading..." : `Add property (${selectedComparisonReportIds.length}/4)`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableReports
+                          .filter(r => !selectedComparisonReportIds.includes(r.id))
+                          .map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.property_address.length > 40 
+                                ? r.property_address.substring(0, 40) + '...' 
+                                : r.property_address}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
             </div>
@@ -1550,18 +1543,18 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
 
-            {/* Comparison Chart - Side by Side */}
-            {comparisonMode && comparisonReport && comparisonProjections.length > 0 && (
+            {/* Comparison Chart - Side by Side (Up to 5 Properties) */}
+            {comparisonMode && comparisonReports.length > 0 && allComparisonProjections.length > 0 && (
               <Card className="border-primary/30">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                       <GitCompare className="h-4 w-4" />
-                      Property Comparison: Cash Flow
+                      Property Comparison: Cash Flow ({comparisonReports.length + 1} Properties)
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">
-                        {report?.property_address.split(',')[0]} vs {comparisonReport.property_address.split(',')[0]}
+                        Comparing {comparisonReports.length + 1} properties
                       </Badge>
                       <Button
                         variant="ghost"
@@ -1575,16 +1568,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div ref={comparisonChartRef} className="h-[320px] w-full bg-background p-2">
+                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-background p-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
-                        data={projections.filter(p => p.year >= 1).map((p, i) => ({
-                          year: `Year ${p.year}`,
-                          [`${report?.property_address.split(',')[0]} - Value`]: p.propertyMarketValue,
-                          [`${report?.property_address.split(',')[0]} - Cash Flow`]: p.afterTaxCashFlowPA,
-                          [`${comparisonReport.property_address.split(',')[0]} - Value`]: comparisonProjections[i + 1]?.propertyMarketValue || 0,
-                          [`${comparisonReport.property_address.split(',')[0]} - Cash Flow`]: comparisonProjections[i + 1]?.afterTaxCashFlowPA || 0,
-                        }))}
+                        data={projections.filter(p => p.year >= 1).map((p, i) => {
+                          const dataPoint: any = {
+                            year: `Year ${p.year}`,
+                            [`${report?.property_address.split(',')[0]} Value`]: p.propertyMarketValue,
+                          };
+                          allComparisonProjections.forEach(({ report: compReport, projections: compProjs }, idx) => {
+                            dataPoint[`${compReport.property_address.split(',')[0]} Value`] = compProjs[i + 1]?.propertyMarketValue || 0;
+                          });
+                          return dataPoint;
+                        })}
                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -1607,37 +1603,25 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             fontSize: '11px'
                           }}
                         />
-                        <Legend wrapperStyle={{ fontSize: '10px' }} />
+                        <Legend wrapperStyle={{ fontSize: '9px' }} />
                         <Line 
                           type="monotone" 
-                          dataKey={`${report?.property_address.split(',')[0]} - Value`}
-                          stroke="hsl(var(--primary))" 
+                          dataKey={`${report?.property_address.split(',')[0]} Value`}
+                          stroke={COMPARISON_COLORS[0].value} 
                           strokeWidth={2}
-                          dot={{ r: 3 }}
+                          dot={{ r: 2 }}
                         />
-                        <Line 
-                          type="monotone" 
-                          dataKey={`${report?.property_address.split(',')[0]} - Cash Flow`}
-                          stroke="#8b5cf6" 
-                          strokeWidth={2}
-                          dot={{ r: 3 }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey={`${comparisonReport.property_address.split(',')[0]} - Value`}
-                          stroke="#f97316" 
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                          dot={{ r: 3 }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey={`${comparisonReport.property_address.split(',')[0]} - Cash Flow`}
-                          stroke="#14b8a6" 
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                          dot={{ r: 3 }}
-                        />
+                        {allComparisonProjections.map(({ report: compReport }, idx) => (
+                          <Line 
+                            key={compReport.id}
+                            type="monotone" 
+                            dataKey={`${compReport.property_address.split(',')[0]} Value`}
+                            stroke={COMPARISON_COLORS[idx + 1]?.value || '#888'}
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={{ r: 2 }}
+                          />
+                        ))}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1645,7 +1629,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   {/* Advanced Investment Metrics Comparison */}
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold">Investment Metrics Comparison</h4>
+                      <h4 className="text-sm font-semibold">Investment Metrics Comparison ({comparisonReports.length + 1} Properties)</h4>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1662,130 +1646,73 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[180px]">Metric</TableHead>
-                            <TableHead className="text-center min-w-[140px]">{report?.property_address.split(',')[0]}</TableHead>
-                            <TableHead className="text-center min-w-[140px]">{comparisonReport.property_address.split(',')[0]}</TableHead>
-                            <TableHead className="text-center min-w-[100px]">Difference</TableHead>
+                            <TableHead className="min-w-[140px] sticky left-0 bg-background">Metric</TableHead>
+                            <TableHead className="text-center min-w-[120px]">
+                              <span className="inline-block w-2 h-2 rounded-full mr-1" style={{ backgroundColor: COMPARISON_COLORS[0].value }} />
+                              {report?.property_address.split(',')[0].substring(0, 15)}
+                            </TableHead>
+                            {allComparisonMetrics.map(({ report: compReport }, idx) => (
+                              <TableHead key={compReport.id} className="text-center min-w-[120px]">
+                                <span className="inline-block w-2 h-2 rounded-full mr-1" style={{ backgroundColor: COMPARISON_COLORS[idx + 1]?.value || '#888' }} />
+                                {compReport.property_address.split(',')[0].substring(0, 15)}
+                              </TableHead>
+                            ))}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          <TableRow>
-                            <TableCell className="font-medium">10-Year ROI</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.roi || 0) > (comparisonMetrics?.roi || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {primaryMetrics?.roi?.toFixed(1)}%
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.roi || 0) > (primaryMetrics?.roi || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {comparisonMetrics?.roi?.toFixed(1)}%
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {((primaryMetrics?.roi || 0) - (comparisonMetrics?.roi || 0)).toFixed(1)}%
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Annualized ROI</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.annualizedRoi || 0) > (comparisonMetrics?.annualizedRoi || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {primaryMetrics?.annualizedRoi?.toFixed(2)}%
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.annualizedRoi || 0) > (primaryMetrics?.annualizedRoi || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {comparisonMetrics?.annualizedRoi?.toFixed(2)}%
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {((primaryMetrics?.annualizedRoi || 0) - (comparisonMetrics?.annualizedRoi || 0)).toFixed(2)}%
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Return (10Y)</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.totalReturn || 0) > (comparisonMetrics?.totalReturn || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(primaryMetrics?.totalReturn || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.totalReturn || 0) > (primaryMetrics?.totalReturn || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(comparisonMetrics?.totalReturn || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              ${((primaryMetrics?.totalReturn || 0) - (comparisonMetrics?.totalReturn || 0)).toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Break-Even Year</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.breakEvenYear || 99) < (comparisonMetrics?.breakEvenYear || 99) ? 'text-green-600 font-semibold' : ''}`}>
-                              {primaryMetrics?.breakEvenYear ? `Year ${primaryMetrics.breakEvenYear}` : 'N/A'}
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.breakEvenYear || 99) < (primaryMetrics?.breakEvenYear || 99) ? 'text-green-600 font-semibold' : ''}`}>
-                              {comparisonMetrics?.breakEvenYear ? `Year ${comparisonMetrics.breakEvenYear}` : 'N/A'}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">-</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Cash-on-Cash (Y1)</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.cashOnCash || 0) > (comparisonMetrics?.cashOnCash || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {primaryMetrics?.cashOnCash?.toFixed(2)}%
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.cashOnCash || 0) > (primaryMetrics?.cashOnCash || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {comparisonMetrics?.cashOnCash?.toFixed(2)}%
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {((primaryMetrics?.cashOnCash || 0) - (comparisonMetrics?.cashOnCash || 0)).toFixed(2)}%
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Equity Multiple</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.equityMultiple || 0) > (comparisonMetrics?.equityMultiple || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {primaryMetrics?.equityMultiple?.toFixed(2)}x
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.equityMultiple || 0) > (primaryMetrics?.equityMultiple || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              {comparisonMetrics?.equityMultiple?.toFixed(2)}x
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {((primaryMetrics?.equityMultiple || 0) - (comparisonMetrics?.equityMultiple || 0)).toFixed(2)}x
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Capital Gain</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.capitalGain || 0) > (comparisonMetrics?.capitalGain || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(primaryMetrics?.capitalGain || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.capitalGain || 0) > (primaryMetrics?.capitalGain || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(comparisonMetrics?.capitalGain || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              ${((primaryMetrics?.capitalGain || 0) - (comparisonMetrics?.capitalGain || 0)).toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Total Cash Flow (10Y)</TableCell>
-                            <TableCell className={`text-center ${(primaryMetrics?.totalCashFlow || 0) > (comparisonMetrics?.totalCashFlow || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(primaryMetrics?.totalCashFlow || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className={`text-center ${(comparisonMetrics?.totalCashFlow || 0) > (primaryMetrics?.totalCashFlow || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(comparisonMetrics?.totalCashFlow || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              ${((primaryMetrics?.totalCashFlow || 0) - (comparisonMetrics?.totalCashFlow || 0)).toLocaleString()}
-                            </TableCell>
-                          </TableRow>
+                          {[
+                            { label: '10-Year ROI', key: 'roi', format: (v: number) => `${v?.toFixed(1)}%`, higherBetter: true },
+                            { label: 'Annualized ROI', key: 'annualizedRoi', format: (v: number) => `${v?.toFixed(2)}%`, higherBetter: true },
+                            { label: 'Total Return', key: 'totalReturn', format: (v: number) => `$${(v || 0).toLocaleString()}`, higherBetter: true },
+                            { label: 'Break-Even Year', key: 'breakEvenYear', format: (v: number) => v ? `Year ${v}` : 'N/A', higherBetter: false },
+                            { label: 'Cash-on-Cash (Y1)', key: 'cashOnCash', format: (v: number) => `${v?.toFixed(2)}%`, higherBetter: true },
+                            { label: 'Equity Multiple', key: 'equityMultiple', format: (v: number) => `${v?.toFixed(2)}x`, higherBetter: true },
+                            { label: 'Capital Gain', key: 'capitalGain', format: (v: number) => `$${(v || 0).toLocaleString()}`, higherBetter: true },
+                            { label: 'Total Cash Flow', key: 'totalCashFlow', format: (v: number) => `$${(v || 0).toLocaleString()}`, higherBetter: true },
+                          ].map(({ label, key, format, higherBetter }) => {
+                            const allValues = [
+                              (primaryMetrics as any)?.[key] || (key === 'breakEvenYear' ? 99 : 0),
+                              ...allComparisonMetrics.map(({ metrics }) => (metrics as any)?.[key] || (key === 'breakEvenYear' ? 99 : 0))
+                            ];
+                            const bestValue = higherBetter 
+                              ? Math.max(...allValues.filter(v => v !== 99 && v !== null))
+                              : Math.min(...allValues.filter(v => v !== 99 && v !== null));
+                            
+                            return (
+                              <TableRow key={key}>
+                                <TableCell className="font-medium sticky left-0 bg-background">{label}</TableCell>
+                                <TableCell className={`text-center ${(primaryMetrics as any)?.[key] === bestValue ? 'text-green-600 font-semibold' : ''}`}>
+                                  {format((primaryMetrics as any)?.[key])}
+                                </TableCell>
+                                {allComparisonMetrics.map(({ report: compReport, metrics }) => (
+                                  <TableCell key={compReport.id} className={`text-center ${(metrics as any)?.[key] === bestValue ? 'text-green-600 font-semibold' : ''}`}>
+                                    {format((metrics as any)?.[key])}
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            );
+                          })}
                           <TableRow className="bg-muted/30">
-                            <TableCell className="font-medium">Year 10 Property Value</TableCell>
-                            <TableCell className={`text-center ${(projections[10]?.propertyMarketValue || 0) > (comparisonProjections[10]?.propertyMarketValue || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                            <TableCell className="font-medium sticky left-0 bg-muted/30">Year 10 Property Value</TableCell>
+                            <TableCell className="text-center">
                               ${(projections[10]?.propertyMarketValue || 0).toLocaleString()}
                             </TableCell>
-                            <TableCell className={`text-center ${(comparisonProjections[10]?.propertyMarketValue || 0) > (projections[10]?.propertyMarketValue || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(comparisonProjections[10]?.propertyMarketValue || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              ${((projections[10]?.propertyMarketValue || 0) - (comparisonProjections[10]?.propertyMarketValue || 0)).toLocaleString()}
-                            </TableCell>
+                            {allComparisonProjections.map(({ report: compReport, projections: compProjs }) => (
+                              <TableCell key={compReport.id} className="text-center">
+                                ${(compProjs[10]?.propertyMarketValue || 0).toLocaleString()}
+                              </TableCell>
+                            ))}
                           </TableRow>
                           <TableRow className="bg-muted/30">
-                            <TableCell className="font-medium">Year 10 Equity</TableCell>
-                            <TableCell className={`text-center ${(projections[10]?.equityInProperty || 0) > (comparisonProjections[10]?.equityInProperty || 0) ? 'text-green-600 font-semibold' : ''}`}>
+                            <TableCell className="font-medium sticky left-0 bg-muted/30">Year 10 Equity</TableCell>
+                            <TableCell className="text-center">
                               ${(projections[10]?.equityInProperty || 0).toLocaleString()}
                             </TableCell>
-                            <TableCell className={`text-center ${(comparisonProjections[10]?.equityInProperty || 0) > (projections[10]?.equityInProperty || 0) ? 'text-green-600 font-semibold' : ''}`}>
-                              ${(comparisonProjections[10]?.equityInProperty || 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              ${((projections[10]?.equityInProperty || 0) - (comparisonProjections[10]?.equityInProperty || 0)).toLocaleString()}
-                            </TableCell>
+                            {allComparisonProjections.map(({ report: compReport, projections: compProjs }) => (
+                              <TableCell key={compReport.id} className="text-center">
+                                ${(compProjs[10]?.equityInProperty || 0).toLocaleString()}
+                              </TableCell>
+                            ))}
                           </TableRow>
                         </TableBody>
                       </Table>
@@ -1796,7 +1723,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             )}
 
             {/* Property Recommendation Engine */}
-            {comparisonMode && comparisonReport && propertyRecommendation && (
+            {comparisonMode && comparisonReports.length > 0 && propertyRecommendation && (
               <Card className="border-amber-500/30 bg-amber-500/5">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
@@ -1845,13 +1772,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     )}
                   </div>
 
-                  {/* Recommendation Result */}
+                  {/* Winner Announcement */}
                   <div className="flex items-start gap-4 p-4 rounded-lg border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 to-transparent">
                     <Award className={`h-10 w-10 ${propertyRecommendation.confidence === 'high' ? 'text-amber-500' : propertyRecommendation.confidence === 'moderate' ? 'text-amber-400' : 'text-amber-300'}`} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-lg">
-                          {propertyRecommendation.winnerName}
+                          {propertyRecommendation.winner}
                         </h4>
                         <Badge 
                           variant="outline" 
@@ -1866,46 +1793,36 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           {propertyRecommendation.confidence} confidence
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <p className="text-sm text-muted-foreground mb-3">
                         Best suited for {investorProfile === 'growth' ? 'growth-focused' : investorProfile === 'income' ? 'income-focused' : 'balanced'} investors
                       </p>
                       
-                      {/* Score comparison */}
-                      <div className="flex gap-4 mb-3">
-                        <div className={`text-center px-3 py-1 rounded ${propertyRecommendation.winner === 'primary' ? 'bg-green-500/20 border border-green-500/40' : 'bg-muted/50'}`}>
-                          <div className="text-xs text-muted-foreground">{report?.property_address.split(',')[0]}</div>
-                          <div className="font-semibold">{propertyRecommendation.primaryScore} pts</div>
-                        </div>
-                        <div className={`text-center px-3 py-1 rounded ${propertyRecommendation.winner === 'comparison' ? 'bg-green-500/20 border border-green-500/40' : 'bg-muted/50'}`}>
-                          <div className="text-xs text-muted-foreground">{comparisonReport.property_address.split(',')[0]}</div>
-                          <div className="font-semibold">{propertyRecommendation.compScore} pts</div>
+                      {/* Rankings */}
+                      <div className="space-y-2 mb-3">
+                        <div className="text-xs font-semibold">Property Rankings:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {propertyRecommendation.rankings.map((r, idx) => (
+                            <div 
+                              key={r.name}
+                              className={`text-center px-3 py-1 rounded ${idx === 0 ? 'bg-green-500/20 border border-green-500/40' : 'bg-muted/50'}`}
+                            >
+                              <div className="text-[10px] text-muted-foreground">#{r.rank}</div>
+                              <div className="text-xs font-medium">{r.name}</div>
+                              <div className="text-xs font-semibold">{r.score} pts</div>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
                       {/* Key Insights */}
                       {propertyRecommendation.insights.length > 0 && (
-                        <div className="mb-3">
-                          <div className="text-xs font-semibold text-green-600 mb-1">Key Advantages:</div>
+                        <div>
+                          <div className="text-xs font-semibold text-green-600 mb-1">Key Insights:</div>
                           <ul className="text-xs space-y-1">
                             {propertyRecommendation.insights.map((insight, i) => (
                               <li key={i} className="flex items-start gap-1">
                                 <span className="text-green-500 mt-0.5">✓</span>
                                 <span>{insight}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Considerations */}
-                      {propertyRecommendation.considerations.length > 0 && (
-                        <div>
-                          <div className="text-xs font-semibold text-amber-600 mb-1">Considerations:</div>
-                          <ul className="text-xs space-y-1">
-                            {propertyRecommendation.considerations.map((consideration, i) => (
-                              <li key={i} className="flex items-start gap-1">
-                                <span className="text-amber-500 mt-0.5">•</span>
-                                <span>{consideration}</span>
                               </li>
                             ))}
                           </ul>
