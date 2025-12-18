@@ -97,6 +97,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [editingCell, setEditingCell] = useState<{ year: number; field: EditableFieldKey } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   
+  // Chart metric visibility toggles
+  const [chartMetrics, setChartMetrics] = useState({
+    propertyValue: true,
+    equity: true,
+    rentalIncome: true,
+    cashFlow: true,
+  });
+  
   // Per-year overrides state (years 2-10)
   const [yearlyOverrides, setYearlyOverrides] = useState<YearlyOverrides>({});
 
@@ -757,14 +765,66 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Cash Flow Trends Chart */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  10-Year Cash Flow Trends
-                </CardTitle>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    10-Year Cash Flow Trends
+                  </CardTitle>
+                  <div className="flex items-center gap-3 text-xs">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={chartMetrics.propertyValue}
+                        onChange={(e) => setChartMetrics(prev => ({ ...prev, propertyValue: e.target.checked }))}
+                        className="rounded border-border"
+                      />
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
+                        Property Value
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={chartMetrics.equity}
+                        onChange={(e) => setChartMetrics(prev => ({ ...prev, equity: e.target.checked }))}
+                        className="rounded border-border"
+                      />
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Equity
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={chartMetrics.rentalIncome}
+                        onChange={(e) => setChartMetrics(prev => ({ ...prev, rentalIncome: e.target.checked }))}
+                        className="rounded border-border"
+                      />
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        Rental Income
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={chartMetrics.cashFlow}
+                        onChange={(e) => setChartMetrics(prev => ({ ...prev, cashFlow: e.target.checked }))}
+                        className="rounded border-border"
+                      />
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-violet-500" />
+                        Cash Flow
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
+                <div className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={projections.filter(p => p.year >= 1).map(p => ({
@@ -797,31 +857,96 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         }}
                       />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      {chartMetrics.propertyValue && (
+                        <Line 
+                          type="monotone" 
+                          dataKey="Property Value" 
+                          stroke="hsl(var(--primary))" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      )}
+                      {chartMetrics.equity && (
+                        <Line 
+                          type="monotone" 
+                          dataKey="Equity" 
+                          stroke="#22c55e" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      )}
+                      {chartMetrics.rentalIncome && (
+                        <Line 
+                          type="monotone" 
+                          dataKey="Rental Income" 
+                          stroke="#f59e0b" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      )}
+                      {chartMetrics.cashFlow && (
+                        <Line 
+                          type="monotone" 
+                          dataKey="Cash Flow (After Tax)" 
+                          stroke="#8b5cf6" 
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Yield Percentages Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Percent className="h-4 w-4" />
+                  Yield Percentages Over 10 Years
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[220px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={projections.filter(p => p.year >= 1).map(p => ({
+                        year: `Year ${p.year}`,
+                        'Gross Yield %': p.grossYield,
+                        'Net Yield %': p.netYield,
+                      }))}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="year" className="text-xs" tick={{ fontSize: 11 }} />
+                      <YAxis 
+                        className="text-xs" 
+                        tick={{ fontSize: 11 }} 
+                        tickFormatter={(value) => `${value}%`}
+                        domain={['auto', 'auto']}
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [`${value.toFixed(2)}%`, undefined]}
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--background))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
                       <Line 
                         type="monotone" 
-                        dataKey="Property Value" 
-                        stroke="hsl(var(--primary))" 
+                        dataKey="Gross Yield %" 
+                        stroke="#06b6d4" 
                         strokeWidth={2}
                         dot={{ r: 3 }}
                       />
                       <Line 
                         type="monotone" 
-                        dataKey="Equity" 
-                        stroke="#22c55e" 
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Rental Income" 
-                        stroke="#f59e0b" 
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Cash Flow (After Tax)" 
-                        stroke="#8b5cf6" 
+                        dataKey="Net Yield %" 
+                        stroke="#ec4899" 
                         strokeWidth={2}
                         dot={{ r: 3 }}
                       />
