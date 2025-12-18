@@ -1189,6 +1189,206 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     }
   }, [report, comparisonReports, allComparisonMetrics, primaryMetrics, aiAnalysis, toast]);
 
+  // Export AI Analysis Only as PDF
+  const exportAiAnalysisPDF = useCallback(async () => {
+    if (!report || !aiAnalysis) return;
+
+    try {
+      toast({
+        title: "Generating PDF",
+        description: "Exporting AI analysis...",
+      });
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = margin;
+
+      // Helper function to add wrapped text
+      const addWrappedText = (text: string, fontSize: number, maxWidth: number, lineHeight: number = 5) => {
+        pdf.setFontSize(fontSize);
+        const lines = pdf.splitTextToSize(text, maxWidth);
+        for (const line of lines) {
+          if (yPos + lineHeight > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          pdf.text(line, margin, yPos);
+          yPos += lineHeight;
+        }
+      };
+
+      // Title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('AI Cash Flow Comparison Analysis', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
+
+      // Properties analyzed
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Properties Analyzed:', margin, yPos);
+      yPos += 5;
+      pdf.text(`1. ${report.property_address} (Primary)`, margin + 5, yPos);
+      yPos += 5;
+      comparisonReports.forEach((compReport, idx) => {
+        pdf.text(`${idx + 2}. ${compReport.property_address}`, margin + 5, yPos);
+        yPos += 5;
+      });
+      yPos += 3;
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPos);
+      yPos += 12;
+
+      // Executive Summary
+      if (aiAnalysis.executiveSummary) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Executive Summary', margin, yPos);
+        yPos += 8;
+        pdf.setFont('helvetica', 'normal');
+        addWrappedText(aiAnalysis.executiveSummary, 10, pageWidth - (margin * 2), 5);
+        yPos += 10;
+      }
+
+      // Final Rankings
+      if (aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0) {
+        if (yPos > pageHeight - 60) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Final Rankings', margin, yPos);
+        yPos += 8;
+
+        for (const ranking of aiAnalysis.finalRankings) {
+          if (yPos + 25 > pageHeight - margin) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          
+          // Rank header with background
+          pdf.setFillColor(ranking.rank === 1 ? 220 : 240, ranking.rank === 1 ? 252 : 240, ranking.rank === 1 ? 231 : 240);
+          pdf.rect(margin, yPos - 4, pageWidth - (margin * 2), 20, 'F');
+          
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`#${ranking.rank} - ${ranking.propertyAddress || ranking.address}`, margin + 3, yPos);
+          yPos += 6;
+          
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'normal');
+          if (ranking.overallScore || ranking.score) {
+            pdf.text(`Overall Score: ${ranking.overallScore || ranking.score}/100`, margin + 5, yPos);
+            yPos += 4;
+          }
+          
+          if (ranking.strengths && ranking.strengths.length > 0) {
+            pdf.setTextColor(34, 139, 34);
+            pdf.text(`Strengths: ${ranking.strengths.join(', ')}`, margin + 5, yPos);
+            pdf.setTextColor(0, 0, 0);
+            yPos += 4;
+          }
+          if (ranking.weaknesses && ranking.weaknesses.length > 0) {
+            pdf.setTextColor(178, 34, 34);
+            pdf.text(`Weaknesses: ${ranking.weaknesses.join(', ')}`, margin + 5, yPos);
+            pdf.setTextColor(0, 0, 0);
+            yPos += 4;
+          }
+          yPos += 6;
+        }
+        yPos += 5;
+      }
+
+      // Investor Recommendations
+      if (aiAnalysis.investorRecommendations) {
+        if (yPos > pageHeight - 80) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Investor Profile Recommendations', margin, yPos);
+        yPos += 8;
+
+        const recommendations = [
+          { key: 'growthFocused', label: 'Growth Focused', color: [59, 130, 246] },
+          { key: 'incomeFocused', label: 'Income Focused', color: [34, 197, 94] },
+          { key: 'balancedApproach', label: 'Balanced Approach', color: [168, 85, 247] },
+          { key: 'riskAverse', label: 'Risk Averse', color: [249, 115, 22] },
+        ];
+
+        for (const rec of recommendations) {
+          const recData = aiAnalysis.investorRecommendations[rec.key];
+          if (recData) {
+            if (yPos + 20 > pageHeight - margin) {
+              pdf.addPage();
+              yPos = margin;
+            }
+            
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(rec.color[0], rec.color[1], rec.color[2]);
+            pdf.text(`${rec.label}:`, margin, yPos);
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(` ${recData.recommendation || 'N/A'}`, margin + pdf.getTextWidth(`${rec.label}: `), yPos);
+            yPos += 5;
+            
+            if (recData.reason) {
+              addWrappedText(recData.reason, 9, pageWidth - (margin * 2) - 5, 4.5);
+            }
+            yPos += 5;
+          }
+        }
+        yPos += 5;
+      }
+
+      // Overall Recommendation
+      if (aiAnalysis.overallRecommendation) {
+        if (yPos > pageHeight - 50) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Overall Recommendation', margin, yPos);
+        yPos += 8;
+        
+        pdf.setFont('helvetica', 'normal');
+        addWrappedText(aiAnalysis.overallRecommendation, 10, pageWidth - (margin * 2), 5);
+      }
+
+      // Disclaimer
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'italic');
+      yPos += 15;
+      if (yPos > pageHeight - 20) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      pdf.text('This AI-powered analysis is for informational purposes only and should not be considered financial advice.', margin, yPos);
+
+      pdf.save(`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: "PDF Exported",
+        description: "AI analysis PDF has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error('Error exporting AI analysis PDF:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate AI analysis PDF.",
+        variant: "destructive"
+      });
+    }
+  }, [report, comparisonReports, aiAnalysis, toast]);
+
   const formatCurrency = (value: number) => {
     if (value === 0) return '-';
     const formatted = Math.abs(value).toLocaleString('en-AU', { maximumFractionDigits: 0 });
@@ -2057,24 +2257,37 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <Zap className="h-4 w-4 text-blue-600" />
                       AI-Powered Cash Flow Analysis
                     </CardTitle>
-                    <Button
-                      size="sm"
-                      onClick={generateAiAnalysis}
-                      disabled={isGeneratingAiAnalysis}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isGeneratingAiAnalysis ? (
-                        <>
-                          <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="h-3 w-3 mr-1" />
-                          Generate AI Analysis
-                        </>
+                    <div className="flex items-center gap-2">
+                      {aiAnalysis && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={exportAiAnalysisPDF}
+                          className="gap-1"
+                        >
+                          <Download className="h-3 w-3" />
+                          Export AI Analysis
+                        </Button>
                       )}
-                    </Button>
+                      <Button
+                        size="sm"
+                        onClick={generateAiAnalysis}
+                        disabled={isGeneratingAiAnalysis}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isGeneratingAiAnalysis ? (
+                          <>
+                            <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="h-3 w-3 mr-1" />
+                            {aiAnalysis ? 'Regenerate' : 'Generate AI Analysis'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
