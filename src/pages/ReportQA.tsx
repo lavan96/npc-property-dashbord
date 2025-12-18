@@ -31,7 +31,9 @@ import {
   Trash2,
   GitCompare,
   Mic,
-  MicOff
+  MicOff,
+  Pencil,
+  Check
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -74,6 +76,8 @@ export default function ReportQA() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfContent, setPdfContent] = useState<string | null>(null);
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +103,39 @@ export default function ReportQA() {
       setSavedConversations(data.conversations || []);
     } catch (error) {
       console.error('Failed to load conversations:', error);
+    }
+  };
+
+  const handleSaveTitle = async (conversationId: string) => {
+    if (!editingTitle.trim()) {
+      setEditingConversationId(null);
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('report_qa_conversations')
+        .update({ title: editingTitle.trim() })
+        .eq('id', conversationId);
+      
+      if (error) throw error;
+      
+      setSavedConversations(prev => 
+        prev.map(c => c.id === conversationId ? { ...c, title: editingTitle.trim() } : c)
+      );
+      setEditingConversationId(null);
+      
+      toast({
+        title: 'Title updated',
+        description: 'Conversation title has been saved',
+      });
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      toast({
+        title: 'Failed to update title',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -891,13 +928,62 @@ export default function ReportQA() {
                 {savedConversations.map((conv) => (
                   <div
                     key={conv.id}
-                    className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => loadConversation(conv)}
+                    className="p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
                   >
-                    <p className="font-medium text-sm truncate">{conv.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {conv.report_names.length} report(s) • {new Date(conv.created_at).toLocaleDateString()}
-                    </p>
+                    {editingConversationId === conv.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveTitle(conv.id);
+                            if (e.key === 'Escape') setEditingConversationId(null);
+                          }}
+                          className="h-7 text-sm"
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleSaveTitle(conv.id)}
+                        >
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setEditingConversationId(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="cursor-pointer"
+                        onClick={() => loadConversation(conv)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm truncate flex-1">{conv.title}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingConversationId(conv.id);
+                              setEditingTitle(conv.title);
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {conv.report_names.length} report(s) • {new Date(conv.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
