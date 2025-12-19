@@ -781,14 +781,25 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const landLoan = landPrice - landDeposit;
     const monthlyLandInterest = landLoan * monthlyRate;
 
-    // Build stages - updated to match template percentages exactly
+    // Get custom stage percentages from manual overrides or use defaults
+    const mo = baseFinancialData;
+    const stagePercentages = {
+      deposit: (report?.manual_overrides?.stageDepositPercent as number) ?? 5,
+      slab: (report?.manual_overrides?.stageSlabPercent as number) ?? 15,
+      frame: (report?.manual_overrides?.stageFramePercent as number) ?? 20,
+      lockup: (report?.manual_overrides?.stageLockupPercent as number) ?? 25,
+      fixing: (report?.manual_overrides?.stageFixingPercent as number) ?? 20,
+      completion: (report?.manual_overrides?.stageCompletionPercent as number) ?? 15,
+    };
+
+    // Build stages - use custom percentages or defaults
     const stages = [
-      { stage: 'Deposit', description: 'Paid from your funds (not from lender)', percentage: 5 },
-      { stage: 'Slab/Base Stage', description: 'Foundation, slab, ground works', percentage: 15 },
-      { stage: 'Frame Stage', description: 'Wall frames, roof trusses, structural frame', percentage: 20 },
-      { stage: 'Lock-up Stage', description: 'External walls, windows, doors (can "lock up")', percentage: 25 },
-      { stage: 'Fixing Stage', description: 'Internal linings, plaster, cabinets, fittings', percentage: 20 },
-      { stage: 'Practical Completion', description: 'Final works, painting, finishes', percentage: 15 },
+      { stage: 'Deposit', description: 'Paid from your funds (not from lender)', percentage: stagePercentages.deposit },
+      { stage: 'Slab/Base Stage', description: 'Foundation, slab, ground works', percentage: stagePercentages.slab },
+      { stage: 'Frame Stage', description: 'Wall frames, roof trusses, structural frame', percentage: stagePercentages.frame },
+      { stage: 'Lock-up Stage', description: 'External walls, windows, doors (can "lock up")', percentage: stagePercentages.lockup },
+      { stage: 'Fixing Stage', description: 'Internal linings, plaster, cabinets, fittings', percentage: stagePercentages.fixing },
+      { stage: 'Practical Completion', description: 'Final works, painting, finishes', percentage: stagePercentages.completion },
     ];
 
     let cumulativeDrawn = 0;
@@ -870,7 +881,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       },
       grandTotal: Math.round((totalUpfrontCost + stagedProgressInterest) * 100) / 100,
     };
-  }, [baseFinancialData]);
+  }, [baseFinancialData, report?.manual_overrides]);
 
 
   // Calculate advanced comparison metrics

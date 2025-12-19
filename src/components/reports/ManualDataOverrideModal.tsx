@@ -315,6 +315,52 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }] : []),
   ];
 
+  // Construction stage percentages (only for new builds)
+  const constructionStageFields: OverrideField[] = isNewBuild ? [
+    {
+      key: 'stageDepositPercent',
+      label: 'Deposit Stage',
+      originalValue: 5,
+      overrideValue: report?.manual_overrides?.stageDepositPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageSlabPercent',
+      label: 'Slab/Base Stage',
+      originalValue: 15,
+      overrideValue: report?.manual_overrides?.stageSlabPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageFramePercent',
+      label: 'Frame Stage',
+      originalValue: 20,
+      overrideValue: report?.manual_overrides?.stageFramePercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageLockupPercent',
+      label: 'Lock-up Stage',
+      originalValue: 25,
+      overrideValue: report?.manual_overrides?.stageLockupPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageFixingPercent',
+      label: 'Fixing Stage',
+      originalValue: 20,
+      overrideValue: report?.manual_overrides?.stageFixingPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageCompletionPercent',
+      label: 'Practical Completion',
+      originalValue: 15,
+      overrideValue: report?.manual_overrides?.stageCompletionPercent || null,
+      suffix: '%'
+    },
+  ] : [];
+
   const rentalIncomeFields: OverrideField[] = [
     {
       key: 'weeklyRent',
@@ -961,6 +1007,67 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                 renderField(field, index < purchaseLoanFields.length - 1)
               )}
             </div>
+
+            {/* Construction Stage Percentages - Only for New Builds */}
+            {isNewBuild && constructionStageFields.length > 0 && (
+              <>
+                <Separator className="my-6" />
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary rounded-full"></span>
+                    Construction Stage Percentages
+                    <Badge variant="outline" className="ml-2 text-xs font-normal">
+                      Must total 100%
+                    </Badge>
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Customize the payment schedule percentages for your builder's contract. Default values follow standard Australian construction practices.
+                  </p>
+                  {(() => {
+                    const totalPercent = constructionStageFields.reduce((sum, field) => {
+                      const val = overrides[field.key] ?? field.originalValue ?? 0;
+                      return sum + (typeof val === 'number' ? val : parseFloat(val) || 0);
+                    }, 0);
+                    const isValid = Math.abs(totalPercent - 100) < 0.01;
+                    return (
+                      <div className={`flex items-center gap-2 p-2 rounded-lg ${isValid ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                        <span className={`text-sm font-medium ${isValid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                          Total: {totalPercent.toFixed(1)}%
+                        </span>
+                        {!isValid && (
+                          <span className="text-xs text-red-600 dark:text-red-400">
+                            (Must equal 100%)
+                          </span>
+                        )}
+                        {isValid && (
+                          <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        )}
+                      </div>
+                    );
+                  })()}
+                  <div className="grid grid-cols-2 gap-3">
+                    {constructionStageFields.map((field) => (
+                      <div key={field.key} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{field.label}</Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={overrides[field.key] ?? field.originalValue ?? ''}
+                            onChange={(e) => handleOverrideChange(field.key, e.target.value)}
+                            className="pr-8 h-9"
+                            placeholder={String(field.originalValue)}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator className="my-6" />
 
