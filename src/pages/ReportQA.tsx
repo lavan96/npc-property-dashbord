@@ -486,11 +486,7 @@ export default function ReportQA() {
       
       mediaRecorder.start();
       setIsRecording(true);
-      
-      toast({
-        title: 'Recording',
-        description: 'Speak your question...',
-      });
+      console.log('Voice recording started');
     } catch (error) {
       console.error('Microphone error:', error);
       toast({
@@ -534,10 +530,7 @@ export default function ReportQA() {
 
       if (data.success && data.text) {
         setInputMessage(data.text);
-        toast({
-          title: 'Transcribed',
-          description: 'Voice converted to text',
-        });
+        console.log('Voice transcribed successfully');
       } else {
         throw new Error('No transcription result');
       }
@@ -872,7 +865,7 @@ export default function ReportQA() {
                   setInputMessage(e.target.value);
                   // Auto-resize textarea
                   e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -881,7 +874,7 @@ export default function ReportQA() {
                   }
                 }}
                 disabled={isProcessing || isRecording || isTranscribing}
-                className="flex-1 min-h-[40px] max-h-[150px] resize-none overflow-y-auto"
+                className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
                 rows={1}
               />
               <Button
