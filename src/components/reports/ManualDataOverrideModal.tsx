@@ -288,6 +288,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.capitalGrowth || null,
       suffix: '%'
     },
+    {
+      key: 'constructionDurationMonths',
+      label: 'Construction Duration',
+      originalValue: report?.financial_calculations?.constructionDurationMonths || null,
+      overrideValue: report?.manual_overrides?.constructionDurationMonths || null,
+      suffix: 'months',
+      isCashFlowField: true
+    },
   ];
 
   const rentalIncomeFields: OverrideField[] = [
@@ -378,6 +386,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       originalValue: report?.financial_calculations?.lettingFees || null,
       overrideValue: report?.manual_overrides?.lettingFees || null,
       prefix: '$'
+    },
+    {
+      key: 'agentFee',
+      label: 'Agent Fee (Commission)',
+      originalValue: report?.financial_calculations?.agentFee || null,
+      overrideValue: report?.manual_overrides?.agentFee || null,
+      prefix: '$',
+      isCashFlowField: true
     },
   ];
 
