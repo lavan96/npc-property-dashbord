@@ -34,6 +34,17 @@ export default function CashFlowAnalysis() {
     fetchReports();
   }, []);
 
+  const hasRequiredData = (report: InvestmentReport) => {
+    const fc = report.financial_calculations || {};
+    const mo = report.manual_overrides || {};
+    
+    // Check for essential fields
+    const hasPrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue;
+    const hasRent = mo.weeklyRent || fc.weeklyRent;
+    
+    return hasPrice && hasRent;
+  };
+
   const fetchReports = async () => {
     try {
       setLoading(true);
@@ -44,7 +55,10 @@ export default function CashFlowAnalysis() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setReports(data || []);
+      
+      // Filter to only include reports with required cash flow data
+      const reportsWithCashFlowData = (data || []).filter(hasRequiredData);
+      setReports(reportsWithCashFlowData);
     } catch (error: any) {
       console.error('Error fetching reports:', error);
       toast({
@@ -60,17 +74,6 @@ export default function CashFlowAnalysis() {
   const filteredReports = reports.filter(report =>
     report.property_address.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const hasRequiredData = (report: InvestmentReport) => {
-    const fc = report.financial_calculations || {};
-    const mo = report.manual_overrides || {};
-    
-    // Check for essential fields
-    const hasPrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue;
-    const hasRent = mo.weeklyRent || fc.weeklyRent;
-    
-    return hasPrice && hasRent;
-  };
 
   const getInvestmentGrade = (report: InvestmentReport) => {
     const score = report.investment_score?.overall_score;
@@ -154,13 +157,13 @@ export default function CashFlowAnalysis() {
         ) : filteredReports.length === 0 ? (
           <Card className="py-12">
             <CardContent className="flex flex-col items-center justify-center text-center pt-6">
-              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Investment Reports Found</h3>
-              <p className="text-muted-foreground mb-4">
-                Generate investment reports first to run cash flow analysis
+              <Calculator className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Reports Ready for Cash Flow Analysis</h3>
+              <p className="text-muted-foreground mb-4 max-w-md">
+                Reports need purchase price and weekly rent data configured via Manual Data Overrides before they can be analyzed.
               </p>
               <Button onClick={() => navigate('/generated-reports')}>
-                Go to Generated Reports
+                Configure Reports
               </Button>
             </CardContent>
           </Card>
@@ -168,7 +171,6 @@ export default function CashFlowAnalysis() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredReports.map((report) => {
               const gradeInfo = getInvestmentGrade(report);
-              const hasData = hasRequiredData(report);
               const fc = report.financial_calculations || {};
               const mo = report.manual_overrides || {};
               
@@ -196,25 +198,13 @@ export default function CashFlowAnalysis() {
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <p className="text-muted-foreground">Purchase Price</p>
-                        <p className="font-medium">
-                          {purchasePrice ? `$${purchasePrice.toLocaleString()}` : 'Not set'}
-                        </p>
+                        <p className="font-medium">${purchasePrice.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Weekly Rent</p>
-                        <p className="font-medium">
-                          {weeklyRent ? `$${weeklyRent.toLocaleString()}` : 'Not set'}
-                        </p>
+                        <p className="font-medium">${weeklyRent.toLocaleString()}</p>
                       </div>
                     </div>
-
-                    {!hasData && (
-                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                        <p className="text-xs text-amber-700">
-                          Missing required data. Configure manual overrides first.
-                        </p>
-                      </div>
-                    )}
 
                     <div className="flex gap-2">
                       <Button
@@ -229,7 +219,6 @@ export default function CashFlowAnalysis() {
                       <Button
                         size="sm"
                         className="flex-1"
-                        disabled={!hasData}
                         onClick={() => handleViewAnalysis(report)}
                       >
                         <Calculator className="h-4 w-4 mr-1" />
