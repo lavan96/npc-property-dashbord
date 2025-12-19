@@ -789,6 +789,47 @@ export type Database = {
         }
         Relationships: []
       }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          conversation_id: string | null
+          created_at: string
+          document_name: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          chunk_index: number
+          chunk_text: string
+          conversation_id?: string | null
+          created_at?: string
+          document_name: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          conversation_id?: string | null
+          created_at?: string
+          document_name?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       economic_data_cache: {
         Row: {
           created_at: string
@@ -1882,6 +1923,22 @@ export type Database = {
           by_type: Json
           total_schools: number
           total_students: number
+        }[]
+      }
+      match_document_chunks: {
+        Args: {
+          match_conversation_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk_index: number
+          chunk_text: string
+          conversation_id: string
+          document_name: string
+          id: string
+          similarity: number
         }[]
       }
       seed_sample_schools: { Args: never; Returns: undefined }
