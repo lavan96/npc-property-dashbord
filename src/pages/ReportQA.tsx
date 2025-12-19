@@ -18,7 +18,6 @@ import {
   FileText, 
   Send, 
   Copy, 
-  Loader2, 
   MessageSquare,
   X,
   CheckCircle2,
@@ -37,14 +36,31 @@ import {
   Clock,
   Calendar,
   MoreVertical,
-  Archive
+  Archive,
+  Loader2,
+  Pin
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+
+// Feature components
+import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcuts';
+import { TypingIndicator } from '@/components/report-qa/TypingIndicator';
+import { MessageReactions } from '@/components/report-qa/MessageReactions';
+import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
+import { ConversationTags } from '@/components/report-qa/ConversationTags';
+import { ChatThemeSelector, useCurrentTheme, type Theme } from '@/components/report-qa/ChatThemeSelector';
+import { ConversationExport } from '@/components/report-qa/ConversationExport';
+import { MessageThreading, useMessageThreads } from '@/components/report-qa/MessageThreading';
+import { AutoSummarize } from '@/components/report-qa/AutoSummarize';
+import { PinConversation, usePinnedConversations } from '@/components/report-qa/PinConversation';
+import { KeyboardShortcutsHelp } from '@/components/report-qa/KeyboardShortcutsHelp';
 
 interface ChatMessage {
   id: string;
@@ -66,23 +82,6 @@ interface SavedConversation {
   created_at: string;
   updated_at: string;
 }
-
-// Format timestamp with full date and time (hh:mm:ss AM/PM)
-const formatFullTimestamp = (dateString: string) => {
-  const date = new Date(dateString);
-  const time = date.toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit',
-    hour12: true 
-  });
-  const dateStr = date.toLocaleDateString([], { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
-  });
-  return `${dateStr} at ${time}`;
-};
 
 export default function ReportQA() {
   const { toast } = useToast();
@@ -107,14 +106,42 @@ export default function ReportQA() {
   const [isEditingMainTitle, setIsEditingMainTitle] = useState(false);
   const [mainTitleEdit, setMainTitleEdit] = useState('');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  
+  // New feature states
+  const [chatTheme, setChatTheme] = useState<Theme | null>(null);
+  const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Custom hooks
+  const { addReply, getReplies } = useMessageThreads();
+  const { getPinnedIds, togglePin, isPinned } = usePinnedConversations();
 
-  // Load saved conversations on mount
+  // Keyboard shortcuts
+  useReportQAKeyboardShortcuts({
+    onNewChat: handleNewChat,
+    onOpenHistory: () => setShowHistory(true),
+    onCloseDialogs: () => {
+      setShowHistory(false);
+      setShowEmailModal(false);
+    },
+    onFocusInput: () => inputRef.current?.focus(),
+  });
+
+  // Load saved conversations and pinned IDs on mount
   useEffect(() => {
     loadSavedConversations();
+    setPinnedIds(getPinnedIds());
+    // Load tags from localStorage
+    try {
+      const stored = localStorage.getItem('qa-conversation-tags');
+      if (stored) setConversationTags(new Map(JSON.parse(stored)));
+    } catch {}
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
@@ -195,7 +222,6 @@ export default function ReportQA() {
       return;
     }
 
-    // Check if already uploaded
     if (uploadedReports.some(r => r.name === file.name)) {
       toast({
         title: 'Already uploaded',
@@ -352,7 +378,6 @@ export default function ReportQA() {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isProcessing) return;
 
-    // Get or create conversation ID
     let activeConversationId = conversationId;
     if (!activeConversationId) {
       activeConversationId = await startNewConversation();
@@ -400,7 +425,6 @@ export default function ReportQA() {
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Refresh conversation list to pick up dynamic title (after first exchange)
       if (messages.length === 0) {
         setTimeout(() => loadSavedConversations(), 1000);
       }
@@ -500,7 +524,6 @@ export default function ReportQA() {
       
       mediaRecorder.start();
       setIsRecording(true);
-      console.log('Voice recording started');
     } catch (error) {
       console.error('Microphone error:', error);
       toast({
@@ -522,7 +545,6 @@ export default function ReportQA() {
     setIsTranscribing(true);
     
     try {
-      // Convert blob to base64
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
         reader.onloadend = () => {
@@ -544,7 +566,6 @@ export default function ReportQA() {
 
       if (data.success && data.text) {
         setInputMessage(data.text);
-        console.log('Voice transcribed successfully');
       } else {
         throw new Error('No transcription result');
       }
@@ -566,7 +587,7 @@ export default function ReportQA() {
     setConversationId(null);
   };
 
-  const handleNewChat = () => {
+  function handleNewChat() {
     setUploadedReports([]);
     setMessages([]);
     setConversationId(null);
@@ -574,7 +595,7 @@ export default function ReportQA() {
       title: 'New chat started',
       description: 'Upload reports or start chatting',
     });
-  };
+  }
 
   const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -605,6 +626,51 @@ export default function ReportQA() {
     }
   };
 
+  // Handle pin toggle
+  const handleTogglePin = (convId: string) => {
+    const newPinned = togglePin(convId);
+    setPinnedIds(newPinned);
+    toast({
+      title: isPinned(convId) ? 'Unpinned' : 'Pinned',
+      description: isPinned(convId) ? 'Conversation unpinned' : 'Conversation pinned to top',
+    });
+  };
+
+  // Handle conversation tags
+  const handleAddTag = (tag: string) => {
+    if (!conversationId) return;
+    setConversationTags(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(conversationId) || [];
+      if (!existing.includes(tag)) {
+        newMap.set(conversationId, [...existing, tag]);
+        localStorage.setItem('qa-conversation-tags', JSON.stringify([...newMap]));
+      }
+      return newMap;
+    });
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    if (!conversationId) return;
+    setConversationTags(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(conversationId) || [];
+      newMap.set(conversationId, existing.filter(t => t !== tag));
+      localStorage.setItem('qa-conversation-tags', JSON.stringify([...newMap]));
+      return newMap;
+    });
+  };
+
+  // Handle message threading
+  const handleReply = async (messageId: string, reply: string) => {
+    addReply(messageId, reply, 'user');
+    // Send the reply as a new message with context
+    const originalMessage = messages.find(m => m.id === messageId);
+    if (originalMessage) {
+      setInputMessage(`Regarding "${originalMessage.content.substring(0, 50)}...": ${reply}`);
+    }
+  };
+
   // Filter conversations based on search query
   const filteredConversations = savedConversations.filter(conv => {
     if (!historySearchQuery.trim()) return true;
@@ -613,6 +679,15 @@ export default function ReportQA() {
       conv.title.toLowerCase().includes(query) ||
       conv.report_names.some(name => name.toLowerCase().includes(query))
     );
+  });
+
+  // Sort conversations with pinned first
+  const sortedConversations = [...filteredConversations].sort((a, b) => {
+    const aPinned = pinnedIds.includes(a.id);
+    const bPinned = pinnedIds.includes(b.id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
   });
 
   // Group conversations by date
@@ -624,6 +699,7 @@ export default function ReportQA() {
     lastWeek.setDate(lastWeek.getDate() - 7);
     
     const groups: { [key: string]: SavedConversation[] } = {
+      'Pinned': [],
       'Today': [],
       'Yesterday': [],
       'This Week': [],
@@ -631,6 +707,10 @@ export default function ReportQA() {
     };
     
     conversations.forEach(conv => {
+      if (pinnedIds.includes(conv.id)) {
+        groups['Pinned'].push(conv);
+        return;
+      }
       const convDate = new Date(conv.updated_at);
       if (convDate.toDateString() === today.toDateString()) {
         groups['Today'].push(conv);
@@ -644,6 +724,21 @@ export default function ReportQA() {
     });
     
     return groups;
+  };
+
+  // Get current theme styles
+  const getMessageBgClass = (role: 'user' | 'assistant') => {
+    if (!chatTheme || chatTheme.id === 'default') {
+      return role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted';
+    }
+    return role === 'user' ? chatTheme.userBg : chatTheme.assistantBg;
+  };
+
+  const getAccentClass = () => {
+    if (!chatTheme || chatTheme.id === 'default') {
+      return 'bg-primary/10';
+    }
+    return chatTheme.accent;
   };
 
   return (
@@ -732,7 +827,7 @@ export default function ReportQA() {
             {uploadedReports.length > 0 && (
               <ScrollArea className="flex-1">
                 <div className="space-y-2">
-                  {uploadedReports.map((report, idx) => (
+                  {uploadedReports.map((report) => (
                     <div key={report.name} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
                       <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                       <span className="text-sm truncate flex-1" title={report.name}>
@@ -762,27 +857,13 @@ export default function ReportQA() {
 
             <Separator />
 
-            {/* Quick Questions */}
-            {uploadedReports.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Quick Questions</p>
-                <div className="flex flex-wrap gap-2">
-                  {(uploadedReports.length > 1
-                    ? ['Compare all properties', 'Which is the best investment?', 'Key differences?', 'Risk comparison']
-                    : ['Give me a TLDR', 'Key highlights?', 'What are the risks?', 'Financial summary']
-                  ).map((q) => (
-                    <Badge
-                      key={q}
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-secondary/80"
-                      onClick={() => setInputMessage(q)}
-                    >
-                      {q}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Smart Suggestions */}
+            <SmartSuggestions
+              hasReports={uploadedReports.length > 0}
+              isComparison={uploadedReports.length > 1}
+              messageCount={messages.length}
+              onSelect={setInputMessage}
+            />
           </CardContent>
         </Card>
 
@@ -840,15 +921,57 @@ export default function ReportQA() {
                   </div>
                 )}
               </div>
-              {conversationId && (
-                <Badge variant="outline" className="text-xs">Auto-saving</Badge>
-              )}
+              
+              {/* Action bar */}
+              <div className="flex items-center gap-1">
+                {conversationId && (
+                  <>
+                    <PinConversation
+                      conversationId={conversationId}
+                      isPinned={pinnedIds.includes(conversationId)}
+                      onTogglePin={handleTogglePin}
+                    />
+                    <ConversationTags
+                      tags={conversationTags.get(conversationId) || []}
+                      onAddTag={handleAddTag}
+                      onRemoveTag={handleRemoveTag}
+                    />
+                  </>
+                )}
+                <ChatThemeSelector onThemeChange={setChatTheme} />
+                <ConversationExport
+                  messages={messages}
+                  title={getCurrentTitle()}
+                  reportNames={uploadedReports.map(r => r.name)}
+                />
+                <AutoSummarize
+                  messages={messages.map(m => ({ role: m.role, content: m.content }))}
+                  reportNames={uploadedReports.map(r => r.name)}
+                  disabled={messages.length < 2}
+                />
+                <KeyboardShortcutsHelp />
+                {conversationId && (
+                  <Badge variant="outline" className="text-xs ml-2">Auto-saving</Badge>
+                )}
+              </div>
             </div>
             <CardDescription>
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
                 : 'Ask questions about the uploaded report'}
             </CardDescription>
+            
+            {/* Show current conversation tags */}
+            {conversationId && (conversationTags.get(conversationId) || []).length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                <ConversationTags
+                  tags={conversationTags.get(conversationId) || []}
+                  onAddTag={handleAddTag}
+                  onRemoveTag={handleRemoveTag}
+                  compact
+                />
+              </div>
+            )}
           </CardHeader>
           <CardContent className="flex-1 flex flex-col min-h-0">
             {/* Messages */}
@@ -874,17 +997,11 @@ export default function ReportQA() {
                       className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       {message.role === 'assistant' && (
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0", getAccentClass())}>
                           <Bot className="h-4 w-4 text-primary" />
                         </div>
                       )}
-                      <div
-                        className={`max-w-[80%] rounded-lg p-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
+                      <div className={cn("max-w-[80%] rounded-lg p-3", getMessageBgClass(message.role))}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs opacity-60">
                             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -900,7 +1017,6 @@ export default function ReportQA() {
                               components={{
                                 strong: ({ children, ...props }) => {
                                   const text = String(children);
-                                  // Match "Step X" or "Step X:" patterns
                                   const stepMatch = text.match(/^(Step\s*\d+):?(.*)$/i);
                                   if (stepMatch) {
                                     const stepNumber = stepMatch[1];
@@ -925,33 +1041,42 @@ export default function ReportQA() {
                           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                         )}
                         {message.role === 'assistant' && (
-                          <div className="flex gap-2 mt-2 pt-2 border-t border-border/50">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => handleCopyResponse(message.content)}
-                            >
-                              <Copy className="h-3 w-3 mr-1" />
-                              Copy
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => handleOpenEmailModal(message.content)}
-                            >
-                              <Mail className="h-3 w-3 mr-1" />
-                              Email
-                            </Button>
-                            <QAPDFGenerator
-                              content={message.content}
-                              title={uploadedReports.length > 1 
-                                ? 'Property Comparison Summary'
-                                : uploadedReports.length === 1 
-                                  ? 'Investment Report Summary'
-                                  : 'Property Investment Analysis'}
-                              reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
+                          <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => handleCopyResponse(message.content)}
+                              >
+                                <Copy className="h-3 w-3 mr-1" />
+                                Copy
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => handleOpenEmailModal(message.content)}
+                              >
+                                <Mail className="h-3 w-3 mr-1" />
+                                Email
+                              </Button>
+                              <QAPDFGenerator
+                                content={message.content}
+                                title={uploadedReports.length > 1 
+                                  ? 'Property Comparison Summary'
+                                  : uploadedReports.length === 1 
+                                    ? 'Investment Report Summary'
+                                    : 'Property Investment Analysis'}
+                                reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
+                              />
+                              <MessageReactions messageId={message.id} />
+                            </div>
+                            <MessageThreading
+                              messageId={message.id}
+                              messageContent={message.content}
+                              onReply={handleReply}
+                              replies={getReplies(message.id)}
                             />
                           </div>
                         )}
@@ -964,19 +1089,7 @@ export default function ReportQA() {
                     </div>
                   ))}
                   {isProcessing && (
-                    <div className="flex gap-3 justify-start">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Bot className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="bg-muted rounded-lg p-3">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm text-muted-foreground">
-                            {uploadedReports.length > 1 ? 'Analyzing reports...' : 'Thinking...'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    <TypingIndicator isMultiReport={uploadedReports.length > 1} />
                   )}
                   <div ref={chatEndRef} />
                 </div>
@@ -986,6 +1099,7 @@ export default function ReportQA() {
             {/* Input */}
             <div className="flex gap-2 pt-2 border-t items-end">
               <Textarea
+                ref={inputRef}
                 placeholder={
                   uploadedReports.length === 0 
                     ? 'Ask anything or upload a report for context...' 
@@ -996,7 +1110,6 @@ export default function ReportQA() {
                 value={inputMessage}
                 onChange={(e) => {
                   setInputMessage(e.target.value);
-                  // Auto-resize textarea
                   e.target.style.height = 'auto';
                   e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
                 }}
@@ -1050,7 +1163,7 @@ export default function ReportQA() {
               Conversation History
             </DialogTitle>
             <DialogDescription>
-              Search and load previous Q&A conversations
+              Search and load previous Q&A conversations (⌘K)
             </DialogDescription>
           </DialogHeader>
           
@@ -1062,6 +1175,7 @@ export default function ReportQA() {
               value={historySearchQuery}
               onChange={(e) => setHistorySearchQuery(e.target.value)}
               className="pl-9 pr-9"
+              autoFocus
             />
             {historySearchQuery && (
               <Button
@@ -1094,12 +1208,19 @@ export default function ReportQA() {
               </div>
             ) : (
               <div className="space-y-4">
-                {Object.entries(groupConversationsByDate(filteredConversations)).map(([group, convs]) => 
+                {Object.entries(groupConversationsByDate(sortedConversations)).map(([group, convs]) => 
                   convs.length > 0 && (
                     <div key={group} className="space-y-2">
                       <div className="flex items-center gap-2 px-1">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {group === 'Pinned' ? (
+                          <Pin className="h-3 w-3 text-primary" />
+                        ) : (
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className={cn(
+                          "text-xs font-medium uppercase tracking-wide",
+                          group === 'Pinned' ? 'text-primary' : 'text-muted-foreground'
+                        )}>
                           {group}
                         </span>
                         <Separator className="flex-1" />
@@ -1107,9 +1228,11 @@ export default function ReportQA() {
                       {convs.map((conv) => (
                         <div
                           key={conv.id}
-                          className={`p-3 border rounded-lg hover:bg-muted/50 transition-all group cursor-pointer ${
-                            conversationId === conv.id ? 'border-primary/50 bg-primary/5' : ''
-                          }`}
+                          className={cn(
+                            "p-3 border rounded-lg hover:bg-muted/50 transition-all group cursor-pointer",
+                            conversationId === conv.id && "border-primary/50 bg-primary/5",
+                            pinnedIds.includes(conv.id) && "border-primary/30"
+                          )}
                         >
                           {editingConversationId === conv.id ? (
                             <div className="flex items-center gap-2">
@@ -1144,7 +1267,12 @@ export default function ReportQA() {
                             <div onClick={() => loadConversation(conv)}>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">{conv.title}</p>
+                                  <div className="flex items-center gap-2">
+                                    {pinnedIds.includes(conv.id) && (
+                                      <Pin className="h-3 w-3 text-primary fill-current flex-shrink-0" />
+                                    )}
+                                    <p className="font-medium text-sm truncate">{conv.title}</p>
+                                  </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
                                       {conv.report_names.length} report{conv.report_names.length !== 1 ? 's' : ''}
@@ -1154,36 +1282,63 @@ export default function ReportQA() {
                                       {new Date(conv.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                   </div>
+                                  {/* Show tags in history */}
+                                  {(conversationTags.get(conv.id) || []).length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      <ConversationTags
+                                        tags={conversationTags.get(conv.id) || []}
+                                        onAddTag={() => {}}
+                                        onRemoveTag={() => {}}
+                                        compact
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingConversationId(conv.id);
-                                      setEditingTitle(conv.title);
-                                    }}>
-                                      <Pencil className="h-3.5 w-3.5 mr-2" />
-                                      Rename
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="text-destructive focus:text-destructive"
-                                      onClick={(e) => handleDeleteConversation(conv.id, e)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <div className="flex items-center gap-1">
+                                  <PinConversation
+                                    conversationId={conv.id}
+                                    isPinned={pinnedIds.includes(conv.id)}
+                                    onTogglePin={handleTogglePin}
+                                    compact
+                                  />
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingConversationId(conv.id);
+                                        setEditingTitle(conv.title);
+                                      }}>
+                                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                                        Rename
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTogglePin(conv.id);
+                                      }}>
+                                        <Pin className="h-3.5 w-3.5 mr-2" />
+                                        {pinnedIds.includes(conv.id) ? 'Unpin' : 'Pin'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={(e) => handleDeleteConversation(conv.id, e)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </div>
                               {/* Report names preview */}
                               <div className="mt-2 flex flex-wrap gap-1">
@@ -1214,6 +1369,7 @@ export default function ReportQA() {
             <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
               <span>
                 {filteredConversations.length} of {savedConversations.length} conversation{savedConversations.length !== 1 ? 's' : ''}
+                {pinnedIds.length > 0 && ` • ${pinnedIds.length} pinned`}
               </span>
               <Button
                 variant="ghost"
@@ -1287,7 +1443,6 @@ export default function ReportQA() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
