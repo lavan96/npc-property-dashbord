@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { STATE_MAPPING } from '@/lib/states';
 
 interface InvestmentReport {
   id: string;
@@ -49,6 +50,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
   const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
+  const [detectedState, setDetectedState] = useState<string>('All');
   
   // Depreciation Schedule Builder state
   const [showDepreciationSchedule, setShowDepreciationSchedule] = useState(false);
@@ -56,19 +58,58 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [depreciationSchedule, setDepreciationSchedule] = useState<Record<number, number>>({});
   const [year1Depreciation, setYear1Depreciation] = useState<number>(0);
 
+  // Detect state from property address
+  const detectStateFromAddress = useCallback((address: string): string => {
+    if (!address) return 'All';
+    const upperAddress = address.toUpperCase();
+    
+    // Check for state abbreviations (commonly at end of address like "Sydney, NSW 2000")
+    for (const abbr of Object.keys(STATE_MAPPING)) {
+      // Match state abbreviation with word boundaries or at end
+      const patterns = [
+        new RegExp(`\\b${abbr}\\b`),  // Word boundary match
+        new RegExp(`\\s${abbr}\\s*\\d{4}`),  // Before postcode
+        new RegExp(`,\\s*${abbr}\\s`),  // After comma
+      ];
+      if (patterns.some(p => p.test(upperAddress))) {
+        return abbr;
+      }
+    }
+    
+    // Check for full state names
+    for (const [abbr, fullName] of Object.entries(STATE_MAPPING)) {
+      if (upperAddress.includes(fullName.toUpperCase())) {
+        return abbr;
+      }
+    }
+    
+    return 'All';
+  }, []);
+
+  // Detect state when report changes
+  useEffect(() => {
+    if (report?.property_address) {
+      const state = detectStateFromAddress(report.property_address);
+      setDetectedState(state);
+    }
+  }, [report?.property_address, detectStateFromAddress]);
+
   // Load stamp duty calculator script when expanded
   useEffect(() => {
     if (showStampDutyCalculator) {
-      // Check if script already exists
+      // Remove existing script to reload with new state
       const existingScript = document.getElementById('stamp-src');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.id = 'stamp-src';
-        script.type = 'text/javascript';
-        script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-        script.setAttribute('data-state', 'All');
-        document.body.appendChild(script);
+      if (existingScript) {
+        existingScript.remove();
       }
+      
+      // Create and append new script with detected state
+      const script = document.createElement('script');
+      script.id = 'stamp-src';
+      script.type = 'text/javascript';
+      script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+      script.setAttribute('data-state', detectedState);
+      document.body.appendChild(script);
       
       // Show the calculator div
       const calcDiv = document.getElementById('stamp-duty-calculator');
@@ -76,7 +117,88 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         calcDiv.classList.remove('hidden');
       }
     }
-  }, [showStampDutyCalculator]);
+  }, [showStampDutyCalculator, detectedState]);
+
+  // Function to capture stamp duty from calculator
+  const captureStampDutyFromCalculator = useCallback(() => {
+    // Try to find the stamp duty result in the calculator's output
+    const calcContainer = document.getElementById('stamp-duty-calculator');
+    if (!calcContainer) {
+      toast({
+        title: "Calculator not loaded",
+        description: "Please wait for the calculator to load and calculate a value first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Look for common patterns in calculator output
+    // The calculator typically shows results in elements with specific classes or IDs
+    const resultSelectors = [
+      '.stamp-duty-result',
+      '.result-value',
+      '#stamp-duty-result',
+      '[data-result]',
+      '.calc-result',
+      'strong',
+      '.total',
+      '#total'
+    ];
+
+    let stampDutyValue: number | null = null;
+
+    for (const selector of resultSelectors) {
+      const elements = calcContainer.querySelectorAll(selector);
+      for (const el of elements) {
+        const text = el.textContent || '';
+        // Look for dollar amounts like $12,345 or $12,345.67
+        const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
+        if (match) {
+          const value = parseFloat(match[0].replace(/[$,]/g, ''));
+          if (value > 0 && value < 10000000) { // Reasonable stamp duty range
+            stampDutyValue = value;
+            break;
+          }
+        }
+      }
+      if (stampDutyValue) break;
+    }
+
+    // Also search all text content for dollar amounts if specific selectors didn't work
+    if (!stampDutyValue) {
+      const allText = calcContainer.textContent || '';
+      const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
+      if (matches && matches.length > 0) {
+        // Try to find a reasonable stamp duty value (typically the largest or last value)
+        const values = matches
+          .map(m => parseFloat(m.replace(/[$,]/g, '')))
+          .filter(v => v > 100 && v < 10000000); // Filter reasonable values
+        
+        if (values.length > 0) {
+          // Take the last reasonable value (often the result)
+          stampDutyValue = values[values.length - 1];
+        }
+      }
+    }
+
+    if (stampDutyValue) {
+      setOverrides(prev => ({
+        ...prev,
+        stampDuty: stampDutyValue
+      }));
+      setHasChanges(true);
+      toast({
+        title: "Stamp Duty Applied",
+        description: `$${stampDutyValue.toLocaleString()} has been applied to the Stamp Duty field.`,
+      });
+    } else {
+      toast({
+        title: "Could not capture value",
+        description: "Please calculate stamp duty in the calculator first, then try again. You can also manually enter the value.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
 
   // Define the confirmed input fields for manual overrides
   // Grouped by category for better organization
@@ -802,7 +924,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         <Calculator className="h-5 w-5 text-orange-600" />
                       </div>
                       <div className="text-left">
-                        <p className="font-semibold text-foreground">Stamp Duty Calculator</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground">Stamp Duty Calculator</p>
+                          {detectedState !== 'All' && (
+                            <Badge variant="secondary" className="text-xs">
+                              {detectedState} detected
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           Calculate stamp duty for all Australian states and territories
                         </p>
@@ -818,9 +947,16 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                 <CollapsibleContent>
                   <div className="px-4 pb-4 space-y-4">
                     <Separator />
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <ExternalLink className="h-4 w-4" />
-                      <span>Powered by calculatorsonline.com.au</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <ExternalLink className="h-4 w-4" />
+                        <span>Powered by calculatorsonline.com.au</span>
+                      </div>
+                      {detectedState !== 'All' && (
+                        <Badge variant="outline" className="text-xs">
+                          Pre-selected: {STATE_MAPPING[detectedState] || detectedState}
+                        </Badge>
+                      )}
                     </div>
                     
                     {/* Stamp Duty Calculator Container */}
@@ -842,14 +978,24 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                       </div>
                     </div>
 
+                    {/* Auto-populate Button */}
+                    <Button 
+                      onClick={captureStampDutyFromCalculator}
+                      className="w-full gap-2"
+                      variant="default"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Use Calculated Stamp Duty Value
+                    </Button>
+
                     {/* Instructions */}
                     <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
                       <p className="text-sm font-medium text-foreground">How to use:</p>
                       <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                        <li>Select the state/territory of the property</li>
+                        <li>State is auto-detected from property address{detectedState !== 'All' && ` (${detectedState})`}</li>
                         <li>Enter the property purchase price</li>
                         <li>Select buyer type (first home buyer, investor, etc.)</li>
-                        <li>Copy the calculated stamp duty value to the field below</li>
+                        <li>Click "Use Calculated Stamp Duty Value" to auto-populate</li>
                       </ol>
                     </div>
                   </div>
