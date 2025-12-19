@@ -794,7 +794,29 @@ export default function ReportQA() {
                         </div>
                         {message.role === 'assistant' ? (
                           <div className="qa-markdown">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                strong: ({ children, ...props }) => {
+                                  const text = String(children);
+                                  // Match "Step X" or "Step X:" patterns
+                                  const stepMatch = text.match(/^(Step\s*\d+):?(.*)$/i);
+                                  if (stepMatch) {
+                                    const stepNumber = stepMatch[1];
+                                    const remainder = stepMatch[2];
+                                    return (
+                                      <>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/20 mr-1.5">
+                                          {stepNumber}
+                                        </span>
+                                        {remainder && <strong {...props}>{remainder}</strong>}
+                                      </>
+                                    );
+                                  }
+                                  return <strong {...props}>{children}</strong>;
+                                },
+                              }}
+                            >
                               {message.content}
                             </ReactMarkdown>
                           </div>
