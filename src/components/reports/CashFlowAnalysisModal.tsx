@@ -2964,6 +2964,130 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
 
+            {/* Inputs Summary Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Inputs Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Land Price</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.landPrice)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Build Price (Depreciable Amount)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Deposit Amount</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.depositValue)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Loan Amount</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100)))}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Interest Rate</TableCell>
+                      <TableCell>{baseFinancialData.interestRate.toFixed(2)}%</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Weekly Rent</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.weeklyRent)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Gross Rental Yield</TableCell>
+                      <TableCell>{projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-'}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Council Rates (p.a.)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.councilRates)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Water Rates (p.a.)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.waterRates)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Property Management (%)</TableCell>
+                      <TableCell>{baseFinancialData.propertyManagementFees}%</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Landlord Insurance (p.a.)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.buildingLandlordInsurance)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Letting Fees</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.lettingFees)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Repairs & Maintenance</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.repairsMaintenance)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Stamp Duty</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Conveyancing (Solicitor Fees)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Body Corporate Fees (p.a.)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.bodyCorporateFees)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Depreciation (Year 1)</TableCell>
+                      <TableCell>{formatCurrency(baseFinancialData.depreciation)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Capital Growth Rate</TableCell>
+                      <TableCell>{baseFinancialData.capitalGrowth}%</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">CPI Growth Rate</TableCell>
+                      <TableCell>{baseFinancialData.cpiGrowthRate}%</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">Tax Rate (MTR)</TableCell>
+                      <TableCell>{baseFinancialData.taxRate}%</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+                
+                {/* Total Overall Expenditure to Completion */}
+                <div className="mt-4 pt-4 border-t">
+                  <h4 className="text-sm font-semibold mb-3">Total Overall Expenditure to Completion</h4>
+                  <Table>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
+                        <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Stamp Duty</TableCell>
+                        <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Conveyancing</TableCell>
+                        <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
+                      </TableRow>
+                      <TableRow className="bg-muted/50 font-semibold">
+                        <TableCell className="font-semibold">Total Expenditure</TableCell>
+                        <TableCell className="font-semibold">
+                          {formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 10-Year Projection Table with Inline Editing */}
             <Card>
               <CardHeader>
