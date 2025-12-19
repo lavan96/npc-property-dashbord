@@ -757,12 +757,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // Construction Progress Payment Schedule calculation
   interface ConstructionStage {
     stage: string;
+    description: string;
     percentage: number;
     buildAmount: number;
     cumulativeDrawn: number;
     landInterest: number;
     buildInterest: number;
     totalMonthlyInterest: number;
+    month: number;
   }
 
   const constructionProgressSchedule = useMemo(() => {
@@ -772,7 +774,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const buildPrice = baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - landPrice);
     const interestRate = baseFinancialData.interestRate / 100; // Annual rate
     const monthlyRate = interestRate / 12;
-    const lvr = baseFinancialData.loanToValueRatio / 100;
     const durationMonths = Math.min(baseFinancialData.constructionDurationMonths || 7, 18);
 
     // Land loan (assuming 90% LVR on land, 10% deposit)
@@ -780,44 +781,58 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const landLoan = landPrice - landDeposit;
     const monthlyLandInterest = landLoan * monthlyRate;
 
-    // Build stages - standard construction progress percentages
+    // Build stages - updated to match template percentages exactly
     const stages = [
-      { stage: 'Deposit', percentage: 5 },
-      { stage: 'Slab/Base', percentage: 15 },
-      { stage: 'Frame', percentage: 15 },
-      { stage: 'Lock-up', percentage: 15 },
-      { stage: 'Fixing', percentage: 15 },
-      { stage: 'Practical Completion', percentage: 35 },
+      { stage: 'Deposit', description: 'Paid from your funds (not from lender)', percentage: 5 },
+      { stage: 'Slab/Base Stage', description: 'Foundation, slab, ground works', percentage: 15 },
+      { stage: 'Frame Stage', description: 'Wall frames, roof trusses, structural frame', percentage: 20 },
+      { stage: 'Lock-up Stage', description: 'External walls, windows, doors (can "lock up")', percentage: 25 },
+      { stage: 'Fixing Stage', description: 'Internal linings, plaster, cabinets, fittings', percentage: 20 },
+      { stage: 'Practical Completion', description: 'Final works, painting, finishes', percentage: 15 },
     ];
 
     let cumulativeDrawn = 0;
-    let totalLandInterest = 0;
     let totalBuildInterest = 0;
+    let totalCombinedRepayment = monthlyLandInterest; // Start with first month land interest
 
-    const stageResults: ConstructionStage[] = stages.map((s, index) => {
+    // Land Interest Charge row (month 1)
+    const landInterestRow: ConstructionStage = {
+      stage: 'Land Interest Charge',
+      description: '',
+      percentage: 0,
+      buildAmount: landPrice,
+      cumulativeDrawn: 0,
+      landInterest: Math.round(monthlyLandInterest * 100) / 100,
+      buildInterest: 0,
+      totalMonthlyInterest: Math.round(monthlyLandInterest * 100) / 100,
+      month: 1,
+    };
+
+    const stageResults: ConstructionStage[] = [landInterestRow];
+
+    stages.forEach((s, index) => {
       const buildAmount = (buildPrice * s.percentage) / 100;
       cumulativeDrawn += buildAmount;
       
       // Build interest is calculated on cumulative drawn amount
       const buildInterest = cumulativeDrawn * monthlyRate;
+      const combinedRepayment = monthlyLandInterest + buildInterest;
       
-      totalLandInterest += monthlyLandInterest;
       totalBuildInterest += buildInterest;
+      totalCombinedRepayment += combinedRepayment;
 
-      return {
+      stageResults.push({
         stage: s.stage,
+        description: s.description,
         percentage: s.percentage,
         buildAmount: Math.round(buildAmount * 100) / 100,
         cumulativeDrawn: Math.round(cumulativeDrawn * 100) / 100,
         landInterest: Math.round(monthlyLandInterest * 100) / 100,
         buildInterest: Math.round(buildInterest * 100) / 100,
-        totalMonthlyInterest: Math.round((monthlyLandInterest + buildInterest) * 100) / 100,
-      };
+        totalMonthlyInterest: Math.round(combinedRepayment * 100) / 100,
+        month: index + 2, // Month 2 onwards for build stages
+      });
     });
-
-    // Calculate totals for the duration
-    const monthsPerStage = durationMonths / stages.length;
-    const totalInterestDuringConstruction = (totalLandInterest + totalBuildInterest) * monthsPerStage;
 
     // Upfront costs
     const tenPercentLand = landPrice * 0.10;
@@ -827,8 +842,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const agentFee = baseFinancialData.agentFee || 0;
     const totalUpfrontCost = tenPercentLand + fivePercentBuild + stampDuty + solicitorFees + agentFee;
 
-    // Staged progress (interest during construction)
-    const stagedProgressInterest = Math.round(totalInterestDuringConstruction * 100) / 100;
+    // Total interest during construction
+    const totalLandInterest = monthlyLandInterest * durationMonths;
+    const stagedProgressInterest = Math.round((totalLandInterest + totalBuildInterest) * 100) / 100;
 
     return {
       landPrice,
@@ -837,10 +853,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       interestRate: baseFinancialData.interestRate,
       durationMonths,
       stages: stageResults,
+      monthlyLandInterest: Math.round(monthlyLandInterest * 100) / 100,
       totals: {
-        landInterest: Math.round(monthlyLandInterest * durationMonths * 100) / 100,
-        buildInterest: Math.round(totalBuildInterest * (durationMonths / stages.length) * 100) / 100,
+        landInterest: Math.round(totalLandInterest * 100) / 100,
+        buildInterest: Math.round(totalBuildInterest * 100) / 100,
         totalInterest: stagedProgressInterest,
+        totalCombinedRepayment: Math.round(totalCombinedRepayment * 100) / 100,
       },
       upfrontCosts: {
         tenPercentLand,
@@ -1927,13 +1945,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos += 6;
 
         // Build stages table header
-        pdf.setFontSize(7);
+        pdf.setFontSize(6);
         pdf.setFillColor(59, 130, 246);
         pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 5, 'F');
         pdf.setTextColor(255);
         pdf.setFont('helvetica', 'bold');
-        const scheduleHeaders = ['Stage', '%', 'Amount', 'Cumulative', 'Land Int.', 'Build Int.', 'Total'];
-        const scheduleColWidths = [35, 15, 28, 28, 25, 25, 25];
+        const scheduleHeaders = ['Stage', 'Description', '%', 'Stage Pricing', 'Land Int.', 'Build Int.', 'Combined', 'Mo'];
+        const scheduleColWidths = [28, 55, 12, 22, 18, 18, 22, 10];
         let xPos = margin;
         scheduleHeaders.forEach((header, idx) => {
           pdf.text(header, xPos + 1, yPos);
@@ -1944,20 +1962,25 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
         // Build stages rows
         pdf.setFont('helvetica', 'normal');
-        constructionProgressSchedule.stages.forEach((stage) => {
+        constructionProgressSchedule.stages.forEach((stage, idx) => {
           if (yPos > pageHeight - 15) {
             pdf.addPage();
             yPos = margin;
           }
+          if (idx === 0) {
+            pdf.setFillColor(245, 245, 245);
+            pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 4, 'F');
+          }
           xPos = margin;
           const rowData = [
             stage.stage,
-            `${stage.percentage}%`,
+            stage.description.substring(0, 35) + (stage.description.length > 35 ? '...' : ''),
+            stage.percentage > 0 ? `${stage.percentage}%` : '',
             formatCurrency(stage.buildAmount),
-            formatCurrency(stage.cumulativeDrawn),
             formatCurrency(stage.landInterest),
-            formatCurrency(stage.buildInterest),
-            formatCurrency(stage.totalMonthlyInterest)
+            stage.buildInterest > 0 ? formatCurrency(stage.buildInterest) : '',
+            formatCurrency(stage.totalMonthlyInterest),
+            String(stage.month)
           ];
           rowData.forEach((cell, idx) => {
             pdf.text(cell, xPos + 1, yPos);
@@ -1972,13 +1995,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFont('helvetica', 'bold');
         xPos = margin;
         const totalsRow = [
-          `Total (${constructionProgressSchedule.durationMonths} mo)`,
           '',
           '',
+          '100%',
+          formatCurrency(constructionProgressSchedule.buildPrice),
+          'Total',
           '',
-          formatCurrency(constructionProgressSchedule.totals.landInterest),
-          formatCurrency(constructionProgressSchedule.totals.buildInterest),
-          formatCurrency(constructionProgressSchedule.totals.totalInterest)
+          formatCurrency(constructionProgressSchedule.totals.totalCombinedRepayment),
+          ''
         ];
         totalsRow.forEach((cell, idx) => {
           pdf.text(cell, xPos + 1, yPos);
@@ -2311,35 +2335,41 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <div><span style="font-size: 11px; color: #666;">Total Project</span><br><strong>${formatCurrency(constructionProgressSchedule.totalProject)}</strong></div>
           </div>
           <p style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Build Contract Breakdown (${constructionProgressSchedule.durationMonths} Month Construction)</p>
-          <table style="margin-bottom: 0;">
+          <table style="margin-bottom: 0; font-size: 11px;">
             <thead>
               <tr>
                 <th style="text-align: left;">Stage</th>
-                <th>%</th>
-                <th>Amount</th>
-                <th>Cumulative</th>
-                <th>Land Int.</th>
-                <th>Build Int.</th>
-                <th>Total</th>
+                <th style="text-align: left;">Description</th>
+                <th style="text-align: center;">Total Build Contract</th>
+                <th style="text-align: right;">Stage Pricing</th>
+                <th style="text-align: right;">Land Interest (Monthly)</th>
+                <th style="text-align: right;">Build Interest (Monthly)</th>
+                <th style="text-align: right;">Combined Repayment</th>
+                <th style="text-align: center;">Month</th>
               </tr>
             </thead>
             <tbody>
-              ${constructionProgressSchedule.stages.map(stage => `
-              <tr>
-                <td style="text-align: left;">${stage.stage}</td>
-                <td>${stage.percentage}%</td>
-                <td>${formatCurrency(stage.buildAmount)}</td>
-                <td>${formatCurrency(stage.cumulativeDrawn)}</td>
-                <td>${formatCurrency(stage.landInterest)}</td>
-                <td>${formatCurrency(stage.buildInterest)}</td>
-                <td style="font-weight: 500;">${formatCurrency(stage.totalMonthlyInterest)}</td>
+              ${constructionProgressSchedule.stages.map((stage, idx) => `
+              <tr style="${idx === 0 ? 'background: #f5f5f5;' : ''}">
+                <td style="text-align: left; font-weight: 500;">${stage.stage}</td>
+                <td style="text-align: left; color: #666; font-size: 10px;">${stage.description}</td>
+                <td style="text-align: center;">${stage.percentage > 0 ? `${stage.percentage}%` : ''}</td>
+                <td style="text-align: right;">${formatCurrency(stage.buildAmount)}</td>
+                <td style="text-align: right;">${formatCurrency(stage.landInterest)}</td>
+                <td style="text-align: right;">${stage.buildInterest > 0 ? formatCurrency(stage.buildInterest) : ''}</td>
+                <td style="text-align: right; font-weight: 500;">${formatCurrency(stage.totalMonthlyInterest)}</td>
+                <td style="text-align: center;">${stage.month}</td>
               </tr>
               `).join('')}
-              <tr style="background: #f0f0f0; font-weight: bold;">
-                <td colspan="4" style="text-align: left;">Total Interest (${constructionProgressSchedule.durationMonths} months)</td>
-                <td>${formatCurrency(constructionProgressSchedule.totals.landInterest)}</td>
-                <td>${formatCurrency(constructionProgressSchedule.totals.buildInterest)}</td>
-                <td>${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td>
+              <tr style="background: #f0f0f0; font-weight: bold; border-top: 2px solid #ccc;">
+                <td></td>
+                <td></td>
+                <td style="text-align: center;">100%</td>
+                <td style="text-align: right;">${formatCurrency(constructionProgressSchedule.buildPrice)}</td>
+                <td style="text-align: right;">Total</td>
+                <td></td>
+                <td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalCombinedRepayment)}</td>
+                <td></td>
               </tr>
             </tbody>
           </table>
@@ -3565,34 +3595,39 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <h4 className="text-sm font-semibold mb-2">Build Contract Breakdown ({constructionProgressSchedule.durationMonths} Month Construction)</h4>
                       <Table>
                         <TableHeader>
-                          <TableRow>
-                            <TableHead>Stage</TableHead>
-                            <TableHead className="text-right">%</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead className="text-right">Cumulative Drawn</TableHead>
-                            <TableHead className="text-right">Land Interest</TableHead>
-                            <TableHead className="text-right">Build Interest</TableHead>
-                            <TableHead className="text-right">Total Monthly</TableHead>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="font-semibold">Stage</TableHead>
+                            <TableHead className="font-semibold">Description</TableHead>
+                            <TableHead className="text-center font-semibold">Total Build Contract</TableHead>
+                            <TableHead className="text-right font-semibold">Stage Pricing</TableHead>
+                            <TableHead className="text-right font-semibold">Land Interest Charge (Monthly)</TableHead>
+                            <TableHead className="text-right font-semibold">Build Interest Charge (Monthly)</TableHead>
+                            <TableHead className="text-right font-semibold">Combined Repayment Breakdown</TableHead>
+                            <TableHead className="text-center font-semibold">Month</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {constructionProgressSchedule.stages.map((stage, idx) => (
-                            <TableRow key={idx}>
+                            <TableRow key={idx} className={idx === 0 ? 'bg-muted/20' : ''}>
                               <TableCell className="font-medium">{stage.stage}</TableCell>
-                              <TableCell className="text-right">{stage.percentage}%</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{stage.description}</TableCell>
+                              <TableCell className="text-center">{stage.percentage > 0 ? `${stage.percentage}%` : ''}</TableCell>
                               <TableCell className="text-right">{formatCurrency(stage.buildAmount)}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(stage.cumulativeDrawn)}</TableCell>
                               <TableCell className="text-right">{formatCurrency(stage.landInterest)}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(stage.buildInterest)}</TableCell>
+                              <TableCell className="text-right">{stage.buildInterest > 0 ? formatCurrency(stage.buildInterest) : ''}</TableCell>
                               <TableCell className="text-right font-medium">{formatCurrency(stage.totalMonthlyInterest)}</TableCell>
+                              <TableCell className="text-center">{stage.month}</TableCell>
                             </TableRow>
                           ))}
-                          <TableRow className="bg-muted/50 font-semibold">
-                            <TableCell colSpan={3}>Total Interest ({constructionProgressSchedule.durationMonths} months)</TableCell>
+                          <TableRow className="bg-muted/50 font-semibold border-t-2">
+                            <TableCell></TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="text-center font-bold">100%</TableCell>
+                            <TableCell className="text-right font-bold">{formatCurrency(constructionProgressSchedule.buildPrice)}</TableCell>
+                            <TableCell className="text-right font-semibold">Total</TableCell>
                             <TableCell className="text-right"></TableCell>
-                            <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.totals.landInterest)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.totals.buildInterest)}</TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency(constructionProgressSchedule.totals.totalInterest)}</TableCell>
+                            <TableCell className="text-right font-bold">{formatCurrency(constructionProgressSchedule.totals.totalCombinedRepayment)}</TableCell>
+                            <TableCell className="text-center"></TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>
