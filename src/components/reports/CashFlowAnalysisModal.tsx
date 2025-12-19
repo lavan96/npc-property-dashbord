@@ -2521,6 +2521,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <DialogTitle className="text-xl flex items-center gap-2">
                   <Calculator className="h-5 w-5" />
                   10-Year Cash Flow Analysis
+                  <Badge 
+                    variant={isNewBuild ? "default" : "secondary"}
+                    className="ml-2 text-xs"
+                  >
+                    {isNewBuild ? "New Build" : "Existing Property"}
+                  </Badge>
                 </DialogTitle>
                 <DialogDescription className="mt-1">
                   {report.property_address}
