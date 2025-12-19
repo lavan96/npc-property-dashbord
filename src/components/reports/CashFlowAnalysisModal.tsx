@@ -2008,6 +2008,84 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           </div>
         </div>
         
+        <!-- Inputs Summary -->
+        <div class="summary" style="margin-bottom: 24px;">
+          <h3 style="margin-bottom: 12px;">Inputs Summary</h3>
+          <table style="margin-bottom: 0;">
+            <tbody>
+              <tr>
+                <td style="font-weight: 500; width: 25%;">Purchase Price</td>
+                <td style="width: 25%;">${formatCurrency(baseFinancialData.purchasePrice)}</td>
+                <td style="font-weight: 500; width: 25%;">Weekly Rent</td>
+                <td style="width: 25%;">${formatCurrency(baseFinancialData.weeklyRent)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Land Price</td>
+                <td>${formatCurrency(baseFinancialData.landPrice)}</td>
+                <td style="font-weight: 500;">Gross Rental Yield</td>
+                <td>${projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Build Price (Depreciable)</td>
+                <td>${formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</td>
+                <td style="font-weight: 500;">Council Rates (p.a.)</td>
+                <td>${formatCurrency(baseFinancialData.councilRates)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Deposit Amount</td>
+                <td>${formatCurrency(baseFinancialData.depositValue)}</td>
+                <td style="font-weight: 500;">Water Rates (p.a.)</td>
+                <td>${formatCurrency(baseFinancialData.waterRates)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Loan Amount</td>
+                <td>${formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100)))}</td>
+                <td style="font-weight: 500;">Property Management</td>
+                <td>${baseFinancialData.propertyManagementFees}%</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Interest Rate</td>
+                <td>${baseFinancialData.interestRate.toFixed(2)}%</td>
+                <td style="font-weight: 500;">Landlord Insurance (p.a.)</td>
+                <td>${formatCurrency(baseFinancialData.buildingLandlordInsurance)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Capital Growth Rate</td>
+                <td>${baseFinancialData.capitalGrowth}%</td>
+                <td style="font-weight: 500;">Letting Fees</td>
+                <td>${formatCurrency(baseFinancialData.lettingFees)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">CPI Growth Rate</td>
+                <td>${baseFinancialData.cpiGrowthRate}%</td>
+                <td style="font-weight: 500;">Repairs & Maintenance</td>
+                <td>${formatCurrency(baseFinancialData.repairsMaintenance)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Tax Rate (MTR)</td>
+                <td>${baseFinancialData.taxRate}%</td>
+                <td style="font-weight: 500;">Body Corporate (p.a.)</td>
+                <td>${formatCurrency(baseFinancialData.bodyCorporateFees)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;">Depreciation (Year 1)</td>
+                <td>${formatCurrency(baseFinancialData.depreciation)}</td>
+                <td style="font-weight: 500;">Stamp Duty</td>
+                <td>${formatCurrency(baseFinancialData.stampDuty)}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 500;"></td>
+                <td></td>
+                <td style="font-weight: 500;">Conveyancing</td>
+                <td>${formatCurrency(baseFinancialData.solicitorFees)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top: 12px; padding: 10px; background: #e5e7eb; border-radius: 4px;">
+            <strong>Total Overall Expenditure to Completion:</strong> ${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
+          </div>
+        </div>
+        
         <table>
           <thead>
             <tr>
