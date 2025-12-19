@@ -148,3 +148,144 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply bg-background text-foreground;
   }
 }
+
+/* ChatGPT-grade Markdown Styling for Report Q&A */
+@layer components {
+  .qa-markdown {
+    @apply text-sm leading-relaxed;
+  }
+
+  /* Paragraphs with generous spacing */
+  .qa-markdown p {
+    @apply mb-4 leading-7;
+  }
+
+  .qa-markdown p:last-child {
+    @apply mb-0;
+  }
+
+  /* Heading hierarchy with clear visual distinction */
+  .qa-markdown h1 {
+    @apply text-xl font-bold mt-8 mb-4 pb-2 border-b border-border/50;
+  }
+
+  .qa-markdown h2 {
+    @apply text-lg font-semibold mt-8 mb-3 text-foreground;
+  }
+
+  .qa-markdown h3 {
+    @apply text-base font-semibold mt-6 mb-2 text-foreground;
+  }
+
+  .qa-markdown h4 {
+    @apply text-sm font-semibold mt-4 mb-2 text-foreground;
+  }
+
+  /* First heading shouldn't have top margin */
+  .qa-markdown > h1:first-child,
+  .qa-markdown > h2:first-child,
+  .qa-markdown > h3:first-child {
+    @apply mt-0;
+  }
+
+  /* Strong/Bold text with emphasis */
+  .qa-markdown strong {
+    @apply font-semibold text-foreground;
+  }
+
+  /* Italic text */
+  .qa-markdown em {
+    @apply italic text-muted-foreground;
+  }
+
+  /* Unordered lists */
+  .qa-markdown ul {
+    @apply my-4 ml-6 space-y-2;
+    list-style-type: disc;
+  }
+
+  .qa-markdown ul ul {
+    @apply mt-2 mb-0;
+    list-style-type: circle;
+  }
+
+  .qa-markdown ul li {
+    @apply pl-1 leading-7;
+  }
+
+  /* Ordered lists */
+  .qa-markdown ol {
+    @apply my-4 ml-6 space-y-2;
+    list-style-type: decimal;
+  }
+
+  .qa-markdown ol li {
+    @apply pl-1 leading-7;
+  }
+
+  /* Nested list spacing */
+  .qa-markdown li > ul,
+  .qa-markdown li > ol {
+    @apply mt-2;
+  }
+
+  /* Blockquotes with accent styling */
+  .qa-markdown blockquote {
+    @apply my-4 pl-4 border-l-4 border-primary/30 bg-muted/30 py-2 pr-4 rounded-r-md italic;
+  }
+
+  .qa-markdown blockquote p {
+    @apply mb-0;
+  }
+
+  /* Code blocks with background */
+  .qa-markdown pre {
+    @apply my-4 p-4 bg-muted/50 rounded-lg overflow-x-auto border border-border/50;
+  }
+
+  .qa-markdown pre code {
+    @apply text-xs font-mono bg-transparent p-0;
+  }
+
+  /* Inline code */
+  .qa-markdown code {
+    @apply px-1.5 py-0.5 bg-muted/70 rounded text-xs font-mono text-foreground;
+  }
+
+  /* Links */
+  .qa-markdown a {
+    @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
+  }
+
+  /* Horizontal rules */
+  .qa-markdown hr {
+    @apply my-6 border-border/50;
+  }
+
+  /* Tables */
+  .qa-markdown table {
+    @apply my-4 w-full border-collapse text-sm;
+  }
+
+  .qa-markdown th {
+    @apply border border-border bg-muted/50 px-3 py-2 text-left font-semibold;
+  }
+
+  .qa-markdown td {
+    @apply border border-border px-3 py-2;
+  }
+
+  .qa-markdown tr:nth-child(even) {
+    @apply bg-muted/20;
+  }
+
+  /* Step indicators - special styling for "Step X:" patterns */
+  .qa-markdown strong:first-child {
+    @apply text-foreground;
+  }
+
+  /* Tips and notes styling */
+  .qa-markdown p > em:first-child {
+    @apply not-italic text-muted-foreground text-xs uppercase tracking-wide font-medium;
+  }
+}
