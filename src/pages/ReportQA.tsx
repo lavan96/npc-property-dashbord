@@ -61,12 +61,15 @@ import { MessageThreading, useMessageThreads } from '@/components/report-qa/Mess
 import { AutoSummarize } from '@/components/report-qa/AutoSummarize';
 import { PinConversation, usePinnedConversations } from '@/components/report-qa/PinConversation';
 import { KeyboardShortcutsHelp } from '@/components/report-qa/KeyboardShortcutsHelp';
+import { VoiceMessagePlayer } from '@/components/report-qa/VoiceMessagePlayer';
+import { RecordingIndicator } from '@/components/report-qa/RecordingIndicator';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  audioUrl?: string; // For voice messages
 }
 
 interface UploadedReport {
@@ -111,6 +114,7 @@ export default function ReportQA() {
   const [chatTheme, setChatTheme] = useState<Theme | null>(null);
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -396,10 +400,12 @@ export default function ReportQA() {
       role: 'user',
       content: inputMessage.trim(),
       timestamp: new Date(),
+      audioUrl: pendingAudioUrl || undefined,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
+    setPendingAudioUrl(null); // Clear pending audio after adding to message
     setIsProcessing(true);
 
     try {
@@ -544,6 +550,10 @@ export default function ReportQA() {
   const transcribeAudio = async (audioBlob: Blob) => {
     setIsTranscribing(true);
     
+    // Create audio URL for playback
+    const audioUrl = URL.createObjectURL(audioBlob);
+    setPendingAudioUrl(audioUrl);
+    
     try {
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
@@ -571,6 +581,8 @@ export default function ReportQA() {
       }
     } catch (error) {
       console.error('Transcription error:', error);
+      // Clear pending audio on error
+      setPendingAudioUrl(null);
       toast({
         title: 'Transcription failed',
         description: 'Could not convert voice to text',
@@ -1038,7 +1050,17 @@ export default function ReportQA() {
                             </ReactMarkdown>
                           </div>
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          <div className="space-y-2">
+                            {message.audioUrl && (
+                              <VoiceMessagePlayer 
+                                audioUrl={message.audioUrl} 
+                                compact 
+                                waveColor="rgba(255, 255, 255, 0.4)"
+                                progressColor="rgba(255, 255, 255, 0.8)"
+                              />
+                            )}
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          </div>
                         )}
                         {message.role === 'assistant' && (
                           <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
@@ -1095,6 +1117,30 @@ export default function ReportQA() {
                 </div>
               )}
             </ScrollArea>
+
+            {/* Recording indicator */}
+            {isRecording && (
+              <RecordingIndicator isRecording={isRecording} className="mb-2" />
+            )}
+
+            {/* Pending audio preview */}
+            {pendingAudioUrl && !isRecording && (
+              <div className="mb-2 p-2 rounded-lg bg-muted/50 border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">Voice message ready</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => setPendingAudioUrl(null)}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Remove
+                  </Button>
+                </div>
+                <VoiceMessagePlayer audioUrl={pendingAudioUrl} compact />
+              </div>
+            )}
 
             {/* Input */}
             <div className="flex gap-2 pt-2 border-t items-end">
