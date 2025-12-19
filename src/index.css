@@ -279,13 +279,20 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply bg-muted/20;
   }
 
-  /* Step indicators - special styling for "Step X:" patterns */
-  .qa-markdown strong:first-child {
-    @apply text-foreground;
+  /* Step badge styling - enhanced visuals */
+  .qa-markdown .step-badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold 
+           bg-gradient-to-r from-primary/20 to-primary/10 text-primary 
+           border border-primary/30 shadow-sm mr-2;
   }
 
   /* Tips and notes styling */
   .qa-markdown p > em:first-child {
     @apply not-italic text-muted-foreground text-xs uppercase tracking-wide font-medium;
+  }
+
+  /* Numbered list items with enhanced markers */
+  .qa-markdown ol > li::marker {
+    @apply font-semibold text-primary;
   }
 }
