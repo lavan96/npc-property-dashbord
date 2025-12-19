@@ -38,6 +38,234 @@ function processBase64Chunks(base64String: string, chunkSize = 32768) {
   return result;
 }
 
+// ============= RAG HELPER FUNCTIONS =============
+
+/**
+ * Step 1: Chunk text into smaller overlapping segments
+ * Uses sentence-aware chunking with overlap for better context preservation
+ */
+function chunkText(text: string, chunkSize = 800, overlapSize = 150): string[] {
+  const chunks: string[] = [];
+  
+  // Clean and normalize text
+  const cleanText = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  
+  if (cleanText.length <= chunkSize) {
+    return [cleanText];
+  }
+  
+  // Split by paragraphs first for better semantic boundaries
+  const paragraphs = cleanText.split(/\n\n+/);
+  let currentChunk = '';
+  
+  for (const paragraph of paragraphs) {
+    // If adding this paragraph would exceed chunk size, save current and start new
+    if (currentChunk.length + paragraph.length > chunkSize && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+      
+      // Start new chunk with overlap from previous
+      const words = currentChunk.split(' ');
+      const overlapWords = words.slice(-Math.floor(overlapSize / 5)); // Approximate word count for overlap
+      currentChunk = overlapWords.join(' ') + '\n\n' + paragraph;
+    } else {
+      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+    }
+  }
+  
+  // Don't forget the last chunk
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  // If we still have very long chunks, split them further
+  const finalChunks: string[] = [];
+  for (const chunk of chunks) {
+    if (chunk.length > chunkSize * 1.5) {
+      // Split by sentences
+      const sentences = chunk.split(/(?<=[.!?])\s+/);
+      let subChunk = '';
+      
+      for (const sentence of sentences) {
+        if (subChunk.length + sentence.length > chunkSize && subChunk.length > 0) {
+          finalChunks.push(subChunk.trim());
+          subChunk = sentence;
+        } else {
+          subChunk += (subChunk ? ' ' : '') + sentence;
+        }
+      }
+      
+      if (subChunk.trim()) {
+        finalChunks.push(subChunk.trim());
+      }
+    } else {
+      finalChunks.push(chunk);
+    }
+  }
+  
+  console.log(`[RAG] Chunked text into ${finalChunks.length} segments`);
+  return finalChunks;
+}
+
+/**
+ * Step 2: Generate embedding vector for a text chunk using OpenAI
+ */
+async function generateEmbedding(text: string, openaiApiKey: string): Promise<number[]> {
+  const response = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'text-embedding-3-small',
+      input: text.substring(0, 8000), // Limit input to avoid token limits
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[RAG] Embedding API error: ${response.status} - ${errorText}`);
+    throw new Error(`Failed to generate embedding: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].embedding;
+}
+
+/**
+ * Step 3: Store document chunks with embeddings in database
+ */
+async function storeDocumentChunks(
+  supabase: any,
+  documentName: string,
+  chunks: string[],
+  openaiApiKey: string,
+  conversationId?: string
+): Promise<void> {
+  console.log(`[RAG] Storing ${chunks.length} chunks for document: ${documentName}`);
+  
+  // Delete existing chunks for this document to avoid duplicates
+  if (conversationId) {
+    await supabase
+      .from('document_chunks')
+      .delete()
+      .eq('document_name', documentName)
+      .eq('conversation_id', conversationId);
+  }
+  
+  // Process chunks in batches to avoid overwhelming the API
+  const batchSize = 5;
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batch = chunks.slice(i, i + batchSize);
+    
+    const chunksWithEmbeddings = await Promise.all(
+      batch.map(async (chunkText, batchIndex) => {
+        const chunkIndex = i + batchIndex;
+        try {
+          const embedding = await generateEmbedding(chunkText, openaiApiKey);
+          return {
+            document_name: documentName,
+            chunk_index: chunkIndex,
+            chunk_text: chunkText,
+            embedding: JSON.stringify(embedding),
+            conversation_id: conversationId || null,
+            metadata: {
+              char_count: chunkText.length,
+              created_at: new Date().toISOString(),
+            },
+          };
+        } catch (error) {
+          console.error(`[RAG] Failed to embed chunk ${chunkIndex}:`, error);
+          // Store without embedding if embedding fails
+          return {
+            document_name: documentName,
+            chunk_index: chunkIndex,
+            chunk_text: chunkText,
+            embedding: null,
+            conversation_id: conversationId || null,
+            metadata: {
+              char_count: chunkText.length,
+              created_at: new Date().toISOString(),
+              embedding_error: true,
+            },
+          };
+        }
+      })
+    );
+    
+    const { error } = await supabase
+      .from('document_chunks')
+      .insert(chunksWithEmbeddings);
+    
+    if (error) {
+      console.error(`[RAG] Error storing chunks batch ${i}:`, error);
+      throw error;
+    }
+    
+    console.log(`[RAG] Stored batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(chunks.length / batchSize)}`);
+  }
+  
+  console.log(`[RAG] Successfully stored all ${chunks.length} chunks with embeddings`);
+}
+
+/**
+ * Step 4: Retrieve relevant chunks using similarity search
+ */
+async function retrieveRelevantChunks(
+  supabase: any,
+  query: string,
+  openaiApiKey: string,
+  conversationId?: string,
+  matchThreshold = 0.7,
+  matchCount = 5
+): Promise<{ chunk_text: string; document_name: string; similarity: number }[]> {
+  console.log(`[RAG] Retrieving relevant chunks for query: "${query.substring(0, 50)}..."`);
+  
+  try {
+    // Generate embedding for the query
+    const queryEmbedding = await generateEmbedding(query, openaiApiKey);
+    
+    // Use the match_document_chunks function for similarity search
+    const { data, error } = await supabase.rpc('match_document_chunks', {
+      query_embedding: JSON.stringify(queryEmbedding),
+      match_conversation_id: conversationId || null,
+      match_threshold: matchThreshold,
+      match_count: matchCount,
+    });
+    
+    if (error) {
+      console.error(`[RAG] Similarity search error:`, error);
+      throw error;
+    }
+    
+    console.log(`[RAG] Found ${data?.length || 0} relevant chunks`);
+    return data || [];
+  } catch (error) {
+    console.error(`[RAG] Failed to retrieve chunks:`, error);
+    return [];
+  }
+}
+
+/**
+ * Format retrieved chunks for context injection
+ */
+function formatRetrievedContext(chunks: { chunk_text: string; document_name: string; similarity: number }[]): string {
+  if (!chunks || chunks.length === 0) {
+    return '';
+  }
+  
+  const contextParts = chunks.map((chunk, idx) => 
+    `[Source: ${chunk.document_name} | Relevance: ${(chunk.similarity * 100).toFixed(1)}%]\n${chunk.chunk_text}`
+  );
+  
+  return `\n\n## RETRIEVED CONTEXT FROM KNOWLEDGE BASE\nThe following excerpts from uploaded documents are most relevant to your question:\n\n${contextParts.join('\n\n---\n\n')}`;
+}
+
+// ============= END RAG HELPER FUNCTIONS =============
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -107,10 +335,10 @@ serve(async (req) => {
       );
     }
 
-    // Handle PDF text extraction
+    // Handle PDF text extraction with RAG storage (Step 5)
     if (action === "extract") {
-      const { fileData, fileName } = body;
-      console.log(`[report-qa] Extracting text from: ${fileName}`);
+      const { fileData, fileName, conversationId, enableRAG = true } = body;
+      console.log(`[report-qa] Extracting text from: ${fileName}, RAG enabled: ${enableRAG}`);
       
       const base64Data = fileData.replace(/^data:application\/pdf;base64,/, "");
       
@@ -158,6 +386,7 @@ If you cannot read the document, describe what you can see.`,
             JSON.stringify({
               success: true,
               extractedText: `[Document: ${fileName}]\n\nThis PDF document has been uploaded. Due to technical limitations, the raw text could not be automatically extracted. However, you can still ask questions about the document, and the AI will attempt to provide relevant responses based on typical investment report structures.\n\nPlease ask specific questions about:\n- Property details\n- Financial calculations\n- Investment metrics\n- Location analysis\n- Risk assessment`,
+              ragEnabled: false,
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -171,23 +400,69 @@ If you cannot read the document, describe what you can see.`,
 
       console.log(`[report-qa] Extracted ${extractedText.length} characters`);
 
+      // Step 5: Store extracted text as chunks with embeddings for RAG
+      let ragEnabled = false;
+      if (enableRAG && OPENAI_API_KEY && extractedText.length > 100) {
+        try {
+          console.log(`[report-qa] Processing document for RAG storage...`);
+          
+          // Chunk the extracted text
+          const chunks = chunkText(extractedText);
+          
+          // Store chunks with embeddings
+          await storeDocumentChunks(supabase, fileName, chunks, OPENAI_API_KEY, conversationId);
+          
+          ragEnabled = true;
+          console.log(`[report-qa] RAG storage complete for ${fileName}`);
+        } catch (ragError) {
+          console.error(`[report-qa] RAG storage failed (non-critical):`, ragError);
+          // Continue without RAG - extraction still succeeded
+        }
+      } else if (!OPENAI_API_KEY) {
+        console.log(`[report-qa] RAG storage skipped - OPENAI_API_KEY not configured`);
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
           extractedText,
+          ragEnabled,
+          chunksStored: ragEnabled ? chunkText(extractedText).length : 0,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Handle chat Q&A (single or multi-report or open-ended)
+    // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId } = body;
+      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
-      console.log(`[report-qa] Reports count: ${reportContents?.length || 0}`);
+      console.log(`[report-qa] Reports count: ${reportContents?.length || 0}, RAG: ${useRAG}`);
 
       const hasReports = reportContents && reportContents.length > 0;
       const isMultiReport = reportContents && reportContents.length > 1;
+      
+      // Step 6: Retrieve relevant chunks from knowledge base
+      let ragContext = "";
+      if (useRAG && OPENAI_API_KEY) {
+        try {
+          const relevantChunks = await retrieveRelevantChunks(
+            supabase,
+            question,
+            OPENAI_API_KEY,
+            conversationId,
+            0.6, // Lower threshold for broader matches
+            8    // Get more chunks for comprehensive context
+          );
+          
+          if (relevantChunks.length > 0) {
+            ragContext = formatRetrievedContext(relevantChunks);
+            console.log(`[report-qa] Injecting ${relevantChunks.length} RAG chunks into context`);
+          }
+        } catch (ragError) {
+          console.error(`[report-qa] RAG retrieval failed (continuing without):`, ragError);
+        }
+      }
       
       let contextSection = "";
       if (isMultiReport) {
@@ -224,9 +499,10 @@ If you cannot read the document, describe what you can see.`,
 - Provide a clear recommendation with reasoning
 - If data is missing, acknowledge it and explain what impact it has on the analysis
 - Format for easy reading with headings, bullet points, and clear sections
+- When citing information from the knowledge base, indicate the source
 
 ## REPORTS TO ANALYZE
-${contextSection}`;
+${contextSection}${ragContext}`;
       } else if (hasReports) {
         systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with an investment property report to analyze.
 
@@ -256,9 +532,38 @@ ${contextSection}`;
   • Top 3 strengths and top 3 concerns
   • Investor suitability rating
 - If information is not in the report, clearly state that and explain what assumptions you're making
+- When citing information from the knowledge base, indicate the source
 
 ## REPORT CONTENT
-${contextSection}`;
+${contextSection}${ragContext}`;
+      } else if (ragContext) {
+        // No reports loaded but we have RAG context from knowledge base
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services.
+
+## YOUR EXPERTISE
+- Deep knowledge of Australian property markets across all states and territories
+- Understanding of property investment strategies (positive/negative gearing, growth vs yield, SMSF property)
+- Expertise in financial analysis, ROI calculations, cash flow projections
+- Knowledge of Australian tax implications (depreciation schedules, CGT, land tax, stamp duty by state)
+- Understanding of demographic trends, infrastructure development, and economic indicators
+- Familiarity with Australian lending practices, LVR requirements, and current interest rates
+
+## YOUR ROLE
+1. Answer property investment questions using information from the knowledge base
+2. Provide market insights and trends for Australian property
+3. Explain financial concepts clearly with examples
+4. Help users understand investment strategies and their implications
+5. Discuss risks and opportunities in the current market
+
+## RESPONSE GUIDELINES
+- Use information from the retrieved knowledge base documents when relevant
+- Be conversational yet professional
+- Provide detailed, actionable advice
+- Use Australian context (AUD, local market references, Australian regulations)
+- Include relevant data points when discussing markets
+- When citing information from the knowledge base, indicate the source
+- Structure longer responses with clear headings and bullet points
+${ragContext}`;
       } else {
         // Open-ended conversation without document context
         systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services, a property investment advisory firm.
@@ -286,7 +591,7 @@ ${contextSection}`;
 - Include relevant data points when discussing markets
 - Acknowledge when information may be outdated or when users should verify current rates/prices
 - Structure longer responses with clear headings and bullet points
-- If asked about specific properties without a report, offer to analyze if they upload one
+- If asked about specific properties without a report, encourage them to upload one
 
 ## CURRENT CONTEXT
 No investment report has been uploaded. You are having an open conversation about property investment. If the user wants specific property analysis, encourage them to upload a report.`;
@@ -410,7 +715,10 @@ No investment report has been uploaded. You are having an open conversation abou
       console.log(`[report-qa] Generated response: ${responseText.length} characters`);
 
       return new Response(
-        JSON.stringify({ response: responseText }),
+        JSON.stringify({ 
+          response: responseText,
+          ragUsed: ragContext.length > 0,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -600,6 +908,41 @@ ${cleanContent.length + 500}
         JSON.stringify({
           success: true,
           pdfDataUrl: `data:application/pdf;base64,${base64Pdf}`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle knowledge base stats
+    if (action === "get-knowledge-stats") {
+      const { conversationId } = body;
+      
+      let query = supabase
+        .from('document_chunks')
+        .select('document_name, chunk_index', { count: 'exact' });
+      
+      if (conversationId) {
+        query = query.eq('conversation_id', conversationId);
+      }
+      
+      const { data, count, error } = await query;
+      
+      if (error) throw error;
+      
+      // Group by document
+      const documents = data?.reduce((acc: any, chunk: any) => {
+        if (!acc[chunk.document_name]) {
+          acc[chunk.document_name] = 0;
+        }
+        acc[chunk.document_name]++;
+        return acc;
+      }, {}) || {};
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          totalChunks: count || 0,
+          documents: Object.entries(documents).map(([name, chunks]) => ({ name, chunks })),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
