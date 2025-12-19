@@ -793,7 +793,7 @@ export default function ReportQA() {
                           </span>
                         </div>
                         {message.role === 'assistant' ? (
-                          <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:mb-4 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-h2:mt-8 prose-h3:mt-6 prose-ul:my-4 prose-ol:my-4 prose-li:my-2 prose-strong:font-semibold prose-blockquote:my-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                          <div className="qa-markdown">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {message.content}
                             </ReactMarkdown>
