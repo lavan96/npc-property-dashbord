@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
 import { format } from 'date-fns';
-import { Calculator, Search, Eye, FileText, TrendingUp, DollarSign, ArrowRight } from 'lucide-react';
+import { Calculator, Search, Eye, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface InvestmentReport {
@@ -20,10 +21,13 @@ interface InvestmentReport {
   investment_score?: any;
 }
 
+type BuildTypeFilter = 'all' | 'new_build' | 'existing_property';
+
 export default function CashFlowAnalysis() {
   const [reports, setReports] = useState<InvestmentReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [buildTypeFilter, setBuildTypeFilter] = useState<BuildTypeFilter>('all');
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   
@@ -43,6 +47,10 @@ export default function CashFlowAnalysis() {
     const hasRent = mo.weeklyRent || fc.weeklyRent;
     
     return hasPrice && hasRent;
+  };
+
+  const getBuildType = (report: InvestmentReport): 'new_build' | 'existing_property' => {
+    return report.manual_overrides?.buildType === 'new_build' ? 'new_build' : 'existing_property';
   };
 
   const fetchReports = async () => {
@@ -71,9 +79,11 @@ export default function CashFlowAnalysis() {
     }
   };
 
-  const filteredReports = reports.filter(report =>
-    report.property_address.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredReports = reports.filter(report => {
+    const matchesSearch = report.property_address.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesBuildType = buildTypeFilter === 'all' || getBuildType(report) === buildTypeFilter;
+    return matchesSearch && matchesBuildType;
+  });
 
   const getInvestmentGrade = (report: InvestmentReport) => {
     const score = report.investment_score?.overall_score;
@@ -128,15 +138,27 @@ export default function CashFlowAnalysis() {
           </CardContent>
         </Card>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by property address..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search and Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by property address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={buildTypeFilter} onValueChange={(value: BuildTypeFilter) => setBuildTypeFilter(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Build Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Build Types</SelectItem>
+              <SelectItem value="new_build">New Build</SelectItem>
+              <SelectItem value="existing_property">Existing Property</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Reports Grid */}
@@ -176,6 +198,8 @@ export default function CashFlowAnalysis() {
               
               const purchasePrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0;
               const weeklyRent = mo.weeklyRent || fc.weeklyRent || 0;
+              const buildType = getBuildType(report);
+              const isNewBuild = buildType === 'new_build';
 
               return (
                 <Card key={report.id} className="hover:shadow-md transition-shadow">
@@ -184,11 +208,23 @@ export default function CashFlowAnalysis() {
                       <CardTitle className="text-base line-clamp-2">
                         {report.property_address}
                       </CardTitle>
-                      {gradeInfo && (
-                        <Badge className={`${gradeInfo.color} text-white shrink-0`}>
-                          {gradeInfo.grade}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Badge 
+                          variant={isNewBuild ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {isNewBuild ? (
+                            <><Building className="h-3 w-3 mr-1" />New Build</>
+                          ) : (
+                            <><Home className="h-3 w-3 mr-1" />Existing</>
+                          )}
                         </Badge>
-                      )}
+                        {gradeInfo && (
+                          <Badge className={`${gradeInfo.color} text-white`}>
+                            {gradeInfo.grade}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <CardDescription>
                       {format(new Date(report.created_at), 'dd MMM yyyy')}
