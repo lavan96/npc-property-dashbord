@@ -48,12 +48,35 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
   const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
   const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
+  const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
   
   // Depreciation Schedule Builder state
   const [showDepreciationSchedule, setShowDepreciationSchedule] = useState(false);
   const [depreciationMethod, setDepreciationMethod] = useState<'prime_cost' | 'diminishing_value'>('prime_cost');
   const [depreciationSchedule, setDepreciationSchedule] = useState<Record<number, number>>({});
   const [year1Depreciation, setYear1Depreciation] = useState<number>(0);
+
+  // Load stamp duty calculator script when expanded
+  useEffect(() => {
+    if (showStampDutyCalculator) {
+      // Check if script already exists
+      const existingScript = document.getElementById('stamp-src');
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.id = 'stamp-src';
+        script.type = 'text/javascript';
+        script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+        script.setAttribute('data-state', 'All');
+        document.body.appendChild(script);
+      }
+      
+      // Show the calculator div
+      const calcDiv = document.getElementById('stamp-duty-calculator');
+      if (calcDiv) {
+        calcDiv.classList.remove('hidden');
+      }
+    }
+  }, [showStampDutyCalculator]);
 
   // Define the confirmed input fields for manual overrides
   // Grouped by category for better organization
@@ -762,6 +785,77 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                 <span className="w-2 h-2 bg-primary rounded-full"></span>
                 Annual Operating Expenses
               </h3>
+              
+              {/* Stamp Duty Calculator */}
+              <Collapsible 
+                open={showStampDutyCalculator} 
+                onOpenChange={setShowStampDutyCalculator}
+                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-orange-500/10">
+                        <Calculator className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-foreground">Stamp Duty Calculator</p>
+                        <p className="text-sm text-muted-foreground">
+                          Calculate stamp duty for all Australian states and territories
+                        </p>
+                      </div>
+                    </div>
+                    {showStampDutyCalculator ? (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <Separator />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ExternalLink className="h-4 w-4" />
+                      <span>Powered by calculatorsonline.com.au</span>
+                    </div>
+                    
+                    {/* Stamp Duty Calculator Container */}
+                    <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
+                      <div id="stamp-duty-calculator" className="orange-theme">
+                        <div id="stamp-duty-anchors">
+                          <p className="text-sm text-muted-foreground">
+                            Stamp Duty Calculator from{' '}
+                            <a 
+                              href="https://calculatorsonline.com.au" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              calculatorsonline.com.au
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
+                      <p className="text-sm font-medium text-foreground">How to use:</p>
+                      <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                        <li>Select the state/territory of the property</li>
+                        <li>Enter the property purchase price</li>
+                        <li>Select buyer type (first home buyer, investor, etc.)</li>
+                        <li>Copy the calculated stamp duty value to the field below</li>
+                      </ol>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               {annualExpenseFields.map((field, index) => 
                 renderField(field, index < annualExpenseFields.length - 1)
               )}
