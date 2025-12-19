@@ -14,8 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface InvestmentReport {
   id: string;
@@ -130,6 +132,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
   const [isSavingAnalysis, setIsSavingAnalysis] = useState(false);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+
+  // Inputs Summary state
+  const [inputsSummaryOpen, setInputsSummaryOpen] = useState(true);
+  const [includeInputsSummaryInExport, setIncludeInputsSummaryInExport] = useState(true);
 
   // Comparison chart colors for up to 5 properties
   const COMPARISON_COLORS = [
@@ -1735,57 +1741,59 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.text(keyMetrics.join('   |   '), margin, yPos);
       yPos += 12;
 
-      // Inputs Summary Section
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Inputs Summary', margin, yPos);
-      yPos += 6;
-
-      // Helper for drawing input summary rows
-      const inputsColWidth = (pageWidth - margin * 2) / 2;
-      const drawInputRow = (label: string, value: string, label2?: string, value2?: string) => {
-        if (yPos > pageHeight - 20) {
-          pdf.addPage();
-          yPos = margin;
-        }
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(label, margin, yPos);
+      // Inputs Summary Section (conditional)
+      if (includeInputsSummaryInExport) {
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(value, margin + 55, yPos);
-        if (label2 && value2) {
+        pdf.text('Inputs Summary', margin, yPos);
+        yPos += 6;
+
+        // Helper for drawing input summary rows
+        const inputsColWidth = (pageWidth - margin * 2) / 2;
+        const drawInputRow = (label: string, value: string, label2?: string, value2?: string) => {
+          if (yPos > pageHeight - 20) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          pdf.setFontSize(8);
           pdf.setFont('helvetica', 'normal');
-          pdf.text(label2, margin + inputsColWidth, yPos);
+          pdf.text(label, margin, yPos);
           pdf.setFont('helvetica', 'bold');
-          pdf.text(value2, margin + inputsColWidth + 55, yPos);
-        }
-        pdf.setFont('helvetica', 'normal');
-        yPos += 4.5;
-      };
+          pdf.text(value, margin + 55, yPos);
+          if (label2 && value2) {
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(label2, margin + inputsColWidth, yPos);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(value2, margin + inputsColWidth + 55, yPos);
+          }
+          pdf.setFont('helvetica', 'normal');
+          yPos += 4.5;
+        };
 
-      // Draw inputs in two columns
-      drawInputRow('Purchase Price:', formatCurrency(baseFinancialData.purchasePrice), 'Weekly Rent:', formatCurrency(baseFinancialData.weeklyRent));
-      drawInputRow('Land Price:', formatCurrency(baseFinancialData.landPrice), 'Gross Rental Yield:', projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-');
-      drawInputRow('Build Price (Depreciable):', formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice)), 'Council Rates (p.a.):', formatCurrency(baseFinancialData.councilRates));
-      drawInputRow('Deposit Amount:', formatCurrency(baseFinancialData.depositValue), 'Water Rates (p.a.):', formatCurrency(baseFinancialData.waterRates));
-      drawInputRow('Loan Amount:', formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100))), 'Property Management:', `${baseFinancialData.propertyManagementFees}%`);
-      drawInputRow('Interest Rate:', `${baseFinancialData.interestRate.toFixed(2)}%`, 'Landlord Insurance (p.a.):', formatCurrency(baseFinancialData.buildingLandlordInsurance));
-      drawInputRow('Capital Growth Rate:', `${baseFinancialData.capitalGrowth}%`, 'Letting Fees:', formatCurrency(baseFinancialData.lettingFees));
-      drawInputRow('CPI Growth Rate:', `${baseFinancialData.cpiGrowthRate}%`, 'Repairs & Maintenance:', formatCurrency(baseFinancialData.repairsMaintenance));
-      drawInputRow('Tax Rate (MTR):', `${baseFinancialData.taxRate}%`, 'Body Corporate (p.a.):', formatCurrency(baseFinancialData.bodyCorporateFees));
-      drawInputRow('Depreciation (Year 1):', formatCurrency(baseFinancialData.depreciation), 'Stamp Duty:', formatCurrency(baseFinancialData.stampDuty));
-      drawInputRow('', '', 'Conveyancing:', formatCurrency(baseFinancialData.solicitorFees));
+        // Draw inputs in two columns
+        drawInputRow('Purchase Price:', formatCurrency(baseFinancialData.purchasePrice), 'Weekly Rent:', formatCurrency(baseFinancialData.weeklyRent));
+        drawInputRow('Land Price:', formatCurrency(baseFinancialData.landPrice), 'Gross Rental Yield:', projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-');
+        drawInputRow('Build Price (Depreciable):', formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice)), 'Council Rates (p.a.):', formatCurrency(baseFinancialData.councilRates));
+        drawInputRow('Deposit Amount:', formatCurrency(baseFinancialData.depositValue), 'Water Rates (p.a.):', formatCurrency(baseFinancialData.waterRates));
+        drawInputRow('Loan Amount:', formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100))), 'Property Management:', `${baseFinancialData.propertyManagementFees}%`);
+        drawInputRow('Interest Rate:', `${baseFinancialData.interestRate.toFixed(2)}%`, 'Landlord Insurance (p.a.):', formatCurrency(baseFinancialData.buildingLandlordInsurance));
+        drawInputRow('Capital Growth Rate:', `${baseFinancialData.capitalGrowth}%`, 'Letting Fees:', formatCurrency(baseFinancialData.lettingFees));
+        drawInputRow('CPI Growth Rate:', `${baseFinancialData.cpiGrowthRate}%`, 'Repairs & Maintenance:', formatCurrency(baseFinancialData.repairsMaintenance));
+        drawInputRow('Tax Rate (MTR):', `${baseFinancialData.taxRate}%`, 'Body Corporate (p.a.):', formatCurrency(baseFinancialData.bodyCorporateFees));
+        drawInputRow('Depreciation (Year 1):', formatCurrency(baseFinancialData.depreciation), 'Stamp Duty:', formatCurrency(baseFinancialData.stampDuty));
+        drawInputRow('', '', 'Conveyancing:', formatCurrency(baseFinancialData.solicitorFees));
 
-      // Total Expenditure box
-      yPos += 3;
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 6, 'F');
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      const totalExpenditure = baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees;
-      pdf.text('Total Overall Expenditure to Completion:', margin + 2, yPos);
-      pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos);
-      yPos += 10;
+        // Total Expenditure box
+        yPos += 3;
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 6, 'F');
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        const totalExpenditure = baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees;
+        pdf.text('Total Overall Expenditure to Completion:', margin + 2, yPos);
+        pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos);
+        yPos += 10;
+      }
 
       // Table configuration
       const colWidths = [45, ...Array(11).fill((pageWidth - margin * 2 - 45) / 11)];
@@ -1925,7 +1933,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, baseFinancialData, projections, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, toast]);
 
   // Print-friendly view in new window
   const openPrintView = useCallback(() => {
@@ -2008,6 +2016,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           </div>
         </div>
         
+        ${includeInputsSummaryInExport ? `
         <!-- Inputs Summary -->
         <div class="summary" style="margin-bottom: 24px;">
           <h3 style="margin-bottom: 12px;">Inputs Summary</h3>
@@ -2085,6 +2094,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <strong>Total Overall Expenditure to Completion:</strong> ${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
           </div>
         </div>
+        ` : ''}
         
         <table>
           <thead>
@@ -2230,7 +2240,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
     printWindow.document.write(html);
     printWindow.document.close();
-  }, [report, baseFinancialData, projections, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, toast]);
 
   if (!report || !baseFinancialData) return null;
 
@@ -3094,129 +3104,149 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
 
-            {/* Inputs Summary Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Inputs Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Land Price</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.landPrice)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Build Price (Depreciable Amount)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Deposit Amount</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.depositValue)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Loan Amount</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100)))}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Interest Rate</TableCell>
-                      <TableCell>{baseFinancialData.interestRate.toFixed(2)}%</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Weekly Rent</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.weeklyRent)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Gross Rental Yield</TableCell>
-                      <TableCell>{projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-'}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Council Rates (p.a.)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.councilRates)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Water Rates (p.a.)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.waterRates)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Property Management (%)</TableCell>
-                      <TableCell>{baseFinancialData.propertyManagementFees}%</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Landlord Insurance (p.a.)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.buildingLandlordInsurance)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Letting Fees</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.lettingFees)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Repairs & Maintenance</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.repairsMaintenance)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Stamp Duty</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Conveyancing (Solicitor Fees)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Body Corporate Fees (p.a.)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.bodyCorporateFees)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Depreciation (Year 1)</TableCell>
-                      <TableCell>{formatCurrency(baseFinancialData.depreciation)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Capital Growth Rate</TableCell>
-                      <TableCell>{baseFinancialData.capitalGrowth}%</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">CPI Growth Rate</TableCell>
-                      <TableCell>{baseFinancialData.cpiGrowthRate}%</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Tax Rate (MTR)</TableCell>
-                      <TableCell>{baseFinancialData.taxRate}%</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-                
-                {/* Total Overall Expenditure to Completion */}
-                <div className="mt-4 pt-4 border-t">
-                  <h4 className="text-sm font-semibold mb-3">Total Overall Expenditure to Completion</h4>
-                  <Table>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
-                        <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Stamp Duty</TableCell>
-                        <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Conveyancing</TableCell>
-                        <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
-                      </TableRow>
-                      <TableRow className="bg-muted/50 font-semibold">
-                        <TableCell className="font-semibold">Total Expenditure</TableCell>
-                        <TableCell className="font-semibold">
-                          {formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Inputs Summary Table - Collapsible */}
+            <Collapsible open={inputsSummaryOpen} onOpenChange={setInputsSummaryOpen}>
+              <Card>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        {inputsSummaryOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        Inputs Summary
+                      </span>
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <label className="flex items-center gap-2 text-xs font-normal text-muted-foreground cursor-pointer">
+                          <Checkbox
+                            checked={includeInputsSummaryInExport}
+                            onCheckedChange={(checked) => setIncludeInputsSummaryInExport(checked === true)}
+                          />
+                          Include in PDF/Print
+                        </label>
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Land Price</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.landPrice)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Build Price (Depreciable Amount)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Deposit Amount</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.depositValue)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Loan Amount</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100)))}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Interest Rate</TableCell>
+                          <TableCell>{baseFinancialData.interestRate.toFixed(2)}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Weekly Rent</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.weeklyRent)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Gross Rental Yield</TableCell>
+                          <TableCell>{projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-'}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Council Rates (p.a.)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.councilRates)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Water Rates (p.a.)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.waterRates)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Property Management (%)</TableCell>
+                          <TableCell>{baseFinancialData.propertyManagementFees}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Landlord Insurance (p.a.)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.buildingLandlordInsurance)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Letting Fees</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.lettingFees)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Repairs & Maintenance</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.repairsMaintenance)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Stamp Duty</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Conveyancing (Solicitor Fees)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Body Corporate Fees (p.a.)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.bodyCorporateFees)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Depreciation (Year 1)</TableCell>
+                          <TableCell>{formatCurrency(baseFinancialData.depreciation)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Capital Growth Rate</TableCell>
+                          <TableCell>{baseFinancialData.capitalGrowth}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">CPI Growth Rate</TableCell>
+                          <TableCell>{baseFinancialData.cpiGrowthRate}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Tax Rate (MTR)</TableCell>
+                          <TableCell>{baseFinancialData.taxRate}%</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                    
+                    {/* Total Overall Expenditure to Completion */}
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="text-sm font-semibold mb-3">Total Overall Expenditure to Completion</h4>
+                      <Table>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
+                            <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Stamp Duty</TableCell>
+                            <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Conveyancing</TableCell>
+                            <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
+                          </TableRow>
+                          <TableRow className="bg-muted/50 font-semibold">
+                            <TableCell className="font-semibold">Total Expenditure</TableCell>
+                            <TableCell className="font-semibold">
+                              {formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
             {/* 10-Year Projection Table with Inline Editing */}
             <Card>
