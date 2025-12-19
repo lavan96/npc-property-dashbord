@@ -54,7 +54,25 @@ interface SavedConversation {
   title: string;
   report_names: string[];
   created_at: string;
+  updated_at: string;
 }
+
+// Format timestamp with full date and time (hh:mm:ss AM/PM)
+const formatFullTimestamp = (dateString: string) => {
+  const date = new Date(dateString);
+  const time = date.toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit',
+    hour12: true 
+  });
+  const dateStr = date.toLocaleDateString([], { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  });
+  return `${dateStr} at ${time}`;
+};
 
 export default function ReportQA() {
   const { toast } = useToast();
@@ -1038,9 +1056,13 @@ export default function ReportQA() {
                             <Pencil className="h-3 w-3" />
                           </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {conv.report_names.length} report(s) • {new Date(conv.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <p>{conv.report_names.length} report(s)</p>
+                          <p>Created: {formatFullTimestamp(conv.created_at)}</p>
+                          {conv.updated_at !== conv.created_at && (
+                            <p>Updated: {formatFullTimestamp(conv.updated_at)}</p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
