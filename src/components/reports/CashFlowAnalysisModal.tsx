@@ -141,6 +141,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
   const [includeConstructionScheduleInExport, setIncludeConstructionScheduleInExport] = useState(true);
 
+  // Get build type from report (defaults to 'existing_property')
+  const buildType = report?.manual_overrides?.buildType || 'existing_property';
+  const isNewBuild = buildType === 'new_build';
+
   // Comparison chart colors for up to 5 properties
   const COMPARISON_COLORS = [
     { value: 'hsl(var(--primary))', cashFlow: '#8b5cf6' }, // Primary
@@ -1904,8 +1908,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos += 10;
       }
 
-      // Construction Progress Schedule Section (conditional)
-      if (includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0) {
+      // Construction Progress Schedule Section (conditional - only for new builds)
+      if (isNewBuild && includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0) {
         if (yPos > pageHeight - 80) {
           pdf.addPage();
           yPos = margin;
@@ -2134,7 +2138,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, toast]);
 
   // Print-friendly view in new window
   const openPrintView = useCallback(() => {
@@ -2297,8 +2301,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         </div>
         ` : ''}
         
-        ${includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 ? `
-        <!-- Construction Progress Payment Schedule -->
+        ${isNewBuild && includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 ? `
+        <!-- Construction Progress Payment Schedule (New Builds Only) -->
         <div class="summary" style="margin-bottom: 24px;">
           <h3 style="margin-bottom: 12px;">Construction Progress Payment Schedule</h3>
           <div style="display: flex; gap: 24px; margin-bottom: 16px; padding: 12px; background: #f0f4f8; border-radius: 6px;">
@@ -2502,7 +2506,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
     printWindow.document.write(html);
     printWindow.document.close();
-  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, toast]);
 
   if (!report || !baseFinancialData) return null;
 
@@ -3510,8 +3514,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             </Collapsible>
 
-            {/* Construction Progress Payment Schedule - Collapsible */}
-            {constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
+            {/* Construction Progress Payment Schedule - Collapsible (New Builds Only) */}
+            {isNewBuild && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
               <Collapsible open={constructionScheduleOpen} onOpenChange={setConstructionScheduleOpen}>
                 <Card>
                   <CollapsibleTrigger asChild>
