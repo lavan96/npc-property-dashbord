@@ -78,6 +78,8 @@ export default function ReportQA() {
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [isEditingMainTitle, setIsEditingMainTitle] = useState(false);
+  const [mainTitleEdit, setMainTitleEdit] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,24 +108,26 @@ export default function ReportQA() {
     }
   };
 
-  const handleSaveTitle = async (conversationId: string) => {
-    if (!editingTitle.trim()) {
+  const handleSaveTitle = async (targetConversationId: string, newTitle: string) => {
+    if (!newTitle.trim()) {
       setEditingConversationId(null);
+      setIsEditingMainTitle(false);
       return;
     }
     
     try {
       const { error } = await supabase
         .from('report_qa_conversations')
-        .update({ title: editingTitle.trim() })
-        .eq('id', conversationId);
+        .update({ title: newTitle.trim() })
+        .eq('id', targetConversationId);
       
       if (error) throw error;
       
       setSavedConversations(prev => 
-        prev.map(c => c.id === conversationId ? { ...c, title: editingTitle.trim() } : c)
+        prev.map(c => c.id === targetConversationId ? { ...c, title: newTitle.trim() } : c)
       );
       setEditingConversationId(null);
+      setIsEditingMainTitle(false);
       
       toast({
         title: 'Title updated',
@@ -137,6 +141,13 @@ export default function ReportQA() {
         variant: 'destructive',
       });
     }
+  };
+
+  // Get current conversation title
+  const getCurrentTitle = () => {
+    if (!conversationId) return 'New Chat';
+    const conv = savedConversations.find(c => c.id === conversationId);
+    return conv?.title || 'New Chat';
   };
 
   const handleFileUpload = useCallback(async (file: File) => {
@@ -740,13 +751,61 @@ export default function ReportQA() {
         {/* Chat Section */}
         <Card className="lg:col-span-2 flex flex-col">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Chat
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                {isEditingMainTitle && conversationId ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={mainTitleEdit}
+                      onChange={(e) => setMainTitleEdit(e.target.value)}
+                      className="h-7 w-48 text-sm"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveTitle(conversationId, mainTitleEdit);
+                        if (e.key === 'Escape') setIsEditingMainTitle(false);
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => handleSaveTitle(conversationId, mainTitleEdit)}
+                    >
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setIsEditingMainTitle(false)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{getCurrentTitle()}</CardTitle>
+                    {conversationId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          setMainTitleEdit(getCurrentTitle());
+                          setIsEditingMainTitle(true);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
               {conversationId && (
-                <Badge variant="outline" className="ml-2 text-xs">Auto-saving</Badge>
+                <Badge variant="outline" className="text-xs">Auto-saving</Badge>
               )}
-            </CardTitle>
+            </div>
             <CardDescription>
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
@@ -936,7 +995,7 @@ export default function ReportQA() {
                           value={editingTitle}
                           onChange={(e) => setEditingTitle(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveTitle(conv.id);
+                            if (e.key === 'Enter') handleSaveTitle(conv.id, editingTitle);
                             if (e.key === 'Escape') setEditingConversationId(null);
                           }}
                           className="h-7 text-sm"
@@ -946,7 +1005,7 @@ export default function ReportQA() {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0"
-                          onClick={() => handleSaveTitle(conv.id)}
+                          onClick={() => handleSaveTitle(conv.id, editingTitle)}
                         >
                           <Check className="h-4 w-4 text-green-600" />
                         </Button>
