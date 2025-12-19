@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
+import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -342,63 +343,40 @@ serve(async (req) => {
       
       const base64Data = fileData.replace(/^data:application\/pdf;base64,/, "");
       
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "openai/gpt-5",
-          messages: [
-            {
-              role: "system",
-              content: `You are a document text extraction assistant. Extract ALL text content from the provided PDF document. 
-Preserve the structure, headings, tables (as formatted text), and key data points.
-Do not summarize - extract the complete text content for later querying.
-If you cannot read the document, describe what you can see.`,
-            },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: `Please extract all text content from this investment report PDF named "${fileName}". Preserve all financial figures, property details, and analysis sections.`,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:application/pdf;base64,${base64Data}`,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[report-qa] AI extraction error: ${response.status} - ${errorText}`);
-        
-        if (response.status === 400 || response.status === 422) {
-          return new Response(
-            JSON.stringify({
-              success: true,
-              extractedText: `[Document: ${fileName}]\n\nThis PDF document has been uploaded. Due to technical limitations, the raw text could not be automatically extracted. However, you can still ask questions about the document, and the AI will attempt to provide relevant responses based on typical investment report structures.\n\nPlease ask specific questions about:\n- Property details\n- Financial calculations\n- Investment metrics\n- Location analysis\n- Risk assessment`,
-              ragEnabled: false,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+      let extractedText = "";
+      
+      try {
+        // Convert base64 to Uint8Array for PDF parsing
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
         }
         
-        throw new Error(`AI API error: ${response.status}`);
+        console.log(`[report-qa] PDF size: ${bytes.length} bytes`);
+        
+        // Use unpdf to extract text from PDF
+        const pdf = await getDocumentProxy(bytes);
+        const { text, totalPages } = await extractText(pdf, { mergePages: true });
+        
+        console.log(`[report-qa] Extracted text from ${totalPages} pages`);
+        
+        if (text && text.trim().length > 0) {
+          extractedText = `[Document: ${fileName}]\n[Pages: ${totalPages}]\n\n${text}`;
+          console.log(`[report-qa] Successfully extracted ${extractedText.length} characters`);
+        } else {
+          // PDF might be image-based (scanned), provide fallback message
+          console.log(`[report-qa] No text extracted - PDF may be image-based`);
+          extractedText = `[Document: ${fileName}]\n[Pages: ${totalPages}]\n\nThis PDF appears to be image-based (scanned) and does not contain extractable text. The document has been uploaded but text content could not be automatically extracted. Please manually enter key details or upload a text-based PDF.`;
+        }
+      } catch (pdfError) {
+        console.error(`[report-qa] PDF extraction error:`, pdfError);
+        
+        // Provide informative fallback
+        extractedText = `[Document: ${fileName}]\n\nPDF text extraction encountered an error: ${pdfError.message}. The document has been uploaded but raw text could not be automatically extracted. You can still ask questions about the document, and the AI will attempt to provide relevant responses based on general knowledge.`;
       }
 
-      const aiResponse = await response.json();
-      const extractedText = aiResponse.choices?.[0]?.message?.content || "";
-
-      console.log(`[report-qa] Extracted ${extractedText.length} characters`);
+      console.log(`[report-qa] Final extracted text length: ${extractedText.length} characters`);
 
       // Step 5: Store extracted text as chunks with embeddings for RAG
       let ragEnabled = false;
