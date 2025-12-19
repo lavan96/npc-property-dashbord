@@ -32,8 +32,19 @@ import {
   Mic,
   MicOff,
   Pencil,
-  Check
+  Check,
+  Search,
+  Clock,
+  Calendar,
+  MoreVertical,
+  Archive
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface ChatMessage {
   id: string;
@@ -95,6 +106,7 @@ export default function ReportQA() {
   const [editingTitle, setEditingTitle] = useState('');
   const [isEditingMainTitle, setIsEditingMainTitle] = useState(false);
   const [mainTitleEdit, setMainTitleEdit] = useState('');
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -554,6 +566,86 @@ export default function ReportQA() {
     setConversationId(null);
   };
 
+  const handleNewChat = () => {
+    setUploadedReports([]);
+    setMessages([]);
+    setConversationId(null);
+    toast({
+      title: 'New chat started',
+      description: 'Upload reports or start chatting',
+    });
+  };
+
+  const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('report_qa_conversations')
+        .delete()
+        .eq('id', convId);
+      
+      if (error) throw error;
+      
+      setSavedConversations(prev => prev.filter(c => c.id !== convId));
+      if (conversationId === convId) {
+        handleNewChat();
+      }
+      
+      toast({
+        title: 'Conversation deleted',
+        description: 'The conversation has been removed',
+      });
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      toast({
+        title: 'Failed to delete',
+        description: 'Could not delete the conversation',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Filter conversations based on search query
+  const filteredConversations = savedConversations.filter(conv => {
+    if (!historySearchQuery.trim()) return true;
+    const query = historySearchQuery.toLowerCase();
+    return (
+      conv.title.toLowerCase().includes(query) ||
+      conv.report_names.some(name => name.toLowerCase().includes(query))
+    );
+  });
+
+  // Group conversations by date
+  const groupConversationsByDate = (conversations: SavedConversation[]) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    
+    const groups: { [key: string]: SavedConversation[] } = {
+      'Today': [],
+      'Yesterday': [],
+      'This Week': [],
+      'Older': [],
+    };
+    
+    conversations.forEach(conv => {
+      const convDate = new Date(conv.updated_at);
+      if (convDate.toDateString() === today.toDateString()) {
+        groups['Today'].push(conv);
+      } else if (convDate.toDateString() === yesterday.toDateString()) {
+        groups['Yesterday'].push(conv);
+      } else if (convDate > lastWeek) {
+        groups['This Week'].push(conv);
+      } else {
+        groups['Older'].push(conv);
+      }
+    });
+    
+    return groups;
+  };
+
   return (
     <div className="p-6 space-y-6 h-[calc(100vh-4rem)]">
       {/* Header */}
@@ -565,9 +657,18 @@ export default function ReportQA() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={handleNewChat} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Chat
+          </Button>
           <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-2">
             <History className="h-4 w-4" />
             History
+            {savedConversations.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {savedConversations.length}
+              </Badge>
+            )}
           </Button>
           {uploadedReports.length > 0 && (
             <Button variant="outline" onClick={clearAll} className="gap-2">
@@ -937,88 +1038,194 @@ export default function ReportQA() {
         </Card>
       </div>
 
-      {/* History Dialog */}
-      <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="max-w-md">
+      {/* History Dialog - Enhanced */}
+      <Dialog open={showHistory} onOpenChange={(open) => {
+        setShowHistory(open);
+        if (!open) setHistorySearchQuery('');
+      }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Conversation History</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Conversation History
+            </DialogTitle>
             <DialogDescription>
-              Load a previous Q&A conversation
+              Search and load previous Q&A conversations
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[400px]">
+          
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations by title or report name..."
+              value={historySearchQuery}
+              onChange={(e) => setHistorySearchQuery(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {historySearchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                onClick={() => setHistorySearchQuery('')}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          
+          <ScrollArea className="max-h-[450px]">
             {savedConversations.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No saved conversations</p>
+              <div className="text-center py-12">
+                <Archive className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground font-medium">No conversations yet</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  Start a new chat to create your first conversation
+                </p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="text-center py-12">
+                <Search className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground font-medium">No results found</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  Try a different search term
+                </p>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {savedConversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    className="p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
-                  >
-                    {editingConversationId === conv.id ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveTitle(conv.id, editingTitle);
-                            if (e.key === 'Escape') setEditingConversationId(null);
-                          }}
-                          className="h-7 text-sm"
-                          autoFocus
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleSaveTitle(conv.id, editingTitle)}
-                        >
-                          <Check className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => setEditingConversationId(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+              <div className="space-y-4">
+                {Object.entries(groupConversationsByDate(filteredConversations)).map(([group, convs]) => 
+                  convs.length > 0 && (
+                    <div key={group} className="space-y-2">
+                      <div className="flex items-center gap-2 px-1">
+                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          {group}
+                        </span>
+                        <Separator className="flex-1" />
                       </div>
-                    ) : (
-                      <div 
-                        className="cursor-pointer"
-                        onClick={() => loadConversation(conv)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm truncate flex-1">{conv.title}</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingConversationId(conv.id);
-                              setEditingTitle(conv.title);
-                            }}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="text-xs text-muted-foreground space-y-0.5">
-                          <p>{conv.report_names.length} report(s)</p>
-                          <p>Created: {formatFullTimestamp(conv.created_at)}</p>
-                          {conv.updated_at !== conv.created_at && (
-                            <p>Updated: {formatFullTimestamp(conv.updated_at)}</p>
+                      {convs.map((conv) => (
+                        <div
+                          key={conv.id}
+                          className={`p-3 border rounded-lg hover:bg-muted/50 transition-all group cursor-pointer ${
+                            conversationId === conv.id ? 'border-primary/50 bg-primary/5' : ''
+                          }`}
+                        >
+                          {editingConversationId === conv.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingTitle}
+                                onChange={(e) => setEditingTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveTitle(conv.id, editingTitle);
+                                  if (e.key === 'Escape') setEditingConversationId(null);
+                                }}
+                                className="h-7 text-sm"
+                                autoFocus
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => handleSaveTitle(conv.id, editingTitle)}
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setEditingConversationId(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div onClick={() => loadConversation(conv)}>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{conv.title}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                                      {conv.report_names.length} report{conv.report_names.length !== 1 ? 's' : ''}
+                                    </Badge>
+                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                      <Clock className="h-2.5 w-2.5" />
+                                      {new Date(conv.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingConversationId(conv.id);
+                                      setEditingTitle(conv.title);
+                                    }}>
+                                      <Pencil className="h-3.5 w-3.5 mr-2" />
+                                      Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={(e) => handleDeleteConversation(conv.id, e)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                              {/* Report names preview */}
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {conv.report_names.slice(0, 2).map((name, idx) => (
+                                  <span key={idx} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[120px]">
+                                    {name.replace('.pdf', '')}
+                                  </span>
+                                ))}
+                                {conv.report_names.length > 2 && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    +{conv.report_names.length - 2} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      ))}
+                    </div>
+                  )
+                )}
               </div>
             )}
           </ScrollArea>
+          
+          {/* Footer with count */}
+          {savedConversations.length > 0 && (
+            <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+              <span>
+                {filteredConversations.length} of {savedConversations.length} conversation{savedConversations.length !== 1 ? 's' : ''}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleNewChat}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                New Chat
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
