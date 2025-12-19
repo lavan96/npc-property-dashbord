@@ -47,6 +47,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [overrides, setOverrides] = useState<Record<string, any>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
   const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
@@ -572,6 +573,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   const handleOverrideChange = (key: string, value: string) => {
     const field = fields.find(f => f.key === key);
+    
+    // Clear any existing validation error for this field
+    setValidationErrors(prev => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
+    
     if (field?.type === 'select') {
       setOverrides(prev => ({
         ...prev,
@@ -579,6 +588,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       }));
     } else {
       const numValue = value === '' ? null : parseFloat(value);
+      
+      // Validate construction duration months (1-18)
+      if (key === 'constructionDurationMonths' && numValue !== null) {
+        if (numValue < 1 || numValue > 18) {
+          setValidationErrors(prev => ({
+            ...prev,
+            [key]: 'Construction duration must be between 1 and 18 months'
+          }));
+        }
+      }
+      
       setOverrides(prev => ({
         ...prev,
         [key]: numValue
@@ -599,6 +619,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     const newOverrides = { ...overrides };
     delete newOverrides[key];
     setOverrides(newOverrides);
+    // Clear validation error for this field
+    setValidationErrors(prev => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
     setHasChanges(true);
   };
 
@@ -610,11 +636,22 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     });
     setCashFlowFieldToggles(defaultToggles);
     setIncludeDepreciationInCashFlow(true);
+    setValidationErrors({});
     setHasChanges(true);
   };
 
   const handleSave = async () => {
     if (!report) return;
+    
+    // Check for validation errors before saving
+    if (Object.keys(validationErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix validation errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -857,7 +894,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                   placeholder={`Enter ${field.label.toLowerCase()}`}
                   value={getFieldValue(field)}
                   onChange={(e) => handleOverrideChange(field.key, e.target.value)}
-                  className={hasOverride(field.key) ? 'border-primary' : ''}
+                  className={`${hasOverride(field.key) ? 'border-primary' : ''} ${validationErrors[field.key] ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
                 {field.suffix && (
                   <span className="text-muted-foreground text-sm whitespace-nowrap">{field.suffix}</span>
@@ -865,6 +902,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
               </>
             )}
           </div>
+          {validationErrors[field.key] && (
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {validationErrors[field.key]}
+            </p>
+          )}
         </div>
       </div>
 
@@ -1317,7 +1360,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!hasChanges || saving}>
+            <Button onClick={handleSave} disabled={!hasChanges || saving || Object.keys(validationErrors).length > 0}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Saving...' : 'Save Overrides'}
             </Button>
