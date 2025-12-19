@@ -1733,6 +1733,58 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         `Capital Growth: ${baseFinancialData.capitalGrowth}%`,
       ];
       pdf.text(keyMetrics.join('   |   '), margin, yPos);
+      yPos += 12;
+
+      // Inputs Summary Section
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Inputs Summary', margin, yPos);
+      yPos += 6;
+
+      // Helper for drawing input summary rows
+      const inputsColWidth = (pageWidth - margin * 2) / 2;
+      const drawInputRow = (label: string, value: string, label2?: string, value2?: string) => {
+        if (yPos > pageHeight - 20) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(label, margin, yPos);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(value, margin + 55, yPos);
+        if (label2 && value2) {
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(label2, margin + inputsColWidth, yPos);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(value2, margin + inputsColWidth + 55, yPos);
+        }
+        pdf.setFont('helvetica', 'normal');
+        yPos += 4.5;
+      };
+
+      // Draw inputs in two columns
+      drawInputRow('Purchase Price:', formatCurrency(baseFinancialData.purchasePrice), 'Weekly Rent:', formatCurrency(baseFinancialData.weeklyRent));
+      drawInputRow('Land Price:', formatCurrency(baseFinancialData.landPrice), 'Gross Rental Yield:', projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-');
+      drawInputRow('Build Price (Depreciable):', formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice)), 'Council Rates (p.a.):', formatCurrency(baseFinancialData.councilRates));
+      drawInputRow('Deposit Amount:', formatCurrency(baseFinancialData.depositValue), 'Water Rates (p.a.):', formatCurrency(baseFinancialData.waterRates));
+      drawInputRow('Loan Amount:', formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100))), 'Property Management:', `${baseFinancialData.propertyManagementFees}%`);
+      drawInputRow('Interest Rate:', `${baseFinancialData.interestRate.toFixed(2)}%`, 'Landlord Insurance (p.a.):', formatCurrency(baseFinancialData.buildingLandlordInsurance));
+      drawInputRow('Capital Growth Rate:', `${baseFinancialData.capitalGrowth}%`, 'Letting Fees:', formatCurrency(baseFinancialData.lettingFees));
+      drawInputRow('CPI Growth Rate:', `${baseFinancialData.cpiGrowthRate}%`, 'Repairs & Maintenance:', formatCurrency(baseFinancialData.repairsMaintenance));
+      drawInputRow('Tax Rate (MTR):', `${baseFinancialData.taxRate}%`, 'Body Corporate (p.a.):', formatCurrency(baseFinancialData.bodyCorporateFees));
+      drawInputRow('Depreciation (Year 1):', formatCurrency(baseFinancialData.depreciation), 'Stamp Duty:', formatCurrency(baseFinancialData.stampDuty));
+      drawInputRow('', '', 'Conveyancing:', formatCurrency(baseFinancialData.solicitorFees));
+
+      // Total Expenditure box
+      yPos += 3;
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 6, 'F');
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      const totalExpenditure = baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees;
+      pdf.text('Total Overall Expenditure to Completion:', margin + 2, yPos);
+      pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos);
       yPos += 10;
 
       // Table configuration
