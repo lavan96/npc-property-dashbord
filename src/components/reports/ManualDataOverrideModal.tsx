@@ -202,8 +202,23 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   }, [toast]);
 
   // Define the confirmed input fields for manual overrides
+  // Get current build type from overrides (default to 'existing_property')
+  const currentBuildType = overrides.buildType || report?.manual_overrides?.buildType || 'existing_property';
+  const isNewBuild = currentBuildType === 'new_build';
+
   // Grouped by category for better organization
   const purchaseLoanFields: OverrideField[] = [
+    {
+      key: 'buildType',
+      label: 'Build Type',
+      originalValue: report?.manual_overrides?.buildType || 'existing_property',
+      overrideValue: report?.manual_overrides?.buildType || null,
+      type: 'select',
+      options: [
+        { value: 'new_build', label: 'New Build' },
+        { value: 'existing_property', label: 'Existing Property' }
+      ]
+    },
     {
       key: 'purchasePrice',
       label: 'Purchase Price',
@@ -289,14 +304,15 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.capitalGrowth || null,
       suffix: '%'
     },
-    {
+    // Only show construction duration for new builds
+    ...(isNewBuild ? [{
       key: 'constructionDurationMonths',
       label: 'Construction Duration',
       originalValue: report?.financial_calculations?.constructionDurationMonths || null,
       overrideValue: report?.manual_overrides?.constructionDurationMonths || null,
       suffix: 'months',
       isCashFlowField: true
-    },
+    }] : []),
   ];
 
   const rentalIncomeFields: OverrideField[] = [
@@ -388,14 +404,15 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.lettingFees || null,
       prefix: '$'
     },
-    {
+    // Only show agent fee for new builds
+    ...(isNewBuild ? [{
       key: 'agentFee',
       label: 'Agent Fee (Commission)',
       originalValue: report?.financial_calculations?.agentFee || null,
       overrideValue: report?.manual_overrides?.agentFee || null,
       prefix: '$',
       isCashFlowField: true
-    },
+    }] : []),
   ];
 
   const taxGrowthFields: OverrideField[] = [
