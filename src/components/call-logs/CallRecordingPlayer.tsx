@@ -33,11 +33,14 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
     
     isInitializedRef.current = true;
 
+    // Check if dark mode is active
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    
     const wavesurfer = WaveSurfer.create({
       container: waveformRef.current,
-      waveColor: '#000000',
-      progressColor: '#6b7280',
-      cursorColor: '#ef4444',
+      waveColor: isDarkMode ? '#6b7280' : '#000000',
+      progressColor: isDarkMode ? '#a1a1aa' : '#6b7280',
+      cursorColor: isDarkMode ? '#f87171' : '#ef4444',
       cursorWidth: 1,
       height: 80,
       barWidth: 1,
@@ -153,13 +156,13 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
       </CardHeader>
       <CardContent className="space-y-4">
         {/* WaveSurfer Waveform */}
-        <div className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-white p-2">
+        <div className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-white dark:bg-zinc-900 p-2">
           <div 
             ref={waveformRef} 
             className="w-full min-h-[80px]"
           />
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
                 <span className="text-sm text-muted-foreground">Loading audio...</span>

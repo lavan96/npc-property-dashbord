@@ -131,9 +131,16 @@ export const LiveCallsMonitor = () => {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <div className="relative">
-              <Radio className="w-4 h-4 text-emerald-500" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+            <div className="relative flex items-center justify-center">
+              <Radio className="w-4 h-4 text-emerald-500 relative z-10" />
+              {/* Outer pulse ring */}
+              <span className="absolute w-6 h-6 bg-emerald-500/20 rounded-full animate-ping" />
+              {/* Middle pulse ring */}
+              <span className="absolute w-5 h-5 bg-emerald-500/30 rounded-full animate-pulse" />
+              {/* Inner glow */}
+              <span className="absolute w-4 h-4 bg-emerald-500/40 rounded-full" />
+              {/* Dot indicator */}
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
             </div>
             Live Calls
           </CardTitle>
