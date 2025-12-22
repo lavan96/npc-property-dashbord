@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LogOut, Settings } from 'lucide-react';
+import { Search, LogOut, Settings, Moon, Sun } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,32 @@ export function DashboardHeader() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      setIsDark(false);
+    } else {
+      setIsDark(true);
+    }
+  }, []);
+
+  const toggleTheme = () => setIsDark(!isDark);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalSearchQuery(e.target.value);
@@ -64,7 +90,21 @@ export function DashboardHeader() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9 transition-transform duration-200 hover:scale-105"
+          >
+            {isDark ? (
+              <Sun className="h-5 w-5 text-primary" />
+            ) : (
+              <Moon className="h-5 w-5 text-muted-foreground" />
+            )}
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
           <NotificationsDropdown />
 
           <DropdownMenu>
