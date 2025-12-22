@@ -7,6 +7,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to update report status to failed
+async function markReportFailed(reportId: string | null, errorMessage: string): Promise<void> {
+  if (!reportId) return;
+  
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (supabaseUrl && supabaseKey) {
+      const client = createClient(supabaseUrl, supabaseKey);
+      await client
+        .from('investment_reports')
+        .update({ 
+          status: 'failed',
+          error_message: errorMessage,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId);
+      
+      // Also update auto_report_generation_log if this was an auto-generated report
+      await client
+        .from('auto_report_generation_log')
+        .update({
+          status: 'failed',
+          error_message: `Report generation failed: ${errorMessage}`,
+          completed_at: new Date().toISOString()
+        })
+        .eq('report_id', reportId);
+      
+      console.log(`✓ Marked report ${reportId} as failed: ${errorMessage}`);
+    }
+  } catch (updateError) {
+    console.error('Error updating report status to failed:', updateError);
+  }
+}
+
 serve(async (req) => {
   console.log('Investment report function invoked with method:', req.method);
   
@@ -42,6 +77,7 @@ serve(async (req) => {
     
     if (!propertyAddress) {
       console.error('Property address is missing');
+      await markReportFailed(reportId, 'Property address is required');
       return new Response(JSON.stringify({ 
         error: 'Property address is required',
         success: false 
@@ -89,8 +125,10 @@ serve(async (req) => {
     
     if (!perplexityApiKey) {
       console.error('Perplexity API key not found in environment');
+      const errorMsg = 'Perplexity API key not configured. Please set PERPLEXITY_API_KEY in Supabase secrets.';
+      await markReportFailed(reportId, errorMsg);
       return new Response(JSON.stringify({ 
-        error: 'Perplexity API key not configured. Please set PERPLEXITY_API_KEY in Supabase secrets.',
+        error: errorMsg,
         success: false 
       }), {
         status: 500,
@@ -1991,8 +2029,10 @@ Produce a full investment report following the structure above, including detail
         // If this was the last attempt, return error
         if (attempt === maxRetries) {
           console.error('All retry attempts failed');
+          const errorMsg = `Failed to connect to Perplexity API after ${maxRetries} attempts: ${fetchError?.message || 'Network error'}`;
+          await markReportFailed(reportId, errorMsg);
           return new Response(JSON.stringify({ 
-            error: `Failed to connect to Perplexity API after ${maxRetries} attempts: ${fetchError?.message || 'Network error'}`,
+            error: errorMsg,
             success: false 
           }), {
             status: 500,
@@ -2009,8 +2049,10 @@ Produce a full investment report following the structure above, including detail
 
     // Safety check (should never happen given the retry logic above)
     if (!response) {
+      const errorMsg = 'Failed to get response from Perplexity API';
+      await markReportFailed(reportId, errorMsg);
       return new Response(JSON.stringify({ 
-        error: 'Failed to get response from Perplexity API',
+        error: errorMsg,
         success: false 
       }), {
         status: 500,
@@ -2036,6 +2078,7 @@ Produce a full investment report following the structure above, including detail
         errorMessage = `Perplexity API error (${response.status}): ${errorText}`;
       }
       
+      await markReportFailed(reportId, errorMessage);
       return new Response(JSON.stringify({ 
         error: errorMessage,
         success: false 
@@ -2059,8 +2102,10 @@ Produce a full investment report following the structure above, including detail
     } catch (jsonError) {
       console.error('❌ Error parsing JSON response:', jsonError);
       console.error('❌ Raw response text (first 500 chars):', responseText?.substring(0, 500));
+      const errorMsg = 'Invalid JSON response from Perplexity API';
+      await markReportFailed(reportId, errorMsg);
       return new Response(JSON.stringify({ 
-        error: 'Invalid JSON response from Perplexity API',
+        error: errorMsg,
         success: false,
         details: jsonError.message
       }), {
@@ -2071,8 +2116,10 @@ Produce a full investment report following the structure above, including detail
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Unexpected API response structure:', data);
+      const errorMsg = 'Invalid response structure from Perplexity API';
+      await markReportFailed(reportId, errorMsg);
       return new Response(JSON.stringify({ 
-        error: 'Invalid response structure from Perplexity API',
+        error: errorMsg,
         success: false 
       }), {
         status: 500,
@@ -2084,8 +2131,10 @@ Produce a full investment report following the structure above, including detail
     
     if (!reportContent) {
       console.error('No content in API response');
+      const errorMsg = 'No report content received from Perplexity API';
+      await markReportFailed(reportId, errorMsg);
       return new Response(JSON.stringify({ 
-        error: 'No report content received from Perplexity API',
+        error: errorMsg,
         success: false 
       }), {
         status: 500,
