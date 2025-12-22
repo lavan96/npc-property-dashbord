@@ -1966,7 +1966,7 @@ Produce a full investment report following the structure above, including detail
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'sonar-reasoning', // Deep research model for comprehensive analysis
+            model: 'sonar-pro', // Multi-step reasoning with 2x more citations for comprehensive analysis
             messages: [
               {
                 role: 'system',
