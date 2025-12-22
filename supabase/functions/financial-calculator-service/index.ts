@@ -10,11 +10,14 @@ const corsHeaders = {
 interface LoanCalculationInput {
   propertyValue: number;
   deposit: number;
-  interestRate: number;
+  interestRate?: number; // Now optional - will fetch live rates if not provided
   loanTerm: number;
   weeklyRent: number;
   state: string;
   propertyType: 'house' | 'unit' | 'townhouse';
+  isFirstHomeBuyer?: boolean;
+  isNewBuild?: boolean;
+  borrowerType?: 'owner_occupier' | 'investor';
 }
 
 interface FinancialProjection {
@@ -27,6 +30,51 @@ interface FinancialProjection {
   cumulativeCashFlow: number;
   roi: number;
 }
+
+interface InterestRateInfo {
+  rate: number;
+  lvrTier: string;
+  rateType: string;
+  source: string;
+  lmiRequired: boolean;
+  lmiEstimate: number;
+}
+
+// LVR-based interest rate tiers (based on current market rates Dec 2024)
+const LVR_RATE_TIERS = {
+  owner_occupier: {
+    principal_interest: {
+      tier_60: 5.99,    // LVR ≤ 60%
+      tier_70: 6.04,    // LVR 60-70%
+      tier_80: 6.14,    // LVR 70-80%
+      tier_90: 6.44,    // LVR 80-90% (includes risk premium)
+      tier_95: 6.74,    // LVR 90-95%
+    },
+    interest_only: {
+      tier_60: 6.34,
+      tier_70: 6.44,
+      tier_80: 6.54,
+      tier_90: 6.84,
+      tier_95: 7.14,
+    }
+  },
+  investor: {
+    principal_interest: {
+      tier_60: 6.19,
+      tier_70: 6.29,
+      tier_80: 6.44,
+      tier_90: 6.74,
+      tier_95: 7.04,
+    },
+    interest_only: {
+      tier_60: 6.54,
+      tier_70: 6.64,
+      tier_80: 6.79,
+      tier_90: 7.09,
+      tier_95: 7.39,
+    }
+  }
+};
 
 serve(async (req) => {
   console.log('Financial calculator service invoked with method:', req.method);
@@ -75,57 +123,148 @@ async function calculateFinancialProjections(input: LoanCalculationInput, supaba
   const {
     propertyValue,
     deposit,
-    interestRate,
     loanTerm,
     weeklyRent,
     state,
-    propertyType
+    propertyType,
+    isFirstHomeBuyer = false,
+    isNewBuild = false,
+    borrowerType = 'investor'
   } = input;
 
-  // Calculate initial values
+  // Calculate LVR
   const loanAmount = propertyValue - deposit;
+  const lvr = (loanAmount / propertyValue) * 100;
+
+  // Get interest rate - use provided rate or fetch LVR-based rate
+  const rateInfo = getInterestRateByLVR(lvr, borrowerType, input.interestRate);
+  const interestRate = rateInfo.rate;
+  
   const monthlyInterestRate = interestRate / 100 / 12;
   const totalPayments = loanTerm * 12;
   
   // Monthly loan payment (Principal + Interest)
   const monthlyPayment = calculateMonthlyPayment(loanAmount, monthlyInterestRate, totalPayments);
   
-  // Calculate stamp duty using dynamic rates from cache
-  const stampDuty = await calculateStampDutyDynamic(propertyValue, state, supabase);
+  // Calculate stamp duty with FHB concessions
+  const stampDutyResult = await calculateStampDutyWithConcessions(
+    propertyValue, 
+    state, 
+    supabase, 
+    isFirstHomeBuyer, 
+    isNewBuild
+  );
   
   // Calculate ongoing costs
   const annualCosts = calculateAnnualCosts(propertyValue, weeklyRent, state, propertyType);
   
   // Generate 10-year projections with scenarios
   const scenarios = {
-    conservative: generateProjections(input, monthlyPayment, annualCosts, 0.02, 0.02),
-    moderate: generateProjections(input, monthlyPayment, annualCosts, 0.04, 0.03),
-    optimistic: generateProjections(input, monthlyPayment, annualCosts, 0.06, 0.04)
+    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.02, 0.02),
+    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.04, 0.03),
+    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.06, 0.04)
   };
 
   // Calculate key metrics
-  const metrics = calculateKeyMetrics(input, monthlyPayment, annualCosts, stampDuty);
+  const metrics = calculateKeyMetrics(
+    { ...input, interestRate }, 
+    monthlyPayment, 
+    annualCosts, 
+    stampDutyResult.stampDuty
+  );
 
   return {
     initialCosts: {
       propertyValue,
       deposit,
       loanAmount,
-      stampDuty,
+      stampDuty: stampDutyResult.stampDuty,
+      stampDutyConcession: stampDutyResult.concession,
+      stampDutyBeforeConcession: stampDutyResult.originalAmount,
+      fhbEligible: stampDutyResult.fhbEligible,
+      lmi: rateInfo.lmiEstimate,
+      lmiRequired: rateInfo.lmiRequired,
       legalFees: 1500,
       inspectionFees: 500,
-      totalUpfront: deposit + stampDuty + 1500 + 500
+      totalUpfront: deposit + stampDutyResult.stampDuty + rateInfo.lmiEstimate + 1500 + 500
     },
     loanDetails: {
       monthlyPayment,
       totalInterest: (monthlyPayment * totalPayments) - loanAmount,
-      weeklyPayment: monthlyPayment * 12 / 52
+      weeklyPayment: monthlyPayment * 12 / 52,
+      lvr: Math.round(lvr * 100) / 100,
+      lvrTier: rateInfo.lvrTier,
+      interestRate: rateInfo.rate,
+      rateSource: rateInfo.source,
+      borrowerType
     },
     annualCosts,
     keyMetrics: metrics,
     projections: scenarios,
-    sensitivityAnalysis: calculateSensitivityAnalysis(input, monthlyPayment, annualCosts)
+    sensitivityAnalysis: calculateSensitivityAnalysis({ ...input, interestRate }, monthlyPayment, annualCosts),
+    interestRateInfo: rateInfo
   };
+}
+
+function getInterestRateByLVR(
+  lvr: number, 
+  borrowerType: 'owner_occupier' | 'investor',
+  providedRate?: number
+): InterestRateInfo {
+  // If rate is explicitly provided, use it
+  if (providedRate !== undefined && providedRate > 0) {
+    return {
+      rate: providedRate,
+      lvrTier: 'custom',
+      rateType: 'user_provided',
+      source: 'User specified',
+      lmiRequired: lvr > 80,
+      lmiEstimate: lvr > 80 ? calculateLMI(lvr) : 0
+    };
+  }
+
+  const rates = LVR_RATE_TIERS[borrowerType].principal_interest;
+  let rate: number;
+  let tier: string;
+
+  if (lvr <= 60) {
+    rate = rates.tier_60;
+    tier = '≤60%';
+  } else if (lvr <= 70) {
+    rate = rates.tier_70;
+    tier = '60-70%';
+  } else if (lvr <= 80) {
+    rate = rates.tier_80;
+    tier = '70-80%';
+  } else if (lvr <= 90) {
+    rate = rates.tier_90;
+    tier = '80-90%';
+  } else {
+    rate = rates.tier_95;
+    tier = '90-95%';
+  }
+
+  const lmiRequired = lvr > 80;
+  const lmiEstimate = lmiRequired ? calculateLMI(lvr) : 0;
+
+  return {
+    rate,
+    lvrTier: tier,
+    rateType: 'principal_interest',
+    source: 'Market rates Dec 2024 (LVR-adjusted)',
+    lmiRequired,
+    lmiEstimate
+  };
+}
+
+function calculateLMI(lvr: number): number {
+  // Simplified LMI calculation based on typical LMI rates
+  // Actual LMI varies by lender, loan amount, and LVR
+  if (lvr <= 80) return 0;
+  if (lvr <= 85) return 3500;
+  if (lvr <= 90) return 8500;
+  if (lvr <= 95) return 15000;
+  return 25000;
 }
 
 function calculateMonthlyPayment(loanAmount: number, monthlyRate: number, totalPayments: number): number {
@@ -133,6 +272,362 @@ function calculateMonthlyPayment(loanAmount: number, monthlyRate: number, totalP
   
   return loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) / 
          (Math.pow(1 + monthlyRate, totalPayments) - 1);
+}
+
+// ============================================
+// STAMP DUTY WITH FIRST HOME BUYER CONCESSIONS
+// ============================================
+
+interface StampDutyResult {
+  stampDuty: number;
+  originalAmount: number;
+  concession: number;
+  fhbEligible: boolean;
+  concessionType: string;
+}
+
+async function calculateStampDutyWithConcessions(
+  propertyValue: number, 
+  state: string, 
+  supabase: any,
+  isFirstHomeBuyer: boolean,
+  isNewBuild: boolean
+): Promise<StampDutyResult> {
+  // First calculate standard stamp duty
+  const standardStampDuty = await calculateStampDutyDynamic(propertyValue, state, supabase);
+  
+  if (!isFirstHomeBuyer) {
+    return {
+      stampDuty: standardStampDuty,
+      originalAmount: standardStampDuty,
+      concession: 0,
+      fhbEligible: false,
+      concessionType: 'none'
+    };
+  }
+
+  // Apply FHB concessions based on state
+  const fhbResult = calculateFHBConcession(propertyValue, state, standardStampDuty, isNewBuild);
+  
+  return fhbResult;
+}
+
+function calculateFHBConcession(
+  propertyValue: number, 
+  state: string, 
+  standardStampDuty: number,
+  isNewBuild: boolean
+): StampDutyResult {
+  const stateUpper = state.toUpperCase();
+  
+  switch (stateUpper) {
+    case 'NSW':
+      return calculateNSWFHBConcession(propertyValue, standardStampDuty, isNewBuild);
+    case 'VIC':
+      return calculateVICFHBConcession(propertyValue, standardStampDuty, isNewBuild);
+    case 'QLD':
+      return calculateQLDFHBConcession(propertyValue, standardStampDuty, isNewBuild);
+    case 'WA':
+      return calculateWAFHBConcession(propertyValue, standardStampDuty, isNewBuild);
+    case 'SA':
+      return calculateSAFHBConcession(propertyValue, standardStampDuty, isNewBuild);
+    case 'TAS':
+      return calculateTASFHBConcession(propertyValue, standardStampDuty);
+    case 'NT':
+      return calculateNTFHBConcession(propertyValue, standardStampDuty, isNewBuild);
+    case 'ACT':
+      return calculateACTFHBConcession(propertyValue, standardStampDuty);
+    default:
+      return {
+        stampDuty: standardStampDuty,
+        originalAmount: standardStampDuty,
+        concession: 0,
+        fhbEligible: false,
+        concessionType: 'none'
+      };
+  }
+}
+
+// NSW First Home Buyer Concession (as of 2024)
+function calculateNSWFHBConcession(propertyValue: number, standardDuty: number, isNewBuild: boolean): StampDutyResult {
+  // NSW FHB exemption: Full exemption up to $800,000 for new and existing homes
+  // Concession (sliding scale) from $800,001 to $1,000,000
+  
+  const exemptionThreshold = 800000;
+  const concessionCap = 1000000;
+  
+  if (propertyValue <= exemptionThreshold) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: 'Full exemption (NSW FHB)'
+    };
+  }
+  
+  if (propertyValue <= concessionCap) {
+    // Sliding scale concession
+    const concessionRate = (concessionCap - propertyValue) / (concessionCap - exemptionThreshold);
+    const concession = standardDuty * concessionRate;
+    return {
+      stampDuty: Math.round(standardDuty - concession),
+      originalAmount: standardDuty,
+      concession: Math.round(concession),
+      fhbEligible: true,
+      concessionType: 'Partial concession (NSW FHB)'
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
+}
+
+// VIC First Home Buyer Concession (as of 2024)
+function calculateVICFHBConcession(propertyValue: number, standardDuty: number, isNewBuild: boolean): StampDutyResult {
+  // VIC FHB exemption: Full exemption up to $600,000
+  // Concession (sliding scale) from $600,001 to $750,000
+  
+  const exemptionThreshold = 600000;
+  const concessionCap = 750000;
+  
+  if (propertyValue <= exemptionThreshold) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: 'Full exemption (VIC FHB)'
+    };
+  }
+  
+  if (propertyValue <= concessionCap) {
+    const concessionRate = (concessionCap - propertyValue) / (concessionCap - exemptionThreshold);
+    const concession = standardDuty * concessionRate;
+    return {
+      stampDuty: Math.round(standardDuty - concession),
+      originalAmount: standardDuty,
+      concession: Math.round(concession),
+      fhbEligible: true,
+      concessionType: 'Partial concession (VIC FHB)'
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
+}
+
+// QLD First Home Buyer Concession (as of 2024)
+function calculateQLDFHBConcession(propertyValue: number, standardDuty: number, isNewBuild: boolean): StampDutyResult {
+  // QLD FHB concession: Full exemption up to $700,000 for new homes
+  // For existing homes: Full exemption up to $500,000, concession up to $550,000
+  
+  if (isNewBuild) {
+    if (propertyValue <= 700000) {
+      return {
+        stampDuty: 0,
+        originalAmount: standardDuty,
+        concession: standardDuty,
+        fhbEligible: true,
+        concessionType: 'Full exemption (QLD FHB - New Build)'
+      };
+    }
+  } else {
+    const exemptionThreshold = 500000;
+    const concessionCap = 550000;
+    
+    if (propertyValue <= exemptionThreshold) {
+      return {
+        stampDuty: 0,
+        originalAmount: standardDuty,
+        concession: standardDuty,
+        fhbEligible: true,
+        concessionType: 'Full exemption (QLD FHB)'
+      };
+    }
+    
+    if (propertyValue <= concessionCap) {
+      const concessionRate = (concessionCap - propertyValue) / (concessionCap - exemptionThreshold);
+      const concession = standardDuty * concessionRate;
+      return {
+        stampDuty: Math.round(standardDuty - concession),
+        originalAmount: standardDuty,
+        concession: Math.round(concession),
+        fhbEligible: true,
+        concessionType: 'Partial concession (QLD FHB)'
+      };
+    }
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
+}
+
+// WA First Home Buyer Concession (as of 2024)
+function calculateWAFHBConcession(propertyValue: number, standardDuty: number, isNewBuild: boolean): StampDutyResult {
+  // WA FHB exemption thresholds differ for new vs established
+  // New homes: Full exemption up to $530,000
+  // Established homes: Full exemption up to $430,000
+  // Concession sliding scale above these thresholds
+  
+  const exemptionThreshold = isNewBuild ? 530000 : 430000;
+  const concessionCap = isNewBuild ? 600000 : 530000;
+  
+  if (propertyValue <= exemptionThreshold) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: `Full exemption (WA FHB - ${isNewBuild ? 'New' : 'Established'})`
+    };
+  }
+  
+  if (propertyValue <= concessionCap) {
+    const concessionRate = (concessionCap - propertyValue) / (concessionCap - exemptionThreshold);
+    const concession = standardDuty * concessionRate;
+    return {
+      stampDuty: Math.round(standardDuty - concession),
+      originalAmount: standardDuty,
+      concession: Math.round(concession),
+      fhbEligible: true,
+      concessionType: `Partial concession (WA FHB - ${isNewBuild ? 'New' : 'Established'})`
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
+}
+
+// SA First Home Buyer Concession (as of 2024)
+function calculateSAFHBConcession(propertyValue: number, standardDuty: number, isNewBuild: boolean): StampDutyResult {
+  // SA: No stamp duty on new homes up to $650,000
+  // Established homes: No specific FHB exemption, but eligible for First Home Owner Grant
+  
+  if (isNewBuild && propertyValue <= 650000) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: 'Full exemption (SA FHB - New Build)'
+    };
+  }
+  
+  // SA has a general stamp duty relief for homes up to $442,000
+  if (propertyValue <= 442000) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: 'Full exemption (SA - General Relief)'
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: isNewBuild ? 'Above $650k - no FHB concession' : 'No FHB concession for established homes'
+  };
+}
+
+// TAS First Home Buyer Concession (as of 2024)
+function calculateTASFHBConcession(propertyValue: number, standardDuty: number): StampDutyResult {
+  // TAS: 50% stamp duty reduction for FHB up to $600,000
+  
+  if (propertyValue <= 600000) {
+    const concession = standardDuty * 0.5;
+    return {
+      stampDuty: Math.round(standardDuty - concession),
+      originalAmount: standardDuty,
+      concession: Math.round(concession),
+      fhbEligible: true,
+      concessionType: '50% reduction (TAS FHB)'
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
+}
+
+// NT First Home Buyer Concession (as of 2024)
+function calculateNTFHBConcession(propertyValue: number, standardDuty: number, isNewBuild: boolean): StampDutyResult {
+  // NT: Full stamp duty exemption for new homes up to $750,000
+  // Established homes have different thresholds
+  
+  const exemptionThreshold = isNewBuild ? 750000 : 650000;
+  
+  if (propertyValue <= exemptionThreshold) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: `Full exemption (NT FHB - ${isNewBuild ? 'New' : 'Established'})`
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
+}
+
+// ACT First Home Buyer Concession (as of 2024)
+function calculateACTFHBConcession(propertyValue: number, standardDuty: number): StampDutyResult {
+  // ACT: Full exemption for eligible FHBs (income tested)
+  // Threshold varies, using $1,000,000 as general threshold
+  
+  const exemptionThreshold = 1000000;
+  
+  if (propertyValue <= exemptionThreshold) {
+    return {
+      stampDuty: 0,
+      originalAmount: standardDuty,
+      concession: standardDuty,
+      fhbEligible: true,
+      concessionType: 'Full exemption (ACT FHB - income tested)'
+    };
+  }
+  
+  return {
+    stampDuty: standardDuty,
+    originalAmount: standardDuty,
+    concession: 0,
+    fhbEligible: false,
+    concessionType: 'Above threshold - no FHB concession'
+  };
 }
 
 async function calculateStampDutyDynamic(propertyValue: number, state: string, supabase: any): Promise<number> {
@@ -167,9 +662,6 @@ async function calculateStampDutyDynamic(propertyValue: number, state: string, s
 }
 
 function calculateStampDutyFallback(propertyValue: number, state: string): number {
-  // ACCURATE PROGRESSIVE BRACKET CALCULATIONS FOR EACH STATE
-  // Updated with real state government formulas as of 2024
-  
   const stateUpper = state.toUpperCase();
   
   switch (stateUpper) {
@@ -255,7 +747,7 @@ function calculateTASStampDuty(value: number): number {
   return 28734.38 + ((value - 725000) * 0.045);
 }
 
-// NT Stamp Duty - Progressive brackets (relatively high rates)
+// NT Stamp Duty - Progressive brackets
 function calculateNTStampDuty(value: number): number {
   if (value <= 525000) return value * 0.0465;
   if (value <= 3000000) return 24412.50 + ((value - 525000) * 0.0565);
@@ -276,19 +768,16 @@ function calculateACTStampDuty(value: number): number {
 function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: string, propertyType: string) {
   const annualRent = weeklyRent * 52;
   
-  const councilRates = Math.floor(propertyValue * 0.008); // ~0.8% of property value
-  const waterRates = 800; // Fixed water rates
-  const landlordInsurance = Math.floor(annualRent * 0.01); // ~1% of rent
-  const propertyManagement = Math.floor(annualRent * 0.07); // 7% of rent
+  const councilRates = Math.floor(propertyValue * 0.008);
+  const waterRates = 800;
+  const landlordInsurance = Math.floor(annualRent * 0.01);
+  const propertyManagement = Math.floor(annualRent * 0.07);
   const propertyManagementPercent = 7;
-  const maintenance = 1500; // Fixed $1,500 annually
+  const maintenance = 1500;
   const landTax = calculateLandTax(propertyValue, state);
-  const strataFees = propertyType === 'unit' ? 4800 : 0; // $400/month for units
+  const strataFees = propertyType === 'unit' ? 4800 : 0;
   
-  // Calculate total annual costs INCLUDING land tax (for page 10 table display)
   const totalAnnual = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees + landTax;
-  
-  // Calculate total annual costs EXCLUDING land tax (for net yield/annual expenses calculation on page 14-15)
   const totalAnnualExcludingLandTax = councilRates + waterRates + landlordInsurance + propertyManagement + maintenance + strataFees;
   
   return {
@@ -306,7 +795,6 @@ function calculateAnnualCosts(propertyValue: number, weeklyRent: number, state: 
 }
 
 function calculateLandTax(propertyValue: number, state: string): number {
-  // Simplified land tax calculation (varies by state and thresholds)
   const thresholds: { [key: string]: number } = {
     'NSW': 755000,
     'VIC': 300000,
@@ -314,19 +802,19 @@ function calculateLandTax(propertyValue: number, state: string): number {
     'WA': 300000,
     'SA': 391000,
     'TAS': 25000,
-    'NT': 0, // No general land tax
-    'ACT': 0 // Rates instead of land tax
+    'NT': 0,
+    'ACT': 0
   };
 
   const threshold = thresholds[state.toUpperCase()] || 755000;
   
   if (propertyValue <= threshold) return 0;
   
-  return Math.floor((propertyValue - threshold) * 0.015); // ~1.5% above threshold
+  return Math.floor((propertyValue - threshold) * 0.015);
 }
 
 function generateProjections(
-  input: LoanCalculationInput,
+  input: LoanCalculationInput & { interestRate: number },
   monthlyPayment: number,
   annualCosts: any,
   capitalGrowthRate: number,
@@ -339,25 +827,20 @@ function generateProjections(
   let loanBalance = input.propertyValue - input.deposit;
   let cumulativeCashFlow = 0;
   
-  // Calculate total annual costs
   const totalAnnualCosts = Object.values(annualCosts)
     .filter(val => typeof val === 'number')
     .reduce((sum, cost) => sum + cost, 0) + (monthlyPayment * 12);
 
   for (let year = 1; year <= 10; year++) {
-    // Update property value and rent
     currentPropertyValue *= (1 + capitalGrowthRate);
     currentRent *= (1 + rentGrowthRate);
     
-    // Calculate loan balance (simplified - assumes P&I payments)
     const annualPrincipalPayment = (monthlyPayment * 12) - (loanBalance * input.interestRate / 100);
     loanBalance = Math.max(0, loanBalance - annualPrincipalPayment);
     
-    // Calculate cash flow
     const annualCashFlow = currentRent - totalAnnualCosts;
     cumulativeCashFlow += annualCashFlow;
     
-    // Calculate equity and ROI
     const equity = currentPropertyValue - loanBalance;
     const roi = (annualCashFlow + (currentPropertyValue - input.propertyValue) / year) / input.deposit * 100;
     
@@ -377,21 +860,18 @@ function generateProjections(
 }
 
 function calculateKeyMetrics(
-  input: LoanCalculationInput,
+  input: LoanCalculationInput & { interestRate: number },
   monthlyPayment: number,
   annualCosts: any,
   stampDuty: number
 ) {
   const annualRent = input.weeklyRent * 52;
-  
-  // Use totalAnnualExcludingLandTax for net yield calculation (page 14-15 annual expenses)
-  // Land tax is shown in totalAnnual for page 10 table but excluded from net yield calc
   const totalAnnualCosts = annualCosts.totalAnnualExcludingLandTax;
     
   const grossYield = (annualRent / input.propertyValue) * 100;
   const netYield = ((annualRent - totalAnnualCosts) / input.propertyValue) * 100;
   const netCashFlow = annualRent - totalAnnualCosts - (monthlyPayment * 12);
-  const totalReturn = input.deposit + stampDuty + 2000; // Including fees
+  const totalReturn = input.deposit + stampDuty + 2000;
   
   return {
     grossRentalYield: Math.round(grossYield * 100) / 100,
@@ -405,7 +885,7 @@ function calculateKeyMetrics(
 }
 
 function calculateSensitivityAnalysis(
-  input: LoanCalculationInput,
+  input: LoanCalculationInput & { interestRate: number },
   monthlyPayment: number,
   annualCosts: any
 ) {
@@ -427,7 +907,7 @@ function calculateSensitivityAnalysis(
   };
 }
 
-function calculateImpact(input: LoanCalculationInput, newRate: number, annualCosts: any) {
+function calculateImpact(input: LoanCalculationInput & { interestRate: number }, newRate: number, annualCosts: any) {
   const loanAmount = input.propertyValue - input.deposit;
   const monthlyRate = newRate / 100 / 12;
   const totalPayments = input.loanTerm * 12;
