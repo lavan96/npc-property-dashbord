@@ -19,11 +19,13 @@ import { RegenerateReportButton } from '@/components/reports/RegenerateReportBut
 
 // Lazy load heavy modal components
 const InvestmentReportViewer = lazy(() => import('@/components/reports/InvestmentReportViewer').then(m => ({ default: m.InvestmentReportViewer })));
-const ClientPDFGenerator = lazy(() => import('@/components/reports/ClientPDFGenerator').then(m => ({ default: m.ClientPDFGenerator })));
 const PropertyComparisonModal = lazy(() => import('@/components/reports/PropertyComparisonModal').then(m => ({ default: m.PropertyComparisonModal })));
 const ComparisonViewer = lazy(() => import('@/components/reports/ComparisonViewer').then(m => ({ default: m.ComparisonViewer })));
 const ReportVersionHistory = lazy(() => import('@/components/reports/ReportVersionHistory').then(m => ({ default: m.ReportVersionHistory })));
 const ManualDataOverrideModal = lazy(() => import('@/components/reports/ManualDataOverrideModal').then(m => ({ default: m.ManualDataOverrideModal })));
+
+// Non-lazy imports for components used inline without Suspense
+import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 
 // Loading fallback for modals
 const ModalLoader = () => (
