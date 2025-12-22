@@ -177,24 +177,57 @@ export default function GeneratedReports() {
   useEffect(() => {
     if (investmentReports.length === 0) return;
 
-    const reportId = searchParams.get('reportId');
+    const reportId = (searchParams.get('reportId') || '').trim();
 
     if (reportId && reportId !== lastHandledReportId) {
       setActiveTab('investment');
 
-      const report = investmentReports.find(r => r.id === reportId);
-      if (report) {
-        handleViewInvestmentReport(report);
-      } else {
-        toast({
-          title: "Report not found",
-          description: "The requested investment report could not be found.",
-          variant: "destructive",
-        });
-      }
+      let cancelled = false;
 
-      setLastHandledReportId(reportId);
-      return;
+      const openFromDeepLink = async () => {
+        console.log('🔗 Deep-link open requested', { reportId });
+
+        // First try from the already-loaded list
+        let report = investmentReports.find(r => r.id === reportId) as any;
+        console.log('🔗 Deep-link report found in list?', { found: !!report, listCount: investmentReports.length });
+
+        // If not found in-memory (pagination / fetch limits), fetch directly by id
+        if (!report) {
+          const { data, error } = await supabase
+            .from('investment_reports')
+            .select('id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
+            .eq('id', reportId)
+            .maybeSingle();
+
+          if (error) {
+            console.error('Deep-link fetch error:', error);
+          }
+
+          report = data as any;
+          console.log('🔗 Deep-link report fetched?', { fetched: !!report });
+        }
+
+        if (cancelled) return;
+
+        if (report) {
+          setSelectedInvestmentReport(report);
+          setInvestmentViewerOpen(true);
+        } else {
+          toast({
+            title: 'Report not found',
+            description: 'The requested investment report could not be found.',
+            variant: 'destructive',
+          });
+        }
+
+        setLastHandledReportId(reportId);
+      };
+
+      openFromDeepLink();
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     // Backwards compatibility: legacy localStorage deep-link
