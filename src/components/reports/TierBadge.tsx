@@ -8,6 +8,7 @@ interface TierBadgeProps {
   tier: ReportTier;
   className?: string;
   showIcon?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export const TIER_INFO = {
@@ -40,15 +41,27 @@ export const TIER_INFO = {
   },
 };
 
-export function TierBadge({ tier, className, showIcon = true }: TierBadgeProps) {
+export function TierBadge({ tier, className, showIcon = true, size = 'md' }: TierBadgeProps) {
   const info = TIER_INFO[tier];
   const Icon = info.icon;
 
+  const sizeClasses = {
+    sm: 'text-xs py-0.5 px-1.5',
+    md: 'text-xs py-1 px-2',
+    lg: 'text-sm py-1.5 px-3 font-medium',
+  };
+
+  const iconSizes = {
+    sm: 'h-3 w-3',
+    md: 'h-3 w-3',
+    lg: 'h-4 w-4',
+  };
+
   return (
     <Badge 
-      className={cn(info.color, 'gap-1', className)}
+      className={cn(info.color, 'gap-1', sizeClasses[size], className)}
     >
-      {showIcon && <Icon className="h-3 w-3" />}
+      {showIcon && <Icon className={iconSizes[size]} />}
       {info.shortName}
     </Badge>
   );

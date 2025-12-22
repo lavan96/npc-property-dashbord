@@ -336,6 +336,29 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+            {/* Tier Switcher - Prominent Section */}
+            <Card className="flex-shrink-0 border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-transparent">
+              <CardContent className="py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <span className="font-medium text-sm">Report Version:</span>
+                    </div>
+                    <TierSwitcher
+                      reportId={report.id}
+                      currentTier={currentTier}
+                      parentReportId={report.parent_report_id}
+                      onTierSwitch={onTierSwitch}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Switch between Compass (full), Briefing (~20 pages), or Snapshot (~5 pages)</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Report Header */}
             <Card className="flex-shrink-0">
               <CardHeader className="pb-3">
@@ -351,12 +374,6 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <TierSwitcher
-                      reportId={report.id}
-                      currentTier={currentTier}
-                      parentReportId={report.parent_report_id}
-                      onTierSwitch={onTierSwitch}
-                    />
                     <Button
                       variant="outline"
                       size="sm"
@@ -369,7 +386,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       <Calculator className="h-3 w-3 mr-1" />
                       Cash Flow Analysis
                     </Button>
-                    <TierBadge tier={currentTier} />
+                    <TierBadge tier={currentTier} size="lg" />
                     {hasOverrides && (
                       <Badge variant="default" className="bg-primary">
                         <AlertCircle className="h-3 w-3 mr-1" />
