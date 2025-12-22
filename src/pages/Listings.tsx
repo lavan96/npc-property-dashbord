@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,9 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { ListingFilters } from '@/components/listings/ListingFilters';
-import { ListingDetailsModal } from '@/components/listings/ListingDetailsModal';
-import { InvestmentReportModal } from '@/components/listings/InvestmentReportModal';
-import { BulkGenerationModal } from '@/components/listings/BulkGenerationModal';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
 import {
@@ -30,12 +28,29 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
+// Lazy load heavy modal components
+const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
+const InvestmentReportModal = lazy(() => import('@/components/listings/InvestmentReportModal').then(m => ({ default: m.InvestmentReportModal })));
+const BulkGenerationModal = lazy(() => import('@/components/listings/BulkGenerationModal').then(m => ({ default: m.BulkGenerationModal })));
+
 export default function Listings() {
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
-  const [listings, setListings] = useState<PropertyListing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Use React Query for caching and efficient data fetching
+  const { data: listings = [], isLoading, refetch } = useQuery({
+    queryKey: ['listings'],
+    queryFn: async () => {
+      const result = await propertyDataService.fetchAllListings({
+        includeDebugInfo: true
+      });
+      console.log(`Fetched listings (already deduplicated server-side): ${result.listings.length}`);
+      return result.listings;
+    },
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
   
   // Load filters from localStorage on mount
   const [filters, setFilters] = useState(() => {
@@ -74,9 +89,6 @@ export default function Listings() {
   
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadListings();
-  }, []);
 
   // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
@@ -88,32 +100,10 @@ export default function Listings() {
     localStorage.setItem('listingFilters', JSON.stringify(filters));
   }, [filters]);
 
-
-  const loadListings = async () => {
-    try {
-      setIsLoading(true);
-      // Use the centralized property data service which handles deduplication consistently
-      const result = await propertyDataService.fetchAllListings({
-        includeDebugInfo: true
-      });
-      
-      console.log(`Fetched listings (already deduplicated server-side): ${result.listings.length}`);
-      console.log('First listing zipCode:', result.listings[0]?.zipCode);
-      console.log('First listing state:', result.listings[0]?.state);
-      console.log('Sample listing fields:', result.listings[0]);
-      
-      setListings(result.listings);
-    } catch (error) {
-      console.error('Failed to load listings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load listings. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Refresh function using React Query's refetch
+  const loadListings = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -190,106 +180,108 @@ export default function Listings() {
     return { propertyTypes, suburbs, states, zipCodes, sourceHosts, agencies };
   }, [listings]);
 
-  // Filter listings based on search and filters
-  const filteredListings = listings.filter(listing => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const searchText = [
-        listing.address,
-        listing.suburb,
-        listing.agencyName,
-        listing.agentName
-      ].join(' ').toLowerCase();
-      
-      if (!searchText.includes(query)) {
+  // Memoize filtered listings for performance
+  const filteredListings = useMemo(() => {
+    return listings.filter(listing => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const searchText = [
+          listing.address,
+          listing.suburb,
+          listing.agencyName,
+          listing.agentName
+        ].join(' ').toLowerCase();
+        
+        if (!searchText.includes(query)) {
+          return false;
+        }
+      }
+
+      // Property type filter
+      if (filters.propertyType && filters.propertyType !== 'all' && listing.propertyType !== filters.propertyType) {
         return false;
       }
-    }
 
-    // Property type filter
-    if (filters.propertyType && filters.propertyType !== 'all' && listing.propertyType !== filters.propertyType) {
-      return false;
-    }
+      // Suburb filter
+      if (filters.suburb && filters.suburb !== 'all' && listing.suburb !== filters.suburb) {
+        return false;
+      }
 
-    // Suburb filter
-    if (filters.suburb && filters.suburb !== 'all' && listing.suburb !== filters.suburb) {
-      return false;
-    }
+      // State filter
+      if (filters.state && filters.state !== 'all' && listing.state !== filters.state) {
+        return false;
+      }
 
-    // State filter
-    if (filters.state && filters.state !== 'all' && listing.state !== filters.state) {
-      return false;
-    }
+      // Zip code filter
+      if (filters.zipCode && filters.zipCode !== 'all' && listing.zipCode !== filters.zipCode) {
+        return false;
+      }
 
-    // Zip code filter
-    if (filters.zipCode && filters.zipCode !== 'all' && listing.zipCode !== filters.zipCode) {
-      return false;
-    }
+      // Source host filter
+      if (filters.sourceHost && filters.sourceHost !== 'all' && listing.sourceHost !== filters.sourceHost) {
+        return false;
+      }
 
-    // Source host filter
-    if (filters.sourceHost && filters.sourceHost !== 'all' && listing.sourceHost !== filters.sourceHost) {
-      return false;
-    }
+      // Has inspection filter
+      if (filters.hasInspection && !listing.inspectionStart) {
+        return false;
+      }
 
-    // Has inspection filter
-    if (filters.hasInspection && !listing.inspectionStart) {
-      return false;
-    }
+      // Low confidence filter
+      if (filters.lowConfidence && (listing.confidence === undefined || listing.confidence >= 0.7)) {
+        return false;
+      }
 
-    // Low confidence filter
-    if (filters.lowConfidence && (listing.confidence === undefined || listing.confidence >= 0.7)) {
-      return false;
-    }
+      // Agency filter
+      if (filters.agencyName && filters.agencyName !== 'all' && listing.agencyName !== filters.agencyName) {
+        return false;
+      }
 
-    // Agency filter
-    if (filters.agencyName && filters.agencyName !== 'all' && listing.agencyName !== filters.agencyName) {
-      return false;
-    }
+      // Price filters - exclude properties without pricing when price filter is active
+      const hasPriceFilter = filters.priceMin || filters.priceMax;
+      if (hasPriceFilter && (!listing.price || listing.price <= 0)) {
+        return false;
+      }
 
-    // Price filters - exclude properties without pricing when price filter is active
-    const hasPriceFilter = filters.priceMin || filters.priceMax;
-    if (hasPriceFilter && (!listing.price || listing.price <= 0)) {
-      return false;
-    }
+      if (filters.priceMin && listing.price && listing.price < parseFloat(filters.priceMin)) {
+        return false;
+      }
 
-    if (filters.priceMin && listing.price && listing.price < parseFloat(filters.priceMin)) {
-      return false;
-    }
+      if (filters.priceMax && listing.price && listing.price > parseFloat(filters.priceMax)) {
+        return false;
+      }
 
-    if (filters.priceMax && listing.price && listing.price > parseFloat(filters.priceMax)) {
-      return false;
-    }
+      // Bedroom filters
+      if (filters.bedsMin && listing.beds && listing.beds < parseInt(filters.bedsMin)) {
+        return false;
+      }
 
-    // Bedroom filters
-    if (filters.bedsMin && listing.beds && listing.beds < parseInt(filters.bedsMin)) {
-      return false;
-    }
+      if (filters.bedsMax && listing.beds && listing.beds > parseInt(filters.bedsMax)) {
+        return false;
+      }
 
-    if (filters.bedsMax && listing.beds && listing.beds > parseInt(filters.bedsMax)) {
-      return false;
-    }
+      // Bathroom filters
+      if (filters.bathsMin && listing.baths && listing.baths < parseInt(filters.bathsMin)) {
+        return false;
+      }
 
-    // Bathroom filters
-    if (filters.bathsMin && listing.baths && listing.baths < parseInt(filters.bathsMin)) {
-      return false;
-    }
+      if (filters.bathsMax && listing.baths && listing.baths > parseInt(filters.bathsMax)) {
+        return false;
+      }
 
-    if (filters.bathsMax && listing.baths && listing.baths > parseInt(filters.bathsMax)) {
-      return false;
-    }
+      // Car space filters
+      if (filters.carsMin && listing.carSpaces && listing.carSpaces < parseInt(filters.carsMin)) {
+        return false;
+      }
 
-    // Car space filters
-    if (filters.carsMin && listing.carSpaces && listing.carSpaces < parseInt(filters.carsMin)) {
-      return false;
-    }
+      if (filters.carsMax && listing.carSpaces && listing.carSpaces > parseInt(filters.carsMax)) {
+        return false;
+      }
 
-    if (filters.carsMax && listing.carSpaces && listing.carSpaces > parseInt(filters.carsMax)) {
-      return false;
-    }
-
-    return true;
-  });
+      return true;
+    });
+  }, [listings, searchQuery, filters]);
 
   const openDetailsModal = (listing: PropertyListing) => {
     setSelectedListing(listing);
@@ -613,28 +605,41 @@ export default function Listings() {
         </CardContent>
       </Card>
 
-      <ListingDetailsModal 
-        listing={selectedListing}
-        isOpen={isDetailsModalOpen}
-        onClose={closeDetailsModal}
-      />
+      {/* Lazy loaded modals - only load when needed */}
+      {isDetailsModalOpen && (
+        <Suspense fallback={null}>
+          <ListingDetailsModal 
+            listing={selectedListing}
+            isOpen={isDetailsModalOpen}
+            onClose={closeDetailsModal}
+          />
+        </Suspense>
+      )}
 
-      <InvestmentReportModal
-        isOpen={isInvestmentReportModalOpen}
-        onClose={() => setIsInvestmentReportModalOpen(false)}
-        propertyAddress={investmentReportListing ? `${investmentReportListing.address || ''} ${investmentReportListing.suburb || ''} ${investmentReportListing.state || ''} ${investmentReportListing.zipCode || ''}`.trim() : ''}
-        propertyDetails={investmentReportListing}
-      />
+      {isInvestmentReportModalOpen && (
+        <Suspense fallback={null}>
+          <InvestmentReportModal
+            isOpen={isInvestmentReportModalOpen}
+            onClose={() => setIsInvestmentReportModalOpen(false)}
+            propertyAddress={investmentReportListing ? `${investmentReportListing.address || ''} ${investmentReportListing.suburb || ''} ${investmentReportListing.state || ''} ${investmentReportListing.zipCode || ''}`.trim() : ''}
+            propertyDetails={investmentReportListing}
+          />
+        </Suspense>
+      )}
 
-      <BulkGenerationModal
-        open={isBulkGenerationModalOpen}
-        onOpenChange={setIsBulkGenerationModalOpen}
-        selectedProperties={listings.filter(l => selectedListings.has(l.id))}
-        onComplete={() => {
-          setSelectedListings(new Set());
-          loadListings();
-        }}
-      />
+      {isBulkGenerationModalOpen && (
+        <Suspense fallback={null}>
+          <BulkGenerationModal
+            open={isBulkGenerationModalOpen}
+            onOpenChange={setIsBulkGenerationModalOpen}
+            selectedProperties={listings.filter(l => selectedListings.has(l.id))}
+            onComplete={() => {
+              setSelectedListings(new Set());
+              loadListings();
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Floating Action Bar */}
       {selectedListings.size > 0 && (

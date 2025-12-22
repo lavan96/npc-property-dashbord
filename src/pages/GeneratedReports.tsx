@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,19 +8,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
-import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
-import { PropertyComparisonModal } from '@/components/reports/PropertyComparisonModal';
-import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
 import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
-import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
-import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
+
+// Lazy load heavy modal components
+const InvestmentReportViewer = lazy(() => import('@/components/reports/InvestmentReportViewer').then(m => ({ default: m.InvestmentReportViewer })));
+const ClientPDFGenerator = lazy(() => import('@/components/reports/ClientPDFGenerator').then(m => ({ default: m.ClientPDFGenerator })));
+const PropertyComparisonModal = lazy(() => import('@/components/reports/PropertyComparisonModal').then(m => ({ default: m.PropertyComparisonModal })));
+const ComparisonViewer = lazy(() => import('@/components/reports/ComparisonViewer').then(m => ({ default: m.ComparisonViewer })));
+const ReportVersionHistory = lazy(() => import('@/components/reports/ReportVersionHistory').then(m => ({ default: m.ReportVersionHistory })));
+const ManualDataOverrideModal = lazy(() => import('@/components/reports/ManualDataOverrideModal').then(m => ({ default: m.ManualDataOverrideModal })));
+
+// Loading fallback for modals
+const ModalLoader = () => (
+  <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
+    <div className="bg-card rounded-lg p-8 shadow-lg">
+      <Skeleton className="h-8 w-48 mb-4" />
+      <Skeleton className="h-4 w-64 mb-2" />
+      <Skeleton className="h-4 w-56" />
+    </div>
+  </div>
+);
 
 interface GeneratedReport {
   id: string;
@@ -1036,55 +1050,74 @@ export default function GeneratedReports() {
 
       <ComparisonBasket onCompare={handleCompare} />
 
-      <PropertyComparisonModal
-        isOpen={comparisonModalOpen}
-        onClose={() => {
-          setComparisonModalOpen(false);
-          handleComparisonUpdate(); // Refresh comparisons when modal closes
-        }}
-        reportIds={selectedReports.map(r => r.id)}
-        propertyAddresses={selectedReports.map(r => r.property_address)}
-      />
-
-      <InvestmentReportViewer
-        report={selectedInvestmentReport}
-        isOpen={investmentViewerOpen}
-        onClose={() => {
-          setInvestmentViewerOpen(false);
-          setSelectedInvestmentReport(null);
-        }}
-        onReportUpdate={handleInvestmentReportUpdate}
-        onOpenOverride={() => {
-          if (selectedInvestmentReport) {
-            handleOpenOverrideModal(selectedInvestmentReport);
-          }
-        }}
-      />
-
-      <ComparisonViewer
-        comparison={selectedComparison}
-        isOpen={comparisonViewerOpen}
-        onClose={() => {
-          setComparisonViewerOpen(false);
-          setSelectedComparison(null);
-        }}
-      />
-
-      {selectedReportForHistory && (
-        <ReportVersionHistory
-          reportId={selectedReportForHistory.id}
-          currentVersion={selectedReportForHistory.current_version || 1}
-          open={versionHistoryOpen}
-          onOpenChange={setVersionHistoryOpen}
-        />
+      {/* Lazy loaded modals - only render when open */}
+      {comparisonModalOpen && (
+        <Suspense fallback={<ModalLoader />}>
+          <PropertyComparisonModal
+            isOpen={comparisonModalOpen}
+            onClose={() => {
+              setComparisonModalOpen(false);
+              handleComparisonUpdate(); // Refresh comparisons when modal closes
+            }}
+            reportIds={selectedReports.map(r => r.id)}
+            propertyAddresses={selectedReports.map(r => r.property_address)}
+          />
+        </Suspense>
       )}
 
-      <ManualDataOverrideModal
-        report={selectedReportForOverride}
-        isOpen={overrideModalOpen}
-        onClose={() => setOverrideModalOpen(false)}
-        onSave={handleOverrideSave}
-      />
+      {investmentViewerOpen && selectedInvestmentReport && (
+        <Suspense fallback={<ModalLoader />}>
+          <InvestmentReportViewer
+            report={selectedInvestmentReport}
+            isOpen={investmentViewerOpen}
+            onClose={() => {
+              setInvestmentViewerOpen(false);
+              setSelectedInvestmentReport(null);
+            }}
+            onReportUpdate={handleInvestmentReportUpdate}
+            onOpenOverride={() => {
+              if (selectedInvestmentReport) {
+                handleOpenOverrideModal(selectedInvestmentReport);
+              }
+            }}
+          />
+        </Suspense>
+      )}
+
+      {comparisonViewerOpen && selectedComparison && (
+        <Suspense fallback={<ModalLoader />}>
+          <ComparisonViewer
+            comparison={selectedComparison}
+            isOpen={comparisonViewerOpen}
+            onClose={() => {
+              setComparisonViewerOpen(false);
+              setSelectedComparison(null);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {versionHistoryOpen && selectedReportForHistory && (
+        <Suspense fallback={<ModalLoader />}>
+          <ReportVersionHistory
+            reportId={selectedReportForHistory.id}
+            currentVersion={selectedReportForHistory.current_version || 1}
+            open={versionHistoryOpen}
+            onOpenChange={setVersionHistoryOpen}
+          />
+        </Suspense>
+      )}
+
+      {overrideModalOpen && selectedReportForOverride && (
+        <Suspense fallback={<ModalLoader />}>
+          <ManualDataOverrideModal
+            report={selectedReportForOverride}
+            isOpen={overrideModalOpen}
+            onClose={() => setOverrideModalOpen(false)}
+            onSave={handleOverrideSave}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
