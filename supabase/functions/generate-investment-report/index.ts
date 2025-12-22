@@ -69,11 +69,41 @@ serve(async (req) => {
       });
     }
     
-    const { reportId, propertyAddress, propertyDetails } = requestBody;
+    let { reportId, propertyAddress, propertyDetails } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
     console.log('Report ID:', reportId);
     console.log('Property address:', propertyAddress);
     console.log('Report scope:', reportScope);
+    
+    // If reportId is provided but no propertyAddress, fetch it from the existing report (for retries)
+    if (reportId && !propertyAddress) {
+      console.log('Fetching property address from existing report for retry...');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (supabaseUrl && supabaseKey) {
+        const client = createClient(supabaseUrl, supabaseKey);
+        const { data: existingReport, error: fetchError } = await client
+          .from('investment_reports')
+          .select('property_address')
+          .eq('id', reportId)
+          .single();
+        
+        if (fetchError || !existingReport?.property_address) {
+          console.error('Failed to fetch property address for retry:', fetchError);
+          await markReportFailed(reportId, 'Could not find existing report for retry');
+          return new Response(JSON.stringify({ 
+            error: 'Could not find existing report for retry',
+            success: false 
+          }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        propertyAddress = existingReport.property_address;
+        console.log('Fetched property address from existing report:', propertyAddress);
+      }
+    }
     
     if (!propertyAddress) {
       console.error('Property address is missing');
