@@ -51,7 +51,7 @@ export default function CashFlowAnalysis() {
     fetchReports();
   }, []);
 
-  // Handle deep-linking: auto-open report/analysis from URL params
+  // Handle deep-linking: auto-open analysis from URL params
   useEffect(() => {
     if (loading || hasHandledDeepLink || reports.length === 0) return;
     
@@ -62,15 +62,15 @@ export default function CashFlowAnalysis() {
       const report = reports.find(r => r.id === reportId);
       if (report) {
         if (action === 'view') {
-          setViewingReport(report);
-          setReportViewerOpen(true);
+          // For viewing the full report, redirect to Generated Reports page
+          navigate(`/generated-reports?reportId=${reportId}`, { replace: true });
         } else {
-          // Default action is to open cash flow analysis
+          // Default action is to open cash flow analysis modal
           setSelectedReport(report);
           setAnalysisModalOpen(true);
+          // Clear URL params after handling
+          setSearchParams({}, { replace: true });
         }
-        // Clear URL params after handling
-        setSearchParams({}, { replace: true });
       } else {
         toast({
           title: "Report not found",
@@ -81,7 +81,7 @@ export default function CashFlowAnalysis() {
       }
       setHasHandledDeepLink(true);
     }
-  }, [loading, reports, searchParams, hasHandledDeepLink]);
+  }, [loading, reports, searchParams, hasHandledDeepLink, navigate]);
 
   const hasRequiredData = (report: InvestmentReport) => {
     const fc = report.financial_calculations || {};

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,8 +95,10 @@ export default function GeneratedReports() {
   const reportsPerPage = 50;
   
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
+  const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
 
   // Helper function to get grade color classes
   const getGradeColor = (grade: string): string => {
@@ -165,9 +167,29 @@ export default function GeneratedReports() {
     };
   }, []);
 
-  // Handle opening a specific report after data is loaded
+  // Handle deep-linking: auto-open report from URL params (e.g., /generated-reports?reportId=...)
   useEffect(() => {
-    if (!loading && investmentReports.length > 0) {
+    if (loading || hasHandledDeepLink || investmentReports.length === 0) return;
+    
+    const reportId = searchParams.get('reportId');
+    
+    if (reportId) {
+      const report = investmentReports.find(r => r.id === reportId);
+      if (report) {
+        handleViewInvestmentReport(report);
+        // Clear URL params after handling
+        setSearchParams({}, { replace: true });
+      } else {
+        toast({
+          title: "Report not found",
+          description: "The requested investment report could not be found.",
+          variant: "destructive",
+        });
+        setSearchParams({}, { replace: true });
+      }
+      setHasHandledDeepLink(true);
+    } else {
+      // Fallback: also check localStorage for backwards compatibility
       const openReportId = localStorage.getItem('openReportId');
       if (openReportId) {
         localStorage.removeItem('openReportId');
@@ -177,7 +199,7 @@ export default function GeneratedReports() {
         }
       }
     }
-  }, [loading, investmentReports]);
+  }, [loading, investmentReports, searchParams, hasHandledDeepLink]);
 
   useEffect(() => {
     // Listen for custom event to open a specific report
