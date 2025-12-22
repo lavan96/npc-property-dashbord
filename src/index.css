@@ -8,81 +8,81 @@ Clean, modern admin dashboard with confidence-based color coding
 
 @layer base {
   :root {
-    /* Base colors - dark theme with gold accents */
-    --background: 0 0% 4%;
-    --foreground: 40 6% 90%;
+    /* Light mode - clean cream/warm with gold accents */
+    --background: 40 20% 98%;
+    --foreground: 30 10% 15%;
 
     /* Cards and surfaces */
-    --card: 0 0% 7%;
-    --card-foreground: 40 6% 90%;
+    --card: 0 0% 100%;
+    --card-foreground: 30 10% 15%;
 
     /* Interactive elements */
-    --popover: 0 0% 7%;
-    --popover-foreground: 40 6% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 10% 15%;
 
     /* Primary brand - gold/amber */
     --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 5%;
+    --primary-foreground: 0 0% 100%;
     --primary-hover: 43 74% 42%;
 
     /* Secondary actions */
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 40 6% 90%;
-    --secondary-hover: 0 0% 16%;
+    --secondary: 40 15% 94%;
+    --secondary-foreground: 30 10% 15%;
+    --secondary-hover: 40 15% 90%;
 
     /* Muted content */
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 40 15% 94%;
+    --muted-foreground: 30 10% 45%;
 
     /* Accent highlights */
     --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 5%;
+    --accent-foreground: 0 0% 100%;
 
     /* Status colors for confidence levels */
-    --success: 142 71% 45%;          /* High confidence >0.7 */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    --success-light: 142 69% 12%;
+    --success-light: 142 69% 95%;
 
-    --warning: 43 74% 49%;           /* Medium confidence 0.5-0.7 */
-    --warning-foreground: 0 0% 5%;
-    --warning-light: 43 74% 12%;
+    --warning: 43 74% 49%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 43 74% 95%;
 
-    --destructive: 0 84% 60%;        /* Low confidence <0.5 */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-light: 0 93% 12%;
+    --destructive-light: 0 93% 97%;
 
     /* Chart colors - Professional palette with gold accent */
-    --chart-1: 43 74% 49%;           /* Gold primary */
-    --chart-2: 43 74% 35%;           /* Darker gold */
-    --chart-3: 0 0% 45%;             /* Gray */
-    --chart-4: 142 71% 45%;          /* Green */
-    --chart-5: 0 84% 60%;            /* Red */
-    --chart-6: 200 98% 39%;          /* Blue */
-    --chart-7: 43 74% 60%;           /* Light gold */
-    --chart-8: 0 0% 60%;             /* Light gray */
-    --chart-9: 168 76% 42%;          /* Teal */
-    --chart-10: 25 95% 53%;          /* Orange */
+    --chart-1: 43 74% 49%;
+    --chart-2: 43 74% 35%;
+    --chart-3: 30 10% 45%;
+    --chart-4: 142 71% 45%;
+    --chart-5: 0 84% 60%;
+    --chart-6: 200 98% 39%;
+    --chart-7: 43 74% 60%;
+    --chart-8: 30 10% 60%;
+    --chart-9: 168 76% 42%;
+    --chart-10: 25 95% 53%;
 
     /* Borders and inputs */
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
+    --border: 40 15% 88%;
+    --input: 40 15% 88%;
     --ring: 43 74% 49%;
 
     /* Corner radius */
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 40 6% 90%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 30 10% 25%;
     --sidebar-primary: 43 74% 49%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 40 6% 90%;
-    --sidebar-border: 0 0% 14%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 43 74% 49%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 40 15% 90%;
     --sidebar-ring: 43 74% 49%;
   }
 
   .dark {
-    /* Dark mode - same as root (already dark) */
+    /* Dark mode - sophisticated dark theme with gold accents */
     --background: 0 0% 4%;
     --foreground: 40 6% 90%;
 
@@ -125,8 +125,8 @@ Clean, modern admin dashboard with confidence-based color coding
     --sidebar-foreground: 40 6% 90%;
     --sidebar-primary: 43 74% 49%;
     --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 40 6% 90%;
+    --sidebar-accent: 43 74% 49%;
+    --sidebar-accent-foreground: 0 0% 5%;
     --sidebar-border: 0 0% 14%;
     --sidebar-ring: 43 74% 49%;
   }
