@@ -41,15 +41,14 @@ interface InvestmentReportViewerProps {
 
 export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate, onOpenOverride }: InvestmentReportViewerProps) {
   const navigate = useNavigate();
-  
-  // Early return BEFORE any hooks
-  if (!report) return null;
-
   const [editorOpen, setEditorOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Early return after all hooks
+  if (!report) return null;
 
   const hasOverrides = report.manual_overrides && Object.keys(report.manual_overrides).length > 0;
   const isRegenerating = report.status === 'processing';
