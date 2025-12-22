@@ -289,7 +289,7 @@ export default function CashFlowAnalysis() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => navigate(`/generated-reports?reportId=${report.id}`)}
+                        onClick={() => navigate(`/investment-report/${report.id}`)}
                       >
                         <FileText className="h-4 w-4 mr-1" />
                         View Report

@@ -30,6 +30,7 @@ import EmailCopilot from './pages/EmailCopilot';
 import CallLogs from './pages/CallLogs';
 import CashFlowAnalysis from './pages/CashFlowAnalysis';
 import ReportQA from './pages/ReportQA';
+import InvestmentReportView from './pages/InvestmentReportView';
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="call-logs" element={<CallLogs />} />
                 <Route path="cash-flow-analysis" element={<CashFlowAnalysis />} />
                 <Route path="report-qa" element={<ReportQA />} />
+                <Route path="investment-report/:id" element={<InvestmentReportView />} />
                 <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
                 <Route path="settings" element={<Settings />} />
               </Route>
