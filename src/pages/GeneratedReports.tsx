@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap, Compass, Loader2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
@@ -111,6 +111,8 @@ export default function GeneratedReports() {
   const [scopeFilter, setScopeFilter] = useState<string>('all'); // Filter by scope
   const [gradeFilter, setGradeFilter] = useState<string>('all'); // Filter by investment grade
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]); // Filter by score range
+  const [tierFilter, setTierFilter] = useState<string>('all'); // Filter by report tier
+  const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
   
   const navigate = useNavigate();
@@ -165,7 +167,11 @@ export default function GeneratedReports() {
     const reportScore = report.investment_score?.totalScore || 0;
     const matchesScore = reportScore >= scoreRange[0] && reportScore <= scoreRange[1];
     
-    return matchesSearch && matchesScope && matchesGrade && matchesScore;
+    // Tier filter
+    const reportTier = report.report_tier || 'compass';
+    const matchesTier = tierFilter === 'all' || reportTier === tierFilter;
+    
+    return matchesSearch && matchesScope && matchesGrade && matchesScore && matchesTier;
   });
   
   const totalInvestmentPages = Math.ceil(filteredInvestmentReports.length / reportsPerPage);
@@ -443,6 +449,52 @@ export default function GeneratedReports() {
       if (!error && data) {
         setSelectedReportForOverride(data);
       }
+    }
+  };
+
+  // Generate condensed tier from a Compass report
+  const handleGenerateTier = async (report: InvestmentReport, targetTier: ReportTier) => {
+    if (report.report_tier !== 'compass') {
+      toast({
+        title: "Cannot Generate",
+        description: "Condensed reports can only be generated from Compass reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingTier({ reportId: report.id, tier: targetTier });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('condense-investment-report', {
+        body: {
+          parentReportId: report.id,
+          targetTier,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.reportId) {
+        toast({
+          title: "Report Generated",
+          description: `${targetTier === 'briefing' ? 'Executive Briefing' : 'Snapshot'} is ready`,
+        });
+        
+        // Refresh the reports list
+        fetchInvestmentReports();
+      } else {
+        throw new Error(data?.error || 'Failed to generate report');
+      }
+    } catch (error) {
+      console.error('Error generating tier:', error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : 'Failed to generate report tier',
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingTier(null);
     }
   };
 
@@ -741,6 +793,37 @@ export default function GeneratedReports() {
                 </SelectContent>
               </Select>
 
+              {/* Tier Filter */}
+              <Select value={tierFilter} onValueChange={(value) => {
+                setTierFilter(value);
+                setInvestmentPage(1);
+              }}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filter by tier" />
+                </SelectTrigger>
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="all">All Tiers</SelectItem>
+                  <SelectItem value="compass">
+                    <div className="flex items-center gap-2">
+                      <Compass className="h-4 w-4 text-amber-500" />
+                      Compass (Full)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="briefing">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      Briefing (~20p)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="snapshot">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-green-500" />
+                      Snapshot (~5p)
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
               <Badge variant="secondary">
                 {filteredInvestmentReports.length} of {investmentReports.length} reports
               </Badge>
@@ -952,6 +1035,45 @@ export default function GeneratedReports() {
                         </Button>
                       </div>
                       <ClientPDFGenerator report={report} />
+                      
+                      {/* Quick Tier Generation - Only show for Compass reports */}
+                      {report.report_tier === 'compass' && (
+                        <div className="border-t pt-3 mt-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-medium text-muted-foreground">Generate condensed versions:</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleGenerateTier(report, 'briefing')}
+                              disabled={generatingTier?.reportId === report.id}
+                              className="flex-1 text-xs"
+                            >
+                              {generatingTier?.reportId === report.id && generatingTier?.tier === 'briefing' ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : (
+                                <FileText className="mr-1 h-3 w-3 text-blue-500" />
+                              )}
+                              Briefing (~20p)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleGenerateTier(report, 'snapshot')}
+                              disabled={generatingTier?.reportId === report.id}
+                              className="flex-1 text-xs"
+                            >
+                              {generatingTier?.reportId === report.id && generatingTier?.tier === 'snapshot' ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : (
+                                <Zap className="mr-1 h-3 w-3 text-green-500" />
+                              )}
+                              Snapshot (~5p)
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
