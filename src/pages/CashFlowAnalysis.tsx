@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ interface InvestmentReport {
 type BuildTypeFilter = 'all' | 'new_build' | 'existing_property';
 
 export default function CashFlowAnalysis() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<InvestmentReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -193,7 +195,7 @@ export default function CashFlowAnalysis() {
               <p className="text-muted-foreground mb-4 max-w-md">
                 Reports need purchase price and weekly rent data configured via Manual Data Overrides before they can be analyzed.
               </p>
-              <Button onClick={() => window.location.href = '/generated-reports'}>
+              <Button onClick={() => navigate('/generated-reports')}>
                 Configure Reports
               </Button>
             </CardContent>
