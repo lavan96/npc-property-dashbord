@@ -312,6 +312,38 @@ export default function ErrorLogs() {
     });
   };
 
+  const handleRetryReport = async (reportId: string, address: string) => {
+    try {
+      // First, reset the report status to pending
+      await supabase
+        .from('investment_reports')
+        .update({ status: 'pending', error_message: null })
+        .eq('id', reportId);
+
+      // Call the edge function to regenerate
+      const { error } = await supabase.functions.invoke('generate-investment-report', {
+        body: { reportId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Report generation started",
+        description: `Retrying generation for ${address}`,
+      });
+
+      // Refresh errors list after a short delay
+      setTimeout(fetchErrors, 2000);
+    } catch (error) {
+      console.error('Retry failed:', error);
+      toast({
+        title: "Retry failed",
+        description: error instanceof Error ? error.message : "Failed to retry report generation",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Filter errors
   const filteredErrors = errors.filter(err => {
     if (selectedSource !== 'all' && err.source !== selectedSource) return false;
@@ -506,6 +538,7 @@ export default function ErrorLogs() {
             expandedErrors={expandedErrors}
             toggleExpanded={toggleExpanded}
             isLoading={isLoading}
+            onRetryReport={handleRetryReport}
           />
         </TabsContent>
 
@@ -516,6 +549,7 @@ export default function ErrorLogs() {
               expandedErrors={expandedErrors}
               toggleExpanded={toggleExpanded}
               isLoading={isLoading}
+              onRetryReport={handleRetryReport}
             />
           </TabsContent>
         ))}
@@ -529,12 +563,14 @@ function ErrorList({
   errors, 
   expandedErrors, 
   toggleExpanded,
-  isLoading 
+  isLoading,
+  onRetryReport
 }: { 
   errors: UnifiedError[]; 
   expandedErrors: Set<string>;
   toggleExpanded: (id: string) => void;
   isLoading: boolean;
+  onRetryReport: (reportId: string, address: string) => Promise<void>;
 }) {
   if (isLoading) {
     return (
@@ -564,6 +600,7 @@ function ErrorList({
           error={error} 
           isExpanded={expandedErrors.has(error.id)}
           onToggle={() => toggleExpanded(error.id)}
+          onRetryReport={onRetryReport}
         />
       ))}
     </div>
@@ -574,12 +611,15 @@ function ErrorList({
 function ErrorCard({ 
   error, 
   isExpanded, 
-  onToggle 
+  onToggle,
+  onRetryReport
 }: { 
   error: UnifiedError; 
   isExpanded: boolean;
   onToggle: () => void;
+  onRetryReport: (reportId: string, address: string) => Promise<void>;
 }) {
+  const [isRetrying, setIsRetrying] = useState(false);
   const sourceConfig = SOURCE_CONFIG[error.source];
   const severityConfig = SEVERITY_CONFIG[error.severity];
   const SourceIcon = sourceConfig.icon;
@@ -596,6 +636,18 @@ function ErrorCard({
   };
 
   const entityLink = getEntityLink();
+  const canRetry = error.entityType === 'investment_report' && error.entityId;
+
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!error.entityId) return;
+    setIsRetrying(true);
+    try {
+      await onRetryReport(error.entityId, error.entityLabel || 'Unknown address');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -634,6 +686,18 @@ function ErrorCard({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {canRetry && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-1"
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                    {isRetrying ? 'Retrying...' : 'Retry'}
+                  </Button>
+                )}
                 {entityLink && (
                   <Link to={entityLink} onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" className="gap-1">
