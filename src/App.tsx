@@ -25,6 +25,7 @@ import UserGuide from "./pages/UserGuide";
 import DataImport from './pages/DataImport';
 import Monitoring from './pages/Monitoring';
 import QualityAssurance from './pages/QualityAssurance';
+import ErrorLogs from './pages/ErrorLogs';
 import Automation from './pages/Automation';
 import EmailCopilot from './pages/EmailCopilot';
 import CallLogs from './pages/CallLogs';
@@ -73,7 +74,7 @@ const App = () => (
                 <Route path="cash-flow-analysis" element={<CashFlowAnalysis />} />
                 <Route path="report-qa" element={<ReportQA />} />
                 <Route path="investment-report/:id" element={<InvestmentReportView />} />
-                <Route path="errors" element={<div className="p-6">Errors coming soon...</div>} />
+                <Route path="errors" element={<ErrorLogs />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
