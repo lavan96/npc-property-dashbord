@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
+import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { format } from 'date-fns';
 import { Calculator, Search, Eye, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -14,11 +14,19 @@ import { useToast } from '@/hooks/use-toast';
 interface InvestmentReport {
   id: string;
   property_address: string;
+  property_listing_id: string | null;
+  report_content: string;
+  sources_content?: string | null;
   created_at: string;
+  current_version?: number;
+  report_scope?: string;
   status?: string;
   manual_overrides?: any;
   financial_calculations?: any;
+  demographics_data?: any;
+  economic_data?: any;
   investment_score?: any;
+  location_intelligence?: any;
 }
 
 type BuildTypeFilter = 'all' | 'new_build' | 'existing_property';
@@ -30,8 +38,9 @@ export default function CashFlowAnalysis() {
   const [buildTypeFilter, setBuildTypeFilter] = useState<BuildTypeFilter>('all');
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [reportViewerOpen, setReportViewerOpen] = useState(false);
+  const [viewingReport, setViewingReport] = useState<InvestmentReport | null>(null);
   
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,7 +67,7 @@ export default function CashFlowAnalysis() {
       setLoading(true);
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, created_at, status, manual_overrides, financial_calculations, investment_score')
+        .select('id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
@@ -184,7 +193,7 @@ export default function CashFlowAnalysis() {
               <p className="text-muted-foreground mb-4 max-w-md">
                 Reports need purchase price and weekly rent data configured via Manual Data Overrides before they can be analyzed.
               </p>
-              <Button onClick={() => navigate('/generated-reports')}>
+              <Button onClick={() => window.location.href = '/generated-reports'}>
                 Configure Reports
               </Button>
             </CardContent>
@@ -247,7 +256,10 @@ export default function CashFlowAnalysis() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => navigate(`/generated-reports/${report.id}`)}
+                        onClick={() => {
+                          setViewingReport(report);
+                          setReportViewerOpen(true);
+                        }}
                       >
                         <FileText className="h-4 w-4 mr-1" />
                         View Report
@@ -283,7 +295,7 @@ export default function CashFlowAnalysis() {
             if (selectedReport) {
               supabase
                 .from('investment_reports')
-                .select('id, property_address, created_at, status, manual_overrides, financial_calculations, investment_score')
+                .select('id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
                 .eq('id', selectedReport.id)
                 .single()
                 .then(({ data }) => {
@@ -291,6 +303,17 @@ export default function CashFlowAnalysis() {
                 });
             }
           }}
+        />
+
+        {/* Investment Report Viewer Modal */}
+        <InvestmentReportViewer
+          report={viewingReport}
+          isOpen={reportViewerOpen}
+          onClose={() => {
+            setReportViewerOpen(false);
+            setViewingReport(null);
+          }}
+          onReportUpdate={fetchReports}
         />
     </div>
   );
