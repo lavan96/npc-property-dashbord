@@ -108,6 +108,67 @@ interface AIAnalysis {
   callIntent: string | null;
 }
 
+// Fetch customer name from GoHighLevel using phone number
+async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name: string | null; contactId: string | null }> {
+  const ghlApiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
+  if (!ghlApiKey || !phoneNumber) {
+    console.log('[Vapi Webhook] GoHighLevel: Missing API key or phone number');
+    return { name: null, contactId: null };
+  }
+
+  try {
+    // Clean up phone number - remove spaces and ensure it has country code
+    let cleanedPhone = phoneNumber.replace(/\s+/g, '').replace(/[^\d+]/g, '');
+    
+    console.log('[Vapi Webhook] GoHighLevel: Searching for contact with phone:', cleanedPhone);
+    
+    // GoHighLevel API v2 - Search contacts by phone
+    const searchUrl = `https://services.leadconnectorhq.com/contacts/search`;
+    
+    const response = await fetch(searchUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ghlApiKey}`,
+        'Content-Type': 'application/json',
+        'Version': '2021-07-28',
+      },
+      body: JSON.stringify({
+        phone: cleanedPhone,
+        limit: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.log('[Vapi Webhook] GoHighLevel: API error:', response.status, await response.text());
+      return { name: null, contactId: null };
+    }
+
+    const data = await response.json();
+    console.log('[Vapi Webhook] GoHighLevel: Search response:', JSON.stringify(data));
+
+    if (data.contacts && data.contacts.length > 0) {
+      const contact = data.contacts[0];
+      const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
+      console.log('[Vapi Webhook] GoHighLevel: Found contact:', { 
+        id: contact.id, 
+        name: fullName,
+        firstName: contact.firstName,
+        lastName: contact.lastName 
+      });
+      return { 
+        name: fullName || contact.name || null, 
+        contactId: contact.id || null 
+      };
+    }
+
+    console.log('[Vapi Webhook] GoHighLevel: No contact found for phone:', cleanedPhone);
+  } catch (error) {
+    console.error('[Vapi Webhook] GoHighLevel: Error fetching contact:', error);
+  }
+
+  return { name: null, contactId: null };
+}
+
 // Fetch agent name from Vapi API
 async function fetchAgentName(agentId: string): Promise<string | null> {
   const vapiApiKey = Deno.env.get('VAPI_API_KEY');
@@ -649,12 +710,23 @@ serve(async (req) => {
 
     const phoneNumber = call.customer?.number || call.phoneNumber?.number || null;
     let customerName = call.customer?.name || null;
+    let ghlContactId: string | null = null;
 
     // Get agent info - for inbound squad calls, always use NPC inbound agent as primary
     const agentId = call.assistant?.id || call.assistantId || (assistantsInvolved[0]?.id) || null;
     let agentName = isInboundCall && isSquadCall 
       ? PRIMARY_INBOUND_AGENT 
       : (call.assistant?.name || (assistantsInvolved[0]?.name) || null);
+    
+    // Try to fetch customer name from GoHighLevel first (more reliable than AI extraction)
+    if (phoneNumber) {
+      const ghlResult = await fetchCustomerFromGoHighLevel(phoneNumber);
+      if (ghlResult.name) {
+        customerName = ghlResult.name;
+        ghlContactId = ghlResult.contactId;
+        console.log('[Vapi Webhook] Using customer name from GoHighLevel:', customerName);
+      }
+    }
 
     // Cost - check multiple sources
     let cost: number | null = null;
@@ -705,9 +777,10 @@ serve(async (req) => {
       if (transcript) {
         const aiAnalysis = await analyzeTranscriptWithAI(transcript, summary, isSquadCall);
         
-        // Only use AI customer name if not already set
+        // Only use AI customer name if not already set from GoHighLevel
         if (!customerName && aiAnalysis.customerName) {
           customerName = aiAnalysis.customerName;
+          console.log('[Vapi Webhook] Using customer name from AI analysis (GHL not available):', customerName);
         }
         
         sentiment = aiAnalysis.sentiment;
@@ -768,6 +841,8 @@ serve(async (req) => {
         webCallUrl: call.webCallUrl,
         aiAnalyzed: isEndOfCall && !!transcript,
         isSquadCall: isSquadCall,
+        ghlContactId: ghlContactId,
+        customerNameSource: ghlContactId ? 'gohighlevel' : (customerName ? 'ai_analysis' : 'none'),
       },
     };
 
