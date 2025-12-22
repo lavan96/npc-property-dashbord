@@ -95,10 +95,16 @@ export default function GeneratedReports() {
   const reportsPerPage = 50;
   
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
-  const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'quantitative' | 'investment' | 'comparisons'>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'investment' || tabParam === 'comparisons' || tabParam === 'quantitative') return tabParam;
+    return searchParams.get('reportId') ? 'investment' : 'quantitative';
+  });
+  const [lastHandledReportId, setLastHandledReportId] = useState<string | null>(null);
 
   // Helper function to get grade color classes
   const getGradeColor = (grade: string): string => {
@@ -169,37 +175,43 @@ export default function GeneratedReports() {
 
   // Handle deep-linking: auto-open report from URL params (e.g., /generated-reports?reportId=...)
   useEffect(() => {
-    if (loading || hasHandledDeepLink || investmentReports.length === 0) return;
-    
+    if (investmentReports.length === 0) return;
+
     const reportId = searchParams.get('reportId');
-    
-    if (reportId) {
+
+    if (reportId && reportId !== lastHandledReportId) {
+      setActiveTab('investment');
+
       const report = investmentReports.find(r => r.id === reportId);
       if (report) {
         handleViewInvestmentReport(report);
-        // Clear URL params after handling
-        setSearchParams({}, { replace: true });
       } else {
         toast({
           title: "Report not found",
           description: "The requested investment report could not be found.",
           variant: "destructive",
         });
-        setSearchParams({}, { replace: true });
       }
-      setHasHandledDeepLink(true);
-    } else {
-      // Fallback: also check localStorage for backwards compatibility
+
+      setLastHandledReportId(reportId);
+      return;
+    }
+
+    // Backwards compatibility: legacy localStorage deep-link
+    if (!reportId && lastHandledReportId === null) {
       const openReportId = localStorage.getItem('openReportId');
       if (openReportId) {
         localStorage.removeItem('openReportId');
+        setActiveTab('investment');
+
         const report = investmentReports.find(r => r.id === openReportId);
         if (report) {
           handleViewInvestmentReport(report);
+          setLastHandledReportId(openReportId);
         }
       }
     }
-  }, [loading, investmentReports, searchParams, hasHandledDeepLink]);
+  }, [investmentReports, searchParams, lastHandledReportId, toast]);
 
   useEffect(() => {
     // Listen for custom event to open a specific report
@@ -462,7 +474,7 @@ export default function GeneratedReports() {
         </div>
       </div>
 
-      <Tabs defaultValue="quantitative" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'quantitative' | 'investment' | 'comparisons')} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="quantitative" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
