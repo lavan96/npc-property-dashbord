@@ -629,12 +629,12 @@ const CallLogs = () => {
                   </Badge>
                 )}
                 {selectedSquad !== 'all' && (
-                  <Badge className="bg-purple-500/20 text-purple-400 text-xs">
+                  <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs">
                     Squad: {squads.find(s => s.id === selectedSquad)?.name}
                   </Badge>
                 )}
                 {selectedIntent !== 'all' && (
-                  <Badge className="bg-amber-500/10 text-amber-500 text-xs">
+                  <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs">
                     Intent: {selectedIntent.replace(/_/g, ' ')}
                   </Badge>
                 )}
@@ -728,7 +728,7 @@ const CallLogs = () => {
                           
                           {/* Squad badge with name */}
                           {call.is_squad_call && (
-                            <Badge className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 text-purple-400 border-purple-500/30 text-xs font-medium">
+                            <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs font-medium">
                               <Users className="w-3 h-3 mr-1" />
                               {call.squad_name || 'Squad Call'}
                             </Badge>
@@ -736,7 +736,7 @@ const CallLogs = () => {
                           
                           {/* Intent badge */}
                           {call.call_intent && (
-                            <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs">
+                            <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs">
                               <Target className="w-3 h-3 mr-1" />
                               {call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                             </Badge>
@@ -744,7 +744,7 @@ const CallLogs = () => {
                           
                           {/* Agent badge for non-squad calls */}
                           {call.agent_name && !call.is_squad_call && (
-                            <Badge variant="outline" className="text-xs">{call.agent_name}</Badge>
+                            <Badge className="bg-muted text-foreground border border-border text-xs">{call.agent_name}</Badge>
                           )}
                         </div>
                         
@@ -753,8 +753,8 @@ const CallLogs = () => {
                           <div className="flex items-center gap-1 mb-2 flex-wrap">
                             {call.assistants_involved.map((assistant, i) => (
                               <div key={assistant.id} className="flex items-center">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-xs font-medium">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                                   {assistant.name || `Agent ${i + 1}`}
                                 </span>
                                 {i < call.assistants_involved!.length - 1 && (
@@ -844,15 +844,15 @@ const CallLogs = () => {
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
-                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                      <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40">
                         <Users className="w-3 h-3 mr-1" />
                         Squad Call
                       </Badge>
                       {selectedCall.squad_name && (
-                        <Badge variant="outline">{selectedCall.squad_name}</Badge>
+                        <Badge className="bg-secondary text-secondary-foreground border border-border">{selectedCall.squad_name}</Badge>
                       )}
                       {selectedCall.call_intent && (
-                        <Badge variant="secondary">
+                        <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
                           <Target className="w-3 h-3 mr-1" />
                           {selectedCall.call_intent.replace(/_/g, ' ')}
                         </Badge>
@@ -883,12 +883,12 @@ const CallLogs = () => {
                         <div className="flex items-center gap-2 mt-1">
                           {selectedCall.call_direction === 'inbound' ? (
                             <>
-                              <PhoneIncoming className="w-4 h-4 text-green-400" />
+                              <PhoneIncoming className="w-4 h-4 text-emerald-500" />
                               <span>Inbound</span>
                             </>
                           ) : (
                             <>
-                              <PhoneOutgoing className="w-4 h-4 text-blue-400" />
+                              <PhoneOutgoing className="w-4 h-4 text-blue-500" />
                               <span>Outbound</span>
                             </>
                           )}
