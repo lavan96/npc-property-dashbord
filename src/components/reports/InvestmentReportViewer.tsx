@@ -10,7 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Maximize, Minimize, PenLine } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Maximize, Minimize, PenLine, Calculator } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 
@@ -39,6 +40,8 @@ interface InvestmentReportViewerProps {
 }
 
 export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate, onOpenOverride }: InvestmentReportViewerProps) {
+  const navigate = useNavigate();
+  
   // Early return BEFORE any hooks
   if (!report) return null;
 
@@ -336,6 +339,18 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onClose();
+                        navigate('/cash-flow-analysis');
+                      }}
+                      className="text-xs"
+                    >
+                      <Calculator className="h-3 w-3 mr-1" />
+                      Cash Flow Analysis
+                    </Button>
                     <Badge variant="secondary">
                       <FileText className="h-3 w-3 mr-1" />
                       Investment Report
