@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ type BuildTypeFilter = 'all' | 'new_build' | 'existing_property';
 
 export default function CashFlowAnalysis() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<InvestmentReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,12 +43,45 @@ export default function CashFlowAnalysis() {
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [reportViewerOpen, setReportViewerOpen] = useState(false);
   const [viewingReport, setViewingReport] = useState<InvestmentReport | null>(null);
+  const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   
   const { toast } = useToast();
 
   useEffect(() => {
     fetchReports();
   }, []);
+
+  // Handle deep-linking: auto-open report/analysis from URL params
+  useEffect(() => {
+    if (loading || hasHandledDeepLink || reports.length === 0) return;
+    
+    const reportId = searchParams.get('reportId');
+    const action = searchParams.get('action'); // 'view' or 'analyze' (default: analyze)
+    
+    if (reportId) {
+      const report = reports.find(r => r.id === reportId);
+      if (report) {
+        if (action === 'view') {
+          setViewingReport(report);
+          setReportViewerOpen(true);
+        } else {
+          // Default action is to open cash flow analysis
+          setSelectedReport(report);
+          setAnalysisModalOpen(true);
+        }
+        // Clear URL params after handling
+        setSearchParams({}, { replace: true });
+      } else {
+        toast({
+          title: "Report not found",
+          description: "The requested report could not be found or doesn't have required cash flow data.",
+          variant: "destructive",
+        });
+        setSearchParams({}, { replace: true });
+      }
+      setHasHandledDeepLink(true);
+    }
+  }, [loading, reports, searchParams, hasHandledDeepLink]);
 
   const hasRequiredData = (report: InvestmentReport) => {
     const fc = report.financial_calculations || {};

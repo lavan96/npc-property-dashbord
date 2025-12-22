@@ -343,7 +343,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       size="sm"
                       onClick={() => {
                         onClose();
-                        navigate('/cash-flow-analysis');
+                        navigate(`/cash-flow-analysis?reportId=${report.id}`);
                       }}
                       className="text-xs"
                     >
