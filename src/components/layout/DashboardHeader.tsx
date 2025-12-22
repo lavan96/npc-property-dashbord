@@ -17,37 +17,81 @@ import { useSearch } from '@/contexts/SearchContext';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationsDropdown } from './NotificationsDropdown';
 
+type Theme = 'light' | 'dark' | 'system';
+
+const getSystemTheme = () => {
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'dark';
+};
+
+const applyTheme = (theme: Theme) => {
+  const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+  if (resolvedTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  return resolvedTheme === 'dark';
+};
+
 export function DashboardHeader() {
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
+      return (localStorage.getItem('theme') as Theme) || 'system';
     }
-    return true;
+    return 'system';
   });
+  const [isDark, setIsDark] = useState(() => applyTheme(theme));
 
+  // Apply theme and listen for system preference changes
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
+    setIsDark(applyTheme(theme));
+    localStorage.setItem('theme', theme);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDark(false);
-    } else {
-      setIsDark(true);
+    // Listen for system theme changes when in system mode
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent) => {
+        setIsDark(applyTheme('system'));
+      };
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     }
-  }, []);
+  }, [theme]);
 
-  const toggleTheme = () => setIsDark(!isDark);
+  const cycleTheme = () => {
+    setTheme((current) => {
+      if (current === 'dark') return 'light';
+      if (current === 'light') return 'system';
+      return 'dark';
+    });
+  };
+
+  const getThemeIcon = () => {
+    if (theme === 'system') {
+      return isDark ? (
+        <Sun className="h-5 w-5 text-primary" />
+      ) : (
+        <Moon className="h-5 w-5 text-muted-foreground" />
+      );
+    }
+    return theme === 'dark' ? (
+      <Sun className="h-5 w-5 text-primary" />
+    ) : (
+      <Moon className="h-5 w-5 text-muted-foreground" />
+    );
+  };
+
+  const getThemeLabel = () => {
+    if (theme === 'system') return 'System';
+    return theme === 'dark' ? 'Dark' : 'Light';
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setGlobalSearchQuery(e.target.value);
@@ -94,15 +138,17 @@ export function DashboardHeader() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleTheme}
-            className="h-9 w-9 transition-transform duration-200 hover:scale-105"
+            onClick={cycleTheme}
+            className="h-9 w-9 transition-transform duration-200 hover:scale-105 relative group"
+            title={`Theme: ${getThemeLabel()}`}
           >
-            {isDark ? (
-              <Sun className="h-5 w-5 text-primary" />
-            ) : (
-              <Moon className="h-5 w-5 text-muted-foreground" />
+            <div className="transition-transform duration-300 ease-out">
+              {getThemeIcon()}
+            </div>
+            {theme === 'system' && (
+              <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
             )}
-            <span className="sr-only">Toggle theme</span>
+            <span className="sr-only">Theme: {getThemeLabel()}</span>
           </Button>
 
           <NotificationsDropdown />
