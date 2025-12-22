@@ -203,3 +203,7 @@ request_timeout = 120
 [functions.report-qa]
 verify_jwt = false
 request_timeout = 60
+
+[functions.condense-investment-report]
+verify_jwt = false
+request_timeout = 120
