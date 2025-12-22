@@ -8,134 +8,127 @@ Clean, modern admin dashboard with confidence-based color coding
 
 @layer base {
   :root {
-    /* Base colors - neutral palette */
-    --background: 0 0% 99%;
-    --foreground: 222 15% 15%;
+    /* Base colors - dark theme with gold accents */
+    --background: 0 0% 4%;
+    --foreground: 40 6% 90%;
 
     /* Cards and surfaces */
-    --card: 0 0% 100%;
-    --card-foreground: 222 15% 15%;
+    --card: 0 0% 7%;
+    --card-foreground: 40 6% 90%;
 
     /* Interactive elements */
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 15% 15%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 40 6% 90%;
 
-    /* Primary brand - slate blue */
-    --primary: 222 47% 11%;
-    --primary-foreground: 0 0% 98%;
-    --primary-hover: 222 47% 8%;
+    /* Primary brand - gold/amber */
+    --primary: 43 74% 49%;
+    --primary-foreground: 0 0% 5%;
+    --primary-hover: 43 74% 42%;
 
     /* Secondary actions */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 15% 15%;
-    --secondary-hover: 220 14% 93%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 40 6% 90%;
+    --secondary-hover: 0 0% 16%;
 
     /* Muted content */
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
 
     /* Accent highlights */
-    --accent: 220 14% 96%;
-    --accent-foreground: 222 15% 15%;
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 5%;
 
     /* Status colors for confidence levels */
     --success: 142 71% 45%;          /* High confidence >0.7 */
     --success-foreground: 0 0% 100%;
-    --success-light: 142 69% 96%;
+    --success-light: 142 69% 12%;
 
-    --warning: 38 92% 50%;           /* Medium confidence 0.5-0.7 */
-    --warning-foreground: 0 0% 100%;
-    --warning-light: 48 96% 95%;
+    --warning: 43 74% 49%;           /* Medium confidence 0.5-0.7 */
+    --warning-foreground: 0 0% 5%;
+    --warning-light: 43 74% 12%;
 
     --destructive: 0 84% 60%;        /* Low confidence <0.5 */
     --destructive-foreground: 0 0% 100%;
-    --destructive-light: 0 93% 97%;
+    --destructive-light: 0 93% 12%;
 
-    /* Chart colors - Professional vibrant palette */
-    --chart-1: 222 47% 11%;          /* Deep navy */
-    --chart-2: 142 71% 45%;          /* Emerald green */
-    --chart-3: 38 92% 50%;           /* Vibrant orange */
-    --chart-4: 271 81% 56%;          /* Purple */
-    --chart-5: 6 78% 57%;            /* Coral red */
-    --chart-6: 200 98% 39%;          /* Sky blue */
-    --chart-7: 47 96% 53%;           /* Golden yellow */
-    --chart-8: 340 82% 52%;          /* Pink */
+    /* Chart colors - Professional palette with gold accent */
+    --chart-1: 43 74% 49%;           /* Gold primary */
+    --chart-2: 43 74% 35%;           /* Darker gold */
+    --chart-3: 0 0% 45%;             /* Gray */
+    --chart-4: 142 71% 45%;          /* Green */
+    --chart-5: 0 84% 60%;            /* Red */
+    --chart-6: 200 98% 39%;          /* Blue */
+    --chart-7: 43 74% 60%;           /* Light gold */
+    --chart-8: 0 0% 60%;             /* Light gray */
     --chart-9: 168 76% 42%;          /* Teal */
-    --chart-10: 25 95% 53%;          /* Burnt orange */
+    --chart-10: 25 95% 53%;          /* Orange */
 
     /* Borders and inputs */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 222 47% 11%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 74% 49%;
 
     /* Corner radius */
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 40 6% 90%;
+    --sidebar-primary: 43 74% 49%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 40 6% 90%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 43 74% 49%;
   }
 
   .dark {
-    /* Dark mode - sophisticated dark theme */
-    --background: 222 15% 6%;
-    --foreground: 220 14% 89%;
+    /* Dark mode - same as root (already dark) */
+    --background: 0 0% 4%;
+    --foreground: 40 6% 90%;
 
-    --card: 222 15% 7%;
-    --card-foreground: 220 14% 89%;
+    --card: 0 0% 7%;
+    --card-foreground: 40 6% 90%;
 
-    --popover: 222 15% 7%;
-    --popover-foreground: 220 14% 89%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 40 6% 90%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 222 15% 6%;
-    --primary-hover: 220 14% 93%;
+    --primary: 43 74% 49%;
+    --primary-foreground: 0 0% 5%;
+    --primary-hover: 43 74% 42%;
 
-    --secondary: 220 9% 12%;
-    --secondary-foreground: 220 14% 89%;
-    --secondary-hover: 220 9% 15%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 40 6% 90%;
+    --secondary-hover: 0 0% 16%;
 
-    --muted: 220 9% 12%;
-    --muted-foreground: 220 9% 54%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 220 9% 12%;
-    --accent-foreground: 220 14% 89%;
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 5%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --success-light: 142 69% 12%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --warning-light: 48 96% 12%;
+    --warning: 43 74% 49%;
+    --warning-foreground: 0 0% 5%;
+    --warning-light: 43 74% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --destructive-light: 0 93% 12%;
 
-    --border: 220 9% 18%;
-    --input: 220 9% 18%;
-    --ring: 220 14% 89%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 74% 49%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 40 6% 90%;
+    --sidebar-primary: 43 74% 49%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 40 6% 90%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 43 74% 49%;
   }
 }
 
