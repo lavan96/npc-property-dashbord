@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,14 +10,30 @@ import { chartDataService } from '@/services/chartDataService';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
 import { useReportGenerator } from '@/hooks/useReportGenerator';
-import { AdvancedAnalytics } from '@/components/reports/AdvancedAnalytics';
-import { TemporalAnalysis } from '@/components/reports/TemporalAnalysis';
-import { GeographicAnalysis } from '@/components/reports/GeographicAnalysis';
-import { AgentPerformance } from '@/components/reports/AgentPerformance';
-import { ExecutiveInsights } from '@/components/reports/ExecutiveInsights';
-import { DataQualityAnalysis } from '@/components/reports/DataQualityAnalysis';
-import { InvestmentReportGenerator } from '@/components/reports/InvestmentReportGenerator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb } from 'lucide-react';
+
+// Lazy load heavy analytics components
+const AdvancedAnalytics = lazy(() => import('@/components/reports/AdvancedAnalytics').then(m => ({ default: m.AdvancedAnalytics })));
+const TemporalAnalysis = lazy(() => import('@/components/reports/TemporalAnalysis').then(m => ({ default: m.TemporalAnalysis })));
+const GeographicAnalysis = lazy(() => import('@/components/reports/GeographicAnalysis').then(m => ({ default: m.GeographicAnalysis })));
+const AgentPerformance = lazy(() => import('@/components/reports/AgentPerformance').then(m => ({ default: m.AgentPerformance })));
+const ExecutiveInsights = lazy(() => import('@/components/reports/ExecutiveInsights').then(m => ({ default: m.ExecutiveInsights })));
+const DataQualityAnalysis = lazy(() => import('@/components/reports/DataQualityAnalysis').then(m => ({ default: m.DataQualityAnalysis })));
+const InvestmentReportGenerator = lazy(() => import('@/components/reports/InvestmentReportGenerator').then(m => ({ default: m.InvestmentReportGenerator })));
+
+// Loading fallback component
+const ComponentLoader = () => (
+  <Card>
+    <CardContent className="p-6">
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const COLORS = [
   'hsl(var(--chart-1))', 
@@ -210,12 +226,16 @@ export default function Reports() {
 
           {/* Advanced Analytics */}
           <div ref={advancedAnalyticsRef}>
-            <AdvancedAnalytics listings={allListings} />
+            <Suspense fallback={<ComponentLoader />}>
+              <AdvancedAnalytics listings={allListings} />
+            </Suspense>
           </div>
 
           {/* Executive Insights */}
           <div ref={executiveInsightsRef}>
-            <ExecutiveInsights listings={allListings} />
+            <Suspense fallback={<ComponentLoader />}>
+              <ExecutiveInsights listings={allListings} />
+            </Suspense>
           </div>
 
           {/* Charts and Analysis */}
@@ -253,24 +273,32 @@ export default function Reports() {
 
             <TabsContent value="temporal" className="space-y-4">
               <div ref={temporalAnalysisRef}>
-                <TemporalAnalysis listings={allListings} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <TemporalAnalysis listings={allListings} />
+                </Suspense>
               </div>
             </TabsContent>
 
             <TabsContent value="geographic" className="space-y-4">
               <div ref={geographicAnalysisRef}>
-                <GeographicAnalysis listings={allListings} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <GeographicAnalysis listings={allListings} />
+                </Suspense>
               </div>
             </TabsContent>
 
             <TabsContent value="agents" className="space-y-4">
               <div ref={agentPerformanceRef}>
-                <AgentPerformance listings={allListings} />
+                <Suspense fallback={<ComponentLoader />}>
+                  <AgentPerformance listings={allListings} />
+                </Suspense>
               </div>
             </TabsContent>
 
             <TabsContent value="data-quality" className="space-y-4">
-              <DataQualityAnalysis listings={allListings} />
+              <Suspense fallback={<ComponentLoader />}>
+                <DataQualityAnalysis listings={allListings} />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="suburbs" className="space-y-4">
@@ -378,7 +406,9 @@ export default function Reports() {
         </TabsContent>
 
         <TabsContent value="investment" className="space-y-6">
-          <InvestmentReportGenerator />
+          <Suspense fallback={<ComponentLoader />}>
+            <InvestmentReportGenerator />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>
