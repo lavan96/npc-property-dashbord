@@ -6,34 +6,205 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Report tier configurations
+// Report tier configurations based on NPC report templates
 const TIER_CONFIG = {
   briefing: {
     name: 'Executive Briefing',
     targetPages: 20,
     contentRatio: 0.4, // 40% of original content
     sections: [
-      'Executive Summary',
-      'Property Overview',
-      'Location Profile',
-      'Market Performance Summary',
-      'Financial Analysis',
-      'Investment Score',
-      'Key Risks & Opportunities',
-      'Recommendation'
-    ]
+      'Location Overview',
+      'Current Market Performance',
+      'Market Activity',
+      'Population & Household Characteristics',
+      'Major Industries & Job Growth',
+      'Transport & Accessibility',
+      'Education Facilities',
+      'Healthcare & Shopping',
+      'Environmental Risks',
+      'Crime Statistics',
+      'Property-Level Information',
+      'Purchase & Ongoing Costs',
+      'Recent Comparable Sales',
+      'Recent Comparable Rentals',
+      'Financial Analysis (Yields, Loan Analysis, Sensitivity)',
+      'Property Value & Rental Projections',
+      'Investment Score Breakdown',
+      'SWOT Analysis',
+      'Top Opportunities & Risks',
+      'Investment Recommendations',
+      'Market Data Sources'
+    ],
+    structureGuide: `
+REPORT STRUCTURE (~20 PAGES):
+
+## Location Overview
+- Address being analyzed
+- SA2/SA3/SA4/LGA statistical areas
+- Suburb description (2-3 sentences)
+- Population trends (1-2 sentences)
+
+## Current Market Performance (Q3/Q4 2025)
+| Metric | Value | YoY Change |
+- Median House Price, Median Unit Price
+- Gross Rental Yield, Units Sold, Days on Market, Capital Growth
+- Source attribution
+
+## Historical Price Growth Table
+## Historical Rent Growth Table
+
+## Market Activity
+| Metric | Value | Source |
+- Active Listings, Sales Volume, Vacancy Rate
+
+## Population & Household Characteristics
+| Metric | Value | Source |
+- Employment Rate, Unemployment Rate, Labor Force
+- Median Income, IRSAD/IRSD Scores
+
+## Major Industries & Job Growth
+| Industry | Workforce % | Growth Rate |
+- Top 5 industries with growth rates
+- Job Growth Trends table
+
+## Transport & Accessibility
+| Metric | Value | Details |
+- Walk Score, CBD Commute, Public Transport Score
+
+## Education Facilities
+| Facility | Distance | Rating |
+- 5 nearest facilities
+
+## Healthcare & Shopping
+| Facility | Distance | Details |
+- Amenity Scores table
+
+## Environmental Risks
+| Risk Type | Assessment | Details |
+- Flood, Bushfire, Heatwave risks
+
+## Crime Statistics
+| Metric | Value | Comparison |
+- Crime Breakdown table
+
+## Property-Level Information
+| Property Characteristic | Value |
+- Type, Bedrooms, Bathrooms, Parking, Year Built, Estimated Value
+
+## Purchase & Ongoing Costs
+| Cost Category | Amount | Calculation |
+- All annual costs itemized
+
+## Recent Comparable Sales
+| Address | Sale Price | Sale Date | Beds/Baths |
+- 5 comparable sales
+
+## Recent Comparable Rentals
+| Address | Weekly Rent | Property Type |
+- 3-5 comparable rentals
+
+## Base Assumptions
+- Bullet list of all financial assumptions
+
+## Gross & Net Yield Calculation
+| Metric | Calculation | Value |
+
+## Loan Analysis (P&I and Interest-Only)
+| Item | Annual | Monthly |
+
+## Sensitivity Analysis
+| Scenario | Interest Rate | Annual Cashflow |
+
+## Property Value Projections
+| Year | Conservative | Base |
+- Years 1, 3, 5, 10
+
+## Rental Income Projections
+| Year | Conservative | Base |
+
+## Cumulative Cashflow Projections
+| Year | Conservative | Base |
+
+## LVR Projections
+| Scenario | Year 10 LVR |
+
+## Overall Investment Score
+- Investment Grade (letter)
+- Total Score (/100)
+- Recommendation
+
+## Investment Score Breakdown
+| Component | Weight | Score |
+- Growth, Location, Yield, Demand, Risk
+
+## SWOT Analysis
+### Strengths (4 bullet points)
+### Weaknesses (4 bullet points)
+### Opportunities (4 bullet points)
+### Threats (4 bullet points)
+
+## Top 3 Opportunities
+- Detailed paragraph for each
+
+## Top 3 Risks
+- Detailed paragraph for each
+
+## Investment Recommendations
+### Short-term Actions
+### Long-term Strategy
+### Key Considerations
+
+## Market Data Sources
+| Metric | Source | URL |
+`
   },
   snapshot: {
     name: 'Snapshot',
     targetPages: 5,
     contentRatio: 0.15, // 15% of original content
     sections: [
-      'Executive Summary',
-      'Property Overview',
+      'Property Summary',
+      'Key Market Stats',
       'Investment Score',
-      'Key Highlights',
+      'Financial Snapshot',
+      'Top Opportunities & Risks',
       'Recommendation'
-    ]
+    ],
+    structureGuide: `
+REPORT STRUCTURE (~5 PAGES):
+
+## Property Summary
+- Address, Property Type, Bedrooms/Bathrooms
+- Estimated Value, Location highlights (3 sentences max)
+
+## Key Market Stats
+| Metric | Value |
+- Median Price, Rental Yield, Vacancy Rate, Capital Growth
+- Days on Market, Walk Score
+
+## Investment Score
+- Grade: [Letter Grade]
+- Score: [X]/100
+- Recommendation: [BUY/HOLD/SELL]
+
+## Score Breakdown (simplified)
+| Component | Score |
+- Growth, Location, Yield, Demand, Risk
+
+## Financial Snapshot
+| Metric | Value |
+- Purchase Price, Weekly Rent, Gross Yield, Net Yield
+- Annual Cashflow, 10-Year Projected Value
+
+## Top 3 Opportunities
+- Brief bullet points (1-2 sentences each)
+
+## Top 3 Risks
+- Brief bullet points (1-2 sentences each)
+
+## Quick Recommendation
+- 2-3 sentences summarizing the investment thesis
+`
   }
 };
 
@@ -151,40 +322,51 @@ serve(async (req) => {
     // Get the tier configuration
     const tierConfig = TIER_CONFIG[targetTier];
 
-    // Build the condensation prompt
-    const systemPrompt = `You are an expert investment property analyst. Your task is to condense a comprehensive property investment report into a ${tierConfig.name} format.
+    // Build the condensation prompt using the structure guide
+    const systemPrompt = `You are an expert investment property analyst for Naidu Property Consulting Services. Your task is to condense a comprehensive property investment report into a ${tierConfig.name} format.
 
 CRITICAL REQUIREMENTS:
-1. Maintain the EXACT SAME section structure and formatting as the original report
-2. Use the SAME markdown heading styles (##, ###, etc.)
-3. Preserve all numerical data, statistics, and key facts
-4. Keep the same professional tone and language
-5. Remove redundant explanations and verbose descriptions
+1. Follow the EXACT structure template provided below
+2. Use markdown heading styles (##, ###) consistently
+3. Preserve ALL numerical data, statistics, percentages, and key facts EXACTLY as they appear
+4. Keep all tables in proper markdown format with | pipes
+5. Remove verbose descriptions while keeping essential insights
 6. Focus on the most critical information for investors
-7. Target approximately ${tierConfig.targetPages} pages of content (roughly ${Math.round(tierConfig.contentRatio * 100)}% of original)
+7. Target approximately ${tierConfig.targetPages} pages of content
 
-SECTIONS TO INCLUDE:
-${tierConfig.sections.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+REQUIRED REPORT STRUCTURE:
+${tierConfig.structureGuide}
+
+FORMATTING RULES:
+- Use ## for main section headings
+- Use ### for subsections within a section
+- Use proper markdown tables with headers and alignment
+- Use bullet points for lists
+- Include source attributions where data is cited
+- Keep the same professional tone as the original
 
 OUTPUT REQUIREMENTS:
-- Start directly with the content (no preamble)
-- Maintain all tables and key data points
-- Keep investment scores and ratings exactly as they appear
-- Preserve any warnings, risks, or red flags
-- End with a clear recommendation section`;
+- Start directly with the first section (no preamble or introduction)
+- Maintain all tables with proper markdown formatting
+- Keep investment scores and ratings EXACTLY as they appear in the original
+- Preserve all warnings, risks, red flags, and recommendations
+- Include source citations for all data points
+- End with the Market Data Sources section`;
 
-    const userPrompt = `Please condense the following comprehensive investment report into a ${tierConfig.name} format:
+    const userPrompt = `Please condense the following comprehensive investment report into a ${tierConfig.name} format (~${tierConfig.targetPages} pages).
+
+Use the structure template from the system prompt and extract the relevant data from this report:
 
 ---
-ORIGINAL REPORT:
+ORIGINAL COMPREHENSIVE REPORT:
 ${parentReport.report_content}
 ---
 
-Remember:
-- Keep the same section headings and structure
-- Preserve all key numbers, percentages, and scores
-- Focus on the most actionable insights
-- Target ~${tierConfig.targetPages} pages of content`;
+IMPORTANT:
+- Copy all numerical values, percentages, and scores EXACTLY
+- Keep all table data intact
+- Follow the section structure precisely
+- Maintain professional formatting throughout`;
 
     // Call Lovable AI to condense the report
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
