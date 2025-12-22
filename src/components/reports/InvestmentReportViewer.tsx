@@ -314,7 +314,12 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
         <DialogContent className={`${isFullscreen ? 'max-w-[98vw] max-h-[98vh]' : 'max-w-[90vw] max-h-[90vh]'} overflow-hidden flex flex-col transition-all duration-300`}>
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
