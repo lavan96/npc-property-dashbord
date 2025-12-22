@@ -7,9 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
-import { InvestmentReportViewer } from '@/components/reports/InvestmentReportViewer';
 import { format } from 'date-fns';
-import { Calculator, Search, Eye, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home } from 'lucide-react';
+import { Calculator, Search, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface InvestmentReport {
@@ -41,8 +40,6 @@ export default function CashFlowAnalysis() {
   const [buildTypeFilter, setBuildTypeFilter] = useState<BuildTypeFilter>('all');
   const [selectedReport, setSelectedReport] = useState<InvestmentReport | null>(null);
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
-  const [reportViewerOpen, setReportViewerOpen] = useState(false);
-  const [viewingReport, setViewingReport] = useState<InvestmentReport | null>(null);
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   
   const { toast } = useToast();
@@ -292,10 +289,7 @@ export default function CashFlowAnalysis() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => {
-                          setViewingReport(report);
-                          setReportViewerOpen(true);
-                        }}
+                        onClick={() => navigate(`/generated-reports?reportId=${report.id}`)}
                       >
                         <FileText className="h-4 w-4 mr-1" />
                         View Report
@@ -341,16 +335,6 @@ export default function CashFlowAnalysis() {
           }}
         />
 
-        {/* Investment Report Viewer Modal */}
-        <InvestmentReportViewer
-          report={viewingReport}
-          isOpen={reportViewerOpen}
-          onClose={() => {
-            setReportViewerOpen(false);
-            setViewingReport(null);
-          }}
-          onReportUpdate={fetchReports}
-        />
     </div>
   );
 }

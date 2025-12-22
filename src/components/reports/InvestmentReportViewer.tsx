@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { format } from 'date-fns';
 import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Maximize, Minimize, PenLine, Calculator } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 
@@ -469,28 +470,45 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               <Separator className="flex-shrink-0" />
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="p-4 border-b bg-muted/50 flex-shrink-0">
-                  <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
+                  <ErrorBoundary
+                    fallback={
+                      <div className="text-sm text-muted-foreground">
+                        PDF tools are unavailable for this report.
+                      </div>
+                    }
+                  >
+                    <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
+                  </ErrorBoundary>
                 </div>
                 <ScrollArea className="flex-1 min-h-0 p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={markdownComponents}
+                    <ErrorBoundary
+                      fallback={
+                        <div className="rounded-md border border-border bg-muted/40 p-4">
+                          <div className="text-sm font-medium text-foreground">Report content couldn’t be displayed.</div>
+                          <div className="mt-1 text-sm text-muted-foreground">You can still download the raw report text.</div>
+                          <div className="mt-3">
+                            <Button variant="outline" size="sm" onClick={handleDownload}>
+                              <Download className="h-3 w-3 mr-1" />
+                              Download raw text
+                            </Button>
+                          </div>
+                        </div>
+                      }
                     >
-                      {reportContentWithBadges}
-                    </ReactMarkdown>
-                    
-                    {/* Show sources if they exist */}
-                    {report.sources_content && (
-                      <div className="mt-8 border-t pt-6">
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={markdownComponents}
-                        >
-                          {report.sources_content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                        {reportContentWithBadges}
+                      </ReactMarkdown>
+
+                      {/* Show sources if they exist */}
+                      {report.sources_content && (
+                        <div className="mt-8 border-t pt-6">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            {report.sources_content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                    </ErrorBoundary>
                   </div>
                 </ScrollArea>
               </CardContent>
