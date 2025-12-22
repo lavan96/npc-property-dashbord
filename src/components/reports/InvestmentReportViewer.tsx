@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
+import { TierBadge, type ReportTier } from './TierBadge';
+import { TierSwitcher } from './TierSwitcher';
 
 interface InvestmentReport {
   id: string;
@@ -24,6 +26,8 @@ interface InvestmentReport {
   sources_content?: string | null;
   created_at: string;
   status?: string;
+  report_tier?: ReportTier;
+  parent_report_id?: string | null;
   manual_overrides?: any;
   financial_calculations?: any;
   demographics_data?: any;
@@ -38,15 +42,18 @@ interface InvestmentReportViewerProps {
   onClose: () => void;
   onReportUpdate?: () => void;
   onOpenOverride?: () => void;
+  onTierSwitch?: (newReportId: string, newTier: ReportTier) => void;
 }
 
-export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate, onOpenOverride }: InvestmentReportViewerProps) {
+export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate, onOpenOverride, onTierSwitch }: InvestmentReportViewerProps) {
   const navigate = useNavigate();
   const [editorOpen, setEditorOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  const currentTier = (report?.report_tier || 'compass') as ReportTier;
   
   // Early return after all hooks
   if (!report) return null;
@@ -344,6 +351,12 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <TierSwitcher
+                      reportId={report.id}
+                      currentTier={currentTier}
+                      parentReportId={report.parent_report_id}
+                      onTierSwitch={onTierSwitch}
+                    />
                     <Button
                       variant="outline"
                       size="sm"
@@ -356,10 +369,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       <Calculator className="h-3 w-3 mr-1" />
                       Cash Flow Analysis
                     </Button>
-                    <Badge variant="secondary">
-                      <FileText className="h-3 w-3 mr-1" />
-                      Investment Report
-                    </Badge>
+                    <TierBadge tier={currentTier} />
                     {hasOverrides && (
                       <Badge variant="default" className="bg-primary">
                         <AlertCircle className="h-3 w-3 mr-1" />

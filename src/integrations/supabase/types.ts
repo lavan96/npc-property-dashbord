@@ -1045,12 +1045,14 @@ export type Database = {
           investment_score: Json | null
           location_intelligence: Json | null
           manual_overrides: Json | null
+          parent_report_id: string | null
           pdf_url: string | null
           property_address: string
           property_listing_id: string | null
           property_specs: Json | null
           report_content: string
           report_scope: string | null
+          report_tier: string
           sources_content: string | null
           status: string
           updated_at: string
@@ -1070,12 +1072,14 @@ export type Database = {
           investment_score?: Json | null
           location_intelligence?: Json | null
           manual_overrides?: Json | null
+          parent_report_id?: string | null
           pdf_url?: string | null
           property_address: string
           property_listing_id?: string | null
           property_specs?: Json | null
           report_content: string
           report_scope?: string | null
+          report_tier?: string
           sources_content?: string | null
           status?: string
           updated_at?: string
@@ -1095,12 +1099,14 @@ export type Database = {
           investment_score?: Json | null
           location_intelligence?: Json | null
           manual_overrides?: Json | null
+          parent_report_id?: string | null
           pdf_url?: string | null
           property_address?: string
           property_listing_id?: string | null
           property_specs?: Json | null
           report_content?: string
           report_scope?: string | null
+          report_tier?: string
           sources_content?: string | null
           status?: string
           updated_at?: string
@@ -1112,6 +1118,13 @@ export type Database = {
             columns: ["generated_by"]
             isOneToOne: false
             referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investment_reports_parent_report_id_fkey"
+            columns: ["parent_report_id"]
+            isOneToOne: false
+            referencedRelation: "investment_reports"
             referencedColumns: ["id"]
           },
         ]
