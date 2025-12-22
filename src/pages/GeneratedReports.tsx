@@ -883,7 +883,7 @@ export default function GeneratedReports() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => handleViewInvestmentReport(report)}
+                          onClick={() => navigate(`/investment-report/${report.id}`)}
                           className="flex-1"
                         >
                           <Eye className="mr-1 h-3 w-3" />
