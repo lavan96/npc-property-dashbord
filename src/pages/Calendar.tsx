@@ -1,6 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import type { DragEvent } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, Plus } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,14 +9,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
-import { QuickAddAppointmentModal } from '@/components/calendar/QuickAddAppointmentModal';
 import { CalendarSearchDropdown } from '@/components/calendar/CalendarSearchDropdown';
-import { useToast } from '@/hooks/use-toast';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, setHours, setMinutes, differenceInMinutes, addMinutes } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours } from 'date-fns';
 
 export default function Calendar() {
-  const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, rescheduleEvent, createAppointment, fetchContact, getCalendarColor } = useGHLCalendar();
-  const { toast } = useToast();
+  const { calendars, events, contactCache, isLoading, error, fetchCalendarData, fetchContact, getCalendarColor } = useGHLCalendar();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -25,11 +21,7 @@ export default function Calendar() {
   const [view, setView] = useState<'month' | 'week'>('month');
   const [selectedEvent, setSelectedEvent] = useState<GHLEvent | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [draggedEvent, setDraggedEvent] = useState<GHLEvent | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ day: Date; hour?: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [quickAddDefaults, setQuickAddDefaults] = useState<{ date?: Date; hour?: number }>({});
 
   useEffect(() => {
     fetchCalendarData();
@@ -49,12 +41,10 @@ export default function Calendar() {
   const filteredEvents = useMemo(() => {
     let filtered = events;
 
-    // Filter by calendar
     if (selectedCalendarId !== 'all') {
       filtered = filtered.filter((event) => event.calendarId === selectedCalendarId);
     }
 
-    // Filter by search query (title includes contact name typically)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -132,105 +122,11 @@ export default function Calendar() {
     }
   };
 
-  const getCalendarTypeIcon = (calendarType: string) => {
-    switch (calendarType) {
-      case 'round_robin': return <Users className="h-3 w-3" />;
-      case 'personal': return <CalendarIcon className="h-3 w-3" />;
-      default: return <CalendarIcon className="h-3 w-3" />;
-    }
-  };
-
   const handleEventClick = (event: GHLEvent) => {
     setSelectedEvent(event);
     setEventModalOpen(true);
   };
 
-  // Drag and Drop handlers
-  const handleDragStart = (e: DragEvent<HTMLDivElement>, event: GHLEvent) => {
-    e.dataTransfer.setData('text/plain', event.id);
-    e.dataTransfer.effectAllowed = 'move';
-    setDraggedEvent(event);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedEvent(null);
-    setDropTarget(null);
-  };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>, day: Date, hour?: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDropTarget({ day, hour });
-  };
-
-  const handleDragLeave = () => {
-    setDropTarget(null);
-  };
-
-  const handleDrop = async (e: DragEvent<HTMLDivElement>, day: Date, hour?: number) => {
-    e.preventDefault();
-    setDropTarget(null);
-
-    if (!draggedEvent) return;
-
-    const originalStart = safeParseISO(draggedEvent.startTime);
-    const originalEnd = safeParseISO(draggedEvent.endTime);
-    if (!originalStart || !originalEnd) {
-      toast({
-        title: 'Unable to reschedule',
-        description: 'This appointment has an invalid date/time value.',
-        variant: 'destructive',
-      });
-      setDraggedEvent(null);
-      return;
-    }
-
-    const durationMinutes = differenceInMinutes(originalEnd, originalStart);
-
-    let newStart: Date;
-    if (hour !== undefined) {
-      // Week view - drop on specific hour
-      newStart = setMinutes(setHours(day, hour), originalStart.getMinutes());
-    } else {
-      // Month view - keep same time, change day
-      newStart = setMinutes(setHours(day, getHours(originalStart)), originalStart.getMinutes());
-    }
-    const newEnd = addMinutes(newStart, durationMinutes);
-
-    const eventTitle = draggedEvent.title || 'Event';
-    const originalTimeStr = format(originalStart, 'MMM d, h:mm a');
-
-    // Call API to reschedule with original times for undo
-    const result = await rescheduleEvent(
-      draggedEvent.id,
-      newStart.toISOString(),
-      newEnd.toISOString(),
-      draggedEvent.startTime,
-      draggedEvent.endTime
-    );
-
-    if (result.success && result.undo) {
-      toast({
-        title: 'Event rescheduled',
-        description: `"${eventTitle}" moved from ${originalTimeStr}`,
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await result.undo?.();
-            }}
-          >
-            Undo
-          </Button>
-        ),
-      });
-    }
-
-    setDraggedEvent(null);
-  };
-
-  // Get event style with calendar color
   const getEventStyle = (event: GHLEvent) => {
     const color = event.calendarColor || getCalendarColor(event.calendarId);
     return {
@@ -262,7 +158,7 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
-      {/* Event Details Modal */}
+      {/* Event Details Modal (Read-Only) */}
       <EventDetailsModal 
         event={selectedEvent}
         open={eventModalOpen}
@@ -271,28 +167,13 @@ export default function Calendar() {
         fetchContact={fetchContact}
       />
 
-      {/* Quick Add Appointment Modal */}
-      <QuickAddAppointmentModal
-        open={quickAddOpen}
-        onOpenChange={setQuickAddOpen}
-        calendars={calendars}
-        defaultDate={quickAddDefaults.date}
-        defaultHour={quickAddDefaults.hour}
-        isLoading={isUpdating}
-        onSubmit={async (data) => {
-          const result = await createAppointment(data);
-          return result.success;
-        }}
-      />
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-muted-foreground">GoHighLevel Appointments & Schedule</p>
+          <p className="text-muted-foreground">GoHighLevel Appointments (Read-Only)</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Enhanced Search Dropdown */}
           <CalendarSearchDropdown
             events={events}
             contactCache={contactCache}
@@ -339,14 +220,6 @@ export default function Calendar() {
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
-      </div>
-
-      {/* Quick Add Button + Refresh */}
-      <div className="flex items-center gap-2">
-        <Button onClick={() => { setQuickAddDefaults({}); setQuickAddOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Appointment
-        </Button>
       </div>
 
       {/* Stats Row */}
@@ -484,21 +357,16 @@ export default function Calendar() {
                     const dayEvents = getEventsForDay(day);
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
                     const isCurrentMonth = isSameMonth(day, currentMonth);
-                    const isDropping = dropTarget && isSameDay(day, dropTarget.day) && dropTarget.hour === undefined;
                     
                     return (
                       <div
                         key={day.toISOString()}
                         onClick={() => setSelectedDate(day)}
-                        onDragOver={(e) => handleDragOver(e, day)}
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, day)}
                         className={`
                           min-h-[80px] p-1 rounded-md border text-left transition-colors cursor-pointer
                           ${isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50'}
                           ${!isCurrentMonth ? 'opacity-40' : ''}
                           ${isToday(day) ? 'ring-1 ring-primary' : ''}
-                          ${isDropping ? 'bg-primary/20 border-primary border-dashed' : ''}
                         `}
                       >
                         <div className={`text-xs font-medium mb-1 ${isToday(day) ? 'text-primary' : ''}`}>
@@ -508,17 +376,13 @@ export default function Calendar() {
                           {dayEvents.slice(0, 3).map(event => (
                             <div 
                               key={event.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, event)}
-                              onDragEnd={handleDragEnd}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEventClick(event);
                               }}
                               style={getEventStyle(event)}
-                              className="text-[10px] truncate px-1 py-0.5 rounded cursor-grab active:cursor-grabbing hover:opacity-80 flex items-center gap-0.5"
+                              className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
                             >
-                              <GripVertical className="h-2 w-2 opacity-50 shrink-0" />
                               {format(parseISO(event.startTime), 'HH:mm')}
                             </div>
                           ))}
@@ -561,33 +425,19 @@ export default function Calendar() {
                         </div>
                         {weekDays.map(day => {
                           const hourEvents = getEventsForDayAndHour(day, hour);
-                          const isDropping = dropTarget && isSameDay(day, dropTarget.day) && dropTarget.hour === hour;
                           return (
                             <div 
                               key={`${day.toISOString()}-${hour}`}
-                              onDragOver={(e) => handleDragOver(e, day, hour)}
-                              onDragLeave={handleDragLeave}
-                              onDrop={(e) => handleDrop(e, day, hour)}
-                              onClick={() => {
-                                if (hourEvents.length === 0) {
-                                  setQuickAddDefaults({ date: day, hour });
-                                  setQuickAddOpen(true);
-                                }
-                              }}
-                              className={`min-h-[48px] border-l border-border/30 px-1 py-0.5 transition-colors cursor-pointer hover:bg-muted/30 ${isDropping ? 'bg-primary/20' : ''}`}
+                              className="min-h-[48px] border-l border-border/30 px-1 py-0.5"
                             >
                               {hourEvents.map(event => (
                                 <div
                                   key={event.id}
-                                  draggable
-                                  onDragStart={(e) => handleDragStart(e, event)}
-                                  onDragEnd={handleDragEnd}
                                   onClick={() => handleEventClick(event)}
                                   style={getEventStyle(event)}
-                                  className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+                                  className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-pointer hover:opacity-80 transition-opacity"
                                 >
-                                  <div className="font-medium truncate flex items-center gap-0.5">
-                                    <GripVertical className="h-2 w-2 opacity-50 shrink-0" />
+                                  <div className="font-medium truncate">
                                     {event.title || 'Event'}
                                   </div>
                                   <div className="opacity-75">{format(parseISO(event.startTime), 'h:mm a')}</div>
