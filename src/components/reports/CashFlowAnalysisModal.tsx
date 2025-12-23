@@ -148,9 +148,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
   const [includeConstructionScheduleInExport, setIncludeConstructionScheduleInExport] = useState(true);
   
-  // Construction Schedule Preset Mode: 'standard' | 'even' | 'custom'
-  type SchedulePreset = 'standard' | 'even' | 'custom';
-  const [schedulePreset, setSchedulePreset] = useState<SchedulePreset>('standard');
+  // Construction Schedule Preset Mode: 'rapid' | 'even' | 'custom'
+  type SchedulePreset = 'rapid' | 'even' | 'custom';
+  const [schedulePreset, setSchedulePreset] = useState<SchedulePreset>('rapid');
   
   // Custom stage month positions (for 'custom' mode) - stage index (0-5) to month number
   // Default: month 2-7 for stages 1-6
@@ -188,6 +188,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setComparisonReports([]);
       setAiAnalysis(null);
       setSavedAnalysisId(null);
+      
+      // Load construction stage timing preset from manual_overrides
+      setSchedulePreset(report.manual_overrides?.schedulePreset || 'rapid');
+      setCustomStageMonths(report.manual_overrides?.customStageMonths || {
+        0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7
+      });
     }
   }, [report, isOpen]);
 
@@ -877,8 +883,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
     // Determine stage months based on preset
     const getStageMonths = (): number[] => {
-      if (schedulePreset === 'standard') {
-        // Standard: stages at months 2-7 (fixed)
+      if (schedulePreset === 'rapid') {
+        // Rapid: stages at months 2-7 (fixed)
         return [2, 3, 4, 5, 6, 7];
       } else if (schedulePreset === 'even') {
         // Even distribution: spread 6 stages across (durationMonths - 1) months
@@ -3743,19 +3749,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <div className="flex flex-wrap items-center gap-4 mb-4 p-3 bg-muted/20 rounded-lg border">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">Schedule Mode:</span>
-                          <Select value={schedulePreset} onValueChange={(value: 'standard' | 'even' | 'custom') => setSchedulePreset(value)}>
+                          <Select value={schedulePreset} onValueChange={(value: 'rapid' | 'even' | 'custom') => setSchedulePreset(value)}>
                             <SelectTrigger className="w-[180px]">
                               <SelectValue placeholder="Select mode" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="standard">Standard (Months 2-7)</SelectItem>
+                              <SelectItem value="rapid">Rapid Build (Months 2-7)</SelectItem>
                               <SelectItem value="even">Even Distribution</SelectItem>
                               <SelectItem value="custom">Custom Positioning</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {schedulePreset === 'standard' && 'Stages are fixed at months 2-7. Additional months show interest-only rows.'}
+                          {schedulePreset === 'rapid' && 'Stages are fixed at months 2-7. Additional months show interest-only rows.'}
                           {schedulePreset === 'even' && `Stages are evenly distributed across ${constructionProgressSchedule.durationMonths} months.`}
                           {schedulePreset === 'custom' && 'Customize which month each stage occurs. Click on the month column to edit.'}
                         </span>

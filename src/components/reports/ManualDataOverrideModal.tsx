@@ -60,6 +60,21 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   // Active tab state
   const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
   
+  // Construction Schedule Preset Mode: 'rapid' | 'even' | 'custom'
+  type SchedulePreset = 'rapid' | 'even' | 'custom';
+  const [schedulePreset, setSchedulePreset] = useState<SchedulePreset>('rapid');
+  
+  // Custom stage month positions (for 'custom' mode) - stage index (0-5) to month number
+  // Stages: 0=Deposit, 1=Slab, 2=Frame, 3=Lock-up, 4=Fixing, 5=Completion
+  const [customStageMonths, setCustomStageMonths] = useState<{ [stageIndex: number]: number }>({
+    0: 2, // Deposit
+    1: 3, // Slab/Base
+    2: 4, // Frame
+    3: 5, // Lock-up
+    4: 6, // Fixing
+    5: 7, // Practical Completion
+  });
+  
   // Depreciation Schedule Builder state
   const [showDepreciationSchedule, setShowDepreciationSchedule] = useState(false);
   const [depreciationMethod, setDepreciationMethod] = useState<'prime_cost' | 'diminishing_value'>('prime_cost');
@@ -610,6 +625,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       setYear1Depreciation(existingSchedule[1] || report.manual_overrides?.depreciation || 0);
       setDepreciationMethod(report.manual_overrides?.depreciationMethod || 'prime_cost');
       
+      // Initialize construction stage timing preset
+      setSchedulePreset(report.manual_overrides?.schedulePreset || 'rapid');
+      setCustomStageMonths(report.manual_overrides?.customStageMonths || {
+        0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7
+      });
+      
       setHasChanges(false);
     }
   }, [report, isOpen]);
@@ -944,11 +965,13 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       
       console.log('📊 Recalculated totalAnnual:', mergedFinancialData.annualCosts.totalAnnual);
       
-      // Save overrides with cash flow field toggles and depreciation master toggle
+      // Save overrides with cash flow field toggles, depreciation master toggle, and stage timing
       const overridesWithToggles = {
         ...overrides,
         cashFlowFieldToggles,
-        includeDepreciationInCashFlow
+        includeDepreciationInCashFlow,
+        schedulePreset,
+        customStageMonths
       };
 
       console.log('💾 Preparing to save overrides:', {
@@ -1491,6 +1514,105 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                           </div>
                         ))}
                       </div>
+                    </div>
+                    
+                    {/* Construction Stage Timing Distribution */}
+                    <Separator className="my-6" />
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        Construction Stage Timing
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Control when each construction stage occurs during the build period. Land interest is always Month 1.
+                      </p>
+                      
+                      {/* Preset Selector */}
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-sm font-medium">Distribution Preset</Label>
+                        <Select 
+                          value={schedulePreset} 
+                          onValueChange={(value: 'rapid' | 'even' | 'custom') => {
+                            setSchedulePreset(value);
+                            setHasChanges(true);
+                            // Reset custom months to defaults when switching to even
+                            if (value === 'even') {
+                              const durationMonths = overrides.constructionDurationMonths || 7;
+                              const numStages = 6;
+                              const newMonths: { [key: number]: number } = {};
+                              for (let i = 0; i < numStages; i++) {
+                                const month = Math.round(2 + (i * (durationMonths - 2)) / Math.max(1, numStages - 1));
+                                newMonths[i] = Math.min(month, durationMonths);
+                              }
+                              setCustomStageMonths(newMonths);
+                            } else if (value === 'rapid') {
+                              setCustomStageMonths({ 0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7 });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full bg-background">
+                            <SelectValue placeholder="Select distribution preset" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            <SelectItem value="rapid">Rapid Build (7 months)</SelectItem>
+                            <SelectItem value="even">Even Distribution</SelectItem>
+                            <SelectItem value="custom">Custom (Manual)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-xs text-muted-foreground">
+                          {schedulePreset === 'rapid' && 'All stages compressed into months 2-7. Additional months show interest-only rows.'}
+                          {schedulePreset === 'even' && `Stages evenly distributed from month 2 to month ${overrides.constructionDurationMonths || 7}.`}
+                          {schedulePreset === 'custom' && 'Manually set which month each stage occurs.'}
+                        </span>
+                      </div>
+                      
+                      {/* Custom Stage Month Selection */}
+                      {schedulePreset === 'custom' && (
+                        <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { index: 0, label: 'Deposit' },
+                              { index: 1, label: 'Slab/Base' },
+                              { index: 2, label: 'Frame' },
+                              { index: 3, label: 'Lock-up' },
+                              { index: 4, label: 'Fixing' },
+                              { index: 5, label: 'Completion' },
+                            ].map(({ index, label }) => {
+                              const durationMonths = overrides.constructionDurationMonths || 24;
+                              return (
+                                <div key={index} className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">{label}</Label>
+                                  <Select 
+                                    value={String(customStageMonths[index] || (index + 2))}
+                                    onValueChange={(value) => {
+                                      setCustomStageMonths(prev => ({
+                                        ...prev,
+                                        [index]: parseInt(value, 10)
+                                      }));
+                                      setHasChanges(true);
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full h-9 bg-background">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-background z-50">
+                                      {Array.from({ length: durationMonths - 1 }, (_, i) => i + 2).map(month => (
+                                        <SelectItem key={month} value={String(month)}>
+                                          Month {month}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+                            Note: Month 1 is reserved for Land Interest Charge. Stages can occur in the same month.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
