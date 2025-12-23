@@ -51,7 +51,7 @@ const navigationItems = [
 const adminItems = [
   { title: 'Automation', url: '/automation', icon: Zap },
   { title: 'Templates', url: '/templates', icon: FileStack },
-  { title: 'White Labelling', url: '/white-label', icon: Palette },
+  { title: 'Branding', url: '/branding', icon: Palette },
   { title: 'Monitoring', url: '/monitoring', icon: Activity },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck },
   { title: 'Data Import', url: '/data-import', icon: Upload },
