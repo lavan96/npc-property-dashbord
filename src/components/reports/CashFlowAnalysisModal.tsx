@@ -878,35 +878,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
     const stageResults: ConstructionStage[] = [landInterestRow];
 
-    // Distribute stages across available months (months 2 to durationMonths)
-    // We have 6 stages to fit into (durationMonths - 1) months
-    const availableMonths = durationMonths - 1; // Exclude month 1 (land interest only)
-    const numStages = baseStages.length;
-    
-    // Calculate how many months each stage should span
-    // For example, if 12 months with 6 stages = 2 months per stage
-    // If 7 months with 6 stages = some stages get 1 month, some get 2
-    const monthsPerStage = availableMonths / numStages;
-    
+    // Add the 6 standard build stages (months 2-7)
     baseStages.forEach((s, index) => {
       const buildAmount = (buildPrice * s.percentage) / 100;
       cumulativeDrawn += buildAmount;
-      
-      // Calculate the month for this stage
-      // Distribute stages evenly across available months
-      const stageMonth = Math.round((index + 1) * monthsPerStage) + 1;
       
       // Build interest is calculated on cumulative drawn amount
       const buildInterest = cumulativeDrawn * monthlyRate;
       const combinedRepayment = monthlyLandInterest + buildInterest;
       
-      // Calculate how many months this stage spans for total interest
-      const prevMonth = index === 0 ? 1 : Math.round(index * monthsPerStage) + 1;
-      const monthsInStage = stageMonth - prevMonth;
-      
-      // Add interest for all months in this stage
-      totalBuildInterest += buildInterest * Math.max(1, monthsInStage);
-      totalCombinedRepayment += combinedRepayment * Math.max(1, monthsInStage);
+      totalBuildInterest += buildInterest;
+      totalCombinedRepayment += combinedRepayment;
 
       stageResults.push({
         stage: s.stage,
@@ -917,9 +899,33 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         landInterest: Math.round(monthlyLandInterest * 100) / 100,
         buildInterest: Math.round(buildInterest * 100) / 100,
         totalMonthlyInterest: Math.round(combinedRepayment * 100) / 100,
-        month: stageMonth,
+        month: index + 2, // Month 2-7 for build stages
       });
     });
+
+    // If construction duration exceeds 7 months, add additional rows for months 8+
+    // These rows have no stage info but continue interest accumulation
+    if (durationMonths > 7) {
+      const finalBuildInterest = cumulativeDrawn * monthlyRate; // Interest on fully drawn amount
+      const finalCombinedRepayment = monthlyLandInterest + finalBuildInterest;
+      
+      for (let month = 8; month <= durationMonths; month++) {
+        totalBuildInterest += finalBuildInterest;
+        totalCombinedRepayment += finalCombinedRepayment;
+
+        stageResults.push({
+          stage: '', // Empty - no stage for these months
+          description: '', // Empty
+          percentage: 0, // Empty (will show as blank)
+          buildAmount: 0, // Empty (will show as blank)
+          cumulativeDrawn: Math.round(cumulativeDrawn * 100) / 100, // Same as final
+          landInterest: Math.round(monthlyLandInterest * 100) / 100,
+          buildInterest: Math.round(finalBuildInterest * 100) / 100,
+          totalMonthlyInterest: Math.round(finalCombinedRepayment * 100) / 100,
+          month: month,
+        });
+      }
+    }
 
     // Upfront costs
     const tenPercentLand = landPrice * 0.10;
@@ -3717,10 +3723,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <TableBody>
                           {constructionProgressSchedule.stages.map((stage, idx) => (
                             <TableRow key={idx} className={idx === 0 ? 'bg-muted/20' : ''}>
-                              <TableCell className="font-medium">{stage.stage}</TableCell>
-                              <TableCell className="text-muted-foreground text-sm">{stage.description}</TableCell>
+                              <TableCell className="font-medium">{stage.stage || ''}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{stage.description || ''}</TableCell>
                               <TableCell className="text-center">{stage.percentage > 0 ? `${stage.percentage}%` : ''}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(stage.buildAmount)}</TableCell>
+                              <TableCell className="text-right">{stage.buildAmount > 0 ? formatCurrency(stage.buildAmount) : ''}</TableCell>
                               <TableCell className="text-right">{formatCurrency(stage.landInterest)}</TableCell>
                               <TableCell className="text-right">{stage.buildInterest > 0 ? formatCurrency(stage.buildInterest) : ''}</TableCell>
                               <TableCell className="text-right font-medium">{formatCurrency(stage.totalMonthlyInterest)}</TableCell>
