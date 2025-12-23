@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
+export type ThemeMode = 'light' | 'dark' | 'system';
+
 export interface WhiteLabelSettings {
   authLogo: string | null;
   sidebarLogo: string | null;
@@ -8,12 +10,14 @@ export interface WhiteLabelSettings {
   companyName: string;
   primaryColor: string | null; // HSL format: "43 74% 49%"
   accentColor: string | null;
+  darkModeDefault: ThemeMode;
 }
 
 interface WhiteLabelContextType {
   settings: WhiteLabelSettings;
   updateSettings: (newSettings: Partial<WhiteLabelSettings>) => void;
   isLoading: boolean;
+  currentTheme: 'light' | 'dark';
 }
 
 const defaultSettings: WhiteLabelSettings = {
@@ -24,6 +28,7 @@ const defaultSettings: WhiteLabelSettings = {
   companyName: 'NPC Property',
   primaryColor: null,
   accentColor: null,
+  darkModeDefault: 'light',
 };
 
 const STORAGE_KEY = 'whitelabel_settings';
@@ -96,6 +101,7 @@ const WhiteLabelContext = createContext<WhiteLabelContextType | undefined>(undef
 export function WhiteLabelProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<WhiteLabelSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -111,6 +117,37 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
       setIsLoading(false);
     }
   }, []);
+
+  // Apply dark mode based on settings
+  useEffect(() => {
+    const applyTheme = () => {
+      let theme: 'light' | 'dark' = 'light';
+      
+      if (settings.darkModeDefault === 'system') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } else {
+        theme = settings.darkModeDefault;
+      }
+      
+      setCurrentTheme(theme);
+      
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes if using system preference
+    if (settings.darkModeDefault === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => applyTheme();
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [settings.darkModeDefault]);
 
   // Apply favicon whenever it changes
   useEffect(() => {
@@ -168,7 +205,7 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <WhiteLabelContext.Provider value={{ settings, updateSettings, isLoading }}>
+    <WhiteLabelContext.Provider value={{ settings, updateSettings, isLoading, currentTheme }}>
       {children}
     </WhiteLabelContext.Provider>
   );
