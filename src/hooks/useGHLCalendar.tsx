@@ -29,9 +29,12 @@ export interface GHLEvent {
 }
 
 interface CalendarData {
-  calendars: GHLCalendar[];
-  events: GHLEvent[];
-  dateRange: {
+  success?: boolean;
+  error?: string;
+  details?: unknown;
+  calendars?: GHLCalendar[];
+  events?: unknown[];
+  dateRange?: {
     start: string;
     end: string;
   };
@@ -59,6 +62,26 @@ const normalizeTimestampToISO = (value: unknown): string | null => {
     const ms = Date.parse(trimmed);
     if (Number.isNaN(ms)) return null;
     return new Date(ms).toISOString();
+  }
+
+  // Some GHL responses may return timestamps as objects (docs label startTime/endTime as "object")
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const candidates = [
+      obj.dateTime,
+      obj.date,
+      obj.value,
+      obj.time,
+      obj.timestamp,
+      obj.iso,
+      obj.startTime,
+      obj.endTime,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = normalizeTimestampToISO(candidate);
+      if (normalized) return normalized;
+    }
   }
 
   return null;
@@ -121,11 +144,23 @@ export function useGHLCalendar() {
         throw new Error(fetchError.message);
       }
 
-      if (data && data.calendars) {
+      if (data?.success === false) {
+        throw new Error(data.error || 'Failed to fetch calendar data');
+      }
+
+      if (data?.calendars) {
         setCalendars(data.calendars);
-        const normalized = (data.events || [])
-          .map(normalizeEvent)
-          .filter(Boolean) as GHLEvent[];
+        const rawEvents = data.events || [];
+        const normalized = rawEvents.map(normalizeEvent).filter(Boolean) as GHLEvent[];
+
+        // Debug visibility when API returns events but we drop them during normalization
+        if (rawEvents.length > 0 && normalized.length === 0) {
+          const sample = rawEvents[0] as any;
+          console.warn('[GHL Calendar] Received events but none normalized. Sample keys:', Object.keys(sample || {}));
+          console.warn('[GHL Calendar] Sample startTime/endTime types:', typeof sample?.startTime, typeof sample?.endTime);
+        }
+
+        console.info('[GHL Calendar] calendars:', data.calendars.length, 'events(raw):', rawEvents.length, 'events(normalized):', normalized.length);
         setEvents(normalized);
       }
     } catch (err: any) {
