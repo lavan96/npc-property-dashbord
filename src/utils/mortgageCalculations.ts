@@ -1,5 +1,5 @@
 /**
- * Modgill FreePayment Calculator - Mortgage Repayment Engine
+ * Mortgage Repayment Calculator - Amortisation Engine
  * 
  * Supports:
  * - Principal & Interest (P&I) loans
