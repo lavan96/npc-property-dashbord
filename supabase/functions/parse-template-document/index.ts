@@ -7,8 +7,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CHUNK_SIZE = 1500; // Characters per chunk for optimal embedding
-const CHUNK_OVERLAP = 200; // Overlap between chunks for context continuity
+// OPTIMIZED: Increased chunk size to reduce total chunks (was 1500)
+const CHUNK_SIZE = 3000; // Characters per chunk - larger chunks = fewer API calls
+const CHUNK_OVERLAP = 300; // Overlap between chunks for context continuity
+
+// Parallel processing configuration
+const EMBEDDING_BATCH_SIZE = 20; // Process 20 embeddings at once (OpenAI supports up to 2048 inputs)
 
 interface TemplateParseRequest {
   templateId: string;
@@ -34,8 +38,8 @@ function chunkText(text: string, chunkSize: number = CHUNK_SIZE, overlap: number
   return chunks;
 }
 
-// Generate embeddings using OpenAI
-async function generateEmbedding(text: string, openAIKey: string): Promise<number[]> {
+// OPTIMIZED: Generate embeddings for multiple texts in a single API call
+async function generateEmbeddingsBatch(texts: string[], openAIKey: string): Promise<number[][]> {
   const response = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: {
@@ -44,7 +48,7 @@ async function generateEmbedding(text: string, openAIKey: string): Promise<numbe
     },
     body: JSON.stringify({
       model: 'text-embedding-3-small',
-      input: text,
+      input: texts, // OpenAI API accepts array of strings for batch processing
     }),
   });
 
@@ -54,17 +58,17 @@ async function generateEmbedding(text: string, openAIKey: string): Promise<numbe
   }
 
   const data = await response.json();
-  return data.data[0].embedding;
+  // Return embeddings in the same order as input texts
+  return data.data
+    .sort((a: any, b: any) => a.index - b.index)
+    .map((item: any) => item.embedding);
 }
 
 // Extract text from PDF using pdf-parse approach
 async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
-  // For edge functions, we'll use a simple text extraction approach
-  // Convert buffer to string and extract readable text patterns
   const uint8Array = new Uint8Array(pdfBuffer);
   let text = '';
   
-  // Simple PDF text extraction - looks for text streams
   const decoder = new TextDecoder('utf-8', { fatal: false });
   const rawText = decoder.decode(uint8Array);
   
@@ -82,7 +86,6 @@ async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
   if (streamMatches) {
     for (const stream of streamMatches) {
       const cleanStream = stream.replace(/stream|endstream/g, '').trim();
-      // Extract printable ASCII characters
       const printable = cleanStream.replace(/[^\x20-\x7E\n]/g, ' ').replace(/\s+/g, ' ').trim();
       if (printable.length > 10 && /[a-zA-Z]{3,}/.test(printable)) {
         text += ' ' + printable;
@@ -90,13 +93,72 @@ async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<string> {
     }
   }
   
-  // Clean up the extracted text
   text = text
     .replace(/\s+/g, ' ')
     .replace(/[^\x20-\x7E\n]/g, '')
     .trim();
   
   return text || 'Unable to extract text from PDF. Please provide a text-based template.';
+}
+
+// Process chunks in parallel batches with embeddings
+async function processChunksInBatches(
+  chunks: string[],
+  templateId: string,
+  templateType: string,
+  reportTier: string | undefined,
+  reportCategory: string | undefined,
+  openAIKey: string,
+  supabase: any
+): Promise<any[]> {
+  const storedChunks: any[] = [];
+  const totalBatches = Math.ceil(chunks.length / EMBEDDING_BATCH_SIZE);
+  
+  console.log(`📦 Processing ${chunks.length} chunks in ${totalBatches} batches of ${EMBEDDING_BATCH_SIZE}`);
+  
+  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+    const startIdx = batchIndex * EMBEDDING_BATCH_SIZE;
+    const endIdx = Math.min(startIdx + EMBEDDING_BATCH_SIZE, chunks.length);
+    const batchChunks = chunks.slice(startIdx, endIdx);
+    
+    console.log(`🧠 Batch ${batchIndex + 1}/${totalBatches}: Generating embeddings for chunks ${startIdx + 1}-${endIdx}`);
+    
+    try {
+      // Generate all embeddings for this batch in a single API call
+      const embeddings = await generateEmbeddingsBatch(batchChunks, openAIKey);
+      
+      // Prepare all insert records for this batch
+      const insertRecords = batchChunks.map((chunk, i) => ({
+        document_name: `template:${templateId}`,
+        chunk_index: startIdx + i,
+        chunk_text: chunk,
+        embedding: `[${embeddings[i].join(',')}]`,
+        metadata: {
+          template_type: templateType,
+          report_tier: reportTier,
+          report_category: reportCategory,
+          total_chunks: chunks.length,
+        },
+      }));
+      
+      // Insert all chunks from this batch at once
+      const { data: insertedChunks, error: insertError } = await supabase
+        .from('document_chunks')
+        .insert(insertRecords)
+        .select();
+      
+      if (insertError) {
+        console.error(`❌ Failed to store batch ${batchIndex + 1}:`, insertError);
+      } else {
+        storedChunks.push(...(insertedChunks || []));
+        console.log(`✓ Batch ${batchIndex + 1} complete: ${insertedChunks?.length || 0} chunks stored`);
+      }
+    } catch (batchError) {
+      console.error(`❌ Embedding batch ${batchIndex + 1} error:`, batchError);
+    }
+  }
+  
+  return storedChunks;
 }
 
 serve(async (req) => {
@@ -128,19 +190,15 @@ serve(async (req) => {
     const fileName = filePath.toLowerCase();
     
     if (fileName.endsWith('.pdf')) {
-      // Extract text from PDF
       const buffer = await fileData.arrayBuffer();
       extractedText = await extractTextFromPDF(buffer);
       console.log(`📝 Extracted ${extractedText.length} characters from PDF`);
     } else if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
-      // Direct text extraction
       extractedText = await fileData.text();
     } else if (fileName.endsWith('.json')) {
-      // JSON template - stringify for embedding
       const jsonContent = await fileData.text();
       extractedText = JSON.stringify(JSON.parse(jsonContent), null, 2);
     } else if (fileName.endsWith('.html')) {
-      // HTML template - strip tags for text content
       const htmlContent = await fileData.text();
       extractedText = htmlContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     } else {
@@ -164,9 +222,9 @@ serve(async (req) => {
       console.error('Failed to update template:', updateError);
     }
     
-    // Chunk the text for RAG
+    // Chunk the text for RAG (with larger chunks now)
     const chunks = chunkText(extractedText);
-    console.log(`🔪 Split into ${chunks.length} chunks for embedding`);
+    console.log(`🔪 Split into ${chunks.length} chunks for embedding (chunk size: ${CHUNK_SIZE})`);
     
     // Delete existing chunks for this template
     const { error: deleteError } = await supabase
@@ -178,45 +236,16 @@ serve(async (req) => {
       console.error('Failed to delete existing chunks:', deleteError);
     }
     
-    // Generate embeddings and store chunks
-    const storedChunks: any[] = [];
-    
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      
-      try {
-        console.log(`🧠 Generating embedding for chunk ${i + 1}/${chunks.length}`);
-        const embedding = await generateEmbedding(chunk, openAIKey);
-        
-        // Format embedding as pgvector string
-        const embeddingString = `[${embedding.join(',')}]`;
-        
-        const { data: insertedChunk, error: insertError } = await supabase
-          .from('document_chunks')
-          .insert({
-            document_name: `template:${templateId}`,
-            chunk_index: i,
-            chunk_text: chunk,
-            embedding: embeddingString,
-            metadata: {
-              template_type: templateType,
-              report_tier: reportTier,
-              report_category: reportCategory,
-              total_chunks: chunks.length,
-            },
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error(`Failed to store chunk ${i}:`, insertError);
-        } else {
-          storedChunks.push(insertedChunk);
-        }
-      } catch (embeddingError) {
-        console.error(`Embedding error for chunk ${i}:`, embeddingError);
-      }
-    }
+    // OPTIMIZED: Process all chunks in parallel batches
+    const storedChunks = await processChunksInBatches(
+      chunks,
+      templateId,
+      templateType,
+      reportTier,
+      reportCategory,
+      openAIKey,
+      supabase
+    );
     
     console.log(`✅ Successfully stored ${storedChunks.length} chunks with embeddings`);
     
