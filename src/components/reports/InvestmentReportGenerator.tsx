@@ -443,7 +443,7 @@ export function InvestmentReportGenerator() {
     try {
       console.log('Processing PDF:', pdfFile.name);
       
-      // Read PDF file as text (basic text extraction)
+      // Read PDF file and convert to base64 for GPT-4o Vision analysis
       const arrayBuffer = await pdfFile.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       
@@ -452,24 +452,12 @@ export function InvestmentReportGenerator() {
       uint8Array.forEach(byte => binary += String.fromCharCode(byte));
       const base64Content = btoa(binary);
       
-      // Extract text content from PDF - for now, we'll send the raw content
-      // The edge function will use AI to extract structured data
-      const textDecoder = new TextDecoder('utf-8', { fatal: false });
-      let textContent = textDecoder.decode(uint8Array);
-      
-      // Clean up the text content - extract readable text
-      textContent = textContent
-        .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 50000); // Limit content size
-      
-      console.log('Extracted text preview:', textContent.substring(0, 500));
+      console.log('PDF converted to base64, length:', base64Content.length);
 
-      // Call edge function to parse PDF content
+      // Call edge function to parse PDF using GPT-4o Vision
       const { data, error } = await supabase.functions.invoke('parse-property-pdf', {
         body: { 
-          pdfContent: textContent,
+          base64Content: base64Content,
           fileName: pdfFile.name
         }
       });
