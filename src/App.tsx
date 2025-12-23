@@ -32,6 +32,7 @@ import CallLogs from './pages/CallLogs';
 import CashFlowAnalysis from './pages/CashFlowAnalysis';
 import ReportQA from './pages/ReportQA';
 import InvestmentReportView from './pages/InvestmentReportView';
+import Templates from './pages/Templates';
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="cash-flow-analysis" element={<CashFlowAnalysis />} />
                 <Route path="report-qa" element={<ReportQA />} />
                 <Route path="investment-report/:id" element={<InvestmentReportView />} />
+                <Route path="templates" element={<Templates />} />
                 <Route path="errors" element={<ErrorLogs />} />
                 <Route path="settings" element={<Settings />} />
               </Route>

@@ -1985,6 +1985,61 @@ ${sourceSpecificInstructions}
     } else {
       console.log('ℹ️ No document content available - generating report from property address and web search only');
     }
+
+    // ========== RAG TEMPLATE CONTEXT INJECTION ==========
+    // Retrieve relevant template context from vector embeddings
+    let templateContext = '';
+    try {
+      console.log('🔍 Retrieving RAG template context...');
+      const ragResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/retrieve-template-context`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+        },
+        body: JSON.stringify({
+          query: `${reportScope} investment report structure for ${formattedInput}`,
+          reportTier: 'compass', // Default tier, can be parameterized later
+          reportCategory: reportScope === 'suburb' ? 'suburb_snapshot' : 'investment',
+          templateType: 'ai_structure',
+          maxChunks: 5,
+          similarityThreshold: 0.6,
+        })
+      });
+      
+      if (ragResponse.ok) {
+        const ragData = await ragResponse.json();
+        if (ragData.success && ragData.context && ragData.context.length > 0) {
+          templateContext = ragData.context;
+          console.log(`✓ RAG context retrieved: ${ragData.chunks?.length || 0} chunks, ${templateContext.length} chars`);
+          console.log(`  Templates used: ${ragData.templatesUsed?.map((t: any) => t.name).join(', ') || 'none'}`);
+        } else {
+          console.log('ℹ️ No active templates found for RAG injection');
+        }
+      } else {
+        console.log('⚠️ RAG retrieval returned non-OK status:', ragResponse.status);
+      }
+    } catch (ragError: any) {
+      console.log('⚠️ RAG template retrieval failed (non-critical):', ragError?.message || 'Unknown error');
+    }
+
+    // Inject template context into prompt if available
+    if (templateContext) {
+      const templateSection = `
+---
+**REFERENCE TEMPLATE STRUCTURE (Follow this structure closely):**
+
+The following is extracted from your reference templates. Use this structure and formatting as a guide for generating the report:
+
+${templateContext}
+
+---
+
+`;
+      prompt = templateSection + prompt;
+      console.log('✓ Template context injected into prompt. New length:', prompt.length);
+    }
+    // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
     const systemMessage = reportScope === 'suburb' 
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
@@ -1994,6 +2049,7 @@ ${sourceSpecificInstructions}
     console.log('Report scope:', reportScope);
     console.log('Prompt length:', prompt.length);
     console.log('Document content included:', !!documentContent);
+    console.log('Template context included:', !!templateContext);
     console.log('Content source:', contentSource);
 
     // Retry logic with exponential backoff
