@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Video, Phone, MapPin, Filter, RefreshCw } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,14 +8,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
+import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, eachHourOfInterval, startOfDay, endOfDay, isSameHour, getHours } from 'date-fns';
 
 export default function Calendar() {
   const { calendars, events, isLoading, error, fetchCalendarData } = useGHLCalendar();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [view, setView] = useState<'month' | 'list'>('month');
+  const [view, setView] = useState<'month' | 'week'>('month');
+  const [selectedEvent, setSelectedEvent] = useState<GHLEvent | null>(null);
+  const [eventModalOpen, setEventModalOpen] = useState(false);
 
   useEffect(() => {
     fetchCalendarData();
@@ -50,8 +54,25 @@ export default function Calendar() {
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth]);
 
+  const weekDays = useMemo(() => {
+    const weekStart = startOfWeek(currentWeek);
+    const weekEnd = endOfWeek(currentWeek);
+    return eachDayOfInterval({ start: weekStart, end: weekEnd });
+  }, [currentWeek]);
+
+  const weekHours = useMemo(() => {
+    return Array.from({ length: 24 }, (_, i) => i);
+  }, []);
+
   const getEventsForDay = (day: Date) => {
     return filteredEvents.filter(event => isSameDay(parseISO(event.startTime), day));
+  };
+
+  const getEventsForDayAndHour = (day: Date, hour: number) => {
+    return filteredEvents.filter(event => {
+      const eventStart = parseISO(event.startTime);
+      return isSameDay(eventStart, day) && getHours(eventStart) === hour;
+    });
   };
 
   const getStatusColor = (status: string, appointmentStatus?: string) => {
@@ -73,6 +94,11 @@ export default function Calendar() {
       case 'personal': return <CalendarIcon className="h-3 w-3" />;
       default: return <CalendarIcon className="h-3 w-3" />;
     }
+  };
+
+  const handleEventClick = (event: GHLEvent) => {
+    setSelectedEvent(event);
+    setEventModalOpen(true);
   };
 
   if (error) {
@@ -97,6 +123,14 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
+      {/* Event Details Modal */}
+      <EventDetailsModal 
+        event={selectedEvent}
+        open={eventModalOpen}
+        onOpenChange={setEventModalOpen}
+        getStatusColor={getStatusColor}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -104,6 +138,12 @@ export default function Calendar() {
           <p className="text-muted-foreground">GoHighLevel Appointments & Schedule</p>
         </div>
         <div className="flex items-center gap-2">
+          <Tabs value={view} onValueChange={(v) => setView(v as 'month' | 'week')}>
+            <TabsList className="h-9">
+              <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
+              <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
             <SelectTrigger className="w-[220px]">
               <Filter className="h-4 w-4 mr-2" />
@@ -169,13 +209,19 @@ export default function Calendar() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5" />
-                {format(currentMonth, 'MMMM yyyy')}
+                {view === 'month' 
+                  ? format(currentMonth, 'MMMM yyyy')
+                  : `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
+                }
               </CardTitle>
               <div className="flex items-center gap-1">
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                  onClick={() => view === 'month' 
+                    ? setCurrentMonth(subMonths(currentMonth, 1))
+                    : setCurrentWeek(subWeeks(currentWeek, 1))
+                  }
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -183,8 +229,10 @@ export default function Calendar() {
                   variant="ghost" 
                   size="sm"
                   onClick={() => {
-                    setCurrentMonth(new Date());
-                    setSelectedDate(new Date());
+                    const today = new Date();
+                    setCurrentMonth(today);
+                    setCurrentWeek(today);
+                    setSelectedDate(today);
                   }}
                 >
                   Today
@@ -192,7 +240,10 @@ export default function Calendar() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                  onClick={() => view === 'month'
+                    ? setCurrentMonth(addMonths(currentMonth, 1))
+                    : setCurrentWeek(addWeeks(currentWeek, 1))
+                  }
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -206,7 +257,7 @@ export default function Calendar() {
                   <Skeleton key={i} className="h-20 w-full" />
                 ))}
               </div>
-            ) : (
+            ) : view === 'month' ? (
               <>
                 {/* Day headers */}
                 <div className="grid grid-cols-7 gap-1 mb-1">
@@ -241,7 +292,11 @@ export default function Calendar() {
                           {dayEvents.slice(0, 3).map(event => (
                             <div 
                               key={event.id}
-                              className="text-[10px] truncate px-1 py-0.5 rounded bg-primary/20 text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEventClick(event);
+                              }}
+                              className="text-[10px] truncate px-1 py-0.5 rounded bg-primary/20 text-primary cursor-pointer hover:bg-primary/30"
                             >
                               {format(parseISO(event.startTime), 'HH:mm')}
                             </div>
@@ -257,6 +312,57 @@ export default function Calendar() {
                   })}
                 </div>
               </>
+            ) : (
+              /* Week View */
+              <ScrollArea className="h-[600px]">
+                <div className="min-w-[700px]">
+                  {/* Week day headers */}
+                  <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2">
+                    <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
+                    {weekDays.map(day => (
+                      <div 
+                        key={day.toISOString()} 
+                        className={`text-center text-xs font-medium py-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}
+                      >
+                        <div>{format(day, 'EEE')}</div>
+                        <div className={`text-lg font-bold ${isToday(day) ? 'bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+                          {format(day, 'd')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Time grid */}
+                  <div className="relative">
+                    {weekHours.map(hour => (
+                      <div key={hour} className="grid grid-cols-8 gap-1 border-t border-border/50">
+                        <div className="text-[10px] text-muted-foreground py-1 w-16 text-right pr-2">
+                          {format(new Date().setHours(hour, 0), 'h a')}
+                        </div>
+                        {weekDays.map(day => {
+                          const hourEvents = getEventsForDayAndHour(day, hour);
+                          return (
+                            <div 
+                              key={`${day.toISOString()}-${hour}`}
+                              className="min-h-[48px] border-l border-border/30 px-1 py-0.5"
+                            >
+                              {hourEvents.map(event => (
+                                <button
+                                  key={event.id}
+                                  onClick={() => handleEventClick(event)}
+                                  className={`w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate hover:opacity-80 transition-opacity ${getStatusColor(event.status, event.appointmentStatus)}`}
+                                >
+                                  <div className="font-medium truncate">{event.title || 'Event'}</div>
+                                  <div className="opacity-75">{format(parseISO(event.startTime), 'h:mm a')}</div>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </ScrollArea>
             )}
           </CardContent>
         </Card>
@@ -286,7 +392,12 @@ export default function Calendar() {
                     </div>
                   ) : (
                     (selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
-                      <EventCard key={event.id} event={event} getStatusColor={getStatusColor} />
+                      <EventCard 
+                        key={event.id} 
+                        event={event} 
+                        getStatusColor={getStatusColor}
+                        onClick={() => handleEventClick(event)}
+                      />
                     ))
                   )}
                 </div>
@@ -360,13 +471,18 @@ export default function Calendar() {
 
 function EventCard({ 
   event, 
-  getStatusColor 
+  getStatusColor,
+  onClick
 }: { 
   event: GHLEvent; 
   getStatusColor: (status: string, appointmentStatus?: string) => string;
+  onClick: () => void;
 }) {
   return (
-    <div className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+    <button 
+      onClick={onClick}
+      className="w-full p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors text-left"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{event.title || 'Untitled Event'}</p>
@@ -387,6 +503,6 @@ function EventCard({
       {event.notes && (
         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.notes}</p>
       )}
-    </div>
+    </button>
   );
 }
