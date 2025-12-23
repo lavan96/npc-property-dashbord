@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { signIn, user, loading } = useAuth();
+  const { settings } = useWhiteLabel();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -29,7 +31,11 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Database className="h-12 w-12 text-primary mx-auto animate-pulse" />
+          {settings.authLogo ? (
+            <img src={settings.authLogo} alt={settings.companyName} className="h-12 mx-auto animate-pulse" />
+          ) : (
+            <Database className="h-12 w-12 text-primary mx-auto animate-pulse" />
+          )}
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -57,9 +63,13 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
-            <Database className="h-12 w-12 text-primary" />
+            {settings.authLogo ? (
+              <img src={settings.authLogo} alt={settings.companyName} className="h-12 object-contain" />
+            ) : (
+              <Database className="h-12 w-12 text-primary" />
+            )}
           </div>
-          <CardTitle className="text-2xl">NPC Property Dashboard</CardTitle>
+          <CardTitle className="text-2xl">{settings.companyName} Dashboard</CardTitle>
           <CardDescription>
             Sign in to access the property intake dashboard
           </CardDescription>

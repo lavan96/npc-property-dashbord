@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
+import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
@@ -33,6 +34,7 @@ import CashFlowAnalysis from './pages/CashFlowAnalysis';
 import ReportQA from './pages/ReportQA';
 import InvestmentReportView from './pages/InvestmentReportView';
 import Templates from './pages/Templates';
+import WhiteLabel from './pages/WhiteLabel';
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -42,12 +44,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <NotificationsProvider>
-              <BackgroundJobTracker />
-              <ComparisonProvider>
-                <SearchProvider>
+        <WhiteLabelProvider>
+          <AuthProvider>
+            <BrowserRouter>
+              <NotificationsProvider>
+                <BackgroundJobTracker />
+                <ComparisonProvider>
+                  <SearchProvider>
                   <Toaster />
                   <Sonner />
             <Routes>
@@ -76,17 +79,19 @@ const App = () => (
                 <Route path="report-qa" element={<ReportQA />} />
                 <Route path="investment-report/:id" element={<InvestmentReportView />} />
                 <Route path="templates" element={<Templates />} />
+                <Route path="white-label" element={<WhiteLabel />} />
                 <Route path="errors" element={<ErrorLogs />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-                </SearchProvider>
-              </ComparisonProvider>
-            </NotificationsProvider>
-          </BrowserRouter>
-        </AuthProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+                  </SearchProvider>
+                </ComparisonProvider>
+              </NotificationsProvider>
+            </BrowserRouter>
+          </AuthProvider>
+        </WhiteLabelProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
