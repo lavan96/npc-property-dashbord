@@ -16,7 +16,8 @@ import {
   Zap,
   Sparkles,
   Phone,
-  MessageSquareText
+  MessageSquareText,
+  FileStack
 } from 'lucide-react';
 import {
   Sidebar,
@@ -47,6 +48,7 @@ const navigationItems = [
 
 const adminItems = [
   { title: 'Automation', url: '/automation', icon: Zap },
+  { title: 'Templates', url: '/templates', icon: FileStack },
   { title: 'Monitoring', url: '/monitoring', icon: Activity },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck },
   { title: 'Data Import', url: '/data-import', icon: Upload },
