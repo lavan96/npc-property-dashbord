@@ -10,6 +10,7 @@ export interface GHLCalendar {
   isActive: boolean;
   teamMembers?: number;
   slug?: string;
+  eventColor?: string;
 }
 
 export interface GHLEvent {
@@ -19,6 +20,7 @@ export interface GHLEvent {
   endTime: string;
   calendarId: string;
   calendarName?: string;
+  calendarColor?: string;
   status: string;
   appointmentStatus?: string;
   contactId?: string;
@@ -39,6 +41,7 @@ export function useGHLCalendar() {
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
   const [events, setEvents] = useState<GHLEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -115,12 +118,70 @@ export function useGHLCalendar() {
     }
   }, []);
 
+  const rescheduleEvent = useCallback(async (
+    eventId: string,
+    newStartTime: string,
+    newEndTime: string
+  ): Promise<boolean> => {
+    setIsUpdating(true);
+
+    try {
+      const { data, error: updateError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { 
+          action: 'update',
+          eventId,
+          newStartTime,
+          newEndTime,
+        },
+      });
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      if (data?.success) {
+        // Update local state
+        setEvents(prev => prev.map(event => 
+          event.id === eventId 
+            ? { ...event, startTime: newStartTime, endTime: newEndTime }
+            : event
+        ));
+        
+        toast({
+          title: 'Event rescheduled',
+          description: 'The appointment has been updated successfully.',
+        });
+        return true;
+      } else {
+        throw new Error(data?.error || 'Failed to reschedule event');
+      }
+    } catch (err: any) {
+      console.error('Error rescheduling event:', err);
+      toast({
+        title: 'Failed to reschedule',
+        description: err.message,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [toast]);
+
+  const getCalendarColor = useCallback((calendarId: string): string => {
+    const calendar = calendars.find(c => c.id === calendarId);
+    return calendar?.eventColor || '#3b82f6';
+  }, [calendars]);
+
   return {
     calendars,
     events,
     isLoading,
+    isUpdating,
     error,
     fetchCalendarData,
     fetchEvents,
+    rescheduleEvent,
+    getCalendarColor,
   };
 }
