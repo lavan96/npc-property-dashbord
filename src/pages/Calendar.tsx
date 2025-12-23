@@ -23,9 +23,22 @@ export default function Calendar() {
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const getVisibleRange = () => {
+    if (view === 'month') {
+      const start = startOfWeek(startOfMonth(currentMonth));
+      const end = endOfWeek(endOfMonth(currentMonth));
+      return { start, end };
+    }
+
+    const start = startOfWeek(currentWeek);
+    const end = endOfWeek(currentWeek);
+    return { start, end };
+  };
+
   useEffect(() => {
-    fetchCalendarData();
-  }, [fetchCalendarData]);
+    const { start, end } = getVisibleRange();
+    fetchCalendarData(start.toISOString(), end.toISOString());
+  }, [fetchCalendarData, view, currentMonth, currentWeek]);
 
   const safeParseISO = (value: string) => {
     try {
@@ -146,7 +159,13 @@ export default function Calendar() {
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={() => fetchCalendarData()} variant="outline">
+            <Button
+              onClick={() => {
+                const { start, end } = getVisibleRange();
+                fetchCalendarData(start.toISOString(), end.toISOString());
+              }}
+              variant="outline"
+            >
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
@@ -214,7 +233,10 @@ export default function Calendar() {
           <Button 
             variant="outline" 
             size="icon"
-            onClick={() => fetchCalendarData()}
+            onClick={() => {
+              const { start, end } = getVisibleRange();
+              fetchCalendarData(start.toISOString(), end.toISOString());
+            }}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
