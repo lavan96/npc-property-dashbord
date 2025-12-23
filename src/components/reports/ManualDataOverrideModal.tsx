@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { STATE_MAPPING } from '@/lib/states';
 import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
@@ -1463,6 +1463,16 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         <li>Copy the <strong>Year 1</strong> depreciation value (either Diminishing Value or Prime Cost)</li>
                         <li>Enter that value in the "Annual Depreciation" field below</li>
                       </ol>
+                    </div>
+
+                    {/* Disclaimer */}
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-1">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          <strong>Disclaimer:</strong> The depreciation values provided by this calculator are purely estimates for indicative purposes only. Users should consult with a qualified quantity surveyor or tax professional before relying on these figures for financial or tax planning purposes. Use at your own discretion.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CollapsibleContent>
