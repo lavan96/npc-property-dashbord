@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -18,49 +17,54 @@ serve(async (req) => {
     console.log('📊 Estimating property expenses for:', propertyAddress);
     console.log('Purchase Price:', purchasePrice, 'Weekly Rent:', weeklyRent);
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+    if (!perplexityApiKey) {
+      throw new Error('PERPLEXITY_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are an Australian property investment expense estimator. Your task is to provide realistic estimates for annual property expenses based on the property address, purchase price, and weekly rent.
+    const userPrompt = `I need accurate, current Australian property expense estimates for this investment property:
 
-You must respond with ONLY a valid JSON object containing the following fields (all values in AUD, annual amounts):
-- bodyCorporateFees: Annual body corporate/strata fees (0 if house, typically $2,000-$8,000 for apartments)
-- landTax: Annual land tax (based on state and land value, often 0 for properties under threshold)
-- councilRates: Annual council rates (typically $1,500-$4,000)
-- waterRates: Annual water rates (typically $800-$1,500)
-- solicitorFees: Conveyancing/legal fees for purchase (typically $1,500-$3,000)
-- buildingLandlordInsurance: Annual building and landlord insurance (typically $1,200-$2,500)
-- propertyManagementFees: Property management fee as percentage of rent (typically 7-9%)
-- repairsMaintenance: Annual repairs and maintenance allowance (typically 0.5-1% of property value)
-
-Consider:
-- Location-specific costs (Sydney/Melbourne more expensive than regional)
-- Property type (apartments have strata, houses have higher maintenance)
-- Property value affects insurance and some fees
-- Use realistic Australian market rates for 2024-2025
-
-Respond with ONLY the JSON object, no markdown, no explanation.`;
-
-    const userPrompt = `Estimate annual property expenses for:
 Property Address: ${propertyAddress}
 Purchase Price: $${purchasePrice?.toLocaleString() || 'Unknown'}
 Weekly Rent: $${weeklyRent?.toLocaleString() || 'Unknown'}
 Property Type: ${propertyType || 'Unknown'}
 
-Provide realistic estimates based on the location and property characteristics.`;
+Please search for and provide realistic current estimates for the following annual expenses in AUD. Use current 2024-2025 rates specific to this property's location:
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+1. Body Corporate / Strata Fees (annual) - $0 if it's a house, otherwise typical strata fees for the area
+2. Land Tax (annual) - based on current state thresholds and land value
+3. Council Rates (annual) - search for typical rates in this council area
+4. Water Rates (annual) - typical for this area
+5. Solicitor/Conveyancing Fees (one-off purchase cost)
+6. Building & Landlord Insurance (annual)
+7. Property Management Fees (as percentage of rent, typically 7-9%)
+8. Repairs & Maintenance allowance (annual)
+
+Respond with ONLY a valid JSON object in this exact format, no other text:
+{
+  "bodyCorporateFees": number,
+  "landTax": number,
+  "councilRates": number,
+  "waterRates": number,
+  "solicitorFees": number,
+  "buildingLandlordInsurance": number,
+  "propertyManagementFees": number,
+  "repairsMaintenance": number
+}`;
+
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${perplexityApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'sonar',
         messages: [
-          { role: 'system', content: systemPrompt },
+          { 
+            role: 'system', 
+            content: 'You are an Australian property investment expense estimator. Search for current, accurate expense data for the specific property location. Always respond with ONLY valid JSON, no markdown or explanation.' 
+          },
           { role: 'user', content: userPrompt }
         ],
       }),
@@ -68,18 +72,20 @@ Provide realistic estimates based on the location and property characteristics.`
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Perplexity API error:', response.status, errorText);
+      throw new Error(`Perplexity API error: ${response.status}`);
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
+    const citations = data.citations || [];
     
     if (!content) {
-      throw new Error('No response from OpenAI');
+      throw new Error('No response from Perplexity');
     }
 
-    console.log('OpenAI Response:', content);
+    console.log('Perplexity Response:', content);
+    console.log('Citations:', citations);
 
     // Parse JSON from response (handle potential markdown wrapping)
     let estimates;
@@ -89,7 +95,8 @@ Provide realistic estimates based on the location and property characteristics.`
       const jsonStr = jsonMatch ? jsonMatch[1] : content;
       estimates = JSON.parse(jsonStr.trim());
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', parseError);
+      console.error('Failed to parse Perplexity response:', parseError);
+      console.error('Raw content:', content);
       throw new Error('Failed to parse expense estimates');
     }
 
@@ -111,6 +118,7 @@ Provide realistic estimates based on the location and property characteristics.`
       success: true,
       estimates: validatedEstimates,
       propertyAddress,
+      citations, // Include sources for transparency
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
