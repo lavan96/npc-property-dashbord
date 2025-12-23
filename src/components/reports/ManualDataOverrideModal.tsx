@@ -9,9 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info, FileText, TrendingUp } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { STATE_MAPPING } from '@/lib/states';
 import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
@@ -55,6 +56,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
   const [detectedState, setDetectedState] = useState<string>('All');
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
+  
+  // Active tab state
+  const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
   
   // Depreciation Schedule Builder state
   const [showDepreciationSchedule, setShowDepreciationSchedule] = useState(false);
@@ -209,8 +213,10 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const currentBuildType = overrides.buildType || report?.manual_overrides?.buildType || 'existing_property';
   const isNewBuild = currentBuildType === 'new_build';
 
-  // Grouped by category for better organization
-  const purchaseLoanFields: OverrideField[] = [
+  // ========== INVESTMENT REPORT TAB FIELDS ==========
+  
+  // Core property details (Investment Report Tab)
+  const corePropertyFields: OverrideField[] = [
     {
       key: 'buildType',
       label: 'Build Type',
@@ -243,14 +249,6 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       overrideValue: report?.manual_overrides?.buildPrice || null,
       prefix: '$'
     },
-    {
-      key: 'marketValueNow',
-      label: 'Market Value Now',
-      originalValue: report?.financial_calculations?.marketValueNow || null,
-      overrideValue: report?.manual_overrides?.marketValueNow || null,
-      prefix: '$',
-      isCashFlowField: true
-    },
     // Only show deposit value for existing properties (not new builds)
     ...(!isNewBuild ? [{
       key: 'depositValue',
@@ -260,60 +258,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$'
     }] : []),
     {
-      key: 'loanAmount',
-      label: 'Loan Amount',
-      originalValue: report?.financial_calculations?.loanAmount || null,
-      overrideValue: report?.manual_overrides?.loanAmount || null,
-      prefix: '$',
-      isCashFlowField: true
-    },
-    {
       key: 'loanToValueRatio',
       label: 'Loan to Value Ratio',
       originalValue: report?.financial_calculations?.loanToValueRatio || null,
       overrideValue: report?.manual_overrides?.loanToValueRatio || null,
       suffix: '%'
-    },
-    {
-      key: 'loanType',
-      label: 'Loan Type',
-      originalValue: report?.financial_calculations?.loanType || null,
-      overrideValue: report?.manual_overrides?.loanType || null,
-      type: 'select',
-      options: [
-        { value: 'interest_only', label: 'Interest Only' },
-        { value: 'principal_interest', label: 'Principal & Interest' }
-      ],
-      isCashFlowField: true
-    },
-    {
-      key: 'loanTermYears',
-      label: 'Loan Term',
-      originalValue: report?.financial_calculations?.loanTermYears || null,
-      overrideValue: report?.manual_overrides?.loanTermYears || null,
-      suffix: 'years',
-      isCashFlowField: true
-    },
-    {
-      key: 'interestOnlyPeriodYears',
-      label: 'Interest Only Period',
-      originalValue: report?.financial_calculations?.interestOnlyPeriodYears || null,
-      overrideValue: report?.manual_overrides?.interestOnlyPeriodYears || null,
-      suffix: 'years',
-      isCashFlowField: true
-    },
-    {
-      key: 'repaymentFrequency',
-      label: 'Repayment Frequency',
-      originalValue: report?.financial_calculations?.repaymentFrequency || 'monthly',
-      overrideValue: report?.manual_overrides?.repaymentFrequency || null,
-      type: 'select',
-      options: [
-        { value: 'weekly', label: 'Weekly (52/year)' },
-        { value: 'fortnightly', label: 'Fortnightly (26/year)' },
-        { value: 'monthly', label: 'Monthly (12/year)' }
-      ],
-      isCashFlowField: true
     },
     {
       key: 'interestRate',
@@ -323,84 +272,13 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       suffix: '%'
     },
     {
-      key: 'extraRepaymentPerMonth',
-      label: 'Extra Repayment (Monthly)',
-      originalValue: report?.financial_calculations?.extraRepaymentPerMonth || 0,
-      overrideValue: report?.manual_overrides?.extraRepaymentPerMonth || null,
-      prefix: '$',
-      isCashFlowField: true
-    },
-    {
-      key: 'offsetBalance',
-      label: 'Offset Account Balance',
-      originalValue: report?.financial_calculations?.offsetBalance || 0,
-      overrideValue: report?.manual_overrides?.offsetBalance || null,
-      prefix: '$',
-      isCashFlowField: true
-    },
-    {
       key: 'capitalGrowth',
       label: 'Capital Growth',
       originalValue: report?.financial_calculations?.capitalGrowth || null,
       overrideValue: report?.manual_overrides?.capitalGrowth || null,
       suffix: '%'
     },
-    // Only show construction duration for new builds
-    ...(isNewBuild ? [{
-      key: 'constructionDurationMonths',
-      label: 'Construction Duration',
-      originalValue: report?.financial_calculations?.constructionDurationMonths || null,
-      overrideValue: report?.manual_overrides?.constructionDurationMonths || null,
-      suffix: 'months',
-      isCashFlowField: true
-    }] : []),
   ];
-
-  // Construction stage percentages (only for new builds)
-  const constructionStageFields: OverrideField[] = isNewBuild ? [
-    {
-      key: 'stageDepositPercent',
-      label: 'Deposit Stage',
-      originalValue: 5,
-      overrideValue: report?.manual_overrides?.stageDepositPercent || null,
-      suffix: '%'
-    },
-    {
-      key: 'stageSlabPercent',
-      label: 'Slab/Base Stage',
-      originalValue: 15,
-      overrideValue: report?.manual_overrides?.stageSlabPercent || null,
-      suffix: '%'
-    },
-    {
-      key: 'stageFramePercent',
-      label: 'Frame Stage',
-      originalValue: 20,
-      overrideValue: report?.manual_overrides?.stageFramePercent || null,
-      suffix: '%'
-    },
-    {
-      key: 'stageLockupPercent',
-      label: 'Lock-up Stage',
-      originalValue: 25,
-      overrideValue: report?.manual_overrides?.stageLockupPercent || null,
-      suffix: '%'
-    },
-    {
-      key: 'stageFixingPercent',
-      label: 'Fixing Stage',
-      originalValue: 20,
-      overrideValue: report?.manual_overrides?.stageFixingPercent || null,
-      suffix: '%'
-    },
-    {
-      key: 'stageCompletionPercent',
-      label: 'Practical Completion',
-      originalValue: 15,
-      overrideValue: report?.manual_overrides?.stageCompletionPercent || null,
-      suffix: '%'
-    },
-  ] : [];
 
   const rentalIncomeFields: OverrideField[] = [
     {
@@ -409,14 +287,6 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       originalValue: report?.financial_calculations?.weeklyRent || null,
       overrideValue: report?.manual_overrides?.weeklyRent || null,
       prefix: '$'
-    },
-    {
-      key: 'occupancyRate',
-      label: 'Occupancy Rate',
-      originalValue: report?.financial_calculations?.occupancyRate || 52,
-      overrideValue: report?.manual_overrides?.occupancyRate || null,
-      suffix: 'weeks/year',
-      isCashFlowField: true
     },
   ];
 
@@ -502,6 +372,166 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }] : []),
   ];
 
+  const propertySpecFields: OverrideField[] = [
+    {
+      key: 'landSizeSqm',
+      label: 'Land Size',
+      originalValue: report?.financial_calculations?.landSizeSqm || null,
+      overrideValue: report?.manual_overrides?.landSizeSqm || null,
+      suffix: 'm²'
+    },
+    {
+      key: 'buildSizeSqm',
+      label: 'Build Size',
+      originalValue: report?.financial_calculations?.buildSizeSqm || null,
+      overrideValue: report?.manual_overrides?.buildSizeSqm || null,
+      suffix: 'm²'
+    }
+  ];
+
+  // ========== CASH FLOW ANALYSIS TAB FIELDS ==========
+  
+  // Loan & Mortgage settings (Cash Flow Tab)
+  const cashFlowLoanFields: OverrideField[] = [
+    {
+      key: 'marketValueNow',
+      label: 'Market Value Now',
+      originalValue: report?.financial_calculations?.marketValueNow || null,
+      overrideValue: report?.manual_overrides?.marketValueNow || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
+      key: 'loanAmount',
+      label: 'Loan Amount',
+      originalValue: report?.financial_calculations?.loanAmount || null,
+      overrideValue: report?.manual_overrides?.loanAmount || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
+      key: 'loanType',
+      label: 'Loan Type',
+      originalValue: report?.financial_calculations?.loanType || null,
+      overrideValue: report?.manual_overrides?.loanType || null,
+      type: 'select',
+      options: [
+        { value: 'interest_only', label: 'Interest Only' },
+        { value: 'principal_interest', label: 'Principal & Interest' }
+      ],
+      isCashFlowField: true
+    },
+    {
+      key: 'loanTermYears',
+      label: 'Loan Term',
+      originalValue: report?.financial_calculations?.loanTermYears || null,
+      overrideValue: report?.manual_overrides?.loanTermYears || null,
+      suffix: 'years',
+      isCashFlowField: true
+    },
+    {
+      key: 'interestOnlyPeriodYears',
+      label: 'Interest Only Period',
+      originalValue: report?.financial_calculations?.interestOnlyPeriodYears || null,
+      overrideValue: report?.manual_overrides?.interestOnlyPeriodYears || null,
+      suffix: 'years',
+      isCashFlowField: true
+    },
+    {
+      key: 'repaymentFrequency',
+      label: 'Repayment Frequency',
+      originalValue: report?.financial_calculations?.repaymentFrequency || 'monthly',
+      overrideValue: report?.manual_overrides?.repaymentFrequency || null,
+      type: 'select',
+      options: [
+        { value: 'weekly', label: 'Weekly (52/year)' },
+        { value: 'fortnightly', label: 'Fortnightly (26/year)' },
+        { value: 'monthly', label: 'Monthly (12/year)' }
+      ],
+      isCashFlowField: true
+    },
+    {
+      key: 'extraRepaymentPerMonth',
+      label: 'Extra Repayment (Monthly)',
+      originalValue: report?.financial_calculations?.extraRepaymentPerMonth || 0,
+      overrideValue: report?.manual_overrides?.extraRepaymentPerMonth || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
+      key: 'offsetBalance',
+      label: 'Offset Account Balance',
+      originalValue: report?.financial_calculations?.offsetBalance || 0,
+      overrideValue: report?.manual_overrides?.offsetBalance || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
+      key: 'occupancyRate',
+      label: 'Occupancy Rate',
+      originalValue: report?.financial_calculations?.occupancyRate || 52,
+      overrideValue: report?.manual_overrides?.occupancyRate || null,
+      suffix: 'weeks/year',
+      isCashFlowField: true
+    },
+    // Only show construction duration for new builds
+    ...(isNewBuild ? [{
+      key: 'constructionDurationMonths',
+      label: 'Construction Duration',
+      originalValue: report?.financial_calculations?.constructionDurationMonths || null,
+      overrideValue: report?.manual_overrides?.constructionDurationMonths || null,
+      suffix: 'months',
+      isCashFlowField: true
+    }] : []),
+  ];
+
+  // Construction stage percentages (only for new builds - Cash Flow Tab)
+  const constructionStageFields: OverrideField[] = isNewBuild ? [
+    {
+      key: 'stageDepositPercent',
+      label: 'Deposit Stage',
+      originalValue: 5,
+      overrideValue: report?.manual_overrides?.stageDepositPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageSlabPercent',
+      label: 'Slab/Base Stage',
+      originalValue: 15,
+      overrideValue: report?.manual_overrides?.stageSlabPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageFramePercent',
+      label: 'Frame Stage',
+      originalValue: 20,
+      overrideValue: report?.manual_overrides?.stageFramePercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageLockupPercent',
+      label: 'Lock-up Stage',
+      originalValue: 25,
+      overrideValue: report?.manual_overrides?.stageLockupPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageFixingPercent',
+      label: 'Fixing Stage',
+      originalValue: 20,
+      overrideValue: report?.manual_overrides?.stageFixingPercent || null,
+      suffix: '%'
+    },
+    {
+      key: 'stageCompletionPercent',
+      label: 'Practical Completion',
+      originalValue: 15,
+      overrideValue: report?.manual_overrides?.stageCompletionPercent || null,
+      suffix: '%'
+    },
+  ] : [];
+
+  // Tax & Growth settings (Cash Flow Tab)
   const taxGrowthFields: OverrideField[] = [
     {
       key: 'cpiGrowthRate',
@@ -536,26 +566,16 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     },
   ];
 
-  const propertySpecFields: OverrideField[] = [
-    {
-      key: 'landSizeSqm',
-      label: 'Land Size',
-      originalValue: report?.financial_calculations?.landSizeSqm || null,
-      overrideValue: report?.manual_overrides?.landSizeSqm || null,
-      suffix: 'm²'
-    },
-    {
-      key: 'buildSizeSqm',
-      label: 'Build Size',
-      originalValue: report?.financial_calculations?.buildSizeSqm || null,
-      overrideValue: report?.manual_overrides?.buildSizeSqm || null,
-      suffix: 'm²'
-    }
+  // Legacy: Combined fields for backward compatibility (purchaseLoanFields reference)
+  const purchaseLoanFields: OverrideField[] = [
+    ...corePropertyFields,
+    ...cashFlowLoanFields.filter(f => ['loanAmount', 'loanType', 'loanTermYears', 'interestOnlyPeriodYears', 'repaymentFrequency', 'extraRepaymentPerMonth', 'offsetBalance', 'marketValueNow'].includes(f.key)),
   ];
 
   // Combined fields for legacy support
   const fields: OverrideField[] = [
-    ...purchaseLoanFields,
+    ...corePropertyFields,
+    ...cashFlowLoanFields,
     ...rentalIncomeFields,
     ...annualExpenseFields,
     ...taxGrowthFields,
@@ -1098,611 +1118,647 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
               Manual Data Override
             </DialogTitle>
             <DialogDescription>
-              Override inaccurate data from external sources. Fields marked with <Calculator className="h-3 w-3 inline mx-1" /> are for 10-year cash flow analysis - toggle "Include in Report" to show them in the investment report PDF.
+              Override data for this property. Switch between tabs to configure Investment Report fields or Cash Flow Analysis settings.
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <Separator />
 
-        <ScrollArea className="flex-1 overflow-y-auto px-6">
-          <div className="space-y-6 py-4">
-            {/* Purchase & Loan Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                <span className="w-2 h-2 bg-primary rounded-full"></span>
-                Purchase & Loan Details
-              </h3>
-              
-              {/* Mortgage Repayment Calculator */}
-              <Collapsible 
-                open={showMortgageCalculator} 
-                onOpenChange={setShowMortgageCalculator}
-                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
-              >
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-amber-500/10">
-                        <Banknote className="h-5 w-5 text-amber-600" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold text-foreground">Mortgage Repayment Calculator</p>
-                        <p className="text-sm text-muted-foreground">
-                          Calculate repayments, view amortisation schedule, and apply to cash flow
-                        </p>
-                      </div>
-                    </div>
-                    {showMortgageCalculator ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4 space-y-4">
-                    <Separator />
-                    <MortgageRepaymentCalculator
-                      initialLoanAmount={
-                        overrides.loanAmount || 
-                        report?.manual_overrides?.loanAmount ||
-                        report?.financial_calculations?.loanAmount || 
-                        ((report?.financial_calculations?.purchasePrice || 0) * (report?.financial_calculations?.loanToValueRatio || 80) / 100)
-                      }
-                      initialInterestRate={
-                        overrides.interestRate || 
-                        report?.financial_calculations?.interestRate || 
-                        6.5
-                      }
-                      initialLoanTermYears={
-                        overrides.loanTermYears || 
-                        report?.financial_calculations?.loanTermYears || 
-                        30
-                      }
-                      initialLoanType={
-                        (overrides.loanType || report?.financial_calculations?.loanType || 'principal_interest') as LoanType
-                      }
-                      initialInterestOnlyPeriodYears={
-                        overrides.interestOnlyPeriodYears || 
-                        report?.financial_calculations?.interestOnlyPeriodYears || 
-                        0
-                      }
-                      initialRepaymentFrequency={
-                        (overrides.repaymentFrequency || report?.financial_calculations?.repaymentFrequency || 'monthly') as RepaymentFrequency
-                      }
-                      initialExtraRepayment={
-                        overrides.extraRepaymentPerMonth || 
-                        report?.financial_calculations?.extraRepaymentPerMonth || 
-                        0
-                      }
-                      initialOffsetBalance={
-                        overrides.offsetBalance || 
-                        report?.financial_calculations?.offsetBalance || 
-                        0
-                      }
-                      onApplyToOverrides={(values) => {
-                        setOverrides(prev => ({
-                          ...prev,
-                          ...(values.loanAmount !== undefined && { loanAmount: values.loanAmount }),
-                          ...(values.interestRate !== undefined && { interestRate: values.interestRate }),
-                          ...(values.loanTermYears !== undefined && { loanTermYears: values.loanTermYears }),
-                          ...(values.loanType !== undefined && { loanType: values.loanType }),
-                          ...(values.interestOnlyPeriodYears !== undefined && { interestOnlyPeriodYears: values.interestOnlyPeriodYears }),
-                          ...(values.repaymentFrequency !== undefined && { repaymentFrequency: values.repaymentFrequency }),
-                          ...(values.extraRepaymentPerMonth !== undefined && { extraRepaymentPerMonth: values.extraRepaymentPerMonth }),
-                          ...(values.offsetBalance !== undefined && { offsetBalance: values.offsetBalance }),
-                        }));
-                        setHasChanges(true);
-                        toast({
-                          title: "Values Applied",
-                          description: "Mortgage calculator values have been applied to the override fields.",
-                        });
-                      }}
-                      onApplyLoanProjection={(projection) => {
-                        // Store the 10-year loan projection for cash flow analysis
-                        const loanProjectionOverrides: Record<string, Record<string, number>> = {};
-                        projection.forEach((yearData) => {
-                          loanProjectionOverrides[yearData.year] = {
-                            yearlyInterest: yearData.interestPayment,
-                            yearlyPrincipal: yearData.principalPayment,
-                            yearlyLoanPayment: yearData.totalPayment,
-                            loanBalance: yearData.closingBalance,
-                          };
-                        });
-                        
-                        setOverrides(prev => ({
-                          ...prev,
-                          loanProjection: loanProjectionOverrides,
-                        }));
-                        setHasChanges(true);
-                        toast({
-                          title: "Loan Projection Applied",
-                          description: "10-year loan amortisation has been applied to cash flow analysis.",
-                        });
-                      }}
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {purchaseLoanFields.map((field, index) => 
-                renderField(field, index < purchaseLoanFields.length - 1)
-              )}
-            </div>
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'investment' | 'cashflow')} className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 pt-2">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="investment" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Investment Report
+              </TabsTrigger>
+              <TabsTrigger value="cashflow" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Cash Flow Analysis
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-            {/* Construction Stage Percentages - Only for New Builds */}
-            {isNewBuild && constructionStageFields.length > 0 && (
-              <>
-                <Separator className="my-6" />
+          {/* Investment Report Tab */}
+          <TabsContent value="investment" className="flex-1 overflow-hidden mt-0">
+            <ScrollArea className="h-full px-6">
+              <div className="space-y-6 py-4">
+                {/* Property Details Section */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
                     <span className="w-2 h-2 bg-primary rounded-full"></span>
-                    Construction Stage Percentages
-                    <Badge variant="outline" className="ml-2 text-xs font-normal">
-                      Must total 100%
-                    </Badge>
+                    Property Details
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Customize the payment schedule percentages for your builder's contract. Default values follow standard Australian construction practices.
-                  </p>
-                  {(() => {
-                    const totalPercent = constructionStageFields.reduce((sum, field) => {
-                      const val = overrides[field.key] ?? field.originalValue ?? 0;
-                      return sum + (typeof val === 'number' ? val : parseFloat(val) || 0);
-                    }, 0);
-                    const isValid = Math.abs(totalPercent - 100) < 0.01;
-                    return (
-                      <div className={`flex items-center gap-2 p-2 rounded-lg ${isValid ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
-                        <span className={`text-sm font-medium ${isValid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                          Total: {totalPercent.toFixed(1)}%
-                        </span>
-                        {!isValid && (
-                          <span className="text-xs text-red-600 dark:text-red-400">
-                            (Must equal 100%)
-                          </span>
-                        )}
-                        {isValid && (
-                          <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        )}
-                      </div>
-                    );
-                  })()}
-                  <div className="grid grid-cols-2 gap-3">
-                    {constructionStageFields.map((field) => (
-                      <div key={field.key} className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">{field.label}</Label>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="100"
-                            value={overrides[field.key] ?? field.originalValue ?? ''}
-                            onChange={(e) => handleOverrideChange(field.key, e.target.value)}
-                            className="pr-8 h-9"
-                            placeholder={String(field.originalValue)}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {corePropertyFields.map((field, index) => 
+                    renderField(field, index < corePropertyFields.length - 1)
+                  )}
                 </div>
-              </>
-            )}
 
-            <Separator className="my-6" />
+                <Separator className="my-6" />
 
-            {/* Rental Income Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                <span className="w-2 h-2 bg-primary rounded-full"></span>
-                Rental Income
-              </h3>
-              {rentalIncomeFields.map((field, index) => 
-                renderField(field, index < rentalIncomeFields.length - 1)
-              )}
-            </div>
+                {/* Rental Income Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary rounded-full"></span>
+                    Rental Income
+                  </h3>
+                  {rentalIncomeFields.map((field, index) => 
+                    renderField(field, index < rentalIncomeFields.length - 1)
+                  )}
+                </div>
 
-            <Separator className="my-6" />
+                <Separator className="my-6" />
 
-            {/* Annual Operating Expenses Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                <span className="w-2 h-2 bg-primary rounded-full"></span>
-                Annual Operating Expenses
-              </h3>
-              
-              {/* Stamp Duty Calculator */}
-              <Collapsible 
-                open={showStampDutyCalculator} 
-                onOpenChange={setShowStampDutyCalculator}
-                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
-              >
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                {/* Annual Operating Expenses Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary rounded-full"></span>
+                    Annual Operating Expenses
+                  </h3>
+                  
+                  {/* Stamp Duty Calculator */}
+                  <Collapsible 
+                    open={showStampDutyCalculator} 
+                    onOpenChange={setShowStampDutyCalculator}
+                    className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-orange-500/10">
-                        <Calculator className="h-5 w-5 text-orange-600" />
-                      </div>
-                      <div className="text-left">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-foreground">Stamp Duty Calculator</p>
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-orange-500/10">
+                            <Calculator className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div className="text-left">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-foreground">Stamp Duty Calculator</p>
+                              {detectedState !== 'All' && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {detectedState} detected
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Calculate stamp duty for all Australian states and territories
+                            </p>
+                          </div>
+                        </div>
+                        {showStampDutyCalculator ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-4">
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <ExternalLink className="h-4 w-4" />
+                            <span>Powered by calculatorsonline.com.au</span>
+                          </div>
                           {detectedState !== 'All' && (
-                            <Badge variant="secondary" className="text-xs">
-                              {detectedState} detected
+                            <Badge variant="outline" className="text-xs">
+                              Pre-selected: {STATE_MAPPING[detectedState] || detectedState}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Calculate stamp duty for all Australian states and territories
-                        </p>
-                      </div>
-                    </div>
-                    {showStampDutyCalculator ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4 space-y-4">
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <ExternalLink className="h-4 w-4" />
-                        <span>Powered by calculatorsonline.com.au</span>
-                      </div>
-                      {detectedState !== 'All' && (
-                        <Badge variant="outline" className="text-xs">
-                          Pre-selected: {STATE_MAPPING[detectedState] || detectedState}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {/* Stamp Duty Calculator Container */}
-                    <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                      <div id="stamp-duty-calculator" className="orange-theme">
-                        <div id="stamp-duty-anchors">
-                          <p className="text-sm text-muted-foreground">
-                            Stamp Duty Calculator from{' '}
-                            <a 
-                              href="https://calculatorsonline.com.au" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              calculatorsonline.com.au
-                            </a>
-                          </p>
+                        
+                        {/* Stamp Duty Calculator Container */}
+                        <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
+                          <div id="stamp-duty-calculator" className="orange-theme">
+                            <div id="stamp-duty-anchors">
+                              <p className="text-sm text-muted-foreground">
+                                Stamp Duty Calculator from{' '}
+                                <a 
+                                  href="https://calculatorsonline.com.au" 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  calculatorsonline.com.au
+                                </a>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Auto-populate Button */}
+                        <Button 
+                          onClick={captureStampDutyFromCalculator}
+                          className="w-full gap-2"
+                          variant="default"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Use Calculated Stamp Duty Value
+                        </Button>
+
+                        {/* Instructions */}
+                        <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
+                          <p className="text-sm font-medium text-foreground">How to use:</p>
+                          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                            <li>State is auto-detected from property address{detectedState !== 'All' && ` (${detectedState})`}</li>
+                            <li>Enter the property purchase price</li>
+                            <li>Select buyer type (first home buyer, investor, etc.)</li>
+                            <li>Click "Use Calculated Stamp Duty Value" to auto-populate</li>
+                          </ol>
                         </div>
                       </div>
-                    </div>
+                    </CollapsibleContent>
+                  </Collapsible>
 
-                    {/* Auto-populate Button */}
-                    <Button 
-                      onClick={captureStampDutyFromCalculator}
-                      className="w-full gap-2"
-                      variant="default"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Use Calculated Stamp Duty Value
-                    </Button>
-
-                    {/* Instructions */}
-                    <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
-                      <p className="text-sm font-medium text-foreground">How to use:</p>
-                      <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                        <li>State is auto-detected from property address{detectedState !== 'All' && ` (${detectedState})`}</li>
-                        <li>Enter the property purchase price</li>
-                        <li>Select buyer type (first home buyer, investor, etc.)</li>
-                        <li>Click "Use Calculated Stamp Duty Value" to auto-populate</li>
-                      </ol>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {annualExpenseFields.map((field, index) => 
-                renderField(field, index < annualExpenseFields.length - 1)
-              )}
-            </div>
-
-            <Separator className="my-6" />
-
-            {/* Tax & Growth Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                  <span className="w-2 h-2 bg-primary rounded-full"></span>
-                  Tax & Growth Settings
-                </h3>
-              </div>
-              
-              {/* Master Depreciation Toggle for Cash Flow Analysis */}
-              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
-                <div className="space-y-1">
-                  <Label className="text-base font-semibold">Include Depreciation in Cash Flow Analysis</Label>
-                  <p className="text-sm text-muted-foreground">
-                    When enabled, depreciation values will be factored into the 10-year cash flow projections
-                  </p>
+                  {annualExpenseFields.map((field, index) => 
+                    renderField(field, index < annualExpenseFields.length - 1)
+                  )}
                 </div>
-                <Switch
-                  checked={includeDepreciationInCashFlow}
-                  onCheckedChange={(checked) => {
-                    setIncludeDepreciationInCashFlow(checked);
-                    setHasChanges(true);
-                  }}
-                />
+
+                <Separator className="my-6" />
+
+                {/* Property Specifications Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary rounded-full"></span>
+                    Property Specifications
+                  </h3>
+                  {propertySpecFields.map((field, index) => 
+                    renderField(field, index < propertySpecFields.length - 1)
+                  )}
+                </div>
               </div>
+            </ScrollArea>
+          </TabsContent>
 
-              {/* Washington Brown Depreciation Calculator */}
-              <Collapsible 
-                open={showDepreciationCalculator} 
-                onOpenChange={setShowDepreciationCalculator}
-                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
-              >
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+          {/* Cash Flow Analysis Tab */}
+          <TabsContent value="cashflow" className="flex-1 overflow-hidden mt-0">
+            <ScrollArea className="h-full px-6">
+              <div className="space-y-6 py-4">
+                {/* Loan & Mortgage Settings */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary rounded-full"></span>
+                    Loan & Mortgage Settings
+                  </h3>
+                  
+                  {/* Mortgage Repayment Calculator */}
+                  <Collapsible 
+                    open={showMortgageCalculator} 
+                    onOpenChange={setShowMortgageCalculator}
+                    className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Calculator className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold text-foreground">Washington Brown Depreciation Calculator</p>
-                        <p className="text-sm text-muted-foreground">
-                          Calculate accurate tax depreciation estimates for this property
-                        </p>
-                      </div>
-                    </div>
-                    {showDepreciationCalculator ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4 space-y-4">
-                    <Separator />
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <ExternalLink className="h-4 w-4" />
-                      <span>Powered by Washington Brown - Australia's leading quantity surveyors</span>
-                    </div>
-                    
-                    {/* Iframe Container */}
-                    <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
-                      <iframe 
-                        src="https://www.washingtonbrown.com.au/public/static/external/"
-                        className="w-full border-0"
-                        style={{ 
-                          height: '680px',
-                          minHeight: '680px'
-                        }}
-                        title="Washington Brown Depreciation Calculator"
-                        loading="lazy"
-                      />
-                    </div>
-
-                    {/* Instructions */}
-                    <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
-                      <p className="text-sm font-medium text-foreground">How to use:</p>
-                      <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                        <li>Enter the property details in the calculator above</li>
-                        <li>Click "Calculate" to get the depreciation estimate</li>
-                        <li>Copy the <strong>Year 1</strong> depreciation value (either Diminishing Value or Prime Cost)</li>
-                        <li>Enter that value in the "Annual Depreciation" field below</li>
-                      </ol>
-                    </div>
-
-                    {/* Disclaimer */}
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-1">
-                      <div className="flex items-start gap-2">
-                        <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-amber-700 dark:text-amber-400">
-                          <strong>Disclaimer:</strong> The depreciation values provided by this calculator are purely estimates for indicative purposes only. Users should consult with a qualified quantity surveyor or tax professional before relying on these figures for financial or tax planning purposes. Use at your own discretion.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Depreciation Schedule Builder */}
-              <Collapsible 
-                open={showDepreciationSchedule} 
-                onOpenChange={setShowDepreciationSchedule}
-                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
-              >
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-green-500/10">
-                        <Table className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold text-foreground">Depreciation Schedule Builder</p>
-                        <p className="text-sm text-muted-foreground">
-                          Create 10-year depreciation schedule and apply to cash flow analysis
-                        </p>
-                      </div>
-                    </div>
-                    {showDepreciationSchedule ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4 space-y-4">
-                    <Separator />
-                    
-                    {/* Method Selection */}
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">Depreciation Method</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => handleDepreciationMethodChange('prime_cost')}
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${
-                            depreciationMethod === 'prime_cost'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-muted-foreground'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            {depreciationMethod === 'prime_cost' && (
-                              <Check className="h-4 w-4 text-primary" />
-                            )}
-                            <span className="font-semibold">Prime Cost</span>
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-amber-500/10">
+                            <Banknote className="h-5 w-5 text-amber-600" />
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Same depreciation amount each year (straight-line)
-                          </p>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDepreciationMethodChange('diminishing_value')}
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${
-                            depreciationMethod === 'diminishing_value'
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-muted-foreground'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            {depreciationMethod === 'diminishing_value' && (
-                              <Check className="h-4 w-4 text-primary" />
-                            )}
-                            <span className="font-semibold">Diminishing Value</span>
+                          <div className="text-left">
+                            <p className="font-semibold text-foreground">Mortgage Repayment Calculator</p>
+                            <p className="text-sm text-muted-foreground">
+                              Calculate repayments, view amortisation schedule, and apply to cash flow
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Higher depreciation early, decreasing over time
-                          </p>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Year 1 Input */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Year 1 Depreciation (from Washington Brown)</Label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">$</span>
-                        <Input
-                          type="number"
-                          placeholder="Enter Year 1 depreciation value"
-                          value={year1Depreciation || ''}
-                          onChange={(e) => handleYear1DepreciationChange(parseFloat(e.target.value) || 0)}
-                          className="max-w-[200px]"
+                        </div>
+                        {showMortgageCalculator ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-4">
+                        <Separator />
+                        <MortgageRepaymentCalculator
+                          initialLoanAmount={
+                            overrides.loanAmount || 
+                            report?.manual_overrides?.loanAmount ||
+                            report?.financial_calculations?.loanAmount || 
+                            ((report?.financial_calculations?.purchasePrice || 0) * (report?.financial_calculations?.loanToValueRatio || 80) / 100)
+                          }
+                          initialInterestRate={
+                            overrides.interestRate || 
+                            report?.financial_calculations?.interestRate || 
+                            6.5
+                          }
+                          initialLoanTermYears={
+                            overrides.loanTermYears || 
+                            report?.financial_calculations?.loanTermYears || 
+                            30
+                          }
+                          initialLoanType={
+                            (overrides.loanType || report?.financial_calculations?.loanType || 'principal_interest') as LoanType
+                          }
+                          initialInterestOnlyPeriodYears={
+                            overrides.interestOnlyPeriodYears || 
+                            report?.financial_calculations?.interestOnlyPeriodYears || 
+                            0
+                          }
+                          initialRepaymentFrequency={
+                            (overrides.repaymentFrequency || report?.financial_calculations?.repaymentFrequency || 'monthly') as RepaymentFrequency
+                          }
+                          initialExtraRepayment={
+                            overrides.extraRepaymentPerMonth || 
+                            report?.financial_calculations?.extraRepaymentPerMonth || 
+                            0
+                          }
+                          initialOffsetBalance={
+                            overrides.offsetBalance || 
+                            report?.financial_calculations?.offsetBalance || 
+                            0
+                          }
+                          onApplyToOverrides={(values) => {
+                            setOverrides(prev => ({
+                              ...prev,
+                              ...(values.loanAmount !== undefined && { loanAmount: values.loanAmount }),
+                              ...(values.interestRate !== undefined && { interestRate: values.interestRate }),
+                              ...(values.loanTermYears !== undefined && { loanTermYears: values.loanTermYears }),
+                              ...(values.loanType !== undefined && { loanType: values.loanType }),
+                              ...(values.interestOnlyPeriodYears !== undefined && { interestOnlyPeriodYears: values.interestOnlyPeriodYears }),
+                              ...(values.repaymentFrequency !== undefined && { repaymentFrequency: values.repaymentFrequency }),
+                              ...(values.extraRepaymentPerMonth !== undefined && { extraRepaymentPerMonth: values.extraRepaymentPerMonth }),
+                              ...(values.offsetBalance !== undefined && { offsetBalance: values.offsetBalance }),
+                            }));
+                            setHasChanges(true);
+                            toast({
+                              title: "Values Applied",
+                              description: "Mortgage calculator values have been applied to the override fields.",
+                            });
+                          }}
+                          onApplyLoanProjection={(projection) => {
+                            const loanProjectionOverrides: Record<string, Record<string, number>> = {};
+                            projection.forEach((yearData) => {
+                              loanProjectionOverrides[yearData.year] = {
+                                yearlyInterest: yearData.interestPayment,
+                                yearlyPrincipal: yearData.principalPayment,
+                                yearlyLoanPayment: yearData.totalPayment,
+                                loanBalance: yearData.closingBalance,
+                              };
+                            });
+                            
+                            setOverrides(prev => ({
+                              ...prev,
+                              loanProjection: loanProjectionOverrides,
+                            }));
+                            setHasChanges(true);
+                            toast({
+                              title: "Loan Projection Applied",
+                              description: "10-year loan amortisation has been applied to cash flow analysis.",
+                            });
+                          }}
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Copy the Year 1 value from Washington Brown calculator above
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {cashFlowLoanFields.map((field, index) => 
+                    renderField(field, index < cashFlowLoanFields.length - 1)
+                  )}
+                </div>
+
+                {/* Construction Stage Percentages - Only for New Builds */}
+                {isNewBuild && constructionStageFields.length > 0 && (
+                  <>
+                    <Separator className="my-6" />
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        Construction Stage Percentages
+                        <Badge variant="outline" className="ml-2 text-xs font-normal">
+                          Must total 100%
+                        </Badge>
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Customize the payment schedule percentages for your builder's contract. Default values follow standard Australian construction practices.
+                      </p>
+                      {(() => {
+                        const totalPercent = constructionStageFields.reduce((sum, field) => {
+                          const val = overrides[field.key] ?? field.originalValue ?? 0;
+                          return sum + (typeof val === 'number' ? val : parseFloat(val) || 0);
+                        }, 0);
+                        const isValid = Math.abs(totalPercent - 100) < 0.01;
+                        return (
+                          <div className={`flex items-center gap-2 p-2 rounded-lg ${isValid ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                            <span className={`text-sm font-medium ${isValid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                              Total: {totalPercent.toFixed(1)}%
+                            </span>
+                            {!isValid && (
+                              <span className="text-xs text-red-600 dark:text-red-400">
+                                (Must equal 100%)
+                              </span>
+                            )}
+                            {isValid && (
+                              <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            )}
+                          </div>
+                        );
+                      })()}
+                      <div className="grid grid-cols-2 gap-3">
+                        {constructionStageFields.map((field) => (
+                          <div key={field.key} className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">{field.label}</Label>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={overrides[field.key] ?? field.originalValue ?? ''}
+                                onChange={(e) => handleOverrideChange(field.key, e.target.value)}
+                                className="pr-8 h-9"
+                                placeholder={String(field.originalValue)}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <Separator className="my-6" />
+
+                {/* Tax & Growth Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      Tax & Growth Settings
+                    </h3>
+                  </div>
+                  
+                  {/* Master Depreciation Toggle for Cash Flow Analysis */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                    <div className="space-y-1">
+                      <Label className="text-base font-semibold">Include Depreciation in Cash Flow Analysis</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, depreciation values will be factored into the 10-year cash flow projections
                       </p>
                     </div>
-
-                    {/* 10-Year Schedule Table */}
-                    {year1Depreciation > 0 && (
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">10-Year Depreciation Schedule</Label>
-                        <div className="rounded-lg border overflow-hidden">
-                          <UITable>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50">
-                                <TableHead className="w-[100px] font-semibold">Year</TableHead>
-                                <TableHead className="font-semibold">Depreciation Amount</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {Array.from({ length: 10 }, (_, i) => i + 1).map((year) => (
-                                <TableRow key={year} className={year === 1 ? 'bg-primary/5' : ''}>
-                                  <TableCell className="font-medium">
-                                    Year {year}
-                                    {year === 1 && (
-                                      <Badge variant="outline" className="ml-2 text-xs">Base</Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground">$</span>
-                                      <Input
-                                        type="number"
-                                        value={depreciationSchedule[year] || ''}
-                                        onChange={(e) => handleScheduleYearChange(year, parseFloat(e.target.value) || 0)}
-                                        className="max-w-[150px] h-8"
-                                      />
-                                      {depreciationMethod === 'diminishing_value' && year > 1 && (
-                                        <span className="text-xs text-muted-foreground">
-                                          ({((depreciationSchedule[year] / depreciationSchedule[1]) * 100).toFixed(0)}% of Y1)
-                                        </span>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </UITable>
-                        </div>
-
-                        {/* Total Depreciation Summary */}
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                          <span className="text-sm font-medium">Total 10-Year Depreciation</span>
-                          <span className="text-lg font-bold text-primary">
-                            ${Object.values(depreciationSchedule).reduce((sum, val) => sum + (val || 0), 0).toLocaleString()}
-                          </span>
-                        </div>
-
-                        {/* Apply to Cash Flow Button */}
-                        <Button
-                          onClick={applyDepreciationToCashFlow}
-                          className="w-full"
-                          size="lg"
-                        >
-                          <ArrowRight className="h-4 w-4 mr-2" />
-                          Apply to Cash Flow Analysis
-                        </Button>
-                        <p className="text-xs text-muted-foreground text-center">
-                          This will inject the depreciation values into your 10-year cash flow projections
-                        </p>
-                      </div>
-                    )}
+                    <Switch
+                      checked={includeDepreciationInCashFlow}
+                      onCheckedChange={(checked) => {
+                        setIncludeDepreciationInCashFlow(checked);
+                        setHasChanges(true);
+                      }}
+                    />
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-              
-              {taxGrowthFields.map((field, index) => 
-                renderField(field, index < taxGrowthFields.length - 1)
-              )}
-            </div>
 
-            <Separator className="my-6" />
+                  {/* Washington Brown Depreciation Calculator */}
+                  <Collapsible 
+                    open={showDepreciationCalculator} 
+                    onOpenChange={setShowDepreciationCalculator}
+                    className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Calculator className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-semibold text-foreground">Washington Brown Depreciation Calculator</p>
+                            <p className="text-sm text-muted-foreground">
+                              Calculate accurate tax depreciation estimates for this property
+                            </p>
+                          </div>
+                        </div>
+                        {showDepreciationCalculator ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-4">
+                        <Separator />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <ExternalLink className="h-4 w-4" />
+                          <span>Powered by Washington Brown - Australia's leading quantity surveyors</span>
+                        </div>
+                        
+                        {/* Iframe Container */}
+                        <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
+                          <iframe 
+                            src="https://www.washingtonbrown.com.au/public/static/external/"
+                            className="w-full border-0"
+                            style={{ 
+                              height: '680px',
+                              minHeight: '680px'
+                            }}
+                            title="Washington Brown Depreciation Calculator"
+                            loading="lazy"
+                          />
+                        </div>
 
-            {/* Property Specifications Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                <span className="w-2 h-2 bg-primary rounded-full"></span>
-                Property Specifications
-              </h3>
-              {propertySpecFields.map((field, index) => 
-                renderField(field, index < propertySpecFields.length - 1)
-              )}
-            </div>
-          </div>
-        </ScrollArea>
+                        {/* Instructions */}
+                        <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
+                          <p className="text-sm font-medium text-foreground">How to use:</p>
+                          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                            <li>Enter the property details in the calculator above</li>
+                            <li>Click "Calculate" to get the depreciation estimate</li>
+                            <li>Copy the <strong>Year 1</strong> depreciation value (either Diminishing Value or Prime Cost)</li>
+                            <li>Enter that value in the "Annual Depreciation" field below</li>
+                          </ol>
+                        </div>
+
+                        {/* Disclaimer */}
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-1">
+                          <div className="flex items-start gap-2">
+                            <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-amber-700 dark:text-amber-400">
+                              <strong>Disclaimer:</strong> The depreciation values provided by this calculator are purely estimates for indicative purposes only. Users should consult with a qualified quantity surveyor or tax professional before relying on these figures for financial or tax planning purposes. Use at your own discretion.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {/* Depreciation Schedule Builder */}
+                  <Collapsible 
+                    open={showDepreciationSchedule} 
+                    onOpenChange={setShowDepreciationSchedule}
+                    className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-green-500/10">
+                            <Table className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-semibold text-foreground">Depreciation Schedule Builder</p>
+                            <p className="text-sm text-muted-foreground">
+                              Create 10-year depreciation schedule and apply to cash flow analysis
+                            </p>
+                          </div>
+                        </div>
+                        {showDepreciationSchedule ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-4">
+                        <Separator />
+                        
+                        {/* Method Selection */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Depreciation Method</Label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => handleDepreciationMethodChange('prime_cost')}
+                              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                                depreciationMethod === 'prime_cost'
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-muted-foreground'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                {depreciationMethod === 'prime_cost' && (
+                                  <Check className="h-4 w-4 text-primary" />
+                                )}
+                                <span className="font-semibold">Prime Cost</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Same depreciation amount each year (straight-line)
+                              </p>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDepreciationMethodChange('diminishing_value')}
+                              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                                depreciationMethod === 'diminishing_value'
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-muted-foreground'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                {depreciationMethod === 'diminishing_value' && (
+                                  <Check className="h-4 w-4 text-primary" />
+                                )}
+                                <span className="font-semibold">Diminishing Value</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Higher depreciation early, decreasing over time
+                              </p>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Year 1 Input */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Year 1 Depreciation (from Washington Brown)</Label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">$</span>
+                            <Input
+                              type="number"
+                              placeholder="Enter Year 1 depreciation value"
+                              value={year1Depreciation || ''}
+                              onChange={(e) => handleYear1DepreciationChange(parseFloat(e.target.value) || 0)}
+                              className="max-w-[200px]"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Copy the Year 1 value from Washington Brown calculator above
+                          </p>
+                        </div>
+
+                        {/* 10-Year Schedule Table */}
+                        {year1Depreciation > 0 && (
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">10-Year Depreciation Schedule</Label>
+                            <div className="rounded-lg border overflow-hidden">
+                              <UITable>
+                                <TableHeader>
+                                  <TableRow className="bg-muted/50">
+                                    <TableHead className="w-[100px] font-semibold">Year</TableHead>
+                                    <TableHead className="font-semibold">Depreciation Amount</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {Array.from({ length: 10 }, (_, i) => i + 1).map((year) => (
+                                    <TableRow key={year} className={year === 1 ? 'bg-primary/5' : ''}>
+                                      <TableCell className="font-medium">
+                                        Year {year}
+                                        {year === 1 && (
+                                          <Badge variant="outline" className="ml-2 text-xs">Base</Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-muted-foreground">$</span>
+                                          <Input
+                                            type="number"
+                                            value={depreciationSchedule[year] || ''}
+                                            onChange={(e) => handleScheduleYearChange(year, parseFloat(e.target.value) || 0)}
+                                            className="max-w-[150px] h-8"
+                                          />
+                                          {depreciationMethod === 'diminishing_value' && year > 1 && (
+                                            <span className="text-xs text-muted-foreground">
+                                              ({((depreciationSchedule[year] / depreciationSchedule[1]) * 100).toFixed(0)}% of Y1)
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </UITable>
+                            </div>
+
+                            {/* Total Depreciation Summary */}
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                              <span className="text-sm font-medium">Total 10-Year Depreciation</span>
+                              <span className="text-lg font-bold text-primary">
+                                ${Object.values(depreciationSchedule).reduce((sum, val) => sum + (val || 0), 0).toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Apply to Cash Flow Button */}
+                            <Button
+                              onClick={applyDepreciationToCashFlow}
+                              className="w-full"
+                              size="lg"
+                            >
+                              <ArrowRight className="h-4 w-4 mr-2" />
+                              Apply to Cash Flow Analysis
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                              This will inject the depreciation values into your 10-year cash flow projections
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                  
+                  {taxGrowthFields.map((field, index) => 
+                    renderField(field, index < taxGrowthFields.length - 1)
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
 
         <Separator />
 
