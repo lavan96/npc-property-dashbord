@@ -924,6 +924,76 @@ export function PreGenerationOverrides({
                     />
                   </div>
                 </div>
+
+                {/* Calculated Totals Summary */}
+                {(() => {
+                  const annualRent = (parseFloat(weeklyRent) || 0) * 52;
+                  const pmPercent = parseFloat(propertyManagementFees) || 8;
+                  const pmDollar = Math.round(annualRent * (pmPercent / 100));
+                  
+                  const totalAnnualExpenses = 
+                    (parseFloat(councilRates) || 0) +
+                    (parseFloat(waterRates) || 0) +
+                    (parseFloat(bodyCorporateFees) || 0) +
+                    (parseFloat(buildingLandlordInsurance) || 0) +
+                    pmDollar +
+                    (parseFloat(repairsMaintenance) || 0);
+                  
+                  const totalAcquisitionCosts = 
+                    (parseFloat(stampDuty) || 0) +
+                    (parseFloat(solicitorFees) || 0) +
+                    (isNewBuild && agentFee ? parseFloat(agentFee) : 0);
+
+                  const netOperatingIncome = annualRent - totalAnnualExpenses - (parseFloat(lettingFees) || 0);
+                  
+                  const hasAnyValue = annualRent > 0 || totalAnnualExpenses > 0 || totalAcquisitionCosts > 0;
+                  
+                  if (!hasAnyValue) return null;
+                  
+                  return (
+                    <div className="mt-4 border rounded-lg p-4 bg-muted/20 space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calculator className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-semibold">Calculated Summary</span>
+                        <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        {annualRent > 0 && (
+                          <div className="flex justify-between p-2 bg-background rounded border">
+                            <span className="text-muted-foreground">Annual Rental Income:</span>
+                            <span className="font-medium text-green-600">${annualRent.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {pmDollar > 0 && (
+                          <div className="flex justify-between p-2 bg-background rounded border">
+                            <span className="text-muted-foreground">Property Mgmt (${pmPercent}%):</span>
+                            <span className="font-medium">${pmDollar.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {totalAnnualExpenses > 0 && (
+                          <div className="flex justify-between p-2 bg-background rounded border">
+                            <span className="text-muted-foreground">Total Annual Expenses:</span>
+                            <span className="font-semibold text-red-600">${totalAnnualExpenses.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {totalAcquisitionCosts > 0 && (
+                          <div className="flex justify-between p-2 bg-background rounded border">
+                            <span className="text-muted-foreground">Total Acquisition Costs:</span>
+                            <span className="font-semibold">${totalAcquisitionCosts.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {annualRent > 0 && totalAnnualExpenses > 0 && (
+                          <div className={`col-span-2 flex justify-between p-3 rounded border ${netOperatingIncome >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                            <span className="font-medium">Net Operating Income:</span>
+                            <span className={`font-bold text-lg ${netOperatingIncome >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                              ${netOperatingIncome.toLocaleString()}/year
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </CollapsibleContent>
             </Collapsible>
           </div>
