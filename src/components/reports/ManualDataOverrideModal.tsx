@@ -614,6 +614,18 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }
   }, [report, isOpen]);
 
+  // Track if loan amount and deposit value have been manually edited by the user
+  const [loanAmountManuallyEdited, setLoanAmountManuallyEdited] = useState(false);
+  const [depositValueManuallyEdited, setDepositValueManuallyEdited] = useState(false);
+
+  // Reset manual edit flags when modal opens with a new report
+  useEffect(() => {
+    if (report && isOpen) {
+      setLoanAmountManuallyEdited(false);
+      setDepositValueManuallyEdited(false);
+    }
+  }, [report?.id, isOpen]);
+
   // Dynamically calculate loan amount and deposit value when purchasePrice or LVR changes
   useEffect(() => {
     const purchasePrice = overrides.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? report?.financial_calculations?.propertyValue ?? 0;
@@ -625,33 +637,15 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       // Deposit = Purchase Price × (100% - LVR%)
       const calculatedDepositValue = Math.round(purchasePrice * (1 - lvr / 100));
       
-      const previousPurchasePrice = report?.manual_overrides?.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? 0;
-      const previousLvr = report?.manual_overrides?.loanToValueRatio ?? report?.financial_calculations?.loanToValueRatio ?? 80;
-      const previousCalculatedLoanAmount = Math.round(previousPurchasePrice * (previousLvr / 100));
-      const previousCalculatedDepositValue = Math.round(previousPurchasePrice * (1 - previousLvr / 100));
-      
-      const currentLoanAmountOverride = overrides.loanAmount;
-      const currentDepositValueOverride = overrides.depositValue;
-      
-      // Auto-update loan amount if not manually changed
-      const shouldUpdateLoanAmount = currentLoanAmountOverride === undefined || 
-                                      currentLoanAmountOverride === null || 
-                                      currentLoanAmountOverride === previousCalculatedLoanAmount;
-      
-      // Auto-update deposit value if not manually changed
-      const shouldUpdateDepositValue = currentDepositValueOverride === undefined || 
-                                        currentDepositValueOverride === null || 
-                                        currentDepositValueOverride === previousCalculatedDepositValue;
-      
-      if (shouldUpdateLoanAmount || shouldUpdateDepositValue) {
-        setOverrides(prev => ({
-          ...prev,
-          ...(shouldUpdateLoanAmount && { loanAmount: calculatedLoanAmount }),
-          ...(shouldUpdateDepositValue && { depositValue: calculatedDepositValue })
-        }));
-      }
+      // Update loan amount if not manually edited
+      // Update deposit value if not manually edited
+      setOverrides(prev => ({
+        ...prev,
+        ...(!loanAmountManuallyEdited && { loanAmount: calculatedLoanAmount }),
+        ...(!depositValueManuallyEdited && { depositValue: calculatedDepositValue })
+      }));
     }
-  }, [overrides.purchasePrice, overrides.loanToValueRatio, report]);
+  }, [overrides.purchasePrice, overrides.loanToValueRatio, report?.financial_calculations, loanAmountManuallyEdited, depositValueManuallyEdited]);
 
   // Calculate Prime Cost depreciation schedule (constant annual depreciation)
   const calculatePrimeCostSchedule = (year1Value: number) => {
@@ -771,6 +765,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         }
       }
       
+      // Track manual edits to loan amount and deposit value
+      if (key === 'loanAmount') {
+        setLoanAmountManuallyEdited(true);
+      }
+      if (key === 'depositValue') {
+        setDepositValueManuallyEdited(true);
+      }
+      
       setOverrides(prev => ({
         ...prev,
         [key]: numValue
@@ -797,6 +799,13 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       delete updated[key];
       return updated;
     });
+    // Reset manual edit flags if resetting those fields
+    if (key === 'loanAmount') {
+      setLoanAmountManuallyEdited(false);
+    }
+    if (key === 'depositValue') {
+      setDepositValueManuallyEdited(false);
+    }
     setHasChanges(true);
   };
 
@@ -809,6 +818,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     setCashFlowFieldToggles(defaultToggles);
     setIncludeDepreciationInCashFlow(true);
     setValidationErrors({});
+    // Reset all manual edit flags
+    setLoanAmountManuallyEdited(false);
+    setDepositValueManuallyEdited(false);
     setHasChanges(true);
   };
 
