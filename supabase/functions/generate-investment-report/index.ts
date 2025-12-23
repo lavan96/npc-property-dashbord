@@ -73,12 +73,30 @@ serve(async (req) => {
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
     const scrapedContent = propertyDetails?.scrapedContent || null;
     const sourceUrl = propertyDetails?.sourceUrl || null;
+    const fromUrlScrape = propertyDetails?.fromUrlScrape || false;
     
+    console.log('=== REPORT GENERATION REQUEST ===');
     console.log('Report ID:', reportId);
     console.log('Property address:', propertyAddress);
     console.log('Report scope:', reportScope);
+    console.log('From URL scrape:', fromUrlScrape);
     console.log('Scraped content available:', !!scrapedContent, scrapedContent ? `(${scrapedContent.length} chars)` : '');
     console.log('Source URL:', sourceUrl);
+    
+    // Log all property details for debugging
+    if (propertyDetails) {
+      console.log('Property details received:');
+      console.log('  - Price:', propertyDetails.price);
+      console.log('  - Beds:', propertyDetails.beds);
+      console.log('  - Baths:', propertyDetails.baths);
+      console.log('  - Car spaces:', propertyDetails.carSpaces);
+      console.log('  - Land size:', propertyDetails.landSizeSqm);
+      console.log('  - Build size:', propertyDetails.buildSizeSqm);
+      console.log('  - Property type:', propertyDetails.propertyType);
+      console.log('  - Postcode:', propertyDetails.postcode);
+      console.log('  - State:', propertyDetails.state);
+      console.log('  - Suburb:', propertyDetails.suburb);
+    }
     
     // If reportId is provided but no propertyAddress, fetch it from the existing report (for retries)
     if (reportId && !propertyAddress) {
@@ -2017,6 +2035,24 @@ Produce a full investment report following the structure above, including detail
     // If scraped content is available, prepend it to the prompt for context
     if (scrapedContent) {
       console.log('📄 Injecting scraped property listing content into prompt...');
+      
+      // Build a summary of extracted property details
+      const extractedDetailsSummary: string[] = [];
+      if (propertyDetails?.price) extractedDetailsSummary.push(`Price: $${propertyDetails.price.toLocaleString()}`);
+      if (propertyDetails?.beds) extractedDetailsSummary.push(`Bedrooms: ${propertyDetails.beds}`);
+      if (propertyDetails?.baths) extractedDetailsSummary.push(`Bathrooms: ${propertyDetails.baths}`);
+      if (propertyDetails?.carSpaces) extractedDetailsSummary.push(`Car Spaces: ${propertyDetails.carSpaces}`);
+      if (propertyDetails?.landSizeSqm) extractedDetailsSummary.push(`Land Size: ${propertyDetails.landSizeSqm} sqm`);
+      if (propertyDetails?.buildSizeSqm) extractedDetailsSummary.push(`Building Size: ${propertyDetails.buildSizeSqm} sqm`);
+      if (propertyDetails?.propertyType) extractedDetailsSummary.push(`Property Type: ${propertyDetails.propertyType}`);
+      if (propertyDetails?.suburb) extractedDetailsSummary.push(`Suburb: ${propertyDetails.suburb}`);
+      if (propertyDetails?.postcode) extractedDetailsSummary.push(`Postcode: ${propertyDetails.postcode}`);
+      if (propertyDetails?.state) extractedDetailsSummary.push(`State: ${propertyDetails.state}`);
+      
+      const extractedDetailsText = extractedDetailsSummary.length > 0 
+        ? `\n\n**EXTRACTED PROPERTY SPECIFICATIONS:**\n${extractedDetailsSummary.join('\n')}\n`
+        : '';
+      
       const scrapedContextSection = `
 ---
 **PROPERTY LISTING DATA (SCRAPED FROM: ${sourceUrl || 'Property Listing'})**
@@ -2024,21 +2060,24 @@ Produce a full investment report following the structure above, including detail
 The following is the full content scraped from the property listing. Use this as PRIMARY context for the property details, features, description, and any specific information mentioned in the listing:
 
 ${scrapedContent}
-
+${extractedDetailsText}
 ---
 
-**IMPORTANT:** Use the above scraped listing content to:
-1. Extract accurate property specifications (bedrooms, bathrooms, land size, features)
-2. Use any mentioned price, asking price, or price guide
-3. Include relevant property features and selling points in your analysis
-4. Note any specific upgrades, renovations, or unique characteristics mentioned
-5. Consider the property description when assessing investment potential
+**CRITICAL INSTRUCTIONS FOR URL-SCRAPED LISTINGS:**
+1. The above scraped content is the PRIMARY source of truth for this property
+2. Extract and use the EXACT property specifications from the listing (bedrooms, bathrooms, land size, price)
+3. Use the property address exactly as shown in the listing
+4. Include all relevant property features, upgrades, and selling points mentioned in the listing
+5. If a price is mentioned (guide, asking, or range), use it for financial calculations
+6. Note any specific renovations, improvements, or unique characteristics
+7. Consider the property description when assessing investment potential
+8. Verify the suburb/postcode from the listing for accurate location analysis
 
 ---
 
 `;
       prompt = scrapedContextSection + prompt;
-      console.log('✓ Scraped content injected. New prompt length:', prompt.length);
+      console.log('✓ Scraped content injected with extracted details. New prompt length:', prompt.length);
     }
     
     const systemMessage = reportScope === 'suburb' 

@@ -252,27 +252,62 @@ export function InvestmentReportGenerator() {
       
       // Extract property details
       const extracted = scrapedResult.extractedDetails || {};
-      const propertyAddress = extracted.extractedAddress || 
-        scrapedResult.metadata?.title || 
-        `Property from ${propertyUrl}`;
+      console.log('Extracted details from scrape:', extracted);
+      
+      // Build property address - try multiple sources
+      let propertyAddress = extracted.extractedAddress;
+      if (!propertyAddress && extracted.extractedSuburb && extracted.extractedState) {
+        propertyAddress = `${extracted.extractedSuburb}, ${extracted.extractedState}${extracted.extractedPostcode ? ' ' + extracted.extractedPostcode : ''}`;
+      }
+      if (!propertyAddress) {
+        // Try to clean up the title - remove common prefixes/suffixes
+        const title = scrapedResult.metadata?.title || '';
+        const cleanedTitle = title
+          .replace(/\s*[-|]\s*(Domain|realestate\.com\.au|Real Estate|Property|For Sale|Sold).*$/i, '')
+          .replace(/^(Domain|realestate\.com\.au|Real Estate|Property|For Sale)\s*[-|]\s*/i, '')
+          .trim();
+        propertyAddress = cleanedTitle || `Property from ${new URL(propertyUrl).hostname}`;
+      }
 
-      // Build property details with scraped context
+      // Build property details with scraped context - include ALL extracted data
       const propertyDetails: any = { 
         queryType: 'address', 
         originalQuery: propertyAddress,
         scrapedContent: scrapedResult.markdown,
         sourceUrl: scrapedResult.sourceUrl || propertyUrl,
+        fromUrlScrape: true, // Flag to indicate this came from URL scrape
       };
       
+      // Include all extracted fields
       if (extracted.extractedPrice) propertyDetails.price = extracted.extractedPrice;
       if (extracted.extractedBedrooms) propertyDetails.beds = extracted.extractedBedrooms;
       if (extracted.extractedBathrooms) propertyDetails.baths = extracted.extractedBathrooms;
+      if (extracted.extractedCarSpaces) propertyDetails.carSpaces = extracted.extractedCarSpaces;
       if (extracted.extractedLandSize) propertyDetails.landSizeSqm = extracted.extractedLandSize;
+      if (extracted.extractedBuildSize) propertyDetails.buildSizeSqm = extracted.extractedBuildSize;
       if (extracted.extractedPropertyType) propertyDetails.propertyType = extracted.extractedPropertyType.toLowerCase();
+      if (extracted.extractedPostcode) propertyDetails.postcode = extracted.extractedPostcode;
+      if (extracted.extractedState) propertyDetails.state = extracted.extractedState;
+      if (extracted.extractedSuburb) propertyDetails.suburb = extracted.extractedSuburb;
+
+      // Log what was extracted for debugging
+      console.log('Final property address:', propertyAddress);
+      console.log('Final property details:', propertyDetails);
+
+      // Show what was extracted in the toast
+      const extractedInfo = [];
+      if (extracted.extractedPrice) extractedInfo.push(`$${extracted.extractedPrice.toLocaleString()}`);
+      if (extracted.extractedBedrooms) extractedInfo.push(`${extracted.extractedBedrooms} beds`);
+      if (extracted.extractedBathrooms) extractedInfo.push(`${extracted.extractedBathrooms} baths`);
+      if (extracted.extractedLandSize) extractedInfo.push(`${extracted.extractedLandSize}m²`);
+      
+      const extractedSummary = extractedInfo.length > 0 
+        ? `Found: ${extractedInfo.join(', ')}` 
+        : 'Limited details extracted - AI will analyze listing content';
 
       toast({
         title: "Scraping Successful",
-        description: "Property details extracted. Starting report generation...",
+        description: extractedSummary + ". Starting report generation...",
       });
 
       // Create the report record

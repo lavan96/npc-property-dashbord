@@ -103,77 +103,204 @@ serve(async (req) => {
 function extractPropertyDetails(markdown: string, metadata: any): any {
   const details: any = {};
 
-  // Try to extract address from title or content
+  // Try to extract address from title or content with improved patterns
   if (metadata.title) {
     details.title = metadata.title;
-    // Many property sites have address in the title
-    const addressMatch = metadata.title.match(/(\d+[A-Za-z]?\s+[\w\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Lane|Ln|Way|Boulevard|Blvd|Crescent|Cres|Terrace|Tce)[,\s]+[\w\s]+(?:,\s*)?(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)?(?:\s*\d{4})?)/i);
-    if (addressMatch) {
-      details.extractedAddress = addressMatch[1].trim();
+    
+    // Multiple address extraction patterns for different listing formats
+    const addressPatterns = [
+      // Full address with street number, name, suburb, state, postcode
+      /(\d+[A-Za-z]?\s+[\w\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Lane|Ln|Way|Boulevard|Blvd|Crescent|Cres|Terrace|Tce|Parade|Pde|Close|Cl|Circuit|Cct|Grove|Gr|Highway|Hwy)[,\s]+[\w\s]+[,\s]+(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s*\d{4})?)/i,
+      // Address without state but with suburb
+      /(\d+[A-Za-z]?\s+[\w\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Lane|Ln|Way|Boulevard|Blvd|Crescent|Cres|Terrace|Tce|Parade|Pde|Close|Cl|Circuit|Cct|Grove|Gr|Highway|Hwy)[,\s]+[\w\s]+)/i,
+      // Unit/apartment style addresses
+      /(?:Unit|Apt|Apartment|Level|Lot)\s*\d+[A-Za-z]?[,\/\s]+\d+[A-Za-z]?\s+[\w\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Lane|Ln|Way)/i,
+      // Just street number and name
+      /(\d+[A-Za-z]?\s+[\w\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Lane|Ln|Way|Boulevard|Blvd|Crescent|Cres|Terrace|Tce))/i,
+    ];
+
+    for (const pattern of addressPatterns) {
+      const match = metadata.title.match(pattern);
+      if (match) {
+        details.extractedAddress = match[1] ? match[1].trim() : match[0].trim();
+        break;
+      }
+    }
+
+    // If no address found in title, try to extract from markdown content
+    if (!details.extractedAddress) {
+      for (const pattern of addressPatterns) {
+        const match = markdown.match(pattern);
+        if (match) {
+          details.extractedAddress = match[1] ? match[1].trim() : match[0].trim();
+          break;
+        }
+      }
+    }
+    
+    // Try to extract suburb from title if address not found
+    if (!details.extractedAddress) {
+      // Look for "Suburb, State" pattern
+      const suburbStateMatch = metadata.title.match(/([\w\s]+),\s*(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s*\d{4})?/i);
+      if (suburbStateMatch) {
+        details.extractedSuburb = suburbStateMatch[1].trim();
+        details.extractedState = suburbStateMatch[2].toUpperCase();
+      }
     }
   }
 
-  // Extract price (look for common patterns)
-  const pricePatterns = [
-    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:million|m)?/gi,
-    /price[:\s]*\$\s*([\d,]+(?:\.\d{2})?)/gi,
-    /(?:asking|guide|sale)[:\s]*\$\s*([\d,]+(?:\.\d{2})?)/gi,
-  ];
-  
-  for (const pattern of pricePatterns) {
-    const match = markdown.match(pattern);
-    if (match) {
-      const priceStr = match[0].replace(/[^\d.]/g, '');
-      const price = parseFloat(priceStr);
-      if (price > 1000) { // Likely a valid property price
-        details.extractedPrice = price > 100 && price < 50 ? price * 1000000 : price; // Handle "1.2m" style
+  // Also try to extract address from og:description or description metadata
+  if (metadata.description && !details.extractedAddress) {
+    const addressPatterns = [
+      /(\d+[A-Za-z]?\s+[\w\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Lane|Ln|Way|Boulevard|Blvd|Crescent|Cres|Terrace|Tce|Parade|Pde)[,\s]+[\w\s]+[,\s]+(?:NSW|VIC|QLD|WA|SA|TAS|NT|ACT)(?:\s*\d{4})?)/i,
+    ];
+    for (const pattern of addressPatterns) {
+      const match = metadata.description.match(pattern);
+      if (match) {
+        details.extractedAddress = match[1].trim();
         break;
       }
     }
   }
 
-  // Extract bedrooms
-  const bedroomMatch = markdown.match(/(\d+)\s*(?:bed(?:room)?s?|br|bd)/i);
-  if (bedroomMatch) {
-    details.extractedBedrooms = parseInt(bedroomMatch[1]);
+  // Extract price with improved patterns
+  const pricePatterns = [
+    // Standard Australian price format
+    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:million|m)?/gi,
+    // Price guide format
+    /(?:price\s*(?:guide)?|guide|asking|sale|offers?\s*(?:over|above|from)?)[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)\s*(?:million|m)?/gi,
+    // Contact agent typically means no price, but try to find one anyway
+    /(?:auction|for\s*sale)[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/gi,
+    // Price range
+    /\$\s*([\d,]+)\s*-\s*\$?\s*([\d,]+)/gi,
+  ];
+  
+  for (const pattern of pricePatterns) {
+    const matches = [...markdown.matchAll(pattern)];
+    for (const match of matches) {
+      let priceStr = match[1].replace(/[^\d.]/g, '');
+      let price = parseFloat(priceStr);
+      
+      // Handle millions format (e.g., "1.2m" or "1.2 million")
+      if (match[0].toLowerCase().includes('million') || match[0].toLowerCase().includes('m')) {
+        if (price < 100) {
+          price = price * 1000000;
+        }
+      }
+      
+      // Valid Australian property prices are typically between $100k and $100M
+      if (price >= 100000 && price <= 100000000) {
+        details.extractedPrice = price;
+        break;
+      }
+    }
+    if (details.extractedPrice) break;
+  }
+
+  // Extract bedrooms with more patterns
+  const bedroomPatterns = [
+    /(\d+)\s*(?:bed(?:room)?s?|br|bd)/i,
+    /(?:bed(?:room)?s?|br|bd)[:\s]*(\d+)/i,
+    /(\d+)\s*🛏/i,
+  ];
+  for (const pattern of bedroomPatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      const beds = parseInt(match[1]);
+      if (beds > 0 && beds <= 20) {
+        details.extractedBedrooms = beds;
+        break;
+      }
+    }
   }
 
   // Extract bathrooms
-  const bathroomMatch = markdown.match(/(\d+)\s*(?:bath(?:room)?s?|ba)/i);
-  if (bathroomMatch) {
-    details.extractedBathrooms = parseInt(bathroomMatch[1]);
+  const bathroomPatterns = [
+    /(\d+)\s*(?:bath(?:room)?s?|ba)/i,
+    /(?:bath(?:room)?s?|ba)[:\s]*(\d+)/i,
+    /(\d+)\s*🚿/i,
+  ];
+  for (const pattern of bathroomPatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      const baths = parseInt(match[1]);
+      if (baths > 0 && baths <= 15) {
+        details.extractedBathrooms = baths;
+        break;
+      }
+    }
   }
 
   // Extract car spaces
-  const carMatch = markdown.match(/(\d+)\s*(?:car\s*(?:space)?s?|garage|parking)/i);
-  if (carMatch) {
-    details.extractedCarSpaces = parseInt(carMatch[1]);
+  const carPatterns = [
+    /(\d+)\s*(?:car\s*(?:space)?s?|garage|parking|carport)/i,
+    /(?:car\s*(?:space)?s?|garage|parking)[:\s]*(\d+)/i,
+    /(\d+)\s*🚗/i,
+  ];
+  for (const pattern of carPatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      const cars = parseInt(match[1]);
+      if (cars >= 0 && cars <= 20) {
+        details.extractedCarSpaces = cars;
+        break;
+      }
+    }
   }
 
-  // Extract land size
-  const landSizeMatch = markdown.match(/(?:land|lot|block)[:\s]*(?:approx\.?\s*)?(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:m²|sqm|square\s*met(?:re|er)s?)/i);
-  if (landSizeMatch) {
-    details.extractedLandSize = parseFloat(landSizeMatch[1].replace(',', ''));
+  // Extract land size with improved patterns
+  const landSizePatterns = [
+    /(?:land|lot|block|site)[:\s]*(?:size)?[:\s]*(?:approx\.?\s*)?(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:m²|sqm|m2|square\s*met(?:re|er)s?)/i,
+    /(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:m²|sqm|m2)\s*(?:land|lot|block)/i,
+    /(?:land\s*area|total\s*area)[:\s]*(?:approx\.?\s*)?(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:m²|sqm|m2)?/i,
+  ];
+  for (const pattern of landSizePatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      const size = parseFloat(match[1].replace(',', ''));
+      if (size > 0 && size < 100000) {
+        details.extractedLandSize = size;
+        break;
+      }
+    }
+  }
+
+  // Extract building/internal size
+  const buildSizePatterns = [
+    /(?:build(?:ing)?|internal|floor|living)[:\s]*(?:size|area)?[:\s]*(?:approx\.?\s*)?(\d+(?:,\d+)?(?:\.\d+)?)\s*(?:m²|sqm|m2)/i,
+  ];
+  for (const pattern of buildSizePatterns) {
+    const match = markdown.match(pattern);
+    if (match) {
+      const size = parseFloat(match[1].replace(',', ''));
+      if (size > 0 && size < 10000) {
+        details.extractedBuildSize = size;
+        break;
+      }
+    }
   }
 
   // Extract property type
   const propertyTypePatterns = [
-    /\b(house|home|residence)\b/i,
+    /\b(house|home|residence|family\s*home)\b/i,
     /\b(apartment|unit|flat)\b/i,
     /\b(townhouse|town\s*house|terrace)\b/i,
-    /\b(villa|duplex)\b/i,
-    /\b(land|block|lot)\b/i,
+    /\b(villa|duplex|semi-detached)\b/i,
+    /\b(land|block|vacant\s*land)\b/i,
+    /\b(acreage|rural|farm)\b/i,
   ];
   
   for (const pattern of propertyTypePatterns) {
     const match = markdown.match(pattern);
     if (match) {
-      const type = match[1].toLowerCase();
-      if (type === 'house' || type === 'home' || type === 'residence') {
+      const type = match[1].toLowerCase().replace(/\s+/g, '');
+      if (['house', 'home', 'residence', 'familyhome'].includes(type)) {
         details.extractedPropertyType = 'house';
-      } else if (type === 'apartment' || type === 'unit' || type === 'flat') {
+      } else if (['apartment', 'unit', 'flat'].includes(type)) {
         details.extractedPropertyType = 'apartment';
-      } else if (type === 'townhouse' || type === 'town house' || type === 'terrace') {
+      } else if (['townhouse', 'townhouse', 'terrace'].includes(type)) {
+        details.extractedPropertyType = 'townhouse';
+      } else if (['villa', 'duplex', 'semi-detached'].includes(type)) {
         details.extractedPropertyType = 'townhouse';
       } else {
         details.extractedPropertyType = type;
@@ -183,7 +310,7 @@ function extractPropertyDetails(markdown: string, metadata: any): any {
   }
 
   // Extract suburb/postcode from content
-  const postcodeMatch = markdown.match(/\b(\d{4})\b/);
+  const postcodeMatch = markdown.match(/\b(2\d{3}|3\d{3}|4\d{3}|5\d{3}|6\d{3}|7\d{3}|0\d{3})\b/);
   if (postcodeMatch) {
     details.extractedPostcode = postcodeMatch[1];
   }
@@ -193,5 +320,11 @@ function extractPropertyDetails(markdown: string, metadata: any): any {
     details.extractedState = stateMatch[1].toUpperCase();
   }
 
+  // Try to build a complete address if we have components
+  if (!details.extractedAddress && details.extractedSuburb && details.extractedState) {
+    details.extractedAddress = `${details.extractedSuburb}, ${details.extractedState}${details.extractedPostcode ? ' ' + details.extractedPostcode : ''}`;
+  }
+
+  console.log('Extracted details:', JSON.stringify(details, null, 2));
   return details;
 }
