@@ -2028,7 +2028,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       if (includeInputsSummaryInExport) {
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Inputs Summary', margin, yPos);
+        pdf.text('Summary', margin, yPos);
         yPos += 6;
 
         // Helper for drawing input summary rows
@@ -2401,10 +2401,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         </div>
         
         ${includeInputsSummaryInExport ? `
-        <!-- Inputs Summary -->
+        <!-- Summary -->
         <div class="summary" style="margin-bottom: 24px;">
           <h3 style="margin-bottom: 4px; text-align: center; font-size: 16px; font-weight: bold; border-bottom: 2px solid #ccc; padding-bottom: 6px;">${isNewBuild ? 'New Build' : 'Existing Property'}</h3>
-          <h4 style="margin-bottom: 12px; text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 1px;">INPUTS</h4>
+          <h4 style="margin-bottom: 12px; text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 1px;">SUMMARY</h4>
           <table style="margin-bottom: 0; font-size: 11px;">
             <tbody>
               <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
@@ -3554,7 +3554,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     <CardTitle className="text-base flex items-center justify-between">
                       <span className="flex items-center gap-2">
                         {inputsSummaryOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        {isNewBuild ? 'New Build' : 'Existing Property'} - INPUTS
+                        {isNewBuild ? 'New Build' : 'Existing Property'} - SUMMARY
                       </span>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <label className="flex items-center gap-2 text-xs font-normal text-muted-foreground cursor-pointer">
