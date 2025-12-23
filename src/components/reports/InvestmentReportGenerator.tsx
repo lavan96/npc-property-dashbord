@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image } from 'lucide-react';
+import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 
 interface RecentReport {
   id: string;
@@ -34,6 +36,7 @@ export function InvestmentReportGenerator() {
   const [isParsing, setIsParsing] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState<{ current: number; total: number } | null>(null);
   
   const [queryType, setQueryType] = useState<'address' | 'zipcode' | 'suburb' | 'state'>('address');
   const [query, setQuery] = useState('');
@@ -377,7 +380,7 @@ export function InvestmentReportGenerator() {
     }
   };
 
-  // Handle PDF file drop
+  // Handle PDF/image file drop
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -385,11 +388,11 @@ export function InvestmentReportGenerator() {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      if (file.type === 'application/pdf') {
+      if (isPdfFile(file) || isImageFile(file)) {
         setPdfFile(file);
         setPdfError(null);
       } else {
-        setPdfError('Please upload a PDF file');
+        setPdfError('Please upload a PDF or image file (PNG, JPG, WEBP)');
       }
     }
   }, []);
@@ -408,21 +411,21 @@ export function InvestmentReportGenerator() {
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
-      if (file.type === 'application/pdf') {
+      if (isPdfFile(file) || isImageFile(file)) {
         setPdfFile(file);
         setPdfError(null);
       } else {
-        setPdfError('Please upload a PDF file');
+        setPdfError('Please upload a PDF or image file (PNG, JPG, WEBP)');
       }
     }
   };
 
-  // Handle PDF upload and parse
+  // Handle PDF/image upload and parse
   const handlePdfUpload = async () => {
     if (!pdfFile) {
       toast({
-        title: "PDF Required",
-        description: "Please upload a PDF file first.",
+        title: "File Required",
+        description: "Please upload a PDF or image file first.",
         variant: "destructive",
       });
       return;
@@ -439,38 +442,80 @@ export function InvestmentReportGenerator() {
 
     setIsParsing(true);
     setPdfError(null);
+    setConversionProgress(null);
 
     try {
-      console.log('Processing PDF:', pdfFile.name);
+      console.log('Processing file:', pdfFile.name, 'Type:', pdfFile.type);
       
-      // Read PDF file and convert to base64 for GPT-4o Vision analysis
-      const arrayBuffer = await pdfFile.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      let requestBody: any = { fileName: pdfFile.name };
       
-      // Convert to base64 for sending to edge function
-      let binary = '';
-      uint8Array.forEach(byte => binary += String.fromCharCode(byte));
-      const base64Content = btoa(binary);
-      
-      console.log('PDF converted to base64, length:', base64Content.length);
-
-      // Call edge function to parse PDF using GPT-4o Vision
-      const { data, error } = await supabase.functions.invoke('parse-property-pdf', {
-        body: { 
-          base64Content: base64Content,
-          fileName: pdfFile.name
+      // Check if it's a PDF or image
+      if (isPdfFile(pdfFile)) {
+        // PDF: Convert to images using PDF.js
+        console.log('🔄 Converting PDF to images...');
+        
+        toast({
+          title: "Converting PDF",
+          description: "Rendering PDF pages as images for analysis...",
+        });
+        
+        const conversionResult = await convertPdfToImages(pdfFile, (current, total) => {
+          setConversionProgress({ current, total });
+          console.log(`📄 Rendering page ${current}/${total}`);
+        });
+        
+        if (!conversionResult.success) {
+          throw new Error(conversionResult.error || 'Failed to convert PDF to images');
         }
+        
+        console.log(`✅ PDF converted: ${conversionResult.images.length} pages rendered`);
+        
+        // Prepare page images for the edge function
+        requestBody.pageImages = conversionResult.images.map(img => ({
+          pageNumber: img.pageNumber,
+          base64: img.base64,
+          width: img.width,
+          height: img.height,
+        }));
+        
+        toast({
+          title: "Analyzing Document",
+          description: `Sending ${conversionResult.images.length} page(s) to GPT-4o Vision for analysis...`,
+        });
+        
+      } else if (isImageFile(pdfFile)) {
+        // Image: Convert to base64 directly
+        console.log('🖼️ Processing image file...');
+        
+        const base64 = await imageFileToBase64(pdfFile);
+        requestBody.singleImage = base64;
+        requestBody.imageMimeType = pdfFile.type || 'image/png';
+        
+        toast({
+          title: "Analyzing Image",
+          description: "Sending image to GPT-4o Vision for analysis...",
+        });
+        
+      } else {
+        throw new Error('Unsupported file type. Please upload a PDF or image file.');
+      }
+
+      // Call edge function with rendered images
+      const { data, error } = await supabase.functions.invoke('parse-property-pdf', {
+        body: requestBody
       });
 
+      setConversionProgress(null);
+
       if (error) {
-        throw new Error(error.message || 'Failed to parse PDF');
+        throw new Error(error.message || 'Failed to parse document');
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'PDF parsing failed');
+        throw new Error(data.error || 'Document parsing failed');
       }
 
-      console.log('PDF parsed successfully:', data);
+      console.log('✅ Document parsed successfully:', data);
       const extracted = data.extractedData || {};
       
       // Build property address
@@ -567,16 +612,17 @@ export function InvestmentReportGenerator() {
       setPdfFile(null);
 
     } catch (error) {
-      console.error('Error processing PDF:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
+      console.error('Error processing document:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process document';
       setPdfError(errorMessage);
       toast({
-        title: "PDF Processing Failed",
+        title: "Document Processing Failed",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsParsing(false);
+      setConversionProgress(null);
     }
   };
 
@@ -1081,10 +1127,10 @@ export function InvestmentReportGenerator() {
                         <div className="space-y-2">
                           <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
                           <p className="text-sm text-muted-foreground">
-                            Drag and drop a PDF file here, or click to browse
+                            Drag and drop a PDF or image file here, or click to browse
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Supports property listing PDFs, brochures, and contracts
+                            Supports property PDFs, brochures, and images (PNG, JPG)
                           </p>
                         </div>
                       )}
@@ -1092,10 +1138,23 @@ export function InvestmentReportGenerator() {
                     <input
                       id="pdf-upload"
                       type="file"
-                      accept=".pdf"
+                      accept=".pdf,image/*"
                       className="hidden"
                       onChange={handleFileSelect}
                     />
+                    {/* Conversion Progress */}
+                    {conversionProgress && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Image className="h-4 w-4" />
+                            Rendering page {conversionProgress.current} of {conversionProgress.total}...
+                          </span>
+                          <span className="font-medium">{Math.round((conversionProgress.current / conversionProgress.total) * 100)}%</span>
+                        </div>
+                        <Progress value={(conversionProgress.current / conversionProgress.total) * 100} />
+                      </div>
+                    )}
                   </div>
 
                   {/* PDF Error */}
