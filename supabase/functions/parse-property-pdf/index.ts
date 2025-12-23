@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,124 +43,143 @@ interface StructuredPropertyPayload {
   isNewBuild: boolean;
 }
 
-// ============= PDF TEXT EXTRACTION =============
+// ============= GPT-4O VISION EXTRACTION =============
 
-// Extract readable text from PDF binary content
-function extractTextFromPdfBinary(pdfContent: string): string {
-  console.log('Extracting text from PDF binary...');
+async function extractWithVision(base64Content: string, openaiKey: string, fileName: string): Promise<ExtractedPropertyData> {
+  console.log('Calling GPT-4o Vision for PDF analysis...');
   
-  const extractedTexts: string[] = [];
-  
-  // Method 1: Extract text from PDF stream objects
-  // PDF text is typically between BT (Begin Text) and ET (End Text) markers
-  const btEtPattern = /BT\s*([\s\S]*?)\s*ET/g;
-  let btMatch;
-  while ((btMatch = btEtPattern.exec(pdfContent)) !== null) {
-    const textBlock = btMatch[1];
-    // Extract text from Tj, TJ, ', " operators
-    const tjPattern = /\(([^)]+)\)\s*Tj/g;
-    let tjMatch;
-    while ((tjMatch = tjPattern.exec(textBlock)) !== null) {
-      extractedTexts.push(decodeEscapedString(tjMatch[1]));
+  const systemPrompt = `You are an expert at extracting property details from Australian real estate documents and brochures.
+Analyze the PDF/image content and extract all property information you can find.
+Look for:
+- Full street address including lot numbers
+- Suburb name
+- State (NSW, VIC, QLD, WA, SA, TAS, ACT, NT)
+- Postcode (4 digits)
+- Total price or package price
+- Weekly rent if mentioned
+- Number of bedrooms, bathrooms, car spaces
+- Land size in sqm
+- Building/floor size in sqm
+- Property type (house, apartment, townhouse, land)
+- For house & land packages: separate land price and build price
+- Whether it's a new build or existing property
+
+Return ONLY valid JSON with these exact fields (use null for values not found):
+{
+  "address": "full street address including lot number if applicable",
+  "suburb": "suburb name",
+  "state": "state abbreviation",
+  "postcode": "4-digit postcode",
+  "price": numeric total price without $ or commas,
+  "weeklyRent": numeric weekly rent,
+  "bedrooms": number,
+  "bathrooms": number,
+  "carSpaces": number,
+  "landSize": numeric land size in sqm,
+  "buildSize": numeric building size in sqm,
+  "propertyType": "house" | "apartment" | "townhouse" | "land",
+  "landPrice": numeric land component price for new builds,
+  "buildPrice": numeric build component price for new builds,
+  "isNewBuild": true if new build or house and land package
+}`;
+
+  try {
+    // Determine the MIME type based on content
+    let mimeType = 'application/pdf';
+    if (base64Content.startsWith('/9j/')) {
+      mimeType = 'image/jpeg';
+    } else if (base64Content.startsWith('iVBOR')) {
+      mimeType = 'image/png';
     }
     
-    // TJ operator with array of strings
-    const tjArrayPattern = /\[\s*((?:\([^)]*\)\s*[-\d.]*\s*)+)\]\s*TJ/g;
-    let tjArrayMatch;
-    while ((tjArrayMatch = tjArrayPattern.exec(textBlock)) !== null) {
-      const arrayContent = tjArrayMatch[1];
-      const stringPattern = /\(([^)]*)\)/g;
-      let strMatch;
-      while ((strMatch = stringPattern.exec(arrayContent)) !== null) {
-        extractedTexts.push(decodeEscapedString(strMatch[1]));
-      }
+    console.log('Using MIME type:', mimeType);
+    console.log('Base64 content length:', base64Content.length);
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { 
+            role: 'system', 
+            content: systemPrompt
+          },
+          { 
+            role: 'user', 
+            content: [
+              {
+                type: 'text',
+                text: `Please analyze this Australian property document (${fileName}) and extract all property details. Return the data as JSON.`
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Content}`,
+                  detail: 'high'
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 2000,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GPT-4o Vision API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
-  }
-  
-  // Method 2: Extract text from parentheses outside BT/ET (simpler PDFs)
-  const simpleTextPattern = /\(([A-Za-z0-9\s,.$@\-:;!?'"\/%&*#+]+)\)/g;
-  let simpleMatch;
-  while ((simpleMatch = simpleTextPattern.exec(pdfContent)) !== null) {
-    const text = simpleMatch[1].trim();
-    // Filter out binary garbage - only include readable text
-    if (text.length >= 2 && text.length <= 200 && /[A-Za-z]{2,}/.test(text)) {
-      extractedTexts.push(text);
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    
+    console.log('GPT-4o Vision response:', content);
+    
+    // Parse JSON from response (handle markdown code blocks)
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
     }
+    
+    const parsed = JSON.parse(jsonStr);
+    console.log('Parsed vision extraction:', JSON.stringify(parsed, null, 2));
+    
+    return {
+      address: parsed.address || undefined,
+      suburb: parsed.suburb || undefined,
+      state: parsed.state || undefined,
+      postcode: parsed.postcode?.toString() || undefined,
+      price: parsed.price || undefined,
+      weeklyRent: parsed.weeklyRent || undefined,
+      bedrooms: parsed.bedrooms || undefined,
+      bathrooms: parsed.bathrooms || undefined,
+      carSpaces: parsed.carSpaces || undefined,
+      landSize: parsed.landSize || undefined,
+      buildSize: parsed.buildSize || undefined,
+      propertyType: parsed.propertyType || undefined,
+      landPrice: parsed.landPrice || undefined,
+      buildPrice: parsed.buildPrice || undefined,
+      isNewBuild: parsed.isNewBuild || false,
+    };
+  } catch (error) {
+    console.error('Error calling GPT-4o Vision:', error);
+    throw error;
   }
-  
-  // Method 3: Look for common property keywords directly in the raw content
-  const propertyKeywords = [
-    // Price patterns
-    /\$\s*[\d,]+(?:\.\d{2})?/g,
-    // Bedroom patterns
-    /\d+\s*(?:bed(?:room)?s?|Bed(?:room)?s?|BED(?:ROOM)?S?)/g,
-    // Bathroom patterns
-    /\d+\s*(?:bath(?:room)?s?|Bath(?:room)?s?|BATH(?:ROOM)?S?)/g,
-    // Car space patterns
-    /\d+\s*(?:car\s*(?:space)?s?|Car\s*(?:Space)?s?|garage|Garage)/g,
-    // Land size patterns
-    /[\d,]+\s*(?:sqm|SQM|m²|m2|square\s*met)/g,
-    // Address patterns
-    /(?:Lot|LOT)\s*\d+/g,
-    /\d+[a-zA-Z]?\s+[A-Z][a-zA-Z]+\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cres|Boulevard|Blvd|Way|Lane|Ln)/gi,
-    // Suburb patterns with state
-    /[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*,?\s*(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\s*\d{4}/g,
-    // Weekly rent patterns
-    /\$\s*[\d,]+\s*(?:per\s*)?(?:week|pw|p\.w\.)/gi,
-  ];
-  
-  for (const pattern of propertyKeywords) {
-    let kwMatch;
-    while ((kwMatch = pattern.exec(pdfContent)) !== null) {
-      extractedTexts.push(kwMatch[0]);
-    }
-  }
-  
-  // Method 4: Extract text between stream/endstream that's not heavily encoded
-  const streamPattern = /stream\s*([\s\S]*?)\s*endstream/g;
-  let streamMatch;
-  while ((streamMatch = streamPattern.exec(pdfContent)) !== null) {
-    const streamContent = streamMatch[1];
-    // Only process if it looks like it might contain text (not binary)
-    if (streamContent.length < 50000) {
-      // Look for readable text patterns within streams
-      const readablePattern = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,5})/g;
-      let readMatch;
-      while ((readMatch = readablePattern.exec(streamContent)) !== null) {
-        if (readMatch[1].length >= 3) {
-          extractedTexts.push(readMatch[1]);
-        }
-      }
-    }
-  }
-  
-  // Deduplicate and join
-  const uniqueTexts = [...new Set(extractedTexts)];
-  const result = uniqueTexts.join(' ');
-  
-  console.log('Extracted text length:', result.length);
-  console.log('Extracted text preview (first 2000 chars):', result.substring(0, 2000));
-  
-  return result;
 }
 
-// Decode PDF escaped strings
-function decodeEscapedString(str: string): string {
-  return str
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\\\(/g, '(')
-    .replace(/\\\)/g, ')')
-    .replace(/\\\\/g, '\\')
-    .replace(/\\(\d{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
-}
+// ============= FALLBACK TEXT EXTRACTION =============
 
-// Use OpenAI to extract structured data from PDF text
+// Use OpenAI to extract structured data from text (fallback)
 async function extractWithAI(text: string, openaiKey: string): Promise<ExtractedPropertyData> {
-  console.log('Calling OpenAI for structured extraction...');
+  console.log('Calling OpenAI for text-based extraction...');
   
-  const prompt = `Extract property details from this text. Return ONLY valid JSON with these fields (use null for missing values):
+  const prompt = `Extract property details from this Australian property document text. Return ONLY valid JSON with these fields (use null for missing values):
 {
   "address": "street address or lot number with street",
   "suburb": "suburb name",
@@ -193,7 +213,7 @@ ${text.substring(0, 8000)}`;
         messages: [
           { 
             role: 'system', 
-            content: 'You are a property data extraction expert. Extract structured data from property documents. Return ONLY valid JSON, no markdown or explanation.' 
+            content: 'You are a property data extraction expert. Extract structured data from Australian property documents. Return ONLY valid JSON, no markdown or explanation.' 
           },
           { role: 'user', content: prompt }
         ],
@@ -210,16 +230,14 @@ ${text.substring(0, 8000)}`;
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
     
-    console.log('OpenAI response:', content);
+    console.log('OpenAI text extraction response:', content);
     
-    // Parse JSON from response (handle markdown code blocks)
     let jsonStr = content.trim();
     if (jsonStr.startsWith('```')) {
       jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
     }
     
     const parsed = JSON.parse(jsonStr);
-    console.log('Parsed extraction:', JSON.stringify(parsed, null, 2));
     
     return {
       address: parsed.address || undefined,
@@ -239,189 +257,9 @@ ${text.substring(0, 8000)}`;
       isNewBuild: parsed.isNewBuild || false,
     };
   } catch (error) {
-    console.error('Error calling OpenAI:', error);
+    console.error('Error calling OpenAI text extraction:', error);
     return {};
   }
-}
-
-// ============= REGEX EXTRACTION FALLBACK =============
-
-function extractPrice(text: string, patterns: RegExp[]): number | undefined {
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const priceStr = match[1] || match[2] || match[0];
-      const cleanPrice = priceStr.replace(/[$,\s]/g, '');
-      const price = parseFloat(cleanPrice);
-      if (price > 10000 && price < 50000000) {
-        return price;
-      }
-    }
-  }
-  return undefined;
-}
-
-function extractNumber(text: string, patterns: RegExp[]): number | undefined {
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const num = parseInt(match[1] || match[2] || match[0], 10);
-      if (!isNaN(num) && num >= 0 && num < 100) {
-        return num;
-      }
-    }
-  }
-  return undefined;
-}
-
-function extractArea(text: string, patterns: RegExp[]): number | undefined {
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const areaStr = match[1] || match[2] || match[0];
-      const area = parseFloat(areaStr.replace(/,/g, ''));
-      if (area > 10 && area < 100000) {
-        return area;
-      }
-    }
-  }
-  return undefined;
-}
-
-function extractPostcode(text: string): string | undefined {
-  const matches = text.match(/\b([2-7]\d{3})\b/g);
-  if (matches) {
-    for (const match of matches) {
-      const num = parseInt(match, 10);
-      if ((num >= 2000 && num <= 2999) || (num >= 3000 && num <= 3999) || 
-          (num >= 4000 && num <= 4999) || (num >= 5000 && num <= 5999) || 
-          (num >= 6000 && num <= 6999) || (num >= 7000 && num <= 7999)) {
-        return match;
-      }
-    }
-  }
-  return undefined;
-}
-
-function extractState(text: string): string | undefined {
-  const statePatterns: { [key: string]: RegExp } = {
-    'NSW': /\b(NSW|New South Wales)\b/i,
-    'VIC': /\b(VIC|Victoria)\b/i,
-    'QLD': /\b(QLD|Queensland)\b/i,
-    'WA': /\b(WA|Western Australia)\b/i,
-    'SA': /\b(SA|South Australia)\b/i,
-    'TAS': /\b(TAS|Tasmania)\b/i,
-    'ACT': /\b(ACT|Australian Capital Territory)\b/i,
-    'NT': /\b(NT|Northern Territory)\b/i,
-  };
-  
-  for (const [state, pattern] of Object.entries(statePatterns)) {
-    if (pattern.test(text)) {
-      return state;
-    }
-  }
-  return undefined;
-}
-
-function extractSuburb(text: string): string | undefined {
-  const suburbPatterns = [
-    /(?:suburb|location|area)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-    /(?:in|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,?\s*(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)/i,
-    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,?\s*(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\s*\d{4}/i,
-  ];
-  
-  for (const pattern of suburbPatterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      return match[1].trim();
-    }
-  }
-  return undefined;
-}
-
-function extractAddress(text: string): string | undefined {
-  const addressPatterns = [
-    /(?:Lot|LOT)\s*(\d+)\s*[,\s]+([A-Z][a-zA-Z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cres|Boulevard|Blvd|Way|Lane|Ln))\s*[,\s]+([A-Z][a-zA-Z\s]+)/i,
-    /(\d+[a-zA-Z]?)\s+([A-Z][a-zA-Z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cres|Boulevard|Blvd|Way|Lane|Ln))/i,
-    /(?:Unit|Apartment|Apt|Suite)\s*(\d+)[,\/]\s*(\d+)\s+([A-Z][a-zA-Z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl))/i,
-  ];
-  
-  for (const pattern of addressPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return match[0].trim();
-    }
-  }
-  return undefined;
-}
-
-function detectNewBuild(text: string): boolean {
-  const newBuildIndicators = [
-    /house\s*(?:and|&)\s*land/i,
-    /land\s*(?:and|&)\s*(?:house|home)/i,
-    /new\s*(?:build|construction|home)/i,
-    /off[\s-]*plan/i,
-    /build\s*(?:contract|cost|price)/i,
-    /construction\s*(?:cost|price|contract)/i,
-    /turnkey/i,
-    /fixed\s*price\s*(?:contract|build)/i,
-  ];
-  
-  return newBuildIndicators.some(pattern => pattern.test(text));
-}
-
-function extractPropertyDataFromText(text: string): ExtractedPropertyData {
-  console.log('Running regex extraction on text...');
-  
-  const data: ExtractedPropertyData = {};
-  const normalizedText = text.replace(/\s+/g, ' ').trim();
-  
-  data.state = extractState(normalizedText);
-  data.postcode = extractPostcode(normalizedText);
-  data.suburb = extractSuburb(normalizedText);
-  data.address = extractAddress(normalizedText);
-  data.isNewBuild = detectNewBuild(normalizedText);
-  
-  const pricePatterns = [
-    /(?:price|total|package)[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
-    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:inc|including|plus)?/i,
-  ];
-  data.price = extractPrice(normalizedText, pricePatterns);
-  
-  const rentPatterns = [
-    /(?:rent|rental)[:\s]*\$?\s*([\d,]+)\s*(?:per\s*)?(?:week|pw|p\.w\.)/i,
-    /\$\s*([\d,]+)\s*(?:per\s*)?(?:week|pw|p\.w\.)/i,
-  ];
-  data.weeklyRent = extractNumber(normalizedText, rentPatterns);
-  
-  const bedroomPatterns = [/(\d+)\s*(?:bed(?:room)?s?|br|bdr)/i];
-  data.bedrooms = extractNumber(normalizedText, bedroomPatterns);
-  
-  const bathroomPatterns = [/(\d+)\s*(?:bath(?:room)?s?|ba)/i];
-  data.bathrooms = extractNumber(normalizedText, bathroomPatterns);
-  
-  const carPatterns = [/(\d+)\s*(?:car\s*(?:space)?s?|garage|parking)/i];
-  data.carSpaces = extractNumber(normalizedText, carPatterns);
-  
-  const landPatterns = [/(?:land\s*(?:size|area)?)[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)/i];
-  data.landSize = extractArea(normalizedText, landPatterns);
-  
-  const buildPatterns = [/(?:build(?:ing)?\s*(?:size|area)?)[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)?/i];
-  data.buildSize = extractArea(normalizedText, buildPatterns);
-  
-  if (/apartment|flat|unit/i.test(normalizedText)) {
-    data.propertyType = 'apartment';
-  } else if (/townhouse|town\s*home/i.test(normalizedText)) {
-    data.propertyType = 'townhouse';
-  } else if (/(?:vacant\s*)?land(?:\s*only)?/i.test(normalizedText) && !data.buildSize) {
-    data.propertyType = 'land';
-  } else if (/house|home|dwelling/i.test(normalizedText)) {
-    data.propertyType = 'house';
-  }
-  
-  console.log('Regex extraction result:', JSON.stringify(data, null, 2));
-  
-  return data;
 }
 
 // Process extracted data into structured payload
@@ -519,16 +357,23 @@ async function completeAddressWithGoogleMaps(
     const result = data.results[0];
     console.log('Geocoding result:', result.formatted_address);
     
+    // Only update if we got a more specific address (not just country/state level)
+    const types = result.types || [];
+    if (types.includes('country') || types.includes('administrative_area_level_1')) {
+      console.log('Geocoding result too generic, keeping original address');
+      return payload;
+    }
+    
     payload.propertyAddress = result.formatted_address;
     
     for (const component of result.address_components) {
-      const types = component.types;
+      const componentTypes = component.types;
       
-      if ((types.includes('locality') || types.includes('sublocality')) && !payload.suburb) {
+      if ((componentTypes.includes('locality') || componentTypes.includes('sublocality')) && !payload.suburb) {
         payload.suburb = component.long_name;
-      } else if (types.includes('administrative_area_level_1') && !payload.state) {
+      } else if (componentTypes.includes('administrative_area_level_1') && !payload.state) {
         payload.state = component.short_name;
-      } else if (types.includes('postal_code') && !payload.postcode) {
+      } else if (componentTypes.includes('postal_code') && !payload.postcode) {
         payload.postcode = component.long_name;
       }
     }
@@ -548,12 +393,15 @@ serve(async (req) => {
   }
 
   try {
-    const { pdfContent, fileName } = await req.json();
+    const { pdfContent, fileName, base64Content } = await req.json();
     
-    if (!pdfContent) {
+    // Accept either raw pdfContent or pre-encoded base64Content
+    const contentToProcess = base64Content || pdfContent;
+    
+    if (!contentToProcess) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'PDF content is required' 
+        error: 'PDF content is required (pdfContent or base64Content)' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -561,51 +409,79 @@ serve(async (req) => {
     }
 
     console.log('Processing PDF:', fileName || 'unnamed.pdf');
-    console.log('Raw content length:', pdfContent.length);
+    console.log('Content length:', contentToProcess.length);
     
-    // Check if content is raw PDF binary (starts with %PDF)
-    const isPdfBinary = pdfContent.startsWith('%PDF') || pdfContent.includes('%PDF-');
-    console.log('Is PDF binary:', isPdfBinary);
-
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
     const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    
+    if (!openaiKey) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
     
     let extractedData: ExtractedPropertyData = {};
     let extractionMethod = 'none';
     
-    if (isPdfBinary) {
-      // Step 1: Extract text from PDF binary
-      const extractedText = extractTextFromPdfBinary(pdfContent);
-      console.log('Extracted text from PDF binary, length:', extractedText.length);
-      
-      if (extractedText.length > 50) {
-        // Step 2: Try AI extraction first (more accurate)
-        if (openaiKey) {
-          extractedData = await extractWithAI(extractedText, openaiKey);
-          extractionMethod = 'openai';
-          console.log('AI extraction completed');
-        }
-        
-        // Step 3: Fall back to regex if AI didn't find enough
-        if (!extractedData.address && !extractedData.suburb && !extractedData.postcode) {
-          console.log('AI extraction insufficient, trying regex...');
-          extractedData = extractPropertyDataFromText(extractedText);
-          extractionMethod = 'regex';
-        }
-      } else {
-        console.log('Could not extract enough text from PDF binary');
-      }
+    // Determine if content is already base64 or needs encoding
+    let base64Data: string;
+    const isAlreadyBase64 = /^[A-Za-z0-9+/=]+$/.test(contentToProcess.substring(0, 100).replace(/\s/g, ''));
+    const isPdfBinary = contentToProcess.startsWith('%PDF') || contentToProcess.includes('%PDF-');
+    
+    console.log('Is already base64:', isAlreadyBase64);
+    console.log('Is PDF binary:', isPdfBinary);
+    
+    if (base64Content) {
+      // Already provided as base64
+      base64Data = base64Content;
+      console.log('Using provided base64 content');
+    } else if (isPdfBinary) {
+      // Raw PDF binary - encode to base64
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(contentToProcess);
+      base64Data = base64Encode(bytes);
+      console.log('Encoded PDF binary to base64, length:', base64Data.length);
+    } else if (isAlreadyBase64) {
+      // Already base64 encoded
+      base64Data = contentToProcess;
+      console.log('Content appears to be base64 already');
     } else {
-      // Content is already text, process directly
-      console.log('Content appears to be text, processing directly...');
+      // Plain text content - use text-based extraction
+      console.log('Content is plain text, using text extraction...');
+      extractedData = await extractWithAI(contentToProcess, openaiKey);
+      extractionMethod = 'text-ai';
       
-      if (openaiKey) {
-        extractedData = await extractWithAI(pdfContent, openaiKey);
-        extractionMethod = 'openai';
-      } else {
-        extractedData = extractPropertyDataFromText(pdfContent);
-        extractionMethod = 'regex';
+      let structuredPayload = processToStructuredPayload(extractedData);
+      
+      if (googleMapsApiKey && structuredPayload.propertyAddress !== 'Address Not Found') {
+        structuredPayload = await completeAddressWithGoogleMaps(structuredPayload, googleMapsApiKey);
       }
+      
+      console.log('Final structured payload:', JSON.stringify(structuredPayload, null, 2));
+      
+      return new Response(JSON.stringify({
+        success: true,
+        extractedData: formatExtractedData(structuredPayload),
+        structuredPayload,
+        extractionMethod,
+        metadata: {
+          fileName: fileName || 'unnamed.pdf',
+          processedAt: new Date().toISOString(),
+          contentLength: contentToProcess.length,
+          isPdfBinary: false,
+        },
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Use GPT-4o Vision to analyze the PDF
+    try {
+      console.log('Using GPT-4o Vision for PDF analysis...');
+      extractedData = await extractWithVision(base64Data, openaiKey, fileName || 'document.pdf');
+      extractionMethod = 'gpt-4o-vision';
+    } catch (visionError) {
+      console.error('Vision extraction failed:', visionError);
+      // The vision API doesn't support PDFs directly, we need to inform the user
+      throw new Error('PDF vision analysis failed. Please ensure the file is a valid PDF or image.');
     }
     
     console.log('Extraction method used:', extractionMethod);
@@ -627,36 +503,18 @@ serve(async (req) => {
 
     console.log('Final structured payload:', JSON.stringify(structuredPayload, null, 2));
 
-    const result = {
+    return new Response(JSON.stringify({
       success: true,
-      extractedData: {
-        extractedAddress: structuredPayload.propertyAddress,
-        extractedSuburb: structuredPayload.suburb,
-        extractedState: structuredPayload.state,
-        extractedPostcode: structuredPayload.postcode,
-        extractedPrice: structuredPayload.purchasePrice,
-        extractedRent: structuredPayload.weeklyRent,
-        extractedBedrooms: structuredPayload.bedrooms,
-        extractedBathrooms: structuredPayload.bathrooms,
-        extractedCarSpaces: structuredPayload.carSpaces,
-        extractedLandSize: structuredPayload.landSize,
-        extractedBuildSize: structuredPayload.buildSize,
-        extractedPropertyType: structuredPayload.propertyType,
-        extractedLandPrice: structuredPayload.landPrice,
-        extractedBuildPrice: structuredPayload.buildPrice,
-        isNewBuild: structuredPayload.isNewBuild,
-      },
+      extractedData: formatExtractedData(structuredPayload),
       structuredPayload,
       extractionMethod,
       metadata: {
         fileName: fileName || 'unnamed.pdf',
         processedAt: new Date().toISOString(),
-        contentLength: pdfContent.length,
+        contentLength: contentToProcess.length,
         isPdfBinary,
       },
-    };
-
-    return new Response(JSON.stringify(result), {
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
@@ -671,3 +529,23 @@ serve(async (req) => {
     });
   }
 });
+
+function formatExtractedData(payload: StructuredPropertyPayload) {
+  return {
+    extractedAddress: payload.propertyAddress,
+    extractedSuburb: payload.suburb,
+    extractedState: payload.state,
+    extractedPostcode: payload.postcode,
+    extractedPrice: payload.purchasePrice,
+    extractedRent: payload.weeklyRent,
+    extractedBedrooms: payload.bedrooms,
+    extractedBathrooms: payload.bathrooms,
+    extractedCarSpaces: payload.carSpaces,
+    extractedLandSize: payload.landSize,
+    extractedBuildSize: payload.buildSize,
+    extractedPropertyType: payload.propertyType,
+    extractedLandPrice: payload.landPrice,
+    extractedBuildPrice: payload.buildPrice,
+    isNewBuild: payload.isNewBuild,
+  };
+}
