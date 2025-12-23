@@ -2166,7 +2166,7 @@ ${extractedDetailsText}
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
       : 'You are an expert Australian property investment analyst creating professional-grade Investor Compass reports for a property consulting firm. Your role is to produce COMPREHENSIVE, DETAILED investment analysis reports of 35-40 pages (12,000-15,000 words). You MUST provide extensive narrative content with every section - not just tables, but detailed multi-paragraph analysis explaining the data implications for investors. Include specific numbers, percentages, dollar amounts, and actionable insights throughout. Each section requires substantial written analysis. The SWOT analysis must have 8-10 detailed points per category with explanatory sentences. The Top 3 Opportunities and Risks sections must each be 150+ words with quantified impacts. Investment Recommendations must cover short-term actions, long-term strategy, and monitoring considerations in detail. Use current Australian market conditions and regulations. This is a premium report that clients pay for - make it comprehensive and thorough.';
 
-    console.log('Calling Perplexity API with sonar model...');
+    console.log('Calling Perplexity API with sonar-pro model (multi-step reasoning)...');
     console.log('Report scope:', reportScope);
     console.log('Prompt length:', prompt.length);
     console.log('Scraped content included:', !!scrapedContent);
@@ -2286,6 +2286,7 @@ ${extractedDetailsText}
       data = JSON.parse(responseText);
       console.log('✓ Response parsed successfully');
       console.log('✓ Response structure keys:', Object.keys(data));
+      console.log('✓ Model used by API:', data.model || 'unknown');
     } catch (jsonError) {
       console.error('❌ Error parsing JSON response:', jsonError);
       console.error('❌ Raw response text (first 500 chars):', responseText?.substring(0, 500));
