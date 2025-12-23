@@ -21,19 +21,58 @@ import {
   PERIODS_PER_YEAR
 } from '@/utils/mortgageCalculations';
 
-// Preset interest rate options (based on major Australian lenders)
+// Preset interest rate options grouped by category
 const PRESET_INTEREST_RATES = [
-  { value: '5.89', label: '5.89% - CBA Extra Home Loan (Variable, Owner Occ P&I)' },
-  { value: '5.94', label: '5.94% - CBA Standard Variable Rate' },
-  { value: '5.99', label: '5.99% - Investment Standard Variable' },
-  { value: '6.14', label: '6.14% - Interest Only Variable' },
-  { value: '6.24', label: '6.24% - Fixed 1 Year' },
-  { value: '5.99', label: '5.99% - Fixed 2 Years' },
-  { value: '5.94', label: '5.94% - Fixed 3 Years' },
-  { value: '5.99', label: '5.99% - Fixed 4 Years' },
-  { value: '6.14', label: '6.14% - Fixed 5 Years' },
-  { value: '6.59', label: '6.59% - Low Deposit Variable' },
-  { value: 'custom', label: 'Enter custom rate...' },
+  // Owner Occupied - Digi Home Loan
+  { value: '5.34', label: '5.34% p.a. Digi Home Loan LVR 60% or below', category: 'Owner Occupied' },
+  { value: '5.37', label: '5.37% p.a. Digi Home Loan LVR 60.01% to 70%', category: 'Owner Occupied' },
+  { value: '5.39', label: '5.39% p.a. Digi Home Loan LVR 70.01% to 80%', category: 'Owner Occupied' },
+  // Owner Occupied - Simple Home Loan Variable
+  { value: '5.59', label: '5.59% p.a. Simple Home Loan - Variable Rate LVR 60% or below', category: 'Owner Occupied' },
+  { value: '5.64', label: '5.64% p.a. Simple Home Loan - Variable Rate LVR 60.01% to 70%', category: 'Owner Occupied' },
+  { value: '5.74', label: '5.74% p.a. Simple Home Loan - Variable Rate LVR 70.01% to 80%', category: 'Owner Occupied' },
+  { value: '6.04', label: '6.04% p.a. Simple Home Loan - Variable Rate LVR 80.01% to 90%', category: 'Owner Occupied' },
+  { value: '6.99', label: '6.99% p.a. Simple Home Loan - Variable Rate LVR 90.01% to 95%', category: 'Owner Occupied' },
+  // Owner Occupied - Standard Variable
+  { value: '5.59', label: '5.59% p.a. Standard Variable Rate Home Loan LVR 60% or below', category: 'Owner Occupied' },
+  { value: '5.64', label: '5.64% p.a. Standard Variable Rate Home Loan LVR 60.01% to 70%', category: 'Owner Occupied' },
+  { value: '5.74', label: '5.74% p.a. Standard Variable Rate Home Loan LVR 70.01% to 80%', category: 'Owner Occupied' },
+  { value: '6.04', label: '6.04% p.a. Standard Variable Rate Home Loan LVR 80.01% to 90%', category: 'Owner Occupied' },
+  { value: '6.99', label: '6.99% p.a. Standard Variable Rate Home Loan LVR 90.01% to 95%', category: 'Owner Occupied' },
+  // Owner Occupied - Fixed Rate
+  { value: '5.49', label: '5.49% p.a. 1 Year Fixed Rate Home Loan', category: 'Owner Occupied Fixed' },
+  { value: '5.44', label: '5.44% p.a. 2 Year Fixed Rate Home Loan', category: 'Owner Occupied Fixed' },
+  { value: '5.34', label: '5.34% p.a. 3 Year Fixed Rate Home Loan', category: 'Owner Occupied Fixed' },
+  { value: '5.79', label: '5.79% p.a. 4 Year Fixed Rate Home Loan', category: 'Owner Occupied Fixed' },
+  { value: '5.94', label: '5.94% p.a. 5 Year Fixed Rate Home Loan', category: 'Owner Occupied Fixed' },
+  // Owner Occupied - Green Loan
+  { value: '3.99', label: '3.99% p.a. Green Loan', category: 'Owner Occupied' },
+  // Investment - Digi Investment
+  { value: '5.44', label: '5.44% p.a. Digi Investment Home Loan LVR 60% or below', category: 'Investment' },
+  { value: '5.49', label: '5.49% p.a. Digi Investment Home Loan LVR 60.01% to 70%', category: 'Investment' },
+  { value: '5.54', label: '5.54% p.a. Digi Investment Home Loan LVR 70.01% to 80%', category: 'Investment' },
+  // Investment - Simple Variable
+  { value: '5.79', label: '5.79% p.a. Simple Investment Home Loan - Variable Rate LVR 60% or below', category: 'Investment' },
+  { value: '5.84', label: '5.84% p.a. Simple Investment Home Loan - Variable Rate LVR 60.01% to 70%', category: 'Investment' },
+  { value: '5.94', label: '5.94% p.a. Simple Investment Home Loan - Variable Rate LVR 70.01% to 80%', category: 'Investment' },
+  { value: '6.29', label: '6.29% p.a. Simple Investment Home Loan - Variable Rate LVR 80.01% to 90%', category: 'Investment' },
+  { value: '7.09', label: '7.09% p.a. Simple Investment Home Loan - Variable Rate LVR 90.01% to 95%', category: 'Investment' },
+  // Investment - Standard Variable
+  { value: '5.79', label: '5.79% p.a. Standard Variable Rate Investment Home Loan LVR 60% or below', category: 'Investment' },
+  { value: '5.84', label: '5.84% p.a. Standard Variable Rate Investment Home Loan LVR 60.01% to 70%', category: 'Investment' },
+  { value: '5.94', label: '5.94% p.a. Standard Variable Rate Investment Home Loan LVR 70.01% to 80%', category: 'Investment' },
+  { value: '6.29', label: '6.29% p.a. Standard Variable Rate Investment Home Loan LVR 80.01% to 90%', category: 'Investment' },
+  { value: '7.09', label: '7.09% p.a. Standard Variable Rate Investment Home Loan LVR 90.01% to 95%', category: 'Investment' },
+  // Investment - Fixed Rate
+  { value: '5.64', label: '5.64% p.a. 1 Year Fixed Rate Investment Home Loan', category: 'Investment Fixed' },
+  { value: '5.59', label: '5.59% p.a. 2 Year Fixed Rate Investment Home Loan', category: 'Investment Fixed' },
+  { value: '5.49', label: '5.49% p.a. 3 Year Fixed Rate Investment Home Loan', category: 'Investment Fixed' },
+  { value: '5.94', label: '5.94% p.a. 4 Year Fixed Rate Investment Home Loan', category: 'Investment Fixed' },
+  { value: '6.14', label: '6.14% p.a. 5 Year Fixed Rate Investment Home Loan', category: 'Investment Fixed' },
+  // Investment - Green Loan
+  { value: '3.99', label: '3.99% p.a. Green Investment Loan', category: 'Investment' },
+  // Custom option
+  { value: 'custom', label: 'Enter custom rate...', category: 'Custom' },
 ];
 
 interface MortgageRepaymentCalculatorProps {
@@ -86,8 +125,8 @@ export function MortgageRepaymentCalculator({
   const [showResults, setShowResults] = useState(false);
   const [showAmortisation, setShowAmortisation] = useState(false);
   const [amortisationView, setAmortisationView] = useState<'yearly' | 'all'>('yearly');
-  const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset');
-  const [selectedPresetRate, setSelectedPresetRate] = useState<string>('5.89');
+const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset');
+  const [selectedPresetRate, setSelectedPresetRate] = useState<string>('5.34');
   
   // Sync with initial values when they change
   useEffect(() => {
@@ -335,8 +374,8 @@ export function MortgageRepaymentCalculator({
                   size="sm"
                   onClick={() => {
                     setRateInputMode('preset');
-                    setSelectedPresetRate('5.89');
-                    setInterestRate(5.89);
+                    setSelectedPresetRate('5.34');
+                    setInterestRate(5.34);
                   }}
                   className="text-xs"
                 >
