@@ -561,14 +561,23 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     ...propertySpecFields
   ];
 
+  // Static list of all possible cash flow field keys - independent of isNewBuild
+  // This ensures initialization always works correctly
+  const allCashFlowFieldKeys = [
+    'marketValueNow', 'loanAmount', 'loanType', 'loanTermYears', 
+    'interestOnlyPeriodYears', 'repaymentFrequency', 'extraRepaymentPerMonth', 
+    'offsetBalance', 'constructionDurationMonths', 'occupancyRate',
+    'agentFee', 'cpiGrowthRate', 'depreciation', 'taxRate', 'constructionYear'
+  ];
+
   useEffect(() => {
     if (report && isOpen) {
       // Initialize overrides from existing manual_overrides
       setOverrides(report.manual_overrides || {});
-      // Initialize cash flow field toggles (default: don't include new fields in investment report)
+      // Initialize cash flow field toggles using static list (avoids stale closure)
       const defaultToggles: Record<string, boolean> = {};
-      fields.filter(f => f.isCashFlowField).forEach(f => {
-        defaultToggles[f.key] = report.manual_overrides?.cashFlowFieldToggles?.[f.key] ?? false;
+      allCashFlowFieldKeys.forEach(key => {
+        defaultToggles[key] = report.manual_overrides?.cashFlowFieldToggles?.[key] ?? false;
       });
       setCashFlowFieldToggles(defaultToggles);
       // Initialize depreciation master toggle (default: include in cash flow analysis)
@@ -734,8 +743,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const handleResetAll = () => {
     setOverrides({});
     const defaultToggles: Record<string, boolean> = {};
-    fields.filter(f => f.isCashFlowField).forEach(f => {
-      defaultToggles[f.key] = false;
+    allCashFlowFieldKeys.forEach(key => {
+      defaultToggles[key] = false;
     });
     setCashFlowFieldToggles(defaultToggles);
     setIncludeDepreciationInCashFlow(true);
@@ -785,16 +794,29 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         'landPrice': 'initialCosts.landPrice',
         'landSizeSqm': 'propertySpecs.landSizeSqm',
         'buildSizeSqm': 'propertySpecs.buildSizeSqm',
-        // New cash flow fields
+        // Cash flow and loan fields
         'marketValueNow': 'cashFlow.marketValueNow',
         'loanAmount': 'cashFlow.loanAmount',
         'loanType': 'cashFlow.loanType',
         'loanTermYears': 'cashFlow.loanTermYears',
+        'interestOnlyPeriodYears': 'cashFlow.interestOnlyPeriodYears',
+        'repaymentFrequency': 'cashFlow.repaymentFrequency',
+        'extraRepaymentPerMonth': 'cashFlow.extraRepaymentPerMonth',
+        'offsetBalance': 'cashFlow.offsetBalance',
         'occupancyRate': 'cashFlow.occupancyRate',
         'cpiGrowthRate': 'cashFlow.cpiGrowthRate',
         'depreciation': 'cashFlow.depreciation',
         'taxRate': 'cashFlow.taxRate',
-        'constructionYear': 'cashFlow.constructionYear'
+        'constructionYear': 'cashFlow.constructionYear',
+        // Construction stage fields
+        'constructionDurationMonths': 'construction.durationMonths',
+        'agentFee': 'initialCosts.agentFee',
+        'stageDepositPercent': 'construction.stageDepositPercent',
+        'stageSlabPercent': 'construction.stageSlabPercent',
+        'stageFramePercent': 'construction.stageFramePercent',
+        'stageLockupPercent': 'construction.stageLockupPercent',
+        'stageFixingPercent': 'construction.stageFixingPercent',
+        'stageCompletionPercent': 'construction.stageCompletionPercent'
       };
       
       // Apply overrides to nested structure
@@ -856,6 +878,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         cashFlowFieldToggles,
         includeDepreciationInCashFlow
       };
+
+      console.log('💾 Preparing to save overrides:', {
+        overrideKeys: Object.keys(overridesWithToggles),
+        reportId: report.id
+      });
       
       // Update database with merged data (NO Perplexity call)
       const { error: updateError } = await supabase
@@ -867,7 +894,10 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         })
         .eq('id', report.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Supabase update error:', updateError);
+        throw updateError;
+      }
 
       console.log('✓ Manual overrides saved (data-only, no AI regeneration)');
 
