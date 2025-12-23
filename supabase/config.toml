@@ -214,3 +214,7 @@ request_timeout = 60
 
 [functions.estimate-property-expenses]
 verify_jwt = false
+
+[functions.parse-property-pdf]
+verify_jwt = false
+request_timeout = 60
