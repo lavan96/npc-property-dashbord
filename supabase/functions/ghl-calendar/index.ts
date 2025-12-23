@@ -126,34 +126,50 @@ serve(async (req) => {
 
       // For 'all' action, continue to fetch events
       
-      // Fetch events
+      // Fetch events - GHL API requires calendarId, so we fetch for each calendar
       console.log('Fetching events...');
       const now = new Date();
       const defaultStartTime = startTime || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const defaultEndTime = endTime || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      let eventsUrl = `${GHL_API_BASE}/calendars/events?locationId=${locationId}&startTime=${defaultStartTime}&endTime=${defaultEndTime}`;
-      if (calendarId) {
-        eventsUrl += `&calendarId=${calendarId}`;
+      let allEvents: GHLEvent[] = [];
+      
+      // If calendarId is specified, only fetch for that calendar
+      const calendarsToFetch = calendarId 
+        ? calendars.filter(c => c.id === calendarId)
+        : calendars;
+
+      // Fetch events for each calendar (GHL API requires calendarId)
+      for (const cal of calendarsToFetch) {
+        try {
+          const eventsUrl = `${GHL_API_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${defaultStartTime}&endTime=${defaultEndTime}`;
+          
+          const eventsResponse = await fetch(eventsUrl, {
+            method: 'GET',
+            headers,
+          });
+
+          if (eventsResponse.ok) {
+            const eventsData = await eventsResponse.json();
+            const calendarEvents = (eventsData.events || []).map((event: any) => ({
+              ...event,
+              calendarId: cal.id,
+            }));
+            allEvents = [...allEvents, ...calendarEvents];
+            console.log(`Fetched ${calendarEvents.length} events from calendar: ${cal.name}`);
+          } else {
+            console.error(`Failed to fetch events for calendar ${cal.name}:`, await eventsResponse.text());
+          }
+        } catch (err) {
+          console.error(`Error fetching events for calendar ${cal.name}:`, err);
+        }
       }
 
-      const eventsResponse = await fetch(eventsUrl, {
-        method: 'GET',
-        headers,
-      });
-
-      let events: GHLEvent[] = [];
-      if (eventsResponse.ok) {
-        const eventsData = await eventsResponse.json();
-        events = eventsData.events || [];
-        console.log(`Fetched ${events.length} events`);
-      } else {
-        console.error('Events fetch error:', await eventsResponse.text());
-      }
+      console.log(`Total events fetched: ${allEvents.length}`);
 
       // Map calendar names and colors to events
       const calendarMap = new Map(calendars.map(c => [c.id, { name: c.name, color: c.eventColor }]));
-      const eventsWithCalendarInfo = events.map(event => {
+      const eventsWithCalendarInfo = allEvents.map(event => {
         const calInfo = calendarMap.get(event.calendarId);
         return {
           ...event,
