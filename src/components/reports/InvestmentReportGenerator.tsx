@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image, Calculator } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 
@@ -764,9 +764,9 @@ export function InvestmentReportGenerator() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Input Mode Tabs */}
-              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf' | 'overrides')}>
-                <TabsList className="grid w-full grid-cols-4">
+            {/* Input Mode Tabs */}
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="manual" className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     Manual Entry
@@ -779,14 +779,42 @@ export function InvestmentReportGenerator() {
                     <Upload className="h-4 w-4" />
                     PDF Upload
                   </TabsTrigger>
-                  <TabsTrigger value="overrides" className="flex items-center gap-2">
-                    <Calculator className="h-4 w-4" />
-                    Manual Inputs
-                  </TabsTrigger>
                 </TabsList>
 
                 {/* Manual Entry Tab */}
                 <TabsContent value="manual" className="space-y-6 pt-4">
+                  {/* Build Type Radio Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Build Type</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="buildType"
+                          value="existing_property"
+                          checked={preGenData.buildType === 'existing_property'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isGenerating}
+                        />
+                        <span className="text-sm">Existing Property</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="buildType"
+                          value="new_build"
+                          checked={preGenData.buildType === 'new_build'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isGenerating}
+                        />
+                        <span className="text-sm">New Build</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <Separator />
                   {/* Query Type Selection */}
                   <div className="space-y-3">
                     <Label htmlFor="queryType">Analysis Scope</Label>
@@ -1024,6 +1052,15 @@ export function InvestmentReportGenerator() {
                   </div>
                 </>
               )}
+
+              <Separator />
+
+              {/* Pre-Generation Manual Inputs */}
+              <PreGenerationOverrides
+                propertyAddress={query}
+                onDataChange={setPreGenData}
+                disabled={isGenerating}
+              />
 
               {/* Info Box */}
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -1273,53 +1310,6 @@ export function InvestmentReportGenerator() {
                   </Button>
                 </TabsContent>
 
-                {/* Manual Inputs / Overrides Tab */}
-                <TabsContent value="overrides" className="space-y-6 pt-4">
-                  <div className="space-y-4">
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <Calculator className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-muted-foreground">
-                          <p><strong>Pre-Generation Overrides</strong></p>
-                          <p className="mt-1">
-                            Set values here to inject into the report generation. These will be used instead of AI-fetched data, 
-                            ensuring your specific financial assumptions are reflected in the report.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <PreGenerationOverrides
-                      propertyAddress={query}
-                      onDataChange={setPreGenData}
-                      disabled={isGenerating}
-                    />
-
-                    {/* Show current build type status */}
-                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <span className="text-sm text-muted-foreground">Current Build Type:</span>
-                      <Badge variant={preGenData.buildType === 'new_build' ? 'default' : 'secondary'}>
-                        {preGenData.buildType === 'new_build' ? 'New Build' : 'Existing Property'}
-                      </Badge>
-                    </div>
-
-                    {/* Info about using with other tabs */}
-                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-foreground/80 space-y-1">
-                          <p><strong>How it works:</strong></p>
-                          <ul className="list-disc list-inside space-y-1 ml-2">
-                            <li>Set your financial overrides here</li>
-                            <li>Switch to Manual Entry, URL Scrape, or PDF Upload tab</li>
-                            <li>Generate your report - overrides will be applied</li>
-                            <li>Values set here take precedence over scraped/parsed data</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
