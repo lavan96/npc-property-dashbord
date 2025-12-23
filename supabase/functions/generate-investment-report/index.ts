@@ -71,16 +71,28 @@ serve(async (req) => {
     
     let { reportId, propertyAddress, propertyDetails } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
+    
+    // UNIFIED DOCUMENT CONTENT: Accept both scrapedContent (URL scrape) AND pdfContent (PDF upload)
+    // This ensures consistent content injection regardless of the input source
     const scrapedContent = propertyDetails?.scrapedContent || null;
+    const pdfContent = propertyDetails?.pdfContent || null;
+    const documentContent = scrapedContent || pdfContent || null; // Unified content variable
+    
     const sourceUrl = propertyDetails?.sourceUrl || null;
     const fromUrlScrape = propertyDetails?.fromUrlScrape || false;
+    const fromPdfUpload = propertyDetails?.fromPdfUpload || false;
+    const contentSource = fromUrlScrape ? 'URL Scrape' : (fromPdfUpload ? 'PDF Upload' : 'Manual Entry');
     
     console.log('=== REPORT GENERATION REQUEST ===');
     console.log('Report ID:', reportId);
     console.log('Property address:', propertyAddress);
     console.log('Report scope:', reportScope);
+    console.log('Content source:', contentSource);
     console.log('From URL scrape:', fromUrlScrape);
+    console.log('From PDF upload:', fromPdfUpload);
     console.log('Scraped content available:', !!scrapedContent, scrapedContent ? `(${scrapedContent.length} chars)` : '');
+    console.log('PDF content available:', !!pdfContent, pdfContent ? `(${pdfContent.length} chars)` : '');
+    console.log('Unified document content available:', !!documentContent, documentContent ? `(${documentContent.length} chars)` : '');
     console.log('Source URL:', sourceUrl);
     
     // Log all property details for debugging
@@ -96,6 +108,8 @@ serve(async (req) => {
       console.log('  - Postcode:', propertyDetails.postcode);
       console.log('  - State:', propertyDetails.state);
       console.log('  - Suburb:', propertyDetails.suburb);
+      console.log('  - Weekly rent:', propertyDetails.weeklyRent);
+      console.log('  - Is new build:', propertyDetails.isNewBuild);
     }
     
     // If reportId is provided but no propertyAddress, fetch it from the existing report (for retries)
@@ -2114,9 +2128,12 @@ Produce a full investment report following the structure above, including detail
     // Select the appropriate prompt based on report scope
     let prompt = reportScope === 'suburb' ? suburbPrompt : propertyPrompt;
     
-    // If scraped content is available, prepend it to the prompt for context
-    if (scrapedContent) {
-      console.log('📄 Injecting scraped property listing content into prompt...');
+    // If document content is available (from URL scrape OR PDF upload), prepend it to the prompt for context
+    if (documentContent) {
+      const contentSourceLabel = fromPdfUpload ? 'PDF Document' : (sourceUrl || 'Property Listing');
+      console.log(`📄 Injecting ${fromPdfUpload ? 'PDF' : 'scraped'} property listing content into prompt...`);
+      console.log(`   Content source: ${contentSourceLabel}`);
+      console.log(`   Content length: ${documentContent.length} characters`);
       
       // Build a summary of extracted property details
       const extractedDetailsSummary: string[] = [];
@@ -2130,22 +2147,29 @@ Produce a full investment report following the structure above, including detail
       if (propertyDetails?.suburb) extractedDetailsSummary.push(`Suburb: ${propertyDetails.suburb}`);
       if (propertyDetails?.postcode) extractedDetailsSummary.push(`Postcode: ${propertyDetails.postcode}`);
       if (propertyDetails?.state) extractedDetailsSummary.push(`State: ${propertyDetails.state}`);
+      if (propertyDetails?.weeklyRent) extractedDetailsSummary.push(`Weekly Rent: $${propertyDetails.weeklyRent}`);
+      if (propertyDetails?.isNewBuild) extractedDetailsSummary.push(`New Build: Yes`);
+      if (propertyDetails?.landPrice) extractedDetailsSummary.push(`Land Price: $${propertyDetails.landPrice.toLocaleString()}`);
+      if (propertyDetails?.buildPrice) extractedDetailsSummary.push(`Build Price: $${propertyDetails.buildPrice.toLocaleString()}`);
       
       const extractedDetailsText = extractedDetailsSummary.length > 0 
         ? `\n\n**EXTRACTED PROPERTY SPECIFICATIONS:**\n${extractedDetailsSummary.join('\n')}\n`
         : '';
       
-      const scrapedContextSection = `
----
-**PROPERTY LISTING DATA (SCRAPED FROM: ${sourceUrl || 'Property Listing'})**
-
-The following is the full content scraped from the property listing. Use this as PRIMARY context for the property details, features, description, and any specific information mentioned in the listing:
-
-${scrapedContent}
-${extractedDetailsText}
----
-
-**CRITICAL INSTRUCTIONS FOR URL-SCRAPED LISTINGS:**
+      // Use different instructions based on content source
+      const sourceSpecificInstructions = fromPdfUpload 
+        ? `**CRITICAL INSTRUCTIONS FOR PDF-UPLOADED LISTINGS:**
+1. The above content was extracted from a property listing PDF document
+2. This is the PRIMARY source of truth for this property's specifications and features
+3. Extract and use the EXACT property specifications from the document (bedrooms, bathrooms, land size, price)
+4. Use the property address exactly as shown in the document
+5. Include all relevant property features, upgrades, and selling points mentioned in the document
+6. If a price is mentioned (guide, asking, or range), use it for financial calculations
+7. Note any specific renovations, improvements, or unique characteristics
+8. Consider the property description when assessing investment potential
+9. Verify the suburb/postcode from the document for accurate location analysis
+10. For new builds: Use the land + build package price for total property value`
+        : `**CRITICAL INSTRUCTIONS FOR URL-SCRAPED LISTINGS:**
 1. The above scraped content is the PRIMARY source of truth for this property
 2. Extract and use the EXACT property specifications from the listing (bedrooms, bathrooms, land size, price)
 3. Use the property address exactly as shown in the listing
@@ -2153,13 +2177,27 @@ ${extractedDetailsText}
 5. If a price is mentioned (guide, asking, or range), use it for financial calculations
 6. Note any specific renovations, improvements, or unique characteristics
 7. Consider the property description when assessing investment potential
-8. Verify the suburb/postcode from the listing for accurate location analysis
+8. Verify the suburb/postcode from the listing for accurate location analysis`;
+      
+      const documentContextSection = `
+---
+**PROPERTY LISTING DATA (SOURCE: ${contentSourceLabel})**
+
+The following is the full content ${fromPdfUpload ? 'extracted from the property listing PDF' : 'scraped from the property listing'}. Use this as PRIMARY context for the property details, features, description, and any specific information mentioned in the listing:
+
+${documentContent}
+${extractedDetailsText}
+---
+
+${sourceSpecificInstructions}
 
 ---
 
 `;
-      prompt = scrapedContextSection + prompt;
-      console.log('✓ Scraped content injected with extracted details. New prompt length:', prompt.length);
+      prompt = documentContextSection + prompt;
+      console.log(`✓ ${fromPdfUpload ? 'PDF' : 'Scraped'} content injected with extracted details. New prompt length:`, prompt.length);
+    } else {
+      console.log('ℹ️ No document content available - generating report from property address and web search only');
     }
     
     const systemMessage = reportScope === 'suburb' 
@@ -2169,7 +2207,8 @@ ${extractedDetailsText}
     console.log('Calling Perplexity API with sonar-pro model (multi-step reasoning)...');
     console.log('Report scope:', reportScope);
     console.log('Prompt length:', prompt.length);
-    console.log('Scraped content included:', !!scrapedContent);
+    console.log('Document content included:', !!documentContent);
+    console.log('Content source:', contentSource);
 
     // Retry logic with exponential backoff
     const maxRetries = 3;
