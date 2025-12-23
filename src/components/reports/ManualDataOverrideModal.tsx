@@ -291,11 +291,48 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       isCashFlowField: true
     },
     {
+      key: 'interestOnlyPeriodYears',
+      label: 'Interest Only Period',
+      originalValue: report?.financial_calculations?.interestOnlyPeriodYears || null,
+      overrideValue: report?.manual_overrides?.interestOnlyPeriodYears || null,
+      suffix: 'years',
+      isCashFlowField: true
+    },
+    {
+      key: 'repaymentFrequency',
+      label: 'Repayment Frequency',
+      originalValue: report?.financial_calculations?.repaymentFrequency || 'monthly',
+      overrideValue: report?.manual_overrides?.repaymentFrequency || null,
+      type: 'select',
+      options: [
+        { value: 'weekly', label: 'Weekly (52/year)' },
+        { value: 'fortnightly', label: 'Fortnightly (26/year)' },
+        { value: 'monthly', label: 'Monthly (12/year)' }
+      ],
+      isCashFlowField: true
+    },
+    {
       key: 'interestRate',
       label: 'Interest Rate',
       originalValue: report?.financial_calculations?.interestRate || null,
       overrideValue: report?.manual_overrides?.interestRate || null,
       suffix: '%'
+    },
+    {
+      key: 'extraRepaymentPerMonth',
+      label: 'Extra Repayment (Monthly)',
+      originalValue: report?.financial_calculations?.extraRepaymentPerMonth || 0,
+      overrideValue: report?.manual_overrides?.extraRepaymentPerMonth || null,
+      prefix: '$',
+      isCashFlowField: true
+    },
+    {
+      key: 'offsetBalance',
+      label: 'Offset Account Balance',
+      originalValue: report?.financial_calculations?.offsetBalance || 0,
+      overrideValue: report?.manual_overrides?.offsetBalance || null,
+      prefix: '$',
+      isCashFlowField: true
     },
     {
       key: 'capitalGrowth',
