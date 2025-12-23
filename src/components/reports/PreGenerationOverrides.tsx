@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Calculator, 
   ChevronDown, 
@@ -20,7 +21,10 @@ import {
   DollarSign,
   Percent,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  Loader2,
+  Sparkles,
+  Building
 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
 
@@ -36,6 +40,9 @@ export interface PreGenerationData {
   weeklyRent?: number;
   stampDuty?: number;
   bodyCorporateFees?: number;
+  strataAdminFund?: number;
+  strataSinkingFund?: number;
+  strataSpecialLevies?: number;
   landTax?: number;
   councilRates?: number;
   waterRates?: number;
@@ -45,6 +52,7 @@ export interface PreGenerationData {
   repairsMaintenance?: number;
   lettingFees?: number;
   agentFee?: number;
+  propertyType?: string;
 }
 
 interface PreGenerationOverridesProps {
@@ -63,6 +71,9 @@ export function PreGenerationOverrides({
   // Build type selection
   const [buildType, setBuildType] = useState<'new_build' | 'existing_property'>('existing_property');
   
+  // Property type for expense estimation
+  const [propertyType, setPropertyType] = useState<string>('house');
+  
   // Core property values
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [landPrice, setLandPrice] = useState<string>('');
@@ -78,6 +89,9 @@ export function PreGenerationOverrides({
   // Annual expenses
   const [stampDuty, setStampDuty] = useState<string>('');
   const [bodyCorporateFees, setBodyCorporateFees] = useState<string>('');
+  const [strataAdminFund, setStrataAdminFund] = useState<string>('');
+  const [strataSinkingFund, setStrataSinkingFund] = useState<string>('');
+  const [strataSpecialLevies, setStrataSpecialLevies] = useState<string>('');
   const [landTax, setLandTax] = useState<string>('');
   const [councilRates, setCouncilRates] = useState<string>('');
   const [waterRates, setWaterRates] = useState<string>('');
@@ -90,11 +104,15 @@ export function PreGenerationOverrides({
   
   // Calculators visibility
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
+  const [showStrataBreakdown, setShowStrataBreakdown] = useState(false);
   const [detectedState, setDetectedState] = useState<string>('All');
   
   // Collapsible sections
   const [showLoanSettings, setShowLoanSettings] = useState(true);
   const [showExpenses, setShowExpenses] = useState(true);
+  
+  // Loading state for expense estimation
+  const [isEstimatingExpenses, setIsEstimatingExpenses] = useState(false);
 
   // Detect state from property address
   const detectStateFromAddress = useCallback((address: string): string => {
@@ -159,6 +177,17 @@ export function PreGenerationOverrides({
     }
   }, [weeklyRent]);
 
+  // Dynamic calculation - Body Corporate = Admin + Sinking + Special Levies
+  useEffect(() => {
+    const admin = parseFloat(strataAdminFund) || 0;
+    const sinking = parseFloat(strataSinkingFund) || 0;
+    const special = parseFloat(strataSpecialLevies) || 0;
+    const total = admin + sinking + special;
+    if (total > 0) {
+      setBodyCorporateFees(total.toString());
+    }
+  }, [strataAdminFund, strataSinkingFund, strataSpecialLevies]);
+
   // Load stamp duty calculator script
   useEffect(() => {
     if (showStampDutyCalculator) {
@@ -176,6 +205,81 @@ export function PreGenerationOverrides({
     }
   }, [showStampDutyCalculator, detectedState]);
 
+  // Estimate expenses using edge function
+  const estimateExpenses = useCallback(async () => {
+    if (!propertyAddress) {
+      toast({
+        title: "Address Required",
+        description: "Please enter a property address first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const price = buildType === 'new_build' 
+      ? (parseFloat(landPrice) || 0) + (parseFloat(buildPrice) || 0)
+      : parseFloat(purchasePrice) || 0;
+
+    if (price <= 0) {
+      toast({
+        title: "Price Required",
+        description: "Please enter a purchase price first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsEstimatingExpenses(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('estimate-property-expenses', {
+        body: {
+          propertyAddress,
+          purchasePrice: price,
+          weeklyRent: parseFloat(weeklyRent) || 0,
+          propertyType
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.estimates) {
+        const estimates = data.estimates;
+        
+        // Apply estimated values
+        if (estimates.bodyCorporateFees > 0) {
+          setBodyCorporateFees(estimates.bodyCorporateFees.toString());
+          // Estimate strata breakdown (typical split: 60% admin, 30% sinking, 10% special)
+          setStrataAdminFund(Math.round(estimates.bodyCorporateFees * 0.6).toString());
+          setStrataSinkingFund(Math.round(estimates.bodyCorporateFees * 0.3).toString());
+          setStrataSpecialLevies(Math.round(estimates.bodyCorporateFees * 0.1).toString());
+        }
+        if (estimates.landTax > 0) setLandTax(estimates.landTax.toString());
+        if (estimates.councilRates > 0) setCouncilRates(estimates.councilRates.toString());
+        if (estimates.waterRates > 0) setWaterRates(estimates.waterRates.toString());
+        if (estimates.solicitorFees > 0) setSolicitorFees(estimates.solicitorFees.toString());
+        if (estimates.buildingLandlordInsurance > 0) setBuildingLandlordInsurance(estimates.buildingLandlordInsurance.toString());
+        if (estimates.propertyManagementFees > 0) setPropertyManagementFees(estimates.propertyManagementFees.toString());
+        if (estimates.repairsMaintenance > 0) setRepairsMaintenance(estimates.repairsMaintenance.toString());
+
+        toast({
+          title: "Expenses Estimated",
+          description: "AI-powered expense estimates have been applied. Review and adjust as needed.",
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to estimate expenses');
+      }
+    } catch (error) {
+      console.error('Error estimating expenses:', error);
+      toast({
+        title: "Estimation Failed",
+        description: error instanceof Error ? error.message : "Failed to estimate expenses",
+        variant: "destructive"
+      });
+    } finally {
+      setIsEstimatingExpenses(false);
+    }
+  }, [propertyAddress, buildType, landPrice, buildPrice, purchasePrice, weeklyRent, propertyType, toast]);
+
   // Notify parent of data changes
   useEffect(() => {
     const data: PreGenerationData = {
@@ -190,6 +294,9 @@ export function PreGenerationOverrides({
       weeklyRent: weeklyRent ? parseFloat(weeklyRent) : undefined,
       stampDuty: stampDuty ? parseFloat(stampDuty) : undefined,
       bodyCorporateFees: bodyCorporateFees ? parseFloat(bodyCorporateFees) : undefined,
+      strataAdminFund: strataAdminFund ? parseFloat(strataAdminFund) : undefined,
+      strataSinkingFund: strataSinkingFund ? parseFloat(strataSinkingFund) : undefined,
+      strataSpecialLevies: strataSpecialLevies ? parseFloat(strataSpecialLevies) : undefined,
       landTax: landTax ? parseFloat(landTax) : undefined,
       councilRates: councilRates ? parseFloat(councilRates) : undefined,
       waterRates: waterRates ? parseFloat(waterRates) : undefined,
@@ -199,15 +306,16 @@ export function PreGenerationOverrides({
       repairsMaintenance: repairsMaintenance ? parseFloat(repairsMaintenance) : undefined,
       lettingFees: lettingFees ? parseFloat(lettingFees) : undefined,
       agentFee: buildType === 'new_build' && agentFee ? parseFloat(agentFee) : undefined,
+      propertyType,
     };
     
     onDataChange(data);
   }, [
     buildType, purchasePrice, landPrice, buildPrice, depositValue, 
     loanToValueRatio, interestRate, capitalGrowth, weeklyRent,
-    stampDuty, bodyCorporateFees, landTax, councilRates, waterRates,
-    solicitorFees, buildingLandlordInsurance, propertyManagementFees,
-    repairsMaintenance, lettingFees, agentFee, onDataChange
+    stampDuty, bodyCorporateFees, strataAdminFund, strataSinkingFund, strataSpecialLevies,
+    landTax, councilRates, waterRates, solicitorFees, buildingLandlordInsurance, 
+    propertyManagementFees, repairsMaintenance, lettingFees, agentFee, propertyType, onDataChange
   ]);
 
   // Capture stamp duty from calculator
@@ -515,6 +623,60 @@ export function PreGenerationOverrides({
                 {showExpenses ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-4">
+                {/* Property Type Selection for Expense Estimation */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Property Type
+                  </Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {['house', 'apartment', 'townhouse', 'unit', 'villa'].map((type) => (
+                      <Button
+                        key={type}
+                        type="button"
+                        variant={propertyType === type ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPropertyType(type)}
+                        disabled={disabled}
+                        className="capitalize"
+                      >
+                        {type}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Expense Estimation Button */}
+                <div className="border rounded-lg p-4 bg-primary/5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm">AI-Powered Expense Estimation</span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={estimateExpenses}
+                      disabled={disabled || isEstimatingExpenses}
+                    >
+                      {isEstimatingExpenses ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Estimating...
+                        </>
+                      ) : (
+                        <>
+                          <Calculator className="h-3 w-3 mr-1" />
+                          Calculate Expenses
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically estimates council rates, strata fees, insurance, and other expenses based on the property location and type.
+                  </p>
+                </div>
+
                 {/* Stamp Duty with Calculator */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -564,18 +726,101 @@ export function PreGenerationOverrides({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="bodyCorporateFees">Body Corporate / Strata ($)</Label>
-                    <Input
-                      id="bodyCorporateFees"
-                      type="number"
-                      value={bodyCorporateFees}
-                      onChange={(e) => setBodyCorporateFees(e.target.value)}
-                      placeholder="e.g., 3000"
+                {/* Body Corporate with Strata Breakdown */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="bodyCorporateFees" className="flex items-center gap-1">
+                      Body Corporate / Strata ($)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Total of Admin Fund + Sinking Fund + Special Levies</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowStrataBreakdown(!showStrataBreakdown)}
                       disabled={disabled}
-                    />
+                    >
+                      <Building2 className="h-3 w-3 mr-1" />
+                      {showStrataBreakdown ? 'Hide Breakdown' : 'Breakdown'}
+                    </Button>
                   </div>
+                  <Input
+                    id="bodyCorporateFees"
+                    type="number"
+                    value={bodyCorporateFees}
+                    onChange={(e) => setBodyCorporateFees(e.target.value)}
+                    placeholder="e.g., 3000"
+                    className={showStrataBreakdown ? 'bg-muted/30' : ''}
+                    disabled={disabled || showStrataBreakdown}
+                  />
+                </div>
+
+                {showStrataBreakdown && (
+                  <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Strata Fee Breakdown</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="strataAdminFund" className="text-xs">Admin Fund ($)</Label>
+                        <Input
+                          id="strataAdminFund"
+                          type="number"
+                          value={strataAdminFund}
+                          onChange={(e) => setStrataAdminFund(e.target.value)}
+                          placeholder="e.g., 1800"
+                          disabled={disabled}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="strataSinkingFund" className="text-xs">Sinking Fund ($)</Label>
+                        <Input
+                          id="strataSinkingFund"
+                          type="number"
+                          value={strataSinkingFund}
+                          onChange={(e) => setStrataSinkingFund(e.target.value)}
+                          placeholder="e.g., 900"
+                          disabled={disabled}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="strataSpecialLevies" className="text-xs">Special Levies ($)</Label>
+                        <Input
+                          id="strataSpecialLevies"
+                          type="number"
+                          value={strataSpecialLevies}
+                          onChange={(e) => setStrataSpecialLevies(e.target.value)}
+                          placeholder="e.g., 300"
+                          disabled={disabled}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    {(strataAdminFund || strataSinkingFund || strataSpecialLevies) && (
+                      <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Total:</span>
+                        <span className="text-sm font-semibold">
+                          ${((parseFloat(strataAdminFund) || 0) + (parseFloat(strataSinkingFund) || 0) + (parseFloat(strataSpecialLevies) || 0)).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="landTax">Land Tax ($)</Label>
                     <Input
