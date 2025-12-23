@@ -3569,20 +3569,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</TableCell>
                               </TableRow>
                               <TableRow>
-                                <TableCell className="font-medium">Deposit Value</TableCell>
-                                <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue)}</TableCell>
-                              </TableRow>
-                              <TableRow>
                                 <TableCell className="font-medium">Stamp Duty</TableCell>
                                 <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</TableCell>
                               </TableRow>
                               <TableRow>
                                 <TableCell className="font-medium">Solicitor Cost</TableCell>
                                 <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</TableCell>
-                              </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">Agent Fee</TableCell>
-                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}</TableCell>
                               </TableRow>
                               <TableRow className="bg-muted/30">
                                 <TableCell className="font-semibold">Total Upfront Cost</TableCell>
