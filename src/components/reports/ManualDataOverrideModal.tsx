@@ -57,6 +57,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [detectedState, setDetectedState] = useState<string>('All');
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const [estimatingExpenses, setEstimatingExpenses] = useState(false);
+  const [expenseCitations, setExpenseCitations] = useState<string[]>([]);
   
   // Active tab state
   const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
@@ -263,9 +264,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         }));
         setHasChanges(true);
         
+        // Store citations if available
+        if (data?.citations && Array.isArray(data.citations)) {
+          setExpenseCitations(data.citations);
+        }
+        
         toast({
           title: "Expenses Estimated",
-          description: "AI has populated expense fields based on your property details. Review and adjust as needed.",
+          description: `AI has populated expense fields based on real-time data.${data?.citations?.length ? ` Found ${data.citations.length} sources.` : ''}`,
         });
       } else {
         throw new Error(data?.error || 'Failed to estimate expenses');
@@ -1397,6 +1403,34 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
                   {annualExpenseFields.map((field, index) => 
                     renderField(field, index < annualExpenseFields.length - 1)
+                  )}
+
+                  {/* AI Estimation Citations */}
+                  {expenseCitations.length > 0 && (
+                    <div className="mt-4 p-3 rounded-lg bg-muted/50 border space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <ExternalLink className="h-4 w-4 text-primary" />
+                        <span>Data Sources ({expenseCitations.length})</span>
+                      </div>
+                      <div className="space-y-1">
+                        {expenseCitations.slice(0, 5).map((citation, idx) => (
+                          <a
+                            key={idx}
+                            href={citation}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-xs text-muted-foreground hover:text-primary truncate"
+                          >
+                            {idx + 1}. {citation}
+                          </a>
+                        ))}
+                        {expenseCitations.length > 5 && (
+                          <p className="text-xs text-muted-foreground">
+                            +{expenseCitations.length - 5} more sources
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
 
