@@ -12,6 +12,37 @@ import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
 import { CalendarSearchDropdown } from '@/components/calendar/CalendarSearchDropdown';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours } from 'date-fns';
 
+// Module-level helper functions for date parsing/formatting
+const safeParseISO = (value: string | undefined | null): Date | null => {
+  try {
+    const trimmed = (value || '').trim();
+    if (!trimmed) return null;
+
+    // Handle numeric timestamps that arrive as strings
+    if (/^\d+$/.test(trimmed)) {
+      const n = Number(trimmed);
+      const ms = n < 1_000_000_000_000 ? n * 1000 : n;
+      const d = new Date(ms);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const d = parseISO(trimmed);
+    if (!Number.isNaN(d.getTime())) return d;
+
+    const fallbackMs = Date.parse(trimmed);
+    if (!Number.isNaN(fallbackMs)) return new Date(fallbackMs);
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const safeFormatISO = (value: string | undefined | null, fmt: string): string => {
+  const d = value ? safeParseISO(value) : null;
+  return d ? format(d, fmt) : '—';
+};
+
 export default function Calendar() {
   const { calendars, events, contactCache, isLoading, error, fetchCalendarData, fetchContact, getCalendarColor } = useGHLCalendar();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
@@ -39,36 +70,6 @@ export default function Calendar() {
     const { start, end } = getVisibleRange();
     fetchCalendarData(start.toISOString(), end.toISOString());
   }, [fetchCalendarData, view, currentMonth, currentWeek]);
-
-  const safeParseISO = (value: string) => {
-    try {
-      const trimmed = (value || '').trim();
-      if (!trimmed) return null;
-
-      // Handle numeric timestamps that arrive as strings
-      if (/^\d+$/.test(trimmed)) {
-        const n = Number(trimmed);
-        const ms = n < 1_000_000_000_000 ? n * 1000 : n;
-        const d = new Date(ms);
-        return Number.isNaN(d.getTime()) ? null : d;
-      }
-
-      const d = parseISO(trimmed);
-      if (!Number.isNaN(d.getTime())) return d;
-
-      const fallbackMs = Date.parse(trimmed);
-      if (!Number.isNaN(fallbackMs)) return new Date(fallbackMs);
-
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  const safeFormatISO = (value: string | undefined | null, fmt: string) => {
-    const d = value ? safeParseISO(value) : null;
-    return d ? format(d, fmt) : '—';
-  };
 
   const toSearchable = (value: unknown) => (typeof value === 'string' ? value.toLowerCase() : '');
 
