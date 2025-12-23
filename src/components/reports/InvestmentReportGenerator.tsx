@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X } from 'lucide-react';
 
 interface RecentReport {
   id: string;
@@ -21,13 +21,19 @@ interface RecentReport {
 }
 
 export function InvestmentReportGenerator() {
-  // Input mode: 'manual' or 'url'
-  const [inputMode, setInputMode] = useState<'manual' | 'url'>('manual');
+  // Input mode: 'manual', 'url', or 'pdf'
+  const [inputMode, setInputMode] = useState<'manual' | 'url' | 'pdf'>('manual');
   
   // URL scraping state
   const [propertyUrl, setPropertyUrl] = useState('');
   const [isScraping, setIsScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState<string | null>(null);
+  
+  // PDF upload state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const [queryType, setQueryType] = useState<'address' | 'zipcode' | 'suburb' | 'state'>('address');
   const [query, setQuery] = useState('');
@@ -44,6 +50,10 @@ export function InvestmentReportGenerator() {
   const [baths, setBaths] = useState('');
   const [landSize, setLandSize] = useState('');
   const [buildSize, setBuildSize] = useState('');
+  
+  // New build specific fields
+  const [landPrice, setLandPrice] = useState('');
+  const [buildPrice, setBuildPrice] = useState('');
   
   // Suburb analysis year context state
   const [dataYearType, setDataYearType] = useState<'single' | 'range'>('single');
@@ -367,6 +377,221 @@ export function InvestmentReportGenerator() {
     }
   };
 
+  // Handle PDF file drop
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type === 'application/pdf') {
+        setPdfFile(file);
+        setPdfError(null);
+      } else {
+        setPdfError('Please upload a PDF file');
+      }
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type === 'application/pdf') {
+        setPdfFile(file);
+        setPdfError(null);
+      } else {
+        setPdfError('Please upload a PDF file');
+      }
+    }
+  };
+
+  // Handle PDF upload and parse
+  const handlePdfUpload = async () => {
+    if (!pdfFile) {
+      toast({
+        title: "PDF Required",
+        description: "Please upload a PDF file first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsParsing(true);
+    setPdfError(null);
+
+    try {
+      console.log('Processing PDF:', pdfFile.name);
+      
+      // Read PDF file as text (basic text extraction)
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // Convert to base64 for sending to edge function
+      let binary = '';
+      uint8Array.forEach(byte => binary += String.fromCharCode(byte));
+      const base64Content = btoa(binary);
+      
+      // Extract text content from PDF - for now, we'll send the raw content
+      // The edge function will use AI to extract structured data
+      const textDecoder = new TextDecoder('utf-8', { fatal: false });
+      let textContent = textDecoder.decode(uint8Array);
+      
+      // Clean up the text content - extract readable text
+      textContent = textContent
+        .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 50000); // Limit content size
+      
+      console.log('Extracted text preview:', textContent.substring(0, 500));
+
+      // Call edge function to parse PDF content
+      const { data, error } = await supabase.functions.invoke('parse-property-pdf', {
+        body: { 
+          pdfContent: textContent,
+          fileName: pdfFile.name
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to parse PDF');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'PDF parsing failed');
+      }
+
+      console.log('PDF parsed successfully:', data);
+      const extracted = data.extractedData || {};
+      
+      // Build property address
+      let propertyAddress = extracted.extractedAddress;
+      if (!propertyAddress && extracted.extractedSuburb) {
+        propertyAddress = `${extracted.extractedSuburb}${extracted.extractedState ? ', ' + extracted.extractedState : ''}${extracted.extractedPostcode ? ' ' + extracted.extractedPostcode : ''}`;
+      }
+      if (!propertyAddress) {
+        propertyAddress = `Property from ${pdfFile.name}`;
+      }
+
+      // Show what was extracted
+      const extractedInfo = [];
+      if (extracted.extractedPrice) extractedInfo.push(`$${extracted.extractedPrice.toLocaleString()}`);
+      if (extracted.extractedBedrooms) extractedInfo.push(`${extracted.extractedBedrooms} beds`);
+      if (extracted.extractedBathrooms) extractedInfo.push(`${extracted.extractedBathrooms} baths`);
+      if (extracted.extractedLandSize) extractedInfo.push(`${extracted.extractedLandSize}m² land`);
+      if (extracted.extractedIsNewBuild) extractedInfo.push('New Build');
+      
+      const extractedSummary = extractedInfo.length > 0 
+        ? `Found: ${extractedInfo.join(', ')}` 
+        : 'Limited details extracted - AI will analyze document content';
+
+      toast({
+        title: "PDF Parsed Successfully",
+        description: extractedSummary + ". Starting report generation...",
+      });
+
+      // Build property details with extracted context
+      const propertyDetails: any = { 
+        queryType: 'address', 
+        originalQuery: propertyAddress,
+        pdfContent: data.pdfContent,
+        fromPdfUpload: true,
+      };
+      
+      // Include all extracted fields
+      if (extracted.extractedPrice) propertyDetails.price = extracted.extractedPrice;
+      if (extracted.extractedBedrooms) propertyDetails.beds = extracted.extractedBedrooms;
+      if (extracted.extractedBathrooms) propertyDetails.baths = extracted.extractedBathrooms;
+      if (extracted.extractedCarSpaces) propertyDetails.carSpaces = extracted.extractedCarSpaces;
+      if (extracted.extractedLandSize) propertyDetails.landSizeSqm = extracted.extractedLandSize;
+      if (extracted.extractedBuildSize) propertyDetails.buildSizeSqm = extracted.extractedBuildSize;
+      if (extracted.extractedPropertyType) propertyDetails.propertyType = extracted.extractedPropertyType.toLowerCase();
+      if (extracted.extractedPostcode) propertyDetails.postcode = extracted.extractedPostcode;
+      if (extracted.extractedState) propertyDetails.state = extracted.extractedState;
+      if (extracted.extractedSuburb) propertyDetails.suburb = extracted.extractedSuburb;
+      if (extracted.extractedWeeklyRent) propertyDetails.weeklyRent = extracted.extractedWeeklyRent;
+      if (extracted.extractedLandPrice) propertyDetails.landPrice = extracted.extractedLandPrice;
+      if (extracted.extractedBuildPrice) propertyDetails.buildPrice = extracted.extractedBuildPrice;
+      if (extracted.extractedIsNewBuild) propertyDetails.isNewBuild = extracted.extractedIsNewBuild;
+
+      // Create the report record
+      const { data: pendingReport, error: insertError } = await supabase
+        .from('investment_reports')
+        .insert({
+          property_address: propertyAddress,
+          report_content: 'Generating report from PDF...',
+          status: 'pending',
+          report_scope: 'address',
+          generated_by: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(`Failed to create report: ${insertError.message}`);
+      }
+
+      addBackgroundJob({
+        id: pendingReport.id,
+        type: 'investment_report'
+      });
+
+      // Start generation in background with PDF content
+      supabase.functions.invoke('generate-investment-report', {
+        body: {
+          reportId: pendingReport.id,
+          propertyAddress,
+          propertyDetails
+        }
+      }).catch(error => {
+        console.error('Background generation error:', error);
+      });
+
+      toast({
+        title: "Report Generation Started",
+        description: `Investment report is being generated for "${propertyAddress}". You'll be notified when it's ready.`,
+      });
+
+      fetchRecentReports();
+      
+      // Clear PDF form
+      setPdfFile(null);
+
+    } catch (error) {
+      console.error('Error processing PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process PDF';
+      setPdfError(errorMessage);
+      toast({
+        title: "PDF Processing Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
 
   const fetchRecentReports = async () => {
     try {
@@ -442,13 +667,13 @@ export function InvestmentReportGenerator() {
                 Generate Investment Analysis
               </CardTitle>
               <CardDescription>
-                Choose your input method - enter details manually or scrape from a property listing URL.
+                Choose your input method - enter details manually, scrape from a URL, or upload a PDF.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Input Mode Tabs */}
-              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url')}>
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="manual" className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     Manual Entry
@@ -456,6 +681,10 @@ export function InvestmentReportGenerator() {
                   <TabsTrigger value="url" className="flex items-center gap-2">
                     <Link className="h-4 w-4" />
                     URL Scrape
+                  </TabsTrigger>
+                  <TabsTrigger value="pdf" className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" />
+                    PDF Upload
                   </TabsTrigger>
                 </TabsList>
 
@@ -817,6 +1046,118 @@ export function InvestmentReportGenerator() {
                       <>
                         <TrendingUp className="h-4 w-4 mr-2" />
                         Scrape & Generate Report
+                      </>
+                    )}
+                  </Button>
+                </TabsContent>
+
+                {/* PDF Upload Tab */}
+                <TabsContent value="pdf" className="space-y-6 pt-4">
+                  {/* PDF Drop Zone */}
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Upload Property PDF
+                    </Label>
+                    <div
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      className={`
+                        border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
+                        ${isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+                        ${pdfFile ? 'bg-muted/30' : ''}
+                      `}
+                      onClick={() => document.getElementById('pdf-upload')?.click()}
+                    >
+                      {pdfFile ? (
+                        <div className="space-y-2">
+                          <FileText className="h-12 w-12 mx-auto text-primary" />
+                          <p className="text-sm font-medium">{pdfFile.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPdfFile(null);
+                            }}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            Drag and drop a PDF file here, or click to browse
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Supports property listing PDFs, brochures, and contracts
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="pdf-upload"
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+
+                  {/* PDF Error */}
+                  {pdfError && (
+                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-destructive">Processing Failed</p>
+                          <p className="text-sm text-destructive/80">{pdfError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info for PDF mode */}
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p><strong>Supported Documents:</strong></p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Property listing brochures</li>
+                          <li>House and land package documents</li>
+                          <li>Building contracts with pricing</li>
+                          <li>Property investment summaries</li>
+                        </ul>
+                        <p className="mt-2">
+                          AI will extract property details (address, price, size, etc.) and generate a comprehensive investment report.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Parse & Generate Button */}
+                  <Button
+                    onClick={handlePdfUpload}
+                    disabled={isParsing || !pdfFile}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {isParsing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Processing PDF & Generating Report...
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Parse PDF & Generate Report
                       </>
                     )}
                   </Button>

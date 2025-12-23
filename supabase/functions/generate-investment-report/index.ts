@@ -2428,10 +2428,28 @@ Always conduct your own research and due diligence to ensure that any property t
         status: 'completed'
       };
       
-      // Preserve manual_overrides if they exist (don't overwrite with null)
+      // Build initial manual overrides from extracted property data
+      // This applies to ALL input methods (manual, URL scrape, PDF upload)
+      const extractedOverrides: any = {};
+      
+      if (propertyDetails?.price) extractedOverrides.purchasePrice = propertyDetails.price;
+      if (propertyDetails?.weeklyRent) extractedOverrides.weeklyRent = propertyDetails.weeklyRent;
+      if (propertyDetails?.landSizeSqm) extractedOverrides.landSize = propertyDetails.landSizeSqm;
+      if (propertyDetails?.buildSizeSqm) extractedOverrides.buildSize = propertyDetails.buildSizeSqm;
+      if (propertyDetails?.landPrice) extractedOverrides.landPrice = propertyDetails.landPrice;
+      if (propertyDetails?.buildPrice) extractedOverrides.buildPrice = propertyDetails.buildPrice;
+      if (propertyDetails?.beds) extractedOverrides.bedrooms = propertyDetails.beds;
+      if (propertyDetails?.baths) extractedOverrides.bathrooms = propertyDetails.baths;
+      if (propertyDetails?.carSpaces) extractedOverrides.carSpaces = propertyDetails.carSpaces;
+      if (propertyDetails?.isNewBuild !== undefined) extractedOverrides.isNewBuild = propertyDetails.isNewBuild;
+      
+      // Merge with existing manual overrides (existing overrides take precedence)
       if (existingManualOverrides && Object.keys(existingManualOverrides).length > 0) {
-        updateData.manual_overrides = existingManualOverrides;
-        console.log('✓ Preserving manual overrides in database update');
+        updateData.manual_overrides = { ...extractedOverrides, ...existingManualOverrides };
+        console.log('✓ Merged extracted data with existing manual overrides');
+      } else if (Object.keys(extractedOverrides).length > 0) {
+        updateData.manual_overrides = extractedOverrides;
+        console.log('✓ Injected extracted data into manual_overrides:', Object.keys(extractedOverrides));
       }
       
       const { error: updateError } = await supabaseClient
