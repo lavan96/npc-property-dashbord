@@ -2436,18 +2436,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 ${isNewBuild && constructionProgressSchedule ? `
                   <tr><td style="font-weight: 500; width: 50%;">10% Land Purchase price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</td></tr>
                   <tr><td style="font-weight: 500;">5% Build Contract Price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</td></tr>
-                  <tr><td style="font-weight: 500;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue)}</td></tr>
                   <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</td></tr>
                   <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</td></tr>
-                  <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}</td></tr>
                   <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</td></tr>
                   <tr><td style="font-weight: 500;">${constructionProgressSchedule.durationMonths} Month Staged Progress</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td></tr>
                   <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
                 ` : `
-                  <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+                  <tr><td style="font-weight: 500; width: 50%;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100)))}</td></tr>
                   <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
-                  <tr><td style="font-weight: 500;">Conveyancing</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
-                  <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Expenditure</td><td style="text-align: right; font-weight: 600;">${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}</td></tr>
+                  <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
+                  <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}</td></tr>
+                  <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}</td></tr>
                 `}
               </tbody>
             </table>
