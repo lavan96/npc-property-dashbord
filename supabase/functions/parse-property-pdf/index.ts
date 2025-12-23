@@ -42,9 +42,210 @@ interface StructuredPropertyPayload {
   isNewBuild: boolean;
 }
 
-// ============= EXTRACTION SUB-FUNCTIONS =============
+// ============= PDF TEXT EXTRACTION =============
 
-// Extract price values from text
+// Extract readable text from PDF binary content
+function extractTextFromPdfBinary(pdfContent: string): string {
+  console.log('Extracting text from PDF binary...');
+  
+  const extractedTexts: string[] = [];
+  
+  // Method 1: Extract text from PDF stream objects
+  // PDF text is typically between BT (Begin Text) and ET (End Text) markers
+  const btEtPattern = /BT\s*([\s\S]*?)\s*ET/g;
+  let btMatch;
+  while ((btMatch = btEtPattern.exec(pdfContent)) !== null) {
+    const textBlock = btMatch[1];
+    // Extract text from Tj, TJ, ', " operators
+    const tjPattern = /\(([^)]+)\)\s*Tj/g;
+    let tjMatch;
+    while ((tjMatch = tjPattern.exec(textBlock)) !== null) {
+      extractedTexts.push(decodeEscapedString(tjMatch[1]));
+    }
+    
+    // TJ operator with array of strings
+    const tjArrayPattern = /\[\s*((?:\([^)]*\)\s*[-\d.]*\s*)+)\]\s*TJ/g;
+    let tjArrayMatch;
+    while ((tjArrayMatch = tjArrayPattern.exec(textBlock)) !== null) {
+      const arrayContent = tjArrayMatch[1];
+      const stringPattern = /\(([^)]*)\)/g;
+      let strMatch;
+      while ((strMatch = stringPattern.exec(arrayContent)) !== null) {
+        extractedTexts.push(decodeEscapedString(strMatch[1]));
+      }
+    }
+  }
+  
+  // Method 2: Extract text from parentheses outside BT/ET (simpler PDFs)
+  const simpleTextPattern = /\(([A-Za-z0-9\s,.$@\-:;!?'"\/%&*#+]+)\)/g;
+  let simpleMatch;
+  while ((simpleMatch = simpleTextPattern.exec(pdfContent)) !== null) {
+    const text = simpleMatch[1].trim();
+    // Filter out binary garbage - only include readable text
+    if (text.length >= 2 && text.length <= 200 && /[A-Za-z]{2,}/.test(text)) {
+      extractedTexts.push(text);
+    }
+  }
+  
+  // Method 3: Look for common property keywords directly in the raw content
+  const propertyKeywords = [
+    // Price patterns
+    /\$\s*[\d,]+(?:\.\d{2})?/g,
+    // Bedroom patterns
+    /\d+\s*(?:bed(?:room)?s?|Bed(?:room)?s?|BED(?:ROOM)?S?)/g,
+    // Bathroom patterns
+    /\d+\s*(?:bath(?:room)?s?|Bath(?:room)?s?|BATH(?:ROOM)?S?)/g,
+    // Car space patterns
+    /\d+\s*(?:car\s*(?:space)?s?|Car\s*(?:Space)?s?|garage|Garage)/g,
+    // Land size patterns
+    /[\d,]+\s*(?:sqm|SQM|m²|m2|square\s*met)/g,
+    // Address patterns
+    /(?:Lot|LOT)\s*\d+/g,
+    /\d+[a-zA-Z]?\s+[A-Z][a-zA-Z]+\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cres|Boulevard|Blvd|Way|Lane|Ln)/gi,
+    // Suburb patterns with state
+    /[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*,?\s*(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\s*\d{4}/g,
+    // Weekly rent patterns
+    /\$\s*[\d,]+\s*(?:per\s*)?(?:week|pw|p\.w\.)/gi,
+  ];
+  
+  for (const pattern of propertyKeywords) {
+    let kwMatch;
+    while ((kwMatch = pattern.exec(pdfContent)) !== null) {
+      extractedTexts.push(kwMatch[0]);
+    }
+  }
+  
+  // Method 4: Extract text between stream/endstream that's not heavily encoded
+  const streamPattern = /stream\s*([\s\S]*?)\s*endstream/g;
+  let streamMatch;
+  while ((streamMatch = streamPattern.exec(pdfContent)) !== null) {
+    const streamContent = streamMatch[1];
+    // Only process if it looks like it might contain text (not binary)
+    if (streamContent.length < 50000) {
+      // Look for readable text patterns within streams
+      const readablePattern = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,5})/g;
+      let readMatch;
+      while ((readMatch = readablePattern.exec(streamContent)) !== null) {
+        if (readMatch[1].length >= 3) {
+          extractedTexts.push(readMatch[1]);
+        }
+      }
+    }
+  }
+  
+  // Deduplicate and join
+  const uniqueTexts = [...new Set(extractedTexts)];
+  const result = uniqueTexts.join(' ');
+  
+  console.log('Extracted text length:', result.length);
+  console.log('Extracted text preview (first 2000 chars):', result.substring(0, 2000));
+  
+  return result;
+}
+
+// Decode PDF escaped strings
+function decodeEscapedString(str: string): string {
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\\(/g, '(')
+    .replace(/\\\)/g, ')')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\(\d{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
+}
+
+// Use OpenAI to extract structured data from PDF text
+async function extractWithAI(text: string, openaiKey: string): Promise<ExtractedPropertyData> {
+  console.log('Calling OpenAI for structured extraction...');
+  
+  const prompt = `Extract property details from this text. Return ONLY valid JSON with these fields (use null for missing values):
+{
+  "address": "street address or lot number with street",
+  "suburb": "suburb name",
+  "state": "Australian state abbreviation (NSW, VIC, QLD, WA, SA, TAS, ACT, NT)",
+  "postcode": "4-digit Australian postcode",
+  "price": numeric price without $ or commas,
+  "weeklyRent": numeric weekly rent,
+  "bedrooms": number,
+  "bathrooms": number,
+  "carSpaces": number,
+  "landSize": numeric land size in sqm,
+  "buildSize": numeric building size in sqm,
+  "propertyType": "house", "apartment", "townhouse", or "land",
+  "landPrice": numeric land component price (for new builds),
+  "buildPrice": numeric build component price (for new builds),
+  "isNewBuild": true if new build/house and land package
+}
+
+Text to analyze:
+${text.substring(0, 8000)}`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a property data extraction expert. Extract structured data from property documents. Return ONLY valid JSON, no markdown or explanation.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', response.status, await response.text());
+      return {};
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    
+    console.log('OpenAI response:', content);
+    
+    // Parse JSON from response (handle markdown code blocks)
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    
+    const parsed = JSON.parse(jsonStr);
+    console.log('Parsed extraction:', JSON.stringify(parsed, null, 2));
+    
+    return {
+      address: parsed.address || undefined,
+      suburb: parsed.suburb || undefined,
+      state: parsed.state || undefined,
+      postcode: parsed.postcode?.toString() || undefined,
+      price: parsed.price || undefined,
+      weeklyRent: parsed.weeklyRent || undefined,
+      bedrooms: parsed.bedrooms || undefined,
+      bathrooms: parsed.bathrooms || undefined,
+      carSpaces: parsed.carSpaces || undefined,
+      landSize: parsed.landSize || undefined,
+      buildSize: parsed.buildSize || undefined,
+      propertyType: parsed.propertyType || undefined,
+      landPrice: parsed.landPrice || undefined,
+      buildPrice: parsed.buildPrice || undefined,
+      isNewBuild: parsed.isNewBuild || false,
+    };
+  } catch (error) {
+    console.error('Error calling OpenAI:', error);
+    return {};
+  }
+}
+
+// ============= REGEX EXTRACTION FALLBACK =============
+
 function extractPrice(text: string, patterns: RegExp[]): number | undefined {
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -52,7 +253,7 @@ function extractPrice(text: string, patterns: RegExp[]): number | undefined {
       const priceStr = match[1] || match[2] || match[0];
       const cleanPrice = priceStr.replace(/[$,\s]/g, '');
       const price = parseFloat(cleanPrice);
-      if (price > 10000 && price < 50000000) { // Reasonable property price range
+      if (price > 10000 && price < 50000000) {
         return price;
       }
     }
@@ -60,7 +261,6 @@ function extractPrice(text: string, patterns: RegExp[]): number | undefined {
   return undefined;
 }
 
-// Extract numeric values (bedrooms, bathrooms, etc.)
 function extractNumber(text: string, patterns: RegExp[]): number | undefined {
   for (const pattern of patterns) {
     const match = text.match(pattern);
@@ -74,14 +274,13 @@ function extractNumber(text: string, patterns: RegExp[]): number | undefined {
   return undefined;
 }
 
-// Extract area values (land size, build size)
 function extractArea(text: string, patterns: RegExp[]): number | undefined {
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match) {
       const areaStr = match[1] || match[2] || match[0];
       const area = parseFloat(areaStr.replace(/,/g, ''));
-      if (area > 10 && area < 100000) { // Reasonable area range in sqm
+      if (area > 10 && area < 100000) {
         return area;
       }
     }
@@ -89,21 +288,14 @@ function extractArea(text: string, patterns: RegExp[]): number | undefined {
   return undefined;
 }
 
-// Extract Australian postcode
 function extractPostcode(text: string): string | undefined {
-  // Australian postcodes are 4 digits, typically 2000-7999
   const matches = text.match(/\b([2-7]\d{3})\b/g);
   if (matches) {
-    // Return the most likely postcode (not a year, not a price)
     for (const match of matches) {
       const num = parseInt(match, 10);
-      // Valid Australian postcode ranges
-      if ((num >= 2000 && num <= 2999) || // NSW
-          (num >= 3000 && num <= 3999) || // VIC
-          (num >= 4000 && num <= 4999) || // QLD
-          (num >= 5000 && num <= 5999) || // SA
-          (num >= 6000 && num <= 6999) || // WA
-          (num >= 7000 && num <= 7999)) { // TAS
+      if ((num >= 2000 && num <= 2999) || (num >= 3000 && num <= 3999) || 
+          (num >= 4000 && num <= 4999) || (num >= 5000 && num <= 5999) || 
+          (num >= 6000 && num <= 6999) || (num >= 7000 && num <= 7999)) {
         return match;
       }
     }
@@ -111,7 +303,6 @@ function extractPostcode(text: string): string | undefined {
   return undefined;
 }
 
-// Extract Australian state
 function extractState(text: string): string | undefined {
   const statePatterns: { [key: string]: RegExp } = {
     'NSW': /\b(NSW|New South Wales)\b/i,
@@ -132,9 +323,7 @@ function extractState(text: string): string | undefined {
   return undefined;
 }
 
-// Extract suburb from text
-function extractSuburb(text: string, state?: string, postcode?: string): string | undefined {
-  // Look for common suburb patterns
+function extractSuburb(text: string): string | undefined {
   const suburbPatterns = [
     /(?:suburb|location|area)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
     /(?:in|at)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,?\s*(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)/i,
@@ -150,15 +339,10 @@ function extractSuburb(text: string, state?: string, postcode?: string): string 
   return undefined;
 }
 
-// Extract street address
 function extractAddress(text: string): string | undefined {
-  // Look for common address patterns
   const addressPatterns = [
-    // Lot number patterns (common for new builds)
     /(?:Lot|LOT)\s*(\d+)\s*[,\s]+([A-Z][a-zA-Z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cres|Boulevard|Blvd|Way|Lane|Ln))\s*[,\s]+([A-Z][a-zA-Z\s]+)/i,
-    // Standard street address
     /(\d+[a-zA-Z]?)\s+([A-Z][a-zA-Z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl|Crescent|Cres|Boulevard|Blvd|Way|Lane|Ln))/i,
-    // Address with unit number
     /(?:Unit|Apartment|Apt|Suite)\s*(\d+)[,\/]\s*(\d+)\s+([A-Z][a-zA-Z\s]+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Court|Ct|Place|Pl))/i,
   ];
   
@@ -171,7 +355,6 @@ function extractAddress(text: string): string | undefined {
   return undefined;
 }
 
-// Check if this is a new build/house and land package
 function detectNewBuild(text: string): boolean {
   const newBuildIndicators = [
     /house\s*(?:and|&)\s*land/i,
@@ -182,128 +365,50 @@ function detectNewBuild(text: string): boolean {
     /construction\s*(?:cost|price|contract)/i,
     /turnkey/i,
     /fixed\s*price\s*(?:contract|build)/i,
-    /display\s*home/i,
-    /under\s*construction/i,
-    /completion\s*date/i,
-    /building\s*contract/i,
-    /land\s*release/i,
-    /estate\s*release/i,
   ];
   
   return newBuildIndicators.some(pattern => pattern.test(text));
 }
 
-// Main extraction function that processes raw PDF text
 function extractPropertyDataFromText(text: string): ExtractedPropertyData {
-  console.log('Starting text extraction from PDF content...');
+  console.log('Running regex extraction on text...');
   
   const data: ExtractedPropertyData = {};
-  
-  // Normalize text
   const normalizedText = text.replace(/\s+/g, ' ').trim();
   
-  // Extract state first (needed for other extractions)
   data.state = extractState(normalizedText);
-  console.log('Extracted state:', data.state);
-  
-  // Extract postcode
   data.postcode = extractPostcode(normalizedText);
-  console.log('Extracted postcode:', data.postcode);
-  
-  // Extract suburb
-  data.suburb = extractSuburb(normalizedText, data.state, data.postcode);
-  console.log('Extracted suburb:', data.suburb);
-  
-  // Extract street address
+  data.suburb = extractSuburb(normalizedText);
   data.address = extractAddress(normalizedText);
-  console.log('Extracted address:', data.address);
-  
-  // Check if new build
   data.isNewBuild = detectNewBuild(normalizedText);
-  console.log('Is new build:', data.isNewBuild);
   
-  // Extract purchase price
   const pricePatterns = [
     /(?:price|total|package)[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i,
     /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:inc|including|plus)?/i,
-    /(?:purchase|sale)\s*price[:\s]*\$?\s*([\d,]+)/i,
-    /(?:from|only)\s*\$?\s*([\d,]+)/i,
   ];
   data.price = extractPrice(normalizedText, pricePatterns);
-  console.log('Extracted price:', data.price);
   
-  // Extract weekly rent
   const rentPatterns = [
     /(?:rent|rental)[:\s]*\$?\s*([\d,]+)\s*(?:per\s*)?(?:week|pw|p\.w\.)/i,
     /\$\s*([\d,]+)\s*(?:per\s*)?(?:week|pw|p\.w\.)/i,
-    /(?:weekly\s*rent)[:\s]*\$?\s*([\d,]+)/i,
-    /(?:estimated\s*)?rent[:\s]*\$?\s*([\d,]+)/i,
   ];
   data.weeklyRent = extractNumber(normalizedText, rentPatterns);
-  console.log('Extracted weekly rent:', data.weeklyRent);
   
-  // Extract bedrooms
-  const bedroomPatterns = [
-    /(\d+)\s*(?:bed(?:room)?s?|br|bdr)/i,
-    /(?:bed(?:room)?s?|br)[:\s]*(\d+)/i,
-  ];
+  const bedroomPatterns = [/(\d+)\s*(?:bed(?:room)?s?|br|bdr)/i];
   data.bedrooms = extractNumber(normalizedText, bedroomPatterns);
-  console.log('Extracted bedrooms:', data.bedrooms);
   
-  // Extract bathrooms
-  const bathroomPatterns = [
-    /(\d+)\s*(?:bath(?:room)?s?|ba)/i,
-    /(?:bath(?:room)?s?|ba)[:\s]*(\d+)/i,
-  ];
+  const bathroomPatterns = [/(\d+)\s*(?:bath(?:room)?s?|ba)/i];
   data.bathrooms = extractNumber(normalizedText, bathroomPatterns);
-  console.log('Extracted bathrooms:', data.bathrooms);
   
-  // Extract car spaces
-  const carPatterns = [
-    /(\d+)\s*(?:car\s*(?:space)?s?|garage|parking)/i,
-    /(?:car\s*(?:space)?s?|garage|parking)[:\s]*(\d+)/i,
-  ];
+  const carPatterns = [/(\d+)\s*(?:car\s*(?:space)?s?|garage|parking)/i];
   data.carSpaces = extractNumber(normalizedText, carPatterns);
-  console.log('Extracted car spaces:', data.carSpaces);
   
-  // Extract land size
-  const landPatterns = [
-    /(?:land\s*(?:size|area)?)[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2|square\s*met)/i,
-    /([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)\s*(?:land|block|lot)/i,
-    /(?:block|lot)\s*(?:size)?[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)?/i,
-  ];
+  const landPatterns = [/(?:land\s*(?:size|area)?)[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)/i];
   data.landSize = extractArea(normalizedText, landPatterns);
-  console.log('Extracted land size:', data.landSize);
   
-  // Extract build size
-  const buildPatterns = [
-    /(?:build(?:ing)?\s*(?:size|area)?|floor\s*(?:size|area)?|internal)[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)?/i,
-    /([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)\s*(?:build|home|house|internal)/i,
-    /(?:home|house)\s*(?:size)?[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)/i,
-  ];
+  const buildPatterns = [/(?:build(?:ing)?\s*(?:size|area)?)[:\s]*([\d,]+(?:\.\d+)?)\s*(?:sqm|m²|m2)?/i];
   data.buildSize = extractArea(normalizedText, buildPatterns);
-  console.log('Extracted build size:', data.buildSize);
   
-  // Extract land price (for new builds)
-  if (data.isNewBuild) {
-    const landPricePatterns = [
-      /(?:land\s*(?:price|cost|component))[:\s]*\$?\s*([\d,]+)/i,
-      /\$\s*([\d,]+)\s*(?:for\s*)?land/i,
-    ];
-    data.landPrice = extractPrice(normalizedText, landPricePatterns);
-    console.log('Extracted land price:', data.landPrice);
-    
-    // Extract build price
-    const buildPricePatterns = [
-      /(?:build(?:ing)?\s*(?:price|cost|contract))[:\s]*\$?\s*([\d,]+)/i,
-      /(?:construction\s*(?:price|cost))[:\s]*\$?\s*([\d,]+)/i,
-      /\$\s*([\d,]+)\s*(?:for\s*)?(?:build|construction)/i,
-    ];
-    data.buildPrice = extractPrice(normalizedText, buildPricePatterns);
-    console.log('Extracted build price:', data.buildPrice);
-  }
-  
-  // Detect property type
   if (/apartment|flat|unit/i.test(normalizedText)) {
     data.propertyType = 'apartment';
   } else if (/townhouse|town\s*home/i.test(normalizedText)) {
@@ -313,23 +418,20 @@ function extractPropertyDataFromText(text: string): ExtractedPropertyData {
   } else if (/house|home|dwelling/i.test(normalizedText)) {
     data.propertyType = 'house';
   }
-  console.log('Detected property type:', data.propertyType);
+  
+  console.log('Regex extraction result:', JSON.stringify(data, null, 2));
   
   return data;
 }
 
-// Process extracted data into structured payload for report generation
+// Process extracted data into structured payload
 function processToStructuredPayload(extractedData: ExtractedPropertyData): StructuredPropertyPayload {
-  console.log('Processing extracted data into structured payload...');
-  
-  // Build the full address string
   let propertyAddress = '';
   
   if (extractedData.address) {
     propertyAddress = extractedData.address;
   }
   
-  // Append suburb, state, postcode if not already in address
   const addressParts: string[] = [];
   
   if (extractedData.suburb && !propertyAddress.toLowerCase().includes(extractedData.suburb.toLowerCase())) {
@@ -350,7 +452,7 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
       : addressParts.join(', ');
   }
   
-  const payload: StructuredPropertyPayload = {
+  return {
     propertyAddress: propertyAddress || 'Address Not Found',
     suburb: extractedData.suburb,
     state: extractedData.state,
@@ -367,18 +469,13 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
     buildPrice: extractedData.buildPrice,
     isNewBuild: extractedData.isNewBuild || false,
   };
-  
-  console.log('Structured payload created:', JSON.stringify(payload, null, 2));
-  
-  return payload;
 }
 
-// Complete a partial address using Google Maps Geocoding API
+// Complete address with Google Maps
 async function completeAddressWithGoogleMaps(
   payload: StructuredPropertyPayload,
   googleMapsApiKey: string
 ): Promise<StructuredPropertyPayload> {
-  // Build search query from available data
   const parts: string[] = [];
   
   if (payload.propertyAddress && payload.propertyAddress !== 'Address Not Found') {
@@ -408,24 +505,22 @@ async function completeAddressWithGoogleMaps(
     const response = await fetch(geocodeUrl);
     
     if (!response.ok) {
-      console.error('Google Maps Geocoding API error:', response.status);
+      console.error('Google Maps API error:', response.status);
       return payload;
     }
     
     const data = await response.json();
     
     if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-      console.log('No geocoding results found. Status:', data.status);
+      console.log('No geocoding results. Status:', data.status);
       return payload;
     }
     
     const result = data.results[0];
     console.log('Geocoding result:', result.formatted_address);
     
-    // Update payload with completed address
     payload.propertyAddress = result.formatted_address;
     
-    // Extract and update components
     for (const component of result.address_components) {
       const types = component.types;
       
@@ -438,10 +533,8 @@ async function completeAddressWithGoogleMaps(
       }
     }
     
-    console.log('Address completed:', payload.propertyAddress);
-    
   } catch (error) {
-    console.error('Error calling Google Maps Geocoding API:', error);
+    console.error('Google Maps geocoding error:', error);
   }
   
   return payload;
@@ -468,38 +561,81 @@ serve(async (req) => {
     }
 
     console.log('Processing PDF:', fileName || 'unnamed.pdf');
-    console.log('Content length:', pdfContent.length);
-    console.log('Content preview (first 1000 chars):', pdfContent.substring(0, 1000));
-
-    const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
-
-    // Step 1: Extract property data from PDF text using regex patterns
-    const extractedData = extractPropertyDataFromText(pdfContent);
+    console.log('Raw content length:', pdfContent.length);
     
-    // Step 2: Process into structured payload
+    // Check if content is raw PDF binary (starts with %PDF)
+    const isPdfBinary = pdfContent.startsWith('%PDF') || pdfContent.includes('%PDF-');
+    console.log('Is PDF binary:', isPdfBinary);
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    
+    let extractedData: ExtractedPropertyData = {};
+    let extractionMethod = 'none';
+    
+    if (isPdfBinary) {
+      // Step 1: Extract text from PDF binary
+      const extractedText = extractTextFromPdfBinary(pdfContent);
+      console.log('Extracted text from PDF binary, length:', extractedText.length);
+      
+      if (extractedText.length > 50) {
+        // Step 2: Try AI extraction first (more accurate)
+        if (openaiKey) {
+          extractedData = await extractWithAI(extractedText, openaiKey);
+          extractionMethod = 'openai';
+          console.log('AI extraction completed');
+        }
+        
+        // Step 3: Fall back to regex if AI didn't find enough
+        if (!extractedData.address && !extractedData.suburb && !extractedData.postcode) {
+          console.log('AI extraction insufficient, trying regex...');
+          extractedData = extractPropertyDataFromText(extractedText);
+          extractionMethod = 'regex';
+        }
+      } else {
+        console.log('Could not extract enough text from PDF binary');
+      }
+    } else {
+      // Content is already text, process directly
+      console.log('Content appears to be text, processing directly...');
+      
+      if (openaiKey) {
+        extractedData = await extractWithAI(pdfContent, openaiKey);
+        extractionMethod = 'openai';
+      } else {
+        extractedData = extractPropertyDataFromText(pdfContent);
+        extractionMethod = 'regex';
+      }
+    }
+    
+    console.log('Extraction method used:', extractionMethod);
+    console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
+    
+    // Process into structured payload
     let structuredPayload = processToStructuredPayload(extractedData);
     
-    // Step 3: Complete address if incomplete using Google Maps
+    // Complete address if incomplete
     const isAddressIncomplete = !structuredPayload.postcode || 
                                  !structuredPayload.state || 
                                  structuredPayload.propertyAddress === 'Address Not Found';
     
-    if (googleMapsApiKey && isAddressIncomplete && (structuredPayload.suburb || structuredPayload.propertyAddress !== 'Address Not Found')) {
+    if (googleMapsApiKey && isAddressIncomplete && 
+        (structuredPayload.suburb || structuredPayload.propertyAddress !== 'Address Not Found')) {
       console.log('Attempting to complete address with Google Maps...');
       structuredPayload = await completeAddressWithGoogleMaps(structuredPayload, googleMapsApiKey);
     }
 
-    // Build response with extracted data for the frontend and report generation
+    console.log('Final structured payload:', JSON.stringify(structuredPayload, null, 2));
+
     const result = {
       success: true,
       extractedData: {
-        // Primary fields for report generation
         extractedAddress: structuredPayload.propertyAddress,
         extractedSuburb: structuredPayload.suburb,
         extractedState: structuredPayload.state,
         extractedPostcode: structuredPayload.postcode,
         extractedPrice: structuredPayload.purchasePrice,
-        extractedWeeklyRent: structuredPayload.weeklyRent,
+        extractedRent: structuredPayload.weeklyRent,
         extractedBedrooms: structuredPayload.bedrooms,
         extractedBathrooms: structuredPayload.bathrooms,
         extractedCarSpaces: structuredPayload.carSpaces,
@@ -508,51 +644,27 @@ serve(async (req) => {
         extractedPropertyType: structuredPayload.propertyType,
         extractedLandPrice: structuredPayload.landPrice,
         extractedBuildPrice: structuredPayload.buildPrice,
-        extractedIsNewBuild: structuredPayload.isNewBuild,
-        // Backward compatibility fields
-        address: structuredPayload.propertyAddress,
-        suburb: structuredPayload.suburb,
-        state: structuredPayload.state,
-        postcode: structuredPayload.postcode,
-        price: structuredPayload.purchasePrice,
-        weeklyRent: structuredPayload.weeklyRent,
-        bedrooms: structuredPayload.bedrooms,
-        bathrooms: structuredPayload.bathrooms,
-        carSpaces: structuredPayload.carSpaces,
-        landSize: structuredPayload.landSize,
-        buildSize: structuredPayload.buildSize,
-        propertyType: structuredPayload.propertyType,
-        landPrice: structuredPayload.landPrice,
-        buildPrice: structuredPayload.buildPrice,
         isNewBuild: structuredPayload.isNewBuild,
       },
       structuredPayload,
-      fileName,
-      extractionMethod: 'regex',
-      addressCompleted: isAddressIncomplete && structuredPayload.postcode !== undefined,
+      extractionMethod,
+      metadata: {
+        fileName: fileName || 'unnamed.pdf',
+        processedAt: new Date().toISOString(),
+        contentLength: pdfContent.length,
+        isPdfBinary,
+      },
     };
-
-    console.log('=== EXTRACTION SUMMARY ===');
-    console.log('Address:', result.extractedData.extractedAddress);
-    console.log('Price:', result.extractedData.extractedPrice);
-    console.log('Rent:', result.extractedData.extractedWeeklyRent);
-    console.log('Beds:', result.extractedData.extractedBedrooms);
-    console.log('Baths:', result.extractedData.extractedBathrooms);
-    console.log('Cars:', result.extractedData.extractedCarSpaces);
-    console.log('Land Size:', result.extractedData.extractedLandSize);
-    console.log('Build Size:', result.extractedData.extractedBuildSize);
-    console.log('Is New Build:', result.extractedData.extractedIsNewBuild);
-    console.log('=========================');
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in parse-property-pdf:', error);
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error?.message || 'Failed to parse PDF' 
+      error: error.message || 'Failed to parse PDF' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
