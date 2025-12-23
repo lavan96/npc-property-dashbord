@@ -1,41 +1,392 @@
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Video, Phone, MapPin, Filter, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 
 export default function Calendar() {
+  const { calendars, events, isLoading, error, fetchCalendarData } = useGHLCalendar();
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [view, setView] = useState<'month' | 'list'>('month');
+
+  useEffect(() => {
+    fetchCalendarData();
+  }, [fetchCalendarData]);
+
+  const filteredEvents = useMemo(() => {
+    if (selectedCalendarId === 'all') return events;
+    return events.filter(event => event.calendarId === selectedCalendarId);
+  }, [events, selectedCalendarId]);
+
+  const selectedDateEvents = useMemo(() => {
+    if (!selectedDate) return [];
+    return filteredEvents.filter(event => 
+      isSameDay(parseISO(event.startTime), selectedDate)
+    );
+  }, [filteredEvents, selectedDate]);
+
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    return filteredEvents
+      .filter(event => parseISO(event.startTime) >= now)
+      .sort((a, b) => parseISO(a.startTime).getTime() - parseISO(b.startTime).getTime())
+      .slice(0, 10);
+  }, [filteredEvents]);
+
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const calendarStart = startOfWeek(monthStart);
+    const calendarEnd = endOfWeek(monthEnd);
+    
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  }, [currentMonth]);
+
+  const getEventsForDay = (day: Date) => {
+    return filteredEvents.filter(event => isSameDay(parseISO(event.startTime), day));
+  };
+
+  const getStatusColor = (status: string, appointmentStatus?: string) => {
+    const effectiveStatus = appointmentStatus || status;
+    switch (effectiveStatus?.toLowerCase()) {
+      case 'confirmed': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'booked': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'showed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+      case 'noshow': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'cancelled': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  const getCalendarTypeIcon = (calendarType: string) => {
+    switch (calendarType) {
+      case 'round_robin': return <Users className="h-3 w-3" />;
+      case 'personal': return <CalendarIcon className="h-3 w-3" />;
+      default: return <CalendarIcon className="h-3 w-3" />;
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground">GoHighLevel Calendar Integration</p>
+        </div>
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={() => fetchCalendarData()} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground">
-          View property inspection schedules and important dates
-        </p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+          <p className="text-muted-foreground">GoHighLevel Appointments & Schedule</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
+            <SelectTrigger className="w-[220px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="All Calendars" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Calendars</SelectItem>
+              {calendars.map(cal => (
+                <SelectItem key={cal.id} value={cal.id}>
+                  <div className="flex items-center gap-2">
+                    {getCalendarTypeIcon(cal.calendarType)}
+                    <span className="truncate max-w-[160px]">{cal.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => fetchCalendarData()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold">{calendars.length}</div>
+            <p className="text-xs text-muted-foreground">Calendars</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold">{filteredEvents.length}</div>
+            <p className="text-xs text-muted-foreground">Total Events</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-green-400">
+              {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
+            </div>
+            <p className="text-xs text-muted-foreground">Confirmed</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-2xl font-bold text-blue-400">{upcomingEvents.length}</div>
+            <p className="text-xs text-muted-foreground">Upcoming</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Calendar View */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
+                {format(currentMonth, 'MMMM yyyy')}
+              </CardTitle>
+              <div className="flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setCurrentMonth(new Date());
+                    setSelectedDate(new Date());
+                  }}
+                >
+                  Today
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Day headers */}
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                {/* Calendar grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map(day => {
+                    const dayEvents = getEventsForDay(day);
+                    const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    const isCurrentMonth = isSameMonth(day, currentMonth);
+                    
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        onClick={() => setSelectedDate(day)}
+                        className={`
+                          min-h-[80px] p-1 rounded-md border text-left transition-colors
+                          ${isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50'}
+                          ${!isCurrentMonth ? 'opacity-40' : ''}
+                          ${isToday(day) ? 'ring-1 ring-primary' : ''}
+                        `}
+                      >
+                        <div className={`text-xs font-medium mb-1 ${isToday(day) ? 'text-primary' : ''}`}>
+                          {format(day, 'd')}
+                        </div>
+                        <div className="space-y-0.5">
+                          {dayEvents.slice(0, 3).map(event => (
+                            <div 
+                              key={event.id}
+                              className="text-[10px] truncate px-1 py-0.5 rounded bg-primary/20 text-primary"
+                            >
+                              {format(parseISO(event.startTime), 'HH:mm')}
+                            </div>
+                          ))}
+                          {dayEvents.length > 3 && (
+                            <div className="text-[10px] text-muted-foreground px-1">
+                              +{dayEvents.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Selected Day Events / Upcoming Events */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Clock className="h-4 w-4" />
+              {selectedDate ? format(selectedDate, 'EEEE, MMMM d') : 'Upcoming Events'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[400px]">
+              {isLoading ? (
+                <div className="p-4 space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-2 space-y-2">
+                  {(selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                    </div>
+                  ) : (
+                    (selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
+                      <EventCard key={event.id} event={event} getStatusColor={getStatusColor} />
+                    ))
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Calendars List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            Property Inspections
+            <Users className="h-5 w-5" />
+            Available Calendars ({calendars.length})
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <div className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-              <Clock className="h-6 w-6 text-muted-foreground" />
+        <CardContent>
+          {isLoading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold">Calendar Coming Soon</h3>
-              <p className="text-muted-foreground max-w-md">
-                View inspection schedules in month and week views. Click events to open property details.
-              </p>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {calendars.map(calendar => (
+                <button
+                  key={calendar.id}
+                  onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
+                  className={`
+                    p-3 rounded-lg border text-left transition-all
+                    ${selectedCalendarId === calendar.id 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-primary/50 hover:bg-muted/30'}
+                  `}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {getCalendarTypeIcon(calendar.calendarType)}
+                        <span className="font-medium text-sm truncate">{calendar.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-[10px]">
+                          {calendar.calendarType.replace('_', ' ')}
+                        </Badge>
+                        {calendar.isActive && (
+                          <Badge className="text-[10px] bg-green-500/20 text-green-400 border-green-500/30">
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {calendar.teamMembers && (
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {calendar.teamMembers}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
             </div>
-            <Button variant="outline">
-              Back to Overview
-            </Button>
-          </div>
+          )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function EventCard({ 
+  event, 
+  getStatusColor 
+}: { 
+  event: GHLEvent; 
+  getStatusColor: (status: string, appointmentStatus?: string) => string;
+}) {
+  return (
+    <div className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{event.title || 'Untitled Event'}</p>
+          {event.calendarName && (
+            <p className="text-xs text-muted-foreground truncate">{event.calendarName}</p>
+          )}
+        </div>
+        <Badge className={`text-[10px] shrink-0 ${getStatusColor(event.status, event.appointmentStatus)}`}>
+          {event.appointmentStatus || event.status}
+        </Badge>
+      </div>
+      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          {format(parseISO(event.startTime), 'MMM d, HH:mm')} - {format(parseISO(event.endTime), 'HH:mm')}
+        </div>
+      </div>
+      {event.notes && (
+        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.notes}</p>
+      )}
     </div>
   );
 }
