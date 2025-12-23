@@ -71,9 +71,14 @@ serve(async (req) => {
     
     let { reportId, propertyAddress, propertyDetails } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
+    const scrapedContent = propertyDetails?.scrapedContent || null;
+    const sourceUrl = propertyDetails?.sourceUrl || null;
+    
     console.log('Report ID:', reportId);
     console.log('Property address:', propertyAddress);
     console.log('Report scope:', reportScope);
+    console.log('Scraped content available:', !!scrapedContent, scrapedContent ? `(${scrapedContent.length} chars)` : '');
+    console.log('Source URL:', sourceUrl);
     
     // If reportId is provided but no propertyAddress, fetch it from the existing report (for retries)
     if (reportId && !propertyAddress) {
@@ -2007,7 +2012,35 @@ Final Output
 Produce a full investment report following the structure above, including detailed numbers, calculations, and references to primary Australian data sources such as ABS, RBA, state revenue offices, data.gov.au, SQM Research, and official hazard maps.`;
 
     // Select the appropriate prompt based on report scope
-    const prompt = reportScope === 'suburb' ? suburbPrompt : propertyPrompt;
+    let prompt = reportScope === 'suburb' ? suburbPrompt : propertyPrompt;
+    
+    // If scraped content is available, prepend it to the prompt for context
+    if (scrapedContent) {
+      console.log('📄 Injecting scraped property listing content into prompt...');
+      const scrapedContextSection = `
+---
+**PROPERTY LISTING DATA (SCRAPED FROM: ${sourceUrl || 'Property Listing'})**
+
+The following is the full content scraped from the property listing. Use this as PRIMARY context for the property details, features, description, and any specific information mentioned in the listing:
+
+${scrapedContent}
+
+---
+
+**IMPORTANT:** Use the above scraped listing content to:
+1. Extract accurate property specifications (bedrooms, bathrooms, land size, features)
+2. Use any mentioned price, asking price, or price guide
+3. Include relevant property features and selling points in your analysis
+4. Note any specific upgrades, renovations, or unique characteristics mentioned
+5. Consider the property description when assessing investment potential
+
+---
+
+`;
+      prompt = scrapedContextSection + prompt;
+      console.log('✓ Scraped content injected. New prompt length:', prompt.length);
+    }
+    
     const systemMessage = reportScope === 'suburb' 
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
       : 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.';
@@ -2015,6 +2048,7 @@ Produce a full investment report following the structure above, including detail
     console.log('Calling Perplexity API with sonar model...');
     console.log('Report scope:', reportScope);
     console.log('Prompt length:', prompt.length);
+    console.log('Scraped content included:', !!scrapedContent);
 
     // Retry logic with exponential backoff
     const maxRetries = 3;
