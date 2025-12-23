@@ -56,7 +56,14 @@ serve(async (req) => {
       }
     }
 
-    // Try to get locationId from request body if provided
+    // Try to get locationId from environment variable first
+    const envLocationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    if (envLocationId) {
+      locationId = envLocationId;
+      console.log('Using locationId from environment:', locationId);
+    }
+
+    // Try to get locationId from request body if provided (overrides env)
     try {
       const body = await req.json().catch(() => ({}));
       if (body.locationId) {
