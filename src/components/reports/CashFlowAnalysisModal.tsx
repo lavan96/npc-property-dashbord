@@ -2445,8 +2445,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <tr><td style="font-weight: 500; width: 50%;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100)))}</td></tr>
                   <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
                   <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
-                  <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}</td></tr>
-                  <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}</td></tr>
+                  <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(baseFinancialData.agentFee)}</td></tr>
+                  <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee)}</td></tr>
+                  <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee)}</td></tr>
                 `}
               </tbody>
             </table>
@@ -3700,13 +3701,18 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="font-medium">Solicitor Cost</TableCell>
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
                               </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Agent Fee</TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.agentFee)}</TableCell>
+                              </TableRow>
                               <TableRow className="bg-muted/30">
                                 <TableCell className="font-semibold">Total Upfront Cost</TableCell>
                                 <TableCell className="text-right font-semibold">
                                   {formatCurrency(
                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) +
                                     baseFinancialData.stampDuty +
-                                    baseFinancialData.solicitorFees
+                                    baseFinancialData.solicitorFees +
+                                    baseFinancialData.agentFee
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -3716,7 +3722,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   {formatCurrency(
                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) +
                                     baseFinancialData.stampDuty +
-                                    baseFinancialData.solicitorFees
+                                    baseFinancialData.solicitorFees +
+                                    baseFinancialData.agentFee
                                   )}
                                 </TableCell>
                               </TableRow>
