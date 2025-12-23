@@ -2108,6 +2108,8 @@ ${extractedDetailsText}
           },
           body: JSON.stringify({
             model: 'sonar-pro', // Multi-step reasoning with 2x more citations for comprehensive analysis
+            max_tokens: 16000, // Enable full 40-page comprehensive report generation
+            temperature: 0.1, // Lower temperature for consistent, factual output
             messages: [
               {
                 role: 'system',
