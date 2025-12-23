@@ -51,6 +51,21 @@ const CALENDAR_COLORS = [
   '#e11d48', // rose
 ];
 
+const toMillisString = (value: string | null): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  // Already millis
+  if (/^\d+$/.test(trimmed)) return trimmed;
+
+  const ms = Date.parse(trimmed);
+  if (!Number.isNaN(ms)) return String(ms);
+
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? null : String(d.getTime());
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -90,7 +105,7 @@ serve(async (req) => {
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
-      'Version': '2021-07-28',
+      'Version': '2021-04-15',
       'Content-Type': 'application/json',
     };
 
@@ -138,8 +153,9 @@ serve(async (req) => {
       // Fetch events - GHL API requires calendarId, so we fetch for each calendar
       console.log('Fetching events...');
       const now = new Date();
-      const defaultStartTime = startTime || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const defaultEndTime = endTime || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      // GHL expects startTime/endTime in millis (string)
+      const defaultStartTime = toMillisString(startTime) ?? String(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const defaultEndTime = toMillisString(endTime) ?? String(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       let allEvents: GHLEvent[] = [];
       
@@ -204,8 +220,9 @@ serve(async (req) => {
     if (action === 'events') {
       console.log('Fetching events only...');
       const now = new Date();
-      const defaultStartTime = startTime || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const defaultEndTime = endTime || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      // GHL expects startTime/endTime in millis (string)
+      const defaultStartTime = toMillisString(startTime) ?? String(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const defaultEndTime = toMillisString(endTime) ?? String(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       // If caller didn't provide calendarId, fetch calendars and pull events per calendar
       if (!calendarId) {
