@@ -2316,79 +2316,51 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         ${includeInputsSummaryInExport ? `
         <!-- Inputs Summary -->
         <div class="summary" style="margin-bottom: 24px;">
-          <h3 style="margin-bottom: 12px;">Inputs Summary</h3>
-          <table style="margin-bottom: 0;">
+          <h3 style="margin-bottom: 4px; text-align: center; font-size: 16px; font-weight: bold; border-bottom: 2px solid #ccc; padding-bottom: 6px;">${isNewBuild ? 'New Build' : 'Existing Property'}</h3>
+          <h4 style="margin-bottom: 12px; text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 1px;">INPUTS</h4>
+          <table style="margin-bottom: 0; font-size: 11px;">
             <tbody>
-              <tr>
-                <td style="font-weight: 500; width: 25%;">Purchase Price</td>
-                <td style="width: 25%;">${formatCurrency(baseFinancialData.purchasePrice)}</td>
-                <td style="font-weight: 500; width: 25%;">Weekly Rent</td>
-                <td style="width: 25%;">${formatCurrency(baseFinancialData.weeklyRent)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Land Price</td>
-                <td>${formatCurrency(baseFinancialData.landPrice)}</td>
-                <td style="font-weight: 500;">Gross Rental Yield</td>
-                <td>${projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-'}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Build Price (Depreciable)</td>
-                <td>${formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</td>
-                <td style="font-weight: 500;">Council Rates (p.a.)</td>
-                <td>${formatCurrency(baseFinancialData.councilRates)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Deposit Amount</td>
-                <td>${formatCurrency(baseFinancialData.depositValue)}</td>
-                <td style="font-weight: 500;">Water Rates (p.a.)</td>
-                <td>${formatCurrency(baseFinancialData.waterRates)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Loan Amount</td>
-                <td>${formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100)))}</td>
-                <td style="font-weight: 500;">Property Management</td>
-                <td>${baseFinancialData.propertyManagementFees}%</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Interest Rate</td>
-                <td>${baseFinancialData.interestRate.toFixed(2)}%</td>
-                <td style="font-weight: 500;">Landlord Insurance (p.a.)</td>
-                <td>${formatCurrency(baseFinancialData.buildingLandlordInsurance)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Capital Growth Rate</td>
-                <td>${baseFinancialData.capitalGrowth}%</td>
-                <td style="font-weight: 500;">Letting Fees</td>
-                <td>${formatCurrency(baseFinancialData.lettingFees)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">CPI Growth Rate</td>
-                <td>${baseFinancialData.cpiGrowthRate}%</td>
-                <td style="font-weight: 500;">Repairs & Maintenance</td>
-                <td>${formatCurrency(baseFinancialData.repairsMaintenance)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Tax Rate (MTR)</td>
-                <td>${baseFinancialData.taxRate}%</td>
-                <td style="font-weight: 500;">Body Corporate (p.a.)</td>
-                <td>${formatCurrency(baseFinancialData.bodyCorporateFees)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;">Depreciation (Year 1)</td>
-                <td>${formatCurrency(baseFinancialData.depreciation)}</td>
-                <td style="font-weight: 500;">Stamp Duty</td>
-                <td>${formatCurrency(baseFinancialData.stampDuty)}</td>
-              </tr>
-              <tr>
-                <td style="font-weight: 500;"></td>
-                <td></td>
-                <td style="font-weight: 500;">Conveyancing</td>
-                <td>${formatCurrency(baseFinancialData.solicitorFees)}</td>
-              </tr>
+              <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+              <tr><td style="font-weight: 500;">Land Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.landPrice)}</td></tr>
+              <tr><td style="font-weight: 500;">Build Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</td></tr>
+              <tr><td style="font-weight: 500;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue)}</td></tr>
+              <tr><td style="font-weight: 500;">Loan to Value ratio</td><td style="text-align: right;">${baseFinancialData.loanToValueRatio}%</td></tr>
+              <tr><td style="font-weight: 500;">Interest Rate</td><td style="text-align: right;">${baseFinancialData.interestRate.toFixed(2)}%</td></tr>
+              <tr><td style="font-weight: 500;">Capital Growth</td><td style="text-align: right;">${baseFinancialData.capitalGrowth}%</td></tr>
+              <tr><td style="font-weight: 500;">Weekly Rent</td><td style="text-align: right;">${formatCurrency(baseFinancialData.weeklyRent)}</td></tr>
+              <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
+              <tr><td style="font-weight: 500;">Body Corporate / Strata Fees</td><td style="text-align: right;">${formatCurrency(baseFinancialData.bodyCorporateFees)}</td></tr>
+              <tr><td style="font-weight: 500;">Council Rate Charges</td><td style="text-align: right;">${formatCurrency(baseFinancialData.councilRates)}</td></tr>
+              <tr><td style="font-weight: 500;">Water Rate Charges (Other)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.waterRates)}</td></tr>
+              <tr><td style="font-weight: 500;">Solicitor Fees</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
+              <tr><td style="font-weight: 500;">Building & Landlord Insurance</td><td style="text-align: right;">${formatCurrency(baseFinancialData.buildingLandlordInsurance)}</td></tr>
+              <tr><td style="font-weight: 500;">Property Management Fees</td><td style="text-align: right;">${baseFinancialData.propertyManagementFees}%</td></tr>
+              <tr><td style="font-weight: 500;">Repairs & Maintenance</td><td style="text-align: right;">${formatCurrency(baseFinancialData.repairsMaintenance)}</td></tr>
+              <tr><td style="font-weight: 500;">Letting Fees (1 Week Rent)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lettingFees || baseFinancialData.weeklyRent)}</td></tr>
             </tbody>
           </table>
-          <div style="margin-top: 12px; padding: 10px; background: #e5e7eb; border-radius: 4px;">
-            <strong>Total Overall Expenditure to Completion:</strong> ${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 2px solid #ccc;">
+            <h4 style="font-size: 12px; font-weight: bold; margin-bottom: 8px;">Total Overall Expenditure to Completion</h4>
+            <table style="margin-bottom: 0; font-size: 11px;">
+              <tbody>
+                ${isNewBuild && constructionProgressSchedule ? `
+                  <tr><td style="font-weight: 500; width: 50%;">10% Land Purchase price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</td></tr>
+                  <tr><td style="font-weight: 500;">5% Build Contract Price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</td></tr>
+                  <tr><td style="font-weight: 500;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue)}</td></tr>
+                  <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</td></tr>
+                  <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</td></tr>
+                  <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}</td></tr>
+                  <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</td></tr>
+                  <tr><td style="font-weight: 500;">${constructionProgressSchedule.durationMonths} Month Staged Progress</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td></tr>
+                  <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
+                ` : `
+                  <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+                  <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
+                  <tr><td style="font-weight: 500;">Conveyancing</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
+                  <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Expenditure</td><td style="text-align: right; font-weight: 600;">${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}</td></tr>
+                `}
+              </tbody>
+            </table>
           </div>
         </div>
         ` : ''}
@@ -3482,7 +3454,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     <CardTitle className="text-base flex items-center justify-between">
                       <span className="flex items-center gap-2">
                         {inputsSummaryOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        Inputs Summary
+                        {isNewBuild ? 'New Build' : 'Existing Property'} - INPUTS
                       </span>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <label className="flex items-center gap-2 text-xs font-normal text-muted-foreground cursor-pointer">
@@ -3498,118 +3470,151 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <CardContent className="pt-0">
+                    {/* INPUTS Section */}
+                    <div className="border-b-2 border-muted pb-2 mb-3">
+                      <h4 className="text-sm font-bold text-center tracking-wide">INPUTS</h4>
+                    </div>
                     <Table>
                       <TableBody>
                         <TableRow>
-                          <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
+                          <TableCell className="font-medium w-1/2">Purchase Price</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">Land Price</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.landPrice)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.landPrice)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Build Price (Depreciable Amount)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</TableCell>
+                          <TableCell className="font-medium">Build Price</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Deposit Amount</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.depositValue)}</TableCell>
+                          <TableCell className="font-medium">Deposit Value</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Loan Amount</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100)))}</TableCell>
+                          <TableCell className="font-medium">Loan to Value ratio</TableCell>
+                          <TableCell className="text-right">{baseFinancialData.loanToValueRatio}%</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">Interest Rate</TableCell>
-                          <TableCell>{baseFinancialData.interestRate.toFixed(2)}%</TableCell>
+                          <TableCell className="text-right">{baseFinancialData.interestRate.toFixed(2)}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Capital Growth</TableCell>
+                          <TableCell className="text-right">{baseFinancialData.capitalGrowth}%</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">Weekly Rent</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.weeklyRent)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Gross Rental Yield</TableCell>
-                          <TableCell>{projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-'}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Council Rates (p.a.)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.councilRates)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Water Rates (p.a.)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.waterRates)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Property Management (%)</TableCell>
-                          <TableCell>{baseFinancialData.propertyManagementFees}%</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Landlord Insurance (p.a.)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.buildingLandlordInsurance)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Letting Fees</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.lettingFees)}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Repairs & Maintenance</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.repairsMaintenance)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.weeklyRent)}</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell className="font-medium">Stamp Duty</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Conveyancing (Solicitor Fees)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
+                          <TableCell className="font-medium">Body Corporate / Strata Fees</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.bodyCorporateFees)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Body Corporate Fees (p.a.)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.bodyCorporateFees)}</TableCell>
+                          <TableCell className="font-medium">Council Rate Charges</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.councilRates)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Depreciation (Year 1)</TableCell>
-                          <TableCell>{formatCurrency(baseFinancialData.depreciation)}</TableCell>
+                          <TableCell className="font-medium">Water Rate Charges (Other)</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.waterRates)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Capital Growth Rate</TableCell>
-                          <TableCell>{baseFinancialData.capitalGrowth}%</TableCell>
+                          <TableCell className="font-medium">Solicitor Fees</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">CPI Growth Rate</TableCell>
-                          <TableCell>{baseFinancialData.cpiGrowthRate}%</TableCell>
+                          <TableCell className="font-medium">Building & Landlord Insurance</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.buildingLandlordInsurance)}</TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell className="font-medium">Tax Rate (MTR)</TableCell>
-                          <TableCell>{baseFinancialData.taxRate}%</TableCell>
+                          <TableCell className="font-medium">Property Management Fees</TableCell>
+                          <TableCell className="text-right">{baseFinancialData.propertyManagementFees}%</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Repairs & Maintenance</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.repairsMaintenance)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Letting Fees (1 Week Rent)</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.lettingFees || baseFinancialData.weeklyRent)}</TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
                     
                     {/* Total Overall Expenditure to Completion */}
-                    <div className="mt-4 pt-4 border-t">
-                      <h4 className="text-sm font-semibold mb-3">Total Overall Expenditure to Completion</h4>
+                    <div className="mt-6 pt-4 border-t-2 border-muted">
+                      <div className="border-b border-muted pb-2 mb-3">
+                        <h4 className="text-sm font-bold">Total Overall Expenditure to Completion</h4>
+                      </div>
                       <Table>
                         <TableBody>
-                          <TableRow>
-                            <TableCell className="font-medium w-1/3">Purchase Price</TableCell>
-                            <TableCell>{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Stamp Duty</TableCell>
-                            <TableCell>{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="font-medium">Conveyancing</TableCell>
-                            <TableCell>{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
-                          </TableRow>
-                          <TableRow className="bg-muted/50 font-semibold">
-                            <TableCell className="font-semibold">Total Expenditure</TableCell>
-                            <TableCell className="font-semibold">
-                              {formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
-                            </TableCell>
-                          </TableRow>
+                          {isNewBuild && constructionProgressSchedule ? (
+                            <>
+                              <TableRow>
+                                <TableCell className="font-medium w-1/2">10% Land Purchase price</TableCell>
+                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">5% Build Contract Price</TableCell>
+                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Deposit Value</TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Stamp Duty</TableCell>
+                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Solicitor Cost</TableCell>
+                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Agent Fee</TableCell>
+                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}</TableCell>
+                              </TableRow>
+                              <TableRow className="bg-muted/30">
+                                <TableCell className="font-semibold">Total Upfront Cost</TableCell>
+                                <TableCell className="text-right font-semibold">{formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">{constructionProgressSchedule.durationMonths} Month Staged Progress</TableCell>
+                                <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.totals.totalInterest)}</TableCell>
+                              </TableRow>
+                              <TableRow className="bg-primary/10">
+                                <TableCell className="font-bold text-primary">Total</TableCell>
+                                <TableCell className="text-right font-bold text-primary">{formatCurrency(constructionProgressSchedule.grandTotal)}</TableCell>
+                              </TableRow>
+                            </>
+                          ) : (
+                            <>
+                              <TableRow>
+                                <TableCell className="font-medium w-1/2">Purchase Price</TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.purchasePrice)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Stamp Duty</TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.stampDuty)}</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Conveyancing</TableCell>
+                                <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
+                              </TableRow>
+                              <TableRow className="bg-muted/50 font-semibold">
+                                <TableCell className="font-semibold">Total Expenditure</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees)}
+                                </TableCell>
+                              </TableRow>
+                            </>
+                          )}
                         </TableBody>
                       </Table>
                     </div>
