@@ -594,6 +594,34 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }
   }, [report, isOpen]);
 
+  // Dynamically calculate loan amount when purchasePrice or LVR changes
+  useEffect(() => {
+    const purchasePrice = overrides.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? report?.financial_calculations?.propertyValue ?? 0;
+    const lvr = overrides.loanToValueRatio ?? report?.financial_calculations?.loanToValueRatio ?? 80;
+    
+    // Only auto-calculate if purchasePrice and LVR are set and loanAmount hasn't been manually overridden
+    if (purchasePrice > 0 && lvr > 0) {
+      const calculatedLoanAmount = Math.round(purchasePrice * (lvr / 100));
+      
+      // Only update if user hasn't manually entered a different loan amount
+      // (Check if the current loanAmount override is empty or matches a previous calculation)
+      const currentLoanAmountOverride = overrides.loanAmount;
+      const previousPurchasePrice = report?.manual_overrides?.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? 0;
+      const previousLvr = report?.manual_overrides?.loanToValueRatio ?? report?.financial_calculations?.loanToValueRatio ?? 80;
+      const previousCalculatedLoanAmount = Math.round(previousPurchasePrice * (previousLvr / 100));
+      
+      // Auto-update loan amount if:
+      // 1. No current override, or
+      // 2. Current override matches previous calculation (meaning user hasn't manually changed it)
+      if (currentLoanAmountOverride === undefined || currentLoanAmountOverride === null || currentLoanAmountOverride === previousCalculatedLoanAmount) {
+        setOverrides(prev => ({
+          ...prev,
+          loanAmount: calculatedLoanAmount
+        }));
+      }
+    }
+  }, [overrides.purchasePrice, overrides.loanToValueRatio, report]);
+
   // Calculate Prime Cost depreciation schedule (constant annual depreciation)
   const calculatePrimeCostSchedule = (year1Value: number) => {
     const schedule: Record<number, number> = {};

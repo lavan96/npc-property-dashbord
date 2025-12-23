@@ -439,7 +439,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       buildPrice: mo.buildPrice || fc.buildPrice || 0,
       marketValueNow: mo.marketValueNow || cashFlow.marketValueNow || mo.purchasePrice || fc.purchasePrice || 0,
       depositValue: mo.depositValue || fc.depositValue || 0,
-      loanAmount: mo.loanAmount || cashFlow.loanAmount || 0,
+      // Loan amount: use override, or cash flow value, or dynamically calculate from purchase price × LVR
+      loanAmount: mo.loanAmount || cashFlow.loanAmount || 
+        ((mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0) * ((mo.loanToValueRatio || fc.loanToValueRatio || 80) / 100)),
       loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
       loanType: (mo.loanType || cashFlow.loanType || 'interest_only') as LoanType,
       loanTermYears: mo.loanTermYears || cashFlow.loanTermYears || 30,
@@ -3568,10 +3570,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             </TableRow>
                           </>
                         )}
-                        <TableRow>
-                          <TableCell className="font-medium">Deposit Value</TableCell>
-                          <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100)))}</TableCell>
-                        </TableRow>
+                        {/* Only show Deposit Value for existing properties */}
+                        {!isNewBuild && (
+                          <TableRow>
+                            <TableCell className="font-medium">Deposit Value</TableCell>
+                            <TableCell className="text-right">{formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100)))}</TableCell>
+                          </TableRow>
+                        )}
                         <TableRow>
                           <TableCell className="font-medium">Loan to Value ratio</TableCell>
                           <TableCell className="text-right">{baseFinancialData.loanToValueRatio}%</TableCell>
@@ -3679,18 +3684,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <TableCell className="font-medium">Solicitor Cost</TableCell>
                                 <TableCell className="text-right">{formatCurrency(baseFinancialData.solicitorFees)}</TableCell>
                               </TableRow>
-                              <TableRow>
-                                <TableCell className="font-medium">Agent Fee</TableCell>
-                                <TableCell className="text-right">{formatCurrency(baseFinancialData.agentFee)}</TableCell>
-                              </TableRow>
                               <TableRow className="bg-muted/30">
                                 <TableCell className="font-semibold">Total Upfront Cost</TableCell>
                                 <TableCell className="text-right font-semibold">
                                   {formatCurrency(
                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) +
                                     baseFinancialData.stampDuty +
-                                    baseFinancialData.solicitorFees +
-                                    baseFinancialData.agentFee
+                                    baseFinancialData.solicitorFees
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -3700,8 +3700,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   {formatCurrency(
                                     (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) +
                                     baseFinancialData.stampDuty +
-                                    baseFinancialData.solicitorFees +
-                                    baseFinancialData.agentFee
+                                    baseFinancialData.solicitorFees
                                   )}
                                 </TableCell>
                               </TableRow>
