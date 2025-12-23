@@ -2408,9 +2408,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           <table style="margin-bottom: 0; font-size: 11px;">
             <tbody>
               <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+              ${isNewBuild ? `
               <tr><td style="font-weight: 500;">Land Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.landPrice)}</td></tr>
               <tr><td style="font-weight: 500;">Build Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice))}</td></tr>
-              <tr><td style="font-weight: 500;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue)}</td></tr>
+              ` : `
+              <tr><td style="font-weight: 500;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100)))}</td></tr>
+              `}
               <tr><td style="font-weight: 500;">Loan to Value ratio</td><td style="text-align: right;">${baseFinancialData.loanToValueRatio}%</td></tr>
               <tr><td style="font-weight: 500;">Interest Rate</td><td style="text-align: right;">${baseFinancialData.interestRate.toFixed(2)}%</td></tr>
               <tr><td style="font-weight: 500;">Capital Growth</td><td style="text-align: right;">${baseFinancialData.capitalGrowth}%</td></tr>
