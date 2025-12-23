@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, useRef, DragEvent } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import type { DragEvent } from 'react';
 import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
