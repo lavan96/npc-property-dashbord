@@ -2537,6 +2537,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               ${projections.slice(1).map(p => `<td>${p.capitalGrowthRate.toFixed(1)}%</td>`).join('')}
             </tr>
             <tr>
+              <td>CPI Growth %</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${p.cpiGrowthRate.toFixed(1)}%</td>`).join('')}
+            </tr>
+            <tr>
               <td>Property Value $</td>
               <td>${formatCurrency(projections[0].propertyMarketValue)}</td>
               ${projections.slice(1).map(p => `<td>${formatCurrency(p.propertyMarketValue)}</td>`).join('')}
