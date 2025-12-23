@@ -207,3 +207,7 @@ request_timeout = 60
 [functions.condense-investment-report]
 verify_jwt = false
 request_timeout = 120
+
+[functions.scrape-property-listing]
+verify_jwt = false
+request_timeout = 60

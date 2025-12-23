@@ -6,12 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, CheckCircle, ExternalLink } from 'lucide-react';
 
 interface RecentReport {
   id: string;
@@ -19,7 +20,34 @@ interface RecentReport {
   created_at: string;
 }
 
+interface ScrapedData {
+  markdown: string;
+  metadata: any;
+  extractedDetails: {
+    title?: string;
+    extractedAddress?: string;
+    extractedPrice?: number;
+    extractedBedrooms?: number;
+    extractedBathrooms?: number;
+    extractedCarSpaces?: number;
+    extractedLandSize?: number;
+    extractedPropertyType?: string;
+    extractedPostcode?: string;
+    extractedState?: string;
+  };
+  sourceUrl: string;
+}
+
 export function InvestmentReportGenerator() {
+  // Input mode: 'manual' or 'url'
+  const [inputMode, setInputMode] = useState<'manual' | 'url'>('manual');
+  
+  // URL scraping state
+  const [propertyUrl, setPropertyUrl] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapedData, setScrapedData] = useState<ScrapedData | null>(null);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  
   const [queryType, setQueryType] = useState<'address' | 'zipcode' | 'suburb' | 'state'>('address');
   const [query, setQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -199,6 +227,203 @@ export function InvestmentReportGenerator() {
     }
   };
 
+  // Handle URL scraping
+  const handleScrapeUrl = async () => {
+    if (!propertyUrl.trim()) {
+      toast({
+        title: "URL Required",
+        description: "Please enter a property listing URL to scrape.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsScraping(true);
+    setScrapeError(null);
+    setScrapedData(null);
+
+    try {
+      console.log('Scraping property URL:', propertyUrl);
+      
+      const { data, error } = await supabase.functions.invoke('scrape-property-listing', {
+        body: { url: propertyUrl }
+      });
+
+      if (error) {
+        console.error('Scrape function error:', error);
+        throw new Error(error.message || 'Failed to scrape property listing');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Scraping failed');
+      }
+
+      console.log('Scrape successful:', data);
+      setScrapedData(data.data);
+
+      // Auto-populate form fields from extracted data
+      const extracted = data.data.extractedDetails;
+      if (extracted) {
+        if (extracted.extractedAddress) {
+          setQuery(extracted.extractedAddress);
+        }
+        if (extracted.extractedPrice) {
+          setPropertyPrice(String(extracted.extractedPrice));
+        }
+        if (extracted.extractedBedrooms) {
+          setBeds(String(extracted.extractedBedrooms));
+        }
+        if (extracted.extractedBathrooms) {
+          setBaths(String(extracted.extractedBathrooms));
+        }
+        if (extracted.extractedLandSize) {
+          setLandSize(String(extracted.extractedLandSize));
+        }
+        if (extracted.extractedPropertyType) {
+          const pt = extracted.extractedPropertyType.toLowerCase();
+          if (pt === 'house' || pt === 'apartment' || pt === 'townhouse') {
+            setPropertyType(pt as 'house' | 'apartment' | 'townhouse');
+          }
+        }
+      }
+
+      toast({
+        title: "Scraping Successful",
+        description: "Property details extracted. Review and adjust before generating the report.",
+      });
+
+    } catch (error) {
+      console.error('Error scraping URL:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to scrape property listing';
+      setScrapeError(errorMessage);
+      toast({
+        title: "Scraping Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  // Handle URL-based report generation
+  const handleGenerateFromUrl = async () => {
+    if (!scrapedData) {
+      toast({
+        title: "Scrape First",
+        description: "Please scrape a property URL first before generating a report.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!propertyPrice || parseFloat(propertyPrice) <= 0) {
+      toast({
+        title: "Property Price Required",
+        description: "Please enter or confirm a valid property price.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    setShowResults(false);
+
+    try {
+      // Use extracted address or fallback to URL title
+      const propertyAddress = query.trim() || 
+        scrapedData.extractedDetails?.extractedAddress || 
+        scrapedData.metadata?.title || 
+        `Property from ${scrapedData.sourceUrl}`;
+
+      // Build property details with scraped context
+      const propertyDetails: any = { 
+        queryType: 'address', 
+        originalQuery: propertyAddress,
+        scrapedContent: scrapedData.markdown, // Include scraped markdown for Perplexity context
+        sourceUrl: scrapedData.sourceUrl,
+      };
+      
+      if (propertyPrice) propertyDetails.price = parseFloat(propertyPrice);
+      if (weeklyRent) propertyDetails.weeklyRent = parseFloat(weeklyRent);
+      if (propertyType) propertyDetails.propertyType = propertyType;
+      if (beds) propertyDetails.beds = parseInt(beds);
+      if (baths) propertyDetails.baths = parseInt(baths);
+      if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
+      if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
+
+      // Create the report record
+      const { data: pendingReport, error: insertError } = await supabase
+        .from('investment_reports')
+        .insert({
+          property_address: propertyAddress,
+          report_content: 'Generating report from scraped listing...',
+          status: 'pending',
+          report_scope: 'address',
+          generated_by: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(`Failed to create report: ${insertError.message}`);
+      }
+
+      addBackgroundJob({
+        id: pendingReport.id,
+        type: 'investment_report'
+      });
+
+      // Start generation in background with scraped content
+      supabase.functions.invoke('generate-investment-report', {
+        body: {
+          reportId: pendingReport.id,
+          propertyAddress,
+          propertyDetails
+        }
+      }).catch(error => {
+        console.error('Background generation error:', error);
+      });
+
+      toast({
+        title: "Report Generation Started",
+        description: `Your investment report is being generated using the scraped listing data. You'll be notified when it's ready.`,
+      });
+
+      fetchRecentReports();
+      
+      // Clear URL form
+      setPropertyUrl('');
+      setScrapedData(null);
+      setQuery('');
+      setPropertyPrice('');
+      setWeeklyRent('');
+      setBeds('');
+      setBaths('');
+      setLandSize('');
+      setBuildSize('');
+
+    } catch (error) {
+      console.error('Error starting report generation:', error);
+      toast({
+        title: "Failed to Start Generation",
+        description: error instanceof Error ? error.message : "Failed to start report generation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const fetchRecentReports = async () => {
     try {
       const { data, error } = await supabase
@@ -273,63 +498,78 @@ export function InvestmentReportGenerator() {
                 Generate Investment Analysis
               </CardTitle>
               <CardDescription>
-                Choose your analysis scope and enter the location details to generate a comprehensive investment report.
+                Choose your input method - enter details manually or scrape from a property listing URL.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Query Type Selection */}
-              <div className="space-y-3">
-                <Label htmlFor="queryType">Analysis Scope</Label>
-                <Select value={queryType} onValueChange={(value: 'address' | 'zipcode' | 'suburb' | 'state') => setQueryType(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select analysis type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="address" className="flex items-center">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Specific Property Address
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="zipcode" className="flex items-center">
-                      <div className="flex items-center gap-2">
-                        <Hash className="h-4 w-4" />
-                        Zip Code Area Analysis
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="suburb" className="flex items-center">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Suburb Investment Analysis
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="state" className="flex items-center">
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        State-Wide Market Analysis
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Input Mode Tabs */}
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="manual" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Manual Entry
+                  </TabsTrigger>
+                  <TabsTrigger value="url" className="flex items-center gap-2">
+                    <Link className="h-4 w-4" />
+                    URL Scrape
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Query Input */}
-              <div className="space-y-3">
-                <Label htmlFor="query" className="flex items-center gap-2">
-                  {getQueryTypeIcon()}
-                  {queryType === 'address' && 'Property Address'}
-                  {queryType === 'zipcode' && 'Zip Code'}
-                  {queryType === 'suburb' && 'Suburb Name'}
-                  {queryType === 'state' && 'State'}
-                </Label>
-                <Input
-                  id="query"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={getQueryTypePlaceholder()}
-                  disabled={isGenerating}
-                />
-              </div>
+                {/* Manual Entry Tab */}
+                <TabsContent value="manual" className="space-y-6 pt-4">
+                  {/* Query Type Selection */}
+                  <div className="space-y-3">
+                    <Label htmlFor="queryType">Analysis Scope</Label>
+                    <Select value={queryType} onValueChange={(value: 'address' | 'zipcode' | 'suburb' | 'state') => setQueryType(value)}>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Select analysis type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background z-50">
+                        <SelectItem value="address">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            Specific Property Address
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="zipcode">
+                          <div className="flex items-center gap-2">
+                            <Hash className="h-4 w-4" />
+                            Zip Code Area Analysis
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="suburb">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            Suburb Investment Analysis
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="state">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            State-Wide Market Analysis
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Query Input */}
+                  <div className="space-y-3">
+                    <Label htmlFor="query" className="flex items-center gap-2">
+                      {getQueryTypeIcon()}
+                      {queryType === 'address' && 'Property Address'}
+                      {queryType === 'zipcode' && 'Zip Code'}
+                      {queryType === 'suburb' && 'Suburb Name'}
+                      {queryType === 'state' && 'State'}
+                    </Label>
+                    <Input
+                      id="query"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={getQueryTypePlaceholder()}
+                      disabled={isGenerating}
+                    />
+                  </div>
 
               <Separator />
 
@@ -563,6 +803,233 @@ export function InvestmentReportGenerator() {
                   </p>
                 </div>
               )}
+                </TabsContent>
+
+                {/* URL Scrape Tab */}
+                <TabsContent value="url" className="space-y-6 pt-4">
+                  {/* URL Input */}
+                  <div className="space-y-3">
+                    <Label htmlFor="propertyUrl" className="flex items-center gap-2">
+                      <Link className="h-4 w-4" />
+                      Property Listing URL
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="propertyUrl"
+                        value={propertyUrl}
+                        onChange={(e) => setPropertyUrl(e.target.value)}
+                        placeholder="https://www.domain.com.au/property/..."
+                        disabled={isScraping}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleScrapeUrl}
+                        disabled={isScraping || !propertyUrl.trim()}
+                        variant="secondary"
+                      >
+                        {isScraping ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Scraping...
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Scrape
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paste a URL from Domain, REA, or other property listing sites. We'll extract property details automatically.
+                    </p>
+                  </div>
+
+                  {/* Scrape Error */}
+                  {scrapeError && (
+                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-destructive">Scraping Failed</p>
+                          <p className="text-sm text-destructive/80">{scrapeError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Scraped Data Success */}
+                  {scrapedData && (
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                            Property Details Extracted
+                          </p>
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            Source: {scrapedData.sourceUrl}
+                          </p>
+                          {scrapedData.metadata?.title && (
+                            <p className="text-sm text-green-700 dark:text-green-300 mt-2">
+                              {scrapedData.metadata.title}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extracted/Editable Property Details */}
+                  {scrapedData && (
+                    <>
+                      <Separator />
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Extracted Property Details</Label>
+                          <Badge variant="outline" className="text-xs">Review & Edit</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Review the extracted details below. You can edit them before generating the report.
+                        </p>
+
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="extractedAddress">Property Address</Label>
+                            <Input
+                              id="extractedAddress"
+                              value={query}
+                              onChange={(e) => setQuery(e.target.value)}
+                              placeholder="Enter or confirm property address"
+                              disabled={isGenerating}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="urlPropertyPrice" className="flex items-center gap-1">
+                              Property Price ($) <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="urlPropertyPrice"
+                              type="number"
+                              value={propertyPrice}
+                              onChange={(e) => setPropertyPrice(e.target.value)}
+                              placeholder="e.g., 750000"
+                              disabled={isGenerating}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="urlWeeklyRent">Weekly Rent ($)</Label>
+                            <Input
+                              id="urlWeeklyRent"
+                              type="number"
+                              value={weeklyRent}
+                              onChange={(e) => setWeeklyRent(e.target.value)}
+                              placeholder="e.g., 550"
+                              disabled={isGenerating}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Property Type</Label>
+                            <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                              <SelectTrigger className="bg-background">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background z-50">
+                                <SelectItem value="house">House</SelectItem>
+                                <SelectItem value="apartment">Apartment</SelectItem>
+                                <SelectItem value="townhouse">Townhouse</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="urlBeds">Bedrooms</Label>
+                            <Input
+                              id="urlBeds"
+                              type="number"
+                              value={beds}
+                              onChange={(e) => setBeds(e.target.value)}
+                              placeholder="e.g., 3"
+                              disabled={isGenerating}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="urlBaths">Bathrooms</Label>
+                            <Input
+                              id="urlBaths"
+                              type="number"
+                              value={baths}
+                              onChange={(e) => setBaths(e.target.value)}
+                              placeholder="e.g., 2"
+                              disabled={isGenerating}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="urlLandSize">Land Size (m²)</Label>
+                            <Input
+                              id="urlLandSize"
+                              type="number"
+                              value={landSize}
+                              onChange={(e) => setLandSize(e.target.value)}
+                              placeholder="e.g., 450"
+                              disabled={isGenerating}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Generate from URL Button */}
+                      <Button
+                        onClick={handleGenerateFromUrl}
+                        disabled={isGenerating || !propertyPrice}
+                        size="lg"
+                        className="w-full"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating Report...
+                          </>
+                        ) : (
+                          <>
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Generate Report from Scraped Data
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Info for URL mode */}
+                  {!scrapedData && (
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p><strong>Supported Sites:</strong></p>
+                          <ul className="list-disc list-inside space-y-1 ml-2">
+                            <li>Domain.com.au</li>
+                            <li>Realestate.com.au</li>
+                            <li>Allhomes.com.au</li>
+                            <li>Most Australian property listing sites</li>
+                          </ul>
+                          <p className="mt-2">
+                            The scraper will extract property details like address, price, bedrooms, and more. 
+                            This data will be used as context for generating a comprehensive investment report.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
