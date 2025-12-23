@@ -13,6 +13,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { Button } from "@/components/ui/button";
 import Overview from "./pages/Overview";
 import Listings from "./pages/Listings";
 import Calendar from "./pages/Calendar";
@@ -40,6 +42,22 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const CalendarErrorFallback = () => (
+  <div className="p-6">
+    <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
+      <div className="font-medium text-foreground">Calendar failed to load.</div>
+      <div className="mt-1 text-muted-foreground">
+        A malformed appointment may have caused this section to crash.
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Reload
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -62,7 +80,14 @@ const App = () => (
               }>
                 <Route index element={<Overview />} />
                 <Route path="listings" element={<Listings />} />
-                <Route path="calendar" element={<Calendar />} />
+                <Route
+                  path="calendar"
+                  element={
+                    <ErrorBoundary fallback={<CalendarErrorFallback />}>
+                      <Calendar />
+                    </ErrorBoundary>
+                  }
+                />
                 <Route path="sources" element={<Sources />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="charts" element={<Charts />} />

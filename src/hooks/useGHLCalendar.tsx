@@ -38,13 +38,29 @@ interface CalendarData {
 }
 
 const normalizeTimestampToISO = (value: unknown): string | null => {
-  if (!value) return null;
-  if (typeof value === 'string') return value;
+  if (value === null || value === undefined || value === '') return null;
+
   if (typeof value === 'number') {
     const ms = value < 1_000_000_000_000 ? value * 1000 : value;
     const d = new Date(ms);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    // Handle numeric timestamps that arrive as strings
+    if (/^\d+$/.test(trimmed)) {
+      const asNumber = Number(trimmed);
+      return Number.isNaN(asNumber) ? null : normalizeTimestampToISO(asNumber);
+    }
+
+    const ms = Date.parse(trimmed);
+    if (Number.isNaN(ms)) return null;
+    return new Date(ms).toISOString();
+  }
+
   return null;
 };
 
@@ -59,13 +75,14 @@ const normalizeEvent = (raw: any): GHLEvent | null => {
     startTime: start,
     endTime: end,
     calendarId: String(raw?.calendarId ?? ''),
-    calendarName: raw?.calendarName,
-    calendarColor: raw?.calendarColor,
-    status: String(raw?.status ?? ''),
-    appointmentStatus: raw?.appointmentStatus,
-    contactId: raw?.contactId,
-    notes: raw?.notes,
-    address: raw?.address,
+    calendarName: typeof raw?.calendarName === 'string' ? raw.calendarName : undefined,
+    calendarColor: typeof raw?.calendarColor === 'string' ? raw.calendarColor : undefined,
+    status: typeof raw?.status === 'string' ? raw.status : String(raw?.status ?? ''),
+    appointmentStatus:
+      typeof raw?.appointmentStatus === 'string' ? raw.appointmentStatus : undefined,
+    contactId: typeof raw?.contactId === 'string' ? raw.contactId : undefined,
+    notes: typeof raw?.notes === 'string' ? raw.notes : undefined,
+    address: typeof raw?.address === 'string' ? raw.address : undefined,
   };
 };
 

@@ -32,40 +32,55 @@ export default function Calendar() {
     fetchCalendarData();
   }, [fetchCalendarData]);
 
+  const safeParseISO = (value: string) => {
+    try {
+      const d = parseISO(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
+    }
+  };
+
+  const toSearchable = (value: unknown) => (typeof value === 'string' ? value.toLowerCase() : '');
+
   const filteredEvents = useMemo(() => {
     let filtered = events;
-    
+
     // Filter by calendar
     if (selectedCalendarId !== 'all') {
-      filtered = filtered.filter(event => event.calendarId === selectedCalendarId);
+      filtered = filtered.filter((event) => event.calendarId === selectedCalendarId);
     }
-    
+
     // Filter by search query (title includes contact name typically)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(event => 
-        (event.title?.toLowerCase().includes(query)) ||
-        (event.notes?.toLowerCase().includes(query)) ||
-        (event.address?.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (event) =>
+          toSearchable(event.title).includes(query) ||
+          toSearchable(event.notes).includes(query) ||
+          toSearchable(event.address).includes(query)
       );
     }
-    
+
     return filtered;
   }, [events, selectedCalendarId, searchQuery]);
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
-    return filteredEvents.filter(event => 
-      isSameDay(parseISO(event.startTime), selectedDate)
-    );
+    return filteredEvents.filter((event) => {
+      const d = safeParseISO(event.startTime);
+      return d ? isSameDay(d, selectedDate) : false;
+    });
   }, [filteredEvents, selectedDate]);
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
     return filteredEvents
-      .filter(event => parseISO(event.startTime) >= now)
-      .sort((a, b) => parseISO(a.startTime).getTime() - parseISO(b.startTime).getTime())
-      .slice(0, 10);
+      .map((e) => ({ e, d: safeParseISO(e.startTime) }))
+      .filter((x) => x.d && x.d >= now)
+      .sort((a, b) => a.d!.getTime() - b.d!.getTime())
+      .slice(0, 10)
+      .map((x) => x.e);
   }, [filteredEvents]);
 
   const calendarDays = useMemo(() => {
@@ -88,13 +103,16 @@ export default function Calendar() {
   }, []);
 
   const getEventsForDay = (day: Date) => {
-    return filteredEvents.filter(event => isSameDay(parseISO(event.startTime), day));
+    return filteredEvents.filter((event) => {
+      const d = safeParseISO(event.startTime);
+      return d ? isSameDay(d, day) : false;
+    });
   };
 
   const getEventsForDayAndHour = (day: Date, hour: number) => {
-    return filteredEvents.filter(event => {
-      const eventStart = parseISO(event.startTime);
-      return isSameDay(eventStart, day) && getHours(eventStart) === hour;
+    return filteredEvents.filter((event) => {
+      const eventStart = safeParseISO(event.startTime);
+      return eventStart ? isSameDay(eventStart, day) && getHours(eventStart) === hour : false;
     });
   };
 
@@ -152,8 +170,18 @@ export default function Calendar() {
 
     if (!draggedEvent) return;
 
-    const originalStart = parseISO(draggedEvent.startTime);
-    const originalEnd = parseISO(draggedEvent.endTime);
+    const originalStart = safeParseISO(draggedEvent.startTime);
+    const originalEnd = safeParseISO(draggedEvent.endTime);
+    if (!originalStart || !originalEnd) {
+      toast({
+        title: 'Unable to reschedule',
+        description: 'This appointment has an invalid date/time value.',
+        variant: 'destructive',
+      });
+      setDraggedEvent(null);
+      return;
+    }
+
     const durationMinutes = differenceInMinutes(originalEnd, originalStart);
 
     let newStart: Date;
