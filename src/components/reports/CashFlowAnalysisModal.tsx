@@ -831,7 +831,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const buildPrice = baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - landPrice);
     const interestRate = baseFinancialData.interestRate / 100; // Annual rate
     const monthlyRate = interestRate / 12;
-    const durationMonths = Math.min(baseFinancialData.constructionDurationMonths || 7, 18);
+    const durationMonths = Math.min(baseFinancialData.constructionDurationMonths || 7, 24);
 
     // Land loan (assuming 90% LVR on land, 10% deposit)
     const landDeposit = landPrice * 0.10;

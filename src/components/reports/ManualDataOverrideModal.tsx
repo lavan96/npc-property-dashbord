@@ -692,12 +692,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     } else {
       const numValue = value === '' ? null : parseFloat(value);
       
-      // Validate construction duration months (1-18)
+      // Validate construction duration months (1-24)
       if (key === 'constructionDurationMonths' && numValue !== null) {
-        if (numValue < 1 || numValue > 18) {
+        if (numValue < 1 || numValue > 24) {
           setValidationErrors(prev => ({
             ...prev,
-            [key]: 'Construction duration must be between 1 and 18 months'
+            [key]: 'Construction duration must be between 1 and 24 months'
           }));
         }
       }
