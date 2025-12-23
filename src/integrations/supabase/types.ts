@@ -634,6 +634,65 @@ export type Database = {
           },
         ]
       }
+      client_branding_profiles: {
+        Row: {
+          accent_color: string | null
+          client_name: string
+          created_at: string | null
+          created_by: string | null
+          font_family: string | null
+          footer_style: Json | null
+          header_style: Json | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          logo_path: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          client_name: string
+          created_at?: string | null
+          created_by?: string | null
+          font_family?: string | null
+          footer_style?: Json | null
+          header_style?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_path?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          client_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          font_family?: string | null
+          footer_style?: Json | null
+          header_style?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          logo_path?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_branding_profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       climate_data_cache: {
         Row: {
           climate_zone: string | null
@@ -1375,6 +1434,80 @@ export type Database = {
           },
         ]
       }
+      report_structure_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          mime_type: string | null
+          name: string
+          parsed_content: string | null
+          priority: number | null
+          report_category:
+            | Database["public"]["Enums"]["report_category_enum"]
+            | null
+          report_tier: Database["public"]["Enums"]["report_tier_enum"] | null
+          template_type: Database["public"]["Enums"]["template_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          mime_type?: string | null
+          name: string
+          parsed_content?: string | null
+          priority?: number | null
+          report_category?:
+            | Database["public"]["Enums"]["report_category_enum"]
+            | null
+          report_tier?: Database["public"]["Enums"]["report_tier_enum"] | null
+          template_type: Database["public"]["Enums"]["template_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          mime_type?: string | null
+          name?: string
+          parsed_content?: string | null
+          priority?: number | null
+          report_category?:
+            | Database["public"]["Enums"]["report_category_enum"]
+            | null
+          report_tier?: Database["public"]["Enums"]["report_tier_enum"] | null
+          template_type?: Database["public"]["Enums"]["template_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_structure_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_templates: {
         Row: {
           config: Json
@@ -1964,7 +2097,13 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      report_category_enum:
+        | "investment"
+        | "comparison"
+        | "suburb_snapshot"
+        | "cash_flow"
+      report_tier_enum: "compass" | "executive" | "snapshot"
+      template_type: "ai_structure" | "pdf_layout" | "client_branding"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2091,6 +2230,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      report_category_enum: [
+        "investment",
+        "comparison",
+        "suburb_snapshot",
+        "cash_flow",
+      ],
+      report_tier_enum: ["compass", "executive", "snapshot"],
+      template_type: ["ai_structure", "pdf_layout", "client_branding"],
+    },
   },
 } as const
