@@ -1041,1089 +1041,875 @@ Suburb Investment Snapshot: [SUBURB NAME], [STATE]
 
 Produce a comprehensive suburb investment snapshot following the structure above with specific Australian market data.`;
 
-    const propertyPrompt = `You are an expert property analyst researching Australian property investment reports.
-Your goal is to generate a comprehensive, professional-grade investment report for the following input:
-
-Mode: ${analysisMode.charAt(0).toUpperCase() + analysisMode.slice(1)}
+    // STRICT REFERENCE TEMPLATE - Based on the Naidu Property Consulting Services Investment Report format
+    // This template enforces the exact structure, length, content, and sources matching the reference PDF
+    const propertyPrompt = `You are an expert Australian property investment analyst for Naidu Property Consulting Services.
+Your role is to produce comprehensive, professional-grade investment reports following the EXACT structure, length, and format of our reference template.
 
 **PROPERTY ADDRESS TO ANALYZE: ${formattedInput}**
 
-${propertyDetails ? `Additional Details: Price: $${propertyDetails.price || 'Not specified'}, Weekly Rent: $${propertyDetails.weeklyRent || 'Not specified'}, Type: ${propertyDetails.propertyType || 'Not specified'}, Beds: ${propertyDetails.beds || 'Not specified'}, Baths: ${propertyDetails.baths || 'Not specified'}${propertyDetails.landSizeSqm ? `, Land Size: ${propertyDetails.landSizeSqm}m²` : ''}${propertyDetails.buildSizeSqm ? `, Build Size: ${propertyDetails.buildSizeSqm}m²` : ''}` : ''}
+${propertyDetails ? `**Property Details Provided:**
+- Price: $${propertyDetails.price?.toLocaleString() || 'Not specified'}
+- Weekly Rent: $${propertyDetails.weeklyRent || 'Not specified'}
+- Property Type: ${propertyDetails.propertyType || 'Not specified'}
+- Bedrooms: ${propertyDetails.beds || 'Not specified'}
+- Bathrooms: ${propertyDetails.baths || 'Not specified'}
+${propertyDetails.landSizeSqm ? `- Land Size: ${propertyDetails.landSizeSqm}m²` : ''}
+${propertyDetails.buildSizeSqm ? `- Building Size: ${propertyDetails.buildSizeSqm}m²` : ''}
+${propertyDetails.carSpaces ? `- Car Spaces: ${propertyDetails.carSpaces}` : ''}
+${propertyDetails.isNewBuild ? `- New Build: Yes` : ''}` : ''}
 
-**CRITICAL - MANDATORY REPORT STRUCTURE:**
+---
 
-YOU MUST FOLLOW THIS EXACT STRUCTURE. DO NOT DEVIATE. Each section must follow this precise format:
+# ═══════════════════════════════════════════════════════════════════════════════
+# MANDATORY REPORT STRUCTURE - 38-PAGE REFERENCE TEMPLATE
+# YOU MUST FOLLOW THIS EXACT STRUCTURE, LENGTH, AND FORMAT
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# REPORT TITLE
-Investment Report: [PROPERTY ADDRESS], [STATE]
+---
 
-# 1. Location Overview
-- Begin with: "This investment report analyzes: [FULL PROPERTY ADDRESS]"
-- Suburb profile and characteristics
-- Distance to CBD/major city (e.g., "approximately 55km northwest of Brisbane CBD")
-- Statistical areas: SA2, SA3, SA4, LGA
-- Suburb lifestyle and amenities description
-- Commute information
-- Population and development trends
+# Investment Report: [Property Address], [STATE] [POSTCODE]
 
-# 2. Current Market Performance (Include reporting period)
-**Table format:**
-| Metric | Value | YoY Change |
-| Median House Price | $XXX,XXX | +/-X.X% |
-| Median Rent (House) | $XXX | +/-X.X% |
-| Gross Rental Yield | X.XX% | N/A |
-| Houses Sold (12 months) | XX | N/A |
-| Days on Market | XX | N/A |
-| Annual Capital Growth | X.X% | N/A |
+---
 
-# 3. Historical Price Growth
-| Time Period | Growth Rate | Source |
+# Location Overview
 
-# 4. Historical Rent Growth  
-| Time Period | Growth Rate | Source |
+**REQUIRED OPENING LINE:** "This investment report analyzes: [FULL PROPERTY ADDRESS]"
 
-# 5. Market Activity
-| Metric | Value | Source |
+**CONTENT REQUIREMENTS (Minimum 500 words for this section):**
 
-# 6. Population & Household Characteristics
-**Table format:**
-| Metric | Value | Source |
-| Employment Rate | XX.X% | ABS (2025) |
-| Unemployment Rate | X.X% | ABS (2025) |
-| Labor Force Size | XX,XXX | ABS (2025) |
-| Median Weekly Income | $X,XXX | ABS (2025) |
-| Median Annual Income | $XX,XXX | ABS (2025) |
-| IRSAD Score | XXX (Decile X/10) | ABS SEIFA (2025) |
-| IRSD Score | XXX (Decile X/10) | ABS SEIFA (2025) |
+[Suburb name] is a [description] community located [XX] kilometres [direction] of [City]'s CBD[citation], positioned within the [District] region of [Metro Area]. The suburb is distinguished by its [key characteristics][citation].
 
-# 7. Major Industries & Job Growth
+**Geographic Classification:**
+- Local Government Area (LGA): [Name] Council
+- Statistical Areas: [Suburb] falls within the broader [Area] Statistical Area Level 2 (SA2)
+
+**Suburb Character & Lifestyle:**
+
+[Suburb] presents [description of blend/character]. The suburb features [specific details about streets, properties, land parcels][citation]. A diversity level of [XX.X]% reflects the [description of composition][citation].
+
+The suburb's lifestyle is characterised by:
+- **Family-oriented infrastructure:** [Specific facility name] features [detailed list of amenities - courts, fields, parks with exact counts][citation]. [Playground name] offers [specific features including water play, trampolines, shade structures][citation]
+- **Parks and green spaces:** [Park 1], [Park 2], and [Park 3] provide [specific amenities][citation]
+- **Shopping and dining:** [Shopping centre] and [Secondary centre] host [stores, dining options]. Nearby dining precincts in [Area 1], [Area 2], and [Area 3] offer [cuisine types][citation]
+
+**Employment hubs:**
+[Business Park 1] and [Business Park 2] provide significant local job opportunities[citation].
+
+**Public Transport Access:**
+
+A major infrastructure advancement occurred with the opening of [Station Name] in [Year], located at [specific location][citation]. This development has dramatically improved accessibility, providing commuters with access to the [Line Name] through [Connection Station]. The station includes [facilities - car park, bus connections] serving [list of destinations][citation].
+
+**Commute Performance:**
+| Metric | Value |
+|--------|-------|
+| CBD Commute | ${enhancedData.locationIntelligence?.commute?.durationMinutes || 'XX'} minutes via public transit (${enhancedData.locationIntelligence?.commute?.distanceKm || 'XX'} km distance) |
+| Public Transport Quality Score | ${enhancedData.locationIntelligence?.transport?.qualityScore || 'XX'}/100 |
+
+The suburb benefits from excellent service frequency, with peak hour services operating at [XX] services per hour and off-peak services at [XX] services per hour across multiple transport modes[citation].
+
+**Population & Development Trends:**
+
+[Suburb] is experiencing [description of growth]. The suburb's future prospects are described as [assessment], with planned infrastructure and residential developments set to [impact]. Population growth is being driven by [factors][citation].
+
+---
+
+# Current Market Performance
+
+| Metric | Value | Data Source |
+|--------|-------|-------------|
+| Walk Score | ${enhancedData.locationIntelligence?.walkScore || 'XX'}/100 | Location Intelligence Data |
+| Public Transport Score | ${enhancedData.locationIntelligence?.transport?.qualityScore || 'XX'}/100 | Location Intelligence Data |
+
+**Market Commentary (150+ words required):**
+
+[Suburb]'s [exceptionally high/moderate/etc.] walk score of [XX]/100 reflects [assessment of pedestrian accessibility]. The [XX]/100 public transport score demonstrates [connectivity assessment]. These metrics underscore the suburb's appeal to [target demographics].
+
+Current market conditions are influenced by the National House Price Growth Rate of [X.X]% (as of [Date]), with [Suburb] positioned to benefit from [demand drivers]. The suburb's inventory includes [property mix description][citation].
+
+---
+
+# Current Economic Context
+
+| Metric | Value | Period |
+|--------|-------|--------|
+| Cash Rate | ${enhancedData.economics?.cashRate?.current || '4.35'}% | Current |
+| Annual Inflation | ${enhancedData.economics?.inflation?.annual || '3.4'}% | Current |
+| GDP Growth | ${enhancedData.economics?.indicators?.gdpGrowth || '2.1'}% | Current |
+| National Unemployment | ${enhancedData.economics?.indicators?.unemploymentRate || '3.9'}% | Current |
+| National House Price Growth | ${enhancedData.economics?.indicators?.housePriceGrowth || '4.2'}% | Current |
+
+The Australian economy is operating at a [growth rate description], with inflation at [X.X]% and the Reserve Bank of Australia maintaining the cash rate at [X.XX]%. The national unemployment rate of [X.X]% indicates [labor market assessment]. These macroeconomic conditions create [environment description] for property values and rental demand in [suburb type] markets like [Suburb].
+
+---
+
+# Demographics & Demand Drivers
+
+**Population & Employment Statistics:**
+
+| Metric | Value | Data Source |
+|--------|-------|-------------|
+| Labor Force Size | ${enhancedData.demographics?.employment?.laborForce || 'XX,XXX'} | ABS Employment Data |
+| Employment Rate | ${enhancedData.demographics?.employment?.employmentRate || 'XX.X'}% | ABS (2025) |
+| Unemployment Rate | ${enhancedData.demographics?.income?.unemploymentRate || 'X.X'}% | ABS (2025) |
+| Participation Rate | ${enhancedData.demographics?.employment?.laborForceParticipation || 'XX.X'}% | ABS (2025) |
+| Median Weekly Income | $${enhancedData.demographics?.income?.medianWeeklyIncome || 'X,XXX'} | ABS (2025) |
+| Median Annual Income | $${enhancedData.demographics?.income?.medianHouseholdIncome || 'XX,XXX'} | ABS (2025) |
+| Annual Income Growth (last 12 months) | +${enhancedData.demographics?.income?.incomeGrowth || 'X.X'}% | ABS (2025) |
+
+**Socioeconomic Profile (SEIFA Indices):**
+
+| Index | Score | Decile | Rating |
+|-------|-------|--------|--------|
+| IRSAD | ${enhancedData.seifaData?.irsad?.score || 'XXX'} | ${enhancedData.seifaData?.irsad?.decile || 'X'}/10 | ${enhancedData.seifaData?.irsad?.rating || 'Moderate Advantage'} |
+| IRSD | ${enhancedData.seifaData?.irsd?.score || 'XXX'} | ${enhancedData.seifaData?.irsd?.decile || 'X'}/10 | ${enhancedData.seifaData?.irsd?.rating || 'Moderate Disadvantage'} |
+| IER | ${enhancedData.seifaData?.ier?.score || 'XXX'} | ${enhancedData.seifaData?.ier?.decile || 'X'}/10 | ${enhancedData.seifaData?.ier?.rating || 'Moderate Education/Occupation'} |
+| IEO | ${enhancedData.seifaData?.ieo?.score || 'XXX'} | ${enhancedData.seifaData?.ieo?.decile || 'X'}/10 | ${enhancedData.seifaData?.ieo?.rating || 'Moderate Economic Resources'} |
+
+[Suburb] demonstrates [socioeconomic assessment], positioning the area at [comparative level] across income, education, and occupation dimensions. The IRSAD score of [XXX] (Decile [X]/10) indicates [interpretation]. This socioeconomic profile supports [demand implications].
+
+**Employment & Industry Breakdown:**
+
 | Industry | Workforce % | Growth Rate |
+|----------|-------------|-------------|
+| Professional Services | ${enhancedData.employmentData?.industries?.[0]?.percentage || 'XX.X'}% | +${enhancedData.employmentData?.industries?.[0]?.growth || 'X.X'}% |
+| Healthcare & Social Assistance | ${enhancedData.employmentData?.industries?.[1]?.percentage || 'XX.X'}% | +${enhancedData.employmentData?.industries?.[1]?.growth || 'X.X'}% |
+| Retail Trade | ${enhancedData.employmentData?.industries?.[2]?.percentage || 'XX.X'}% | +${enhancedData.employmentData?.industries?.[2]?.growth || 'X.X'}% |
+| Education & Training | ${enhancedData.employmentData?.industries?.[3]?.percentage || 'XX.X'}% | +${enhancedData.employmentData?.industries?.[3]?.growth || 'X.X'}% |
+| Construction | ${enhancedData.employmentData?.industries?.[4]?.percentage || 'XX.X'}% | +${enhancedData.employmentData?.industries?.[4]?.growth || 'X.X'}% |
 
-# 8. Job Growth Trends
-| Time Period | Growth Rate | Source |
+**Job Growth Trends:**
 
-[Include narrative about demand drivers]
+| Time Period | Growth Rate | Data Source |
+|-------------|-------------|-------------|
+| Annual Growth | +${enhancedData.employmentData?.annualGrowth || 'X.X'}% | ABS (2025) |
+| 3-Year Growth | +${enhancedData.employmentData?.threeYearGrowth || 'X.X'}% | ABS (2025) |
+| 5-Year Growth | +${enhancedData.employmentData?.fiveYearGrowth || 'XX.X'}% | ABS (2025) |
 
-# 9. Transport & Accessibility
-| Metric | Value | Details |
-| Walk Score | XX/100 | ... |
-| CBD Commute | XX minutes | ... |
-| Public Transport Score | XX/100 | ... |
+Employment growth has been [assessment], with [XX.X]% cumulative growth over five years. [Leading industry] leads job creation at [X.X]% annual growth, followed by [secondary industry] at [X.X]%. This employment dynamism reflects structural shifts toward [sector types], directly supporting rental demand from workers employed at [nearby employment hubs][citation].
 
-# 10. Education Facilities
-| Facility | Distance | Rating |
+**Demand Drivers (150+ words required):**
 
-# 11. Healthcare & Shopping
-| Facility | Distance | Details |
+The combination of [employment factor], [income factor], and [unemployment factor] creates robust demand for both owner-occupied and rental properties. Population growth is being driven by [demographic groups] attracted to the suburb's [appeal factors]. The suburb attracts [target demographics description].
 
-# 12. Amenity Scores
+---
+
+# Schools & Education
+
+**Education Infrastructure Summary:**
+
+| Metric | Value | Data Source |
+|--------|-------|-------------|
+| Total Schools in Postcode | ${enhancedData.schoolData?.summary?.totalSchools || 'XX'} | Google Places API |
+| Average School Rating | ${enhancedData.schoolData?.summary?.averageRating || 'X.X'}/5 stars | Google Places API |
+| Education Quality | ${enhancedData.schoolData?.summary?.qualityAssessment || 'Average'} (National Standard) | School Data Analysis |
+
+**Nearest School:**
+
+| School Name | Distance | Type |
+|-------------|----------|------|
+| ${enhancedData.schoolData?.nearestSchool?.name || '[School Name]'} | ${enhancedData.schoolData?.nearestSchool?.distance || 'X.XX'} km | ${enhancedData.schoolData?.nearestSchool?.type || 'Early Learning'} |
+
+**Top-Rated Schools in Local Area:**
+
+| School Name | Distance | Type |
+|-------------|----------|------|
+${enhancedData.schoolData?.topSchools?.slice(0, 5).map((s: any) => `| ${s.name} | ${s.distance} km | ${s.type} |`).join('\n') || '| [School 1] | Nearby | Government |'}
+
+**Education Facilities (Extended List):**
+
+| School Name | Distance | Type |
+|-------------|----------|------|
+${enhancedData.schoolData?.allSchools?.slice(0, 7).map((s: any) => `| ${s.name} | ${s.distance} km | ${s.type} |`).join('\n') || '| [School 1] | X.XX km | Government |'}
+
+**Secondary Education:**
+
+[Secondary school name], the nearest secondary facility, is located [X.X] km distant and rated [X]/5 stars. [Additional schools] provide additional secondary options in the immediate vicinity.
+
+**Education Profile (100+ words required):**
+
+[Suburb] benefits from comprehensive educational coverage with [XX] schools across all levels within the postcode. A diverse range of government and private institutions serve the area, with early learning facilities rated highly (averaging [X.X]/5 stars), making the suburb particularly attractive to families with young children. The availability of quality schools directly supports property demand from families and contributes to capital growth expectations in family-oriented suburbs.
+
+---
+
+# Healthcare & Shopping
+
+**Healthcare Facilities:**
+
 | Category | Facilities Count | Nearest Facility |
+|----------|-----------------|------------------|
+| Healthcare | ${enhancedData.locationIntelligence?.healthcare?.facilitiesWithin5km || 'XX'} | ${enhancedData.locationIntelligence?.healthcare?.nearestFacility || '[Medical Centre Name]'} |
 
-[Include commentary on amenities]
+[Suburb]'s healthcare infrastructure includes [XX] facilities within 5 km, with [Primary facility] as the primary provider just [X.XX] km away. The area benefits from proximity to [hospital description][citation].
 
-# 13. Environmental Risks
+**Shopping & Dining Facilities:**
+
+| Category | Facilities Count | Nearest Facility |
+|----------|-----------------|------------------|
+| Shopping | ${enhancedData.locationIntelligence?.lifestyle?.shoppingCenters || 'XX'} | ${enhancedData.locationIntelligence?.lifestyle?.nearestShopping || '[Shopping Centre]'} |
+| Restaurants & Cafes | XX | Multiple Precincts |
+
+[Shopping centre] serves as the central shopping hub, located [X.XX] km away, offering [stores - supermarkets, specialty stores, dining options][citation]. [Secondary shopping description]. Nearby dining precincts in [Area 1], [Area 2], and [Area 3] extend culinary choices[citation].
+
+---
+
+# Recreational Amenities
+
+**Recreation & Parks:**
+
+| Category | Facilities Count | Nearest Facility | Distance |
+|----------|-----------------|------------------|----------|
+| Parks & Recreation | ${enhancedData.locationIntelligence?.lifestyle?.parks || 'XX'} | ${enhancedData.locationIntelligence?.lifestyle?.nearestPark || '[Reserve Name]'} | ${enhancedData.locationIntelligence?.lifestyle?.nearestParkDistance || 'X.X'} km |
+
+[Nearest park/reserve] is [location description] at just [X.X] km distance, providing immediate access to local parks and recreational facilities. This [proximity level] to green space enhances the property's appeal for families and health-conscious residents.
+
+**Major Recreational Complexes:**
+
+The [Sports Complex Name] is a premier recreational hub featuring:
+- [XX] indoor courts
+- [XX] outdoor fields (including [XX] all-weather synthetic fields)
+- [XX] netball courts
+- [XX] tennis courts
+- [XX] cricket pitches
+- Dog park
+- Walking tracks
+
+[Playground name] at [Complex] offers inclusive recreational amenities with water play areas, trampolines, slides, sandpit, balancing beams, swings, musical instruments, climbing ropes, covered shade areas, and barbecue facilities[citation].
+
+Additional parks include [Park 1] and [Park 2], both offering picnic areas, walking paths, and playgrounds. [Regional Park] provides expansive green spaces, bushwalking trails, and wildlife observation opportunities[citation].
+
+**Amenity Summary:**
+
+[Suburb] delivers exceptional recreational access with [XX] major parks and recreation facilities, including world-class sporting complexes and accessible playgrounds. The immediate proximity of [Reserve] ([X.X] km) to the subject property provides superior outdoor recreation without vehicle dependency.
+
+---
+
+# Transport & Accessibility
+
+**Public Transport Network:**
+
+| Metric | Value | Details |
+|--------|-------|---------|
+| Walk Score | ${enhancedData.locationIntelligence?.walkScore || 'XX'}/100 | ${enhancedData.locationIntelligence?.walkScore >= 70 ? 'Excellent' : 'Moderate'} pedestrian accessibility |
+| Public Transport Score | ${enhancedData.locationIntelligence?.transport?.qualityScore || 'XX'}/100 | ${enhancedData.locationIntelligence?.transport?.qualityScore >= 70 ? 'Excellent' : 'Moderate'} service coverage and frequency |
+| CBD Commute Time | ${enhancedData.locationIntelligence?.commute?.durationMinutes || 'XX'} minutes | Via public transit (${enhancedData.locationIntelligence?.commute?.distanceKm || 'XX'} km) |
+| Nearest Station | ${enhancedData.locationIntelligence?.transport?.nearestStation || '[Station Name]'} | [Location details] |
+| Station Opening | [Year] | Multi-storey car park included |
+
+**Service Frequency & Routes:**
+- Peak Hour Service: ${enhancedData.locationIntelligence?.transport?.serviceFrequency?.peak || 'XX'} services/hour
+- Off-Peak Service: ${enhancedData.locationIntelligence?.transport?.serviceFrequency?.offPeak || 'XX'} services/hour
+- Transport Types: ${enhancedData.locationIntelligence?.transport?.transportTypes?.join(', ') || 'Train, Bus, Light Rail'}
+- Primary Lines: [Line names]
+- Bus Connections: Services to [destinations list]
+
+**Accessibility Features:**
+- Wheelchair accessible facilities
+- Lift availability at major stations
+- Tactile paving for visually impaired users
+- Multiple stop locations within 1 km radius
+
+**Transport Advantages (100+ words required):**
+
+The opening of [Station] in [Year] fundamentally transformed the suburb's transport profile. Direct access to the [Line Name] provides express connectivity to [Major hub] and beyond, with frequent peak-hour services ensuring reliable commuting for professionals. Bus integration provides comprehensive coverage of surrounding business districts and educational centers. The walk score of [XX]/100 indicates residents can accomplish most daily tasks on foot, reducing transport dependency and vehicle ownership costs.
+
+---
+
+# Environmental Risks & Climate
+
+**Climate Profile:**
+
+| Metric | Value | Data Source |
+|--------|-------|-------------|
+| Climate Zone | ${enhancedData.climateData?.climateZone || 'Temperate'} | Bureau of Meteorology |
+| Annual Average Temperature | ${enhancedData.climateData?.temperature?.annual || 'XX.X'}°C | BoM |
+| Summer Temperature | ${enhancedData.climateData?.temperature?.summer || 'XX.X'}°C | BoM |
+| Winter Temperature | ${enhancedData.climateData?.temperature?.winter || 'XX.X'}°C | BoM |
+| Annual Rainfall | ${enhancedData.climateData?.rainfall?.annual || 'X,XXX'} mm | BoM |
+| Humidity | ${enhancedData.climateData?.humidity?.annual || 'XX'}% | BoM |
+
+**Extreme Weather Risk Assessment:**
+
 | Risk Type | Assessment | Details |
-| Flood Risk | ... | ... |
-| Bushfire Risk | ... | ... |
-| Heatwaves | ... | ... |
-| Storms | ... | ... |
+|-----------|------------|---------|
+| Heatwaves | ${enhancedData.riskAssessment?.heatwaveRisk?.level || 'Moderate to High'} | ${enhancedData.riskAssessment?.heatwaveRisk?.description || 'Typical for region; increasing frequency due to climate change'} |
+| Bushfire | ${enhancedData.riskAssessment?.bushfireRisk?.level || 'High'} | ${enhancedData.riskAssessment?.bushfireRisk?.description || 'Requires verification with state Rural Fire Service for specific property rating'} |
+| Flooding | ${enhancedData.riskAssessment?.floodRisk?.level || 'Moderate'} | ${enhancedData.riskAssessment?.floodRisk?.description || 'General flood information available through council and AFRIP'} |
+| Storms | ${enhancedData.riskAssessment?.stormRisk?.level || 'Moderate'} | Thunderstorms and severe weather typical in summer months |
+| Cyclones | ${enhancedData.riskAssessment?.cycloneRisk?.level || 'Low'} | Not applicable to inland locations |
 
-# 14. Crime Statistics
+**Climate Risk Commentary (150+ words required):**
+
+[Suburb] experiences a [climate zone] climate with [rainfall level] rainfall ([X,XXX] mm annually), concentrated in the [peak months] period. Heatwaves represent a [risk level] risk, consistent with [region description], with potential for increasing frequency due to climate change. Bushfire risk is rated as [level] for [State], though specific property-level risk assessment requires verification with the [State] Rural Fire Service (RFS). Flooding risk is [level]; property-specific flood assessment requires property coordinates and consultation with [Council] or AFRIP.
+
+Long-term climate considerations include potential increases in cooling costs during summer months, possible insurance premium adjustments reflecting bushfire risk, and maintenance implications for properties in high-risk bushfire zones. These factors should be incorporated into long-term ownership cost projections and risk management strategies.
+
+---
+
+# Crime & Safety
+
+**Crime Statistics:**
+
 | Metric | Value | Comparison |
-| Overall Crime Rating | ... | ... |
-| Rate per 100k people | ... | ... |
-| Safety Score | XX/100 | ... |
-| Year-on-Year Change | ... | ... |
-| 3-Year Trend | ... | ... |
+|--------|-------|------------|
+| Overall Crime Rating | ${enhancedData.crimeStatistics?.overallRating || 'Medium'} | ${enhancedData.crimeStatistics?.comparedToStateAverage || 'X% higher/lower than state average'} |
+| Rate per 100,000 people | ${enhancedData.crimeStatistics?.ratePer100k || 'X,XXX'} | Latest 12 months |
+| Safety Score | ${enhancedData.crimeStatistics?.safetyScore || 'XX'}/100 | - |
+| Year-on-Year Change | ${enhancedData.crimeStatistics?.yoyChange || '-X.X'}% | - |
+| 3-Year Trend | ${enhancedData.crimeStatistics?.threeYearTrend || '-X.X'}% | [Improving/Stable/Worsening] |
 
-# 15. Crime Breakdown
-| Category | Incidents | Percentage |
+**Crime Profile Analysis:**
 
-[Include narrative on risk profile]
+| Offence Category | Incidents | Percentage |
+|-----------------|-----------|------------|
+| Property Offences | ${enhancedData.crimeStatistics?.breakdown?.property?.incidents || 'X,XXX'} | ${enhancedData.crimeStatistics?.breakdown?.property?.percentage || 'XX'}% |
+| Violent Offences | ${enhancedData.crimeStatistics?.breakdown?.violent?.incidents || 'XXX'} | ${enhancedData.crimeStatistics?.breakdown?.violent?.percentage || 'XX'}% |
+| Drug Offences | ${enhancedData.crimeStatistics?.breakdown?.drug?.incidents || 'XXX'} | ${enhancedData.crimeStatistics?.breakdown?.drug?.percentage || 'XX'}% |
+| Public Order Offences | ${enhancedData.crimeStatistics?.breakdown?.publicOrder?.incidents || 'X,XXX'} | ${enhancedData.crimeStatistics?.breakdown?.publicOrder?.percentage || 'XX'}% |
 
-# 16. Property-Level Information
-| Property Characteristic | Estimated Value |
-| Property Type | ... |
-| Land Size | ... |
-| Bedrooms | ... |
-| Bathrooms | ... |
-| Parking | ... |
-| Year Built | ... |
-| Condition | ... |
-| Estimated Value | $XXX,XXX |
+[Suburb]'s crime profile reflects typical suburban characteristics, with property offences ([XX]%) representing the largest category, primarily comprising theft, break-and-enter, and motor vehicle theft incidents. Violent offences account for [XX]% of incidents, [comparison to property crimes]. The overall crime rate of [X,XXX] per 100,000 population is approximately [X]% [higher/lower] than the [State] state average; however, the critical positive indicator is the 3-year [direction] trend of [X.X]%, indicating [interpretation].
 
-[Include property description. CRITICAL: When comparing to median prices, ONLY include comparisons if the property price is HIGHER than the median (positive comparison showing value or premium). NEVER include comparisons when the property price is LOWER than the median (negative comparison). If the property is below median, simply omit the comparison entirely.]
+The year-on-year change of [X.X]% suggests [trend assessment]. The safety score of [XX]/100 positions [Suburb] as a [safety assessment] suburb, consistent with [suburb type] areas. For investment purposes, the [declining/stable/increasing] crime trend is [significance assessment].
 
-# 17. Purchase & Ongoing Costs (Annual)
+**Data Source:** [State] Bureau of Crime Statistics and Research (BOCSAR), [URL]
+
+---
+
+# Property-Level Information
+
+**Property Address:** ${formattedInput}
+
+**Property Characteristics:**
+
+Based on ${documentContent ? 'the provided property listing data' : 'location intelligence and comparable market evidence'} for [Street] properties in [Suburb], ${documentContent ? 'this property exhibits' : 'typical residential properties in this location exhibit'} the following profile:
+
+| Property Characteristic | ${documentContent ? 'Value' : 'Estimated Value'} |
+|------------------------|-------|
+| Property Type | ${propertyDetails?.propertyType || 'Single-family house'} |
+| Land Size | ${propertyDetails?.landSizeSqm ? propertyDetails.landSizeSqm + ' m²' : 'Estimated XXX-XXX m² (typical for suburb)'} |
+| Bedrooms | ${propertyDetails?.beds || 'X (typical family home)'} |
+| Bathrooms | ${propertyDetails?.baths || 'X-X (typical modern standard)'} |
+| Parking | ${propertyDetails?.carSpaces || 'X-X spaces (garaging and driveway)'} |
+| Year Built | ${propertyDetails?.yearBuilt || 'Estimated XXXX-XXXX (modern suburban standard)'} |
+| Condition | ${propertyDetails?.condition || 'Good to excellent (typical for maintained homes)'} |
+
+**${documentContent ? 'Property Price' : 'Estimated Property Value'}:** $${propertyDetails?.price?.toLocaleString() || 'X,XXX,XXX'} AUD
+
+This valuation reflects typical [Suburb] [property type] prices for [configuration description] on [land description]. The ${documentContent ? 'price' : 'estimate'} is based on the suburb's positioning as [suburb characteristics], and [infrastructure/transport factors].
+
+**Property Position Relative to Market:**
+
+[Suburb] [property type] at this specification typically command [premium/discount] pricing relative to [comparison suburbs] due to [factors]. Properties on [Street] benefit from [specific advantages].
+
+---
+
+# Purchase & Ongoing Costs (Annual)
+
+**Assumptions:**
+- Property Price: $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} AUD
+- Deposit: 20% = $${enhancedData.financials?.initialCosts?.deposit?.toLocaleString() || 'XXX,XXX'}
+- Loan Amount: $${enhancedData.financials?.initialCosts?.loanAmount?.toLocaleString() || 'X,XXX,XXX'}
+- Loan Term: 30 years
+- Interest Rate: ${enhancedData.financials?.loanDetails?.interestRate || 6.5}%
+
+**Purchase Costs:**
+
 | Cost Category | Amount (AUD) | Calculation Method |
-| Property Price | $XXX,XXX | ... |
-| Stamp Duty | $XX,XXX | ... |
-| Council Rates | $X,XXX | ... |
-| Water Rates | $XXX | ... |
-| Property Management Fee | $X,XXX | ... |
-| Insurance | $X,XXX | ... |
+|---------------|--------------|-------------------|
+| Property Price | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | Reference value |
+| Stamp Duty | $${enhancedData.financials?.initialCosts?.stampDuty?.toLocaleString() || 'XX,XXX'} | [State]: [X.XX]% on $[X.XXm] (approximate marginal rate) |
+| Legal Fees | $${enhancedData.financials?.initialCosts?.legalFees?.toLocaleString() || '1,200'} | Typical conveyancing costs |
+| Building Inspection | $600 | Standard pre-purchase inspection |
+| Total Acquisition Cost | $${enhancedData.financials?.initialCosts?.totalUpfront?.toLocaleString() || 'X,XXX,XXX'} | Property + all purchase costs |
+
+**Annual Ongoing Costs:**
+
+| Cost Category | Amount (AUD) | Calculation Method |
+|---------------|--------------|-------------------|
+| Council Rates | $${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'} | Local council rates notice |
+| Water Rates | $${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'} | Estimated based on local water authority |
+| Property Management Fee | $${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'} | 7% × annual rent |
+| Property Insurance | $${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'} | Typical comprehensive home insurance |
 | Maintenance | $1,500 | Fixed amount per instructions |
-| Land Tax | $X,XXX | State-specific calculation |
-| **Total Annual Costs** | **$XX,XXX** | **Sum of ALL ongoing costs including Land Tax (Council Rates + Water Rates + Property Management + Insurance + Maintenance + Land Tax - exclude letting fees)** |
+| Land Tax | $${enhancedData.financials?.annualCosts?.landTax?.toLocaleString() || 'X,XXX'} | State land tax threshold for investors |
+| **Total Annual Costs** | **$${enhancedData.financials?.annualCosts?.totalAnnual?.toLocaleString() || 'X,XXX'}** | Sum of ALL ongoing costs |
 
-# 18. Recent Comparable Sales (Last 12 Months)
-| Address | Sale Price | Sale Date | Beds/Baths/Parking | Distance |
+**Land Tax Calculation (Information Only):**
 
-# 19. Recent Comparable Rentals
-| Address | Weekly Rent | Property Type | Location |
+[State] Land Tax applies to investment properties with aggregated land value exceeding $[threshold]. For a property at $[price] with standard land value allocation (~[XX]% = $[value]), land tax would be approximately: [calculation]. However, for comparative purposes, if threshold exceeded: [X.X]% marginal rate applies to amount over threshold.
 
-[Include analysis of comparables]
+Note: Land tax is highly property-specific and depends on aggregated landholding. Recommend consultation with [State] Revenue for accurate calculation.
 
-# 20. Base Assumptions
-${enhancedData.financials ? `- Property Price: $${enhancedData.financials.initialCosts?.propertyValue?.toLocaleString() || 'XXX,XXX'}
-- Deposit: 20% - $${enhancedData.financials.initialCosts?.deposit?.toLocaleString() || 'XXX,XXX'}
-- Loan Amount: $${enhancedData.financials.initialCosts?.loanAmount?.toLocaleString() || 'XXX,XXX'}
-- Interest Rate: ${enhancedData.financials.loanDetails?.interestRate || 6.5}%
-- Loan Term: 30 years
-- Weekly Rent: $${enhancedData.financials.income?.weeklyRent || 'XXX'} ($${((enhancedData.financials.income?.weeklyRent || 0) * 52).toLocaleString()} annually)
-- Property Management: 7% × $${((enhancedData.financials.income?.weeklyRent || 0) * 52).toLocaleString()} annual rent = $${Math.round(((enhancedData.financials.income?.weeklyRent || 0) * 52) * 0.07).toLocaleString()}
-- Maintenance: $1,500 annually (fixed)
-- Council Rates: $${enhancedData.financials.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'} annually
-- Water Rates: $${enhancedData.financials.annualCosts?.waterRates?.toLocaleString() || 'XXX'} annually
-- Insurance: $${enhancedData.financials.annualCosts?.landlordInsurance?.toLocaleString() || 'X,XXX'} annually` : `- Property Price: $XXX,XXX
-- Deposit: 20% - $XXX,XXX
-- Loan Amount: $XXX,XXX
-- Interest Rate: 6.5%
-- Loan Term: 30 years
-- Weekly Rent: $XXX ($XX,XXX annually)
-- Property Management: 7% × $XX,XXX annual rent = $X,XXX
-- Maintenance: $1,500 annually (fixed)
-- Council Rates: $X,XXX annually
-- Water Rates: $XXX annually
-- Insurance: $X,XXX annually`}
+---
 
-# 21. Gross & Net Yield Calculation
-**IMPORTANT: Annual Expenses here must EXCLUDE Land Tax. Land Tax is shown in Section 17 Total Annual Costs but is NOT included in the net yield calculation.**
-**CRITICAL: For Annual Income calculation column, show the WEEKLY rent amount (e.g., $629) multiplied by 52, NOT the annual amount. Example: "$629 × 52 weeks" NOT "$32,708 × 52 weeks"**
+# Rental Assessment & Yield Calculation
+
+**Comparable Rental Evidence:**
+
+| Property Type | Estimated Weekly Rent | Annual Rental Income |
+|--------------|----------------------|---------------------|
+| ${propertyDetails?.beds || 'X'}-Bed ${propertyDetails?.propertyType || 'Family Home'} | $${propertyDetails?.weeklyRent || (enhancedData.financials?.income?.weeklyRent) || 'XXX'} - $${(propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50 || 'XXX'} | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} - $${(((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50) * 52).toLocaleString() || 'XX,XXX'} |
+
+**Selected Rental Assumption:** $${propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'}/week = $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} annually (${documentContent ? 'based on listing data' : 'conservative estimate'})
+
+**Gross Rental Yield Calculation:**
+
 | Metric | Calculation | Value |
-| Gross Rental Yield | $[annual rent] ÷ $[property price] × 100 | X.XX% |
-| Annual Income | $[WEEKLY rent] × 52 weeks | $XX,XXX |
-| Annual Expenses | Council Rates + Water Rates + Property Management + Insurance + Maintenance (EXCLUDING Land Tax) | $X,XXX |
-| Net Annual Return | $[annual income] - $[annual expenses] | $XX,XXX |
-| Net Rental Yield | $[net annual return] ÷ $[property price] × 100 | X.XX% |
+|--------|-------------|-------|
+| Annual Rental Income | $${propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Property Price | Reference value | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
+| Gross Rental Yield | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} ÷ $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} × 100 | ${enhancedData.financials?.keyMetrics?.grossRentalYield || 'X.XX'}% |
 
-# 22. Principal & Interest Loan
+**Net Rental Yield Calculation:**
+
+| Metric | Calculation | Value |
+|--------|-------------|-------|
+| Annual Income | $${propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Annual Expenses | Property Mgmt + Maintenance + Rates + Insurance | $${enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax?.toLocaleString() || 'X,XXX'} |
+| Net Annual Return | Income - Expenses | $${(((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52) - (enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax || 0)).toLocaleString() || 'XX,XXX'} |
+| Net Rental Yield | Net Return ÷ Property Price × 100 | ${enhancedData.financials?.keyMetrics?.netRentalYield || 'X.XX'}% |
+
+**Yield Commentary:**
+
+The gross rental yield of [X.XX]% and net yield of [X.XX]% reflect typical [Suburb] residential rental returns. These yields are [comparison to other areas]. The [modest/strong] rental yield positioning suggests this property is primarily suitable for investors prioritizing [capital growth/rental income], typical of [suburb characteristics].
+
+---
+
+# Loan Structure & Repayment Analysis
+
+**Loan Assumptions:**
+- Loan Amount: $${enhancedData.financials?.initialCosts?.loanAmount?.toLocaleString() || 'X,XXX,XXX'}
+- Interest Rate: ${enhancedData.financials?.loanDetails?.interestRate || 6.5}%
+- Loan Term: 30 years
+- Repayment: Annual calculations
+
+**Principal & Interest Loan (P&I):**
+
+Monthly repayment formula: M = P[r(1+r)^n]/[(1+r)^n-1]
+
+Where:
+- P = $${enhancedData.financials?.initialCosts?.loanAmount?.toLocaleString() || 'X,XXX,XXX'}
+- r = ${enhancedData.financials?.loanDetails?.interestRate || 6.5}%/12 = ${((enhancedData.financials?.loanDetails?.interestRate || 6.5) / 12 / 100).toFixed(6)} (monthly)
+- n = 360 months
+
 | Item | Amount (Annual) | Amount (Monthly) |
+|------|-----------------|------------------|
+| Principal & Interest Repayment | $${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} | $${enhancedData.financials?.loanDetails?.monthlyPayment?.toLocaleString() || 'X,XXX'} |
+| Interest Paid (Year 1) | $${(enhancedData.financials?.loanDetails?.interestOnlyPayment ? enhancedData.financials.loanDetails.interestOnlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} | $${enhancedData.financials?.loanDetails?.interestOnlyPayment?.toLocaleString() || 'X,XXX'} |
+| Principal Repaid (Year 1) | $${((enhancedData.financials?.loanDetails?.monthlyPayment || 0) * 12 - (enhancedData.financials?.loanDetails?.interestOnlyPayment || 0) * 12).toLocaleString() || 'X,XXX'} | $${((enhancedData.financials?.loanDetails?.monthlyPayment || 0) - (enhancedData.financials?.loanDetails?.interestOnlyPayment || 0)).toLocaleString() || 'XXX'} |
 
-# 23. Interest-Only Loan (First 5 Years)
+Note: Blended calculation for annual presentation; actual P&I repayments decline monthly as principal portion increases.
+
+**Interest-Only Loan (First 5 Years):**
+
 | Item | Amount (Annual) | Amount (Monthly) |
+|------|-----------------|------------------|
+| Interest-Only Repayment | $${(enhancedData.financials?.loanDetails?.interestOnlyPayment ? enhancedData.financials.loanDetails.interestOnlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} | $${enhancedData.financials?.loanDetails?.interestOnlyPayment?.toLocaleString() || 'X,XXX'} |
 
-# 24. Sensitivity Analysis
-| Scenario | Interest Rate | Annual Cashflow |
+---
 
-[Include narrative on cashflow]
+# Cashflow Analysis
 
-# 25. Property Value Projections ($)
-| Year | Conservative (2%) | Base (4%) |
+**Cashflow Analysis - Principal & Interest Scenario (Year 1):**
 
-# 26. Rental Income Projections ($)
-| Year | Conservative (2%) | Base (3%) |
+| Item | Amount (AUD) |
+|------|--------------|
+| Gross Rental Income | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Less: P&I Loan Repayment | ($${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
+| Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
+| Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
+| Less: Property Management (7%) | ($${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
+| Less: Insurance | ($${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
+| Less: Maintenance | ($1,500) |
+| **Net Cashflow Before Tax** | **($${Math.abs(enhancedData.financials?.keyMetrics?.annualNet || 0).toLocaleString() || 'XX,XXX'})** |
 
-# 27. Cumulative Cashflow Projections ($)
-| Year | Conservative | Base |
+**Cashflow Analysis - Interest-Only Scenario (Year 1):**
 
-# 28. Final Loan-to-Value Ratio (LVR)
-| Scenario | Year 10 LVR |
+| Item | Amount (AUD) |
+|------|--------------|
+| Gross Rental Income | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Less: Interest-Only Repayment | ($${(enhancedData.financials?.loanDetails?.interestOnlyPayment ? enhancedData.financials.loanDetails.interestOnlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
+| Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
+| Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
+| Less: Property Management (7%) | ($${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
+| Less: Insurance | ($${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
+| Less: Maintenance | ($1,500) |
+| **Net Cashflow Before Tax** | **($${Math.abs((enhancedData.financials?.keyMetrics?.annualNet || 0) - ((enhancedData.financials?.loanDetails?.monthlyPayment || 0) - (enhancedData.financials?.loanDetails?.interestOnlyPayment || 0)) * 12).toLocaleString() || 'XX,XXX'})** |
 
-[Include projection narrative]
+**Cashflow Commentary (150+ words required):**
 
-# 29. Overall Investment Score
-Investment Grade: [GRADE]
-Total Score: XX/100
-Recommendation: [BUY/HOLD/SELL]
+Both P&I and Interest-Only loan structures produce negative cash flow in Year 1, with the property requiring approximately $[XX,XXX] annually (P&I) or $[XX,XXX] annually (IO) in additional investor capital. This negative cashflow is typical for established suburbs where rental yields lag loan serviceability costs. The investor must be positioned to cover this annual shortfall, or alternatively, factor capital growth appreciation as the primary return driver.
 
-# 30. Investment Score Breakdown
+The P&I scenario provides superior long-term economics as principal repayment builds equity, while the Interest-Only scenario maximizes tax deductibility of interest expense during the IO period but offers no principal reduction.
+
+---
+
+# Sensitivity Analysis
+
+**Impact of Interest Rate Variations on Annual Cashflow (P&I Scenario):**
+
+| Scenario | Interest Rate | Annual Loan Repayment | Annual Cashflow |
+|----------|---------------|----------------------|-----------------|
+| Stress Case | ${(enhancedData.financials?.loanDetails?.interestRate || 6.5) + 1}% (+1.0%) | $${(enhancedData.financials?.sensitivityAnalysis?.interestRateUp?.monthlyPayment ? enhancedData.financials.sensitivityAnalysis.interestRateUp.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} | ($${Math.abs(enhancedData.financials?.sensitivityAnalysis?.interestRateUp?.annualNet || 0).toLocaleString() || 'XX,XXX'}) |
+| Base Case | ${enhancedData.financials?.loanDetails?.interestRate || 6.5}% | $${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} | ($${Math.abs(enhancedData.financials?.keyMetrics?.annualNet || 0).toLocaleString() || 'XX,XXX'}) |
+| Improvement Case | ${(enhancedData.financials?.loanDetails?.interestRate || 6.5) - 1}% (-1.0%) | $${(enhancedData.financials?.sensitivityAnalysis?.interestRateDown?.monthlyPayment ? enhancedData.financials.sensitivityAnalysis.interestRateDown.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} | ($${Math.abs(enhancedData.financials?.sensitivityAnalysis?.interestRateDown?.annualNet || 0).toLocaleString() || 'XX,XXX'}) |
+
+**Sensitivity Commentary (150+ words required):**
+
+A 1% increase in interest rate (to [X.X]%) would increase annual loan repayments by $[X,XXX], pushing negative cashflow to approximately ($[XX,XXX]), requiring significantly higher investor capital contributions. Conversely, a 1% decrease in rates (to [X.X]%) would reduce annual repayments to $[XX,XXX], improving the negative cashflow position to ($[XX,XXX]).
+
+This sensitivity analysis demonstrates that the property's cashflow profile is interest-rate sensitive. In a rising-rate environment, negative cashflow pressures intensify, requiring investors to have substantial capital reserves. The property is fundamentally a capital growth play, not a cashflow-positive investment, making it unsuitable for investors dependent on rental income to service debt.
+
+---
+
+# 10-Year Investment Projections
+
+**Projection Assumptions:**
+- Conservative Scenario: 2% annual price growth, 2% annual rent growth
+- Base Case Scenario: 4% annual price growth, 3% annual rent growth
+- Optimistic Scenario: 6% annual price growth, 4% annual rent growth
+
+**Property Value Projections (AUD):**
+
+| Year | Conservative (2%) | Base Case (4%) | Optimistic (6%) |
+|------|-------------------|----------------|-----------------|
+| 0 | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
+${enhancedData.financials?.projections?.conservative ? enhancedData.financials.projections.conservative.slice(0, 10).map((p: any, i: number) => 
+`| ${i + 1} | $${p.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.moderate?.[i]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.optimistic?.[i]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} |`
+).join('\n') : '| 1-10 | [Calculate based on growth rates] | [Calculate based on growth rates] | [Calculate based on growth rates] |'}
+
+**Rental Income Projections (Annual - AUD):**
+
+| Year | Conservative (2%) | Base Case (3%) | Optimistic (4%) |
+|------|-------------------|----------------|-----------------|
+${enhancedData.financials?.projections?.conservative ? enhancedData.financials.projections.conservative.slice(0, 10).map((p: any, i: number) => 
+`| ${i + 1} | $${p.annualRent?.toLocaleString() || 'XX,XXX'} | $${enhancedData.financials?.projections?.moderate?.[i]?.annualRent?.toLocaleString() || 'XX,XXX'} | $${enhancedData.financials?.projections?.optimistic?.[i]?.annualRent?.toLocaleString() || 'XX,XXX'} |`
+).join('\n') : '| 1-10 | [Calculate based on rent growth] | [Calculate based on rent growth] | [Calculate based on rent growth] |'}
+
+**Cumulative Cashflow Projections (10 Years - AUD):**
+
+Cashflow = Annual Rental Income - Annual Operating Costs - Annual Loan Repayments
+
+**Annual Operating Costs (excluding loan repayment):** $${enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax?.toLocaleString() || 'X,XXX'}
+**Annual P&I Repayment:** $${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} (Year 1, declining as principal portion increases)
+
+| Year | Conservative (2%) | Base Case (3%) | Optimistic (4%) |
+|------|-------------------|----------------|-----------------|
+${enhancedData.financials?.projections?.conservative ? enhancedData.financials.projections.conservative.slice(0, 10).map((p: any, i: number) => 
+`| ${i + 1} | ($${Math.abs(p.cashFlow || 0).toLocaleString()}) | ($${Math.abs(enhancedData.financials?.projections?.moderate?.[i]?.cashFlow || 0).toLocaleString()}) | ($${Math.abs(enhancedData.financials?.projections?.optimistic?.[i]?.cashFlow || 0).toLocaleString()}) |`
+).join('\n') : '| 1-10 | [Calculate] | [Calculate] | [Calculate] |'}
+| **10-Year Total** | **($${Math.abs(enhancedData.financials?.projections?.conservative?.reduce((sum: number, p: any) => sum + (p.cashFlow || 0), 0) || 0).toLocaleString() || 'XXX,XXX'})** | **($${Math.abs(enhancedData.financials?.projections?.moderate?.reduce((sum: number, p: any) => sum + (p.cashFlow || 0), 0) || 0).toLocaleString() || 'XXX,XXX'})** | **($${Math.abs(enhancedData.financials?.projections?.optimistic?.reduce((sum: number, p: any) => sum + (p.cashFlow || 0), 0) || 0).toLocaleString() || 'XXX,XXX'})** |
+
+**Projected Loan-to-Value Ratio (LVR) - Year 10:**
+
+Loan Balance at Year 10: Approximately $[XXX,XXX] (declining from initial $${enhancedData.financials?.initialCosts?.loanAmount?.toLocaleString() || 'X,XXX,XXX'})
+
+| Scenario | Year 10 Property Value | Loan Balance | LVR |
+|----------|------------------------|--------------|-----|
+| Conservative (2%) | $${enhancedData.financials?.projections?.conservative?.[9]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.conservative?.[9]?.loanBalance?.toLocaleString() || 'XXX,XXX'} | ${enhancedData.financials?.projections?.conservative?.[9]?.lvr || 'XX'}% |
+| Base Case (4%) | $${enhancedData.financials?.projections?.moderate?.[9]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.moderate?.[9]?.loanBalance?.toLocaleString() || 'XXX,XXX'} | ${enhancedData.financials?.projections?.moderate?.[9]?.lvr || 'XX'}% |
+| Optimistic (6%) | $${enhancedData.financials?.projections?.optimistic?.[9]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.optimistic?.[9]?.loanBalance?.toLocaleString() || 'XXX,XXX'} | ${enhancedData.financials?.projections?.optimistic?.[9]?.lvr || 'XX'}% |
+
+**10-Year Projection Commentary (200+ words required):**
+
+The conservative scenario (2% growth) produces a Year 10 Property Value of $[X,XXX,XXX] representing cumulative Capital Growth of [XX]%. The LVR declines to [XX]% through principal repayment, though the property remains [leverage assessment].
+
+The base case scenario (4% growth) delivers Year 10 value of $[X,XXX,XXX], producing substantial capital appreciation of $[XXX,XXX] ([XX.X]%). LVR declines to [XX]%, reflecting healthy equity accumulation through both property appreciation and loan reduction.
+
+The optimistic scenario (6% growth) projects Year 10 value of $[X,XXX,XXX], with capital gains of $[X,XXX,XXX] ([XX.X]%). LVR declines to [XX]%, indicating strong equity position and reduced leverage.
+
+**Cumulative Cashflow:** All scenarios produce negative cumulative cashflow over the 10-year period, ranging from ($[XXX,XXX]) in the conservative case to ($[XXX,XXX]) in the optimistic case. This negative cashflow is offset by capital appreciation, making the investment viable only for investors capable of sustaining annual shortfalls and targeting long-term wealth accumulation through capital growth rather than rental income.
+
+**Critical Insight:** This property is fundamentally structured as a Capital Growth investment, with [X]% annual property appreciation expectations, with rental income insufficient to cover debt servicing costs.
+
+---
+
+# Investment Score Analysis
+
+**CRITICAL NOTE:** ${documentContent ? 'Analysis based on provided property data and market research.' : 'Insufficient comparable market data and recent sales analysis specific to this property may prevent calculation of a precise investment score. The following analysis is based on suburb-level characteristics and general market positioning.'}
+
+**Investment Grade:** ${enhancedData.investmentScore?.grade || 'B'} (${documentContent ? 'Based on property analysis' : 'Based on suburb fundamentals - requires property-specific assessment'})
+
+**Total Score:** ${enhancedData.investmentScore?.totalScore || 'XX'}/100
+
+**Recommendation:** ${enhancedData.investmentScore?.recommendation || 'HOLD'} ${documentContent ? '' : 'with caution pending property-specific verification'}
+
+**Score Breakdown:**
+
 | Component | Weight (%) | Score (/100) |
+|-----------|------------|--------------|
+| Growth Score | 30% | ${enhancedData.investmentScore?.breakdown?.growthScore?.score || 'XX'} |
+| Location Score | 25% | ${enhancedData.investmentScore?.breakdown?.locationScore?.score || 'XX'} |
+| Yield Score | 20% | ${enhancedData.investmentScore?.breakdown?.yieldScore?.score || 'XX'} |
+| Demand Score | 15% | ${enhancedData.investmentScore?.breakdown?.demandScore?.score || 'XX'} |
+| Risk Score | 10% | ${enhancedData.investmentScore?.breakdown?.riskScore?.score || 'XX'} |
 
-# 31. SWOT Analysis
-**Strengths:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
-- [bullet point with detailed explanation of why this is a strength and its investment impact]
+---
 
-**Weaknesses:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
-- [bullet point with detailed explanation of the weakness and its investment impact]
+# SWOT Analysis
 
-**Opportunities:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
-- [bullet point with detailed explanation of the opportunity and potential upside]
+**Strengths (Minimum 10 bullet points required, each with 2-3 sentence explanation):**
 
-**Threats:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
-- [bullet point with detailed explanation of the threat and risk mitigation]
+- **Exceptional location:** Walk score of [XX]/100 provides pedestrian accessibility without car dependency. This reduces transport costs and enhances lifestyle convenience for residents.
+- **Metro connectivity:** [Metro Line] opened [Year], fundamentally improving transport profile and CBD commute time to [XX] minutes. This infrastructure investment typically drives long-term capital growth.
+- **Education infrastructure:** [XX] schools within postcode, with multiple highly-rated early learning facilities ([X.X] stars), supporting family demand. Quality schools are a primary driver of family property purchases.
+- **Employment dynamics:** Strong job growth (+[X.X]% annually, +[XX.X]% over 5 years) across professional services, healthcare, and education sectors. Employment growth directly correlates with housing demand.
+- **Population growth drivers:** Family-friendly positioning, quality schools, modern recreational facilities, and improved transport creating sustained rental and owner-occupier demand.
+- **Demographic alignment:** Employment rate [XX.X]%, unemployment [X.X]%, median income $[XX,XXX], supporting strong renter and buyer demand.
+- **Safety trends:** Crime [declining/stable] [X.X]% over 3 years despite moderate overall crime rating. Improving safety metrics support capital appreciation.
+- **Proximity to green space:** [Reserve/Park] immediately adjacent ([X.X] km) to subject property. Green space proximity enhances property values and lifestyle appeal.
+- **Established suburb:** Mature residential area with well-maintained properties and established community infrastructure. Established suburbs typically offer more stable capital growth.
+- **[Additional strength based on property specifics]**
 
-[Include 200+ word SWOT summary narrative analyzing the strategic assessment, location fundamentals, financial structure, and risk profile]
+**Weaknesses (Minimum 10 bullet points required, each with 2-3 sentence explanation):**
 
-# 32. Top 3 Investment Opportunities
-1. **[Opportunity Title - e.g., "Capital Appreciation Potential - $XXX,XXX to $X,XXX,XXX"]**
-[150+ words describing the opportunity with specific dollar amounts, growth percentages, leverage calculations, and why this opportunity is significant]
+- **Weak rental yield:** Gross yield [X.XX]%, net yield [X.XX]% insufficient to cover loan serviceability; requires investor capital support. This is typical for growth-focused suburbs but requires careful financial planning.
+- **Negative cashflow:** Year 1 cashflow negative $[XX,XXX] (P&I) or ($[XX,XXX]) (IO), with cumulative 10-year shortfalls of ($[XXX,XXX]) to ($[XXX,XXX]). Investors must have stable income to sustain this commitment.
+- **Interest rate sensitivity:** [X]% rate rise increases annual cashflow deficit by $[X,XXX]; vulnerable in tightening rate environment. Rising rates could strain investor cash reserves.
+- **Environmental risks:** [High/Moderate] bushfire risk rating requires verification; flood risk assessment pending property-specific analysis. Environmental risks may impact insurance costs.
+- **Market valuation:** Estimated $[X,XXX,XXX] price point reflects premium positioning relative to [comparison] suburbs; capitalizes growth expectations. Premium pricing reduces margin for error.
+- **Leverage structure:** 20% deposit requires $[X,XXX,XXX] loan financing; LVR declines [slowly/moderately] over 10-year period. High leverage amplifies both gains and losses.
+- **Rent growth constraints:** Rental income growing [X-X]% annually insufficient to improve cashflow economics; persistent shortfall across projections.
+- **Premium pricing:** High purchase price relative to rental income suggests limited margin for economic downturns or rental market compression.
+- **Demand concentration:** Market appeal primarily to families; reduces buyer base diversity and increases exposure to family-formation demographic shifts.
+- **[Additional weakness based on property specifics]**
 
-2. **[Opportunity Title]**
-[150+ words]
+**Opportunities (Minimum 10 bullet points required, each with 2-3 sentence explanation):**
 
-3. **[Opportunity Title]**
-[150+ words]
+- **Capital appreciation:** Base case [X]% annual growth produces $[XXX,XXX] capital gains over 10 years; optimistic case delivers $[X,XXX,XXX] gains. Leverage amplifies returns on investor equity.
+- **Debt reduction:** Principal repayment over 30-year term builds equity; loan balance declining $[XXX,XXX] over 10 years creates wealth accumulation. This is forced savings discipline.
+- **Rental income growth:** Conservative [X-X]% annual rent increases provide inflation hedge; Year 10 rental income reaching $[XX,XXX]-$[XX,XXX] annually.
+- **Interest rate improvement:** Current [X.XX]% rate provides potential for downward movement; 1% decline improves cashflow by $[X,XXX] annually.
+- **Infrastructure development:** Planned residential and commercial developments in [Suburb] region support continued population growth and property appreciation.
+- **Employment expansion:** Continued job growth in healthcare (+[X.X]%), professional services (+[X.X]%), and education creates sustained demand for rental properties.
+- **Family lifecycle demand:** Strong family positioning attracts growing cohort of families seeking suburban education and lifestyle amenities.
+- **Leverage amplification:** Capital appreciation on $[X.XX]m asset magnified through 80% financing; [X]% price growth on fully-leveraged position produces enhanced returns relative to deposit.
+- **Tax deductibility:** Interest expense on investment property fully tax-deductible, improving after-tax cashflow position for investors in higher tax brackets.
+- **Equity release optionality:** Accumulated equity over 10 years ($[XXX]k-$[XXX]k depending on growth scenario) enables future capital access for portfolio expansion.
 
-# 33. Top 3 Investment Risks
-1. **[Risk Title - e.g., "Structural Cashflow Deficit Requiring Ongoing Investor Capital Support"]**
-[150+ words describing the risk with specific dollar amounts, impact quantification, and under what conditions this risk materializes]
+**Threats (Minimum 10 bullet points required, each with 2-3 sentence explanation):**
 
-2. **[Risk Title]**
-[150+ words]
+- **Interest rate increases:** [X]%+ rates creating ($[XX,XXX]) annual cashflow deficit. Rising rates reduce affordability and may suppress property values.
+- **Rental market softening:** Oversupply in [Suburb] rental market could compress yields below [X.XX]%; downward rent pressure prevents cashflow improvement.
+- **Economic recession:** Economic downturn could suppress both capital growth and rental demand; [X]% growth vulnerable if growth turns negative.
+- **Property price correction:** Outer suburbs exposed to correction risk if interest rates remain elevated; premium valuation relative to yield vulnerable to repricing.
+- **Bushfire risk:** High bushfire rating may increase insurance costs, trigger evacuation requirements, or result in property damage requiring major repairs.
+- **Flood risk:** Pending flood assessment could reveal constraints on insurability, lender appetite, or future development rights.
+- **Family demographic shift:** Aging population or migration patterns could reduce demand from family cohorts, decreasing rental pool and owner-occupier competition.
+- **Transport demand saturation:** Metro line usage may not meet projections; reduced commuter demand could moderate capital growth expectations.
+- **Regulatory changes:** Negative gearing restrictions, capital gains tax changes, or rental price controls could impact investment economics.
+- **Concentration risk:** Portfolio overly exposed to [region] family suburbs; lacks geographic diversification of capital.
 
-3. **[Risk Title]**
-[150+ words]
+**SWOT Analysis Summary (200+ words required):**
 
-# 34. Disclaimer & Data Limitations
+**Strategic Assessment:**
+
+The [Property Address] investment presents a growth-focused opportunity suitable for investors with long-term capital, capacity to absorb negative cashflow, and confidence in [X-X]% annual [City] property appreciation. The property is structurally unsuitable for income-focused investors or those dependent on rental cashflow.
+
+Location fundamentals are [exceptional/strong/moderate] - the walk score of [XX]/100, proximity to [Transport line], comprehensive schools and recreational facilities, and strong employment growth create sustained demand drivers. Demographic tailwinds are supportive, with low unemployment ([X.X]%), strong wage growth (+[X.X]% annually), and [suburb type] positioning.
+
+Financial structure is inherently cashflow-negative, requiring approximately $[XX,XXX]-$[XX,XXX] annual investor capital support throughout the 10-year projection period. This structure only works if investors target $[XXX,XXX]-$[X,XXX,XXX]+ capital appreciation offsetting annual shortfalls. Risk profile is [elevated/moderate], particularly regarding interest rate sensitivity (1% increase adds $[X,XXX] annual cashflow pressure) and [unverified/verified] environmental hazards.
+
+**Investment suitability:**
+
+Best suited to investors who (1) have secure employment supporting annual $[XX]k+ cashflow contributions, (2) seek wealth accumulation through capital appreciation rather than income generation, (3) possess long-term 10+ year investment horizon, (4) can tolerate leverage and interest rate sensitivity, and (5) believe in [X]%+ annual appreciation through multiple economic cycles.
+
+---
+
+# Top 3 Investment Opportunities
+
+**1. Capital Appreciation Potential - $${Math.round((enhancedData.financials?.projections?.moderate?.[9]?.propertyValue || 0) - (propertyDetails?.price || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'XXX,XXX'} to $${Math.round((enhancedData.financials?.projections?.optimistic?.[9]?.propertyValue || 0) - (propertyDetails?.price || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'X,XXX,XXX'} (10-Year Projection)**
+
+Base case scenario projects Property Value of $[X,XXX,XXX] at Year 10, representing capital gains of $[XXX,XXX] ([XX.X]% total return). Optimistic scenario delivers $[X,XXX,XXX] value with gains of $[X,XXX,XXX] ([XX.X]% return). These projections assume [X-X]% annual appreciation, consistent with historical [City] metropolitan trends and supported by [Suburb]'s improving infrastructure, employment growth, and population inflows. Leverage amplifies returns: $[XXX,XXX] equity deployed generates $[XXX,XXX]+ appreciation, producing [X.X]x to [X.X]x return on equity invested. This capital appreciation fundamentally underwrites the investment case and offsets negative cashflow across projection period.
+
+**2. Leveraged Equity Accumulation Through Debt Reduction**
+
+Over 10 years, principal repayment reduces loan balance from $[X,XXX,XXX] to approximately $[XXX,XXX], building equity of $[XXX,XXX] independent of property appreciation. Combined with capital appreciation, total wealth accumulation reaches $[XXX,XXX]-$[X,XXX,XXX] across projection scenarios. This debt reduction is automatic and inevitable, creating forced savings discipline. Accumulated equity provides optionality for future portfolio expansion, home renovation, or accessing capital during market stress periods.
+
+**3. Sustained Employment Growth Driving Rental Demand (+[X.X]% annually, +[XX.X]% over 5 years)**
+
+Strong local job growth across professional services (+[X.X]%), healthcare (+[X.X]%), and education (+[X.X]%) creates sustained demand for rental properties from employed professionals. Labor force participation rate of [XX.X]% and unemployment rate of [X.X]% indicate tight labor market supporting wage growth and rental affordability. Median income of $[XX,XXX] annually positions renters comfortably within serviceability parameters for $[XXX]/week rental commitments. Continued population growth driven by employment expansion supports rental demand resilience, reducing vacancy risk and providing uplift potential as rents normalize toward market levels.
+
+---
+
+# Top 3 Investment Risks
+
+**1. Structural Cashflow Deficit Requiring Ongoing Investor Capital Support**
+
+The property generates negative cashflow of ($[XX,XXX]) annually under base assumptions, with cumulative 10-year shortfalls of ($[XXX,XXX]). This structure requires investors to contribute approximately $[X,XXX] monthly (P&I scenario) or $[X,XXX] monthly (IO scenario) in addition to deposit capital. Investors with insufficient liquid capital, unstable employment, or income constraints cannot sustain this commitment. Life events (job loss, income reduction, health crisis) that impact investor capital capacity create forced-sale risk or default risk. The property is unsuitable for self-funding through rental income and represents a capital commitment, not an income stream.
+
+**2. Interest Rate Sensitivity and Debt Serviceability Pressure**
+
+Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income before accounting for property management, rates, insurance, and maintenance. A 1% rate increase (to [X.X]%) increases annual repayments by $[X,XXX], pushing negative cashflow to ($[XX,XXX])-a [XX]% increase in annual capital requirement. RBA maintains potential for further rate increases if inflation remains sticky; even modest tightening creates material cashflow deterioration. Investors with limited capital buffers face refinancing stress or forced sale risk if rates spike. Conversely, rate reductions provide primary cashflow improvement pathway; any base case reliance on rate cuts represents uncontrollable external dependency.
+
+**3. Environmental Risk: [High/Moderate] Bushfire Rating and Unverified Flood Risk**
+
+[State] experiences regular bushfire seasons, and [Suburb] is rated [LEVEL] for bushfire risk. Specific property-level risk assessment requires verification with [State] Rural Fire Service (RFS); properties in extreme fire risk zones face insurance unavailability or extreme premium escalation. Flood risk is currently [verified/unverified] and requires property coordinates for accurate assessment; potential flooding exposure could impact insurability, lender appetite, or development constraints. Combined environmental risks create tail-risk exposure: (1) insurance premium spikes reducing net yields further, (2) uninsurable property becoming unmarketable, (3) damage events creating unexpected capital calls for repairs, or (4) regulatory evacuation requirements constraining usage or rental marketability. Hazard verification is essential precondition to purchase commitment.
+
+---
+
+# Disclaimer & Data Limitations
+
 **Data Availability & Sourcing:**
-[150+ words explaining data sources (ABS, RBA, Domain, CoreLogic, state authorities) and any limitations]
+
+This investment report synthesizes publicly available data from Australian government agencies (ABS, RBA, RFS, BOCSAR) and commercial sources (Domain, Homely, Location Intelligence). ${documentContent ? 'Property-specific data has been extracted from the provided property listing.' : ''}
 
 **Missing Data Points:**
-- [List specific data points that were unavailable, e.g., "Recent comparable sales", "Property-specific valuation", etc.]
+- Recent comparable sales: ${documentContent ? 'Limited comparable sales data available' : 'Proprietary CoreLogic and SQM Research sales history data not accessible; specific 12-month sales comparables for this address unavailable'}
+- Property-specific valuation: ${documentContent ? 'Based on listing data' : 'Estimated reference price based on typical suburb specifications; actual property valuation requires professional appraisal'}
+- Precise flood risk assessment: Requires property GPS coordinates for AFRIP mapping; general flood risk rated without site-specific analysis
+- Specific bushfire risk rating: Requires [State] RFS property address lookup; area rating provided but property-specific evacuation risk level unknown
+- Rental comparables: ${documentContent ? 'Based on provided listing data and market research' : 'Market rental estimate based on typical suburb rental range; specific property rental assessment unavailable without market listing data'}
+- Council rates: ${documentContent ? 'Estimated based on suburb averages' : 'Estimated based on typical council rates; actual rates require property address verification'}
+- Land tax liability: Simplified analysis; actual land tax depends on aggregated landholding across investor portfolio
 
 **Methodology Notes:**
-- [Explain calculation methods, projection assumptions, and data currency]
+- Loan calculations use standard amortization formulas; actual monthly payments will vary slightly based on lender-specific compounding methods
+- Property appreciation projections (2%, 4%, 6%) are illustrative scenarios; actual outcomes depend on macroeconomic conditions, interest rates, and market cycles
+- Cashflow calculations assume constant interest rates and rents; real-world scenarios involve rate resets, rental market fluctuations, and expense inflation
+- Employment and demographic data sourced from ABS; census data supplemented with quarterly estimates; future workforce data represents trend projections
 
-# 35. Investment Recommendations
+**Recommendations for Verification:**
+[List specific verification steps for the investor to complete before purchase]
+
+---
+
+# Investment Recommendations
+
 **Short-term Actions (Prior to Purchase):**
-- [Specific actionable recommendation with details]
-- [Verification steps to take]
-- [Due diligence requirements]
+
+- Engage professional valuer to obtain formal property valuation for [Property Address]; assess whether ${documentContent ? 'the listed price' : 'estimated reference price'} of $[X,XXX,XXX] accurately reflects current market conditions and property-specific features
+- Conduct environmental hazard verification through [State] RFS for bushfire risk assessment and AFRIP for flood risk mapping; make fire/flood insurance availability and cost confirmation conditional to purchase commitment
+- Obtain local real estate agent market analysis including recent 12-month comparable sales data, rental market evidence, and suburb price forecasts from licensed agents familiar with [Street/Area]
+- Verify financial serviceability with mortgage broker or bank; confirm loan approval capacity at current [X.X]% rate AND at stressed [X.X]% rate (RBA upside scenario)
+- Confirm liquid capital reserves capable of supporting ($[XX,XXX]) annual negative cashflow over minimum 10-year investment period; calculate capacity to sustain scenario with [X.X]%+ rates producing ($[XX,XXX]) annual shortfalls
 
 **Before proceeding with purchase commitment, conduct:**
-- [Specific checklist items]
+
+- Professional property appraisal to verify ${documentContent ? 'listed' : 'estimated'} $[X,XXX,XXX] valuation
+- [State] RFS property risk assessment to confirm bushfire risk rating and evacuation zone status
+- AFRIP flood mapping using property coordinates to assess flooding exposure
+- Local council rates search to verify exact annual council and water charges
+- Rental market assessment through local real estate agents to validate $[XXX]/week rental estimate
+- Comparative sales analysis through licensed real estate agent or valuer for recent 12-month transactions
+- Pest and building inspection to assess structural condition and maintenance requirements
+- Lender pre-approval to confirm serviceability assessment and loan terms at current interest rates
+- Model personal tax position with accountant to quantify benefit of negative gearing deductions and capital gains tax treatment on projected appreciation
 
 **Long-term Strategy (Ownership & Wealth Maximization):**
-- [Strategic recommendation for maximizing returns - minimum 10-year hold strategy]
-- [Refinancing considerations]
-- [Rental optimization strategies]
+
+- Adopt minimum 10-year hold strategy to allow capital appreciation projections to materialize and debt reduction to accumulate meaningful equity; short-term trading exposes property to transaction costs and market timing risk
+- Refinance to interest-only loan after 5-7 years of principal repayment if equity position permits; interest-only structure optimizes tax deductibility and preserves capital for portfolio expansion or alternative investments
+- Target rental income optimization through property maintenance and positioning; monitor rent market annually and reset tenancy at market rates to capture upward rent growth ([X-X]% annually); under-market rents represent lost opportunity cost
+- Maintain comprehensive property insurance including home and landlord liability; given [LEVEL] bushfire risk rating, confirm policy includes fire damage coverage and evacuation expense reimbursement
+- Monitor local infrastructure developments including [Transport] extensions, school expansions, and commercial developments; infrastructure improvements provide capital appreciation catalysts
+- Build equity buffer through principal repayment; accumulated equity after 10 years ($[XXX,XXX]-$[XXX,XXX] range across growth scenarios) provides optionality for portfolio expansion or capital access without forced sales
 
 **Key Considerations for Monitoring:**
-- [Interest rate sensitivity and impact]
-- [Employment market durability]
-- [Rental market supply/demand]
-- [Climate hazard events]
 
-# 36. Investment Suitability Screening
+- Interest rate movements: [X]% increase/decrease materially impacts annual cashflow by ±$[X,XXX]. Rising rate environment creates refinancing stress; rate cuts provide primary improvement pathway
+- Employment market durability: Strong local job growth (+[X.X]% annually) underpins rental demand; economic downturn reducing local employment would compress rents and weaken capital growth assumptions
+- Rental market supply/demand balance: Monitor new residential development pipeline in [Suburb]; oversupply of rental properties could suppress rent growth and compress gross yields below [X.XX]% projection
+- [City] property market valuations: [Suburb]'s premium positioning assumes sustained metropolitan appreciation; prolonged period of stagnant or negative capital growth would invalidate investment thesis
+- Climate hazard events: Track bushfire season intensity and flooding occurrences; severe fire/flood events trigger insurance premium escalation or coverage restrictions affecting ongoing costs and marketability
+- Family demographic trends: [Suburb]'s appeal targets family cohorts; demographic aging or migration patterns reducing family-formation rates would reduce demand drivers
+- Leverage and debt serviceability: Annual negative cashflow of $[XX,XXX] represents [XX]% of estimated deposit annually; confirm capacity to sustain this cost indefinitely remains intact through employment stability
+
+---
+
+# Investment Suitability Screening
+
 **This investment is APPROPRIATE for investors who:**
-- [Bullet point with specific criteria]
-- [Financial capacity requirements]
-- [Risk tolerance requirements]
-- [Time horizon requirements]
+
+- Possess 10+ year investment horizon and patience for long-term wealth accumulation
+- Have stable employment supporting minimum $[XX,XXX]+ annual cashflow contributions
+- Seek capital appreciation ([X-X]%) over rental income generation
+- Can absorb 1-2% annual portfolio volatility and extended flat-growth periods
+- Have confidence in [City] metropolitan property market sustainability
+- Maintain sufficient liquid reserves ($[XXX,XXX] deposit + $[XX,XXX]+ annual reserves minimum)
+- Are comfortable with 80% leverage and interest rate sensitivity
+- Accept environmental hazard exposure (bushfire, flood) pending verification
 
 **This investment is NOT APPROPRIATE for investors who:**
-- [Bullet point with specific exclusion criteria]
-- [Financial constraints that would make this unsuitable]
-- [Risk profile mismatches]
 
-# 37. Final Conclusion
+- Require immediate positive cashflow or rental income to service costs
+- Have unstable employment or insufficient capital reserves
+- Seek quick returns (3-5 year timeframes); capital appreciation requires minimum 10-year hold
+- Cannot afford $[XX,XXX]+ annual capital contributions
+- Are sensitive to interest rate increases or economic downturns
+- Require 100% equity financing or cannot access 80% LVR
+- Are risk-averse regarding leverage, environmental hazards, or market volatility
+
+---
+
+# Final Conclusion
+
 **Investment Thesis Summary:**
-[200+ words summarizing the overall investment case, property strengths, key financial characteristics, and risk profile]
+
+[Property Address] represents a structured capital growth opportunity for investors capable of sustaining negative cashflow and confident in [City] metropolitan property appreciation over a 10+ year investment horizon. The property offers [exceptional/strong/moderate] location fundamentals (walk score [XX]/100, metro accessibility, quality schools, strong employment growth) and demographic tailwinds supporting rental demand and capital appreciation.
+
+However, the investment exhibits significant financial constraints: Negative annual cashflow of ($[XX,XXX]) to ($[XX,XXX]), depending on loan structure, requires investor capital support throughout the projection period. The property is fundamentally unsuitable for income-focused investors or those dependent on rental income. Return generation depends entirely on achieving [X-X]% annual property appreciation; rental income ($[XX,XXX] annually) covers only [XX]% of debt serviceability costs.
+
+Risk profile is [elevated/moderate] due to interest rate sensitivity ([X]% rate change impacts annual cashflow by $[X,XXX]), [unverified/verified] environmental hazards ([level] bushfire risk, [level] flood risk), and leverage exposure (80% LVR). The investment requires investors to maintain strict financial discipline, verify environmental hazards prior to purchase, and commit to long-term ownership even through periods of market stagnation.
 
 **Valuation Assessment:**
-[100+ words on whether the price is reasonable relative to market benchmarks]
+
+${documentContent ? 'The listed' : 'Estimated'} property price of $[X,XXX,XXX] reflects market [premium/standard] positioning for [suburb type] with [infrastructure/amenity factors]. Price appears [reasonable/premium/discounted] relative to [Suburb] benchmarks but provides [limited/adequate] margin for economic downturns or extended periods of below-trend property growth.
 
 **Overall Recommendation:**
-[QUALIFIED BUY/HOLD/SELL with specific contingencies and conditions]
 
-**Report Completion Date:** [Current date]
-**Data Currency:** [Current month/year]
+**QUALIFIED ${enhancedData.investmentScore?.recommendation || 'HOLD'} with Contingencies**
 
-# 38. Data Sources
+This property warrants serious consideration for investors who (1) verify environmental hazards as acceptable, (2) confirm financial capacity to sustain negative cashflow, (3) achieve mortgage pre-approval at serviceability-acceptable terms, and (4) obtain professional valuation confirming price point aligns with current market conditions. The investment is suitable for disciplined, long-term capital accumulators with strong employment stability and confidence in [City] metropolitan property markets. Investors prioritizing immediate returns or requiring rental income should pursue alternative investments with superior yield profiles.
+
+**Report Completion Date:** ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+**Data Currency:** ${new Date().toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })}
+
+**Analyst Disclaimer:**
+
+This report synthesizes publicly available data and ${documentContent ? 'provided property listing information' : 'generic suburb-level analysis'}. It does not constitute financial advice, property valuation, or legal guidance. Investors must conduct independent verification of all material facts, obtain professional appraisals, and consult with licensed real estate agents, valuers, accountants, and financial advisors prior to making investment commitments.
+
+---
+
+# Data Sources
+
 **Market Data Sources:**
 | Metric | Source | URL |
+|--------|--------|-----|
+| Property Market Data | Domain | https://www.domain.com.au |
+| Suburb Statistics | Homely | https://www.homely.com.au |
+| Walk/Transport Scores | Google Maps API | https://maps.google.com |
 
 **Demographic & Economic Data:**
 | Metric | Source | URL |
-
-**ABSOLUTE REQUIREMENTS:**
-1. **NO N/A VALUES**: If a data point is not available, DO NOT include it in tables or text. Completely omit that row/metric.
-2. **EXACT STRUCTURE**: Follow the section order and numbering exactly as shown above
-3. **TABLE FORMATTING**: Use markdown tables exactly as specified
-4. **CONSISTENT HEADERS**: Use # for main sections exactly as shown
-5. **CURRENCY**: All amounts in AUD with $ symbol
-6. **DATES**: Include reporting periods and data sources with every metric
-7. **NO PLACEHOLDERS**: Never write "data unavailable", "TBD", "N/A", or similar - just omit the metric entirely
-8. **MEDIAN PRICE COMPARISONS**: ONLY include property-to-median price comparisons when the property price is HIGHER than the median. NEVER mention or include comparisons when the property price is LOWER than the median. If below median, omit the comparison entirely.
-
-**CRITICAL CONTENT LENGTH REQUIREMENTS - PRODUCE A COMPREHENSIVE 35-40 PAGE REPORT:**
-- **Location Overview**: Minimum 400 words with detailed suburb character, lifestyle description, transport access, and population trends
-- **Market Performance**: Include full market commentary paragraph (150+ words) after tables
-- **Demographics & Demand Drivers**: Minimum 300 words explaining employment dynamics and demand factors
-- **Each Infrastructure Section** (Transport, Education, Healthcare): 200+ words with specific facility names, distances, and quality commentary
-- **Environmental Risks**: Detailed 250+ word analysis with climate zone, rainfall, temperature data, and specific risk assessments
-- **Crime Statistics**: 200+ words with breakdown analysis and trend commentary
-- **Property-Level Information**: 200+ words describing property characteristics and market positioning
-- **Cashflow Analysis**: Include BOTH P&I and Interest-Only scenarios with detailed tables and 150+ word commentary
-- **Sensitivity Analysis**: Include stress case (+1%), base case, and improvement case (-1%) with 150+ word commentary
-- **10-Year Projections**: All 10 years in each table (Conservative, Base, Optimistic) with 200+ word projection narrative
-- **Investment Score**: 150+ words explaining the score components and rationale
-- **SWOT Analysis**: Minimum 8-10 bullet points per category (Strengths, Weaknesses, Opportunities, Threats), each with 2-3 sentence explanations
-- **Top 3 Opportunities**: Each opportunity described in 150+ words with specific dollar amounts and percentages
-- **Top 3 Risks**: Each risk described in 150+ words with quantified impact analysis
-- **Investment Recommendations**: 400+ words covering short-term actions, long-term strategy, and key monitoring considerations
-- **Investment Suitability**: Include specific criteria for who this investment IS and IS NOT appropriate for
-- **Final Conclusion**: 300+ words summarizing the investment thesis, valuation assessment, and overall recommendation
-
-**CRITICAL: This must be a COMPREHENSIVE, PROFESSIONAL-GRADE report of 35-40 pages when rendered. Every section must have substantial narrative content, not just tables. Include detailed analysis, specific numbers, and actionable insights throughout.**
-
-**CRITICAL DATA HANDLING RULE: If any data point is unavailable, missing, or would be marked as "N/A", completely OMIT that entire row/metric from the table or section. DO NOT show any placeholders. Only include metrics where actual data exists.**
-
-${enhancedData.demographics ? `
-DEMOGRAPHIC DATA AVAILABLE (Only include metrics with actual values - OMIT any N/A values):
-${enhancedData.demographics.population?.total ? `- Population: ${enhancedData.demographics.population.total}` : ''}
-${enhancedData.demographics.income?.medianHouseholdIncome ? `- Median Household Income: $${enhancedData.demographics.income.medianHouseholdIncome}` : ''}
-${enhancedData.demographics.income?.unemploymentRate ? `- Unemployment Rate: ${enhancedData.demographics.income.unemploymentRate}%` : ''}
-${enhancedData.demographics.housing?.ownerOccupierRate ? `- Owner-Occupier Rate: ${enhancedData.demographics.housing.ownerOccupierRate}%` : ''}
-${enhancedData.demographics.employment?.laborForceParticipation ? `- Labor Force Participation: ${enhancedData.demographics.employment.laborForceParticipation}%` : ''}
-` : ''}
-
-${enhancedData.economics ? `
-ECONOMIC DATA AVAILABLE (Only include metrics with actual values - OMIT any N/A values):
-${enhancedData.economics.cashRate?.current ? `- Current Cash Rate: ${enhancedData.economics.cashRate.current}%` : ''}
-${enhancedData.economics.inflation?.annual ? `- Annual Inflation: ${enhancedData.economics.inflation.annual}%` : ''}
-${enhancedData.economics.indicators?.gdpGrowth ? `- GDP Growth: ${enhancedData.economics.indicators.gdpGrowth}%` : ''}
-${enhancedData.economics.indicators?.unemploymentRate ? `- National Unemployment: ${enhancedData.economics.indicators.unemploymentRate}%` : ''}
-${enhancedData.economics.indicators?.housePriceGrowth ? `- House Price Growth: ${enhancedData.economics.indicators.housePriceGrowth}%` : ''}
-` : ''}
-
-${enhancedData.financials ? `
-FINANCIAL CALCULATIONS AVAILABLE - USE THESE EXACT VALUES (Only include metrics with actual values):
-${enhancedData.financials.initialCosts?.stampDuty ? `- Stamp Duty: $${enhancedData.financials.initialCosts.stampDuty}` : ''}
-${enhancedData.financials.keyMetrics?.grossRentalYield ? `- Gross Rental Yield: ${enhancedData.financials.keyMetrics.grossRentalYield}%` : ''}
-${enhancedData.financials.keyMetrics?.netRentalYield ? `- Net Rental Yield: ${enhancedData.financials.keyMetrics.netRentalYield}%` : ''}
-${enhancedData.financials.annualCosts?.councilRates ? `- Council Rates: $${enhancedData.financials.annualCosts.councilRates}` : ''}
-${enhancedData.financials.annualCosts?.waterRates ? `- Water Rates: $${enhancedData.financials.annualCosts.waterRates}` : ''}
-${enhancedData.financials.annualCosts?.landlordInsurance ? `- Insurance: $${enhancedData.financials.annualCosts.landlordInsurance}` : ''}
-${enhancedData.financials.annualCosts?.propertyManagement ? `- Property Management: $${enhancedData.financials.annualCosts.propertyManagement}` : ''}
-- Maintenance: $1,500 AUD (FIXED - ALWAYS USE THIS EXACT AMOUNT)
-
-10-YEAR PROJECTIONS (Use these exact calculated values):
-${enhancedData.financials.projections?.conservative?.[0] ? `Conservative: Year 1-10 values provided` : ''}
-${enhancedData.financials.projections?.moderate?.[0] ? `Moderate: Year 1-10 values provided` : ''}
-${enhancedData.financials.projections?.optimistic?.[0] ? `Optimistic: Year 1-10 values provided` : ''}
-` : ''}
-
-${enhancedData.domainData ? `
-DOMAIN MARKET DATA (REAL API VALUES - Use these in Current Market Performance section):
-${enhancedData.domainData.medianSoldPrice ? `- Median House Price: $${enhancedData.domainData.medianSoldPrice.toLocaleString()}` : ''}
-${enhancedData.domainData.medianRentListingPrice ? `- Median Weekly Rent: $${enhancedData.domainData.medianRentListingPrice}` : ''}
-${enhancedData.domainData.annualGrowth ? `- Annual Capital Growth: ${enhancedData.domainData.annualGrowth}%` : ''}
-${enhancedData.domainData.rentalYield ? `- Rental Yield: ${enhancedData.domainData.rentalYield.toFixed(2)}%` : ''}
-${enhancedData.domainData.daysOnMarket ? `- Days on Market: ${enhancedData.domainData.daysOnMarket}` : ''}
-${enhancedData.domainData.numberSold ? `- Houses Sold: ${enhancedData.domainData.numberSold}` : ''}
-` : ''}
-
-${enhancedData.riskAssessment ? `
-ENVIRONMENTAL RISK DATA (Use in Environmental Risks section):
-${enhancedData.riskAssessment.floodRisk ? `Flood: ${enhancedData.riskAssessment.floodRisk.level} - ${enhancedData.riskAssessment.floodRisk.description}` : ''}
-${enhancedData.riskAssessment.bushfireRisk ? `Bushfire: ${enhancedData.riskAssessment.bushfireRisk.level} - ${enhancedData.riskAssessment.bushfireRisk.description}` : ''}
-${enhancedData.riskAssessment.crimeStatistics ? `Crime: ${enhancedData.riskAssessment.crimeStatistics.overallRating} - ${enhancedData.riskAssessment.crimeStatistics.comparedToStateAverage}` : ''}
-` : ''}
-
-${enhancedData.locationIntelligence ? `
-LOCATION INTELLIGENCE DATA:
-${enhancedData.locationIntelligence.walkScore ? `- Walk Score: ${enhancedData.locationIntelligence.walkScore}/100` : ''}
-${enhancedData.locationIntelligence.commute?.durationMinutes ? `- CBD Commute: ${enhancedData.locationIntelligence.commute.durationMinutes} minutes` : ''}
-${enhancedData.locationIntelligence.transport?.qualityScore ? `- Public Transport Score: ${enhancedData.locationIntelligence.transport.qualityScore}/100` : ''}
-` : ''}
-
-${enhancedData.investmentScore ? `
-INVESTMENT SCORE (Use these exact values in Overall Investment Score section):
-- Total Score: ${enhancedData.investmentScore.totalScore}/100
-- Grade: ${enhancedData.investmentScore.grade}
-- Recommendation: ${enhancedData.investmentScore.recommendation}
-Component Scores: Growth ${enhancedData.investmentScore.breakdown?.growthScore?.score}, Location ${enhancedData.investmentScore.breakdown?.locationScore?.score}, Yield ${enhancedData.investmentScore.breakdown?.yieldScore?.score}, Demand ${enhancedData.investmentScore.breakdown?.demandScore?.score}, Risk ${enhancedData.investmentScore.breakdown?.riskScore?.score}
-` : ''}
-
-**FORMATTING INSTRUCTIONS:**
-- Use markdown tables for all data presentations
-- Include data sources and dates for every metric
-- Add horizontal rulers (---) between major sections
-- Use # for section headers
-- CRITICAL: Omit any metric where data is not available - do not show N/A or placeholders
-- All amounts in AUD with $ symbol
-- Follow the 38-section structure exactly as specified above
-- CRITICAL LENGTH REQUIREMENT: This report MUST be 35-40 pages when rendered (approximately 12,000-15,000 words)
-- Every section must have SUBSTANTIAL narrative content, not just tables
-- Include detailed multi-paragraph analysis after every data table
-- SWOT section must have 8-10 detailed bullet points per category with explanatory sentences
-- Top 3 Opportunities and Risks must each be 150+ words with specific dollar amounts and percentages
-- Investment Recommendations must include detailed short-term actions, long-term strategy, and monitoring considerations
-
-${enhancedData.economics ? `
-ECONOMIC DATA AVAILABLE (Only include metrics with actual values):
-${enhancedData.economics.cashRate?.current ? `- Current Cash Rate: ${enhancedData.economics.cashRate.current}%` : ''}
-${enhancedData.economics.inflation?.annual ? `- Annual Inflation: ${enhancedData.economics.inflation.annual}%` : ''}
-${enhancedData.economics.indicators?.gdpGrowth ? `- GDP Growth: ${enhancedData.economics.indicators.gdpGrowth}%` : ''}
-${enhancedData.economics.indicators?.unemploymentRate ? `- National Unemployment: ${enhancedData.economics.indicators.unemploymentRate}%` : ''}
-${enhancedData.economics.indicators?.housePriceGrowth ? `- House Price Growth: ${enhancedData.economics.indicators.housePriceGrowth}%` : ''}
-` : ''}
-
-${enhancedData.financials ? `
-FINANCIAL CALCULATIONS AVAILABLE (Only include metrics with actual values):
-KEY METRICS:
-${enhancedData.financials.initialCosts?.propertyValue ? `- Property Value: $${enhancedData.financials.initialCosts.propertyValue}` : ''}
-${enhancedData.financials.initialCosts?.deposit ? `- Deposit: $${enhancedData.financials.initialCosts.deposit}` : ''}
-${enhancedData.financials.initialCosts?.loanAmount ? `- Loan Amount: $${enhancedData.financials.initialCosts.loanAmount}` : ''}
-${enhancedData.financials.initialCosts?.stampDuty ? `- Stamp Duty: $${enhancedData.financials.initialCosts.stampDuty}` : ''}
-${enhancedData.financials.initialCosts?.totalUpfront ? `- Total Upfront Costs: $${enhancedData.financials.initialCosts.totalUpfront}` : ''}
-${enhancedData.financials.loanDetails?.monthlyPayment ? `- Monthly Loan Payment: $${Math.round(enhancedData.financials.loanDetails.monthlyPayment)}` : ''}
-${enhancedData.financials.loanDetails?.totalInterest ? `- Total Interest (30yr): $${Math.round(enhancedData.financials.loanDetails.totalInterest)}` : ''}
-${enhancedData.financials.keyMetrics?.grossRentalYield ? `- Gross Rental Yield: ${enhancedData.financials.keyMetrics.grossRentalYield}%` : ''}
-${enhancedData.financials.keyMetrics?.netRentalYield ? `- Net Rental Yield: ${enhancedData.financials.keyMetrics.netRentalYield}%` : ''}
-${enhancedData.financials.keyMetrics?.weeklyNet ? `- Weekly Net Cash Flow: $${enhancedData.financials.keyMetrics.weeklyNet}` : ''}
-${enhancedData.financials.keyMetrics?.annualNet ? `- Annual Net Cash Flow: $${enhancedData.financials.keyMetrics.annualNet}` : ''}
-${enhancedData.financials.keyMetrics?.lvr ? `- Loan-to-Value Ratio: ${enhancedData.financials.keyMetrics.lvr}%` : ''}
-${enhancedData.financials.keyMetrics?.cashOnCashReturn ? `- Cash on Cash Return: ${enhancedData.financials.keyMetrics.cashOnCashReturn}%` : ''}
-
-ANNUAL COSTS (Only include costs with actual values):
-${enhancedData.financials.annualCosts?.councilRates ? `- Council Rates: $${enhancedData.financials.annualCosts.councilRates}` : ''}
-${enhancedData.financials.annualCosts?.waterRates ? `- Water Rates: $${enhancedData.financials.annualCosts.waterRates}` : ''}
-${enhancedData.financials.annualCosts?.landlordInsurance ? `- Insurance: $${enhancedData.financials.annualCosts.landlordInsurance}` : ''}
-${enhancedData.financials.annualCosts?.propertyManagement ? `- Property Management: $${enhancedData.financials.annualCosts.propertyManagement}` : ''}
-- Maintenance: $1,500 AUD (FIXED - USE THIS EXACT AMOUNT IN ALL CALCULATIONS)
-${enhancedData.financials.annualCosts?.landTax ? `- Land Tax: $${enhancedData.financials.annualCosts.landTax} (INCLUDE in Section 14 Total Annual Costs, but EXCLUDE from Section 21 Annual Expenses)` : ''}
-${enhancedData.financials.annualCosts?.totalAnnual ? `- Total Annual Costs (WITH Land Tax - for Section 14): $${enhancedData.financials.annualCosts.totalAnnual}` : ''}
-${enhancedData.financials.annualCosts?.totalAnnualExcludingLandTax ? `- Annual Expenses (WITHOUT Land Tax - for Section 21 Net Yield): $${enhancedData.financials.annualCosts.totalAnnualExcludingLandTax}` : ''}
-
-CRITICAL LAND TAX RULES:
-- Section 14 (Purchase & Ongoing Costs): Include Land Tax as a separate row AND in Total Annual Costs
-- Section 21 (Net Yield Calculation): Annual Expenses must EXCLUDE Land Tax
-
-
-10-YEAR PROJECTIONS (Only include scenarios with actual data):
-${enhancedData.financials.projections?.conservative?.[0] ? `
-Conservative Scenario (2% capital, 2% rent growth):
-${enhancedData.financials.projections.conservative.slice(0, 10).map((p: any, i: number) => 
-  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || '0'}, Equity $${p.equity?.toLocaleString() || '0'}, Cash Flow $${p.cashFlow?.toLocaleString() || '0'}, ROI ${p.roi || '0'}%`
-).join('\n')}
-` : ''}
-${enhancedData.financials.projections?.moderate?.[0] ? `
-Moderate Scenario (4% capital, 3% rent growth):
-${enhancedData.financials.projections.moderate.slice(0, 10).map((p: any, i: number) => 
-  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || '0'}, Equity $${p.equity?.toLocaleString() || '0'}, Cash Flow $${p.cashFlow?.toLocaleString() || '0'}, ROI ${p.roi || '0'}%`
-).join('\n')}
-` : ''}
-${enhancedData.financials.projections?.optimistic?.[0] ? `
-Optimistic Scenario (6% capital, 4% rent growth):
-${enhancedData.financials.projections.optimistic.slice(0, 10).map((p: any, i: number) => 
-  `Year ${i + 1}: Value $${p.propertyValue?.toLocaleString() || '0'}, Equity $${p.equity?.toLocaleString() || '0'}, Cash Flow $${p.cashFlow?.toLocaleString() || '0'}, ROI ${p.roi || '0'}%`
-).join('\n')}
-` : ''}
-
-${enhancedData.financials.sensitivityAnalysis ? `
-SENSITIVITY ANALYSIS:
-${enhancedData.financials.sensitivityAnalysis?.interestRateUp ? `
-Interest Rate +1% (${(parseFloat(propertyDetails?.interestRate || '6.5') + 1).toFixed(1)}%):
-- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateUp.monthlyPayment)}
-- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateUp.weeklyNet)}
-- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateUp.annualNet)}
-` : ''}
-${enhancedData.financials.sensitivityAnalysis?.interestRateDown ? `
-Interest Rate -1% (${(parseFloat(propertyDetails?.interestRate || '6.5') - 1).toFixed(1)}%):
-- Monthly Payment: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateDown.monthlyPayment)}
-- Weekly Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateDown.weeklyNet)}
-- Annual Net: $${Math.round(enhancedData.financials.sensitivityAnalysis.interestRateDown.annualNet)}
-` : ''}
-` : ''}
-
-IMPORTANT: Use these exact calculated values in your "Financial Analysis" and "10-Year Projection Scenarios" sections. Do not recalculate - these are professionally calculated projections.
-` : ''}
-
-${enhancedData.domainData ? `
-DOMAIN MARKET DATA (FROM DOMAIN API - Only include metrics with actual values):
-${enhancedData.domainData.medianSoldPrice ? `- Median House Price: $${enhancedData.domainData.medianSoldPrice.toLocaleString()}` : ''}
-${enhancedData.domainData.numberSold ? `- Number of Sales: ${enhancedData.domainData.numberSold}` : ''}
-${enhancedData.domainData.medianRentListingPrice ? `- Median Weekly Rent: $${enhancedData.domainData.medianRentListingPrice}` : ''}
-${enhancedData.domainData.daysOnMarket ? `- Days on Market: ${enhancedData.domainData.daysOnMarket} days` : ''}
-${enhancedData.domainData.auctionClearanceRate ? `- Auction Clearance Rate: ${enhancedData.domainData.auctionClearanceRate}%` : ''}
-${enhancedData.domainData.annualGrowth ? `- Annual Price Growth: ${enhancedData.domainData.annualGrowth}%` : ''}
-${enhancedData.domainData.rentalYield ? `- Rental Yield: ${enhancedData.domainData.rentalYield.toFixed(2)}%` : ''}
-- Data Source: ${enhancedData.domainData.dataSource}
-- Last Updated: ${enhancedData.domainData.lastUpdated}
-
-CRITICAL: These are REAL MARKET VALUES from Domain API. Use them to replace any generic market data in your "Market KPIs" and "Comparable Market Evidence" sections. Only include metrics with actual values. Do not make up comparable sales - state that specific comparable sales require further local agent research if not available.
-` : ''}
-
-${enhancedData.riskAssessment ? `
-RISK ASSESSMENT DATA:
-${enhancedData.riskAssessment.floodRisk ? `
-Flood Risk:
-- Level: ${enhancedData.riskAssessment.floodRisk.level}
-- Details: ${enhancedData.riskAssessment.floodRisk.description}
-- Data Source: ${enhancedData.riskAssessment.floodRisk.dataSource}
-` : ''}
-${enhancedData.riskAssessment.bushfireRisk ? `
-Bushfire Risk:
-- Level: ${enhancedData.riskAssessment.bushfireRisk.level}
-- Details: ${enhancedData.riskAssessment.bushfireRisk.description}
-- Data Source: ${enhancedData.riskAssessment.bushfireRisk.dataSource}
-` : ''}
-${enhancedData.riskAssessment.crimeStatistics ? `
-Crime Statistics:
-- Overall Rating: ${enhancedData.riskAssessment.crimeStatistics.overallRating}
-- Comparison: ${enhancedData.riskAssessment.crimeStatistics.comparedToStateAverage}
-- Data Source: ${enhancedData.riskAssessment.crimeStatistics.dataSource}
-` : ''}
-${enhancedData.riskAssessment.climateRisk ? `
-Climate Risk:
-- Overall Rating: ${enhancedData.riskAssessment.climateRisk.overallRating}
-- Main Concerns: ${enhancedData.riskAssessment.climateRisk.mainConcerns.join(', ')}
-- Data Source: ${enhancedData.riskAssessment.climateRisk.dataSource}
-` : ''}
-` : ''}
-
-${enhancedData.locationIntelligence ? `
-LOCATION INTELLIGENCE AVAILABLE (Only include sections with actual data):
-${enhancedData.locationIntelligence.walkScore ? `WALKABILITY & ACCESS:
-- Walk Score: ${enhancedData.locationIntelligence.walkScore}/100` : ''}
-${enhancedData.locationIntelligence.commute?.durationMinutes ? `- CBD Commute: ${enhancedData.locationIntelligence.commute.durationMinutes} minutes via ${enhancedData.locationIntelligence.commute.mode || 'transit'}${enhancedData.locationIntelligence.commute.distanceKm ? ` (${enhancedData.locationIntelligence.commute.distanceKm}km)` : ''}` : ''}
-
-${enhancedData.locationIntelligence.transport?.qualityScore ? `PUBLIC TRANSPORT (Quality Score: ${enhancedData.locationIntelligence.transport.qualityScore}/100):
-${enhancedData.locationIntelligence.transport.summary || ''}
-
-TRANSPORT DETAILS:
-${enhancedData.locationIntelligence.transport.nearestStop ? `- Nearest Stop: ${enhancedData.locationIntelligence.transport.nearestStop}${enhancedData.locationIntelligence.transport.distanceToStop ? ` (${enhancedData.locationIntelligence.transport.distanceToStop}m away)` : ''}` : ''}
-${enhancedData.locationIntelligence.transport.stopsWithin1km ? `- Stops Within 1km: ${enhancedData.locationIntelligence.transport.stopsWithin1km}` : ''}
-${enhancedData.locationIntelligence.transport.transportTypes?.length ? `- Transport Types Available: ${enhancedData.locationIntelligence.transport.transportTypes.join(', ')}` : ''}
-${enhancedData.locationIntelligence.transport.serviceFrequency ? `- Service Frequency:
-  Peak Hour: ${enhancedData.locationIntelligence.transport.serviceFrequency.peak} services/hour
-  Off-Peak: ${enhancedData.locationIntelligence.transport.serviceFrequency.offPeak} services/hour` : ''}
-${enhancedData.locationIntelligence.transport.routeCoverage?.length > 0 ? `- Route Coverage:
-${enhancedData.locationIntelligence.transport.routeCoverage.map((r: any) => `  * ${r.route} (${r.type}): ${r.frequency} services/hour`).join('\n')}` : ''}
-${enhancedData.locationIntelligence.transport.accessibility ? `- Accessibility: ${enhancedData.locationIntelligence.transport.accessibility.wheelchairAccessible ? 'Wheelchair accessible' : 'Standard access'}${enhancedData.locationIntelligence.transport.accessibility.lifts ? ', Lifts available' : ''}${enhancedData.locationIntelligence.transport.accessibility.tactilePaving ? ', Tactile paving' : ''}` : ''}
-${enhancedData.locationIntelligence.transport.realTimeAlerts?.length > 0 ? `- Current Service Alerts: ${enhancedData.locationIntelligence.transport.realTimeAlerts.join('; ')}` : ''}
-${enhancedData.locationIntelligence.transport.detailedStops?.length > 0 ? `- Nearby Stops Detail:
-${enhancedData.locationIntelligence.transport.detailedStops.slice(0, 5).map((s: any) => `  * ${s.name} (${s.type}): ${s.distance}m away, Routes: ${s.routes?.join(', ') || 'N/A'}`).join('\n')}` : ''}
-` : `${enhancedData.locationIntelligence.transport?.nearestStation ? `PUBLIC TRANSPORT:
-- Nearest Station: ${enhancedData.locationIntelligence.transport.nearestStation}` : ''}
-${enhancedData.locationIntelligence.transport?.distanceToStation ? `
-- Distance to Station: ${enhancedData.locationIntelligence.transport.distanceToStation}km` : ''}`}
-
-${enhancedData.locationIntelligence.schools ? `EDUCATION:
-${enhancedData.locationIntelligence.schools.nearestSchool ? `- Nearest School: ${enhancedData.locationIntelligence.schools.nearestSchool}${enhancedData.locationIntelligence.schools.distanceToSchool ? ` (${enhancedData.locationIntelligence.schools.distanceToSchool}km away)` : ''}` : ''}
-${enhancedData.locationIntelligence.schools.schoolsWithin3km ? `- Schools Within 3km: ${enhancedData.locationIntelligence.schools.schoolsWithin3km}` : ''}
-${enhancedData.locationIntelligence.schools.topSchools?.length > 0 ? `- Top Schools Nearby:
-${enhancedData.locationIntelligence.schools.topSchools.map((s: any) => `  * ${s.name} - ${s.distance}km away (Rating: ${s.rating}/5)`).join('\n')}` : ''}
-` : ''}
-${enhancedData.locationIntelligence.healthcare ? `HEALTHCARE:
-${enhancedData.locationIntelligence.healthcare.nearestHospital ? `- Nearest Hospital: ${enhancedData.locationIntelligence.healthcare.nearestHospital}${enhancedData.locationIntelligence.healthcare.distanceToHospital ? ` (${enhancedData.locationIntelligence.healthcare.distanceToHospital}km away)` : ''}` : ''}
-${enhancedData.locationIntelligence.healthcare.facilitiesWithin5km ? `- Healthcare Facilities Within 5km: ${enhancedData.locationIntelligence.healthcare.facilitiesWithin5km}` : ''}
-` : ''}
-${enhancedData.locationIntelligence.lifestyle ? `LIFESTYLE & AMENITIES:
-${enhancedData.locationIntelligence.lifestyle.shoppingCenters ? `- Shopping Centers: ${enhancedData.locationIntelligence.lifestyle.shoppingCenters}` : ''}
-${enhancedData.locationIntelligence.lifestyle.nearestShopping ? `- Nearest Shopping: ${enhancedData.locationIntelligence.lifestyle.nearestShopping}` : ''}
-${enhancedData.locationIntelligence.lifestyle.parks ? `- Parks & Recreation Areas: ${enhancedData.locationIntelligence.lifestyle.parks}` : ''}
-${enhancedData.locationIntelligence.lifestyle.nearestPark ? `- Nearest Park: ${enhancedData.locationIntelligence.lifestyle.nearestPark}` : ''}
-${enhancedData.locationIntelligence.lifestyle.restaurants ? `- Restaurants & Cafes: ${enhancedData.locationIntelligence.lifestyle.restaurants}` : ''}
-` : ''}
-${enhancedData.locationIntelligence.amenities?.length > 0 ? `AMENITY SCORES BY CATEGORY:
-${enhancedData.locationIntelligence.amenities.map((a: any) => 
-  `- ${a.category}: ${a.count} facilities, nearest "${a.nearest}" at ${a.distance}km (Score: ${a.score}/100)`
-).join('\n')}
-
-IMPORTANT: Include these specific amenity counts, distances, and scores in your "Infrastructure & Amenities" section. Use the actual facility names and distances provided.
-` : ''}
-` : ''}
-
-${enhancedData.investmentScore ? `
-INVESTMENT SCORE CALCULATED (USE THESE VALUES IN YOUR REPORT):
-${enhancedData.investmentScore.totalScore ? `- Total Score: ${enhancedData.investmentScore.totalScore}/100` : ''}
-${enhancedData.investmentScore.grade ? `- Letter Grade: ${enhancedData.investmentScore.grade} (A+ to F scale)` : ''}
-${enhancedData.investmentScore.recommendation ? `- Investment Recommendation: ${enhancedData.investmentScore.recommendation}` : ''}
-
-COMPONENT SCORES (out of 100):
-${enhancedData.investmentScore.breakdown?.growthScore ? `- Growth Score: ${enhancedData.investmentScore.breakdown.growthScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.growthScore.weight || 30}%)
-  Details: ${enhancedData.investmentScore.breakdown.growthScore.details}
-  ` : ''}
-${enhancedData.investmentScore.breakdown?.locationScore ? `- Location Score: ${enhancedData.investmentScore.breakdown.locationScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.locationScore.weight || 25}%)
-  Details: ${enhancedData.investmentScore.breakdown.locationScore.details}
-  ` : ''}
-${enhancedData.investmentScore.breakdown?.yieldScore ? `- Yield Score: ${enhancedData.investmentScore.breakdown.yieldScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.yieldScore.weight || 20}%)
-  Details: ${enhancedData.investmentScore.breakdown.yieldScore.details}
-  ` : ''}
-${enhancedData.investmentScore.breakdown?.demandScore ? `- Demand Score: ${enhancedData.investmentScore.breakdown.demandScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.demandScore.weight || 15}%)
-  Details: ${enhancedData.investmentScore.breakdown.demandScore.details}
-  ` : ''}
-${enhancedData.investmentScore.breakdown?.riskScore ? `- Risk Score: ${enhancedData.investmentScore.breakdown.riskScore.score}/100 (Weight: ${enhancedData.investmentScore.breakdown.riskScore.weight || 10}%)
-  Details: ${enhancedData.investmentScore.breakdown.riskScore.details}
-  ` : ''}
-${enhancedData.investmentScore.strengths?.length || enhancedData.investmentScore.weaknesses?.length || enhancedData.investmentScore.opportunities?.length || enhancedData.investmentScore.risks?.length ? `
-SWOT ANALYSIS:
-${enhancedData.investmentScore.strengths?.length ? `Strengths: ${enhancedData.investmentScore.strengths.join('; ')}` : ''}
-${enhancedData.investmentScore.weaknesses?.length ? `Weaknesses: ${enhancedData.investmentScore.weaknesses.join('; ')}` : ''}
-${enhancedData.investmentScore.opportunities?.length ? `Opportunities: ${enhancedData.investmentScore.opportunities.join('; ')}` : ''}
-${enhancedData.investmentScore.risks?.length ? `Threats/Risks: ${enhancedData.investmentScore.risks.join('; ')}` : ''}
-` : ''}
-${enhancedData.investmentScore.grade ? `IMPORTANT: Use this pre-calculated investment score directly in your "Overall Investment Score" section. Display the letter grade (${enhancedData.investmentScore.grade}) prominently. Do NOT recalculate - use these exact values and component breakdowns.` : ''}
-` : ''}
-
-${enhancedData.seifaData ? `
-SEIFA SOCIOECONOMIC INDEX DATA (ABS - Only include indexes with actual values):
-${enhancedData.seifaData.irsad?.score ? `- IRSAD Score: ${enhancedData.seifaData.irsad.score} (Decile ${enhancedData.seifaData.irsad.decile}/10)${enhancedData.seifaData.irsad.description ? `
-- IRSAD Rating: ${enhancedData.seifaData.irsad.description}` : ''}` : ''}
-${enhancedData.seifaData.irsd?.score ? `- IRSD Score: ${enhancedData.seifaData.irsd.score} (Decile ${enhancedData.seifaData.irsd.decile}/10)` : ''}
-${enhancedData.seifaData.ier?.score ? `- IER Score: ${enhancedData.seifaData.ier.score} (Decile ${enhancedData.seifaData.ier.decile}/10)` : ''}
-${enhancedData.seifaData.ieo?.score ? `- IEO Score: ${enhancedData.seifaData.ieo.score} (Decile ${enhancedData.seifaData.ieo.decile}/10)` : ''}
-${enhancedData.seifaData.summary ? `- Summary: ${enhancedData.seifaData.summary}` : ''}
-${enhancedData.seifaData.dataSource ? `- Data Source: ${enhancedData.seifaData.dataSource}` : ''}
-${enhancedData.seifaData.note ? `- Note: ${enhancedData.seifaData.note}` : ''}
-
-IMPORTANT: Use this SEIFA data in your "Demographics & Demand Drivers" section to provide socioeconomic context. Decile 10 = most advantaged, Decile 1 = most disadvantaged.
-` : ''}
-
-${enhancedData.crimeStatistics ? `
-CRIME STATISTICS DATA (Only include metrics with actual values):
-${enhancedData.crimeStatistics.overallRating ? `- Overall Crime Rating: ${enhancedData.crimeStatistics.overallRating}` : ''}
-${enhancedData.crimeStatistics.comparedToStateAverage ? `- Compared to State Average: ${enhancedData.crimeStatistics.comparedToStateAverage}` : ''}
-${enhancedData.crimeStatistics.ratePerCapita ? `- Rate per 100k people: ${enhancedData.crimeStatistics.ratePerCapita}` : ''}
-${enhancedData.crimeStatistics.period ? `- Period: ${enhancedData.crimeStatistics.period}` : ''}
-${enhancedData.crimeStatistics.safetyScore ? `- Safety Score: ${enhancedData.crimeStatistics.safetyScore}/100` : ''}
-
-${enhancedData.crimeStatistics.breakdown ? `CRIME BREAKDOWN BY CATEGORY:
-${enhancedData.crimeStatistics.breakdown.propertyOffenses ? `- Property Offenses: ${enhancedData.crimeStatistics.breakdown.propertyOffenses.count} incidents (${enhancedData.crimeStatistics.breakdown.propertyOffenses.percentage}%)${enhancedData.crimeStatistics.breakdown.propertyOffenses.types?.length ? `
-  Types: ${enhancedData.crimeStatistics.breakdown.propertyOffenses.types.join(', ')}` : ''}` : ''}
-${enhancedData.crimeStatistics.breakdown.violentOffenses ? `- Violent Offenses: ${enhancedData.crimeStatistics.breakdown.violentOffenses.count} incidents (${enhancedData.crimeStatistics.breakdown.violentOffenses.percentage}%)${enhancedData.crimeStatistics.breakdown.violentOffenses.types?.length ? `
-  Types: ${enhancedData.crimeStatistics.breakdown.violentOffenses.types.join(', ')}` : ''}` : ''}
-${enhancedData.crimeStatistics.breakdown.drugOffenses ? `- Drug Offenses: ${enhancedData.crimeStatistics.breakdown.drugOffenses.count} incidents (${enhancedData.crimeStatistics.breakdown.drugOffenses.percentage}%)` : ''}
-${enhancedData.crimeStatistics.breakdown.publicOrder ? `- Public Order: ${enhancedData.crimeStatistics.breakdown.publicOrder.count} incidents (${enhancedData.crimeStatistics.breakdown.publicOrder.percentage}%)` : ''}
-` : ''}
-${enhancedData.crimeStatistics.trends ? `CRIME TRENDS:
-${enhancedData.crimeStatistics.trends.yearOnYear ? `- Year-on-Year Change: ${enhancedData.crimeStatistics.trends.yearOnYear}` : ''}
-${enhancedData.crimeStatistics.trends.threeYear ? `- 3-Year Trend: ${enhancedData.crimeStatistics.trends.threeYear}` : ''}
-${enhancedData.crimeStatistics.trends.description ? `- Trend Description: ${enhancedData.crimeStatistics.trends.description}` : ''}
-` : ''}
-${enhancedData.crimeStatistics.dataSource ? `Data Source: ${enhancedData.crimeStatistics.dataSource}` : ''}
-${enhancedData.crimeStatistics.officialSources?.length ? `Official Sources: ${enhancedData.crimeStatistics.officialSources.join(', ')}` : ''}
-
-IMPORTANT: Include this crime data in your "Risk Assessment" section. Provide context about safety and how it compares to state averages.
-` : ''}
-
-${enhancedData.employmentData ? `
-EMPLOYMENT & JOB GROWTH DATA (ABS - Only include metrics with actual values):
-${enhancedData.employmentData.employmentRate ? `- Employment Rate: ${enhancedData.employmentData.employmentRate}%` : ''}
-${enhancedData.employmentData.unemploymentRate ? `- Unemployment Rate: ${enhancedData.employmentData.unemploymentRate}%` : ''}
-${enhancedData.employmentData.participationRate ? `- Participation Rate: ${enhancedData.employmentData.participationRate}%` : ''}
-${enhancedData.employmentData.laborForceSize ? `- Labor Force Size: ${enhancedData.employmentData.laborForceSize.toLocaleString()}` : ''}
-
-${enhancedData.employmentData.majorIndustries?.length > 0 ? `MAJOR INDUSTRIES:
-${enhancedData.employmentData.majorIndustries.map((ind: any) => 
-  `- ${ind.name}: ${ind.percentage}% of workforce (Growth: ${ind.growth})`
-).join('\n')}
-` : ''}
-${enhancedData.employmentData.jobGrowth ? `JOB GROWTH TRENDS:
-${enhancedData.employmentData.jobGrowth.annual ? `- Annual Growth: ${enhancedData.employmentData.jobGrowth.annual}` : ''}
-${enhancedData.employmentData.jobGrowth.threeYear ? `- 3-Year Growth: ${enhancedData.employmentData.jobGrowth.threeYear}` : ''}
-${enhancedData.employmentData.jobGrowth.fiveYear ? `- 5-Year Growth: ${enhancedData.employmentData.jobGrowth.fiveYear}` : ''}
-${enhancedData.employmentData.jobGrowth.description ? `- Description: ${enhancedData.employmentData.jobGrowth.description}` : ''}
-` : ''}
-${enhancedData.employmentData.medianIncome ? `MEDIAN INCOME:
-${enhancedData.employmentData.medianIncome.weekly ? `- Weekly: $${enhancedData.employmentData.medianIncome.weekly.toLocaleString()}` : ''}
-${enhancedData.employmentData.medianIncome.annual ? `- Annual: $${enhancedData.employmentData.medianIncome.annual.toLocaleString()}` : ''}
-${enhancedData.employmentData.medianIncome.growth ? `- Growth: ${enhancedData.employmentData.medianIncome.growth}` : ''}
-` : ''}
-${enhancedData.employmentData.futureOutlook ? `FUTURE OUTLOOK:
-${enhancedData.employmentData.futureOutlook.rating ? `- Rating: ${enhancedData.employmentData.futureOutlook.rating}` : ''}
-${enhancedData.employmentData.futureOutlook.description ? `- Description: ${enhancedData.employmentData.futureOutlook.description}` : ''}
-${enhancedData.employmentData.futureOutlook.keyDrivers?.length ? `- Key Drivers: ${enhancedData.employmentData.futureOutlook.keyDrivers.join(', ')}` : ''}
-` : ''}
-${enhancedData.employmentData.dataSource ? `Data Source: ${enhancedData.employmentData.dataSource}` : ''}
-
-IMPORTANT: Use this employment data in your "Demographics & Demand Drivers" and "Infrastructure & Amenities" sections to show job market strength and economic prospects.
-` : ''}
-
-${enhancedData.climateData ? `
-CLIMATE & ENVIRONMENTAL DATA (BoM - Only include metrics with actual values):
-${enhancedData.climateData.climateZone ? `- Climate Zone: ${enhancedData.climateData.climateZone}` : ''}
-${enhancedData.climateData.temperature?.annual ? `- Annual Average Temperature: ${enhancedData.climateData.temperature.annual}°C${enhancedData.climateData.temperature.summer ? `
-  Summer: ${enhancedData.climateData.temperature.summer}°C` : ''}${enhancedData.climateData.temperature.winter ? `, Winter: ${enhancedData.climateData.temperature.winter}°C` : ''}` : ''}
-${enhancedData.climateData.rainfall?.annual ? `- Annual Rainfall: ${enhancedData.climateData.rainfall.annual}mm${enhancedData.climateData.rainfall.wettest ? `
-  Wettest Period: ${enhancedData.climateData.rainfall.wettest}` : ''}${enhancedData.climateData.rainfall.driest ? `
-  Driest Period: ${enhancedData.climateData.rainfall.driest}` : ''}` : ''}
-${enhancedData.climateData.humidity?.annual ? `- Humidity: ${enhancedData.climateData.humidity.annual}%` : ''}
-${enhancedData.climateData.comfortIndex ? `- Comfort Index: ${enhancedData.climateData.comfortIndex}/100` : ''}
-
-${enhancedData.climateData.extremeWeather ? `EXTREME WEATHER RISKS:
-${enhancedData.climateData.extremeWeather.heatwaves ? `- Heatwaves: ${enhancedData.climateData.extremeWeather.heatwaves}` : ''}
-${enhancedData.climateData.extremeWeather.bushfire ? `- Bushfire: ${enhancedData.climateData.extremeWeather.bushfire}` : ''}
-${enhancedData.climateData.extremeWeather.flooding ? `- Flooding: ${enhancedData.climateData.extremeWeather.flooding}` : ''}
-${enhancedData.climateData.extremeWeather.storms ? `- Storms: ${enhancedData.climateData.extremeWeather.storms}` : ''}
-${enhancedData.climateData.extremeWeather.cyclones ? `- Cyclones: ${enhancedData.climateData.extremeWeather.cyclones}` : ''}
-` : ''}
-${enhancedData.climateData.dataSource ? `Data Source: ${enhancedData.climateData.dataSource}` : ''}
-
-IMPORTANT: Include climate data in your "Risk Assessment" section and discuss long-term climate impacts on property value and insurance costs.
-` : ''}
-
-${enhancedData.schoolData ? `
-SCHOOL & EDUCATION DATA AVAILABLE:
-SUMMARY:
-- Total Schools in Postcode: ${enhancedData.schoolData.summary?.totalSchools || 'N/A'}
-- Primary Schools: ${enhancedData.schoolData.summary?.primarySchools || 'N/A'}
-- Secondary Schools: ${enhancedData.schoolData.summary?.secondarySchools || 'N/A'}
-- Average ICSEA Score: ${enhancedData.schoolData.summary?.averageICSEA || 'N/A'} (National average: 1000)
-- Average School Rating: ${enhancedData.schoolData.summary?.averageRating || 'N/A'}/5 stars
-- Education Quality: ${enhancedData.schoolData.summary?.educationQuality || 'N/A'}
-
-${enhancedData.schoolData.summary?.nearestSchool ? `
-NEAREST SCHOOL:
-- Name: ${enhancedData.schoolData.summary.nearestSchool.name}
-- Distance: ${enhancedData.schoolData.summary.nearestSchool.distance}km
-- Level: ${enhancedData.schoolData.summary.nearestSchool.level}
-- Rating: ${enhancedData.schoolData.summary.nearestSchool.rating}/5 stars
-` : ''}
-
-${enhancedData.schoolData.summary?.topRatedSchools?.length > 0 ? `
-TOP-RATED SCHOOLS IN AREA:
-${enhancedData.schoolData.summary.topRatedSchools.map((school: any) => 
-  `- ${school.name} (${school.level}, ${school.type})
-  Rating: ${school.rating}/5 stars, ICSEA: ${school.icsea || 'N/A'}`
-).join('\n')}
-` : ''}
-
-${enhancedData.schoolData.schools?.length > 0 ? `
-DETAILED SCHOOL INFORMATION:
-${enhancedData.schoolData.schools.slice(0, 10).map((school: any) => 
-  `- ${school.name} (${school.level}, ${school.type})
-  ICSEA: ${school.icsea || 'N/A'}, Rating: ${school.rating || 'N/A'}/5
-  ${school.naplan?.overall ? `NAPLAN Average: ${school.naplan.overall}` : ''}
-  ${school.atar?.median ? `ATAR Median: ${school.atar.median}` : ''}
-  ${school.studentCount ? `Students: ${school.studentCount}` : ''}`
-).join('\n\n')}
-` : ''}
-
-Data Source: ${enhancedData.schoolData.dataSource || 'ACARA MySchool'}
-Note: ${enhancedData.schoolData.note || 'ICSEA measures socio-educational advantage (Australian average = 1000)'}
-
-IMPORTANT: Include this education data in a dedicated "Schools & Education" section or incorporate it into "Demographics & Lifestyle". This is CRITICAL for families and significantly impacts property demand and capital growth. Mention specific school names, ratings, and ICSEA scores.
-` : ''}
+|--------|--------|-----|
+| Population & Employment | Australian Bureau of Statistics | https://www.abs.gov.au |
+| SEIFA Indices | ABS Census Data | https://www.abs.gov.au/seifa |
+| Economic Indicators | Reserve Bank of Australia | https://www.rba.gov.au |
+| Crime Statistics | Bureau of Crime Statistics and Research | https://www.bocsar.nsw.gov.au |
+| Climate Data | Bureau of Meteorology | https://www.bom.gov.au |
+| Bushfire Risk | State Rural Fire Service | https://www.rfs.nsw.gov.au |
 
 ---
 
-Instructions
-
-CRITICAL - FIXED COSTS:
-- Annual Maintenance Fee: ALWAYS use exactly $1,500 AUD (Australian Dollars)
-- This is a FIXED amount and must NOT be calculated, estimated, or varied
-- Use this exact figure in ALL sections: Financial Analysis, Cashflow Calculations, 10-Year Projections, and any other cost breakdowns
-- Do NOT use percentages, estimates, or ranges for maintenance - it is always $1,500 AUD annually
-
-1. Use only Australian data and sources.
-
-2. Provide clear sections with proper headings and bullet points.
-
-3. Cite the source name and date directly in the text for every statistic or metric.
-
-4. If a metric cannot be found because it is paywalled or proprietary (e.g., CoreLogic), clearly state that and explain why.
-
-5. Avoid filler text. Provide specific numbers, facts, and actionable insights.
-
-6. The output should be plain text, not JSON or code.
-
-7. All currency amounts must be in AUD (Australian Dollars) unless otherwise specified.
-
----
-
-Sections to Include
-
-1. Location Overview
-
-**MUST BEGIN WITH:** "This investment report analyzes: ${formattedInput}"
-
-${analysisMode === 'address' ? `
-**CRITICAL:** State the complete property address "${formattedInput}" clearly at the start of this section. All analysis must be for this specific address.
-` : ''}
-
-Suburb/area profile and character.
-
-Distance to nearest major city or CBD.
-
-Key lifestyle attributes (parks, schools, shopping hubs, etc.).
-
-Identify the SA2, SA3, SA4, and LGA that this ${analysisMode === 'address' ? 'property address' : 'location'} belongs to.
-
----
-
-2. Market KPIs
-
-Provide the latest data for the relevant geography:
-
-Median house price and median unit price (if available).
-
-Historical price growth: 1-year, 3-year, 5-year, and 10-year.
-
-Median weekly rent (house and unit separately).
-
-Historical rent growth: 1-year, 3-year, and 5-year.
-
-Gross rental yield and net rental yield (explain how net yield was calculated).
-
-Vacancy rate (suburb or SA2 level).
-
-Days on market (DOM).
-
-Annual sales volume or stock on market.
-
-If data is missing or only available via paid sources, state clearly that it is unavailable and why.
-
----
-
-3. Demographics & Demand Drivers
-
-Total population and population growth trends (past 5 years).
-
-Median household income and key occupation breakdown.
-
-Predominant age group and household type (e.g., families, singles).
-
-Owner-occupier vs renter ratio (if available).
-
-Employment/unemployment rate and main local industries.
-
----
-
-4. Infrastructure & Amenities
-
-Major transport hubs (train stations, highways, airports).
-
-Planned infrastructure projects that could influence capital growth.
-
-Health, education, and lifestyle facilities (schools, hospitals, parks, recreation).
-
----
-
-5. Property-Level Information (MODE-SPECIFIC)
-
-${analysisMode === 'address' ? `
-[ADDRESS MODE]
-- Property type (house, townhouse, unit, etc.)
-- Number of bedrooms, bathrooms, parking spaces
-- Land size and building size
-- Year built and overall condition
-- Asking price (if listed)
-- Comparison to suburb median
-` : ''}
-
-${analysisMode === 'suburb' ? `
-[SUBURB MODE]
-Focus on suburb-level analysis:
-- Suburb boundaries and key features
-- Dominant property types in the suburb
-- Median prices by property type (houses vs units)
-- Typical property characteristics (common bed/bath configurations)
-- Best streets/pockets within the suburb
-- Suburb-specific market dynamics
-- Price distribution across different areas of the suburb
-- Postcode: ${detectedPostcode || 'Not specified'}
-- State: ${detectedState || 'Not specified'}
-- Include analysis of multiple areas within the suburb if applicable
-` : ''}
-
-${analysisMode === 'postcode' ? `
-[POSTCODE MODE]
-Focus on postcode-wide analysis:
-- Postcode: ${detectedPostcode || 'Not specified'}
-- State: ${detectedState || 'Not specified'}
-- All suburbs within this postcode
-- Price variations across different suburbs in the postcode
-- Dominant property types across the postcode
-- Best performing suburbs within the postcode
-- Comparative analysis of different areas
-- Infrastructure that serves the entire postcode
-` : ''}
-
-${analysisMode === 'state' ? `
-[STATE-WIDE MODE]
-Focus on state-level analysis:
-- State: ${detectedState || formattedInput}
-- Major metro markets performance
-- Regional market trends
-- State-wide economic indicators
-- Government policies affecting property
-- Population distribution and migration patterns
-- Top performing regions/LGAs
-- State infrastructure projects
-` : ''}
-
----
-
-6. Costs for Investors
-
-Include calculations relevant to the specific state:
-
-Stamp duty for this purchase price.
-
-Land tax rules and thresholds.
-
-Typical council rates and how you estimated them.
-
-Property management fee assumption (% of rent).
-
-Typical strata fees (if applicable).
-
-Insurance estimates.
-
-MAINTENANCE COSTS: Always use the FIXED amount of $1,500 AUD annually. Do NOT estimate or calculate this - it is a predetermined fixed cost.
-
----
-
-7. Risk Assessment
-
-Provide a risk profile for the area:
-
-Flood risk (referencing official state data).
-
-Bushfire risk (official state data).
-
-Crime index (SA2 or LGA level if available).
-
-Market volatility (historical price fluctuations).
-
----
-
-8. Comparable Market Evidence
-
-List 3–5 recent comparable sales within a 1.5 km radius over the past 6–12 months. Include:
-
-Address
-
-Sale price
-
-Date of sale
-
-Beds/baths/parking
-
-Distance from subject property
-
-List 3 comparable rental properties with weekly rent, location, and property type.
-
-If comparable data is only available through paid sources, explain that clearly.
-
----
-
-9. Financial Analysis
-
-Gross yield and net yield calculations.
-
-Year-one cashflow estimate for both P&I and Interest-Only loans at the following assumptions:
-
-Deposit: 20%
-
-Interest rate: 6.5%
-
-Property management fee: 7% of rent
-
-Maintenance: FIXED at $1,500 AUD annually (DO NOT change this amount - use exactly $1,500 AUD)
-
-Council rates and insurance: include estimated figures
-
-Sensitivity analysis: show effect of interest rates at +1% and -1%.
-
-IMPORTANT: The $1,500 AUD annual maintenance fee is FIXED and must be used in all cashflow calculations, projections, and cost breakdowns without variation.
-
----
-
-10. 10-Year Projection Scenarios
-
-Model three scenarios:
-
-Conservative: 2% annual price growth, 2% rent growth.
-
-Base: 4% annual price growth, 3% rent growth.
-
-Optimistic: 6% annual price growth, 4% rent growth.
-
-Show:
-
-Property value at year 10.
-
-Total rent received over 10 years.
-
-Cumulative cashflow over 10 years.
-
-Final Loan-to-Value Ratio (LVR).
-
----
-
-11. Overall Investment Score
-
-**CRITICAL: Use the pre-calculated investment score provided above.**
-
-Display the investment score as follows:
-
-**Investment Grade: [Letter Grade A+ to F]**
-**Total Score: [Score]/100**
-**Recommendation: [Buy/Hold/Sell recommendation]**
-
-Then create a detailed breakdown table showing:
-- Component Name | Weight (%) | Score (/100) | Details
-
-Include all five components:
-1. Growth Score (30% weighting)
-2. Location Score (25% weighting)  
-3. Yield Score (20% weighting)
-4. Demand Score (15% weighting)
-5. Risk Score (10% weighting)
-
-Present the SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) provided in the investment score data.
-
-Add context and explanation for each component based on the market data you've analyzed, but use the exact scores and letter grade provided above. Do NOT recalculate the investment score.
-
----
-
-12. Key Opportunities & Risks
-
-Summarize the 3–5 biggest opportunities and risks:
-
-Example opportunity: new transport infrastructure boosting capital growth.
-
-Example risk: property priced significantly above suburb median.
-
----
-
-13. Sources & Data Transparency
-
-For each key metric, include:
-
-Source name
-
-URL (if available)
-
-"As of" date
-
-If data was estimated or inferred, explain the methodology.
-
----
-
-Output Style
-
-Use clear section headings (## for major sections, ### for subsections).
-
-Write in professional, concise, and data-driven language.
-
-**CRITICAL FORMATTING REQUIREMENTS:**
-
-- Add horizontal rulers (---) between ALL major sections for visual separation
-- Use markdown tables extensively for data presentation, especially for:
-  * Market KPIs (median prices, growth rates, yields, vacancy rates)
-  * Comparable sales (address, price, date, beds/baths/parking, distance)
-  * Comparable rentals (address, weekly rent, property type, location)
-  * Financial analysis (cashflow breakdown, loan scenarios)
-  * 10-year projections (all three scenarios side-by-side in a table)
-  * Investment score breakdown (showing each component, weighting, score)
-  * Cost breakdown (stamp duty, rates, fees, insurance)
-  * Demographics data (population, income, employment by category)
-- Use bullet points for narrative content and lists
-- Keep everything plain text — no code blocks or JSON
-- Ensure every major section ends with --- before the next section begins
-
----
-
-Final Output
-
-Produce a full investment report following the structure above, including detailed numbers, calculations, and references to primary Australian data sources such as ABS, RBA, state revenue offices, data.gov.au, SQM Research, and official hazard maps.`;
+# ═══════════════════════════════════════════════════════════════════════════════
+# ABSOLUTE FORMATTING REQUIREMENTS - FOLLOW EXACTLY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+1. **38+ PAGE REPORT**: This MUST be a comprehensive report equivalent to 38+ printed pages (12,000-15,000 words minimum)
+2. **EVERY SECTION REQUIRED**: Include ALL sections exactly as specified above - do not skip any
+3. **SUBSTANTIAL CONTENT**: Each section must meet the minimum word counts specified in parentheses
+4. **TABLE FORMAT**: Use markdown tables EXACTLY as shown with proper column alignment
+5. **NO PLACEHOLDERS**: NEVER use "N/A", "TBD", "data unavailable", or "XX" placeholders - use real data or realistic estimates
+6. **ALL 10 YEARS**: Projection tables MUST include all 10 years of data
+7. **DOLLAR AMOUNTS**: All amounts in AUD with $ symbol and proper comma formatting
+8. **CITATIONS**: Include [citation] markers where data is sourced from external references
+9. **HORIZONTAL RULES**: Use --- between ALL major sections for visual separation
+10. **PROFESSIONAL LANGUAGE**: Data-driven, specific, actionable insights throughout
+11. **MAINTENANCE FIXED**: Always use exactly $1,500 for annual maintenance - this is a fixed cost
+12. **COMPLETE SWOT**: Minimum 10 detailed bullet points per SWOT category with 2-3 sentence explanations each
+13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts`;
 
     // Select the appropriate prompt based on report scope
     let prompt = reportScope === 'suburb' ? suburbPrompt : propertyPrompt;
@@ -2202,7 +1988,7 @@ ${sourceSpecificInstructions}
     
     const systemMessage = reportScope === 'suburb' 
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
-      : 'You are an expert Australian property investment analyst creating professional-grade Investor Compass reports for a property consulting firm. Your role is to produce COMPREHENSIVE, DETAILED investment analysis reports of 35-40 pages (12,000-15,000 words). You MUST provide extensive narrative content with every section - not just tables, but detailed multi-paragraph analysis explaining the data implications for investors. Include specific numbers, percentages, dollar amounts, and actionable insights throughout. Each section requires substantial written analysis. The SWOT analysis must have 8-10 detailed points per category with explanatory sentences. The Top 3 Opportunities and Risks sections must each be 150+ words with quantified impacts. Investment Recommendations must cover short-term actions, long-term strategy, and monitoring considerations in detail. Use current Australian market conditions and regulations. This is a premium report that clients pay for - make it comprehensive and thorough.';
+      : 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You MUST produce comprehensive, professional-grade investment reports of EXACTLY 38 pages following the strict template structure provided. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include minimum 10 bullet points per SWOT category with 2-3 sentence explanations. Top 3 Opportunities and Risks must each be 150+ words with specific dollar amounts. All 10-year projection tables must include all 10 years. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Maintenance is ALWAYS fixed at $1,500 annually. This is a premium client-facing report - be thorough, professional, and data-driven throughout.';
 
     console.log('Calling Perplexity API with sonar-pro model (multi-step reasoning)...');
     console.log('Report scope:', reportScope);
