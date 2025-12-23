@@ -251,13 +251,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$',
       isCashFlowField: true
     },
-    {
+    // Only show deposit value for existing properties (not new builds)
+    ...(!isNewBuild ? [{
       key: 'depositValue',
       label: 'Deposit Value',
       originalValue: report?.financial_calculations?.depositValue || null,
       overrideValue: report?.manual_overrides?.depositValue || null,
       prefix: '$'
-    },
+    }] : []),
     {
       key: 'loanAmount',
       label: 'Loan Amount',
@@ -1109,8 +1110,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                     <MortgageRepaymentCalculator
                       initialLoanAmount={
                         overrides.loanAmount || 
+                        report?.manual_overrides?.loanAmount ||
                         report?.financial_calculations?.loanAmount || 
-                        (report?.financial_calculations?.purchasePrice || 0) * 0.8
+                        ((report?.financial_calculations?.purchasePrice || 0) * (report?.financial_calculations?.loanToValueRatio || 80) / 100)
                       }
                       initialInterestRate={
                         overrides.interestRate || 
