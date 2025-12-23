@@ -115,8 +115,10 @@ export function useGHLCalendar() {
   const rescheduleEvent = useCallback(async (
     eventId: string,
     newStartTime: string,
-    newEndTime: string
-  ): Promise<boolean> => {
+    newEndTime: string,
+    originalStartTime?: string,
+    originalEndTime?: string
+  ): Promise<{ success: boolean; undo?: () => Promise<boolean> }> => {
     setIsUpdating(true);
 
     try {
@@ -141,11 +143,43 @@ export function useGHLCalendar() {
             : event
         ));
         
-        toast({
-          title: 'Event rescheduled',
-          description: 'The appointment has been updated successfully.',
-        });
-        return true;
+        // Return undo function if original times were provided
+        const undoFn = originalStartTime && originalEndTime
+          ? async () => {
+              const { data: undoData, error: undoError } = await supabase.functions.invoke('ghl-calendar', {
+                body: { 
+                  action: 'update',
+                  eventId,
+                  newStartTime: originalStartTime,
+                  newEndTime: originalEndTime,
+                },
+              });
+              
+              if (undoError || !undoData?.success) {
+                toast({
+                  title: 'Undo failed',
+                  description: 'Could not revert the event to its original time.',
+                  variant: 'destructive',
+                });
+                return false;
+              }
+              
+              // Revert local state
+              setEvents(prev => prev.map(event => 
+                event.id === eventId 
+                  ? { ...event, startTime: originalStartTime, endTime: originalEndTime }
+                  : event
+              ));
+              
+              toast({
+                title: 'Event restored',
+                description: 'The event has been moved back to its original time.',
+              });
+              return true;
+            }
+          : undefined;
+
+        return { success: true, undo: undoFn };
       } else {
         throw new Error(data?.error || 'Failed to reschedule event');
       }
@@ -156,11 +190,28 @@ export function useGHLCalendar() {
         description: err.message,
         variant: 'destructive',
       });
-      return false;
+      return { success: false };
     } finally {
       setIsUpdating(false);
     }
   }, [toast]);
+
+  const fetchContact = useCallback(async (contactId: string) => {
+    try {
+      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'contact', contactId },
+      });
+
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+
+      return data?.contact || null;
+    } catch (err: any) {
+      console.error('Error fetching contact:', err);
+      return null;
+    }
+  }, []);
 
   const getCalendarColor = useCallback((calendarId: string): string => {
     const calendar = calendars.find(c => c.id === calendarId);
@@ -176,6 +227,7 @@ export function useGHLCalendar() {
     fetchCalendarData,
     fetchEvents,
     rescheduleEvent,
+    fetchContact,
     getCalendarColor,
   };
 }

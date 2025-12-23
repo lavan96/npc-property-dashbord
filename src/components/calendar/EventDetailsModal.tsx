@@ -1,24 +1,57 @@
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, User, MapPin, FileText } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar, Clock, User, MapPin, FileText, Phone, Mail } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
+
+interface ContactDetails {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  companyName?: string;
+}
 
 interface EventDetailsModalProps {
   event: GHLEvent | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   getStatusColor: (status: string, appointmentStatus?: string) => string;
+  fetchContact?: (contactId: string) => Promise<ContactDetails | null>;
 }
 
-export function EventDetailsModal({ event, open, onOpenChange, getStatusColor }: EventDetailsModalProps) {
+export function EventDetailsModal({ event, open, onOpenChange, getStatusColor, fetchContact }: EventDetailsModalProps) {
+  const [contact, setContact] = useState<ContactDetails | null>(null);
+  const [loadingContact, setLoadingContact] = useState(false);
+
+  useEffect(() => {
+    if (open && event?.contactId && fetchContact) {
+      setLoadingContact(true);
+      setContact(null);
+      fetchContact(event.contactId)
+        .then(data => setContact(data))
+        .finally(() => setLoadingContact(false));
+    } else if (!open) {
+      setContact(null);
+    }
+  }, [open, event?.contactId, fetchContact]);
+
   if (!event) return null;
 
   const startDate = parseISO(event.startTime);
   const endDate = parseISO(event.endTime);
   const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
   const calendarColor = event.calendarColor || '#3b82f6';
+
+  const contactName = contact?.name || 
+    (contact?.firstName || contact?.lastName 
+      ? `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim() 
+      : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,10 +102,44 @@ export function EventDetailsModal({ event, open, onOpenChange, getStatusColor }:
                 <User className="h-4 w-4" />
                 Contact Information
               </h4>
-              <div className="pl-6 space-y-2 text-sm">
-                <p className="text-muted-foreground">Contact ID: {event.contactId}</p>
-                {/* If we had more contact details, they would go here */}
-              </div>
+              {loadingContact ? (
+                <div className="pl-6 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ) : contact ? (
+                <div className="pl-6 space-y-2 text-sm">
+                  {contactName && (
+                    <p className="font-medium text-foreground">{contactName}</p>
+                  )}
+                  {contact.companyName && (
+                    <p className="text-muted-foreground">{contact.companyName}</p>
+                  )}
+                  {contact.email && (
+                    <a 
+                      href={`mailto:${contact.email}`} 
+                      className="flex items-center gap-2 text-primary hover:underline"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      {contact.email}
+                    </a>
+                  )}
+                  {contact.phone && (
+                    <a 
+                      href={`tel:${contact.phone}`} 
+                      className="flex items-center gap-2 text-primary hover:underline"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      {contact.phone}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="pl-6 space-y-2 text-sm">
+                  <p className="text-muted-foreground">Contact ID: {event.contactId}</p>
+                </div>
+              )}
             </div>
           )}
 
