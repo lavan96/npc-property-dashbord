@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface LogoUploadCardProps {
@@ -29,20 +30,38 @@ interface LogoUploadCardProps {
   description: string;
   icon: React.ReactNode;
   currentLogo: string | null;
-  onUpload: (base64: string) => void;
+  logoType: 'auth' | 'sidebar' | 'favicon';
+  onUpload: (url: string) => void;
   onRemove: () => void;
 }
 
-function LogoUploadCard({ title, description, icon, currentLogo, onUpload, onRemove }: LogoUploadCardProps) {
+function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpload, onRemove }: LogoUploadCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [removeBackgroundEnabled, setRemoveBackgroundEnabled] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const uploadToSupabase = async (file: Blob, fileName: string): Promise<string> => {
+    const fileExt = fileName.split('.').pop() || 'png';
+    const filePath = `${logoType}/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('branding-assets')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
 
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('branding-assets')
+      .getPublicUrl(data.path);
+
+    return urlData.publicUrl;
+  };
+
+  const processFile = async (file: File) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please select an image file');
@@ -58,21 +77,18 @@ function LogoUploadCard({ title, description, icon, currentLogo, onUpload, onRem
     setIsProcessing(true);
 
     try {
+      let fileToUpload: Blob = file;
+      
       if (removeBackgroundEnabled) {
         toast.info('Processing image...', { description: 'Removing background, this may take a moment' });
         const img = await loadImage(file);
-        const processedBlob = await removeBackground(img);
-        const base64 = await blobToBase64(processedBlob);
-        setPreviewUrl(base64);
-        onUpload(base64);
-        toast.success('Background removed successfully');
-      } else {
-        // Direct upload without background removal
-        const base64 = await blobToBase64(file);
-        setPreviewUrl(base64);
-        onUpload(base64);
-        toast.success('Logo uploaded successfully');
+        fileToUpload = await removeBackground(img);
       }
+
+      // Upload to Supabase storage
+      const publicUrl = await uploadToSupabase(fileToUpload, file.name);
+      onUpload(publicUrl);
+      toast.success(removeBackgroundEnabled ? 'Background removed and logo uploaded' : 'Logo uploaded successfully');
     } catch (error) {
       console.error('Error processing image:', error);
       toast.error('Failed to process image', { 
@@ -88,13 +104,50 @@ function LogoUploadCard({ title, description, icon, currentLogo, onUpload, onRem
     }
   };
 
-  const handleRemove = () => {
-    setPreviewUrl(null);
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+  }, [removeBackgroundEnabled]);
+
+  const handleRemove = async () => {
+    // Optionally delete from Supabase storage
+    if (currentLogo && currentLogo.includes('branding-assets')) {
+      try {
+        const path = currentLogo.split('branding-assets/')[1];
+        if (path) {
+          await supabase.storage.from('branding-assets').remove([path]);
+        }
+      } catch (error) {
+        console.error('Failed to delete from storage:', error);
+      }
+    }
     onRemove();
     toast.success('Logo removed');
   };
-
-  const displayLogo = previewUrl || currentLogo;
 
   return (
     <Card>
@@ -108,11 +161,11 @@ function LogoUploadCard({ title, description, icon, currentLogo, onUpload, onRem
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {displayLogo ? (
+        {currentLogo ? (
           <div className="space-y-4">
             <div className="relative w-full h-32 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
               <img 
-                src={displayLogo} 
+                src={currentLogo} 
                 alt={`${title} preview`}
                 className="max-w-full max-h-full object-contain"
               />
@@ -140,8 +193,15 @@ function LogoUploadCard({ title, description, icon, currentLogo, onUpload, onRem
           </div>
         ) : (
           <div 
-            className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
+            className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+              isDragOver 
+                ? 'border-primary bg-primary/5 scale-[1.02]' 
+                : 'hover:border-primary hover:bg-muted/50'
+            }`}
             onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
           >
             {isProcessing ? (
               <>
@@ -150,8 +210,10 @@ function LogoUploadCard({ title, description, icon, currentLogo, onUpload, onRem
               </>
             ) : (
               <>
-                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Click to upload</span>
+                <Upload className={`h-8 w-8 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`text-sm transition-colors ${isDragOver ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                  {isDragOver ? 'Drop image here' : 'Drag & drop or click to upload'}
+                </span>
                 <span className="text-xs text-muted-foreground">PNG, JPG, SVG (max 5MB)</span>
               </>
             )}
@@ -208,14 +270,14 @@ export default function WhiteLabel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">White Labelling</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Branding</h1>
           <p className="text-muted-foreground">
             Customize the dashboard appearance with your brand identity
           </p>
         </div>
         <Badge variant="outline" className="gap-1">
           <Palette className="h-3 w-3" />
-          Branding
+          White Label
         </Badge>
       </div>
 
@@ -223,7 +285,7 @@ export default function WhiteLabel() {
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>How it works</AlertTitle>
         <AlertDescription>
-          Upload your logo images below to customize the dashboard. The background removal feature uses AI to automatically remove backgrounds from your logos. Changes are saved locally and will persist across sessions.
+          Drag and drop or click to upload your logo images. The background removal feature uses AI to automatically remove backgrounds. Logos are stored securely in the cloud and will persist across sessions.
         </AlertDescription>
       </Alert>
 
@@ -263,7 +325,8 @@ export default function WhiteLabel() {
           description="Displayed on the login page"
           icon={<LogIn className="h-5 w-5 text-primary" />}
           currentLogo={settings.authLogo}
-          onUpload={(base64) => updateSettings({ authLogo: base64 })}
+          logoType="auth"
+          onUpload={(url) => updateSettings({ authLogo: url })}
           onRemove={() => updateSettings({ authLogo: null })}
         />
 
@@ -272,7 +335,8 @@ export default function WhiteLabel() {
           description="Displayed in the sidebar navigation"
           icon={<PanelLeft className="h-5 w-5 text-primary" />}
           currentLogo={settings.sidebarLogo}
-          onUpload={(base64) => updateSettings({ sidebarLogo: base64 })}
+          logoType="sidebar"
+          onUpload={(url) => updateSettings({ sidebarLogo: url })}
           onRemove={() => updateSettings({ sidebarLogo: null })}
         />
 
@@ -281,7 +345,8 @@ export default function WhiteLabel() {
           description="Browser tab icon (recommended: 32x32)"
           icon={<Globe className="h-5 w-5 text-primary" />}
           currentLogo={settings.favicon}
-          onUpload={(base64) => updateSettings({ favicon: base64 })}
+          logoType="favicon"
+          onUpload={(url) => updateSettings({ favicon: url })}
           onRemove={() => updateSettings({ favicon: null })}
         />
       </div>
