@@ -147,6 +147,21 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // Construction Progress Schedule state
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
   const [includeConstructionScheduleInExport, setIncludeConstructionScheduleInExport] = useState(true);
+  
+  // Construction Schedule Preset Mode: 'standard' | 'even' | 'custom'
+  type SchedulePreset = 'standard' | 'even' | 'custom';
+  const [schedulePreset, setSchedulePreset] = useState<SchedulePreset>('standard');
+  
+  // Custom stage month positions (for 'custom' mode) - stage index (0-5) to month number
+  // Default: month 2-7 for stages 1-6
+  const [customStageMonths, setCustomStageMonths] = useState<{ [stageIndex: number]: number }>({
+    0: 2, // Deposit
+    1: 3, // Slab/Base
+    2: 4, // Frame
+    3: 5, // Lock-up
+    4: 6, // Fixing
+    5: 7, // Practical Completion
+  });
 
   // Get build type from report (defaults to 'existing_property')
   const buildType = report?.manual_overrides?.buildType || 'existing_property';
@@ -839,7 +854,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const monthlyLandInterest = landLoan * monthlyRate;
 
     // Get custom stage percentages from manual overrides or use defaults
-    const mo = baseFinancialData;
     const stagePercentages = {
       deposit: (report?.manual_overrides?.stageDepositPercent as number) ?? 5,
       slab: (report?.manual_overrides?.stageSlabPercent as number) ?? 15,
@@ -858,6 +872,41 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       { stage: 'Fixing Stage', description: 'Internal linings, plaster, cabinets, fittings', percentage: stagePercentages.fixing },
       { stage: 'Practical Completion', description: 'Final works, painting, finishes', percentage: stagePercentages.completion },
     ];
+
+    // Determine stage months based on preset
+    const getStageMonths = (): number[] => {
+      if (schedulePreset === 'standard') {
+        // Standard: stages at months 2-7 (fixed)
+        return [2, 3, 4, 5, 6, 7];
+      } else if (schedulePreset === 'even') {
+        // Even distribution: spread 6 stages across (durationMonths - 1) months
+        // Month 1 is always land interest, so stages start at month 2
+        const availableMonths = durationMonths - 1; // Exclude month 1
+        const numStages = baseStages.length;
+        const months: number[] = [];
+        
+        for (let i = 0; i < numStages; i++) {
+          // Distribute evenly: first stage at month 2, last stage at durationMonths
+          const month = Math.round(2 + (i * (availableMonths - 1)) / Math.max(1, numStages - 1));
+          months.push(Math.min(month, durationMonths));
+        }
+        return months;
+      } else {
+        // Custom: use customStageMonths state
+        return baseStages.map((_, index) => customStageMonths[index] || (index + 2));
+      }
+    };
+
+    const stageMonths = getStageMonths();
+
+    // Create a map of month -> array of stage data for that month (supports multiple stages per month)
+    const monthToStages: { [month: number]: Array<{ stage: typeof baseStages[0]; index: number }> } = {};
+    stageMonths.forEach((month, index) => {
+      if (!monthToStages[month]) {
+        monthToStages[month] = [];
+      }
+      monthToStages[month].push({ stage: baseStages[index], index });
+    });
 
     let cumulativeDrawn = 0;
     let totalBuildInterest = 0;
@@ -878,50 +927,52 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
     const stageResults: ConstructionStage[] = [landInterestRow];
 
-    // Add the 6 standard build stages (months 2-7)
-    baseStages.forEach((s, index) => {
-      const buildAmount = (buildPrice * s.percentage) / 100;
-      cumulativeDrawn += buildAmount;
+    // Build rows for months 2 through durationMonths
+    for (let month = 2; month <= durationMonths; month++) {
+      const stagesThisMonth = monthToStages[month] || [];
       
-      // Build interest is calculated on cumulative drawn amount
-      const buildInterest = cumulativeDrawn * monthlyRate;
-      const combinedRepayment = monthlyLandInterest + buildInterest;
-      
-      totalBuildInterest += buildInterest;
-      totalCombinedRepayment += combinedRepayment;
+      if (stagesThisMonth.length > 0) {
+        // This month has one or more stage payments - add a row for each stage
+        stagesThisMonth.forEach((stageData) => {
+          const s = stageData.stage;
+          const buildAmount = (buildPrice * s.percentage) / 100;
+          cumulativeDrawn += buildAmount;
+          
+          const buildInterest = cumulativeDrawn * monthlyRate;
+          const combinedRepayment = monthlyLandInterest + buildInterest;
+          
+          totalBuildInterest += buildInterest;
+          totalCombinedRepayment += combinedRepayment;
 
-      stageResults.push({
-        stage: s.stage,
-        description: s.description,
-        percentage: s.percentage,
-        buildAmount: Math.round(buildAmount * 100) / 100,
-        cumulativeDrawn: Math.round(cumulativeDrawn * 100) / 100,
-        landInterest: Math.round(monthlyLandInterest * 100) / 100,
-        buildInterest: Math.round(buildInterest * 100) / 100,
-        totalMonthlyInterest: Math.round(combinedRepayment * 100) / 100,
-        month: index + 2, // Month 2-7 for build stages
-      });
-    });
-
-    // If construction duration exceeds 7 months, add additional rows for months 8+
-    // These rows have no stage info but continue interest accumulation
-    if (durationMonths > 7) {
-      const finalBuildInterest = cumulativeDrawn * monthlyRate; // Interest on fully drawn amount
-      const finalCombinedRepayment = monthlyLandInterest + finalBuildInterest;
-      
-      for (let month = 8; month <= durationMonths; month++) {
-        totalBuildInterest += finalBuildInterest;
-        totalCombinedRepayment += finalCombinedRepayment;
+          stageResults.push({
+            stage: s.stage,
+            description: s.description,
+            percentage: s.percentage,
+            buildAmount: Math.round(buildAmount * 100) / 100,
+            cumulativeDrawn: Math.round(cumulativeDrawn * 100) / 100,
+            landInterest: Math.round(monthlyLandInterest * 100) / 100,
+            buildInterest: Math.round(buildInterest * 100) / 100,
+            totalMonthlyInterest: Math.round(combinedRepayment * 100) / 100,
+            month: month,
+          });
+        });
+      } else {
+        // No stage this month - interest-only row
+        const buildInterest = cumulativeDrawn * monthlyRate;
+        const combinedRepayment = monthlyLandInterest + buildInterest;
+        
+        totalBuildInterest += buildInterest;
+        totalCombinedRepayment += combinedRepayment;
 
         stageResults.push({
-          stage: '', // Empty - no stage for these months
-          description: '', // Empty
-          percentage: 0, // Empty (will show as blank)
-          buildAmount: 0, // Empty (will show as blank)
-          cumulativeDrawn: Math.round(cumulativeDrawn * 100) / 100, // Same as final
+          stage: '',
+          description: '',
+          percentage: 0,
+          buildAmount: 0,
+          cumulativeDrawn: Math.round(cumulativeDrawn * 100) / 100,
           landInterest: Math.round(monthlyLandInterest * 100) / 100,
-          buildInterest: Math.round(finalBuildInterest * 100) / 100,
-          totalMonthlyInterest: Math.round(finalCombinedRepayment * 100) / 100,
+          buildInterest: Math.round(buildInterest * 100) / 100,
+          totalMonthlyInterest: Math.round(combinedRepayment * 100) / 100,
           month: month,
         });
       }
@@ -963,7 +1014,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       },
       grandTotal: Math.round((totalUpfrontCost + stagedProgressInterest) * 100) / 100,
     };
-  }, [baseFinancialData, report?.manual_overrides]);
+  }, [baseFinancialData, report?.manual_overrides, schedulePreset, customStageMonths]);
 
 
   // Calculate advanced comparison metrics
@@ -3689,6 +3740,72 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <CardContent className="pt-0">
+                      {/* Preset Selection */}
+                      <div className="flex flex-wrap items-center gap-4 mb-4 p-3 bg-muted/20 rounded-lg border">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Schedule Mode:</span>
+                          <Select value={schedulePreset} onValueChange={(value: 'standard' | 'even' | 'custom') => setSchedulePreset(value)}>
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Select mode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="standard">Standard (Months 2-7)</SelectItem>
+                              <SelectItem value="even">Even Distribution</SelectItem>
+                              <SelectItem value="custom">Custom Positioning</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {schedulePreset === 'standard' && 'Stages are fixed at months 2-7. Additional months show interest-only rows.'}
+                          {schedulePreset === 'even' && `Stages are evenly distributed across ${constructionProgressSchedule.durationMonths} months.`}
+                          {schedulePreset === 'custom' && 'Customize which month each stage occurs. Click on the month column to edit.'}
+                        </span>
+                      </div>
+
+                      {/* Custom Stage Month Selection (only in custom mode) */}
+                      {schedulePreset === 'custom' && (
+                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            {[
+                              { index: 0, label: 'Deposit' },
+                              { index: 1, label: 'Slab/Base' },
+                              { index: 2, label: 'Frame' },
+                              { index: 3, label: 'Lock-up' },
+                              { index: 4, label: 'Fixing' },
+                              { index: 5, label: 'Completion' },
+                            ].map(({ index, label }) => (
+                              <div key={index} className="flex flex-col gap-1">
+                                <label className="text-xs text-muted-foreground">{label}</label>
+                                <Select 
+                                  value={String(customStageMonths[index] || (index + 2))}
+                                  onValueChange={(value) => {
+                                    setCustomStageMonths(prev => ({
+                                      ...prev,
+                                      [index]: parseInt(value, 10)
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Month" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Array.from({ length: constructionProgressSchedule.durationMonths - 1 }, (_, i) => i + 2).map(month => (
+                                      <SelectItem key={month} value={String(month)}>
+                                        Month {month}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Note: Multiple stages can occur in the same month. Interest calculations update automatically.
+                          </p>
+                        </div>
+                      )}
+
                       {/* Project Summary */}
                       <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-muted/30 rounded-lg">
                         <div>
