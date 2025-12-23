@@ -13,8 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image, Calculator } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
+import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 
 interface RecentReport {
   id: string;
@@ -24,7 +25,7 @@ interface RecentReport {
 
 export function InvestmentReportGenerator() {
   // Input mode: 'manual', 'url', or 'pdf'
-  const [inputMode, setInputMode] = useState<'manual' | 'url' | 'pdf'>('manual');
+  const [inputMode, setInputMode] = useState<'manual' | 'url' | 'pdf' | 'overrides'>('manual');
   
   // URL scraping state
   const [propertyUrl, setPropertyUrl] = useState('');
@@ -67,6 +68,9 @@ export function InvestmentReportGenerator() {
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const { user } = useAuth();
+  
+  // Pre-generation overrides data
+  const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
 
   const handleGenerate = async () => {
     if (!query.trim()) {
@@ -117,20 +121,61 @@ export function InvestmentReportGenerator() {
           break;
       }
 
-      // Build property details object
+      // Build property details object with pre-generation overrides
       const propertyDetails: any = { 
         queryType, 
-        originalQuery: query 
+        originalQuery: query,
+        // Include pre-generation manual overrides for context injection
+        manualOverrides: preGenData,
       };
       
-      // Add optional property details if provided
-      if (propertyPrice) propertyDetails.price = parseFloat(propertyPrice);
-      if (weeklyRent) propertyDetails.weeklyRent = parseFloat(weeklyRent);
+      // Add optional property details if provided (form values take precedence over preGenData)
+      if (propertyPrice) {
+        propertyDetails.price = parseFloat(propertyPrice);
+      } else if (preGenData.purchasePrice) {
+        propertyDetails.price = preGenData.purchasePrice;
+      }
+      
+      if (weeklyRent) {
+        propertyDetails.weeklyRent = parseFloat(weeklyRent);
+      } else if (preGenData.weeklyRent) {
+        propertyDetails.weeklyRent = preGenData.weeklyRent;
+      }
+      
       if (propertyType) propertyDetails.propertyType = propertyType;
       if (beds) propertyDetails.beds = parseInt(beds);
       if (baths) propertyDetails.baths = parseInt(baths);
       if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
       if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
+      
+      // Include build type from pre-generation data
+      propertyDetails.buildType = preGenData.buildType;
+      
+      // For new builds, add land and build prices
+      if (preGenData.buildType === 'new_build') {
+        if (preGenData.landPrice) propertyDetails.landPrice = preGenData.landPrice;
+        if (preGenData.buildPrice) propertyDetails.buildPrice = preGenData.buildPrice;
+        if (preGenData.agentFee) propertyDetails.agentFee = preGenData.agentFee;
+      } else {
+        if (preGenData.depositValue) propertyDetails.depositValue = preGenData.depositValue;
+      }
+      
+      // Add financial assumptions
+      if (preGenData.loanToValueRatio) propertyDetails.loanToValueRatio = preGenData.loanToValueRatio;
+      if (preGenData.interestRate) propertyDetails.interestRate = preGenData.interestRate;
+      if (preGenData.capitalGrowth) propertyDetails.capitalGrowth = preGenData.capitalGrowth;
+      
+      // Add expense overrides
+      if (preGenData.stampDuty) propertyDetails.stampDuty = preGenData.stampDuty;
+      if (preGenData.bodyCorporateFees) propertyDetails.bodyCorporateFees = preGenData.bodyCorporateFees;
+      if (preGenData.landTax) propertyDetails.landTax = preGenData.landTax;
+      if (preGenData.councilRates) propertyDetails.councilRates = preGenData.councilRates;
+      if (preGenData.waterRates) propertyDetails.waterRates = preGenData.waterRates;
+      if (preGenData.solicitorFees) propertyDetails.solicitorFees = preGenData.solicitorFees;
+      if (preGenData.buildingLandlordInsurance) propertyDetails.buildingLandlordInsurance = preGenData.buildingLandlordInsurance;
+      if (preGenData.propertyManagementFees) propertyDetails.propertyManagementFees = preGenData.propertyManagementFees;
+      if (preGenData.repairsMaintenance) propertyDetails.repairsMaintenance = preGenData.repairsMaintenance;
+      if (preGenData.lettingFees) propertyDetails.lettingFees = preGenData.lettingFees;
       
       // Add suburb year context if provided (only for suburb analysis)
       if (queryType === 'suburb') {
@@ -706,8 +751,8 @@ export function InvestmentReportGenerator() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Input Mode Tabs */}
-              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
-                <TabsList className="grid w-full grid-cols-3">
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf' | 'overrides')}>
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="manual" className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
                     Manual Entry
@@ -719,6 +764,10 @@ export function InvestmentReportGenerator() {
                   <TabsTrigger value="pdf" className="flex items-center gap-2">
                     <Upload className="h-4 w-4" />
                     PDF Upload
+                  </TabsTrigger>
+                  <TabsTrigger value="overrides" className="flex items-center gap-2">
+                    <Calculator className="h-4 w-4" />
+                    Manual Inputs
                   </TabsTrigger>
                 </TabsList>
 
@@ -1208,6 +1257,54 @@ export function InvestmentReportGenerator() {
                       </>
                     )}
                   </Button>
+                </TabsContent>
+
+                {/* Manual Inputs / Overrides Tab */}
+                <TabsContent value="overrides" className="space-y-6 pt-4">
+                  <div className="space-y-4">
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <Calculator className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-muted-foreground">
+                          <p><strong>Pre-Generation Overrides</strong></p>
+                          <p className="mt-1">
+                            Set values here to inject into the report generation. These will be used instead of AI-fetched data, 
+                            ensuring your specific financial assumptions are reflected in the report.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <PreGenerationOverrides
+                      propertyAddress={query}
+                      onDataChange={setPreGenData}
+                      disabled={isGenerating}
+                    />
+
+                    {/* Show current build type status */}
+                    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <span className="text-sm text-muted-foreground">Current Build Type:</span>
+                      <Badge variant={preGenData.buildType === 'new_build' ? 'default' : 'secondary'}>
+                        {preGenData.buildType === 'new_build' ? 'New Build' : 'Existing Property'}
+                      </Badge>
+                    </div>
+
+                    {/* Info about using with other tabs */}
+                    <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-foreground/80 space-y-1">
+                          <p><strong>How it works:</strong></p>
+                          <ul className="list-disc list-inside space-y-1 ml-2">
+                            <li>Set your financial overrides here</li>
+                            <li>Switch to Manual Entry, URL Scrape, or PDF Upload tab</li>
+                            <li>Generate your report - overrides will be applied</li>
+                            <li>Values set here take precedence over scraped/parsed data</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </CardContent>
