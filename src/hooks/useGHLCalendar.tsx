@@ -37,6 +37,38 @@ interface CalendarData {
   };
 }
 
+const normalizeTimestampToISO = (value: unknown): string | null => {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') {
+    const ms = value < 1_000_000_000_000 ? value * 1000 : value;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  return null;
+};
+
+const normalizeEvent = (raw: any): GHLEvent | null => {
+  const start = normalizeTimestampToISO(raw?.startTime);
+  const end = normalizeTimestampToISO(raw?.endTime);
+  if (!start || !end) return null;
+
+  return {
+    id: String(raw?.id ?? ''),
+    title: typeof raw?.title === 'string' ? raw.title : String(raw?.title ?? ''),
+    startTime: start,
+    endTime: end,
+    calendarId: String(raw?.calendarId ?? ''),
+    calendarName: raw?.calendarName,
+    calendarColor: raw?.calendarColor,
+    status: String(raw?.status ?? ''),
+    appointmentStatus: raw?.appointmentStatus,
+    contactId: raw?.contactId,
+    notes: raw?.notes,
+    address: raw?.address,
+  };
+};
+
 export function useGHLCalendar() {
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
   const [events, setEvents] = useState<GHLEvent[]>([]);
@@ -64,7 +96,10 @@ export function useGHLCalendar() {
 
       if (data && data.calendars) {
         setCalendars(data.calendars);
-        setEvents(data.events || []);
+        const normalized = (data.events || [])
+          .map(normalizeEvent)
+          .filter(Boolean) as GHLEvent[];
+        setEvents(normalized);
       }
     } catch (err: any) {
       console.error('Error fetching calendar data:', err);
@@ -102,7 +137,10 @@ export function useGHLCalendar() {
       }
 
       if (data && data.events) {
-        setEvents(data.events);
+        const normalized = (data.events || [])
+          .map(normalizeEvent)
+          .filter(Boolean) as GHLEvent[];
+        setEvents(normalized);
       }
     } catch (err: any) {
       console.error('Error fetching events:', err);
