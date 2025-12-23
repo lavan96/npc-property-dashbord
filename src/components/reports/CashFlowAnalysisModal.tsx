@@ -2351,6 +2351,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           th { background: #3b82f6; color: white; font-weight: 600; }
           td:first-child, th:first-child { text-align: left; font-weight: 500; }
           .section-header { background: #f0f0f0; font-weight: bold; }
+          .text-green { color: #16a34a; }
+          .text-red { color: #dc2626; }
+          .equity-row td:not(:first-child) { color: #16a34a; }
           .summary { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px; }
           .summary h3 { font-size: 14px; margin-bottom: 8px; }
           .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -2541,10 +2544,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               ${projections.slice(1).map(p => `<td>${formatCurrency(p.loanAmount)}</td>`).join('')}
             </tr>
             <tr class="section-header"><td colspan="12">STATISTICS</td></tr>
-            <tr>
+            <tr class="equity-row">
               <td>Equity $</td>
-              <td>${formatCurrency(projections[0].equityInProperty)}</td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.equityInProperty)}</td>`).join('')}
+              <td class="text-green">${formatCurrency(projections[0].equityInProperty)}</td>
+              ${projections.slice(1).map(p => `<td class="text-green">${formatCurrency(p.equityInProperty)}</td>`).join('')}
             </tr>
             <tr>
               <td>LVR %</td>
@@ -2585,7 +2588,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <tr>
               <td>Pre-Tax Cash Flow p/a $</td>
               <td></td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.preTaxCashFlowPA)}</td>`).join('')}
+              ${projections.slice(1).map(p => `<td class="${p.preTaxCashFlowPA < 0 ? 'text-red' : 'text-green'}">${formatCurrency(p.preTaxCashFlowPA)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Pre-Tax Cash Flow p/w $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td class="${p.preTaxCashFlowPW < 0 ? 'text-red' : 'text-green'}">${formatCurrency(p.preTaxCashFlowPW)}</td>`).join('')}
             </tr>
             <tr class="section-header"><td colspan="12">NON-CASH DEDUCTIONS</td></tr>
             <tr>
@@ -2602,12 +2610,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <tr>
               <td>Net Profit/Loss $</td>
               <td></td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.netProfitLoss)}</td>`).join('')}
+              ${projections.slice(1).map(p => `<td class="${p.netProfitLoss < 0 ? 'text-red' : 'text-green'}">${formatCurrency(p.netProfitLoss)}</td>`).join('')}
             </tr>
             <tr>
               <td>Tax Refund $</td>
               <td></td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.taxRefund)}</td>`).join('')}
+              ${projections.slice(1).map(p => `<td class="text-green">${formatCurrency(p.taxRefund)}</td>`).join('')}
             </tr>
             <tr>
               <td>Land Tax $</td>
@@ -2617,12 +2625,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <tr style="background: #eff6ff; font-weight: bold;">
               <td>After-Tax Cash Flow p/a $</td>
               <td></td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.afterTaxCashFlowPA)}</td>`).join('')}
+              ${projections.slice(1).map(p => `<td class="${p.afterTaxCashFlowPA < 0 ? 'text-red' : 'text-green'}">${formatCurrency(p.afterTaxCashFlowPA)}</td>`).join('')}
             </tr>
             <tr style="background: #eff6ff; font-weight: bold;">
               <td>After-Tax Cash Flow p/w $</td>
               <td></td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.afterTaxCashFlowPW)}</td>`).join('')}
+              ${projections.slice(1).map(p => `<td class="${p.afterTaxCashFlowPW < 0 ? 'text-red' : 'text-green'}">${formatCurrency(p.afterTaxCashFlowPW)}</td>`).join('')}
             </tr>
           </tbody>
         </table>
@@ -2632,19 +2640,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           <div class="summary-grid">
             <div class="summary-item">
               <div class="summary-label">Year 10 Property Value</div>
-              <div class="summary-value">${formatCurrency(projections[10]?.propertyMarketValue || 0)}</div>
+              <div class="summary-value text-green">${formatCurrency(projections[10]?.propertyMarketValue || 0)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Year 10 Equity</div>
-              <div class="summary-value">${formatCurrency(projections[10]?.equityInProperty || 0)}</div>
+              <div class="summary-value text-green">${formatCurrency(projections[10]?.equityInProperty || 0)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Total After-Tax Cash Flow</div>
-              <div class="summary-value">${formatCurrency(projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0))}</div>
+              <div class="summary-value ${projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0) < 0 ? 'text-red' : 'text-green'}">${formatCurrency(projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0))}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Capital Gain</div>
-              <div class="summary-value">${formatCurrency((projections[10]?.propertyMarketValue || 0) - baseFinancialData.purchasePrice)}</div>
+              <div class="summary-value text-green">${formatCurrency((projections[10]?.propertyMarketValue || 0) - baseFinancialData.purchasePrice)}</div>
             </div>
           </div>
         </div>
