@@ -2589,6 +2589,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               ${projections.slice(1).map(p => `<td>${formatCurrency(p.interestPayments)}</td>`).join('')}
             </tr>
             <tr>
+              <td>Principal Payments $</td>
+              <td>$0</td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.principalPayments)}</td>`).join('')}
+            </tr>
+            <tr>
               <td>Pre-Tax Cash Flow p/a $</td>
               <td></td>
               ${projections.slice(1).map(p => `<td class="${p.preTaxCashFlowPA < 0 ? 'text-red' : 'text-green'}">${formatCurrency(p.preTaxCashFlowPA)}</td>`).join('')}
