@@ -489,6 +489,15 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       suffix: 'weeks/year',
       isCashFlowField: true
     },
+    // Only show agent fee for existing properties in cash flow tab
+    ...(!isNewBuild ? [{
+      key: 'agentFee',
+      label: 'Agent Fee',
+      originalValue: report?.financial_calculations?.agentFee || null,
+      overrideValue: report?.manual_overrides?.agentFee || null,
+      prefix: '$',
+      isCashFlowField: true
+    }] : []),
     // Only show construction duration for new builds
     ...(isNewBuild ? [{
       key: 'constructionDurationMonths',
