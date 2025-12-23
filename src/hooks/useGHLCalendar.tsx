@@ -149,7 +149,18 @@ export function useGHLCalendar() {
       }
 
       if (data?.calendars) {
-        setCalendars(data.calendars);
+        // Normalize calendars to ensure all fields are primitive values (no nested objects)
+        const normalizedCalendars: GHLCalendar[] = data.calendars.map((cal: any) => ({
+          id: String(cal.id || ''),
+          name: String(cal.name || ''),
+          description: cal.description ? String(cal.description) : undefined,
+          calendarType: String(cal.calendarType || ''),
+          isActive: Boolean(cal.isActive),
+          teamMembers: Array.isArray(cal.teamMembers) ? cal.teamMembers.length : (typeof cal.teamMembers === 'number' ? cal.teamMembers : 0),
+          slug: cal.widgetSlug ? String(cal.widgetSlug) : (cal.slug ? String(cal.slug) : undefined),
+          eventColor: cal.eventColor ? String(cal.eventColor) : undefined,
+        }));
+        setCalendars(normalizedCalendars);
         const rawEvents = data.events || [];
         const normalized = rawEvents.map(normalizeEvent).filter(Boolean) as GHLEvent[];
 
