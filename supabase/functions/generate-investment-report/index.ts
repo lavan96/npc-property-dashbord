@@ -1986,41 +1986,56 @@ ${sourceSpecificInstructions}
       console.log('ℹ️ No document content available - generating report from property address and web search only');
     }
 
-    // ========== RAG TEMPLATE CONTEXT INJECTION ==========
-    // Retrieve relevant template context from vector embeddings
+    // ========== DIRECT TEMPLATE INJECTION (Hard Enforced) ==========
+    // Fetch AI structure template directly from database - bypasses RAG similarity search
     let templateContext = '';
     try {
-      console.log('🔍 Retrieving RAG template context...');
-      const ragResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/retrieve-template-context`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-        },
-        body: JSON.stringify({
-          query: `${reportScope} investment report structure for ${formattedInput}`,
-          reportTier: propertyDetails.reportTier || 'compass', // Dynamic tier from request
-          reportCategory: reportScope === 'suburb' ? 'suburb_snapshot' : 'investment',
-          templateType: 'ai_structure',
-          maxChunks: 5,
-          similarityThreshold: 0.6,
-        })
-      });
+      console.log('🔍 Fetching AI structure template directly from database...');
       
-      if (ragResponse.ok) {
-        const ragData = await ragResponse.json();
-        if (ragData.success && ragData.context && ragData.context.length > 0) {
-          templateContext = ragData.context;
-          console.log(`✓ RAG context retrieved: ${ragData.chunks?.length || 0} chunks, ${templateContext.length} chars`);
-          console.log(`  Templates used: ${ragData.templatesUsed?.map((t: any) => t.name).join(', ') || 'none'}`);
+      const reportTier = propertyDetails?.reportTier || 'compass';
+      const reportCategory = reportScope === 'suburb' ? 'suburb_snapshot' : 'investment';
+      
+      // Query report_structure_templates directly for the matching template
+      const templateClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      
+      // First try to find a template matching the specific tier and category
+      let { data: templates, error: templateError } = await templateClient
+        .from('report_structure_templates')
+        .select('id, name, parsed_content, report_tier, report_category')
+        .eq('template_type', 'ai_structure')
+        .eq('is_active', true)
+        .order('priority', { ascending: false });
+      
+      if (templateError) {
+        console.log('⚠️ Template query error:', templateError.message);
+      } else if (templates && templates.length > 0) {
+        // Find best matching template: exact match > tier match > category match > any active
+        let selectedTemplate = templates.find(t => 
+          t.report_tier === reportTier && t.report_category === reportCategory
+        ) || templates.find(t => 
+          t.report_tier === reportTier && !t.report_category
+        ) || templates.find(t => 
+          !t.report_tier && t.report_category === reportCategory
+        ) || templates.find(t => 
+          !t.report_tier && !t.report_category
+        ) || templates[0]; // Fallback to highest priority
+        
+        if (selectedTemplate?.parsed_content) {
+          templateContext = selectedTemplate.parsed_content;
+          console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
+          console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
+          console.log(`  Content size: ${templateContext.length} chars`);
         } else {
-          console.log('ℹ️ No active templates found for RAG injection');
+          console.log('⚠️ Template found but parsed_content is empty');
         }
       } else {
-        console.log('⚠️ RAG retrieval returned non-OK status:', ragResponse.status);
+        console.log('ℹ️ No active AI structure templates found in database');
       }
-    } catch (ragError: any) {
-      console.log('⚠️ RAG template retrieval failed (non-critical):', ragError?.message || 'Unknown error');
+    } catch (templateError: any) {
+      console.log('⚠️ Template fetch failed (non-critical):', templateError?.message || 'Unknown error');
     }
 
     // Inject template context into prompt if available
