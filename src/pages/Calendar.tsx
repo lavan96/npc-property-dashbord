@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import type { DragEvent } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,15 +26,32 @@ export default function Calendar() {
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [draggedEvent, setDraggedEvent] = useState<GHLEvent | null>(null);
   const [dropTarget, setDropTarget] = useState<{ day: Date; hour?: number } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchCalendarData();
   }, [fetchCalendarData]);
 
   const filteredEvents = useMemo(() => {
-    if (selectedCalendarId === 'all') return events;
-    return events.filter(event => event.calendarId === selectedCalendarId);
-  }, [events, selectedCalendarId]);
+    let filtered = events;
+    
+    // Filter by calendar
+    if (selectedCalendarId !== 'all') {
+      filtered = filtered.filter(event => event.calendarId === selectedCalendarId);
+    }
+    
+    // Filter by search query (title includes contact name typically)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(event => 
+        (event.title?.toLowerCase().includes(query)) ||
+        (event.notes?.toLowerCase().includes(query)) ||
+        (event.address?.toLowerCase().includes(query))
+      );
+    }
+    
+    return filtered;
+  }, [events, selectedCalendarId, searchQuery]);
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
@@ -228,7 +246,25 @@ export default function Calendar() {
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">GoHighLevel Appointments & Schedule</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-[200px] pl-8 pr-8 h-9"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <Tabs value={view} onValueChange={(v) => setView(v as 'month' | 'week')}>
             <TabsList className="h-9">
               <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
@@ -265,6 +301,19 @@ export default function Calendar() {
           </Button>
         </div>
       </div>
+
+      {/* Search Results Info */}
+      {searchQuery && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Search className="h-4 w-4" />
+          <span>
+            Found <span className="font-medium text-foreground">{filteredEvents.length}</span> event{filteredEvents.length !== 1 ? 's' : ''} matching "{searchQuery}"
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')} className="h-6 px-2">
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
