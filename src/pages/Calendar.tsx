@@ -42,11 +42,32 @@ export default function Calendar() {
 
   const safeParseISO = (value: string) => {
     try {
-      const d = parseISO(value);
-      return Number.isNaN(d.getTime()) ? null : d;
+      const trimmed = (value || '').trim();
+      if (!trimmed) return null;
+
+      // Handle numeric timestamps that arrive as strings
+      if (/^\d+$/.test(trimmed)) {
+        const n = Number(trimmed);
+        const ms = n < 1_000_000_000_000 ? n * 1000 : n;
+        const d = new Date(ms);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+
+      const d = parseISO(trimmed);
+      if (!Number.isNaN(d.getTime())) return d;
+
+      const fallbackMs = Date.parse(trimmed);
+      if (!Number.isNaN(fallbackMs)) return new Date(fallbackMs);
+
+      return null;
     } catch {
       return null;
     }
+  };
+
+  const safeFormatISO = (value: string | undefined | null, fmt: string) => {
+    const d = value ? safeParseISO(value) : null;
+    return d ? format(d, fmt) : '—';
   };
 
   const toSearchable = (value: unknown) => (typeof value === 'string' ? value.toLowerCase() : '');
@@ -402,10 +423,10 @@ export default function Calendar() {
                                 e.stopPropagation();
                                 handleEventClick(event);
                               }}
-                              style={getEventStyle(event)}
-                              className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
-                            >
-                              {format(parseISO(event.startTime), 'HH:mm')}
+                                style={getEventStyle(event)}
+                                className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
+                              >
+                                {safeFormatISO(event.startTime, 'HH:mm')}
                             </div>
                           ))}
                           {dayEvents.length > 3 && (
@@ -462,7 +483,7 @@ export default function Calendar() {
                                   <div className="font-medium truncate">
                                     {event.title || 'Event'}
                                   </div>
-                                  <div className="opacity-75">{format(parseISO(event.startTime), 'h:mm a')}</div>
+                                  <div className="opacity-75">{safeFormatISO(event.startTime, 'h:mm a')}</div>
                                 </div>
                               ))}
                             </div>
@@ -619,7 +640,7 @@ function EventCard({
       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {format(parseISO(event.startTime), 'MMM d, HH:mm')} - {format(parseISO(event.endTime), 'HH:mm')}
+          {safeFormatISO(event.startTime, 'MMM d, HH:mm')} - {safeFormatISO(event.endTime, 'HH:mm')}
         </div>
       </div>
       {event.notes && (
