@@ -177,6 +177,20 @@ export function InvestmentReportGenerator() {
       if (preGenData.repairsMaintenance) propertyDetails.repairsMaintenance = preGenData.repairsMaintenance;
       if (preGenData.lettingFees) propertyDetails.lettingFees = preGenData.lettingFees;
       
+      // Add strata breakdown
+      if (preGenData.strataAdminFund) propertyDetails.strataAdminFund = preGenData.strataAdminFund;
+      if (preGenData.strataSinkingFund) propertyDetails.strataSinkingFund = preGenData.strataSinkingFund;
+      if (preGenData.strataSpecialLevies) propertyDetails.strataSpecialLevies = preGenData.strataSpecialLevies;
+      
+      // Add cash flow analysis overrides (optional values that cascade to 10-year analysis)
+      if (preGenData.cpiGrowthRate) propertyDetails.cpiGrowthRate = preGenData.cpiGrowthRate;
+      if (preGenData.depreciation) propertyDetails.depreciation = preGenData.depreciation;
+      if (preGenData.taxRate) propertyDetails.taxRate = preGenData.taxRate;
+      if (preGenData.occupancyRate) propertyDetails.occupancyRate = preGenData.occupancyRate;
+      if (preGenData.loanType) propertyDetails.loanType = preGenData.loanType;
+      if (preGenData.loanTermYears) propertyDetails.loanTermYears = preGenData.loanTermYears;
+      if (preGenData.marketValueNow) propertyDetails.marketValueNow = preGenData.marketValueNow;
+      
       // Add suburb year context if provided (only for suburb analysis)
       if (queryType === 'suburb') {
         if (dataYearType === 'single' && singleYear) {

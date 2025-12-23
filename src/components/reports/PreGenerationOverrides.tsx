@@ -38,6 +38,8 @@ export interface PreGenerationData {
   interestRate?: number;
   capitalGrowth?: number;
   weeklyRent?: number;
+  
+  // Annual Expenses
   stampDuty?: number;
   bodyCorporateFees?: number;
   strataAdminFund?: number;
@@ -53,6 +55,15 @@ export interface PreGenerationData {
   lettingFees?: number;
   agentFee?: number;
   propertyType?: string;
+  
+  // Cash Flow Analysis Optional Overrides
+  cpiGrowthRate?: number;
+  depreciation?: number;
+  taxRate?: number;
+  occupancyRate?: number;
+  loanType?: 'interest_only' | 'principal_interest';
+  loanTermYears?: number;
+  marketValueNow?: number;
 }
 
 interface PreGenerationOverridesProps {
@@ -102,14 +113,25 @@ export function PreGenerationOverrides({
   const [lettingFees, setLettingFees] = useState<string>('');
   const [agentFee, setAgentFee] = useState<string>('');
   
+  // Cash Flow Analysis Optional Overrides
+  const [cpiGrowthRate, setCpiGrowthRate] = useState<string>('');
+  const [depreciation, setDepreciation] = useState<string>('');
+  const [taxRate, setTaxRate] = useState<string>('');
+  const [occupancyRate, setOccupancyRate] = useState<string>('52');
+  const [loanType, setLoanType] = useState<'interest_only' | 'principal_interest'>('interest_only');
+  const [loanTermYears, setLoanTermYears] = useState<string>('30');
+  const [marketValueNow, setMarketValueNow] = useState<string>('');
+  
   // Calculators visibility
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
   const [showStrataBreakdown, setShowStrataBreakdown] = useState(false);
+  const [showCashFlowOverrides, setShowCashFlowOverrides] = useState(false);
   const [detectedState, setDetectedState] = useState<string>('All');
   
   // Collapsible sections
   const [showLoanSettings, setShowLoanSettings] = useState(true);
   const [showExpenses, setShowExpenses] = useState(true);
+  const [showAcquisitionCosts, setShowAcquisitionCosts] = useState(true);
   
   // Loading state for expense estimation
   const [isEstimatingExpenses, setIsEstimatingExpenses] = useState(false);
@@ -307,6 +329,14 @@ export function PreGenerationOverrides({
       lettingFees: lettingFees ? parseFloat(lettingFees) : undefined,
       agentFee: buildType === 'new_build' && agentFee ? parseFloat(agentFee) : undefined,
       propertyType,
+      // Cash Flow Analysis Overrides
+      cpiGrowthRate: cpiGrowthRate ? parseFloat(cpiGrowthRate) : undefined,
+      depreciation: depreciation ? parseFloat(depreciation) : undefined,
+      taxRate: taxRate ? parseFloat(taxRate) : undefined,
+      occupancyRate: occupancyRate ? parseFloat(occupancyRate) : undefined,
+      loanType: loanType || undefined,
+      loanTermYears: loanTermYears ? parseFloat(loanTermYears) : undefined,
+      marketValueNow: marketValueNow ? parseFloat(marketValueNow) : undefined,
     };
     
     onDataChange(data);
@@ -315,7 +345,9 @@ export function PreGenerationOverrides({
     loanToValueRatio, interestRate, capitalGrowth, weeklyRent,
     stampDuty, bodyCorporateFees, strataAdminFund, strataSinkingFund, strataSpecialLevies,
     landTax, councilRates, waterRates, solicitorFees, buildingLandlordInsurance, 
-    propertyManagementFees, repairsMaintenance, lettingFees, agentFee, propertyType, onDataChange
+    propertyManagementFees, repairsMaintenance, lettingFees, agentFee, propertyType,
+    cpiGrowthRate, depreciation, taxRate, occupancyRate, loanType, loanTermYears, marketValueNow,
+    onDataChange
   ]);
 
   // Capture stamp duty from calculator
@@ -613,6 +645,116 @@ export function PreGenerationOverrides({
 
             <Separator />
 
+            {/* Acquisition Costs Section */}
+            <Collapsible open={showAcquisitionCosts} onOpenChange={setShowAcquisitionCosts}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full">
+                <Label className="text-base font-semibold flex items-center gap-2 cursor-pointer">
+                  <DollarSign className="h-4 w-4" />
+                  Acquisition Costs
+                </Label>
+                {showAcquisitionCosts ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4 space-y-4">
+                {/* Stamp Duty with Calculator */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="stampDuty">Stamp Duty ($)</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowStampDutyCalculator(!showStampDutyCalculator)}
+                      disabled={disabled}
+                    >
+                      <Calculator className="h-3 w-3 mr-1" />
+                      {showStampDutyCalculator ? 'Hide' : 'Calculator'}
+                    </Button>
+                  </div>
+                  <Input
+                    id="stampDuty"
+                    type="number"
+                    value={stampDuty}
+                    onChange={(e) => setStampDuty(e.target.value)}
+                    placeholder="Use calculator or enter manually"
+                    disabled={disabled}
+                  />
+                </div>
+
+                {showStampDutyCalculator && (
+                  <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{detectedState !== 'All' ? STATE_MAPPING[detectedState as keyof typeof STATE_MAPPING] : 'Select State'}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {propertyAddress ? 'Auto-detected from address' : 'Enter property address to auto-detect'}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={captureStampDuty}
+                        disabled={disabled}
+                      >
+                        Apply Value
+                      </Button>
+                    </div>
+                    <div id="stamp-duty-calculator-pregen" className="min-h-[200px]">
+                      <noscript>Enable JavaScript to use the stamp duty calculator</noscript>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="solicitorFees">Solicitor / Conveyancing Fees ($)</Label>
+                    <Input
+                      id="solicitorFees"
+                      type="number"
+                      value={solicitorFees}
+                      onChange={(e) => setSolicitorFees(e.target.value)}
+                      placeholder="e.g., 1500"
+                      disabled={disabled}
+                    />
+                  </div>
+                  {isNewBuild && (
+                    <div className="space-y-2">
+                      <Label htmlFor="agentFee">Agent Fee / Commission ($)</Label>
+                      <Input
+                        id="agentFee"
+                        type="number"
+                        value={agentFee}
+                        onChange={(e) => setAgentFee(e.target.value)}
+                        placeholder="e.g., 15000"
+                        disabled={disabled}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Acquisition Costs Summary */}
+                {(() => {
+                  const totalAcquisitionCosts = 
+                    (parseFloat(stampDuty) || 0) +
+                    (parseFloat(solicitorFees) || 0) +
+                    (isNewBuild && agentFee ? parseFloat(agentFee) : 0);
+                  
+                  if (totalAcquisitionCosts <= 0) return null;
+                  
+                  return (
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Total Acquisition Costs:</span>
+                      <span className="font-semibold text-foreground">
+                        ${totalAcquisitionCosts.toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Separator />
+
             {/* Annual Expenses */}
             <Collapsible open={showExpenses} onOpenChange={setShowExpenses}>
               <CollapsibleTrigger className="flex items-center justify-between w-full">
@@ -676,55 +818,6 @@ export function PreGenerationOverrides({
                     Automatically estimates council rates, strata fees, insurance, and other expenses based on the property location and type.
                   </p>
                 </div>
-
-                {/* Stamp Duty with Calculator */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="stampDuty">Stamp Duty ($)</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowStampDutyCalculator(!showStampDutyCalculator)}
-                      disabled={disabled}
-                    >
-                      <Calculator className="h-3 w-3 mr-1" />
-                      {showStampDutyCalculator ? 'Hide' : 'Calculator'}
-                    </Button>
-                  </div>
-                  <Input
-                    id="stampDuty"
-                    type="number"
-                    value={stampDuty}
-                    onChange={(e) => setStampDuty(e.target.value)}
-                    placeholder="Use calculator or enter manually"
-                    disabled={disabled}
-                  />
-                </div>
-
-                {showStampDutyCalculator && (
-                  <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{detectedState !== 'All' ? STATE_MAPPING[detectedState as keyof typeof STATE_MAPPING] : 'Select State'}</Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {propertyAddress ? 'Auto-detected from address' : 'Enter property address to auto-detect'}
-                        </span>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={captureStampDuty}
-                        disabled={disabled}
-                      >
-                        Apply Value
-                      </Button>
-                    </div>
-                    <div id="stamp-duty-calculator-pregen" className="min-h-[200px]">
-                      <noscript>Enable JavaScript to use the stamp duty calculator</noscript>
-                    </div>
-                  </div>
-                )}
 
                 {/* Body Corporate with Strata Breakdown */}
                 <div className="space-y-2">
@@ -855,17 +948,6 @@ export function PreGenerationOverrides({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="solicitorFees">Solicitor Fees ($)</Label>
-                    <Input
-                      id="solicitorFees"
-                      type="number"
-                      value={solicitorFees}
-                      onChange={(e) => setSolicitorFees(e.target.value)}
-                      placeholder="e.g., 1500"
-                      disabled={disabled}
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="buildingLandlordInsurance">Building & Landlord Insurance ($)</Label>
                     <Input
                       id="buildingLandlordInsurance"
@@ -925,7 +1007,7 @@ export function PreGenerationOverrides({
                   </div>
                 </div>
 
-                {/* Calculated Totals Summary */}
+                {/* Annual Expenses Summary */}
                 {(() => {
                   const annualRent = (parseFloat(weeklyRent) || 0) * 52;
                   const pmPercent = parseFloat(propertyManagementFees) || 8;
@@ -937,65 +1019,275 @@ export function PreGenerationOverrides({
                     (parseFloat(bodyCorporateFees) || 0) +
                     (parseFloat(buildingLandlordInsurance) || 0) +
                     pmDollar +
-                    (parseFloat(repairsMaintenance) || 0);
+                    (parseFloat(repairsMaintenance) || 0) +
+                    (parseFloat(landTax) || 0);
                   
-                  const totalAcquisitionCosts = 
-                    (parseFloat(stampDuty) || 0) +
-                    (parseFloat(solicitorFees) || 0) +
-                    (isNewBuild && agentFee ? parseFloat(agentFee) : 0);
-
-                  const netOperatingIncome = annualRent - totalAnnualExpenses - (parseFloat(lettingFees) || 0);
-                  
-                  const hasAnyValue = annualRent > 0 || totalAnnualExpenses > 0 || totalAcquisitionCosts > 0;
-                  
-                  if (!hasAnyValue) return null;
+                  if (totalAnnualExpenses <= 0) return null;
                   
                   return (
-                    <div className="mt-4 border rounded-lg p-4 bg-muted/20 space-y-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calculator className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-semibold">Calculated Summary</span>
-                        <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        {annualRent > 0 && (
-                          <div className="flex justify-between p-2 bg-background rounded border">
-                            <span className="text-muted-foreground">Annual Rental Income:</span>
-                            <span className="font-medium text-green-600">${annualRent.toLocaleString()}</span>
-                          </div>
-                        )}
-                        {pmDollar > 0 && (
-                          <div className="flex justify-between p-2 bg-background rounded border">
-                            <span className="text-muted-foreground">Property Mgmt (${pmPercent}%):</span>
-                            <span className="font-medium">${pmDollar.toLocaleString()}</span>
-                          </div>
-                        )}
-                        {totalAnnualExpenses > 0 && (
-                          <div className="flex justify-between p-2 bg-background rounded border">
-                            <span className="text-muted-foreground">Total Annual Expenses:</span>
-                            <span className="font-semibold text-red-600">${totalAnnualExpenses.toLocaleString()}</span>
-                          </div>
-                        )}
-                        {totalAcquisitionCosts > 0 && (
-                          <div className="flex justify-between p-2 bg-background rounded border">
-                            <span className="text-muted-foreground">Total Acquisition Costs:</span>
-                            <span className="font-semibold">${totalAcquisitionCosts.toLocaleString()}</span>
-                          </div>
-                        )}
-                        {annualRent > 0 && totalAnnualExpenses > 0 && (
-                          <div className={`col-span-2 flex justify-between p-3 rounded border ${netOperatingIncome >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                            <span className="font-medium">Net Operating Income:</span>
-                            <span className={`font-bold text-lg ${netOperatingIncome >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                              ${netOperatingIncome.toLocaleString()}/year
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Total Annual Expenses:</span>
+                      <span className="font-semibold text-foreground">
+                        ${totalAnnualExpenses.toLocaleString()}/year
+                      </span>
                     </div>
                   );
                 })()}
               </CollapsibleContent>
             </Collapsible>
+
+            <Separator />
+
+            {/* Cash Flow Analysis Overrides (Optional) */}
+            <Collapsible open={showCashFlowOverrides} onOpenChange={setShowCashFlowOverrides}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Label className="text-base font-semibold flex items-center gap-2 cursor-pointer">
+                    <Calculator className="h-4 w-4" />
+                    Cash Flow Analysis Overrides
+                  </Label>
+                  <Badge variant="outline" className="text-xs">Optional</Badge>
+                </div>
+                {showCashFlowOverrides ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4 space-y-4">
+                <p className="text-xs text-muted-foreground mb-4">
+                  These optional values will cascade into the 10-year cash flow analysis if provided. Leave empty to use default calculations.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cpiGrowthRate" className="flex items-center gap-1">
+                      CPI Growth Rate (%)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Annual rate for rent and expense increases. Default: 3%</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="cpiGrowthRate"
+                      type="number"
+                      step="0.1"
+                      value={cpiGrowthRate}
+                      onChange={(e) => setCpiGrowthRate(e.target.value)}
+                      placeholder="Default: 3%"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depreciation" className="flex items-center gap-1">
+                      Annual Depreciation ($)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Year 1 depreciation deduction for tax purposes</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="depreciation"
+                      type="number"
+                      value={depreciation}
+                      onChange={(e) => setDepreciation(e.target.value)}
+                      placeholder="e.g., 6000"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxRate" className="flex items-center gap-1">
+                      Marginal Tax Rate (%)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Your marginal tax rate for calculating tax refunds. Default: 30%</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="taxRate"
+                      type="number"
+                      step="0.5"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(e.target.value)}
+                      placeholder="Default: 30%"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="occupancyRate" className="flex items-center gap-1">
+                      Occupancy Rate (weeks/year)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Expected weeks of tenancy per year. Default: 52 weeks</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="occupancyRate"
+                      type="number"
+                      max="52"
+                      value={occupancyRate}
+                      onChange={(e) => setOccupancyRate(e.target.value)}
+                      placeholder="Default: 52"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="loanType">Loan Type</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={loanType === 'interest_only' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setLoanType('interest_only')}
+                        disabled={disabled}
+                        className="flex-1"
+                      >
+                        Interest Only
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={loanType === 'principal_interest' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setLoanType('principal_interest')}
+                        disabled={disabled}
+                        className="flex-1"
+                      >
+                        P&I
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="loanTermYears">Loan Term (years)</Label>
+                    <Input
+                      id="loanTermYears"
+                      type="number"
+                      value={loanTermYears}
+                      onChange={(e) => setLoanTermYears(e.target.value)}
+                      placeholder="Default: 30"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="marketValueNow" className="flex items-center gap-1">
+                      Current Market Value ($)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Year 0 value if different from purchase price (for existing properties)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="marketValueNow"
+                      type="number"
+                      value={marketValueNow}
+                      onChange={(e) => setMarketValueNow(e.target.value)}
+                      placeholder="Leave empty to use purchase price"
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Final Calculated Summary */}
+            {(() => {
+              const annualRent = (parseFloat(weeklyRent) || 0) * (parseFloat(occupancyRate) || 52);
+              const pmPercent = parseFloat(propertyManagementFees) || 8;
+              const pmDollar = Math.round(annualRent * (pmPercent / 100));
+              
+              const totalAnnualExpenses = 
+                (parseFloat(councilRates) || 0) +
+                (parseFloat(waterRates) || 0) +
+                (parseFloat(bodyCorporateFees) || 0) +
+                (parseFloat(buildingLandlordInsurance) || 0) +
+                pmDollar +
+                (parseFloat(repairsMaintenance) || 0) +
+                (parseFloat(landTax) || 0);
+              
+              const totalAcquisitionCosts = 
+                (parseFloat(stampDuty) || 0) +
+                (parseFloat(solicitorFees) || 0) +
+                (isNewBuild && agentFee ? parseFloat(agentFee) : 0);
+
+              const netOperatingIncome = annualRent - totalAnnualExpenses - (parseFloat(lettingFees) || 0);
+              
+              const hasAnyValue = annualRent > 0 || totalAnnualExpenses > 0 || totalAcquisitionCosts > 0;
+              
+              if (!hasAnyValue) return null;
+              
+              return (
+                <>
+                  <Separator />
+                  <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calculator className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold">Investment Summary</span>
+                      <Badge variant="secondary" className="text-xs">Auto-calculated</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      {annualRent > 0 && (
+                        <div className="flex justify-between p-2 bg-background rounded border">
+                          <span className="text-muted-foreground">Annual Rental Income:</span>
+                          <span className="font-medium text-green-600 dark:text-green-400">${annualRent.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {pmDollar > 0 && (
+                        <div className="flex justify-between p-2 bg-background rounded border">
+                          <span className="text-muted-foreground">Property Mgmt ({pmPercent}%):</span>
+                          <span className="font-medium">${pmDollar.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {totalAnnualExpenses > 0 && (
+                        <div className="flex justify-between p-2 bg-background rounded border">
+                          <span className="text-muted-foreground">Total Annual Expenses:</span>
+                          <span className="font-semibold text-red-600 dark:text-red-400">${totalAnnualExpenses.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {totalAcquisitionCosts > 0 && (
+                        <div className="flex justify-between p-2 bg-background rounded border">
+                          <span className="text-muted-foreground">Total Acquisition Costs:</span>
+                          <span className="font-semibold">${totalAcquisitionCosts.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {annualRent > 0 && totalAnnualExpenses > 0 && (
+                        <div className={`col-span-2 flex justify-between p-3 rounded border ${netOperatingIncome >= 0 ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'}`}>
+                          <span className="font-medium">Net Operating Income:</span>
+                          <span className={`font-bold text-lg ${netOperatingIncome >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                            ${netOperatingIncome.toLocaleString()}/year
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </ScrollArea>
       </CardContent>
