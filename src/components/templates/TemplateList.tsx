@@ -24,7 +24,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { FileText, Trash2, RefreshCw, Download, Eye, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, Trash2, RefreshCw, Download, Eye, Loader2, FileCode, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -51,8 +59,31 @@ interface TemplateListProps {
   templateType: string;
 }
 
+// Check if parsed content is valid markdown (not binary PDF data)
+function isValidMarkdown(content: string | null): boolean {
+  if (!content || content.length < 50) return false;
+  
+  // Binary PDF data contains these patterns
+  const binaryPatterns = [
+    'endstream',
+    'endobj',
+    '/Type /XObject',
+    '/FlateDecode',
+    'stream\n',
+  ];
+  
+  for (const pattern of binaryPatterns) {
+    if (content.includes(pattern)) return false;
+  }
+  
+  // Valid markdown should have readable text
+  const printableRatio = (content.match(/[\x20-\x7E\n]/g)?.length || 0) / content.length;
+  return printableRatio > 0.9;
+}
+
 export function TemplateList({ templates, isLoading, templateType }: TemplateListProps) {
   const [parsingId, setParsingId] = useState<string | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -114,9 +145,15 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     },
   });
 
-  // Re-parse template for RAG
-  const handleReparse = async (template: Template) => {
+  // Convert PDF to Markdown using AI
+  const handleConvertToMarkdown = async (template: Template) => {
     setParsingId(template.id);
+    
+    toast({
+      title: 'Converting PDF to Markdown...',
+      description: 'Using AI to extract structured content. This may take 30-60 seconds.',
+    });
+    
     try {
       const { data, error } = await supabase.functions.invoke('parse-template-document', {
         body: {
@@ -125,20 +162,27 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
           templateType: template.template_type,
           reportTier: template.report_tier,
           reportCategory: template.report_category,
+          useAIExtraction: true,
         },
       });
 
       if (error) throw error;
 
+      if (!data.success) {
+        throw new Error(data.error || 'Conversion failed');
+      }
+
       toast({
-        title: 'Template re-parsed',
-        description: `Created ${data.chunksCreated} embeddings`,
+        title: 'Conversion complete!',
+        description: `Extracted ${data.extractedLength.toLocaleString()} characters, created ${data.chunksCreated} embeddings`,
       });
+      
       queryClient.invalidateQueries({ queryKey: ['report-structure-templates'] });
     } catch (error: any) {
+      console.error('Conversion error:', error);
       toast({
-        title: 'Parse failed',
-        description: error.message,
+        title: 'Conversion failed',
+        description: error.message || 'Failed to convert PDF to Markdown',
         variant: 'destructive',
       });
     } finally {
@@ -170,6 +214,19 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     }
   };
 
+  // Download extracted markdown
+  const handleDownloadMarkdown = (template: Template) => {
+    if (!template.parsed_content) return;
+    
+    const blob = new Blob([template.parsed_content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${template.name.replace(/\s+/g, '_')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getTierBadge = (tier: string | null) => {
     if (!tier) return null;
     const colors: Record<string, string> = {
@@ -198,6 +255,35 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     );
   };
 
+  const getParseStatusBadge = (template: Template) => {
+    const hasContent = template.parsed_content && template.parsed_content.length > 0;
+    const isValid = isValidMarkdown(template.parsed_content);
+    
+    if (!hasContent) {
+      return (
+        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+          Not parsed
+        </Badge>
+      );
+    }
+    
+    if (!isValid) {
+      return (
+        <Badge variant="outline" className="bg-red-500/10 text-red-500 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Binary data
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="outline" className="bg-green-500/10 text-green-500 flex items-center gap-1">
+        <CheckCircle className="h-3 w-3" />
+        {(template.parsed_content!.length / 1000).toFixed(1)}k chars
+      </Badge>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -219,108 +305,175 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Template</TableHead>
-          <TableHead>Tier</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Parsed</TableHead>
-          <TableHead>Updated</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {templates.map((template) => (
-          <TableRow key={template.id}>
-            <TableCell>
-              <div>
-                <p className="font-medium">{template.name}</p>
-                <p className="text-xs text-muted-foreground">{template.file_name}</p>
-              </div>
-            </TableCell>
-            <TableCell>{getTierBadge(template.report_tier)}</TableCell>
-            <TableCell>{getCategoryBadge(template.report_category)}</TableCell>
-            <TableCell>
-              <Switch
-                checked={template.is_active || false}
-                onCheckedChange={(checked) =>
-                  toggleActiveMutation.mutate({ id: template.id, isActive: checked })
-                }
-              />
-            </TableCell>
-            <TableCell>
-              {template.parsed_content ? (
-                <Badge variant="outline" className="bg-green-500/10 text-green-500">
-                  {(template.parsed_content.length / 1000).toFixed(1)}k chars
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
-                  Not parsed
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell className="text-sm text-muted-foreground">
-              {template.updated_at
-                ? format(new Date(template.updated_at), 'MMM d, yyyy')
-                : '-'}
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex items-center justify-end gap-1">
-                {templateType === 'ai_structure' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleReparse(template)}
-                    disabled={parsingId === template.id}
-                    title="Re-parse for RAG"
-                  >
-                    {parsingId === template.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDownload(template)}
-                  title="Download"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" title="Delete">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete "{template.name}"? This will also remove
-                        all associated embeddings and cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => deleteMutation.mutate(template)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Template</TableHead>
+            <TableHead>Tier</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Active</TableHead>
+            <TableHead>Content Status</TableHead>
+            <TableHead>Updated</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {templates.map((template) => {
+            const hasValidContent = isValidMarkdown(template.parsed_content);
+            const needsConversion = template.file_name.toLowerCase().endsWith('.pdf') && !hasValidContent;
+            
+            return (
+              <TableRow key={template.id}>
+                <TableCell>
+                  <div>
+                    <p className="font-medium">{template.name}</p>
+                    <p className="text-xs text-muted-foreground">{template.file_name}</p>
+                  </div>
+                </TableCell>
+                <TableCell>{getTierBadge(template.report_tier)}</TableCell>
+                <TableCell>{getCategoryBadge(template.report_category)}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={template.is_active || false}
+                    onCheckedChange={(checked) =>
+                      toggleActiveMutation.mutate({ id: template.id, isActive: checked })
+                    }
+                  />
+                </TableCell>
+                <TableCell>{getParseStatusBadge(template)}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {template.updated_at
+                    ? format(new Date(template.updated_at), 'MMM d, yyyy')
+                    : '-'}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    {/* Convert to Markdown button - show prominently if needed */}
+                    {templateType === 'ai_structure' && needsConversion && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleConvertToMarkdown(template)}
+                        disabled={parsingId === template.id}
+                        className="mr-2"
+                      >
+                        {parsingId === template.id ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Converting...
+                          </>
+                        ) : (
+                          <>
+                            <FileCode className="mr-1 h-3 w-3" />
+                            Convert to MD
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    
+                    {/* Re-convert button for already converted templates */}
+                    {templateType === 'ai_structure' && !needsConversion && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleConvertToMarkdown(template)}
+                        disabled={parsingId === template.id}
+                        title="Re-convert to Markdown"
+                      >
+                        {parsingId === template.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                    
+                    {/* Preview extracted content */}
+                    {hasValidContent && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewTemplate(template)}
+                        title="Preview extracted content"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
+                    
+                    {/* Download original */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDownload(template)}
+                      title="Download original"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    
+                    {/* Download as Markdown */}
+                    {hasValidContent && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDownloadMarkdown(template)}
+                        title="Download as Markdown"
+                      >
+                        <FileCode className="h-4 w-4" />
+                      </Button>
+                    )}
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Delete">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{template.name}"? This will also remove
+                            all associated embeddings and cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMutation.mutate(template)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+
+      {/* Content Preview Dialog */}
+      <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>
+              Extracted Content: {previewTemplate?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {previewTemplate?.parsed_content?.length.toLocaleString()} characters of Markdown content
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
+            <pre className="text-sm whitespace-pre-wrap font-mono">
+              {previewTemplate?.parsed_content}
+            </pre>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
