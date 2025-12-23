@@ -21,7 +21,7 @@ import {
   Globe,
   Minimize2
 } from 'lucide-react';
-import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
+import { useWhiteLabel, hexToHsl, hslToHex } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -319,6 +319,152 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
+      {/* Color Theme */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Color Theme</CardTitle>
+              <CardDescription>Customize the primary and accent colors of the dashboard</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Primary Color */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Primary Color</Label>
+              <p className="text-xs text-muted-foreground">
+                Used for buttons, links, and key UI elements
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={settings.primaryColor ? hslToHex(settings.primaryColor) : '#D4A017'}
+                    onChange={(e) => {
+                      const hsl = hexToHsl(e.target.value);
+                      updateSettings({ primaryColor: hsl });
+                    }}
+                    className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
+                    style={{ padding: 0 }}
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="text-sm font-mono">
+                    {settings.primaryColor ? hslToHex(settings.primaryColor) : '#D4A017'}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono">
+                    hsl({settings.primaryColor || '43 74% 49%'})
+                  </div>
+                </div>
+                {settings.primaryColor && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      updateSettings({ primaryColor: null });
+                      toast.success('Primary color reset to default');
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              {/* Preview swatches */}
+              <div className="flex gap-2 pt-2">
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'})` }}
+                  title="Primary"
+                />
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'} / 0.8)` }}
+                  title="80%"
+                />
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'} / 0.5)` }}
+                  title="50%"
+                />
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'} / 0.2)` }}
+                  title="20%"
+                />
+              </div>
+            </div>
+
+            {/* Accent Color */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Accent Color</Label>
+              <p className="text-xs text-muted-foreground">
+                Used for highlights and secondary emphasis
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={settings.accentColor ? hslToHex(settings.accentColor) : '#D4A017'}
+                    onChange={(e) => {
+                      const hsl = hexToHsl(e.target.value);
+                      updateSettings({ accentColor: hsl });
+                    }}
+                    className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
+                    style={{ padding: 0 }}
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="text-sm font-mono">
+                    {settings.accentColor ? hslToHex(settings.accentColor) : '#D4A017'}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono">
+                    hsl({settings.accentColor || '43 74% 49%'})
+                  </div>
+                </div>
+                {settings.accentColor && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      updateSettings({ accentColor: null });
+                      toast.success('Accent color reset to default');
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              {/* Preview swatches */}
+              <div className="flex gap-2 pt-2">
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'})` }}
+                  title="Accent"
+                />
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'} / 0.8)` }}
+                  title="80%"
+                />
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'} / 0.5)` }}
+                  title="50%"
+                />
+                <div 
+                  className="h-8 w-8 rounded-md border"
+                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'} / 0.2)` }}
+                  title="20%"
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Logo Upload Cards */}
       <div className="grid gap-6 md:grid-cols-2">
         <LogoUploadCard
@@ -459,6 +605,8 @@ export default function WhiteLabel() {
                 sidebarIcon: null,
                 favicon: null,
                 companyName: 'NPC Property',
+                primaryColor: null,
+                accentColor: null,
               });
               setCompanyName('NPC Property');
               toast.success('Branding reset to defaults');
