@@ -54,14 +54,8 @@ export function useGHLCalendar() {
     setError(null);
 
     try {
-      let url = 'ghl-calendar?action=all';
-      if (startTime) url += `&startTime=${startTime}`;
-      if (endTime) url += `&endTime=${endTime}`;
-      if (calendarId) url += `&calendarId=${calendarId}`;
-
       const { data, error: fetchError } = await supabase.functions.invoke<CalendarData>('ghl-calendar', {
-        body: {},
-        headers: {},
+        body: { action: 'all', startTime, endTime, calendarId },
       });
 
       if (fetchError) {

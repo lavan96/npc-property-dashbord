@@ -72,10 +72,19 @@ serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const action = url.searchParams.get('action') || 'all';
-    const calendarId = url.searchParams.get('calendarId');
-    const startTime = url.searchParams.get('startTime');
-    const endTime = url.searchParams.get('endTime');
+
+    // Supabase client calls functions with POST; read params from query string OR JSON body
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+
+    const action = url.searchParams.get('action') || body.action || 'all';
+    const calendarId = url.searchParams.get('calendarId') || body.calendarId || null;
+    const startTime = url.searchParams.get('startTime') || body.startTime || null;
+    const endTime = url.searchParams.get('endTime') || body.endTime || null;
 
     console.log(`GHL Calendar action: ${action}, calendarId: ${calendarId}`);
 
@@ -198,38 +207,84 @@ serve(async (req) => {
       const defaultStartTime = startTime || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const defaultEndTime = endTime || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      let eventsUrl = `${GHL_API_BASE}/calendars/events?locationId=${locationId}&startTime=${defaultStartTime}&endTime=${defaultEndTime}`;
-      if (calendarId) {
-        eventsUrl += `&calendarId=${calendarId}`;
+      // If caller didn't provide calendarId, fetch calendars and pull events per calendar
+      if (!calendarId) {
+        const calendarsResponse = await fetch(`${GHL_API_BASE}/calendars/?locationId=${locationId}`, {
+          method: 'GET',
+          headers,
+        });
+
+        if (!calendarsResponse.ok) {
+          const errorText = await calendarsResponse.text();
+          console.error('Calendars fetch error (events):', errorText);
+          return new Response(JSON.stringify({ error: 'Failed to fetch calendars', details: errorText, success: false }), {
+            status: calendarsResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const calendarsData = await calendarsResponse.json();
+        const rawCalendars = calendarsData.calendars || [];
+        const calendars: GHLCalendar[] = rawCalendars.map((cal: any, index: number) => ({
+          ...cal,
+          eventColor: cal.eventColor || CALENDAR_COLORS[index % CALENDAR_COLORS.length],
+        }));
+
+        let allEvents: GHLEvent[] = [];
+        for (const cal of calendars) {
+          try {
+            const eventsUrl = `${GHL_API_BASE}/calendars/events?locationId=${locationId}&calendarId=${cal.id}&startTime=${defaultStartTime}&endTime=${defaultEndTime}`;
+            const eventsResponse = await fetch(eventsUrl, { method: 'GET', headers });
+
+            if (eventsResponse.ok) {
+              const eventsData = await eventsResponse.json();
+              const calendarEvents = (eventsData.events || []).map((event: any) => ({ ...event, calendarId: cal.id }));
+              allEvents = [...allEvents, ...calendarEvents];
+            } else {
+              console.error(`Failed to fetch events for calendar ${cal.name} (events):`, await eventsResponse.text());
+            }
+          } catch (err) {
+            console.error(`Error fetching events for calendar ${cal.name} (events):`, err);
+          }
+        }
+
+        const calendarMap = new Map(calendars.map(c => [c.id, { name: c.name, color: c.eventColor }]));
+        const eventsWithCalendarInfo = allEvents.map(event => {
+          const calInfo = calendarMap.get(event.calendarId);
+          return {
+            ...event,
+            calendarName: calInfo?.name || 'Unknown Calendar',
+            calendarColor: calInfo?.color || CALENDAR_COLORS[0],
+          };
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          events: eventsWithCalendarInfo,
+          dateRange: { start: defaultStartTime, end: defaultEndTime },
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
-      const eventsResponse = await fetch(eventsUrl, {
-        method: 'GET',
-        headers,
-      });
+      // calendarId provided
+      const eventsUrl = `${GHL_API_BASE}/calendars/events?locationId=${locationId}&calendarId=${calendarId}&startTime=${defaultStartTime}&endTime=${defaultEndTime}`;
+      const eventsResponse = await fetch(eventsUrl, { method: 'GET', headers });
 
       if (!eventsResponse.ok) {
         const errorText = await eventsResponse.text();
         console.error('Events fetch error:', errorText);
-        return new Response(JSON.stringify({ 
-          error: 'Failed to fetch events',
-          details: errorText,
-          success: false 
-        }), {
+        return new Response(JSON.stringify({ error: 'Failed to fetch events', details: errorText, success: false }), {
           status: eventsResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       const eventsData = await eventsResponse.json();
-      
       return new Response(JSON.stringify({
         success: true,
         events: eventsData.events || [],
-        dateRange: {
-          start: defaultStartTime,
-          end: defaultEndTime,
-        },
+        dateRange: { start: defaultStartTime, end: defaultEndTime },
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -237,13 +292,12 @@ serve(async (req) => {
 
     // Update/reschedule an event
     if (action === 'update') {
-      const body = await req.json();
       const { eventId, newStartTime, newEndTime } = body;
-      
+
       if (!eventId || !newStartTime || !newEndTime) {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           error: 'Missing required fields: eventId, newStartTime, newEndTime',
-          success: false 
+          success: false
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -264,10 +318,10 @@ serve(async (req) => {
       if (!updateResponse.ok) {
         const errorText = await updateResponse.text();
         console.error('Event update error:', errorText);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           error: 'Failed to update event',
           details: errorText,
-          success: false 
+          success: false
         }), {
           status: updateResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -276,7 +330,7 @@ serve(async (req) => {
 
       const updateData = await updateResponse.json();
       console.log('Event updated successfully');
-      
+
       return new Response(JSON.stringify({
         success: true,
         event: updateData,
