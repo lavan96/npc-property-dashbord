@@ -218,3 +218,10 @@ verify_jwt = false
 [functions.parse-property-pdf]
 verify_jwt = false
 request_timeout = 60
+
+[functions.parse-template-document]
+verify_jwt = false
+request_timeout = 120
+
+[functions.retrieve-template-context]
+verify_jwt = false
