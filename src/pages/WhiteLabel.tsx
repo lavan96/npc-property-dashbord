@@ -19,9 +19,12 @@ import {
   LogIn,
   PanelLeft,
   Globe,
-  Minimize2
+  Minimize2,
+  Sun,
+  Moon,
+  Laptop
 } from 'lucide-react';
-import { useWhiteLabel, hexToHsl, hslToHex } from '@/contexts/WhiteLabelContext';
+import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -251,8 +254,14 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
 }
 
 export default function WhiteLabel() {
-  const { settings, updateSettings, isLoading } = useWhiteLabel();
+  const { settings, updateSettings, isLoading, currentTheme } = useWhiteLabel();
   const [companyName, setCompanyName] = useState(settings.companyName);
+
+  const themeOptions: { value: ThemeMode; label: string; icon: React.ReactNode; description: string }[] = [
+    { value: 'light', label: 'Light', icon: <Sun className="h-4 w-4" />, description: 'Always use light theme' },
+    { value: 'dark', label: 'Dark', icon: <Moon className="h-4 w-4" />, description: 'Always use dark theme' },
+    { value: 'system', label: 'System', icon: <Laptop className="h-4 w-4" />, description: 'Follow device settings' },
+  ];
 
   const handleCompanyNameSave = () => {
     updateSettings({ companyName });
@@ -465,6 +474,52 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
+      {/* Dark Mode */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            {currentTheme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
+            <div>
+              <CardTitle className="text-lg">Dark Mode</CardTitle>
+              <CardDescription>Choose the default theme for your dashboard</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {themeOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  updateSettings({ darkModeDefault: option.value });
+                  toast.success(`Theme set to ${option.label}`);
+                }}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
+                  settings.darkModeDefault === option.value
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border'
+                }`}
+              >
+                <div className={`p-3 rounded-full ${
+                  settings.darkModeDefault === option.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {option.icon}
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-sm">{option.label}</p>
+                  <p className="text-xs text-muted-foreground">{option.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            Current theme: <span className="font-medium capitalize">{currentTheme}</span>
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Logo Upload Cards */}
       <div className="grid gap-6 md:grid-cols-2">
         <LogoUploadCard
@@ -607,6 +662,7 @@ export default function WhiteLabel() {
                 companyName: 'NPC Property',
                 primaryColor: null,
                 accentColor: null,
+                darkModeDefault: 'light',
               });
               setCompanyName('NPC Property');
               toast.success('Branding reset to defaults');
