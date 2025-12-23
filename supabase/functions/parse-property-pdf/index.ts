@@ -336,11 +336,18 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
 
 async function completeAddressWithGoogleMaps(
   payload: StructuredPropertyPayload,
-  googleMapsApiKey: string
+  googleMapsApiKey: string,
+  originalExtractedAddress: string | undefined
 ): Promise<StructuredPropertyPayload> {
+  // CRITICAL: Preserve the original extracted street address
+  // Geocoding should ONLY fill in missing suburb/state/postcode, NOT replace the street address
+  const originalStreetAddress = originalExtractedAddress || payload.propertyAddress;
+  
   // Don't geocode if we have all the key components
   if (payload.suburb && payload.state && payload.postcode) {
     console.log('✅ All address components present, skipping geocoding');
+    // Still build a proper full address using all components
+    payload.propertyAddress = buildFullAddress(originalStreetAddress, payload.suburb, payload.state, payload.postcode);
     return payload;
   }
   
@@ -349,7 +356,7 @@ async function completeAddressWithGoogleMaps(
     return payload;
   }
   
-  // Check if address is just a lot number (too generic)
+  // Check if address is just a lot number (too generic for geocoding alone)
   if (/^Lot\s+\d+$/i.test(payload.propertyAddress.trim())) {
     console.log('⚠️ Address is just a lot number, skipping geocoding');
     return payload;
@@ -391,27 +398,91 @@ async function completeAddressWithGoogleMaps(
       return payload;
     }
     
-    console.log('✅ Geocoding result:', result.formatted_address);
-    payload.propertyAddress = result.formatted_address;
+    console.log('✅ Geocoding result (for components only):', result.formatted_address);
     
-    // Extract address components
+    // Extract address components from geocoding - but DON'T overwrite the street address
+    let geocodedSuburb = payload.suburb;
+    let geocodedState = payload.state;
+    let geocodedPostcode = payload.postcode;
+    
     for (const component of result.address_components) {
       const componentTypes = component.types;
       
-      if ((componentTypes.includes('locality') || componentTypes.includes('sublocality')) && !payload.suburb) {
-        payload.suburb = component.long_name;
-      } else if (componentTypes.includes('administrative_area_level_1') && !payload.state) {
-        payload.state = component.short_name;
-      } else if (componentTypes.includes('postal_code') && !payload.postcode) {
-        payload.postcode = component.long_name;
+      if ((componentTypes.includes('locality') || componentTypes.includes('sublocality')) && !geocodedSuburb) {
+        geocodedSuburb = component.long_name;
+      } else if (componentTypes.includes('administrative_area_level_1') && !geocodedState) {
+        geocodedState = component.short_name;
+      } else if (componentTypes.includes('postal_code') && !geocodedPostcode) {
+        geocodedPostcode = component.long_name;
       }
     }
+    
+    // Update payload with geocoded components
+    payload.suburb = geocodedSuburb || payload.suburb;
+    payload.state = geocodedState || payload.state;
+    payload.postcode = geocodedPostcode || payload.postcode;
+    
+    // CRITICAL: Build the full address preserving the original street address
+    payload.propertyAddress = buildFullAddress(
+      originalStreetAddress, 
+      payload.suburb, 
+      payload.state, 
+      payload.postcode
+    );
+    
+    console.log('✅ Final composed address:', payload.propertyAddress);
     
   } catch (error) {
     console.error('Google Maps geocoding error:', error);
   }
   
   return payload;
+}
+
+// Helper to build full address while preserving street address
+function buildFullAddress(
+  streetAddress: string | undefined,
+  suburb: string | undefined,
+  state: string | undefined,
+  postcode: string | undefined
+): string {
+  const parts: string[] = [];
+  
+  // Start with street address
+  if (streetAddress && streetAddress !== 'Address Not Found') {
+    // Clean up the street address - remove any suburb/state/postcode already in it
+    let cleanStreet = streetAddress;
+    if (suburb) {
+      cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${suburb}`, 'gi'), '');
+    }
+    if (state) {
+      cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${state}\\b`, 'gi'), '');
+    }
+    if (postcode) {
+      cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${postcode}`, 'g'), '');
+    }
+    cleanStreet = cleanStreet.replace(/,\s*Australia$/i, '').replace(/,\s*,/g, ',').replace(/,\s*$/,'').trim();
+    
+    if (cleanStreet) {
+      parts.push(cleanStreet);
+    }
+  }
+  
+  // Add suburb
+  if (suburb) {
+    parts.push(suburb);
+  }
+  
+  // Add state and postcode together
+  if (state && postcode) {
+    parts.push(`${state} ${postcode}`);
+  } else if (state) {
+    parts.push(state);
+  } else if (postcode) {
+    parts.push(postcode);
+  }
+  
+  return parts.join(', ') || 'Address Not Found';
 }
 
 // ============= MAIN HANDLER =============
@@ -482,10 +553,14 @@ serve(async (req) => {
 
     console.log('📊 Extracted data:', JSON.stringify(extractedData, null, 2));
     
+    // CRITICAL: Preserve the original street address from GPT-4o extraction
+    const originalExtractedStreetAddress = extractedData.address;
+    console.log('📍 Original extracted street address:', originalExtractedStreetAddress);
+    
     // Process into structured payload
     let structuredPayload = processToStructuredPayload(extractedData);
     
-    // Complete address with Google Maps if needed
+    // Complete address with Google Maps if needed (fills in suburb/state/postcode)
     const needsGeocoding = !structuredPayload.postcode || 
                           !structuredPayload.state || 
                           !structuredPayload.suburb;
@@ -493,7 +568,21 @@ serve(async (req) => {
     if (googleMapsApiKey && needsGeocoding && 
         structuredPayload.propertyAddress !== 'Address Not Found') {
       console.log('🗺️ Attempting to complete address with Google Maps...');
-      structuredPayload = await completeAddressWithGoogleMaps(structuredPayload, googleMapsApiKey);
+      // Pass original street address so it doesn't get overwritten
+      structuredPayload = await completeAddressWithGoogleMaps(
+        structuredPayload, 
+        googleMapsApiKey, 
+        originalExtractedStreetAddress
+      );
+    } else if (structuredPayload.suburb && structuredPayload.state && structuredPayload.postcode) {
+      // Even without geocoding, ensure we build a proper full address
+      structuredPayload.propertyAddress = buildFullAddress(
+        originalExtractedStreetAddress,
+        structuredPayload.suburb,
+        structuredPayload.state,
+        structuredPayload.postcode
+      );
+      console.log('✅ Built full address without geocoding:', structuredPayload.propertyAddress);
     }
 
     console.log('✅ Final structured payload:', JSON.stringify(structuredPayload, null, 2));
