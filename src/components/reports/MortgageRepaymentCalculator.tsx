@@ -315,7 +315,7 @@ export function MortgageRepaymentCalculator({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Rates based on CommBank home loan products (indicative only)</p>
+              
             </div>
           ) : (
             <div className="space-y-2">
