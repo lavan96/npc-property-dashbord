@@ -18,7 +18,8 @@ import {
   Monitor,
   LogIn,
   PanelLeft,
-  Globe
+  Globe,
+  Minimize2
 } from 'lucide-react';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
@@ -30,7 +31,7 @@ interface LogoUploadCardProps {
   description: string;
   icon: React.ReactNode;
   currentLogo: string | null;
-  logoType: 'auth' | 'sidebar' | 'favicon';
+  logoType: 'auth' | 'sidebar' | 'sidebar-icon' | 'favicon';
   onUpload: (url: string) => void;
   onRemove: () => void;
 }
@@ -319,10 +320,10 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Logo Upload Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         <LogoUploadCard
           title="Auth Page Logo"
-          description="Displayed on the login page"
+          description="Displayed prominently on the login page (recommended: wide format)"
           icon={<LogIn className="h-5 w-5 text-primary" />}
           currentLogo={settings.authLogo}
           logoType="auth"
@@ -332,7 +333,7 @@ export default function WhiteLabel() {
 
         <LogoUploadCard
           title="Sidebar Logo"
-          description="Displayed in the sidebar navigation"
+          description="Displayed in the expanded sidebar (recommended: horizontal)"
           icon={<PanelLeft className="h-5 w-5 text-primary" />}
           currentLogo={settings.sidebarLogo}
           logoType="sidebar"
@@ -341,8 +342,18 @@ export default function WhiteLabel() {
         />
 
         <LogoUploadCard
+          title="Collapsed Sidebar Icon"
+          description="Shown when sidebar is minimized (recommended: square, 32x32)"
+          icon={<Minimize2 className="h-5 w-5 text-primary" />}
+          currentLogo={settings.sidebarIcon}
+          logoType="sidebar-icon"
+          onUpload={(url) => updateSettings({ sidebarIcon: url })}
+          onRemove={() => updateSettings({ sidebarIcon: null })}
+        />
+
+        <LogoUploadCard
           title="Favicon"
-          description="Browser tab icon (recommended: 32x32)"
+          description="Browser tab icon (recommended: square, 32x32)"
           icon={<Globe className="h-5 w-5 text-primary" />}
           currentLogo={settings.favicon}
           logoType="favicon"
@@ -377,16 +388,16 @@ export default function WhiteLabel() {
               </div>
             </div>
 
-            {/* Sidebar Preview */}
+            {/* Sidebar Preview - Expanded */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Sidebar</Label>
+              <Label className="text-sm font-medium">Sidebar (Expanded)</Label>
               <div className="border rounded-lg bg-card overflow-hidden">
-                <div className="p-4 border-b flex items-center gap-2">
+                <div className="p-4 border-b flex items-center gap-3">
                   {settings.sidebarLogo ? (
-                    <img src={settings.sidebarLogo} alt="Sidebar logo preview" className="h-6 object-contain" />
+                    <img src={settings.sidebarLogo} alt="Sidebar logo preview" className="h-10 max-w-[100px] object-contain" />
                   ) : (
-                    <div className="h-6 w-6 bg-primary rounded flex items-center justify-center">
-                      <PanelLeft className="h-4 w-4 text-primary-foreground" />
+                    <div className="h-8 w-8 bg-primary rounded flex items-center justify-center">
+                      <PanelLeft className="h-5 w-5 text-primary-foreground" />
                     </div>
                   )}
                   <div className="flex flex-col">
@@ -399,6 +410,31 @@ export default function WhiteLabel() {
                     <div key={item} className="px-3 py-2 text-sm rounded-md hover:bg-muted">
                       {item}
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sidebar Preview - Collapsed */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Sidebar (Collapsed)</Label>
+              <div className="border rounded-lg bg-card overflow-hidden w-16">
+                <div className="p-3 border-b flex items-center justify-center">
+                  {(settings.sidebarIcon || settings.sidebarLogo) ? (
+                    <img 
+                      src={settings.sidebarIcon || settings.sidebarLogo || ''} 
+                      alt="Sidebar icon preview" 
+                      className="h-8 w-8 object-contain" 
+                    />
+                  ) : (
+                    <div className="h-8 w-8 bg-primary rounded flex items-center justify-center">
+                      <PanelLeft className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-1 space-y-1">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-8 w-8 mx-auto rounded-md bg-muted/50" />
                   ))}
                 </div>
               </div>
@@ -420,6 +456,7 @@ export default function WhiteLabel() {
               updateSettings({
                 authLogo: null,
                 sidebarLogo: null,
+                sidebarIcon: null,
                 favicon: null,
                 companyName: 'NPC Property',
               });

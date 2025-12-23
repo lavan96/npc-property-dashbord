@@ -32,9 +32,9 @@ export default function Auth() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           {settings.authLogo ? (
-            <img src={settings.authLogo} alt={settings.companyName} className="h-12 mx-auto animate-pulse" />
+            <img src={settings.authLogo} alt={settings.companyName} className="h-20 max-w-[280px] mx-auto object-contain animate-pulse" />
           ) : (
-            <Database className="h-12 w-12 text-primary mx-auto animate-pulse" />
+            <Database className="h-16 w-16 text-primary mx-auto animate-pulse" />
           )}
           <p className="text-muted-foreground">Loading...</p>
         </div>
@@ -64,9 +64,9 @@ export default function Auth() {
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
             {settings.authLogo ? (
-              <img src={settings.authLogo} alt={settings.companyName} className="h-12 object-contain" />
+              <img src={settings.authLogo} alt={settings.companyName} className="h-20 max-w-[280px] object-contain" />
             ) : (
-              <Database className="h-12 w-12 text-primary" />
+              <Database className="h-16 w-16 text-primary" />
             )}
           </div>
           <CardTitle className="text-2xl">{settings.companyName} Dashboard</CardTitle>

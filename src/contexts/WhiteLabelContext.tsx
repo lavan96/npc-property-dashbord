@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 export interface WhiteLabelSettings {
   authLogo: string | null;
   sidebarLogo: string | null;
+  sidebarIcon: string | null; // For collapsed sidebar state
   favicon: string | null;
   companyName: string;
   primaryColor?: string;
@@ -17,6 +18,7 @@ interface WhiteLabelContextType {
 const defaultSettings: WhiteLabelSettings = {
   authLogo: null,
   sidebarLogo: null,
+  sidebarIcon: null,
   favicon: null,
   companyName: 'NPC Property',
 };

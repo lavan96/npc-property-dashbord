@@ -64,28 +64,36 @@ export function DashboardSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { settings } = useWhiteLabel();
+  const isCollapsed = state === 'collapsed';
   
   const isActive = (path: string) => currentPath === path;
+
+  // Determine which logo to show based on sidebar state
+  const currentLogo = isCollapsed 
+    ? (settings.sidebarIcon || settings.sidebarLogo) 
+    : settings.sidebarLogo;
 
   return (
     <Sidebar className="border-r border-border bg-card">
       <SidebarContent>
         {/* Brand */}
-        <div className="p-6 border-b border-border">
-          <div className="flex items-center gap-2">
-            {settings.sidebarLogo ? (
+        <div className={`border-b border-border ${isCollapsed ? 'p-3' : 'p-6'}`}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+            {currentLogo ? (
               <img 
-                src={settings.sidebarLogo} 
+                src={currentLogo} 
                 alt={settings.companyName} 
-                className="h-6 w-6 object-contain"
+                className={`object-contain ${isCollapsed ? 'h-8 w-8' : 'h-10 max-w-[120px]'}`}
               />
             ) : (
-              <Database className="h-6 w-6 text-primary" />
+              <Database className={`text-primary ${isCollapsed ? 'h-6 w-6' : 'h-8 w-8'}`} />
             )}
-            <div className="flex flex-col">
-              <span className="font-semibold text-foreground">{settings.companyName}</span>
-              <span className="text-xs text-muted-foreground">Intake Dashboard</span>
-            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-foreground truncate">{settings.companyName}</span>
+                <span className="text-xs text-muted-foreground">Intake Dashboard</span>
+              </div>
+            )}
           </div>
         </div>
 
