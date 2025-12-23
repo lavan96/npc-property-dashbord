@@ -11,9 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { STATE_MAPPING } from '@/lib/states';
+import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
+import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
 
 interface InvestmentReport {
   id: string;
@@ -52,6 +54,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
   const [detectedState, setDetectedState] = useState<string>('All');
+  const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   
   // Depreciation Schedule Builder state
   const [showDepreciationSchedule, setShowDepreciationSchedule] = useState(false);
@@ -1040,6 +1043,121 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                 <span className="w-2 h-2 bg-primary rounded-full"></span>
                 Purchase & Loan Details
               </h3>
+              
+              {/* Mortgage Repayment Calculator */}
+              <Collapsible 
+                open={showMortgageCalculator} 
+                onOpenChange={setShowMortgageCalculator}
+                className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/10">
+                        <Banknote className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-foreground">Mortgage Repayment Calculator</p>
+                        <p className="text-sm text-muted-foreground">
+                          Calculate repayments, view amortisation schedule, and apply to cash flow
+                        </p>
+                      </div>
+                    </div>
+                    {showMortgageCalculator ? (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-4">
+                    <Separator />
+                    <MortgageRepaymentCalculator
+                      initialLoanAmount={
+                        overrides.loanAmount || 
+                        report?.financial_calculations?.loanAmount || 
+                        (report?.financial_calculations?.purchasePrice || 0) * 0.8
+                      }
+                      initialInterestRate={
+                        overrides.interestRate || 
+                        report?.financial_calculations?.interestRate || 
+                        6.5
+                      }
+                      initialLoanTermYears={
+                        overrides.loanTermYears || 
+                        report?.financial_calculations?.loanTermYears || 
+                        30
+                      }
+                      initialLoanType={
+                        (overrides.loanType || report?.financial_calculations?.loanType || 'principal_interest') as LoanType
+                      }
+                      initialInterestOnlyPeriodYears={
+                        overrides.interestOnlyPeriodYears || 
+                        report?.financial_calculations?.interestOnlyPeriodYears || 
+                        0
+                      }
+                      initialRepaymentFrequency={
+                        (overrides.repaymentFrequency || report?.financial_calculations?.repaymentFrequency || 'monthly') as RepaymentFrequency
+                      }
+                      initialExtraRepayment={
+                        overrides.extraRepaymentPerMonth || 
+                        report?.financial_calculations?.extraRepaymentPerMonth || 
+                        0
+                      }
+                      initialOffsetBalance={
+                        overrides.offsetBalance || 
+                        report?.financial_calculations?.offsetBalance || 
+                        0
+                      }
+                      onApplyToOverrides={(values) => {
+                        setOverrides(prev => ({
+                          ...prev,
+                          ...(values.loanAmount !== undefined && { loanAmount: values.loanAmount }),
+                          ...(values.interestRate !== undefined && { interestRate: values.interestRate }),
+                          ...(values.loanTermYears !== undefined && { loanTermYears: values.loanTermYears }),
+                          ...(values.loanType !== undefined && { loanType: values.loanType }),
+                          ...(values.interestOnlyPeriodYears !== undefined && { interestOnlyPeriodYears: values.interestOnlyPeriodYears }),
+                          ...(values.repaymentFrequency !== undefined && { repaymentFrequency: values.repaymentFrequency }),
+                          ...(values.extraRepaymentPerMonth !== undefined && { extraRepaymentPerMonth: values.extraRepaymentPerMonth }),
+                          ...(values.offsetBalance !== undefined && { offsetBalance: values.offsetBalance }),
+                        }));
+                        setHasChanges(true);
+                        toast({
+                          title: "Values Applied",
+                          description: "Mortgage calculator values have been applied to the override fields.",
+                        });
+                      }}
+                      onApplyLoanProjection={(projection) => {
+                        // Store the 10-year loan projection for cash flow analysis
+                        const loanProjectionOverrides: Record<string, Record<string, number>> = {};
+                        projection.forEach((yearData) => {
+                          loanProjectionOverrides[yearData.year] = {
+                            yearlyInterest: yearData.interestPayment,
+                            yearlyPrincipal: yearData.principalPayment,
+                            yearlyLoanPayment: yearData.totalPayment,
+                            loanBalance: yearData.closingBalance,
+                          };
+                        });
+                        
+                        setOverrides(prev => ({
+                          ...prev,
+                          loanProjection: loanProjectionOverrides,
+                        }));
+                        setHasChanges(true);
+                        toast({
+                          title: "Loan Projection Applied",
+                          description: "10-year loan amortisation has been applied to cash flow analysis.",
+                        });
+                      }}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+              
               {purchaseLoanFields.map((field, index) => 
                 renderField(field, index < purchaseLoanFields.length - 1)
               )}
