@@ -17,7 +17,8 @@ import {
   Sparkles,
   Phone,
   MessageSquareText,
-  FileStack
+  FileStack,
+  Palette
 } from 'lucide-react';
 import {
   Sidebar,
@@ -30,6 +31,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home },
@@ -49,6 +51,7 @@ const navigationItems = [
 const adminItems = [
   { title: 'Automation', url: '/automation', icon: Zap },
   { title: 'Templates', url: '/templates', icon: FileStack },
+  { title: 'White Labelling', url: '/white-label', icon: Palette },
   { title: 'Monitoring', url: '/monitoring', icon: Activity },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck },
   { title: 'Data Import', url: '/data-import', icon: Upload },
@@ -60,6 +63,7 @@ export function DashboardSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
+  const { settings } = useWhiteLabel();
   
   const isActive = (path: string) => currentPath === path;
 
@@ -69,9 +73,17 @@ export function DashboardSidebar() {
         {/* Brand */}
         <div className="p-6 border-b border-border">
           <div className="flex items-center gap-2">
-            <Database className="h-6 w-6 text-primary" />
+            {settings.sidebarLogo ? (
+              <img 
+                src={settings.sidebarLogo} 
+                alt={settings.companyName} 
+                className="h-6 w-6 object-contain"
+              />
+            ) : (
+              <Database className="h-6 w-6 text-primary" />
+            )}
             <div className="flex flex-col">
-              <span className="font-semibold text-foreground">NPC Property</span>
+              <span className="font-semibold text-foreground">{settings.companyName}</span>
               <span className="text-xs text-muted-foreground">Intake Dashboard</span>
             </div>
           </div>
