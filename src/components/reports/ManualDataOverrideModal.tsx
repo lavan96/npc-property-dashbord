@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info, FileText, TrendingUp } from 'lucide-react';
+import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info, FileText, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { STATE_MAPPING } from '@/lib/states';
 import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
@@ -56,6 +56,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
   const [detectedState, setDetectedState] = useState<string>('All');
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
+  const [estimatingExpenses, setEstimatingExpenses] = useState(false);
   
   // Active tab state
   const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
@@ -222,6 +223,62 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       });
     }
   }, [toast]);
+
+  // AI-powered expense estimation function
+  const handleEstimateExpenses = useCallback(async () => {
+    if (!report) return;
+    
+    setEstimatingExpenses(true);
+    try {
+      const purchasePrice = overrides.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? report?.financial_calculations?.propertyValue ?? 0;
+      const weeklyRent = overrides.weeklyRent ?? report?.financial_calculations?.weeklyRent ?? 0;
+      
+      const { data, error } = await supabase.functions.invoke('estimate-property-expenses', {
+        body: {
+          propertyAddress: report.property_address,
+          purchasePrice,
+          weeklyRent,
+          propertyType: report?.financial_calculations?.propertyType || 'Unknown'
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data?.success && data?.estimates) {
+        const estimates = data.estimates;
+        
+        // Apply all estimated values to overrides
+        setOverrides(prev => ({
+          ...prev,
+          bodyCorporateFees: estimates.bodyCorporateFees,
+          landTax: estimates.landTax,
+          councilRates: estimates.councilRates,
+          waterRates: estimates.waterRates,
+          solicitorFees: estimates.solicitorFees,
+          buildingLandlordInsurance: estimates.buildingLandlordInsurance,
+          propertyManagementFees: estimates.propertyManagementFees,
+          repairsMaintenance: estimates.repairsMaintenance,
+        }));
+        setHasChanges(true);
+        
+        toast({
+          title: "Expenses Estimated",
+          description: "AI has populated expense fields based on your property details. Review and adjust as needed.",
+        });
+      } else {
+        throw new Error(data?.error || 'Failed to estimate expenses');
+      }
+    } catch (error) {
+      console.error('Error estimating expenses:', error);
+      toast({
+        title: "Estimation Failed",
+        description: error instanceof Error ? error.message : "Could not estimate expenses. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEstimatingExpenses(false);
+    }
+  }, [report, overrides.purchasePrice, overrides.weeklyRent, toast]);
 
   // Define the confirmed input fields for manual overrides
   // Get current build type from overrides (default to 'existing_property')
@@ -1216,10 +1273,31 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
                 {/* Annual Operating Expenses Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-                    <span className="w-2 h-2 bg-primary rounded-full"></span>
-                    Annual Operating Expenses
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                      <span className="w-2 h-2 bg-primary rounded-full"></span>
+                      Annual Operating Expenses
+                    </h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEstimateExpenses}
+                      disabled={estimatingExpenses}
+                      className="gap-2 text-sm"
+                    >
+                      {estimatingExpenses ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Estimating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" />
+                          AI Estimate
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   
                   {/* Stamp Duty Calculator */}
                   <Collapsible 
