@@ -1999,7 +1999,7 @@ ${sourceSpecificInstructions}
         },
         body: JSON.stringify({
           query: `${reportScope} investment report structure for ${formattedInput}`,
-          reportTier: 'compass', // Default tier, can be parameterized later
+          reportTier: propertyDetails.reportTier || 'compass', // Dynamic tier from request
           reportCategory: reportScope === 'suburb' ? 'suburb_snapshot' : 'investment',
           templateType: 'ai_structure',
           maxChunks: 5,
