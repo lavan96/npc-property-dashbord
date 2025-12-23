@@ -594,29 +594,40 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }
   }, [report, isOpen]);
 
-  // Dynamically calculate loan amount when purchasePrice or LVR changes
+  // Dynamically calculate loan amount and deposit value when purchasePrice or LVR changes
   useEffect(() => {
     const purchasePrice = overrides.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? report?.financial_calculations?.propertyValue ?? 0;
     const lvr = overrides.loanToValueRatio ?? report?.financial_calculations?.loanToValueRatio ?? 80;
     
-    // Only auto-calculate if purchasePrice and LVR are set and loanAmount hasn't been manually overridden
+    // Only auto-calculate if purchasePrice and LVR are set
     if (purchasePrice > 0 && lvr > 0) {
       const calculatedLoanAmount = Math.round(purchasePrice * (lvr / 100));
+      // Deposit = Purchase Price × (100% - LVR%)
+      const calculatedDepositValue = Math.round(purchasePrice * (1 - lvr / 100));
       
-      // Only update if user hasn't manually entered a different loan amount
-      // (Check if the current loanAmount override is empty or matches a previous calculation)
-      const currentLoanAmountOverride = overrides.loanAmount;
       const previousPurchasePrice = report?.manual_overrides?.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? 0;
       const previousLvr = report?.manual_overrides?.loanToValueRatio ?? report?.financial_calculations?.loanToValueRatio ?? 80;
       const previousCalculatedLoanAmount = Math.round(previousPurchasePrice * (previousLvr / 100));
+      const previousCalculatedDepositValue = Math.round(previousPurchasePrice * (1 - previousLvr / 100));
       
-      // Auto-update loan amount if:
-      // 1. No current override, or
-      // 2. Current override matches previous calculation (meaning user hasn't manually changed it)
-      if (currentLoanAmountOverride === undefined || currentLoanAmountOverride === null || currentLoanAmountOverride === previousCalculatedLoanAmount) {
+      const currentLoanAmountOverride = overrides.loanAmount;
+      const currentDepositValueOverride = overrides.depositValue;
+      
+      // Auto-update loan amount if not manually changed
+      const shouldUpdateLoanAmount = currentLoanAmountOverride === undefined || 
+                                      currentLoanAmountOverride === null || 
+                                      currentLoanAmountOverride === previousCalculatedLoanAmount;
+      
+      // Auto-update deposit value if not manually changed
+      const shouldUpdateDepositValue = currentDepositValueOverride === undefined || 
+                                        currentDepositValueOverride === null || 
+                                        currentDepositValueOverride === previousCalculatedDepositValue;
+      
+      if (shouldUpdateLoanAmount || shouldUpdateDepositValue) {
         setOverrides(prev => ({
           ...prev,
-          loanAmount: calculatedLoanAmount
+          ...(shouldUpdateLoanAmount && { loanAmount: calculatedLoanAmount }),
+          ...(shouldUpdateDepositValue && { depositValue: calculatedDepositValue })
         }));
       }
     }
