@@ -269,6 +269,40 @@ export default function Calendar() {
         </Card>
       </div>
 
+      {/* Calendar Legend */}
+      {calendars.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 px-1">
+          <span className="text-xs font-medium text-muted-foreground">Calendars:</span>
+          {calendars.map(calendar => (
+            <button
+              key={calendar.id}
+              onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
+              className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full transition-colors ${
+                selectedCalendarId === calendar.id 
+                  ? 'bg-primary/20 ring-1 ring-primary' 
+                  : selectedCalendarId === 'all' 
+                    ? 'bg-muted/50 hover:bg-muted' 
+                    : 'opacity-40 hover:opacity-100'
+              }`}
+            >
+              <span 
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
+              />
+              <span className="truncate max-w-[120px]">{calendar.name}</span>
+            </button>
+          ))}
+          {selectedCalendarId !== 'all' && (
+            <button
+              onClick={() => setSelectedCalendarId('all')}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Show all
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Calendar View */}
         <Card className="lg:col-span-2">
