@@ -248,6 +248,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         const estimates = data.estimates;
         
         // Apply all estimated values to overrides
+        // Letting fees = weekly rent (cascade value)
         setOverrides(prev => ({
           ...prev,
           bodyCorporateFees: estimates.bodyCorporateFees,
@@ -258,6 +259,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
           buildingLandlordInsurance: estimates.buildingLandlordInsurance,
           propertyManagementFees: estimates.propertyManagementFees,
           repairsMaintenance: estimates.repairsMaintenance,
+          lettingFees: weeklyRent, // Letting fees = 1 week's rent
         }));
         setHasChanges(true);
         
