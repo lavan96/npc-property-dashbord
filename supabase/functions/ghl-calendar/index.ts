@@ -339,9 +339,54 @@ serve(async (req) => {
       });
     }
 
+    // Fetch contact details
+    if (action === 'contact') {
+      const { contactId } = body;
+
+      if (!contactId) {
+        return new Response(JSON.stringify({
+          error: 'Missing required field: contactId',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Fetching contact details for: ${contactId}`);
+
+      const contactResponse = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!contactResponse.ok) {
+        const errorText = await contactResponse.text();
+        console.error('Contact fetch error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to fetch contact',
+          details: errorText,
+          success: false
+        }), {
+          status: contactResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const contactData = await contactResponse.json();
+      console.log('Contact fetched successfully');
+
+      return new Response(JSON.stringify({
+        success: true,
+        contact: contactData.contact || contactData,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ 
       error: 'Invalid action',
-      validActions: ['all', 'calendars', 'events', 'update'],
+      validActions: ['all', 'calendars', 'events', 'update', 'contact'],
       success: false 
     }), {
       status: 400,

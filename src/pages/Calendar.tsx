@@ -10,10 +10,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
+import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, setHours, setMinutes, differenceInMinutes, addMinutes } from 'date-fns';
 
 export default function Calendar() {
-  const { calendars, events, isLoading, isUpdating, error, fetchCalendarData, rescheduleEvent, getCalendarColor } = useGHLCalendar();
+  const { calendars, events, isLoading, isUpdating, error, fetchCalendarData, rescheduleEvent, fetchContact, getCalendarColor } = useGHLCalendar();
+  const { toast } = useToast();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -146,12 +148,35 @@ export default function Calendar() {
     }
     const newEnd = addMinutes(newStart, durationMinutes);
 
-    // Call API to reschedule
-    await rescheduleEvent(
+    const eventTitle = draggedEvent.title || 'Event';
+    const originalTimeStr = format(originalStart, 'MMM d, h:mm a');
+
+    // Call API to reschedule with original times for undo
+    const result = await rescheduleEvent(
       draggedEvent.id,
       newStart.toISOString(),
-      newEnd.toISOString()
+      newEnd.toISOString(),
+      draggedEvent.startTime,
+      draggedEvent.endTime
     );
+
+    if (result.success && result.undo) {
+      toast({
+        title: 'Event rescheduled',
+        description: `"${eventTitle}" moved from ${originalTimeStr}`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await result.undo?.();
+            }}
+          >
+            Undo
+          </Button>
+        ),
+      });
+    }
 
     setDraggedEvent(null);
   };
@@ -194,6 +219,7 @@ export default function Calendar() {
         open={eventModalOpen}
         onOpenChange={setEventModalOpen}
         getStatusColor={getStatusColor}
+        fetchContact={fetchContact}
       />
 
       {/* Header */}
