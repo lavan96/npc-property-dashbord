@@ -1227,45 +1227,100 @@ Recommendation: [BUY/HOLD/SELL]
 | Component | Weight (%) | Score (/100) |
 
 # 31. SWOT Analysis
-**Strengths:**
-- [bullet points]
+**Strengths:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
+- [bullet point with detailed explanation of why this is a strength and its investment impact]
 
-**Weaknesses:**
-- [bullet points]
+**Weaknesses:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
+- [bullet point with detailed explanation of the weakness and its investment impact]
 
-**Opportunities:**
-- [bullet points]
+**Opportunities:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
+- [bullet point with detailed explanation of the opportunity and potential upside]
 
-**Threats:**
-- [bullet points]
+**Threats:** (Minimum 8-10 bullet points, each with 2-3 sentence explanation)
+- [bullet point with detailed explanation of the threat and risk mitigation]
 
-[Include narrative conclusion]
+[Include 200+ word SWOT summary narrative analyzing the strategic assessment, location fundamentals, financial structure, and risk profile]
 
-# 32. Top 3 Opportunities
-1. [Opportunity title] - [Description]
+# 32. Top 3 Investment Opportunities
+1. **[Opportunity Title - e.g., "Capital Appreciation Potential - $XXX,XXX to $X,XXX,XXX"]**
+[150+ words describing the opportunity with specific dollar amounts, growth percentages, leverage calculations, and why this opportunity is significant]
 
-# 33. Top 3 Risks
-1. [Risk title] - [Description]
+2. **[Opportunity Title]**
+[150+ words]
 
-# 34. Investment Recommendations
-Based on the comprehensive analysis above, here are tailored recommendations for this investment:
+3. **[Opportunity Title]**
+[150+ words]
 
-**Short-term Actions:**
-- [Specific actionable recommendation]
-- [Specific actionable recommendation]
+# 33. Top 3 Investment Risks
+1. **[Risk Title - e.g., "Structural Cashflow Deficit Requiring Ongoing Investor Capital Support"]**
+[150+ words describing the risk with specific dollar amounts, impact quantification, and under what conditions this risk materializes]
 
-**Long-term Strategy:**
-- [Strategic recommendation for maximizing returns]
-- [Risk mitigation recommendation]
+2. **[Risk Title]**
+[150+ words]
 
-**Key Considerations:**
-- [Important factor to monitor]
-- [Market condition to watch]
+3. **[Risk Title]**
+[150+ words]
 
-# 35. Market Data Sources
+# 34. Disclaimer & Data Limitations
+**Data Availability & Sourcing:**
+[150+ words explaining data sources (ABS, RBA, Domain, CoreLogic, state authorities) and any limitations]
+
+**Missing Data Points:**
+- [List specific data points that were unavailable, e.g., "Recent comparable sales", "Property-specific valuation", etc.]
+
+**Methodology Notes:**
+- [Explain calculation methods, projection assumptions, and data currency]
+
+# 35. Investment Recommendations
+**Short-term Actions (Prior to Purchase):**
+- [Specific actionable recommendation with details]
+- [Verification steps to take]
+- [Due diligence requirements]
+
+**Before proceeding with purchase commitment, conduct:**
+- [Specific checklist items]
+
+**Long-term Strategy (Ownership & Wealth Maximization):**
+- [Strategic recommendation for maximizing returns - minimum 10-year hold strategy]
+- [Refinancing considerations]
+- [Rental optimization strategies]
+
+**Key Considerations for Monitoring:**
+- [Interest rate sensitivity and impact]
+- [Employment market durability]
+- [Rental market supply/demand]
+- [Climate hazard events]
+
+# 36. Investment Suitability Screening
+**This investment is APPROPRIATE for investors who:**
+- [Bullet point with specific criteria]
+- [Financial capacity requirements]
+- [Risk tolerance requirements]
+- [Time horizon requirements]
+
+**This investment is NOT APPROPRIATE for investors who:**
+- [Bullet point with specific exclusion criteria]
+- [Financial constraints that would make this unsuitable]
+- [Risk profile mismatches]
+
+# 37. Final Conclusion
+**Investment Thesis Summary:**
+[200+ words summarizing the overall investment case, property strengths, key financial characteristics, and risk profile]
+
+**Valuation Assessment:**
+[100+ words on whether the price is reasonable relative to market benchmarks]
+
+**Overall Recommendation:**
+[QUALIFIED BUY/HOLD/SELL with specific contingencies and conditions]
+
+**Report Completion Date:** [Current date]
+**Data Currency:** [Current month/year]
+
+# 38. Data Sources
+**Market Data Sources:**
 | Metric | Source | URL |
 
-# 36. Demographic & Economic Data
+**Demographic & Economic Data:**
 | Metric | Source | URL |
 
 **ABSOLUTE REQUIREMENTS:**
@@ -1277,6 +1332,27 @@ Based on the comprehensive analysis above, here are tailored recommendations for
 6. **DATES**: Include reporting periods and data sources with every metric
 7. **NO PLACEHOLDERS**: Never write "data unavailable", "TBD", "N/A", or similar - just omit the metric entirely
 8. **MEDIAN PRICE COMPARISONS**: ONLY include property-to-median price comparisons when the property price is HIGHER than the median. NEVER mention or include comparisons when the property price is LOWER than the median. If below median, omit the comparison entirely.
+
+**CRITICAL CONTENT LENGTH REQUIREMENTS - PRODUCE A COMPREHENSIVE 35-40 PAGE REPORT:**
+- **Location Overview**: Minimum 400 words with detailed suburb character, lifestyle description, transport access, and population trends
+- **Market Performance**: Include full market commentary paragraph (150+ words) after tables
+- **Demographics & Demand Drivers**: Minimum 300 words explaining employment dynamics and demand factors
+- **Each Infrastructure Section** (Transport, Education, Healthcare): 200+ words with specific facility names, distances, and quality commentary
+- **Environmental Risks**: Detailed 250+ word analysis with climate zone, rainfall, temperature data, and specific risk assessments
+- **Crime Statistics**: 200+ words with breakdown analysis and trend commentary
+- **Property-Level Information**: 200+ words describing property characteristics and market positioning
+- **Cashflow Analysis**: Include BOTH P&I and Interest-Only scenarios with detailed tables and 150+ word commentary
+- **Sensitivity Analysis**: Include stress case (+1%), base case, and improvement case (-1%) with 150+ word commentary
+- **10-Year Projections**: All 10 years in each table (Conservative, Base, Optimistic) with 200+ word projection narrative
+- **Investment Score**: 150+ words explaining the score components and rationale
+- **SWOT Analysis**: Minimum 8-10 bullet points per category (Strengths, Weaknesses, Opportunities, Threats), each with 2-3 sentence explanations
+- **Top 3 Opportunities**: Each opportunity described in 150+ words with specific dollar amounts and percentages
+- **Top 3 Risks**: Each risk described in 150+ words with quantified impact analysis
+- **Investment Recommendations**: 400+ words covering short-term actions, long-term strategy, and key monitoring considerations
+- **Investment Suitability**: Include specific criteria for who this investment IS and IS NOT appropriate for
+- **Final Conclusion**: 300+ words summarizing the investment thesis, valuation assessment, and overall recommendation
+
+**CRITICAL: This must be a COMPREHENSIVE, PROFESSIONAL-GRADE report of 35-40 pages when rendered. Every section must have substantial narrative content, not just tables. Include detailed analysis, specific numbers, and actionable insights throughout.**
 
 **CRITICAL DATA HANDLING RULE: If any data point is unavailable, missing, or would be marked as "N/A", completely OMIT that entire row/metric from the table or section. DO NOT show any placeholders. Only include metrics where actual data exists.**
 
@@ -1354,7 +1430,13 @@ Component Scores: Growth ${enhancedData.investmentScore.breakdown?.growthScore?.
 - Use # for section headers
 - CRITICAL: Omit any metric where data is not available - do not show N/A or placeholders
 - All amounts in AUD with $ symbol
-- Follow the 36-section structure exactly as specified above
+- Follow the 38-section structure exactly as specified above
+- CRITICAL LENGTH REQUIREMENT: This report MUST be 35-40 pages when rendered (approximately 12,000-15,000 words)
+- Every section must have SUBSTANTIAL narrative content, not just tables
+- Include detailed multi-paragraph analysis after every data table
+- SWOT section must have 8-10 detailed bullet points per category with explanatory sentences
+- Top 3 Opportunities and Risks must each be 150+ words with specific dollar amounts and percentages
+- Investment Recommendations must include detailed short-term actions, long-term strategy, and monitoring considerations
 
 ${enhancedData.economics ? `
 ECONOMIC DATA AVAILABLE (Only include metrics with actual values):
@@ -2082,7 +2164,7 @@ ${extractedDetailsText}
     
     const systemMessage = reportScope === 'suburb' 
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
-      : 'You are an expert Australian property investment analyst with deep knowledge of real estate markets, financial analysis, and investment projections. Your role is to provide comprehensive, data-driven property investment analysis that covers all aspects of property investment decision-making. You have access to current market data and can provide specific calculations for rental yields, capital growth projections, and investment returns. Always include specific numbers, percentages, and dollar amounts in your analysis. Focus on practical, actionable insights that help investors make informed decisions about property purchases. Use current Australian market conditions and regulations in your analysis.';
+      : 'You are an expert Australian property investment analyst creating professional-grade Investor Compass reports for a property consulting firm. Your role is to produce COMPREHENSIVE, DETAILED investment analysis reports of 35-40 pages (12,000-15,000 words). You MUST provide extensive narrative content with every section - not just tables, but detailed multi-paragraph analysis explaining the data implications for investors. Include specific numbers, percentages, dollar amounts, and actionable insights throughout. Each section requires substantial written analysis. The SWOT analysis must have 8-10 detailed points per category with explanatory sentences. The Top 3 Opportunities and Risks sections must each be 150+ words with quantified impacts. Investment Recommendations must cover short-term actions, long-term strategy, and monitoring considerations in detail. Use current Australian market conditions and regulations. This is a premium report that clients pay for - make it comprehensive and thorough.';
 
     console.log('Calling Perplexity API with sonar model...');
     console.log('Report scope:', reportScope);
