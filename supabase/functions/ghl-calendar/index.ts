@@ -384,9 +384,65 @@ serve(async (req) => {
       });
     }
 
+    // Create a new appointment
+    if (action === 'create') {
+      const { calendarId: targetCalendarId, title, startTime: appointmentStart, endTime: appointmentEnd, contactId: appointmentContactId, notes } = body;
+
+      if (!targetCalendarId || !appointmentStart || !appointmentEnd) {
+        return new Response(JSON.stringify({
+          error: 'Missing required fields: calendarId, startTime, endTime',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Creating appointment on calendar ${targetCalendarId}: ${title || 'Untitled'}`);
+
+      const createPayload: Record<string, unknown> = {
+        calendarId: targetCalendarId,
+        locationId,
+        startTime: appointmentStart,
+        endTime: appointmentEnd,
+        title: title || 'New Appointment',
+      };
+      if (appointmentContactId) createPayload.contactId = appointmentContactId;
+      if (notes) createPayload.notes = notes;
+
+      const createResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(createPayload),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('Appointment create error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to create appointment',
+          details: errorText,
+          success: false
+        }), {
+          status: createResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const createData = await createResponse.json();
+      console.log('Appointment created successfully:', createData?.id || createData?.appointment?.id);
+
+      return new Response(JSON.stringify({
+        success: true,
+        event: createData.appointment || createData,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ 
       error: 'Invalid action',
-      validActions: ['all', 'calendars', 'events', 'update', 'contact'],
+      validActions: ['all', 'calendars', 'events', 'update', 'contact', 'create'],
       success: false 
     }), {
       status: 400,
