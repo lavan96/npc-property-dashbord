@@ -1,8 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, FileText } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 
@@ -19,6 +18,7 @@ export function EventDetailsModal({ event, open, onOpenChange, getStatusColor }:
   const startDate = parseISO(event.startTime);
   const endDate = parseISO(event.endTime);
   const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
+  const calendarColor = event.calendarColor || '#3b82f6';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,7 +49,10 @@ export function EventDetailsModal({ event, open, onOpenChange, getStatusColor }:
           {/* Calendar */}
           {event.calendarName && (
             <div className="flex items-start gap-3">
-              <Clock className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <div 
+                className="h-5 w-5 rounded-full shrink-0 mt-0.5"
+                style={{ backgroundColor: calendarColor }}
+              />
               <div>
                 <p className="text-sm text-muted-foreground">Calendar</p>
                 <p className="font-medium">{event.calendarName}</p>

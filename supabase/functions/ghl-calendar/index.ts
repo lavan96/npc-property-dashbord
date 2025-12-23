@@ -15,6 +15,7 @@ interface GHLCalendar {
   isActive: boolean;
   teamMembers?: number;
   slug?: string;
+  eventColor?: string;
 }
 
 interface GHLEvent {
@@ -29,6 +30,26 @@ interface GHLEvent {
   notes?: string;
   address?: string;
 }
+
+// Default calendar colors for consistent color coding
+const CALENDAR_COLORS = [
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#ef4444', // red
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#84cc16', // lime
+  '#f97316', // orange
+  '#6366f1', // indigo
+  '#14b8a6', // teal
+  '#a855f7', // purple
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#0ea5e9', // sky
+  '#e11d48', // rose
+];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -87,17 +108,23 @@ serve(async (req) => {
 
       const calendarsData = await calendarsResponse.json();
       
+      // Add color to each calendar
+      const rawCalendars = calendarsData.calendars || [];
+      const calendars: GHLCalendar[] = rawCalendars.map((cal: any, index: number) => ({
+        ...cal,
+        eventColor: cal.eventColor || CALENDAR_COLORS[index % CALENDAR_COLORS.length],
+      }));
+      
       if (action === 'calendars') {
         return new Response(JSON.stringify({
           success: true,
-          calendars: calendarsData.calendars || [],
+          calendars,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       // For 'all' action, continue to fetch events
-      const calendars: GHLCalendar[] = calendarsData.calendars || [];
       
       // Fetch events
       console.log('Fetching events...');
@@ -124,17 +151,21 @@ serve(async (req) => {
         console.error('Events fetch error:', await eventsResponse.text());
       }
 
-      // Map calendar names to events
-      const calendarMap = new Map(calendars.map(c => [c.id, c.name]));
-      const eventsWithCalendarNames = events.map(event => ({
-        ...event,
-        calendarName: calendarMap.get(event.calendarId) || 'Unknown Calendar',
-      }));
+      // Map calendar names and colors to events
+      const calendarMap = new Map(calendars.map(c => [c.id, { name: c.name, color: c.eventColor }]));
+      const eventsWithCalendarInfo = events.map(event => {
+        const calInfo = calendarMap.get(event.calendarId);
+        return {
+          ...event,
+          calendarName: calInfo?.name || 'Unknown Calendar',
+          calendarColor: calInfo?.color || CALENDAR_COLORS[0],
+        };
+      });
 
       return new Response(JSON.stringify({
         success: true,
         calendars,
-        events: eventsWithCalendarNames,
+        events: eventsWithCalendarInfo,
         dateRange: {
           start: defaultStartTime,
           end: defaultEndTime,
@@ -188,9 +219,59 @@ serve(async (req) => {
       });
     }
 
+    // Update/reschedule an event
+    if (action === 'update') {
+      const body = await req.json();
+      const { eventId, newStartTime, newEndTime } = body;
+      
+      if (!eventId || !newStartTime || !newEndTime) {
+        return new Response(JSON.stringify({ 
+          error: 'Missing required fields: eventId, newStartTime, newEndTime',
+          success: false 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Rescheduling event ${eventId} to ${newStartTime} - ${newEndTime}`);
+
+      const updateResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments/${eventId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          startTime: newStartTime,
+          endTime: newEndTime,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error('Event update error:', errorText);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to update event',
+          details: errorText,
+          success: false 
+        }), {
+          status: updateResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const updateData = await updateResponse.json();
+      console.log('Event updated successfully');
+      
+      return new Response(JSON.stringify({
+        success: true,
+        event: updateData,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ 
       error: 'Invalid action',
-      validActions: ['all', 'calendars', 'events'],
+      validActions: ['all', 'calendars', 'events', 'update'],
       success: false 
     }), {
       status: 400,
