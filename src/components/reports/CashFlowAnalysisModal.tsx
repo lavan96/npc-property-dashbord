@@ -18,6 +18,13 @@ import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, Rota
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  get10YearLoanProjection, 
+  type MortgageInput, 
+  type RateChange,
+  type RepaymentFrequency,
+  type LoanType 
+} from '@/utils/mortgageCalculations';
 
 interface InvestmentReport {
   id: string;
@@ -419,10 +426,16 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       depositValue: mo.depositValue || fc.depositValue || 0,
       loanAmount: mo.loanAmount || cashFlow.loanAmount || 0,
       loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
-      loanType: mo.loanType || cashFlow.loanType || 'interest_only',
+      loanType: (mo.loanType || cashFlow.loanType || 'interest_only') as LoanType,
       loanTermYears: mo.loanTermYears || cashFlow.loanTermYears || 30,
       interestRate: mo.interestRate || fc.interestRate || 5.5,
       capitalGrowth: mo.capitalGrowth || fc.capitalGrowth || 5,
+      
+      // New mortgage calculator fields
+      interestOnlyPeriodYears: mo.interestOnlyPeriodYears || 0,
+      repaymentFrequency: (mo.repaymentFrequency || 'monthly') as RepaymentFrequency,
+      extraRepaymentPerMonth: mo.extraRepaymentPerMonth || 0,
+      offsetBalance: mo.offsetBalance || 0,
 
       // Rental Income
       weeklyRent: mo.weeklyRent || fc.weeklyRent || 0,
@@ -454,6 +467,46 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       includeDepreciationInCashFlow: includeDepreciation,
     };
   }, [report]);
+
+  // Generate 10-year loan projection using amortisation engine
+  const loanProjections = useMemo(() => {
+    if (!baseFinancialData) return null;
+    
+    const loanAmount = baseFinancialData.loanAmount || 
+      (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100));
+    
+    if (loanAmount <= 0) return null;
+    
+    // Convert monthly extra repayment to the appropriate frequency
+    const periodsPerYear = baseFinancialData.repaymentFrequency === 'weekly' ? 52 : 
+                           baseFinancialData.repaymentFrequency === 'fortnightly' ? 26 : 12;
+    const extraPerPeriod = baseFinancialData.extraRepaymentPerMonth * 12 / periodsPerYear;
+    
+    const mortgageInput: MortgageInput = {
+      loanAmount,
+      annualInterestRate: baseFinancialData.interestRate,
+      loanTermYears: baseFinancialData.loanTermYears,
+      repaymentFrequency: baseFinancialData.repaymentFrequency,
+      loanType: baseFinancialData.loanType === 'interest_only' ? 'interest_only' : 'principal_interest',
+      interestOnlyPeriodYears: baseFinancialData.interestOnlyPeriodYears,
+      extraRepaymentPerPeriod: extraPerPeriod,
+      offsetBalance: baseFinancialData.offsetBalance,
+    };
+    
+    // Build rate changes from yearly overrides
+    const rateChanges: RateChange[] = [];
+    Object.entries(yearlyOverrides).forEach(([yearStr, overrides]) => {
+      const year = parseInt(yearStr);
+      if (overrides.interestRate !== undefined && overrides.interestRate !== null && year >= 2) {
+        rateChanges.push({
+          effectiveFromPeriod: (year - 1) * periodsPerYear + 1,
+          newAnnualRate: overrides.interestRate,
+        });
+      }
+    });
+    
+    return get10YearLoanProjection(mortgageInput, rateChanges);
+  }, [baseFinancialData, yearlyOverrides]);
 
   // Get override value for a specific year and field
   const getOverrideValue = useCallback((year: number, field: EditableFieldKey): number | null => {
@@ -551,7 +604,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     setShowResetConfirm(false);
   }, []);
 
-  // Calculate 10-year projections with per-year overrides
+  // Calculate 10-year projections with per-year overrides and amortisation engine
   const projections = useMemo(() => {
     if (!baseFinancialData) return [];
 
@@ -559,14 +612,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     
     // Calculate initial values
     const purchasePrice = baseFinancialData.purchasePrice;
-    const loanAmount = baseFinancialData.loanAmount || (purchasePrice * (baseFinancialData.loanToValueRatio / 100));
+    const initialLoanAmount = baseFinancialData.loanAmount || (purchasePrice * (baseFinancialData.loanToValueRatio / 100));
     const weeklyRent = baseFinancialData.weeklyRent;
     const occupancyRate = baseFinancialData.occupancyRate;
     const baseCapitalGrowthRate = baseFinancialData.capitalGrowth / 100;
     const baseInterestRate = baseFinancialData.interestRate / 100;
     const baseCpiRate = baseFinancialData.cpiGrowthRate / 100;
     const taxRate = baseFinancialData.taxRate / 100;
-    const isInterestOnly = baseFinancialData.loanType === 'interest_only';
 
     // Calculate initial annual expenses
     const baseExpenses = 
@@ -582,8 +634,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     // Base calculated values for Year 1
     const baseAnnualRent = weeklyRent * occupancyRate;
     const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
-    const baseInterestPayment = loanAmount * baseInterestRate;
-    const basePrincipalPayment = isInterestOnly ? 0 : 0;
 
     // Track cumulative values that can be affected by overrides
     let previousPropertyValue = baseFinancialData.marketValueNow || purchasePrice;
@@ -618,8 +668,39 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
       previousPropertyValue = propertyValue;
 
-      // Loan balance
-      const currentLoanAmount = isInterestOnly ? loanAmount : loanAmount;
+      // Use amortisation engine for accurate loan calculations
+      let currentLoanAmount: number;
+      let interestPayments: number;
+      let principalPayments: number;
+      
+      if (year === 0) {
+        currentLoanAmount = initialLoanAmount;
+        interestPayments = 0;
+        principalPayments = 0;
+      } else if (loanProjections && loanProjections[year - 1]) {
+        const yearProjection = loanProjections[year - 1];
+        
+        // Use override values if provided, otherwise use amortisation engine values
+        if (yearOverrides.interestPayment !== undefined && yearOverrides.interestPayment !== null) {
+          interestPayments = yearOverrides.interestPayment;
+        } else {
+          interestPayments = yearProjection.interestPayment;
+        }
+        
+        if (yearOverrides.principalPayment !== undefined && yearOverrides.principalPayment !== null) {
+          principalPayments = yearOverrides.principalPayment;
+        } else {
+          principalPayments = yearProjection.principalPayment;
+        }
+        
+        // Loan balance comes from amortisation engine
+        currentLoanAmount = yearProjection.closingBalance;
+      } else {
+        // Fallback to simple calculation if amortisation engine not available
+        currentLoanAmount = initialLoanAmount;
+        interestPayments = initialLoanAmount * yearInterestRate;
+        principalPayments = 0;
+      }
 
       // Equity
       const equity = propertyValue - currentLoanAmount;
@@ -653,30 +734,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         const expenses = baseExpenses * Math.pow(1 + yearCpiRate, year);
         const propertyManagement = annualRent * propertyManagementPercent;
         totalExpenses = expenses + propertyManagement;
-      }
-
-      // Interest payments
-      let interestPayments: number;
-      if (year === 0) {
-        interestPayments = 0;
-      } else if (year === 1) {
-        interestPayments = currentLoanAmount * baseInterestRate;
-      } else if (yearOverrides.interestPayment !== undefined && yearOverrides.interestPayment !== null) {
-        interestPayments = yearOverrides.interestPayment;
-      } else {
-        interestPayments = currentLoanAmount * yearInterestRate;
-      }
-
-      // Principal payments
-      let principalPayments: number;
-      if (year === 0) {
-        principalPayments = 0;
-      } else if (year === 1) {
-        principalPayments = basePrincipalPayment;
-      } else if (yearOverrides.principalPayment !== undefined && yearOverrides.principalPayment !== null) {
-        principalPayments = yearOverrides.principalPayment;
-      } else {
-        principalPayments = basePrincipalPayment;
       }
 
       // Gross yield
@@ -752,7 +809,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     }
 
     return results;
-  }, [baseFinancialData, yearlyOverrides]);
+  }, [baseFinancialData, yearlyOverrides, loanProjections]);
 
   // Construction Progress Payment Schedule calculation
   interface ConstructionStage {
