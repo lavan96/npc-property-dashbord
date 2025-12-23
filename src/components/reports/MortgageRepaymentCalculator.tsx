@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calculator, ChevronDown, ChevronRight, DollarSign, TrendingDown, Clock, Percent, ArrowRight, Check, Info, BarChart3 } from 'lucide-react';
+import { Calculator, ChevronDown, ChevronRight, DollarSign, TrendingDown, Clock, Percent, ArrowRight, Check, Info, BarChart3, Pencil } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -20,6 +20,21 @@ import {
   MortgageCalculationResult,
   PERIODS_PER_YEAR
 } from '@/utils/mortgageCalculations';
+
+// Preset interest rate options (based on major Australian lenders)
+const PRESET_INTEREST_RATES = [
+  { value: '5.89', label: '5.89% - CBA Extra Home Loan (Variable, Owner Occ P&I)' },
+  { value: '5.94', label: '5.94% - CBA Standard Variable Rate' },
+  { value: '5.99', label: '5.99% - Investment Standard Variable' },
+  { value: '6.14', label: '6.14% - Interest Only Variable' },
+  { value: '6.24', label: '6.24% - Fixed 1 Year' },
+  { value: '5.99', label: '5.99% - Fixed 2 Years' },
+  { value: '5.94', label: '5.94% - Fixed 3 Years' },
+  { value: '5.99', label: '5.99% - Fixed 4 Years' },
+  { value: '6.14', label: '6.14% - Fixed 5 Years' },
+  { value: '6.59', label: '6.59% - Low Deposit Variable' },
+  { value: 'custom', label: 'Enter custom rate...' },
+];
 
 interface MortgageRepaymentCalculatorProps {
   // Pre-fill values from report
@@ -71,11 +86,23 @@ export function MortgageRepaymentCalculator({
   const [showResults, setShowResults] = useState(false);
   const [showAmortisation, setShowAmortisation] = useState(false);
   const [amortisationView, setAmortisationView] = useState<'yearly' | 'all'>('yearly');
+  const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset');
+  const [selectedPresetRate, setSelectedPresetRate] = useState<string>('5.89');
   
   // Sync with initial values when they change
   useEffect(() => {
     if (initialLoanAmount > 0) setLoanAmount(initialLoanAmount);
-    if (initialInterestRate > 0) setInterestRate(initialInterestRate);
+    if (initialInterestRate > 0) {
+      setInterestRate(initialInterestRate);
+      // Check if it matches a preset, otherwise set to custom
+      const matchingPreset = PRESET_INTEREST_RATES.find(r => r.value === String(initialInterestRate));
+      if (matchingPreset) {
+        setSelectedPresetRate(matchingPreset.value);
+        setRateInputMode('preset');
+      } else {
+        setRateInputMode('custom');
+      }
+    }
     if (initialLoanTermYears > 0) setLoanTermYears(initialLoanTermYears);
     if (initialLoanType) setLoanType(initialLoanType);
     if (initialInterestOnlyPeriodYears >= 0) setInterestOnlyPeriodYears(initialInterestOnlyPeriodYears);
@@ -83,6 +110,20 @@ export function MortgageRepaymentCalculator({
     if (initialExtraRepayment >= 0) setExtraRepayment(initialExtraRepayment);
     if (initialOffsetBalance >= 0) setOffsetBalance(initialOffsetBalance);
   }, [initialLoanAmount, initialInterestRate, initialLoanTermYears, initialLoanType, initialInterestOnlyPeriodYears, initialRepaymentFrequency, initialExtraRepayment, initialOffsetBalance]);
+  
+  // Handle preset rate selection
+  const handlePresetRateChange = (value: string) => {
+    if (value === 'custom') {
+      setRateInputMode('custom');
+      setSelectedPresetRate('custom');
+    } else {
+      setRateInputMode('preset');
+      setSelectedPresetRate(value);
+      // Extract the numeric rate from the combined value (e.g., "5.89|5.89% - CBA Extra...")
+      const rateValue = value.split('|')[0];
+      setInterestRate(parseFloat(rateValue));
+    }
+  };
   
   // Calculate results
   const calculationResult = useMemo((): MortgageCalculationResult | null => {
@@ -257,17 +298,53 @@ export function MortgageRepaymentCalculator({
         {/* Interest Rate */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Interest Rate</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              step="0.01"
-              value={interestRate || ''}
-              onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
-              className="w-28"
-              placeholder="6.50"
-            />
-            <span className="text-sm text-muted-foreground">% p.a.</span>
-          </div>
+          {rateInputMode === 'preset' ? (
+            <div className="space-y-2">
+              <Select 
+                value={selectedPresetRate} 
+                onValueChange={handlePresetRateChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select interest rate" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {PRESET_INTEREST_RATES.map((rate) => (
+                    <SelectItem key={rate.value + rate.label} value={rate.value === 'custom' ? 'custom' : rate.value + '|' + rate.label}>
+                      {rate.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Rates based on CommBank home loan products (indicative only)</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={interestRate || ''}
+                  onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
+                  className="w-28"
+                  placeholder="6.50"
+                  autoFocus
+                />
+                <span className="text-sm text-muted-foreground">% p.a.</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setRateInputMode('preset');
+                    setSelectedPresetRate('5.89');
+                    setInterestRate(5.89);
+                  }}
+                  className="text-xs"
+                >
+                  Use presets
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Repayment Frequency */}
