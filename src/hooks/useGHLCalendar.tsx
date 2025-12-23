@@ -86,9 +86,19 @@ const normalizeEvent = (raw: any): GHLEvent | null => {
   };
 };
 
+export interface GHLContact {
+  id: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+}
+
 export function useGHLCalendar() {
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
   const [events, setEvents] = useState<GHLEvent[]>([]);
+  const [contactCache, setContactCache] = useState<Map<string, GHLContact>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -251,7 +261,12 @@ export function useGHLCalendar() {
     }
   }, [toast]);
 
-  const fetchContact = useCallback(async (contactId: string) => {
+  const fetchContact = useCallback(async (contactId: string): Promise<GHLContact | null> => {
+    // Return from cache if available
+    if (contactCache.has(contactId)) {
+      return contactCache.get(contactId)!;
+    }
+
     try {
       const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
         body: { action: 'contact', contactId },
@@ -261,12 +276,72 @@ export function useGHLCalendar() {
         throw new Error(fetchError.message);
       }
 
-      return data?.contact || null;
+      const rawContact = data?.contact;
+      if (!rawContact) return null;
+
+      const contact: GHLContact = {
+        id: rawContact.id || contactId,
+        name: rawContact.name || rawContact.contactName || undefined,
+        firstName: rawContact.firstName || undefined,
+        lastName: rawContact.lastName || undefined,
+        email: rawContact.email || undefined,
+        phone: rawContact.phone || undefined,
+      };
+
+      // Store in cache
+      setContactCache((prev) => new Map(prev).set(contactId, contact));
+      return contact;
     } catch (err: any) {
       console.error('Error fetching contact:', err);
       return null;
     }
-  }, []);
+  }, [contactCache]);
+
+  const createAppointment = useCallback(async (payload: {
+    calendarId: string;
+    title: string;
+    startTime: string;
+    endTime: string;
+    contactId?: string;
+    notes?: string;
+  }): Promise<{ success: boolean; event?: GHLEvent }> => {
+    setIsUpdating(true);
+
+    try {
+      const { data, error: createError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'create', ...payload },
+      });
+
+      if (createError) {
+        throw new Error(createError.message);
+      }
+
+      if (data?.success) {
+        const newEvent = normalizeEvent(data.event);
+        if (newEvent) {
+          // Add to local state
+          setEvents((prev) => [...prev, newEvent]);
+        }
+        toast({
+          title: 'Appointment created',
+          description: `"${payload.title}" has been scheduled.`,
+        });
+        return { success: true, event: newEvent ?? undefined };
+      } else {
+        throw new Error(data?.error || 'Failed to create appointment');
+      }
+    } catch (err: any) {
+      console.error('Error creating appointment:', err);
+      toast({
+        title: 'Failed to create appointment',
+        description: err.message,
+        variant: 'destructive',
+      });
+      return { success: false };
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [toast]);
 
   const getCalendarColor = useCallback((calendarId: string): string => {
     const calendar = calendars.find(c => c.id === calendarId);
@@ -276,12 +351,14 @@ export function useGHLCalendar() {
   return {
     calendars,
     events,
+    contactCache,
     isLoading,
     isUpdating,
     error,
     fetchCalendarData,
     fetchEvents,
     rescheduleEvent,
+    createAppointment,
     fetchContact,
     getCalendarColor,
   };

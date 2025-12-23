@@ -1,7 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { DragEvent } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, Search, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +10,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
+import { QuickAddAppointmentModal } from '@/components/calendar/QuickAddAppointmentModal';
+import { CalendarSearchDropdown } from '@/components/calendar/CalendarSearchDropdown';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, setHours, setMinutes, differenceInMinutes, addMinutes } from 'date-fns';
 
 export default function Calendar() {
-  const { calendars, events, isLoading, isUpdating, error, fetchCalendarData, rescheduleEvent, fetchContact, getCalendarColor } = useGHLCalendar();
+  const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, rescheduleEvent, createAppointment, fetchContact, getCalendarColor } = useGHLCalendar();
   const { toast } = useToast();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -27,6 +28,8 @@ export default function Calendar() {
   const [draggedEvent, setDraggedEvent] = useState<GHLEvent | null>(null);
   const [dropTarget, setDropTarget] = useState<{ day: Date; hour?: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddDefaults, setQuickAddDefaults] = useState<{ date?: Date; hour?: number }>({});
 
   useEffect(() => {
     fetchCalendarData();
@@ -268,6 +271,20 @@ export default function Calendar() {
         fetchContact={fetchContact}
       />
 
+      {/* Quick Add Appointment Modal */}
+      <QuickAddAppointmentModal
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        calendars={calendars}
+        defaultDate={quickAddDefaults.date}
+        defaultHour={quickAddDefaults.hour}
+        isLoading={isUpdating}
+        onSubmit={async (data) => {
+          const result = await createAppointment(data);
+          return result.success;
+        }}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -275,24 +292,18 @@ export default function Calendar() {
           <p className="text-muted-foreground">GoHighLevel Appointments & Schedule</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-[200px] pl-8 pr-8 h-9"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          {/* Enhanced Search Dropdown */}
+          <CalendarSearchDropdown
+            events={events}
+            contactCache={contactCache}
+            fetchContact={fetchContact}
+            onSelectEvent={(event) => {
+              setSelectedEvent(event);
+              setEventModalOpen(true);
+            }}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
           <Tabs value={view} onValueChange={(v) => setView(v as 'month' | 'week')}>
             <TabsList className="h-9">
               <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
@@ -330,18 +341,13 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Search Results Info */}
-      {searchQuery && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Search className="h-4 w-4" />
-          <span>
-            Found <span className="font-medium text-foreground">{filteredEvents.length}</span> event{filteredEvents.length !== 1 ? 's' : ''} matching "{searchQuery}"
-          </span>
-          <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')} className="h-6 px-2">
-            Clear
-          </Button>
-        </div>
-      )}
+      {/* Quick Add Button + Refresh */}
+      <div className="flex items-center gap-2">
+        <Button onClick={() => { setQuickAddDefaults({}); setQuickAddOpen(true); }}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Appointment
+        </Button>
+      </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -562,7 +568,13 @@ export default function Calendar() {
                               onDragOver={(e) => handleDragOver(e, day, hour)}
                               onDragLeave={handleDragLeave}
                               onDrop={(e) => handleDrop(e, day, hour)}
-                              className={`min-h-[48px] border-l border-border/30 px-1 py-0.5 transition-colors ${isDropping ? 'bg-primary/20' : ''}`}
+                              onClick={() => {
+                                if (hourEvents.length === 0) {
+                                  setQuickAddDefaults({ date: day, hour });
+                                  setQuickAddOpen(true);
+                                }
+                              }}
+                              className={`min-h-[48px] border-l border-border/30 px-1 py-0.5 transition-colors cursor-pointer hover:bg-muted/30 ${isDropping ? 'bg-primary/20' : ''}`}
                             >
                               {hourEvents.map(event => (
                                 <div
