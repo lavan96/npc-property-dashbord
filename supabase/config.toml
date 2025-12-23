@@ -225,3 +225,6 @@ request_timeout = 120
 
 [functions.retrieve-template-context]
 verify_jwt = false
+
+[functions.ghl-calendar-test]
+verify_jwt = false
