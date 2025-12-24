@@ -2215,6 +2215,14 @@ export type Database = {
           company_name: string
           created_at: string
           dark_mode_default: string
+          email_signature_address: string | null
+          email_signature_banner: string | null
+          email_signature_disclaimer: string | null
+          email_signature_email: string | null
+          email_signature_name: string | null
+          email_signature_phone: string | null
+          email_signature_title: string | null
+          email_signature_website: string | null
           favicon: string | null
           id: string
           primary_color: string | null
@@ -2228,6 +2236,14 @@ export type Database = {
           company_name?: string
           created_at?: string
           dark_mode_default?: string
+          email_signature_address?: string | null
+          email_signature_banner?: string | null
+          email_signature_disclaimer?: string | null
+          email_signature_email?: string | null
+          email_signature_name?: string | null
+          email_signature_phone?: string | null
+          email_signature_title?: string | null
+          email_signature_website?: string | null
           favicon?: string | null
           id?: string
           primary_color?: string | null
@@ -2241,6 +2257,14 @@ export type Database = {
           company_name?: string
           created_at?: string
           dark_mode_default?: string
+          email_signature_address?: string | null
+          email_signature_banner?: string | null
+          email_signature_disclaimer?: string | null
+          email_signature_email?: string | null
+          email_signature_name?: string | null
+          email_signature_phone?: string | null
+          email_signature_title?: string | null
+          email_signature_website?: string | null
           favicon?: string | null
           id?: string
           primary_color?: string | null
