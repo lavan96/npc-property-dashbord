@@ -289,6 +289,48 @@ export default function Calendar() {
   };
 
   const getEventStyle = (event: GHLEvent) => {
+    const status = (event.appointmentStatus || event.status || '').toLowerCase();
+    
+    // Cancelled appointments - Red styling with strikethrough effect
+    if (status === 'cancelled' || status === 'canceled') {
+      return {
+        backgroundColor: 'hsl(var(--destructive) / 0.15)',
+        borderLeft: '3px solid hsl(var(--destructive))',
+        color: 'hsl(var(--destructive))',
+        textDecoration: 'line-through',
+        opacity: 0.8,
+      };
+    }
+    
+    // Rescheduled appointments - Orange styling
+    if (status === 'rescheduled') {
+      return {
+        backgroundColor: 'hsl(38 92% 50% / 0.15)',
+        borderLeft: '3px solid hsl(38 92% 50%)',
+        color: 'hsl(38 92% 50%)',
+      };
+    }
+    
+    // No-show appointments - Muted red
+    if (status === 'no_show' || status === 'noshow' || status === 'no-show') {
+      return {
+        backgroundColor: 'hsl(var(--destructive) / 0.1)',
+        borderLeft: '3px solid hsl(var(--destructive) / 0.6)',
+        color: 'hsl(var(--destructive) / 0.7)',
+        opacity: 0.7,
+      };
+    }
+    
+    // Confirmed appointments - Green styling
+    if (status === 'confirmed') {
+      return {
+        backgroundColor: 'hsl(142 76% 36% / 0.15)',
+        borderLeft: '3px solid hsl(142 76% 36%)',
+        color: 'hsl(142 76% 36%)',
+      };
+    }
+    
+    // Default - Use calendar color
     const color = event.calendarColor || getCalendarColor(event.calendarId);
     return {
       backgroundColor: `${color}20`,
