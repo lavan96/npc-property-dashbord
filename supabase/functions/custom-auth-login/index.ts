@@ -76,6 +76,14 @@ serve(async (req) => {
     // Clean up expired sessions
     await supabase.rpc('cleanup_expired_sessions')
 
+    // Fetch user roles from user_roles table
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+
+    const roles = userRoles?.map(r => r.role) || []
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -84,6 +92,7 @@ serve(async (req) => {
           username: user.username,
           role: user.role
         },
+        roles,
         session_token: sessionToken,
         expires_at: expiresAt.toISOString()
       }),

@@ -50,6 +50,14 @@ serve(async (req) => {
       )
     }
 
+    // Fetch user roles from user_roles table
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.custom_users.id)
+
+    const roles = userRoles?.map(r => r.role) || []
+
     return new Response(
       JSON.stringify({ 
         valid: true, 
@@ -57,7 +65,8 @@ serve(async (req) => {
           id: session.custom_users.id,
           username: session.custom_users.username,
           role: session.custom_users.role
-        }
+        },
+        roles
       }),
       { 
         status: 200, 
