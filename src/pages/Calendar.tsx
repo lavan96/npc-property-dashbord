@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw } from 'lucide-react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,10 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
 import { CalendarSearchDropdown } from '@/components/calendar/CalendarSearchDropdown';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours } from 'date-fns';
+import { TimelineView } from '@/components/calendar/TimelineView';
+import { DraggableEvent } from '@/components/calendar/DraggableEvent';
+import { DropZone } from '@/components/calendar/DropZone';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 // Module-level helper functions for date parsing/formatting
 const safeParseISO = (value: string | undefined | null): Date | null => {
@@ -44,15 +49,29 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 };
 
 export default function Calendar() {
-  const { calendars, events, contactCache, isLoading, error, fetchCalendarData, fetchContact, getCalendarColor } = useGHLCalendar();
+  const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent } = useGHLCalendar();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [view, setView] = useState<'month' | 'week'>('month');
+  const [view, setView] = useState<'month' | 'week' | 'timeline'>('month');
   const [selectedEvent, setSelectedEvent] = useState<GHLEvent | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [draggingEvent, setDraggingEvent] = useState<GHLEvent | null>(null);
+  const [viewTransition, setViewTransition] = useState<'enter' | 'exit' | null>(null);
+  const { toast } = useToast();
+
+  // Handle view transitions with animation
+  const handleViewChange = useCallback((newView: 'month' | 'week' | 'timeline') => {
+    if (newView === view) return;
+    setViewTransition('exit');
+    setTimeout(() => {
+      setView(newView);
+      setViewTransition('enter');
+      setTimeout(() => setViewTransition(null), 300);
+    }, 150);
+  }, [view]);
 
   const getVisibleRange = () => {
     if (view === 'month') {
@@ -70,6 +89,63 @@ export default function Calendar() {
     const { start, end } = getVisibleRange();
     fetchCalendarData(start.toISOString(), end.toISOString());
   }, [fetchCalendarData, view, currentMonth, currentWeek]);
+
+  // Handle drag-and-drop rescheduling
+  const handleEventDrop = useCallback(async (event: GHLEvent, targetDate: Date, targetHour?: number) => {
+    const originalStart = safeParseISO(event.startTime);
+    const originalEnd = safeParseISO(event.endTime);
+    
+    if (!originalStart || !originalEnd) {
+      toast({
+        title: 'Cannot reschedule',
+        description: 'Event has invalid time data.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Calculate duration
+    const duration = differenceInMilliseconds(originalEnd, originalStart);
+
+    // Build new start time
+    let newStart: Date;
+    if (targetHour !== undefined) {
+      // Dropping on a specific hour (week view or timeline)
+      newStart = new Date(targetDate);
+      newStart.setHours(targetHour, 0, 0, 0);
+    } else {
+      // Dropping on a date (month view) - preserve original time
+      newStart = new Date(targetDate);
+      newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
+    }
+
+    const newEnd = new Date(newStart.getTime() + duration);
+
+    // Check if actually moved
+    if (newStart.getTime() === originalStart.getTime()) {
+      return; // No change
+    }
+
+    const result = await rescheduleEvent(
+      event.id,
+      newStart.toISOString(),
+      newEnd.toISOString(),
+      event.startTime,
+      event.endTime
+    );
+
+    if (result.success) {
+      toast({
+        title: 'Event rescheduled',
+        description: `Moved to ${format(newStart, 'MMM d, h:mm a')}`,
+        action: result.undo ? (
+          <Button variant="outline" size="sm" onClick={() => result.undo?.()}>
+            Undo
+          </Button>
+        ) : undefined,
+      });
+    }
+  }, [rescheduleEvent, toast]);
 
   const toSearchable = (value: unknown) => (typeof value === 'string' ? value.toLowerCase() : '');
 
@@ -212,7 +288,12 @@ export default function Calendar() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-muted-foreground">GoHighLevel Appointments (Read-Only)</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            GoHighLevel Appointments
+            {isUpdating && <span className="text-xs text-primary animate-pulse">(Updating...)</span>}
+            <GripVertical className="h-3 w-3 ml-2 text-muted-foreground/50" />
+            <span className="text-xs text-muted-foreground/70">Drag events to reschedule</span>
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <CalendarSearchDropdown
@@ -226,10 +307,14 @@ export default function Calendar() {
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
           />
-          <Tabs value={view} onValueChange={(v) => setView(v as 'month' | 'week')}>
+          <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
             <TabsList className="h-9">
               <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
               <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
+              <TabsTrigger value="timeline" className="text-xs flex items-center gap-1">
+                <LayoutList className="h-3 w-3" />
+                Timeline
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
@@ -339,7 +424,9 @@ export default function Calendar() {
                 <CalendarIcon className="h-5 w-5" />
                 {view === 'month' 
                   ? format(currentMonth, 'MMMM yyyy')
-                  : `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
+                  : view === 'week'
+                    ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
+                    : selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Timeline'
                 }
               </CardTitle>
               <div className="flex items-center gap-1">
@@ -379,123 +466,168 @@ export default function Calendar() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: 35 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 w-full" />
-                ))}
-              </div>
-            ) : view === 'month' ? (
-              <>
-                {/* Day headers */}
-                <div className="grid grid-cols-7 gap-1 mb-1">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                      {day}
-                    </div>
+            {/* Animation wrapper */}
+            <div
+              className={cn(
+                'transition-all duration-300 ease-out',
+                viewTransition === 'exit' && 'opacity-0 scale-95 translate-y-2',
+                viewTransition === 'enter' && 'animate-fade-in',
+                !viewTransition && 'opacity-100'
+              )}
+            >
+              {isLoading ? (
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
                   ))}
                 </div>
-                {/* Calendar grid */}
-                <div className="grid grid-cols-7 gap-1">
-                  {calendarDays.map(day => {
-                    const dayEvents = getEventsForDay(day);
-                    const isSelected = selectedDate && isSameDay(day, selectedDate);
-                    const isCurrentMonth = isSameMonth(day, currentMonth);
-                    
-                    return (
-                      <div
-                        key={day.toISOString()}
-                        onClick={() => setSelectedDate(day)}
-                        className={`
-                          min-h-[80px] p-1 rounded-md border text-left transition-colors cursor-pointer
-                          ${isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50'}
-                          ${!isCurrentMonth ? 'opacity-40' : ''}
-                          ${isToday(day) ? 'ring-1 ring-primary' : ''}
-                        `}
-                      >
-                        <div className={`text-xs font-medium mb-1 ${isToday(day) ? 'text-primary' : ''}`}>
-                          {format(day, 'd')}
-                        </div>
-                        <div className="space-y-0.5">
-                          {dayEvents.slice(0, 3).map(event => (
-                            <div 
-                              key={event.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEventClick(event);
-                              }}
-                                style={getEventStyle(event)}
-                                className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
-                              >
-                                {safeFormatISO(event.startTime, 'HH:mm')}
-                            </div>
-                          ))}
-                          {dayEvents.length > 3 && (
-                            <div className="text-[10px] text-muted-foreground px-1">
-                              +{dayEvents.length - 3} more
-                            </div>
+              ) : view === 'month' ? (
+                <>
+                  {/* Day headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Calendar grid with DropZones */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarDays.map(day => {
+                      const dayEvents = getEventsForDay(day);
+                      const isSelected = selectedDate && isSameDay(day, selectedDate);
+                      const isCurrentMonth = isSameMonth(day, currentMonth);
+                      
+                      return (
+                        <DropZone
+                          key={day.toISOString()}
+                          date={day}
+                          onDrop={handleEventDrop}
+                          disabled={isUpdating}
+                          className={cn(
+                            'min-h-[80px] p-1 rounded-md border text-left transition-colors cursor-pointer',
+                            isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50',
+                            !isCurrentMonth && 'opacity-40',
+                            isToday(day) && 'ring-1 ring-primary'
                           )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              /* Week View */
-              <ScrollArea className="h-[600px]">
-                <div className="min-w-[700px]">
-                  {/* Week day headers */}
-                  <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2">
-                    <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
-                    {weekDays.map(day => (
-                      <div 
-                        key={day.toISOString()} 
-                        className={`text-center text-xs font-medium py-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}
-                      >
-                        <div>{format(day, 'EEE')}</div>
-                        <div className={`text-lg font-bold ${isToday(day) ? 'bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
-                          {format(day, 'd')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Time grid */}
-                  <div className="relative">
-                    {weekHours.map(hour => (
-                      <div key={hour} className="grid grid-cols-8 gap-1 border-t border-border/50">
-                        <div className="text-[10px] text-muted-foreground py-1 w-16 text-right pr-2">
-                          {format(new Date().setHours(hour, 0), 'h a')}
-                        </div>
-                        {weekDays.map(day => {
-                          const hourEvents = getEventsForDayAndHour(day, hour);
-                          return (
-                            <div 
-                              key={`${day.toISOString()}-${hour}`}
-                              className="min-h-[48px] border-l border-border/30 px-1 py-0.5"
-                            >
-                              {hourEvents.map(event => (
-                                <div
-                                  key={event.id}
-                                  onClick={() => handleEventClick(event)}
-                                  style={getEventStyle(event)}
-                                  className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-pointer hover:opacity-80 transition-opacity"
-                                >
-                                  <div className="font-medium truncate">
-                                    {event.title || 'Event'}
-                                  </div>
-                                  <div className="opacity-75">{safeFormatISO(event.startTime, 'h:mm a')}</div>
-                                </div>
-                              ))}
+                        >
+                          <div 
+                            onClick={() => setSelectedDate(day)}
+                            className="h-full"
+                          >
+                            <div className={`text-xs font-medium mb-1 ${isToday(day) ? 'text-primary' : ''}`}>
+                              {format(day, 'd')}
                             </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                            <div className="space-y-0.5">
+                              {dayEvents.slice(0, 3).map(event => (
+                                <DraggableEvent 
+                                  key={event.id}
+                                  event={event}
+                                  disabled={isUpdating}
+                                  onDragStart={setDraggingEvent}
+                                  onDragEnd={() => setDraggingEvent(null)}
+                                >
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEventClick(event);
+                                    }}
+                                    style={getEventStyle(event)}
+                                    className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
+                                  >
+                                    {safeFormatISO(event.startTime, 'HH:mm')}
+                                  </div>
+                                </DraggableEvent>
+                              ))}
+                              {dayEvents.length > 3 && (
+                                <div className="text-[10px] text-muted-foreground px-1">
+                                  +{dayEvents.length - 3} more
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </DropZone>
+                      );
+                    })}
                   </div>
-                </div>
-              </ScrollArea>
-            )}
+                </>
+              ) : view === 'week' ? (
+                /* Week View with Drag and Drop */
+                <ScrollArea className="h-[600px]">
+                  <div className="min-w-[700px]">
+                    {/* Week day headers */}
+                    <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2">
+                      <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
+                      {weekDays.map(day => (
+                        <div 
+                          key={day.toISOString()} 
+                          className={`text-center text-xs font-medium py-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}
+                        >
+                          <div>{format(day, 'EEE')}</div>
+                          <div className={`text-lg font-bold ${isToday(day) ? 'bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+                            {format(day, 'd')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Time grid with DropZones */}
+                    <div className="relative">
+                      {weekHours.map(hour => (
+                        <div key={hour} className="grid grid-cols-8 gap-1 border-t border-border/50">
+                          <div className="text-[10px] text-muted-foreground py-1 w-16 text-right pr-2">
+                            {format(new Date().setHours(hour, 0), 'h a')}
+                          </div>
+                          {weekDays.map(day => {
+                            const hourEvents = getEventsForDayAndHour(day, hour);
+                            return (
+                              <DropZone 
+                                key={`${day.toISOString()}-${hour}`}
+                                date={day}
+                                hour={hour}
+                                onDrop={handleEventDrop}
+                                disabled={isUpdating}
+                                className="min-h-[48px] border-l border-border/30 px-1 py-0.5"
+                              >
+                                {hourEvents.map(event => (
+                                  <DraggableEvent
+                                    key={event.id}
+                                    event={event}
+                                    disabled={isUpdating}
+                                    onDragStart={setDraggingEvent}
+                                    onDragEnd={() => setDraggingEvent(null)}
+                                  >
+                                    <div
+                                      onClick={() => handleEventClick(event)}
+                                      style={getEventStyle(event)}
+                                      className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-pointer hover:opacity-80 transition-opacity"
+                                    >
+                                      <div className="font-medium truncate">
+                                        {event.title || 'Event'}
+                                      </div>
+                                      <div className="opacity-75">{safeFormatISO(event.startTime, 'h:mm a')}</div>
+                                    </div>
+                                  </DraggableEvent>
+                                ))}
+                              </DropZone>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </ScrollArea>
+              ) : (
+                /* Timeline View */
+                <TimelineView
+                  selectedDate={selectedDate || new Date()}
+                  events={filteredEvents}
+                  onEventClick={handleEventClick}
+                  onEventDrop={handleEventDrop}
+                  getEventStyle={getEventStyle}
+                  isUpdating={isUpdating}
+                />
+              )}
+            </div>
           </CardContent>
         </Card>
 
