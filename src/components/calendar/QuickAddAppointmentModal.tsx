@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, Plus, Loader2, Keyboard } from 'lucide-react';
+import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { GHLCalendar } from '@/hooks/useGHLCalendar';
+import type { GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
 
 interface QuickAddAppointmentModalProps {
   open: boolean;
@@ -22,8 +22,10 @@ interface QuickAddAppointmentModalProps {
     title: string;
     startTime: string;
     endTime: string;
+    contactId?: string;
     notes?: string;
   }) => Promise<boolean>;
+  onSearchContacts?: (query: string) => Promise<GHLContact[]>;
 }
 
 const DURATION_OPTIONS = [
@@ -35,6 +37,12 @@ const DURATION_OPTIONS = [
   { value: '120', label: '2 hours' },
 ];
 
+const APPOINTMENT_TYPES = [
+  { value: 'call', label: 'Phone Call', icon: PhoneCall },
+  { value: 'zoom', label: 'Zoom Meeting', icon: Video },
+  { value: 'in-person', label: 'In Person', icon: User },
+];
+
 export function QuickAddAppointmentModal({
   open,
   onOpenChange,
@@ -43,6 +51,7 @@ export function QuickAddAppointmentModal({
   defaultHour,
   isLoading,
   onSubmit,
+  onSearchContacts,
 }: QuickAddAppointmentModalProps) {
   const [title, setTitle] = useState('');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('');
@@ -50,15 +59,29 @@ export function QuickAddAppointmentModal({
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState('30');
   const [notes, setNotes] = useState('');
+  const [appointmentType, setAppointmentType] = useState('call');
+  
+  // Contact search state
+  const [contactSearch, setContactSearch] = useState('');
+  const [selectedContact, setSelectedContact] = useState<GHLContact | null>(null);
+  const [searchResults, setSearchResults] = useState<GHLContact[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
+  
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Reset form when modal opens
   useEffect(() => {
     if (open) {
-      // Reset form
       setTitle('');
       setNotes('');
+      setContactSearch('');
+      setSelectedContact(null);
+      setSearchResults([]);
+      setAppointmentType('call');
 
-      // Set default values
       const d = defaultDate || new Date();
       setDate(format(d, 'yyyy-MM-dd'));
 
@@ -69,22 +92,64 @@ export function QuickAddAppointmentModal({
         setTime(`${String(currentHour).padStart(2, '0')}:00`);
       }
 
-      // Set default calendar
       if (calendars.length > 0 && !selectedCalendarId) {
         setSelectedCalendarId(calendars[0].id);
       }
 
-      // Focus title input
       setTimeout(() => titleInputRef.current?.focus(), 100);
     }
   }, [open, defaultDate, defaultHour, calendars, selectedCalendarId]);
+
+  // Debounced contact search
+  useEffect(() => {
+    if (!contactSearch.trim() || !onSearchContacts) {
+      setSearchResults([]);
+      setShowContactDropdown(false);
+      return;
+    }
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await onSearchContacts(contactSearch.trim());
+        setSearchResults(results);
+        setShowContactDropdown(results.length > 0);
+      } catch (err) {
+        console.error('Error searching contacts:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [contactSearch, onSearchContacts]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowContactDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return;
 
-      // Ctrl/Cmd + Enter to submit
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         if (title.trim() && selectedCalendarId) {
@@ -93,7 +158,6 @@ export function QuickAddAppointmentModal({
         return;
       }
 
-      // Alt + number for duration shortcuts
       if (e.altKey && !isNaN(Number(e.key))) {
         const num = Number(e.key);
         if (num >= 1 && num <= 6) {
@@ -106,6 +170,30 @@ export function QuickAddAppointmentModal({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, title, selectedCalendarId]);
+
+  const handleSelectContact = (contact: GHLContact) => {
+    setSelectedContact(contact);
+    setContactSearch('');
+    setShowContactDropdown(false);
+    
+    // Auto-fill title if empty
+    if (!title.trim()) {
+      const contactName = contact.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+      const typeLabel = APPOINTMENT_TYPES.find(t => t.value === appointmentType)?.label || 'Appointment';
+      setTitle(`${typeLabel} with ${contactName}`);
+    }
+  };
+
+  const handleClearContact = () => {
+    setSelectedContact(null);
+    setContactSearch('');
+  };
+
+  const getContactDisplayName = (contact: GHLContact): string => {
+    if (contact.name) return contact.name;
+    const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+    return fullName || contact.email || contact.phone || 'Unknown Contact';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +211,7 @@ export function QuickAddAppointmentModal({
       title: title.trim(),
       startTime: startDate.toISOString(),
       endTime: endDate.toISOString(),
+      contactId: selectedContact?.id,
       notes: notes.trim() || undefined,
     });
 
@@ -133,7 +222,7 @@ export function QuickAddAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
@@ -142,6 +231,125 @@ export function QuickAddAppointmentModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Appointment Type */}
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <div className="flex gap-2">
+              {APPOINTMENT_TYPES.map((type) => {
+                const Icon = type.icon;
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setAppointmentType(type.value)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all flex-1',
+                      appointmentType === type.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted hover:bg-muted/80'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {type.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Contact/Recipient Search */}
+          <div className="space-y-2">
+            <Label>Recipient</Label>
+            {selectedContact ? (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary">
+                  <User className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {getContactDisplayName(selectedContact)}
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {selectedContact.phone && (
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {selectedContact.phone}
+                      </span>
+                    )}
+                    {selectedContact.email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {selectedContact.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearContact}
+                  className="h-8 w-8 p-0"
+                >
+                  ×
+                </Button>
+              </div>
+            ) : (
+              <div className="relative" ref={dropdownRef}>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search contacts by name, email, or phone..."
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    onFocus={() => searchResults.length > 0 && setShowContactDropdown(true)}
+                    className="pl-8"
+                  />
+                  {isSearching && (
+                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+
+                {/* Contact Search Results Dropdown */}
+                {showContactDropdown && searchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {searchResults.map((contact) => (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        onClick={() => handleSelectContact(contact)}
+                        className="w-full flex items-center gap-2 p-2 hover:bg-accent text-left transition-colors"
+                      >
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary shrink-0">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {getContactDisplayName(contact)}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {contact.phone && (
+                              <span className="flex items-center gap-1 truncate">
+                                <Phone className="h-3 w-3 shrink-0" />
+                                {contact.phone}
+                              </span>
+                            )}
+                            {contact.email && (
+                              <span className="flex items-center gap-1 truncate">
+                                <Mail className="h-3 w-3 shrink-0" />
+                                {contact.email}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
