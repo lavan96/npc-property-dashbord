@@ -10,6 +10,7 @@ import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
 import { AuthProvider } from "@/hooks/useAuth";
+import { PermissionsProvider } from "@/hooks/usePermissions";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
@@ -38,6 +39,8 @@ import InvestmentReportView from './pages/InvestmentReportView';
 import Templates from './pages/Templates';
 import WhiteLabel from './pages/WhiteLabel';
 import Auth from "./pages/Auth";
+import AcceptInvite from "./pages/AcceptInvite";
+import UserManagement from "./pages/admin/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,20 +67,22 @@ const App = () => (
       <TooltipProvider>
         <WhiteLabelProvider>
           <AuthProvider>
-            <BrowserRouter>
-              <NotificationsProvider>
-                <BackgroundJobTracker />
-                <ComparisonProvider>
-                  <SearchProvider>
-                  <Toaster />
-                  <Sonner />
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }>
+            <PermissionsProvider>
+              <BrowserRouter>
+                <NotificationsProvider>
+                  <BackgroundJobTracker />
+                  <ComparisonProvider>
+                    <SearchProvider>
+                      <Toaster />
+                      <Sonner />
+                      <Routes>
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/accept-invite" element={<AcceptInvite />} />
+                        <Route path="/" element={
+                          <ProtectedRoute>
+                            <DashboardLayout />
+                          </ProtectedRoute>
+                        }>
                 <Route index element={<Overview />} />
                 <Route path="listings" element={<Listings />} />
                 <Route
@@ -106,15 +111,17 @@ const App = () => (
                 <Route path="templates" element={<Templates />} />
                 <Route path="branding" element={<WhiteLabel />} />
                 <Route path="errors" element={<ErrorLogs />} />
-                <Route path="settings" element={<Settings />} />
-              </Route>
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-                  </SearchProvider>
-                </ComparisonProvider>
-              </NotificationsProvider>
-            </BrowserRouter>
+                          <Route path="settings" element={<Settings />} />
+                          <Route path="admin/users" element={<UserManagement />} />
+                        </Route>
+                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </SearchProvider>
+                  </ComparisonProvider>
+                </NotificationsProvider>
+              </BrowserRouter>
+            </PermissionsProvider>
           </AuthProvider>
         </WhiteLabelProvider>
       </TooltipProvider>
