@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,9 @@ import { DropZone } from '@/components/calendar/DropZone';
 import { EventHoverPreview } from '@/components/calendar/EventHoverPreview';
 import { AvailabilitySlots } from '@/components/calendar/AvailabilitySlots';
 import { EventTemplates } from '@/components/calendar/EventTemplates';
+import { CalendarHeatmap } from '@/components/calendar/CalendarHeatmap';
+import { TimeAllocationDashboard } from '@/components/calendar/TimeAllocationDashboard';
+import { WeeklySummaryCards } from '@/components/calendar/WeeklySummaryCards';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -53,7 +56,7 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 
 export default function Calendar() {
   const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent, createAppointment } = useGHLCalendar();
-  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates'>('events');
+  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary'>('events');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -647,12 +650,24 @@ export default function Calendar() {
         <Card>
           <CardHeader className="pb-2">
             <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-              <TabsList className="w-full grid grid-cols-3 h-8">
-                <TabsTrigger value="events" className="text-xs">Events</TabsTrigger>
-                <TabsTrigger value="availability" className="text-xs">Slots</TabsTrigger>
-                <TabsTrigger value="templates" className="text-xs flex items-center gap-1">
+              <TabsList className="w-full grid grid-cols-6 h-8">
+                <TabsTrigger value="events" className="text-xs px-1">
+                  <CalendarIcon className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="availability" className="text-xs px-1">
+                  <Clock className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="templates" className="text-xs px-1">
                   <Zap className="h-3 w-3" />
-                  Quick
+                </TabsTrigger>
+                <TabsTrigger value="heatmap" className="text-xs px-1">
+                  <Flame className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="text-xs px-1">
+                  <BarChart3 className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="summary" className="text-xs px-1">
+                  <TrendingUp className="h-3 w-3" />
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -707,6 +722,36 @@ export default function Calendar() {
                 onCreateAppointment={createAppointment}
                 isUpdating={isUpdating}
               />
+            )}
+            {sidebarTab === 'heatmap' && (
+              <ScrollArea className="h-[420px]">
+                <CalendarHeatmap
+                  events={filteredEvents}
+                  currentMonth={currentMonth}
+                  selectedDate={selectedDate}
+                  onDateSelect={(date) => {
+                    setSelectedDate(date);
+                    setSidebarTab('events');
+                  }}
+                />
+              </ScrollArea>
+            )}
+            {sidebarTab === 'analytics' && (
+              <ScrollArea className="h-[420px]">
+                <TimeAllocationDashboard
+                  events={filteredEvents}
+                  calendars={calendars}
+                  currentWeek={currentWeek}
+                />
+              </ScrollArea>
+            )}
+            {sidebarTab === 'summary' && (
+              <ScrollArea className="h-[420px]">
+                <WeeklySummaryCards
+                  events={filteredEvents}
+                  currentWeek={currentWeek}
+                />
+              </ScrollArea>
             )}
           </CardContent>
         </Card>
