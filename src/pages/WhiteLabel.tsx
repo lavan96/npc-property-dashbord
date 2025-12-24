@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Upload, 
   Image as ImageIcon, 
@@ -22,9 +23,11 @@ import {
   Minimize2,
   Sun,
   Moon,
-  Laptop
+  Laptop,
+  Mail,
+  FileText
 } from 'lucide-react';
-import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode } from '@/contexts/WhiteLabelContext';
+import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -250,6 +253,181 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
         />
       </CardContent>
     </Card>
+  );
+}
+
+interface EmailBannerUploadProps {
+  currentBanner: string | null;
+  onUpload: (url: string) => void;
+  onRemove: () => void;
+}
+
+function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUploadProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const uploadToSupabase = async (file: Blob, fileName: string): Promise<string> => {
+    const fileExt = fileName.split('.').pop() || 'png';
+    const filePath = `email-signature/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('branding-assets')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('branding-assets')
+      .getPublicUrl(data.path);
+
+    return urlData.publicUrl;
+  };
+
+  const processFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const publicUrl = await uploadToSupabase(file, file.name);
+      onUpload(publicUrl);
+      toast.success('Banner uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading banner:', error);
+      toast.error('Failed to upload banner');
+    } finally {
+      setIsProcessing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+  }, []);
+
+  const handleRemove = async () => {
+    if (currentBanner && currentBanner.includes('branding-assets')) {
+      try {
+        const path = currentBanner.split('branding-assets/')[1];
+        if (path) {
+          await supabase.storage.from('branding-assets').remove([path]);
+        }
+      } catch (error) {
+        console.error('Failed to delete from storage:', error);
+      }
+    }
+    onRemove();
+    toast.success('Banner removed');
+  };
+
+  return (
+    <div className="space-y-4">
+      {currentBanner ? (
+        <div className="space-y-4">
+          <div className="relative w-full h-32 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
+            <img 
+              src={currentBanner} 
+              alt="Email banner preview"
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessing}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Replace
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleRemove}
+              disabled={isProcessing}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div 
+          className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+            isDragOver 
+              ? 'border-primary bg-primary/5 scale-[1.02]' 
+              : 'hover:border-primary hover:bg-muted/50'
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+              <span className="text-sm text-muted-foreground">Uploading...</span>
+            </>
+          ) : (
+            <>
+              <Upload className={`h-8 w-8 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+              <span className={`text-sm transition-colors ${isDragOver ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                {isDragOver ? 'Drop image here' : 'Drag & drop or click to upload'}
+              </span>
+              <span className="text-xs text-muted-foreground">PNG, JPG (max 5MB) - Recommended: 600x100px</span>
+            </>
+          )}
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+    </div>
   );
 }
 
@@ -644,6 +822,174 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
+      <Separator />
+
+      {/* Email Signature Configuration */}
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Mail className="h-6 w-6 text-primary" />
+          Email Copilot Signature
+        </h2>
+        <p className="text-muted-foreground">
+          Configure the email signature that will be attached to all outgoing emails from the Email Copilot
+        </p>
+      </div>
+
+      {/* Email Signature Banner */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Signature Banner</CardTitle>
+              <CardDescription>Upload a banner image to display at the top of your email signature</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <EmailBannerUpload
+            currentBanner={settings.emailSignature.banner}
+            onUpload={(url) => updateSettings({ 
+              emailSignature: { ...settings.emailSignature, banner: url } 
+            })}
+            onRemove={() => updateSettings({ 
+              emailSignature: { ...settings.emailSignature, banner: null } 
+            })}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Email Signature Body */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Signature Details</CardTitle>
+              <CardDescription>Configure the contact information and text that appears in your email signature</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="sig-name">Name</Label>
+              <Input
+                id="sig-name"
+                value={settings.emailSignature.name}
+                onChange={(e) => updateSettings({ 
+                  emailSignature: { ...settings.emailSignature, name: e.target.value } 
+                })}
+                placeholder="John Smith"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sig-title">Title / Role</Label>
+              <Input
+                id="sig-title"
+                value={settings.emailSignature.title}
+                onChange={(e) => updateSettings({ 
+                  emailSignature: { ...settings.emailSignature, title: e.target.value } 
+                })}
+                placeholder="Property Investment Specialist"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sig-phone">Phone Number</Label>
+              <Input
+                id="sig-phone"
+                value={settings.emailSignature.phone}
+                onChange={(e) => updateSettings({ 
+                  emailSignature: { ...settings.emailSignature, phone: e.target.value } 
+                })}
+                placeholder="+61 400 000 000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sig-email">Email Address</Label>
+              <Input
+                id="sig-email"
+                type="email"
+                value={settings.emailSignature.email}
+                onChange={(e) => updateSettings({ 
+                  emailSignature: { ...settings.emailSignature, email: e.target.value } 
+                })}
+                placeholder="contact@npcservices.com.au"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sig-website">Website</Label>
+              <Input
+                id="sig-website"
+                value={settings.emailSignature.website}
+                onChange={(e) => updateSettings({ 
+                  emailSignature: { ...settings.emailSignature, website: e.target.value } 
+                })}
+                placeholder="www.npcservices.com.au"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sig-address">Address</Label>
+              <Input
+                id="sig-address"
+                value={settings.emailSignature.address}
+                onChange={(e) => updateSettings({ 
+                  emailSignature: { ...settings.emailSignature, address: e.target.value } 
+                })}
+                placeholder="123 Business St, Sydney NSW 2000"
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="sig-disclaimer">Disclaimer / Legal Text</Label>
+            <Textarea
+              id="sig-disclaimer"
+              value={settings.emailSignature.disclaimer}
+              onChange={(e) => updateSettings({ 
+                emailSignature: { ...settings.emailSignature, disclaimer: e.target.value } 
+              })}
+              placeholder="Legal disclaimer text..."
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              This text will appear at the bottom of your email signature as a legal disclaimer
+            </p>
+          </div>
+
+          {/* Email Signature Preview */}
+          <div className="space-y-2 pt-4 border-t">
+            <Label className="text-sm font-medium">Email Signature Preview</Label>
+            <div className="border rounded-lg p-4 bg-background">
+              {settings.emailSignature.banner && (
+                <img 
+                  src={settings.emailSignature.banner} 
+                  alt="Email banner" 
+                  className="max-h-20 mb-4 object-contain"
+                />
+              )}
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground">{settings.emailSignature.name || 'Your Name'}</p>
+                <p className="text-sm text-muted-foreground">{settings.emailSignature.title || 'Your Title'}</p>
+                <div className="text-sm text-muted-foreground space-y-0.5 pt-2">
+                  {settings.emailSignature.phone && <p>📞 {settings.emailSignature.phone}</p>}
+                  {settings.emailSignature.email && <p>✉️ {settings.emailSignature.email}</p>}
+                  {settings.emailSignature.website && <p>🌐 {settings.emailSignature.website}</p>}
+                  {settings.emailSignature.address && <p>📍 {settings.emailSignature.address}</p>}
+                </div>
+              </div>
+              {settings.emailSignature.disclaimer && (
+                <p className="text-xs text-muted-foreground mt-4 pt-4 border-t italic">
+                  {settings.emailSignature.disclaimer}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
       {/* Reset Section */}
       <Card className="border-destructive/50">
         <CardHeader>
@@ -663,6 +1009,16 @@ export default function WhiteLabel() {
                 primaryColor: null,
                 accentColor: null,
                 darkModeDefault: 'light',
+                emailSignature: {
+                  banner: null,
+                  name: 'NPC Property Services',
+                  title: 'Property Investment Specialist',
+                  phone: '',
+                  email: '',
+                  website: '',
+                  address: '',
+                  disclaimer: 'This email and any attachments are confidential and may be privileged. If you are not the intended recipient, please notify the sender immediately and delete this message.',
+                },
               });
               setCompanyName('NPC Property');
               toast.success('Branding reset to defaults');

@@ -3,6 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+export interface EmailSignatureSettings {
+  banner: string | null;
+  name: string;
+  title: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+  disclaimer: string;
+}
+
 export interface WhiteLabelSettings {
   id?: string;
   authLogo: string | null;
@@ -13,6 +24,7 @@ export interface WhiteLabelSettings {
   primaryColor: string | null; // HSL format: "43 74% 49%"
   accentColor: string | null;
   darkModeDefault: ThemeMode;
+  emailSignature: EmailSignatureSettings;
 }
 
 interface WhiteLabelContextType {
@@ -21,6 +33,17 @@ interface WhiteLabelContextType {
   isLoading: boolean;
   currentTheme: 'light' | 'dark';
 }
+
+const defaultEmailSignature: EmailSignatureSettings = {
+  banner: null,
+  name: 'NPC Property Services',
+  title: 'Property Investment Specialist',
+  phone: '',
+  email: '',
+  website: '',
+  address: '',
+  disclaimer: 'This email and any attachments are confidential and may be privileged. If you are not the intended recipient, please notify the sender immediately and delete this message.',
+};
 
 const defaultSettings: WhiteLabelSettings = {
   authLogo: null,
@@ -31,6 +54,7 @@ const defaultSettings: WhiteLabelSettings = {
   primaryColor: null,
   accentColor: null,
   darkModeDefault: 'light',
+  emailSignature: defaultEmailSignature,
 };
 
 // Helper to convert hex to HSL string (without hsl() wrapper)
@@ -129,6 +153,16 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
             primaryColor: data.primary_color,
             accentColor: data.accent_color,
             darkModeDefault: data.dark_mode_default as ThemeMode,
+            emailSignature: {
+              banner: data.email_signature_banner || null,
+              name: data.email_signature_name || defaultEmailSignature.name,
+              title: data.email_signature_title || defaultEmailSignature.title,
+              phone: data.email_signature_phone || '',
+              email: data.email_signature_email || '',
+              website: data.email_signature_website || '',
+              address: data.email_signature_address || '',
+              disclaimer: data.email_signature_disclaimer || defaultEmailSignature.disclaimer,
+            },
           });
         }
       } catch (error) {
@@ -237,6 +271,14 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
               primary_color: updated.primaryColor,
               accent_color: updated.accentColor,
               dark_mode_default: updated.darkModeDefault,
+              email_signature_banner: updated.emailSignature.banner,
+              email_signature_name: updated.emailSignature.name,
+              email_signature_title: updated.emailSignature.title,
+              email_signature_phone: updated.emailSignature.phone,
+              email_signature_email: updated.emailSignature.email,
+              email_signature_website: updated.emailSignature.website,
+              email_signature_address: updated.emailSignature.address,
+              email_signature_disclaimer: updated.emailSignature.disclaimer,
             })
             .eq('id', updated.id || '');
           
