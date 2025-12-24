@@ -73,6 +73,15 @@ export default function UserManagement() {
   const [invitePermissions, setInvitePermissions] = useState<PermissionSetting[]>([]);
   const [inviteSending, setInviteSending] = useState(false);
 
+  // Create sub-admin state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createUsername, setCreateUsername] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createMailbox, setCreateMailbox] = useState('');
+  const [createPermissions, setCreatePermissions] = useState<PermissionSetting[]>([]);
+  const [creating, setCreating] = useState(false);
+
   // Edit permissions state
   const [editPermDialogOpen, setEditPermDialogOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -120,13 +129,15 @@ export default function UserManagement() {
 
       if (data?.success) {
         setModules(data.modules);
-        // Initialize invite permissions with all modules set to view-only
-        setInvitePermissions(data.modules.map((m: Module) => ({
+        // Initialize permissions with all modules set to view-only
+        const defaultPerms = data.modules.map((m: Module) => ({
           module_key: m.module_key,
           can_view: true,
           can_edit: false,
           can_delete: false,
-        })));
+        }));
+        setInvitePermissions(defaultPerms);
+        setCreatePermissions(defaultPerms);
       }
     } catch (err) {
       console.error('Failed to fetch modules:', err);
@@ -314,6 +325,63 @@ export default function UserManagement() {
     setEditPermissions(prev => prev.map(p => 
       p.module_key === moduleKey ? { ...p, [field]: value } : p
     ));
+  };
+
+  const updateCreatePermission = (moduleKey: string, field: 'can_view' | 'can_edit' | 'can_delete', value: boolean) => {
+    setCreatePermissions(prev => prev.map(p => 
+      p.module_key === moduleKey ? { ...p, [field]: value } : p
+    ));
+  };
+
+  const handleCreateSubAdmin = async () => {
+    if (!createUsername || !createPassword) {
+      toast.error('Username and password are required');
+      return;
+    }
+    if (createPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-user-management', {
+        body: {
+          action: 'create_subadmin',
+          session_token: sessionToken,
+          subadmin_data: {
+            username: createUsername,
+            password: createPassword,
+            email: createEmail || undefined,
+            personal_mailbox: createMailbox || undefined,
+            permissions: createPermissions.filter(p => p.can_view),
+          }
+        }
+      });
+
+      if (data?.success) {
+        toast.success('Sub-admin created successfully!');
+        setCreateDialogOpen(false);
+        setCreateUsername('');
+        setCreatePassword('');
+        setCreateEmail('');
+        setCreateMailbox('');
+        // Reset permissions
+        setCreatePermissions(modules.map(m => ({
+          module_key: m.module_key,
+          can_view: true,
+          can_edit: false,
+          can_delete: false,
+        })));
+        fetchUsers();
+      } else {
+        toast.error(data?.error || 'Failed to create sub-admin');
+      }
+    } catch (err) {
+      toast.error('Failed to create sub-admin');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const openMailboxDialog = (userId: string, currentMailbox: string | null) => {

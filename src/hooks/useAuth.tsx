@@ -10,6 +10,9 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isSuperadmin: boolean;
+  isAdmin: boolean;
+  roles: string[];
   signIn: (username: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
@@ -19,6 +22,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState<string[]>([]);
+
+  const isSuperadmin = roles.includes('superadmin');
+  const isAdmin = roles.includes('admin') || isSuperadmin;
 
   // Check for existing session on mount and ensure Supabase Auth is signed out
   useEffect(() => {
@@ -50,19 +57,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Expired session - clear silently without logging
           localStorage.removeItem('session_token');
           setUser(null);
+          setRoles([]);
         } else {
           // Unexpected error - log it but still clear session
           console.warn('Session verification error:', error.message || error);
           localStorage.removeItem('session_token');
           setUser(null);
+          setRoles([]);
         }
       } else if (!data?.valid) {
         // Invalid session response - clear silently
         localStorage.removeItem('session_token');
         setUser(null);
+        setRoles([]);
       } else {
-        // Valid session - set user
+        // Valid session - set user and roles
         setUser(data.user);
+        setRoles(data.roles || []);
       }
     } catch (error: any) {
       // Network or other errors - clear session silently
@@ -72,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       localStorage.removeItem('session_token');
       setUser(null);
+      setRoles([]);
     } finally {
       setLoading(false);
     }
@@ -90,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Store session token
       localStorage.setItem('session_token', data.session_token);
       setUser(data.user);
+      setRoles(data.roles || []);
       
       return {};
     } catch (error) {
@@ -116,10 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     localStorage.removeItem('session_token');
     setUser(null);
+    setRoles([]);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isSuperadmin, isAdmin, roles, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

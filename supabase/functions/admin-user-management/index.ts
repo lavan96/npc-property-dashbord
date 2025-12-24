@@ -13,7 +13,8 @@ interface RequestBody {
   action: 'list_users' | 'get_user' | 'create_user' | 'update_user' | 'delete_user' | 
           'assign_role' | 'remove_role' | 'update_permissions' | 'send_invite' |
           'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 
-          'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile';
+          'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile' |
+          'update_own_mailbox' | 'create_subadmin';
   session_token: string;
   user_id?: string;
   role?: 'superadmin' | 'admin' | 'user';
@@ -22,6 +23,13 @@ interface RequestBody {
     email: string;
     username?: string;
     invite_type: 'magic_link' | 'temp_password';
+    permissions: Array<{ module_key: string; can_view: boolean; can_edit: boolean; can_delete: boolean }>;
+  };
+  subadmin_data?: {
+    username: string;
+    password: string;
+    email?: string;
+    personal_mailbox?: string;
     permissions: Array<{ module_key: string; can_view: boolean; can_edit: boolean; can_delete: boolean }>;
   };
   token?: string;
@@ -775,6 +783,118 @@ serve(async (req: Request) => {
       console.log(`User ${user_id} promoted to superadmin by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User promoted to superadmin' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'create_subadmin') {
+      const { subadmin_data } = body;
+      if (!subadmin_data || !subadmin_data.username || !subadmin_data.password || !subadmin_data.permissions) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Username, password, and permissions required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (subadmin_data.password.length < 6) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Password must be at least 6 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if username already exists
+      const { data: existingUser } = await supabase
+        .from('custom_users')
+        .select('id')
+        .eq('username', subadmin_data.username)
+        .single();
+
+      if (existingUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Username already exists' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if email already exists (if provided)
+      if (subadmin_data.email) {
+        const { data: existingEmail } = await supabase
+          .from('custom_users')
+          .select('id')
+          .eq('email', subadmin_data.email)
+          .single();
+
+        if (existingEmail) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Email already registered' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // Create user
+      const { data: newUser, error: userError } = await supabase
+        .from('custom_users')
+        .insert({
+          username: subadmin_data.username,
+          email: subadmin_data.email || null,
+          password_hash: subadmin_data.password, // In production, use bcrypt
+          personal_mailbox: subadmin_data.personal_mailbox || null,
+          role: 'admin',
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (userError) {
+        console.error('Failed to create sub-admin:', userError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to create user. Username may already exist.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Assign admin role
+      await supabase
+        .from('user_roles')
+        .insert({ user_id: newUser.id, role: 'admin' });
+
+      // Assign permissions
+      const permissions = subadmin_data.permissions;
+      
+      for (const perm of permissions) {
+        const { data: module } = await supabase
+          .from('dashboard_modules')
+          .select('id')
+          .eq('module_key', perm.module_key)
+          .single();
+
+        if (module) {
+          await supabase
+            .from('user_permissions')
+            .insert({
+              user_id: newUser.id,
+              module_id: module.id,
+              can_view: perm.can_view,
+              can_edit: perm.can_edit,
+              can_delete: perm.can_delete,
+              granted_by: adminUser.id,
+            });
+        }
+      }
+
+      console.log(`Sub-admin ${subadmin_data.username} created by ${adminUser.username}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Sub-admin created successfully',
+          user: {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email
+          }
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -25,39 +25,25 @@ interface PermissionsContextType {
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isSuperadmin: authIsSuperadmin, isAdmin: authIsAdmin, roles: authRoles, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isSuperadmin = roles.includes('superadmin');
-  const isAdmin = roles.includes('admin') || isSuperadmin;
+  // Use roles from auth context (server-verified)
+  const isSuperadmin = authIsSuperadmin;
+  const isAdmin = authIsAdmin;
+  const roles = authRoles;
 
   const fetchPermissions = async () => {
     if (!user) {
       setPermissions([]);
-      setRoles([]);
       setLoading(false);
       return;
     }
 
     try {
-      // Fetch user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      if (rolesError) {
-        console.error('Error fetching roles:', rolesError);
-      } else {
-        setRoles(userRoles?.map(r => r.role) || []);
-      }
-
       // If superadmin, they have access to everything
-      const hasSuperadminRole = userRoles?.some(r => r.role === 'superadmin');
-      
-      if (hasSuperadminRole) {
+      if (isSuperadmin) {
         // Fetch all modules for superadmin
         const { data: modules, error: modulesError } = await supabase
           .from('dashboard_modules')
@@ -74,27 +60,33 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           })));
         }
       } else {
-        // Fetch specific permissions for non-superadmin users
-        const { data: userPermissions, error: permError } = await supabase
-          .from('user_permissions')
-          .select(`
-            can_view,
-            can_edit,
-            can_delete,
-            dashboard_modules(module_key, module_name)
-          `)
-          .eq('user_id', user.id);
+        // Fetch specific permissions for non-superadmin users via edge function
+        const sessionToken = localStorage.getItem('session_token');
+        if (sessionToken) {
+          const { data } = await supabase.functions.invoke('admin-user-management', {
+            body: { action: 'get_own_profile', session_token: sessionToken }
+          });
+          
+          // For non-superadmin, fetch their permissions
+          const { data: userPermissions, error: permError } = await supabase
+            .from('user_permissions')
+            .select(`
+              can_view,
+              can_edit,
+              can_delete,
+              dashboard_modules(module_key, module_name)
+            `)
+            .eq('user_id', user.id);
 
-        if (permError) {
-          console.error('Error fetching permissions:', permError);
-        } else if (userPermissions) {
-          setPermissions(userPermissions.map(p => ({
-            module_key: (p.dashboard_modules as any)?.module_key || '',
-            module_name: (p.dashboard_modules as any)?.module_name || '',
-            can_view: p.can_view,
-            can_edit: p.can_edit,
-            can_delete: p.can_delete,
-          })).filter(p => p.module_key));
+          if (!permError && userPermissions) {
+            setPermissions(userPermissions.map(p => ({
+              module_key: (p.dashboard_modules as any)?.module_key || '',
+              module_name: (p.dashboard_modules as any)?.module_name || '',
+              can_view: p.can_view,
+              can_edit: p.can_edit,
+              can_delete: p.can_delete,
+            })).filter(p => p.module_key));
+          }
         }
       }
     } catch (error) {
@@ -105,8 +97,10 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    fetchPermissions();
-  }, [user?.id]);
+    if (!authLoading) {
+      fetchPermissions();
+    }
+  }, [user?.id, authLoading, isSuperadmin]);
 
   const hasModuleAccess = (moduleKey: string): boolean => {
     if (isSuperadmin) return true;
@@ -133,7 +127,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
         roles,
         isSuperadmin,
         isAdmin,
-        loading,
+        loading: loading || authLoading,
         hasModuleAccess,
         canEdit,
         canDelete,
