@@ -2,31 +2,39 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Database, AlertCircle } from 'lucide-react';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Database, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+
+type AuthView = 'login' | 'forgot' | 'otp' | 'reset';
 
 export default function Auth() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [emailHint, setEmailHint] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [view, setView] = useState<AuthView>('login');
   
   const { signIn, user, loading } = useAuth();
   const { settings } = useWhiteLabel();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (user) {
       navigate('/', { replace: true });
     }
   }, [user, navigate]);
 
-  // Show loading state while checking session
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -42,19 +50,82 @@ export default function Auth() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     const result = await signIn(username, password);
-    
     if (result.error) {
       setError(result.error);
     } else {
       navigate('/', { replace: true });
     }
-    
+    setIsLoading(false);
+  };
+
+  const handleRequestOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-password-reset', {
+        body: { action: 'request_otp', username }
+      });
+      if (data?.success) {
+        setEmailHint(data.email_hint || '');
+        setView('otp');
+      } else {
+        setError(data?.error || 'Failed to send OTP');
+      }
+    } catch {
+      setError('Failed to send OTP');
+    }
+    setIsLoading(false);
+  };
+
+  const handleVerifyOTP = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-password-reset', {
+        body: { action: 'verify_otp', username, otp }
+      });
+      if (data?.success) {
+        setView('reset');
+      } else {
+        setError(data?.error || 'Invalid OTP');
+      }
+    } catch {
+      setError('Failed to verify OTP');
+    }
+    setIsLoading(false);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-password-reset', {
+        body: { action: 'reset_password', username, otp, new_password: newPassword }
+      });
+      if (data?.success) {
+        setSuccess('Password reset successful! Please login.');
+        setTimeout(() => { setView('login'); setSuccess(''); }, 2000);
+      } else {
+        setError(data?.error || 'Failed to reset password');
+      }
+    } catch {
+      setError('Failed to reset password');
+    }
     setIsLoading(false);
   };
 
@@ -69,58 +140,81 @@ export default function Auth() {
               <Database className="h-16 w-16 text-primary" />
             )}
           </div>
-          <CardTitle className="text-2xl">{settings.companyName} Dashboard</CardTitle>
+          <CardTitle className="text-2xl">
+            {view === 'login' && `${settings.companyName} Dashboard`}
+            {view === 'forgot' && 'Reset Password'}
+            {view === 'otp' && 'Enter OTP'}
+            {view === 'reset' && 'New Password'}
+          </CardTitle>
           <CardDescription>
-            Sign in to access the property intake dashboard
+            {view === 'login' && 'Sign in to access the dashboard'}
+            {view === 'forgot' && 'Enter your username to receive a reset code'}
+            {view === 'otp' && `Enter the code sent to ${emailHint}`}
+            {view === 'reset' && 'Enter your new password'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-                required
-                disabled={isLoading}
-              />
+          {error && <Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+          {success && <Alert className="mb-4 border-green-500"><CheckCircle className="h-4 w-4 text-green-500" /><AlertDescription>{success}</AlertDescription></Alert>}
+
+          {view === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" required disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" required disabled={isLoading} />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? 'Signing in...' : 'Sign In'}</Button>
+              <Button type="button" variant="link" className="w-full" onClick={() => { setView('forgot'); setError(''); }}>Forgot password?</Button>
+            </form>
+          )}
+
+          {view === 'forgot' && (
+            <form onSubmit={handleRequestOTP} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-username">Username</Label>
+                <Input id="reset-username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" required disabled={isLoading} />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? 'Sending...' : 'Send Reset Code'}</Button>
+              <Button type="button" variant="ghost" className="w-full" onClick={() => setView('login')}><ArrowLeft className="h-4 w-4 mr-2" />Back to login</Button>
+            </form>
+          )}
+
+          {view === 'otp' && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button className="w-full" onClick={handleVerifyOTP} disabled={otp.length !== 6 || isLoading}>{isLoading ? 'Verifying...' : 'Verify Code'}</Button>
+              <Button type="button" variant="ghost" className="w-full" onClick={() => setView('forgot')}><ArrowLeft className="h-4 w-4 mr-2" />Back</Button>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Use your admin credentials to access the dashboard</p>
-          </div>
+          {view === 'reset' && (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" required disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" required disabled={isLoading} />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? 'Resetting...' : 'Reset Password'}</Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

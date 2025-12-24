@@ -18,7 +18,8 @@ import {
   Phone,
   MessageSquareText,
   FileStack,
-  Palette
+  Palette,
+  Users
 } from 'lucide-react';
 import {
   Sidebar,
@@ -32,6 +33,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home },
