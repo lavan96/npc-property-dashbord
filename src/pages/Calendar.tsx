@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,9 @@ import { WeeklySummaryCards } from '@/components/calendar/WeeklySummaryCards';
 import { ConflictDetection } from '@/components/calendar/ConflictDetection';
 import { ResourceOptimization } from '@/components/calendar/ResourceOptimization';
 import { QuickAddAppointmentModal } from '@/components/calendar/QuickAddAppointmentModal';
+import { MultiCalendarOverlay } from '@/components/calendar/MultiCalendarOverlay';
+import { RecurringPatterns } from '@/components/calendar/RecurringPatterns';
+import { SmartReminders } from '@/components/calendar/SmartReminders';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -60,9 +63,10 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 
 export default function Calendar() {
   const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent, createAppointment } = useGHLCalendar();
-  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize'>('events');
+  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders'>('events');
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
   const [quickAddDefaultHour, setQuickAddDefaultHour] = useState<number | undefined>(undefined);
+  const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -102,6 +106,34 @@ export default function Calendar() {
     const { start, end } = getVisibleRange();
     fetchCalendarData(start.toISOString(), end.toISOString());
   }, [fetchCalendarData, view, currentMonth, currentWeek]);
+
+  // Initialize visible calendars when calendars load
+  useEffect(() => {
+    if (calendars.length > 0 && visibleCalendars.size === 0) {
+      setVisibleCalendars(new Set(calendars.map(c => c.id)));
+    }
+  }, [calendars]);
+
+  // Calendar overlay handlers
+  const handleToggleCalendar = useCallback((calendarId: string) => {
+    setVisibleCalendars(prev => {
+      const next = new Set(prev);
+      if (next.has(calendarId)) {
+        next.delete(calendarId);
+      } else {
+        next.add(calendarId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleShowAllCalendars = useCallback(() => {
+    setVisibleCalendars(new Set(calendars.map(c => c.id)));
+  }, [calendars]);
+
+  const handleHideAllCalendars = useCallback(() => {
+    setVisibleCalendars(new Set());
+  }, []);
 
   // Handle drag-and-drop rescheduling
   const handleEventDrop = useCallback(async (event: GHLEvent, targetDate: Date, targetHour?: number) => {
@@ -164,6 +196,11 @@ export default function Calendar() {
 
   const filteredEvents = useMemo(() => {
     let filtered = events;
+
+    // Filter by visible calendars (multi-calendar overlay)
+    if (visibleCalendars.size > 0 && visibleCalendars.size < calendars.length) {
+      filtered = filtered.filter((event) => visibleCalendars.has(event.calendarId || ''));
+    }
 
     if (selectedCalendarId !== 'all') {
       filtered = filtered.filter((event) => event.calendarId === selectedCalendarId);
@@ -664,31 +701,40 @@ export default function Calendar() {
             </div>
             <TooltipProvider delayDuration={100}>
               <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                <TabsList className="w-full grid grid-cols-8 h-8">
+                <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="events" className="text-xs px-1"><CalendarIcon className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="events" className="text-xs px-0.5"><CalendarIcon className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Events</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="availability" className="text-xs px-1"><Clock className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="availability" className="text-xs px-0.5"><Clock className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Availability</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="templates" className="text-xs px-1"><Zap className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="templates" className="text-xs px-0.5"><Zap className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Templates</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="heatmap" className="text-xs px-1"><Flame className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="heatmap" className="text-xs px-0.5"><Flame className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Heatmap</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="analytics" className="text-xs px-1"><BarChart3 className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="analytics" className="text-xs px-0.5"><BarChart3 className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Analytics</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="summary" className="text-xs px-1"><TrendingUp className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="summary" className="text-xs px-0.5"><TrendingUp className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Summary</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="conflicts" className="text-xs px-1"><AlertTriangle className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="conflicts" className="text-xs px-0.5"><AlertTriangle className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Conflicts</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="optimize" className="text-xs px-1"><Sparkles className="h-3 w-3" /></TabsTrigger>
+                    <TabsTrigger value="optimize" className="text-xs px-0.5"><Sparkles className="h-3 w-3" /></TabsTrigger>
                   </TooltipTrigger><TooltipContent side="bottom">Optimize</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="overlay" className="text-xs px-0.5"><Layers className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Overlay</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="patterns" className="text-xs px-0.5"><Repeat className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Patterns</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="reminders" className="text-xs px-0.5"><Bell className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Reminders</TooltipContent></Tooltip>
                 </TabsList>
               </Tabs>
             </TooltipProvider>
@@ -756,6 +802,22 @@ export default function Calendar() {
                   setQuickAddModalOpen(true);
                 }}
               />
+            )}
+            {sidebarTab === 'overlay' && (
+              <MultiCalendarOverlay
+                calendars={calendars}
+                events={events}
+                visibleCalendars={visibleCalendars}
+                onToggleCalendar={handleToggleCalendar}
+                onShowAll={handleShowAllCalendars}
+                onHideAll={handleHideAllCalendars}
+              />
+            )}
+            {sidebarTab === 'patterns' && (
+              <RecurringPatterns events={events} onPatternClick={(pattern) => toast({ title: 'Pattern detected', description: pattern.title })} />
+            )}
+            {sidebarTab === 'reminders' && (
+              <SmartReminders calendars={calendars} />
             )}
           </CardContent>
         </Card>
