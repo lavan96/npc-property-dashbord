@@ -6,14 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock, Eye, EyeOff, Mail } from 'lucide-react';
 import { airtableService } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Settings() {
+  const { user } = useAuth();
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'error'>('unknown');
   const [credentials, setCredentials] = useState({
@@ -29,9 +31,88 @@ export default function Settings() {
     refreshInterval: 5,
   });
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Mailbox settings
+  const [personalMailbox, setPersonalMailbox] = useState('');
+  const [loadingMailbox, setLoadingMailbox] = useState(true);
+  const [savingMailbox, setSavingMailbox] = useState(false);
 
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const sessionToken = localStorage.getItem('session_token');
+
+  // Load settings from localStorage on component mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('dashboard-settings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.error('Failed to parse saved settings:', error);
+      }
+    }
+    
+    // Fetch user's mailbox
+    fetchOwnProfile();
+  }, []);
+
+  const fetchOwnProfile = async () => {
+    if (!sessionToken) {
+      setLoadingMailbox(false);
+      return;
+    }
+    
+    try {
+      const { data } = await supabase.functions.invoke('admin-user-management', {
+        body: { action: 'get_own_profile', session_token: sessionToken }
+      });
+
+      if (data?.success && data.user) {
+        setPersonalMailbox(data.user.personal_mailbox || '');
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    } finally {
+      setLoadingMailbox(false);
+    }
+  };
+
+  const handleSaveMailbox = async () => {
+    if (!sessionToken) return;
+    
+    setSavingMailbox(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-user-management', {
+        body: { 
+          action: 'update_own_mailbox', 
+          session_token: sessionToken,
+          personal_mailbox: personalMailbox || null
+        }
+      });
+
+      if (data?.success) {
+        toast({
+          title: "Mailbox Updated",
+          description: "Your personal mailbox has been saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data?.error || "Failed to update mailbox.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update mailbox. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingMailbox(false);
+    }
+  };
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -246,6 +327,46 @@ export default function Settings() {
               Test Connection
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Personal Mailbox Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Personal Mailbox
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="personal-mailbox">Mailbox Email Address</Label>
+            {loadingMailbox ? (
+              <div className="text-sm text-muted-foreground">Loading...</div>
+            ) : (
+              <>
+                <Input
+                  id="personal-mailbox"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={personalMailbox}
+                  onChange={(e) => setPersonalMailbox(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This email will be used for your personal email communications within the dashboard.
+                </p>
+              </>
+            )}
+          </div>
+          
+          <Button 
+            onClick={handleSaveMailbox}
+            disabled={savingMailbox || loadingMailbox}
+            className="w-full"
+          >
+            {savingMailbox && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            Save Mailbox
+          </Button>
         </CardContent>
       </Card>
 

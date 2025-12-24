@@ -825,6 +825,7 @@ export type Database = {
           id: string
           is_active: boolean
           password_hash: string
+          personal_mailbox: string | null
           role: string
           updated_at: string
           username: string
@@ -835,6 +836,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           password_hash: string
+          personal_mailbox?: string | null
           role?: string
           updated_at?: string
           username: string
@@ -845,6 +847,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           password_hash?: string
+          personal_mailbox?: string | null
           role?: string
           updated_at?: string
           username?: string

@@ -37,6 +37,7 @@ interface User {
   is_active: boolean;
   created_at: string;
   user_roles: Array<{ role: string }>;
+  personal_mailbox: string | null;
 }
 
 interface Module {
@@ -77,6 +78,12 @@ export default function UserManagement() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editPermissions, setEditPermissions] = useState<PermissionSetting[]>([]);
   const [savingPermissions, setSavingPermissions] = useState(false);
+
+  // Mailbox editing state
+  const [mailboxDialogOpen, setMailboxDialogOpen] = useState(false);
+  const [editingMailboxUserId, setEditingMailboxUserId] = useState<string | null>(null);
+  const [editingMailboxValue, setEditingMailboxValue] = useState('');
+  const [savingMailbox, setSavingMailbox] = useState(false);
 
   const sessionToken = localStorage.getItem('session_token');
 
@@ -309,6 +316,40 @@ export default function UserManagement() {
     ));
   };
 
+  const openMailboxDialog = (userId: string, currentMailbox: string | null) => {
+    setEditingMailboxUserId(userId);
+    setEditingMailboxValue(currentMailbox || '');
+    setMailboxDialogOpen(true);
+  };
+
+  const handleSaveMailbox = async () => {
+    if (!editingMailboxUserId) return;
+
+    setSavingMailbox(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-user-management', {
+        body: {
+          action: 'update_user',
+          session_token: sessionToken,
+          user_id: editingMailboxUserId,
+          personal_mailbox: editingMailboxValue || null,
+        }
+      });
+
+      if (data?.success) {
+        toast.success('Mailbox updated');
+        setMailboxDialogOpen(false);
+        fetchUsers();
+      } else {
+        toast.error(data?.error || 'Failed to update mailbox');
+      }
+    } catch (err) {
+      toast.error('Failed to update mailbox');
+    } finally {
+      setSavingMailbox(false);
+    }
+  };
+
   if (permLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -486,6 +527,7 @@ export default function UserManagement() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Mailbox</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -525,6 +567,23 @@ export default function UserManagement() {
                           {!hasSuperadmin && !hasAdmin && (
                             <Badge variant="outline">User</Badge>
                           )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {u.personal_mailbox ? (
+                            <span className="text-sm">{u.personal_mailbox}</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground italic">Not set</span>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openMailboxDialog(u.id, u.personal_mailbox)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Mail className="h-3 w-3" />
+                          </Button>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -649,6 +708,43 @@ export default function UserManagement() {
             <Button onClick={handleSavePermissions} disabled={savingPermissions} className="w-full">
               {savingPermissions ? 'Saving...' : 'Save Permissions'}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Mailbox Dialog */}
+      <Dialog open={mailboxDialogOpen} onOpenChange={setMailboxDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configure Personal Mailbox</DialogTitle>
+            <DialogDescription>
+              Set the personal email mailbox for this user.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="mailbox">Personal Mailbox Email</Label>
+              <Input
+                id="mailbox"
+                type="email"
+                value={editingMailboxValue}
+                onChange={(e) => setEditingMailboxValue(e.target.value)}
+                placeholder="user@example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                This mailbox will be used for this user's email communications.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setMailboxDialogOpen(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveMailbox} disabled={savingMailbox} className="flex-1">
+                {savingMailbox ? 'Saving...' : 'Save Mailbox'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
