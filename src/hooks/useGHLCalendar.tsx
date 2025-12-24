@@ -28,6 +28,27 @@ export interface GHLEvent {
   address?: string;
 }
 
+export interface GHLContact {
+  id: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface GHLCalendarGroup {
+  id: string;
+  name: string;
+  description?: string;
+  calendarIds?: string[];
+}
+
+export interface GHLFreeSlot {
+  startTime: string;
+  endTime: string;
+}
+
 interface CalendarData {
   success?: boolean;
   error?: string;
@@ -109,18 +130,10 @@ const normalizeEvent = (raw: any): GHLEvent | null => {
   };
 };
 
-export interface GHLContact {
-  id: string;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-}
-
 export function useGHLCalendar() {
   const [calendars, setCalendars] = useState<GHLCalendar[]>([]);
   const [events, setEvents] = useState<GHLEvent[]>([]);
+  const [calendarGroups, setCalendarGroups] = useState<GHLCalendarGroup[]>([]);
   const [contactCache, setContactCache] = useState<Map<string, GHLContact>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -196,11 +209,6 @@ export function useGHLCalendar() {
     setError(null);
 
     try {
-      const params = new URLSearchParams({ action: 'events' });
-      if (startTime) params.append('startTime', startTime);
-      if (endTime) params.append('endTime', endTime);
-      if (calendarId) params.append('calendarId', calendarId);
-
       const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
         body: { action: 'events', startTime, endTime, calendarId },
       });
@@ -220,6 +228,26 @@ export function useGHLCalendar() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const fetchCalendarGroups = useCallback(async () => {
+    try {
+      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'groups' },
+      });
+
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+
+      if (data?.success && data.groups) {
+        setCalendarGroups(data.groups);
+      }
+      return data?.groups || [];
+    } catch (err: any) {
+      console.error('Error fetching calendar groups:', err);
+      return [];
     }
   }, []);
 
@@ -307,6 +335,85 @@ export function useGHLCalendar() {
     }
   }, [toast]);
 
+  const updateEvent = useCallback(async (
+    eventId: string,
+    updates: { title?: string; notes?: string; appointmentStatus?: string }
+  ): Promise<{ success: boolean }> => {
+    setIsUpdating(true);
+
+    try {
+      const { data, error: updateError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'update', eventId, ...updates },
+      });
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      if (data?.success) {
+        // Update local state
+        setEvents(prev => prev.map(event => 
+          event.id === eventId 
+            ? { ...event, ...updates }
+            : event
+        ));
+        toast({
+          title: 'Event updated',
+          description: 'The event has been updated successfully.',
+        });
+        return { success: true };
+      } else {
+        throw new Error(data?.error || 'Failed to update event');
+      }
+    } catch (err: any) {
+      console.error('Error updating event:', err);
+      toast({
+        title: 'Failed to update event',
+        description: err.message,
+        variant: 'destructive',
+      });
+      return { success: false };
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [toast]);
+
+  const deleteEvent = useCallback(async (eventId: string): Promise<{ success: boolean }> => {
+    setIsUpdating(true);
+
+    try {
+      const { data, error: deleteError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'delete', eventId },
+      });
+
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
+
+      if (data?.success) {
+        // Remove from local state
+        setEvents(prev => prev.filter(event => event.id !== eventId));
+        toast({
+          title: 'Event deleted',
+          description: 'The event has been removed.',
+        });
+        return { success: true };
+      } else {
+        throw new Error(data?.error || 'Failed to delete event');
+      }
+    } catch (err: any) {
+      console.error('Error deleting event:', err);
+      toast({
+        title: 'Failed to delete event',
+        description: err.message,
+        variant: 'destructive',
+      });
+      return { success: false };
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [toast]);
+
   const fetchContact = useCallback(async (contactId: string): Promise<GHLContact | null> => {
     // Return from cache if available
     if (contactCache.has(contactId)) {
@@ -343,6 +450,97 @@ export function useGHLCalendar() {
     }
   }, [contactCache]);
 
+  const searchContacts = useCallback(async (query: string, limit = 10): Promise<GHLContact[]> => {
+    try {
+      const { data, error: searchError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'searchContacts', query, limit },
+      });
+
+      if (searchError) {
+        throw new Error(searchError.message);
+      }
+
+      if (data?.success && data.contacts) {
+        return data.contacts.map((c: any) => ({
+          id: c.id,
+          name: c.name || c.contactName,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          email: c.email,
+          phone: c.phone,
+        }));
+      }
+      return [];
+    } catch (err: any) {
+      console.error('Error searching contacts:', err);
+      return [];
+    }
+  }, []);
+
+  const blockSlot = useCallback(async (payload: {
+    calendarId: string;
+    startTime: string;
+    endTime: string;
+    title?: string;
+  }): Promise<{ success: boolean }> => {
+    setIsUpdating(true);
+
+    try {
+      const { data, error: blockError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'blockSlot', ...payload },
+      });
+
+      if (blockError) {
+        throw new Error(blockError.message);
+      }
+
+      if (data?.success) {
+        toast({
+          title: 'Time blocked',
+          description: 'The time slot has been blocked.',
+        });
+        return { success: true };
+      } else {
+        throw new Error(data?.error || 'Failed to block slot');
+      }
+    } catch (err: any) {
+      console.error('Error blocking slot:', err);
+      toast({
+        title: 'Failed to block slot',
+        description: err.message,
+        variant: 'destructive',
+      });
+      return { success: false };
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [toast]);
+
+  const fetchFreeSlots = useCallback(async (
+    calendarId: string,
+    startDate: string,
+    endDate: string,
+    timezone = 'Australia/Sydney'
+  ): Promise<GHLFreeSlot[]> => {
+    try {
+      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
+        body: { action: 'freeSlots', calendarId, startDate, endDate, timezone },
+      });
+
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+
+      if (data?.success && data.slots) {
+        return data.slots;
+      }
+      return [];
+    } catch (err: any) {
+      console.error('Error fetching free slots:', err);
+      return [];
+    }
+  }, []);
+
   const createAppointment = useCallback(async (payload: {
     calendarId: string;
     title: string;
@@ -350,6 +548,8 @@ export function useGHLCalendar() {
     endTime: string;
     contactId?: string;
     notes?: string;
+    address?: string;
+    assignedUserId?: string;
   }): Promise<{ success: boolean; event?: GHLEvent }> => {
     setIsUpdating(true);
 
@@ -397,15 +597,22 @@ export function useGHLCalendar() {
   return {
     calendars,
     events,
+    calendarGroups,
     contactCache,
     isLoading,
     isUpdating,
     error,
     fetchCalendarData,
     fetchEvents,
+    fetchCalendarGroups,
     rescheduleEvent,
+    updateEvent,
+    deleteEvent,
     createAppointment,
     fetchContact,
+    searchContacts,
+    blockSlot,
+    fetchFreeSlots,
     getCalendarColor,
   };
 }

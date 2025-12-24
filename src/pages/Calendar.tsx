@@ -62,7 +62,7 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 };
 
 export default function Calendar() {
-  const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent, createAppointment } = useGHLCalendar();
+  const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
   const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders'>('events');
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
   const [quickAddDefaultHour, setQuickAddDefaultHour] = useState<number | undefined>(undefined);
@@ -325,13 +325,15 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
-      {/* Event Details Modal (Read-Only) */}
+      {/* Event Details Modal with Edit/Delete */}
       <EventDetailsModal 
         event={selectedEvent}
         open={eventModalOpen}
         onOpenChange={setEventModalOpen}
         getStatusColor={getStatusColor}
         fetchContact={fetchContact}
+        onUpdateEvent={updateEvent}
+        onDeleteEvent={deleteEvent}
       />
 
       {/* Header */}

@@ -309,11 +309,11 @@ serve(async (req) => {
 
     // Update/reschedule an event
     if (action === 'update') {
-      const { eventId, newStartTime, newEndTime } = body;
+      const { eventId, newStartTime, newEndTime, title, notes, appointmentStatus } = body;
 
-      if (!eventId || !newStartTime || !newEndTime) {
+      if (!eventId) {
         return new Response(JSON.stringify({
-          error: 'Missing required fields: eventId, newStartTime, newEndTime',
+          error: 'Missing required field: eventId',
           success: false
         }), {
           status: 400,
@@ -321,15 +321,19 @@ serve(async (req) => {
         });
       }
 
-      console.log(`Rescheduling event ${eventId} to ${newStartTime} - ${newEndTime}`);
+      console.log(`Updating event ${eventId}`);
+
+      const updatePayload: Record<string, unknown> = {};
+      if (newStartTime) updatePayload.startTime = newStartTime;
+      if (newEndTime) updatePayload.endTime = newEndTime;
+      if (title !== undefined) updatePayload.title = title;
+      if (notes !== undefined) updatePayload.notes = notes;
+      if (appointmentStatus) updatePayload.appointmentStatus = appointmentStatus;
 
       const updateResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments/${eventId}`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({
-          startTime: newStartTime,
-          endTime: newEndTime,
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!updateResponse.ok) {
@@ -351,6 +355,50 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         event: updateData,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Delete an event
+    if (action === 'delete') {
+      const { eventId } = body;
+
+      if (!eventId) {
+        return new Response(JSON.stringify({
+          error: 'Missing required field: eventId',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Deleting event ${eventId}`);
+
+      const deleteResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments/${eventId}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!deleteResponse.ok) {
+        const errorText = await deleteResponse.text();
+        console.error('Event delete error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to delete event',
+          details: errorText,
+          success: false
+        }), {
+          status: deleteResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log('Event deleted successfully');
+
+      return new Response(JSON.stringify({
+        success: true,
+        deleted: eventId,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -401,9 +449,187 @@ serve(async (req) => {
       });
     }
 
+    // Search contacts
+    if (action === 'searchContacts') {
+      const { query, limit = 10 } = body;
+
+      if (!query) {
+        return new Response(JSON.stringify({
+          error: 'Missing required field: query',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Searching contacts for: ${query}`);
+
+      const searchResponse = await fetch(`${GHL_API_BASE}/contacts/?locationId=${locationId}&query=${encodeURIComponent(query)}&limit=${limit}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        console.error('Contact search error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to search contacts',
+          details: errorText,
+          success: false
+        }), {
+          status: searchResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const searchData = await searchResponse.json();
+      console.log(`Found ${searchData.contacts?.length || 0} contacts`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        contacts: searchData.contacts || [],
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Fetch calendar groups
+    if (action === 'groups') {
+      console.log('Fetching calendar groups...');
+
+      const groupsResponse = await fetch(`${GHL_API_BASE}/calendars/groups?locationId=${locationId}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!groupsResponse.ok) {
+        const errorText = await groupsResponse.text();
+        console.error('Groups fetch error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to fetch calendar groups',
+          details: errorText,
+          success: false
+        }), {
+          status: groupsResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const groupsData = await groupsResponse.json();
+      console.log(`Fetched ${groupsData.groups?.length || 0} calendar groups`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        groups: groupsData.groups || [],
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Block off time slot
+    if (action === 'blockSlot') {
+      const { calendarId: targetCalendarId, startTime: blockStart, endTime: blockEnd, title: blockTitle } = body;
+
+      if (!targetCalendarId || !blockStart || !blockEnd) {
+        return new Response(JSON.stringify({
+          error: 'Missing required fields: calendarId, startTime, endTime',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Blocking slot on calendar ${targetCalendarId}`);
+
+      const blockPayload = {
+        calendarId: targetCalendarId,
+        locationId,
+        startTime: blockStart,
+        endTime: blockEnd,
+        title: blockTitle || 'Blocked',
+        appointmentStatus: 'confirmed',
+      };
+
+      const blockResponse = await fetch(`${GHL_API_BASE}/calendars/events/block-slots`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(blockPayload),
+      });
+
+      if (!blockResponse.ok) {
+        const errorText = await blockResponse.text();
+        console.error('Block slot error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to block slot',
+          details: errorText,
+          success: false
+        }), {
+          status: blockResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const blockData = await blockResponse.json();
+      console.log('Slot blocked successfully');
+
+      return new Response(JSON.stringify({
+        success: true,
+        blockedSlot: blockData,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get free slots for a calendar
+    if (action === 'freeSlots') {
+      const { calendarId: targetCalendarId, startDate, endDate, timezone = 'Australia/Sydney' } = body;
+
+      if (!targetCalendarId || !startDate || !endDate) {
+        return new Response(JSON.stringify({
+          error: 'Missing required fields: calendarId, startDate, endDate',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Fetching free slots for calendar ${targetCalendarId}`);
+
+      const slotsResponse = await fetch(`${GHL_API_BASE}/calendars/${targetCalendarId}/free-slots?startDate=${startDate}&endDate=${endDate}&timezone=${encodeURIComponent(timezone)}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!slotsResponse.ok) {
+        const errorText = await slotsResponse.text();
+        console.error('Free slots fetch error:', errorText);
+        return new Response(JSON.stringify({
+          error: 'Failed to fetch free slots',
+          details: errorText,
+          success: false
+        }), {
+          status: slotsResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const slotsData = await slotsResponse.json();
+      console.log(`Fetched free slots`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        slots: slotsData,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Create a new appointment
     if (action === 'create') {
-      const { calendarId: targetCalendarId, title, startTime: appointmentStart, endTime: appointmentEnd, contactId: appointmentContactId, notes } = body;
+      const { calendarId: targetCalendarId, title, startTime: appointmentStart, endTime: appointmentEnd, contactId: appointmentContactId, notes, address, assignedUserId } = body;
 
       if (!targetCalendarId || !appointmentStart || !appointmentEnd) {
         return new Response(JSON.stringify({
@@ -426,6 +652,8 @@ serve(async (req) => {
       };
       if (appointmentContactId) createPayload.contactId = appointmentContactId;
       if (notes) createPayload.notes = notes;
+      if (address) createPayload.address = address;
+      if (assignedUserId) createPayload.assignedUserId = assignedUserId;
 
       const createResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments`, {
         method: 'POST',
@@ -459,7 +687,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       error: 'Invalid action',
-      validActions: ['all', 'calendars', 'events', 'update', 'contact', 'create'],
+      validActions: ['all', 'calendars', 'events', 'update', 'delete', 'contact', 'searchContacts', 'groups', 'blockSlot', 'freeSlots', 'create'],
       success: false 
     }), {
       status: 400,
