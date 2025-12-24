@@ -17,6 +17,7 @@ interface ConflictDetectionProps {
     calendarColor?: string;
   }>;
   onEventClick?: (event: any) => void;
+  selectedDate?: Date | null;
 }
 
 interface Conflict {
@@ -26,7 +27,7 @@ interface Conflict {
   severity: 'low' | 'medium' | 'high';
 }
 
-export function ConflictDetection({ events, onEventClick }: ConflictDetectionProps) {
+export function ConflictDetection({ events, onEventClick, selectedDate }: ConflictDetectionProps) {
   const safeParseISO = (value: string | undefined): Date | null => {
     try {
       if (!value) return null;
@@ -37,13 +38,23 @@ export function ConflictDetection({ events, onEventClick }: ConflictDetectionPro
     }
   };
 
+  const isDateSelected = selectedDate !== null && selectedDate !== undefined;
+
   const conflicts = useMemo(() => {
     const result: Conflict[] = [];
-    const validEvents = events.filter(e => {
+    let validEvents = events.filter(e => {
       const start = safeParseISO(e.startTime);
       const end = safeParseISO(e.endTime);
       return start && end;
     });
+
+    // Filter by selected date if provided
+    if (isDateSelected) {
+      validEvents = validEvents.filter(e => {
+        const start = safeParseISO(e.startTime);
+        return start && start.toDateString() === selectedDate.toDateString();
+      });
+    }
 
     for (let i = 0; i < validEvents.length; i++) {
       for (let j = i + 1; j < validEvents.length; j++) {

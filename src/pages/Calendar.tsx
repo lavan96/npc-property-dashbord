@@ -783,21 +783,22 @@ export default function Calendar() {
             )}
             {sidebarTab === 'analytics' && (
               <ScrollArea className="h-[420px]">
-                <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} />
+                <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} selectedDate={selectedDate} />
               </ScrollArea>
             )}
             {sidebarTab === 'summary' && (
               <ScrollArea className="h-[420px]">
-                <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} />
+                <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} selectedDate={selectedDate} />
               </ScrollArea>
             )}
             {sidebarTab === 'conflicts' && (
-              <ConflictDetection events={filteredEvents} onEventClick={handleEventClick} />
+              <ConflictDetection events={filteredEvents} onEventClick={handleEventClick} selectedDate={selectedDate} />
             )}
             {sidebarTab === 'optimize' && (
               <ResourceOptimization
                 events={filteredEvents}
                 currentWeek={currentWeek}
+                selectedDate={selectedDate}
                 onSlotSelect={(date, hour) => {
                   setSelectedDate(date);
                   setQuickAddDefaultHour(hour);
