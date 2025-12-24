@@ -736,7 +736,7 @@ serve(async (req: Request) => {
       }
 
       const { error: emailError } = await resend.emails.send({
-        from: 'NPC Admin <admin@npcservices.com.au>',
+        from: 'NPC Admin <onboarding@resend.dev>',
         to: [invite_data.email],
         subject: 'You\'re Invited to NPC Dashboard',
         html: emailContent,
