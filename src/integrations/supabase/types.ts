@@ -2208,6 +2208,48 @@ export type Database = {
         }
         Relationships: []
       }
+      whitelabel_settings: {
+        Row: {
+          accent_color: string | null
+          auth_logo: string | null
+          company_name: string
+          created_at: string
+          dark_mode_default: string
+          favicon: string | null
+          id: string
+          primary_color: string | null
+          sidebar_icon: string | null
+          sidebar_logo: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          auth_logo?: string | null
+          company_name?: string
+          created_at?: string
+          dark_mode_default?: string
+          favicon?: string | null
+          id?: string
+          primary_color?: string | null
+          sidebar_icon?: string | null
+          sidebar_logo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          auth_logo?: string | null
+          company_name?: string
+          created_at?: string
+          dark_mode_default?: string
+          favicon?: string | null
+          id?: string
+          primary_color?: string | null
+          sidebar_icon?: string | null
+          sidebar_logo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
