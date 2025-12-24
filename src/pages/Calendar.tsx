@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
@@ -14,7 +14,10 @@ import { CalendarSearchDropdown } from '@/components/calendar/CalendarSearchDrop
 import { TimelineView } from '@/components/calendar/TimelineView';
 import { DraggableEvent } from '@/components/calendar/DraggableEvent';
 import { DropZone } from '@/components/calendar/DropZone';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds } from 'date-fns';
+import { EventHoverPreview } from '@/components/calendar/EventHoverPreview';
+import { AvailabilitySlots } from '@/components/calendar/AvailabilitySlots';
+import { EventTemplates } from '@/components/calendar/EventTemplates';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Module-level helper functions for date parsing/formatting
@@ -49,7 +52,8 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 };
 
 export default function Calendar() {
-  const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent } = useGHLCalendar();
+  const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent, createAppointment } = useGHLCalendar();
+  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates'>('events');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -520,24 +524,32 @@ export default function Calendar() {
                             </div>
                             <div className="space-y-0.5">
                               {dayEvents.slice(0, 3).map(event => (
-                                <DraggableEvent 
+                                <EventHoverPreview
                                   key={event.id}
                                   event={event}
-                                  disabled={isUpdating}
-                                  onDragStart={setDraggingEvent}
-                                  onDragEnd={() => setDraggingEvent(null)}
+                                  getStatusColor={getStatusColor}
+                                  fetchContact={fetchContact}
+                                  contactCache={contactCache}
+                                  onViewDetails={() => handleEventClick(event)}
                                 >
-                                  <div
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEventClick(event);
-                                    }}
-                                    style={getEventStyle(event)}
-                                    className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
+                                  <DraggableEvent 
+                                    event={event}
+                                    disabled={isUpdating}
+                                    onDragStart={setDraggingEvent}
+                                    onDragEnd={() => setDraggingEvent(null)}
                                   >
-                                    {safeFormatISO(event.startTime, 'HH:mm')}
-                                  </div>
-                                </DraggableEvent>
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEventClick(event);
+                                      }}
+                                      style={getEventStyle(event)}
+                                      className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
+                                    >
+                                      {safeFormatISO(event.startTime, 'HH:mm')}
+                                    </div>
+                                  </DraggableEvent>
+                                </EventHoverPreview>
                               ))}
                               {dayEvents.length > 3 && (
                                 <div className="text-[10px] text-muted-foreground px-1">
@@ -631,42 +643,71 @@ export default function Calendar() {
           </CardContent>
         </Card>
 
-        {/* Selected Day Events / Upcoming Events */}
+        {/* Sidebar Panel with Tabs */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="h-4 w-4" />
-              {selectedDate ? format(selectedDate, 'EEEE, MMMM d') : 'Upcoming Events'}
-            </CardTitle>
+            <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
+              <TabsList className="w-full grid grid-cols-3 h-8">
+                <TabsTrigger value="events" className="text-xs">Events</TabsTrigger>
+                <TabsTrigger value="availability" className="text-xs">Slots</TabsTrigger>
+                <TabsTrigger value="templates" className="text-xs flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  Quick
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[400px]">
-              {isLoading ? (
-                <div className="p-4 space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <div className="p-2 space-y-2">
-                  {(selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
+          <CardContent className="p-3">
+            {sidebarTab === 'events' && (
+              <div>
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
+                </h4>
+                <ScrollArea className="h-[380px]">
+                  {isLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
                     </div>
                   ) : (
-                    (selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
-                      <EventCard 
-                        key={event.id} 
-                        event={event} 
-                        getStatusColor={getStatusColor}
-                        onClick={() => handleEventClick(event)}
-                      />
-                    ))
+                    <div className="space-y-2">
+                      {(selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
+                        <EventCard 
+                          key={event.id} 
+                          event={event} 
+                          getStatusColor={getStatusColor}
+                          onClick={() => handleEventClick(event)}
+                        />
+                      ))}
+                    </div>
                   )}
-                </div>
-              )}
-            </ScrollArea>
+                </ScrollArea>
+              </div>
+            )}
+            {sidebarTab === 'availability' && selectedDate && (
+              <AvailabilitySlots
+                selectedDate={selectedDate}
+                events={filteredEvents}
+                onSlotClick={(start, end) => {
+                  setSidebarTab('templates');
+                }}
+              />
+            )}
+            {sidebarTab === 'templates' && (
+              <EventTemplates
+                calendars={calendars}
+                selectedDate={selectedDate || undefined}
+                onCreateAppointment={createAppointment}
+                isUpdating={isUpdating}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
