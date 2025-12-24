@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
     const alertIcon = isPositive ? "✓" : "⚠";
 
     const emailResponse = await resend.emails.send({
-      from: "NPC Services Call Alerts <onboarding@resend.dev>",
+      from: "NPC Services Call Alerts <admin@npcservices.com.au>",
       to: [to],
       subject: `${alertIcon} Call Alert: ${alertName}`,
       html: `
