@@ -12,7 +12,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 interface RequestBody {
   action: 'list_users' | 'get_user' | 'create_user' | 'update_user' | 'delete_user' | 
           'assign_role' | 'remove_role' | 'update_permissions' | 'send_invite' |
-          'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 
+          'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 'demote_from_superadmin' |
           'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile' |
           'update_own_mailbox' | 'create_subadmin' | 'update_own_credentials';
   new_username?: string;
@@ -886,6 +886,55 @@ serve(async (req: Request) => {
       console.log(`User ${user_id} promoted to superadmin by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User promoted to superadmin' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'demote_from_superadmin') {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User ID required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Prevent demoting yourself
+      if (user_id === adminUser.id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Cannot demote yourself' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Remove superadmin role from user_roles table
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', user_id)
+        .eq('role', 'superadmin');
+
+      if (roleError) {
+        return new Response(
+          JSON.stringify({ success: false, error: roleError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update custom_users role back to sub_admin
+      const { error: userError } = await supabase
+        .from('custom_users')
+        .update({ role: 'sub_admin', updated_at: new Date().toISOString() })
+        .eq('id', user_id);
+
+      if (userError) {
+        console.error('Failed to update custom_users role:', userError);
+        // Don't fail the whole operation, the main role removal succeeded
+      }
+
+      console.log(`User ${user_id} demoted from superadmin by ${adminUser.username}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'User demoted from superadmin' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
