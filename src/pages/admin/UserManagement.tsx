@@ -26,7 +26,8 @@ import {
   UserPlus,
   Key,
   Settings,
-  AlertCircle
+  AlertCircle,
+  ShieldOff
 } from 'lucide-react';
 
 interface User {
@@ -283,6 +284,29 @@ export default function UserManagement() {
       }
     } catch (err) {
       toast.error('Failed to promote user');
+    }
+  };
+
+  const handleDemoteFromSuperadmin = async (userId: string) => {
+    if (!confirm('Are you sure you want to demote this user from superadmin? They will become a regular admin.')) return;
+
+    try {
+      const { data } = await supabase.functions.invoke('admin-user-management', {
+        body: {
+          action: 'demote_from_superadmin',
+          session_token: sessionToken,
+          user_id: userId,
+        }
+      });
+
+      if (data?.success) {
+        toast.success('User demoted to admin');
+        fetchUsers();
+      } else {
+        toast.error(data?.error || 'Failed to demote user');
+      }
+    } catch (err) {
+      toast.error('Failed to demote user');
     }
   };
 
@@ -686,8 +710,19 @@ export default function UserManagement() {
                               variant="outline"
                               size="sm"
                               onClick={() => handlePromoteToSuperadmin(u.id)}
+                              title="Promote to Superadmin"
                             >
                               <Crown className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {hasSuperadmin && !isSelf && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDemoteFromSuperadmin(u.id)}
+                              title="Demote to Admin"
+                            >
+                              <ShieldOff className="h-4 w-4" />
                             </Button>
                           )}
                           {!isSelf && (
