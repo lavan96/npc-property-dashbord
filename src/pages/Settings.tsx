@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
+import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Settings() {
@@ -216,6 +217,9 @@ export default function Settings() {
           Configure your dashboard and manage connections
         </p>
       </div>
+
+      {/* Profile & Credentials */}
+      <ProfileCredentials />
 
       {/* Airtable Configuration */}
       <Card>
