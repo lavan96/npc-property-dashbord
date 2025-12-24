@@ -103,7 +103,7 @@ serve(async (req: Request) => {
 
       // Send email via Resend
       const { error: emailError } = await resend.emails.send({
-        from: 'NPC Admin <onboarding@resend.dev>',
+        from: 'NPC Admin <admin@npcservices.com.au>',
         to: [user.email],
         subject: 'Password Reset OTP',
         html: `

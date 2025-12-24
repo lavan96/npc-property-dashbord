@@ -813,7 +813,7 @@ No investment report has been uploaded. You are having an open conversation abou
       `;
 
       const emailResponse = await resend.emails.send({
-        from: "NPC Services <onboarding@resend.dev>",
+        from: "NPC Services <admin@npcservices.com.au>",
         to: [to],
         subject: subject || "Investment Report Summary",
         html: htmlContent,

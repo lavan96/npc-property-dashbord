@@ -304,7 +304,7 @@ serve(async (req) => {
 
     // Send email
     const { error: emailError } = await resend.emails.send({
-      from: "NPC Services <onboarding@resend.dev>",
+      from: "NPC Services <admin@npcservices.com.au>",
       to: [recipientEmail],
       subject: `Weekly Call Report - ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`,
       html: emailHtml,
