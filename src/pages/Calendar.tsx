@@ -838,6 +838,7 @@ export default function Calendar() {
           const result = await createAppointment(data);
           return result.success;
         }}
+        onSearchContacts={searchContacts}
       />
 
       {/* Calendars List */}
