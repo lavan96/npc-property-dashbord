@@ -13,11 +13,12 @@ interface TimeAllocationDashboardProps {
   }>;
   calendars: Array<{ id: string; name: string; eventColor?: string }>;
   currentWeek: Date;
+  selectedDate?: Date | null;
 }
 
 const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
-export function TimeAllocationDashboard({ events, calendars, currentWeek }: TimeAllocationDashboardProps) {
+export function TimeAllocationDashboard({ events, calendars, currentWeek, selectedDate }: TimeAllocationDashboardProps) {
   const safeParseISO = (value: string | undefined): Date | null => {
     try {
       if (!value) return null;
@@ -28,9 +29,13 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
     }
   };
 
-  const weekStart = startOfWeek(currentWeek);
-  const weekEnd = endOfWeek(currentWeek);
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  // Determine date range based on selectedDate
+  const isDateSelected = selectedDate !== null && selectedDate !== undefined;
+  const rangeStart = isDateSelected ? selectedDate : startOfWeek(currentWeek);
+  const rangeEnd = isDateSelected ? selectedDate : endOfWeek(currentWeek);
+  const weekDays = isDateSelected 
+    ? [selectedDate] 
+    : eachDayOfInterval({ start: rangeStart, end: rangeEnd });
 
   // Calculate time by calendar
   const timeByCalendar = useMemo(() => {
@@ -39,10 +44,17 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
     events.forEach(event => {
       const start = safeParseISO(event.startTime);
       const end = safeParseISO(event.endTime);
-      if (start && end && start >= weekStart && start <= weekEnd) {
-        const duration = differenceInMinutes(end, start);
-        const calId = event.calendarId || 'unknown';
-        data[calId] = (data[calId] || 0) + duration;
+      if (start && end) {
+        // For single date, check same day; for range, check within range
+        const inRange = isDateSelected 
+          ? start.toDateString() === rangeStart.toDateString()
+          : (start >= rangeStart && start <= rangeEnd);
+        
+        if (inRange) {
+          const duration = differenceInMinutes(end, start);
+          const calId = event.calendarId || 'unknown';
+          data[calId] = (data[calId] || 0) + duration;
+        }
       }
     });
 
@@ -55,7 +67,7 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
         minutes,
       };
     }).sort((a, b) => b.value - a.value);
-  }, [events, calendars, weekStart, weekEnd]);
+  }, [events, calendars, rangeStart, rangeEnd, isDateSelected]);
 
   // Calculate time by day
   const timeByDay = useMemo(() => {
@@ -70,16 +82,24 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
     events.forEach(event => {
       const start = safeParseISO(event.startTime);
       const end = safeParseISO(event.endTime);
-      if (start && end && start >= weekStart && start <= weekEnd) {
-        const dayIndex = getDay(start);
-        const duration = differenceInMinutes(end, start);
-        data[dayIndex].hours += Math.round(duration / 60 * 10) / 10;
-        data[dayIndex].events += 1;
+      if (start && end) {
+        const inRange = isDateSelected 
+          ? start.toDateString() === rangeStart.toDateString()
+          : (start >= rangeStart && start <= rangeEnd);
+        
+        if (inRange) {
+          const dayIndex = isDateSelected ? 0 : getDay(start);
+          const duration = differenceInMinutes(end, start);
+          if (data[dayIndex]) {
+            data[dayIndex].hours += Math.round(duration / 60 * 10) / 10;
+            data[dayIndex].events += 1;
+          }
+        }
       }
     });
 
     return data;
-  }, [events, weekDays, weekStart, weekEnd]);
+  }, [events, weekDays, rangeStart, rangeEnd, isDateSelected]);
 
   // Calculate status distribution
   const statusDistribution = useMemo(() => {
@@ -87,9 +107,15 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
     
     events.forEach(event => {
       const start = safeParseISO(event.startTime);
-      if (start && start >= weekStart && start <= weekEnd) {
-        const status = event.appointmentStatus || 'pending';
-        data[status] = (data[status] || 0) + 1;
+      if (start) {
+        const inRange = isDateSelected 
+          ? start.toDateString() === rangeStart.toDateString()
+          : (start >= rangeStart && start <= rangeEnd);
+        
+        if (inRange) {
+          const status = event.appointmentStatus || 'pending';
+          data[status] = (data[status] || 0) + 1;
+        }
       }
     });
 
@@ -107,7 +133,7 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
       value: count,
       color: statusColors[status] || '#6b7280',
     }));
-  }, [events, weekStart, weekEnd]);
+  }, [events, rangeStart, rangeEnd, isDateSelected]);
 
   const totalHours = timeByCalendar.reduce((sum, c) => sum + c.value, 0);
   const totalEvents = timeByDay.reduce((sum, d) => sum + d.events, 0);
@@ -117,7 +143,10 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek }: Time
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Time Allocation</h3>
         <span className="text-xs text-muted-foreground">
-          {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d')}
+          {isDateSelected 
+            ? format(rangeStart, 'EEEE, MMM d')
+            : `${format(rangeStart, 'MMM d')} - ${format(rangeEnd, 'MMM d')}`
+          }
         </span>
       </div>
 

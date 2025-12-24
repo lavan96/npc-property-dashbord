@@ -14,6 +14,7 @@ interface ResourceOptimizationProps {
     appointmentStatus?: string;
   }>;
   currentWeek: Date;
+  selectedDate?: Date | null;
   onSlotSelect?: (date: Date, hour: number) => void;
 }
 
@@ -25,7 +26,7 @@ interface TimeSlotScore {
   historicalSuccess: number;
 }
 
-export function ResourceOptimization({ events, currentWeek, onSlotSelect }: ResourceOptimizationProps) {
+export function ResourceOptimization({ events, currentWeek, selectedDate, onSlotSelect }: ResourceOptimizationProps) {
   const safeParseISO = (value: string | undefined): Date | null => {
     try {
       if (!value) return null;
