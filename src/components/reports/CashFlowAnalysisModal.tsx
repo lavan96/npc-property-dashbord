@@ -80,7 +80,7 @@ interface YearOverrides {
   landTax?: number | null;
 }
 
-// All year overrides (years 2-10)
+// All year overrides (years 1-10)
 type YearlyOverrides = {
   [year: number]: YearOverrides;
 };
@@ -359,17 +359,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       for (let year = 0; year <= 10; year++) {
         const yearOverrides = cfOverrides[year] || {};
         
-        const yearCapitalGrowthRate = year >= 2 && yearOverrides.capitalGrowthRate != null
+        const yearCapitalGrowthRate = year >= 1 && yearOverrides.capitalGrowthRate != null
           ? yearOverrides.capitalGrowthRate / 100 : baseCapitalGrowthRate;
-        const yearCpiRate = year >= 2 && yearOverrides.cpiGrowthRate != null
+        const yearCpiRate = year >= 1 && yearOverrides.cpiGrowthRate != null
           ? yearOverrides.cpiGrowthRate / 100 : baseCpiRate;
-        const yearInterestRate = year >= 2 && yearOverrides.interestRate != null
+        const yearInterestRate = year >= 1 && yearOverrides.interestRate != null
           ? yearOverrides.interestRate / 100 : baseInterestRate;
 
         let propertyValue: number;
         if (year === 0) propertyValue = marketValueNow;
-        else if (year === 1) propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
         else if (yearOverrides.propertyMarketValue != null) propertyValue = yearOverrides.propertyMarketValue;
+        else if (year === 1) propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
         else propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
         previousPropertyValue = propertyValue;
 
@@ -379,18 +379,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
         let annualRent: number;
         if (year === 0) annualRent = baseAnnualRent;
-        else if (year === 1) annualRent = baseAnnualRent * (1 + baseCpiRate);
         else if (yearOverrides.rentalIncome != null) annualRent = yearOverrides.rentalIncome;
+        else if (year === 1) annualRent = baseAnnualRent * (1 + baseCpiRate);
         else annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
 
         let totalExpenses: number;
         if (year === 0) totalExpenses = basePropertyExpenses;
-        else if (year === 1) totalExpenses = baseExpenses * (1 + baseCpiRate) + annualRent * propertyManagementPercent;
         else if (yearOverrides.propertyExpenses != null) totalExpenses = yearOverrides.propertyExpenses;
+        else if (year === 1) totalExpenses = baseExpenses * (1 + baseCpiRate) + annualRent * propertyManagementPercent;
         else totalExpenses = baseExpenses * Math.pow(1 + yearCpiRate, year) + annualRent * propertyManagementPercent;
 
-        let interestPayments = year === 0 ? 0 : year === 1 ? currentLoanAmount * baseInterestRate :
-          yearOverrides.interestPayment != null ? yearOverrides.interestPayment : currentLoanAmount * yearInterestRate;
+        let interestPayments = year === 0 ? 0 : 
+          yearOverrides.interestPayment != null ? yearOverrides.interestPayment : 
+          year === 1 ? currentLoanAmount * baseInterestRate : currentLoanAmount * yearInterestRate;
         let principalPayments = year === 0 ? 0 : yearOverrides.principalPayment ?? 0;
         let depreciation = year === 0 ? 0 : yearOverrides.depreciation ?? baseDepreciation;
         let landTax = year === 0 ? 0 : yearOverrides.landTax ?? baseLandTax;
@@ -674,15 +675,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const yearOverrides = yearlyOverrides[year] || {};
       
       // Get rates for this year (use override or base)
-      const yearCapitalGrowthRate = year >= 2 && yearOverrides.capitalGrowthRate !== undefined && yearOverrides.capitalGrowthRate !== null
+      const yearCapitalGrowthRate = year >= 1 && yearOverrides.capitalGrowthRate !== undefined && yearOverrides.capitalGrowthRate !== null
         ? yearOverrides.capitalGrowthRate / 100
         : baseCapitalGrowthRate;
       
-      const yearCpiRate = year >= 2 && yearOverrides.cpiGrowthRate !== undefined && yearOverrides.cpiGrowthRate !== null
+      const yearCpiRate = year >= 1 && yearOverrides.cpiGrowthRate !== undefined && yearOverrides.cpiGrowthRate !== null
         ? yearOverrides.cpiGrowthRate / 100
         : baseCpiRate;
       
-      const yearInterestRate = year >= 2 && yearOverrides.interestRate !== undefined && yearOverrides.interestRate !== null
+      const yearInterestRate = year >= 1 && yearOverrides.interestRate !== undefined && yearOverrides.interestRate !== null
         ? yearOverrides.interestRate / 100
         : baseInterestRate;
 
@@ -690,10 +691,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let propertyValue: number;
       if (year === 0) {
         propertyValue = baseFinancialData.marketValueNow || purchasePrice;
-      } else if (year === 1) {
-        propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
       } else if (yearOverrides.propertyMarketValue !== undefined && yearOverrides.propertyMarketValue !== null) {
         propertyValue = yearOverrides.propertyMarketValue;
+      } else if (year === 1) {
+        propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
       } else {
         // Calculate based on previous year's value and this year's growth rate
         propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
@@ -744,10 +745,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let annualRent: number;
       if (year === 0) {
         annualRent = baseAnnualRent;
-      } else if (year === 1) {
-        annualRent = baseAnnualRent * (1 + baseCpiRate);
       } else if (yearOverrides.rentalIncome !== undefined && yearOverrides.rentalIncome !== null) {
         annualRent = yearOverrides.rentalIncome;
+      } else if (year === 1) {
+        annualRent = baseAnnualRent * (1 + baseCpiRate);
       } else {
         annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
       }
@@ -756,12 +757,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let totalExpenses: number;
       if (year === 0) {
         totalExpenses = basePropertyExpenses;
+      } else if (yearOverrides.propertyExpenses !== undefined && yearOverrides.propertyExpenses !== null) {
+        totalExpenses = yearOverrides.propertyExpenses;
       } else if (year === 1) {
         const expenses = baseExpenses * (1 + baseCpiRate);
         const propertyManagement = annualRent * propertyManagementPercent;
         totalExpenses = expenses + propertyManagement;
-      } else if (yearOverrides.propertyExpenses !== undefined && yearOverrides.propertyExpenses !== null) {
-        totalExpenses = yearOverrides.propertyExpenses;
       } else {
         const expenses = baseExpenses * Math.pow(1 + yearCpiRate, year);
         const propertyManagement = annualRent * propertyManagementPercent;
@@ -778,8 +779,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let depreciation: number;
       if (year === 0) {
         depreciation = 0;
-      } else if (year === 1) {
-        depreciation = baseFinancialData.depreciation;
       } else if (yearOverrides.depreciation !== undefined && yearOverrides.depreciation !== null) {
         depreciation = yearOverrides.depreciation;
       } else {
@@ -792,8 +791,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         landTax = 0;
       } else if (year === 0) {
         landTax = 0;
-      } else if (year === 1) {
-        landTax = baseFinancialData.landTax;
       } else if (yearOverrides.landTax !== undefined && yearOverrides.landTax !== null) {
         landTax = yearOverrides.landTax;
       } else {
@@ -1816,7 +1813,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     formatFn: (val: number) => string
   ) => {
     const isEditing = editingCell?.year === year && editingCell?.field === field;
-    const isEditable = year >= 2; // Only years 2-10 are editable
+    const isEditable = year >= 1; // Years 1-10 are editable
     const hasOverrideValue = hasOverride(year, field);
     const fieldConfig = EDITABLE_FIELDS.find(f => f.key === field);
     
@@ -3574,7 +3571,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="py-3">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Tip:</strong> Click on any cell in Years 2-10 to edit values directly. Year 1 is the reference point and cannot be edited. 
+                  <strong>Tip:</strong> Click on any cell in Years 1-10 to edit values directly. Year 0 (Today) is the reference point and cannot be edited. 
                   Cells with <span className="text-primary font-semibold">blue highlighting</span> have been overridden.
                 </p>
               </CardContent>
@@ -3988,7 +3985,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         {projections.map(p => (
                           <TableHead key={p.year} className="text-center min-w-[100px]">
                             {p.year === 0 ? 'Today' : `Year ${p.year}`}
-                            {p.year >= 2 && <span className="block text-[10px] font-normal text-muted-foreground">editable</span>}
+                            {p.year >= 1 && <span className="block text-[10px] font-normal text-muted-foreground">editable</span>}
                           </TableHead>
                         ))}
                       </TableRow>
