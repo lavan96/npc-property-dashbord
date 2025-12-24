@@ -13,7 +13,7 @@ interface RequestBody {
   action: 'list_users' | 'get_user' | 'create_user' | 'update_user' | 'delete_user' | 
           'assign_role' | 'remove_role' | 'update_permissions' | 'send_invite' |
           'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 
-          'accept_invite' | 'verify_invite';
+          'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile';
   session_token: string;
   user_id?: string;
   role?: 'superadmin' | 'admin' | 'user';
@@ -26,6 +26,7 @@ interface RequestBody {
   };
   token?: string;
   password?: string;
+  personal_mailbox?: string;
 }
 
 // Helper to verify session and check if user is superadmin
@@ -225,6 +226,90 @@ serve(async (req: Request) => {
       );
     }
 
+    // Helper to verify any authenticated user (not just superadmin)
+    const verifySession = async (sessionToken: string) => {
+      if (!sessionToken) {
+        return { error: 'Session token required', user: null };
+      }
+
+      const { data: session, error: sessionError } = await supabase
+        .from('user_sessions')
+        .select('user_id, expires_at')
+        .eq('session_token', sessionToken)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (sessionError || !session) {
+        return { error: 'Invalid or expired session', user: null };
+      }
+
+      const { data: user } = await supabase
+        .from('custom_users')
+        .select('*')
+        .eq('id', session.user_id)
+        .single();
+
+      return { error: null, user };
+    };
+
+    // Actions that require authentication but NOT superadmin
+    if (action === 'get_own_profile') {
+      const { error: sessionError, user: currentUser } = await verifySession(session_token);
+      if (sessionError || !currentUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: sessionError || 'Not authenticated' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          user: {
+            id: currentUser.id,
+            username: currentUser.username,
+            email: currentUser.email,
+            personal_mailbox: currentUser.personal_mailbox,
+            role: currentUser.role,
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update_own_mailbox') {
+      const { error: sessionError, user: currentUser } = await verifySession(session_token);
+      if (sessionError || !currentUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: sessionError || 'Not authenticated' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { personal_mailbox } = body;
+
+      const { error } = await supabase
+        .from('custom_users')
+        .update({ 
+          personal_mailbox: personal_mailbox || null,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`User ${currentUser.username} updated their own mailbox`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Mailbox updated' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // All other actions require superadmin
     const { error: authError, user: adminUser } = await verifySuperadmin(supabase, session_token);
     if (authError) {
@@ -238,7 +323,7 @@ serve(async (req: Request) => {
       const { data: users, error } = await supabase
         .from('custom_users')
         .select(`
-          id, username, email, role, is_active, created_at, updated_at,
+          id, username, email, role, is_active, created_at, updated_at, personal_mailbox,
           user_roles(role)
         `)
         .order('created_at', { ascending: false });
@@ -447,8 +532,8 @@ serve(async (req: Request) => {
       }
 
       const updateData: any = { updated_at: new Date().toISOString() };
-      // Add fields that can be updated
-      const allowedFields = ['is_active', 'email', 'username'];
+      // Add fields that can be updated by superadmin
+      const allowedFields = ['is_active', 'email', 'username', 'personal_mailbox'];
       for (const field of allowedFields) {
         if ((body as any)[field] !== undefined) {
           updateData[field] = (body as any)[field];
@@ -470,6 +555,40 @@ serve(async (req: Request) => {
       console.log(`User ${user_id} updated by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User updated' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update own mailbox - available to any authenticated user for their own profile
+    if (action === 'update_mailbox') {
+      const { user_id, personal_mailbox } = body;
+      const targetUserId = user_id || adminUser.id;
+      
+      // Non-superadmins can only update their own mailbox
+      // Superadmins can update anyone's mailbox
+      if (targetUserId !== adminUser.id) {
+        // This will only be reached by superadmins due to earlier auth check
+        console.log(`Superadmin ${adminUser.username} updating mailbox for user ${targetUserId}`);
+      }
+
+      const { error } = await supabase
+        .from('custom_users')
+        .update({ 
+          personal_mailbox: personal_mailbox || null,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', targetUserId);
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`Mailbox updated for user ${targetUserId}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Mailbox updated' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
