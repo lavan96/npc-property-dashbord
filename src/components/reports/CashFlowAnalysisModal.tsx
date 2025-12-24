@@ -391,8 +391,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
         const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
         const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
-        const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments;
-        const totalDeductions = totalExpenses + interestPayments + depreciation;
+        // Pre-tax cash flow (includes land tax as a cash expense)
+        const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments - landTax;
+        // Total deductions (includes land tax for tax calculation)
+        const totalDeductions = totalExpenses + interestPayments + depreciation + landTax;
         const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
         const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
         const afterTaxCashFlow = year === 0 ? 0 : preTaxCashFlow + taxRefund;
@@ -765,9 +767,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       // Net yield
       const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
 
-      // Pre-tax cash flow
-      const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments;
-
       // Depreciation
       let depreciation: number;
       if (year === 0) {
@@ -792,13 +791,16 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         landTax = baseFinancialData.landTax;
       }
 
-      // Total deductions
-      const totalDeductions = totalExpenses + interestPayments + depreciation;
+      // Pre-tax cash flow (includes land tax as a cash expense)
+      const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments - landTax;
 
-      // Net profit/loss
+      // Total deductions (includes land tax for tax calculation)
+      const totalDeductions = totalExpenses + interestPayments + depreciation + landTax;
+
+      // Net profit/loss (taxable income/loss)
       const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
 
-      // Tax refund
+      // Tax refund (negative gearing benefit when in loss position)
       const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
 
       // After-tax cash flow
