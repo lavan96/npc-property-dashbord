@@ -143,6 +143,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // Inputs Summary state
   const [inputsSummaryOpen, setInputsSummaryOpen] = useState(true);
   const [includeInputsSummaryInExport, setIncludeInputsSummaryInExport] = useState(true);
+  
+  // Land tax exclusion toggle
+  const [excludeLandTaxFromCashFlow, setExcludeLandTaxFromCashFlow] = useState(false);
 
   // Construction Progress Schedule state
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
@@ -194,6 +197,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       setCustomStageMonths(report.manual_overrides?.customStageMonths || {
         0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7
       });
+      
+      // Load land tax exclusion setting
+      setExcludeLandTaxFromCashFlow(report.manual_overrides?.excludeLandTaxFromCashFlow || false);
     }
   }, [report, isOpen]);
 
@@ -590,7 +596,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const existingOverrides = report.manual_overrides || {};
       const updatedOverrides = {
         ...existingOverrides,
-        cashFlowYearlyOverrides: yearlyOverrides
+        cashFlowYearlyOverrides: yearlyOverrides,
+        excludeLandTaxFromCashFlow: excludeLandTaxFromCashFlow,
       };
 
       const { error } = await supabase
@@ -779,9 +786,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         depreciation = baseFinancialData.depreciation;
       }
 
-      // Land tax
+      // Land tax (can be excluded from cash flow analysis via toggle)
       let landTax: number;
-      if (year === 0) {
+      if (excludeLandTaxFromCashFlow) {
+        landTax = 0;
+      } else if (year === 0) {
         landTax = 0;
       } else if (year === 1) {
         landTax = baseFinancialData.landTax;
@@ -834,7 +843,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     }
 
     return results;
-  }, [baseFinancialData, yearlyOverrides, loanProjections]);
+  }, [baseFinancialData, yearlyOverrides, loanProjections, excludeLandTaxFromCashFlow]);
 
   // Construction Progress Payment Schedule calculation
   interface ConstructionStage {
@@ -1934,6 +1943,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     projectionData.push([]);
     projectionData.push(['CASH DEDUCTIONS']);
     projectionData.push(['Property Expenses $', ...projections.map(p => p.year === 0 ? 0 : p.propertyExpenses)]);
+    projectionData.push(['Land Tax $', ...projections.map(p => p.year === 0 ? '' : p.landTax)]);
     projectionData.push(['Interest Rate %', ...projections.map(p => p.year === 0 ? '' : p.interestRate)]);
     projectionData.push(['Interest Payments $', ...projections.map(p => p.year === 0 ? 0 : p.interestPayments)]);
     projectionData.push(['Principal Payments $', ...projections.map(p => p.principalPayments)]);
@@ -1947,7 +1957,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     projectionData.push(['Total Deductions $', ...projections.map(p => p.year === 0 ? '' : p.totalDeductions)]);
     projectionData.push(['Net Profit/Loss $', ...projections.map(p => p.year === 0 ? '' : p.netProfitLoss)]);
     projectionData.push(['Tax Refund $', ...projections.map(p => p.year === 0 ? '' : p.taxRefund)]);
-    projectionData.push(['Land Tax $', ...projections.map(p => p.year === 0 ? '' : p.landTax)]);
     projectionData.push(['After-Tax Cash Flow p/a $', ...projections.map(p => p.year === 0 ? '' : p.afterTaxCashFlowPA)]);
     projectionData.push(['After-Tax Cash Flow p/w $', ...projections.map(p => p.year === 0 ? '' : p.afterTaxCashFlowPW)]);
 
@@ -2240,6 +2249,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       yPos += 2;
       drawRow(['CASH DEDUCTIONS'], false, true);
       drawRow(['Property Expenses $', '$0', ...projections.slice(1).map(p => formatCurrency(p.propertyExpenses))]);
+      drawRow(['Land Tax $', '', ...projections.slice(1).map(p => formatCurrency(p.landTax))]);
       drawRow(['Interest Rate %', '', ...projections.slice(1).map(p => p.interestRate.toFixed(2))]);
       drawRow(['Interest Payments $', '$0', ...projections.slice(1).map(p => formatCurrency(p.interestPayments))]);
       drawRow(['Principal Payments $', formatCurrency(projections[0].principalPayments), ...projections.slice(1).map(p => formatCurrency(p.principalPayments))]);
@@ -2255,7 +2265,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Total Deductions $', '', ...projections.slice(1).map(p => formatCurrency(p.totalDeductions))]);
       drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))]);
       drawRow(['Tax Refund $', '', ...projections.slice(1).map(p => formatCurrency(p.taxRefund))]);
-      drawRow(['Land Tax $', '', ...projections.slice(1).map(p => formatCurrency(p.landTax))]);
       drawRow(['After-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPA))]);
       drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))]);
 
@@ -2586,6 +2595,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               ${projections.slice(1).map(p => `<td>${formatCurrency(p.propertyExpenses)}</td>`).join('')}
             </tr>
             <tr>
+              <td>Land Tax $</td>
+              <td></td>
+              ${projections.slice(1).map(p => `<td>${formatCurrency(p.landTax)}</td>`).join('')}
+            </tr>
+            <tr>
               <td>Interest Rate %</td>
               <td></td>
               ${projections.slice(1).map(p => `<td>${p.interestRate.toFixed(2)}%</td>`).join('')}
@@ -2631,11 +2645,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               <td>Tax Refund $</td>
               <td></td>
               ${projections.slice(1).map(p => `<td class="text-green">${formatCurrency(p.taxRefund)}</td>`).join('')}
-            </tr>
-            <tr>
-              <td>Land Tax $</td>
-              <td></td>
-              ${projections.slice(1).map(p => `<td>${formatCurrency(p.landTax)}</td>`).join('')}
             </tr>
             <tr style="background: #eff6ff; font-weight: bold;">
               <td>After-Tax Cash Flow p/a $</td>
@@ -2804,8 +2813,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             </div>
 
-            {/* Comparison Mode Toggle */}
-            <div className="flex items-center justify-between">
+            {/* Comparison Mode Toggle & Land Tax Exclusion */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   variant={comparisonMode ? "default" : "outline"}
@@ -2856,6 +2865,24 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     </Select>
                   </div>
                 )}
+              </div>
+              
+              {/* Land Tax Exclusion Toggle */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="excludeLandTax"
+                  checked={excludeLandTaxFromCashFlow}
+                  onCheckedChange={(checked) => {
+                    setExcludeLandTaxFromCashFlow(checked === true);
+                    setHasChanges(true);
+                  }}
+                />
+                <label 
+                  htmlFor="excludeLandTax" 
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Exclude Land Tax from analysis
+                </label>
               </div>
             </div>
 
@@ -4085,6 +4112,23 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
+                      {/* Land Tax - Editable (moved from Summary to Cash Deductions) */}
+                      {!excludeLandTaxFromCashFlow && (
+                        <TableRow>
+                          <TableCell className="sticky left-0 bg-background font-medium">Land Tax $</TableCell>
+                          {projections.map(p => (
+                            <TableCell key={p.year} className="text-center p-1">
+                              {p.year === 0 ? '' : renderEditableCell(
+                                p.year,
+                                'landTax',
+                                p.landTax,
+                                (v) => v.toLocaleString()
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      )}
+                      
                       {/* Interest Rate - Editable */}
                       <TableRow>
                         <TableCell className="sticky left-0 bg-background font-medium">Interest Rate %</TableCell>
@@ -4191,21 +4235,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <TableCell className="sticky left-0 bg-background font-medium">Tax Refund $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center text-green-600">{p.year === 0 ? '' : p.taxRefund.toLocaleString()}</TableCell>
-                        ))}
-                      </TableRow>
-                      
-                      {/* Land Tax - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Land Tax $</TableCell>
-                        {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
-                            {p.year === 0 ? '' : renderEditableCell(
-                              p.year,
-                              'landTax',
-                              p.landTax,
-                              (v) => v.toLocaleString()
-                            )}
-                          </TableCell>
                         ))}
                       </TableRow>
                       
