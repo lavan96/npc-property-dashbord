@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +10,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
+import { useCalendarKeyboard } from '@/hooks/useCalendarKeyboard';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
 import { CalendarSearchDropdown } from '@/components/calendar/CalendarSearchDropdown';
 import { TimelineView } from '@/components/calendar/TimelineView';
 import { DraggableEvent } from '@/components/calendar/DraggableEvent';
 import { DropZone } from '@/components/calendar/DropZone';
-import { EventHoverPreview } from '@/components/calendar/EventHoverPreview';
 import { AvailabilitySlots } from '@/components/calendar/AvailabilitySlots';
 import { EventTemplates } from '@/components/calendar/EventTemplates';
 import { CalendarHeatmap } from '@/components/calendar/CalendarHeatmap';
@@ -27,8 +27,17 @@ import { QuickAddAppointmentModal } from '@/components/calendar/QuickAddAppointm
 import { MultiCalendarOverlay } from '@/components/calendar/MultiCalendarOverlay';
 import { RecurringPatterns } from '@/components/calendar/RecurringPatterns';
 import { SmartReminders } from '@/components/calendar/SmartReminders';
+import { MiniCalendarNavigator } from '@/components/calendar/MiniCalendarNavigator';
+import { EnhancedEventPreview } from '@/components/calendar/EnhancedEventPreview';
+import { FloatingActions } from '@/components/calendar/FloatingActions';
+import { KeyboardShortcutsHint } from '@/components/calendar/KeyboardShortcutsHint';
+import { CalendarLoadingSkeleton, StatsLoadingSkeleton, SidebarLoadingSkeleton } from '@/components/calendar/CalendarLoadingSkeleton';
+import { BatchActions } from '@/components/calendar/BatchActions';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+// Sidebar tab type
+type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders';
 
 // Module-level helper functions for date parsing/formatting
 const safeParseISO = (value: string | undefined | null): Date | null => {
@@ -61,9 +70,26 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
   return d ? format(d, fmt) : '—';
 };
 
+// Tab configurations with icons and shortcuts
+const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shortcut: string }[] = [
+  { id: 'events', icon: <CalendarIcon className="h-3 w-3" />, label: 'Events', shortcut: '1' },
+  { id: 'availability', icon: <Clock className="h-3 w-3" />, label: 'Availability', shortcut: '2' },
+  { id: 'templates', icon: <Zap className="h-3 w-3" />, label: 'Templates', shortcut: '3' },
+  { id: 'heatmap', icon: <Flame className="h-3 w-3" />, label: 'Heatmap', shortcut: '4' },
+  { id: 'analytics', icon: <BarChart3 className="h-3 w-3" />, label: 'Analytics', shortcut: '5' },
+  { id: 'summary', icon: <TrendingUp className="h-3 w-3" />, label: 'Summary', shortcut: '6' },
+  { id: 'conflicts', icon: <AlertTriangle className="h-3 w-3" />, label: 'Conflicts', shortcut: '7' },
+  { id: 'optimize', icon: <Sparkles className="h-3 w-3" />, label: 'Optimize', shortcut: '8' },
+  { id: 'overlay', icon: <Layers className="h-3 w-3" />, label: 'Overlay', shortcut: '9' },
+  { id: 'patterns', icon: <Repeat className="h-3 w-3" />, label: 'Patterns', shortcut: '' },
+  { id: 'reminders', icon: <Bell className="h-3 w-3" />, label: 'Reminders', shortcut: '' },
+];
+
 export default function Calendar() {
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
-  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders'>('events');
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [pinnedTabs, setPinnedTabs] = useState<SidebarTab[]>(['events', 'conflicts']);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
   const [quickAddDefaultHour, setQuickAddDefaultHour] = useState<number | undefined>(undefined);
   const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
@@ -77,7 +103,69 @@ export default function Calendar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [draggingEvent, setDraggingEvent] = useState<GHLEvent | null>(null);
   const [viewTransition, setViewTransition] = useState<'enter' | 'exit' | null>(null);
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
   const { toast } = useToast();
+
+  // Keyboard navigation hook
+  const { TAB_SHORTCUTS } = useCalendarKeyboard({
+    view,
+    selectedDate,
+    setSelectedDate,
+    currentMonth,
+    setCurrentMonth,
+    currentWeek,
+    setCurrentWeek,
+    sidebarTab,
+    setSidebarTab,
+    setQuickAddModalOpen,
+  });
+
+  // Smart tab ordering based on context
+  const smartOrderedTabs = useMemo(() => {
+    const order: SidebarTab[] = [];
+    
+    // If selected date has conflicts, prioritize conflicts tab
+    if (selectedDate) {
+      const dayEvents = events.filter(e => {
+        const d = safeParseISO(e.startTime);
+        return d ? isSameDay(d, selectedDate) : false;
+      });
+      
+      // Check for overlapping events (conflicts)
+      const hasConflicts = dayEvents.some((event, i) => {
+        const start1 = safeParseISO(event.startTime);
+        const end1 = safeParseISO(event.endTime);
+        if (!start1 || !end1) return false;
+        
+        return dayEvents.slice(i + 1).some(other => {
+          const start2 = safeParseISO(other.startTime);
+          const end2 = safeParseISO(other.endTime);
+          if (!start2 || !end2) return false;
+          return start1 < end2 && start2 < end1;
+        });
+      });
+      
+      if (hasConflicts) {
+        order.push('conflicts');
+      }
+      
+      if (dayEvents.length > 5) {
+        order.push('analytics');
+      }
+    }
+    
+    return order;
+  }, [selectedDate, events]);
+
+  // Toggle pin for a tab
+  const handleTogglePin = useCallback((tab: SidebarTab) => {
+    setPinnedTabs(prev => 
+      prev.includes(tab) 
+        ? prev.filter(t => t !== tab)
+        : [...prev, tab]
+    );
+  }, []);
 
   // Handle view transitions with animation
   const handleViewChange = useCallback((newView: 'month' | 'week' | 'timeline') => {
@@ -102,9 +190,13 @@ export default function Calendar() {
     return { start, end };
   };
 
-  useEffect(() => {
+  const handleRefresh = useCallback(() => {
     const { start, end } = getVisibleRange();
     fetchCalendarData(start.toISOString(), end.toISOString());
+  }, [view, currentMonth, currentWeek]);
+
+  useEffect(() => {
+    handleRefresh();
   }, [fetchCalendarData, view, currentMonth, currentWeek]);
 
   // Initialize visible calendars when calendars load
@@ -134,6 +226,52 @@ export default function Calendar() {
   const handleHideAllCalendars = useCallback(() => {
     setVisibleCalendars(new Set());
   }, []);
+
+  // Batch actions handlers
+  const handleToggleEventSelect = useCallback((eventId: string) => {
+    setSelectedEventIds(prev => {
+      const next = new Set(prev);
+      if (next.has(eventId)) {
+        next.delete(eventId);
+      } else {
+        next.add(eventId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllEvents = useCallback(() => {
+    const dayEvents = selectedDate 
+      ? events.filter(e => {
+          const d = safeParseISO(e.startTime);
+          return d ? isSameDay(d, selectedDate) : false;
+        })
+      : events;
+    setSelectedEventIds(new Set(dayEvents.map(e => e.id)));
+  }, [selectedDate, events]);
+
+  const handleClearEventSelection = useCallback(() => {
+    setSelectedEventIds(new Set());
+  }, []);
+
+  const handleBatchDelete = useCallback(async (eventIds: string[]) => {
+    // Delete events one by one (could be optimized with batch API if available)
+    for (const id of eventIds) {
+      await deleteEvent(id);
+    }
+    toast({
+      title: 'Events deleted',
+      description: `${eventIds.length} event(s) have been deleted`,
+    });
+  }, [deleteEvent, toast]);
+
+  const handleBatchReschedule = useCallback((eventIds: string[]) => {
+    toast({
+      title: 'Batch reschedule',
+      description: `Select a new date to reschedule ${eventIds.length} event(s)`,
+    });
+    // TODO: Implement batch reschedule modal
+  }, [toast]);
 
   // Handle drag-and-drop rescheduling
   const handleEventDrop = useCallback(async (event: GHLEvent, targetDate: Date, targetHour?: number) => {
@@ -235,6 +373,19 @@ export default function Calendar() {
       .sort((a, b) => a.d!.getTime() - b.d!.getTime())
       .slice(0, 10)
       .map((x) => x.e);
+  }, [filteredEvents]);
+
+  // Events per day for mini calendar
+  const eventsPerDay = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredEvents.forEach(event => {
+      const d = safeParseISO(event.startTime);
+      if (d) {
+        const key = format(d, 'yyyy-MM-dd');
+        map[key] = (map[key] || 0) + 1;
+      }
+    });
+    return map;
   }, [filteredEvents]);
 
   const calendarDays = useMemo(() => {
@@ -339,6 +490,19 @@ export default function Calendar() {
     };
   };
 
+  // Go to today
+  const goToToday = useCallback(() => {
+    const today = new Date();
+    setCurrentMonth(today);
+    setCurrentWeek(today);
+    setSelectedDate(today);
+  }, []);
+
+  // Clear selection
+  const clearSelection = useCallback(() => {
+    setSelectedDate(null);
+  }, []);
+
   if (error) {
     return (
       <div className="space-y-6">
@@ -378,6 +542,18 @@ export default function Calendar() {
         onDeleteEvent={deleteEvent}
       />
 
+      {/* Batch Actions Bar */}
+      <BatchActions
+        events={selectedDate ? selectedDateEvents : filteredEvents}
+        selectedEventIds={selectedEventIds}
+        onToggleSelect={handleToggleEventSelect}
+        onSelectAll={handleSelectAllEvents}
+        onClearSelection={handleClearEventSelection}
+        onBatchDelete={handleBatchDelete}
+        onBatchReschedule={handleBatchReschedule}
+        isLoading={isUpdating}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -390,6 +566,7 @@ export default function Calendar() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <KeyboardShortcutsHint />
           <CalendarSearchDropdown
             events={events}
             contactCache={contactCache}
@@ -434,10 +611,7 @@ export default function Calendar() {
           <Button 
             variant="outline" 
             size="icon"
-            onClick={() => {
-              const { start, end } = getVisibleRange();
-              fetchCalendarData(start.toISOString(), end.toISOString());
-            }}
+            onClick={handleRefresh}
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -446,34 +620,38 @@ export default function Calendar() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold">{calendars.length}</div>
-            <p className="text-xs text-muted-foreground">Calendars</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold">{filteredEvents.length}</div>
-            <p className="text-xs text-muted-foreground">Total Events</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-green-400">
-              {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
-            </div>
-            <p className="text-xs text-muted-foreground">Confirmed</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-blue-400">{upcomingEvents.length}</div>
-            <p className="text-xs text-muted-foreground">Upcoming</p>
-          </CardContent>
-        </Card>
-      </div>
+      {isLoading ? (
+        <StatsLoadingSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{calendars.length}</div>
+              <p className="text-xs text-muted-foreground">Calendars</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{filteredEvents.length}</div>
+              <p className="text-xs text-muted-foreground">Total Events</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-green-400">
+                {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
+              </div>
+              <p className="text-xs text-muted-foreground">Confirmed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-blue-400">{upcomingEvents.length}</div>
+              <p className="text-xs text-muted-foreground">Upcoming</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Calendar Legend */}
       {calendars.length > 0 && (
@@ -509,7 +687,10 @@ export default function Calendar() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className={cn(
+        "grid gap-6 transition-all duration-300",
+        sidebarCollapsed ? "lg:grid-cols-[1fr_56px]" : "lg:grid-cols-3"
+      )}>
         {/* Calendar View */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
@@ -535,17 +716,24 @@ export default function Calendar() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button 
-                  variant="ghost" 
+                  variant="default" 
                   size="sm"
-                  onClick={() => {
-                    const today = new Date();
-                    setCurrentMonth(today);
-                    setCurrentWeek(today);
-                    setSelectedDate(today);
-                  }}
+                  onClick={goToToday}
+                  className="font-medium"
                 >
                   Today
                 </Button>
+                {selectedDate && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={clearSelection}
+                    className="text-muted-foreground"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
                 <Button 
                   variant="ghost" 
                   size="icon"
@@ -570,15 +758,11 @@ export default function Calendar() {
               )}
             >
               {isLoading ? (
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: 35 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20 w-full" />
-                  ))}
-                </div>
+                <CalendarLoadingSkeleton view={view} />
               ) : view === 'month' ? (
                 <>
-                  {/* Day headers */}
-                  <div className="grid grid-cols-7 gap-1 mb-1">
+                  {/* Day headers - Sticky */}
+                  <div className="grid grid-cols-7 gap-1 mb-1 sticky top-0 bg-background z-10">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                       <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
                         {day}
@@ -614,13 +798,21 @@ export default function Calendar() {
                             </div>
                             <div className="space-y-0.5">
                               {dayEvents.slice(0, 3).map(event => (
-                                <EventHoverPreview
+                                <EnhancedEventPreview
                                   key={event.id}
                                   event={event}
                                   getStatusColor={getStatusColor}
                                   fetchContact={fetchContact}
                                   contactCache={contactCache}
                                   onViewDetails={() => handleEventClick(event)}
+                                  onConfirm={async () => {
+                                    await updateEvent(event.id, { appointmentStatus: 'confirmed' });
+                                    toast({ title: 'Event confirmed' });
+                                  }}
+                                  onCancel={async () => {
+                                    await updateEvent(event.id, { appointmentStatus: 'cancelled' });
+                                    toast({ title: 'Event cancelled' });
+                                  }}
                                 >
                                   <DraggableEvent 
                                     event={event}
@@ -639,7 +831,7 @@ export default function Calendar() {
                                       {safeFormatISO(event.startTime, 'HH:mm')}
                                     </div>
                                   </DraggableEvent>
-                                </EventHoverPreview>
+                                </EnhancedEventPreview>
                               ))}
                               {dayEvents.length > 3 && (
                                 <div className="text-[10px] text-muted-foreground px-1">
@@ -657,8 +849,8 @@ export default function Calendar() {
                 /* Week View with Drag and Drop */
                 <ScrollArea className="h-[600px]">
                   <div className="min-w-[700px]">
-                    {/* Week day headers */}
-                    <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2">
+                    {/* Week day headers - Sticky */}
+                    <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2 border-b">
                       <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
                       {weekDays.map(day => (
                         <div 
@@ -676,7 +868,7 @@ export default function Calendar() {
                     <div className="relative">
                       {weekHours.map(hour => (
                         <div key={hour} className="grid grid-cols-8 gap-1 border-t border-border/50">
-                          <div className="text-[10px] text-muted-foreground py-1 w-16 text-right pr-2">
+                          <div className="text-[10px] text-muted-foreground py-1 w-16 text-right pr-2 sticky left-0 bg-background">
                             {format(new Date().setHours(hour, 0), 'h a')}
                           </div>
                           {weekDays.map(day => {
@@ -734,139 +926,229 @@ export default function Calendar() {
         </Card>
 
         {/* Sidebar Panel with Tabs */}
-        <Card>
+        <Card className={cn(
+          "transition-all duration-300 overflow-hidden",
+          sidebarCollapsed && "w-14"
+        )}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Tools</span>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
-                <Plus className="h-3 w-3 mr-1" />
-                Quick Add
-              </Button>
+              {!sidebarCollapsed && (
+                <span className="text-xs font-medium text-muted-foreground">Tools</span>
+              )}
+              <div className="flex items-center gap-1 ml-auto">
+                {!sidebarCollapsed && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
+                    <Plus className="h-3 w-3 mr-1" />
+                    Quick Add
+                  </Button>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    >
+                      {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
+
             <TooltipProvider delayDuration={100}>
-              <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="events" className="text-xs px-0.5"><CalendarIcon className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Events</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="availability" className="text-xs px-0.5"><Clock className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Availability</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="templates" className="text-xs px-0.5"><Zap className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Templates</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="heatmap" className="text-xs px-0.5"><Flame className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Heatmap</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="analytics" className="text-xs px-0.5"><BarChart3 className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Analytics</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="summary" className="text-xs px-0.5"><TrendingUp className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Summary</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="conflicts" className="text-xs px-0.5"><AlertTriangle className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Conflicts</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="optimize" className="text-xs px-0.5"><Sparkles className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Optimize</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="overlay" className="text-xs px-0.5"><Layers className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Overlay</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="patterns" className="text-xs px-0.5"><Repeat className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Patterns</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild>
-                    <TabsTrigger value="reminders" className="text-xs px-0.5"><Bell className="h-3 w-3" /></TabsTrigger>
-                  </TooltipTrigger><TooltipContent side="bottom">Reminders</TooltipContent></Tooltip>
-                </TabsList>
-              </Tabs>
+              {sidebarCollapsed ? (
+                // Vertical icon-only tabs
+                <div className="flex flex-col gap-1">
+                  {SIDEBAR_TABS.map((tab) => {
+                    const isPinned = pinnedTabs.includes(tab.id);
+                    return (
+                      <Tooltip key={tab.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => {
+                              setSidebarTab(tab.id);
+                              setSidebarCollapsed(false);
+                            }}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              handleTogglePin(tab.id);
+                            }}
+                            className={cn(
+                              'p-2 rounded-md transition-colors relative',
+                              sidebarTab === tab.id 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+                              isPinned && 'ring-1 ring-primary/30'
+                            )}
+                          >
+                            {tab.icon}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <div className="flex items-center gap-2">
+                            {tab.label}
+                            {tab.shortcut && (
+                              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted rounded">{tab.shortcut}</kbd>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Horizontal tabs
+                <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
+                  <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
+                    {SIDEBAR_TABS.map((tab) => {
+                      const isPinned = pinnedTabs.includes(tab.id);
+                      return (
+                        <Tooltip key={tab.id}>
+                          <TooltipTrigger asChild>
+                            <TabsTrigger 
+                              value={tab.id} 
+                              className={cn(
+                                "text-xs px-0.5 relative",
+                                isPinned && "ring-1 ring-primary/30"
+                              )}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                handleTogglePin(tab.id);
+                              }}
+                            >
+                              {tab.icon}
+                            </TabsTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              {tab.label}
+                              {tab.shortcut && (
+                                <kbd className="px-1.5 py-0.5 text-[10px] bg-background/50 rounded border">{tab.shortcut}</kbd>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              Right-click to {isPinned ? 'unpin' : 'pin'}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </TabsList>
+                </Tabs>
+              )}
             </TooltipProvider>
           </CardHeader>
-          <CardContent className="p-3">
-            {sidebarTab === 'events' && (
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
-                </h4>
-                <ScrollArea className="h-[380px]">
-                  {isLoading ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Skeleton key={i} className="h-16 w-full" />
-                      ))}
-                    </div>
-                  ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {(selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
-                        <EventCard key={event.id} event={event} getStatusColor={getStatusColor} onClick={() => handleEventClick(event)} />
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
+
+          {!sidebarCollapsed && (
+            <CardContent className="p-3">
+              {/* Mini Calendar Navigator */}
+              <div className="mb-4 pb-3 border-b">
+                <MiniCalendarNavigator
+                  currentMonth={currentMonth}
+                  setCurrentMonth={setCurrentMonth}
+                  selectedDate={selectedDate}
+                  onDateSelect={(date) => {
+                    setSelectedDate(date);
+                    setCurrentMonth(date);
+                  }}
+                  eventsPerDay={eventsPerDay}
+                />
               </div>
-            )}
-            {sidebarTab === 'availability' && selectedDate && (
-              <AvailabilitySlots selectedDate={selectedDate} events={filteredEvents} onSlotClick={() => setSidebarTab('templates')} />
-            )}
-            {sidebarTab === 'templates' && (
-              <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
-            )}
-            {sidebarTab === 'heatmap' && (
-              <ScrollArea className="h-[420px]">
-                <CalendarHeatmap events={filteredEvents} currentMonth={currentMonth} selectedDate={selectedDate} onDateSelect={(date) => { setSelectedDate(date); setSidebarTab('events'); }} />
-              </ScrollArea>
-            )}
-            {sidebarTab === 'analytics' && (
-              <ScrollArea className="h-[420px]">
-                <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} selectedDate={selectedDate} />
-              </ScrollArea>
-            )}
-            {sidebarTab === 'summary' && (
-              <ScrollArea className="h-[420px]">
-                <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} selectedDate={selectedDate} />
-              </ScrollArea>
-            )}
-            {sidebarTab === 'conflicts' && (
-              <ConflictDetection events={filteredEvents} onEventClick={handleEventClick} selectedDate={selectedDate} />
-            )}
-            {sidebarTab === 'optimize' && (
-              <ResourceOptimization
-                events={filteredEvents}
-                currentWeek={currentWeek}
-                selectedDate={selectedDate}
-                onSlotSelect={(date, hour) => {
-                  setSelectedDate(date);
-                  setQuickAddDefaultHour(hour);
-                  setQuickAddModalOpen(true);
-                }}
-              />
-            )}
-            {sidebarTab === 'overlay' && (
-              <MultiCalendarOverlay
-                calendars={calendars}
-                events={events}
-                visibleCalendars={visibleCalendars}
-                onToggleCalendar={handleToggleCalendar}
-                onShowAll={handleShowAllCalendars}
-                onHideAll={handleHideAllCalendars}
-              />
-            )}
-            {sidebarTab === 'patterns' && (
-              <RecurringPatterns events={events} onPatternClick={(pattern) => toast({ title: 'Pattern detected', description: pattern.title })} />
-            )}
-            {sidebarTab === 'reminders' && (
-              <SmartReminders calendars={calendars} />
-            )}
-          </CardContent>
+
+              {sidebarTab === 'events' && (
+                <div>
+                  <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
+                  </h4>
+                  <ScrollArea className="h-[280px]">
+                    {isLoading ? (
+                      <SidebarLoadingSkeleton />
+                    ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
+                          <EventCard key={event.id} event={event} getStatusColor={getStatusColor} onClick={() => handleEventClick(event)} />
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+              )}
+              {sidebarTab === 'availability' && selectedDate && (
+                <AvailabilitySlots selectedDate={selectedDate} events={filteredEvents} onSlotClick={() => setSidebarTab('templates')} />
+              )}
+              {sidebarTab === 'templates' && (
+                <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
+              )}
+              {sidebarTab === 'heatmap' && (
+                <ScrollArea className="h-[320px]">
+                  <CalendarHeatmap events={filteredEvents} currentMonth={currentMonth} selectedDate={selectedDate} onDateSelect={(date) => { setSelectedDate(date); setSidebarTab('events'); }} />
+                </ScrollArea>
+              )}
+              {sidebarTab === 'analytics' && (
+                <ScrollArea className="h-[320px]">
+                  <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} selectedDate={selectedDate} />
+                </ScrollArea>
+              )}
+              {sidebarTab === 'summary' && (
+                <ScrollArea className="h-[320px]">
+                  <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} selectedDate={selectedDate} />
+                </ScrollArea>
+              )}
+              {sidebarTab === 'conflicts' && (
+                <ConflictDetection events={filteredEvents} onEventClick={handleEventClick} selectedDate={selectedDate} />
+              )}
+              {sidebarTab === 'optimize' && (
+                <ResourceOptimization
+                  events={filteredEvents}
+                  currentWeek={currentWeek}
+                  selectedDate={selectedDate}
+                  onSlotSelect={(date, hour) => {
+                    setSelectedDate(date);
+                    setQuickAddDefaultHour(hour);
+                    setQuickAddModalOpen(true);
+                  }}
+                />
+              )}
+              {sidebarTab === 'overlay' && (
+                <MultiCalendarOverlay
+                  calendars={calendars}
+                  events={events}
+                  visibleCalendars={visibleCalendars}
+                  onToggleCalendar={handleToggleCalendar}
+                  onShowAll={handleShowAllCalendars}
+                  onHideAll={handleHideAllCalendars}
+                />
+              )}
+              {sidebarTab === 'patterns' && (
+                <RecurringPatterns events={events} onPatternClick={(pattern) => toast({ title: 'Pattern detected', description: pattern.title })} />
+              )}
+              {sidebarTab === 'reminders' && (
+                <SmartReminders calendars={calendars} />
+              )}
+            </CardContent>
+          )}
         </Card>
       </div>
+
+      {/* Floating Actions */}
+      <FloatingActions
+        onQuickAdd={() => setQuickAddModalOpen(true)}
+        onRefresh={handleRefresh}
+        onClearSelection={selectedDate ? clearSelection : undefined}
+        hasSelection={!!selectedDate}
+        isRefreshing={isLoading}
+      />
 
       {/* Quick Add Modal */}
       <QuickAddAppointmentModal
