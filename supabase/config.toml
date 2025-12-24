@@ -231,3 +231,9 @@ verify_jwt = false
 
 [functions.ghl-calendar]
 verify_jwt = false
+
+[functions.admin-password-reset]
+verify_jwt = false
+
+[functions.admin-user-management]
+verify_jwt = false
