@@ -177,7 +177,7 @@ serve(async (req: Request) => {
           username,
           email: invite.email,
           password_hash: finalPassword,
-          role: 'admin',
+          role: 'sub_admin', // All invited users are sub_admins
           is_active: true,
         })
         .select()
@@ -191,7 +191,7 @@ serve(async (req: Request) => {
         );
       }
 
-      // Assign admin role
+      // Assign admin role in user_roles table (keeps compatibility, but they're still sub_admin tier)
       await supabase
         .from('user_roles')
         .insert({ user_id: newUser.id, role: 'admin' });

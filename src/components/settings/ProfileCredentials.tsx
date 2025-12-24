@@ -204,7 +204,13 @@ export function ProfileCredentials() {
           )}
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Role</span>
-            <span className="font-medium capitalize">{profile.role}</span>
+            <span className="font-medium">
+              {profile.role === 'super_admin' 
+                ? 'Super Administrator' 
+                : profile.role === 'sub_admin' 
+                  ? 'Administrator' 
+                  : profile.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </span>
           </div>
         </div>
 
