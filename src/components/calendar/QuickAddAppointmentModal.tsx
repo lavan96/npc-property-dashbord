@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, Plus, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Plus, Loader2, Keyboard } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { GHLCalendar } from '@/hooks/useGHLCalendar';
 
 interface QuickAddAppointmentModalProps {
@@ -25,6 +26,15 @@ interface QuickAddAppointmentModalProps {
   }) => Promise<boolean>;
 }
 
+const DURATION_OPTIONS = [
+  { value: '15', label: '15 min' },
+  { value: '30', label: '30 min' },
+  { value: '45', label: '45 min' },
+  { value: '60', label: '1 hour' },
+  { value: '90', label: '1.5 hours' },
+  { value: '120', label: '2 hours' },
+];
+
 export function QuickAddAppointmentModal({
   open,
   onOpenChange,
@@ -40,6 +50,7 @@ export function QuickAddAppointmentModal({
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState('30');
   const [notes, setNotes] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -62,8 +73,39 @@ export function QuickAddAppointmentModal({
       if (calendars.length > 0 && !selectedCalendarId) {
         setSelectedCalendarId(calendars[0].id);
       }
+
+      // Focus title input
+      setTimeout(() => titleInputRef.current?.focus(), 100);
     }
   }, [open, defaultDate, defaultHour, calendars, selectedCalendarId]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return;
+
+      // Ctrl/Cmd + Enter to submit
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (title.trim() && selectedCalendarId) {
+          handleSubmit(new Event('submit') as any);
+        }
+        return;
+      }
+
+      // Alt + number for duration shortcuts
+      if (e.altKey && !isNaN(Number(e.key))) {
+        const num = Number(e.key);
+        if (num >= 1 && num <= 6) {
+          e.preventDefault();
+          setDuration(DURATION_OPTIONS[num - 1].value);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, title, selectedCalendarId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,12 +146,12 @@ export function QuickAddAppointmentModal({
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
             <Input
+              ref={titleInputRef}
               id="title"
               placeholder="Appointment title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              autoFocus
             />
           </div>
 
@@ -165,22 +207,27 @@ export function QuickAddAppointmentModal({
             </div>
           </div>
 
-          {/* Duration */}
+          {/* Duration with keyboard shortcuts */}
           <div className="space-y-2">
             <Label>Duration</Label>
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="15">15 minutes</SelectItem>
-                <SelectItem value="30">30 minutes</SelectItem>
-                <SelectItem value="45">45 minutes</SelectItem>
-                <SelectItem value="60">1 hour</SelectItem>
-                <SelectItem value="90">1.5 hours</SelectItem>
-                <SelectItem value="120">2 hours</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              {DURATION_OPTIONS.map((opt, idx) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDuration(opt.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                    duration === opt.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80'
+                  )}
+                >
+                  {opt.label}
+                  <span className="ml-1 text-[10px] opacity-60">Alt+{idx + 1}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Notes */}
@@ -193,6 +240,16 @@ export function QuickAddAppointmentModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
             />
+          </div>
+
+          {/* Keyboard Shortcuts Help */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
+            <Keyboard className="h-3 w-3" />
+            <span><kbd className="px-1 bg-background rounded">⌘/Ctrl+Enter</kbd> to save</span>
+            <span>•</span>
+            <span><kbd className="px-1 bg-background rounded">Esc</kbd> to close</span>
+            <span>•</span>
+            <span><kbd className="px-1 bg-background rounded">Alt+1-6</kbd> duration</span>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

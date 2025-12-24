@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
@@ -20,7 +21,10 @@ import { EventTemplates } from '@/components/calendar/EventTemplates';
 import { CalendarHeatmap } from '@/components/calendar/CalendarHeatmap';
 import { TimeAllocationDashboard } from '@/components/calendar/TimeAllocationDashboard';
 import { WeeklySummaryCards } from '@/components/calendar/WeeklySummaryCards';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes } from 'date-fns';
+import { ConflictDetection } from '@/components/calendar/ConflictDetection';
+import { ResourceOptimization } from '@/components/calendar/ResourceOptimization';
+import { QuickAddAppointmentModal } from '@/components/calendar/QuickAddAppointmentModal';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // Module-level helper functions for date parsing/formatting
@@ -56,7 +60,9 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 
 export default function Calendar() {
   const { calendars, events, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchContact, getCalendarColor, rescheduleEvent, createAppointment } = useGHLCalendar();
-  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary'>('events');
+  const [sidebarTab, setSidebarTab] = useState<'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize'>('events');
+  const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
+  const [quickAddDefaultHour, setQuickAddDefaultHour] = useState<number | undefined>(undefined);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -649,28 +655,43 @@ export default function Calendar() {
         {/* Sidebar Panel with Tabs */}
         <Card>
           <CardHeader className="pb-2">
-            <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-              <TabsList className="w-full grid grid-cols-6 h-8">
-                <TabsTrigger value="events" className="text-xs px-1">
-                  <CalendarIcon className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger value="availability" className="text-xs px-1">
-                  <Clock className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger value="templates" className="text-xs px-1">
-                  <Zap className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger value="heatmap" className="text-xs px-1">
-                  <Flame className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="text-xs px-1">
-                  <BarChart3 className="h-3 w-3" />
-                </TabsTrigger>
-                <TabsTrigger value="summary" className="text-xs px-1">
-                  <TrendingUp className="h-3 w-3" />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Tools</span>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
+                <Plus className="h-3 w-3 mr-1" />
+                Quick Add
+              </Button>
+            </div>
+            <TooltipProvider delayDuration={100}>
+              <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
+                <TabsList className="w-full grid grid-cols-8 h-8">
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="events" className="text-xs px-1"><CalendarIcon className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Events</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="availability" className="text-xs px-1"><Clock className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Availability</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="templates" className="text-xs px-1"><Zap className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Templates</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="heatmap" className="text-xs px-1"><Flame className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Heatmap</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="analytics" className="text-xs px-1"><BarChart3 className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Analytics</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="summary" className="text-xs px-1"><TrendingUp className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Summary</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="conflicts" className="text-xs px-1"><AlertTriangle className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Conflicts</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild>
+                    <TabsTrigger value="optimize" className="text-xs px-1"><Sparkles className="h-3 w-3" /></TabsTrigger>
+                  </TooltipTrigger><TooltipContent side="bottom">Optimize</TooltipContent></Tooltip>
+                </TabsList>
+              </Tabs>
+            </TooltipProvider>
           </CardHeader>
           <CardContent className="p-3">
             {sidebarTab === 'events' && (
@@ -694,12 +715,7 @@ export default function Calendar() {
                   ) : (
                     <div className="space-y-2">
                       {(selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
-                        <EventCard 
-                          key={event.id} 
-                          event={event} 
-                          getStatusColor={getStatusColor}
-                          onClick={() => handleEventClick(event)}
-                        />
+                        <EventCard key={event.id} event={event} getStatusColor={getStatusColor} onClick={() => handleEventClick(event)} />
                       ))}
                     </div>
                   )}
@@ -707,55 +723,57 @@ export default function Calendar() {
               </div>
             )}
             {sidebarTab === 'availability' && selectedDate && (
-              <AvailabilitySlots
-                selectedDate={selectedDate}
-                events={filteredEvents}
-                onSlotClick={(start, end) => {
-                  setSidebarTab('templates');
-                }}
-              />
+              <AvailabilitySlots selectedDate={selectedDate} events={filteredEvents} onSlotClick={() => setSidebarTab('templates')} />
             )}
             {sidebarTab === 'templates' && (
-              <EventTemplates
-                calendars={calendars}
-                selectedDate={selectedDate || undefined}
-                onCreateAppointment={createAppointment}
-                isUpdating={isUpdating}
-              />
+              <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
             )}
             {sidebarTab === 'heatmap' && (
               <ScrollArea className="h-[420px]">
-                <CalendarHeatmap
-                  events={filteredEvents}
-                  currentMonth={currentMonth}
-                  selectedDate={selectedDate}
-                  onDateSelect={(date) => {
-                    setSelectedDate(date);
-                    setSidebarTab('events');
-                  }}
-                />
+                <CalendarHeatmap events={filteredEvents} currentMonth={currentMonth} selectedDate={selectedDate} onDateSelect={(date) => { setSelectedDate(date); setSidebarTab('events'); }} />
               </ScrollArea>
             )}
             {sidebarTab === 'analytics' && (
               <ScrollArea className="h-[420px]">
-                <TimeAllocationDashboard
-                  events={filteredEvents}
-                  calendars={calendars}
-                  currentWeek={currentWeek}
-                />
+                <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} />
               </ScrollArea>
             )}
             {sidebarTab === 'summary' && (
               <ScrollArea className="h-[420px]">
-                <WeeklySummaryCards
-                  events={filteredEvents}
-                  currentWeek={currentWeek}
-                />
+                <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} />
               </ScrollArea>
+            )}
+            {sidebarTab === 'conflicts' && (
+              <ConflictDetection events={filteredEvents} onEventClick={handleEventClick} />
+            )}
+            {sidebarTab === 'optimize' && (
+              <ResourceOptimization
+                events={filteredEvents}
+                currentWeek={currentWeek}
+                onSlotSelect={(date, hour) => {
+                  setSelectedDate(date);
+                  setQuickAddDefaultHour(hour);
+                  setQuickAddModalOpen(true);
+                }}
+              />
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Add Modal */}
+      <QuickAddAppointmentModal
+        open={quickAddModalOpen}
+        onOpenChange={setQuickAddModalOpen}
+        calendars={calendars}
+        defaultDate={selectedDate || undefined}
+        defaultHour={quickAddDefaultHour}
+        isLoading={isUpdating}
+        onSubmit={async (data) => {
+          const result = await createAppointment(data);
+          return result.success;
+        }}
+      />
 
       {/* Calendars List */}
       <Card>
