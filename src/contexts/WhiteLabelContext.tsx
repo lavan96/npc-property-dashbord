@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface WhiteLabelSettings {
+  id?: string;
   authLogo: string | null;
   sidebarLogo: string | null;
   sidebarIcon: string | null;
@@ -30,8 +32,6 @@ const defaultSettings: WhiteLabelSettings = {
   accentColor: null,
   darkModeDefault: 'light',
 };
-
-const STORAGE_KEY = 'whitelabel_settings';
 
 // Helper to convert hex to HSL string (without hsl() wrapper)
 export function hexToHsl(hex: string): string {
@@ -103,19 +103,42 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
   const [isLoading, setIsLoading] = useState(true);
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
 
-  // Load settings from localStorage on mount
+  // Load settings from Supabase on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSettings({ ...defaultSettings, ...parsed });
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('whitelabel_settings')
+          .select('*')
+          .limit(1)
+          .single();
+        
+        if (error) {
+          console.error('Failed to fetch whitelabel settings:', error);
+          return;
+        }
+        
+        if (data) {
+          setSettings({
+            id: data.id,
+            authLogo: data.auth_logo,
+            sidebarLogo: data.sidebar_logo,
+            sidebarIcon: data.sidebar_icon,
+            favicon: data.favicon,
+            companyName: data.company_name,
+            primaryColor: data.primary_color,
+            accentColor: data.accent_color,
+            darkModeDefault: data.dark_mode_default as ThemeMode,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load whitelabel settings:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load whitelabel settings:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    
+    fetchSettings();
   }, []);
 
   // Apply dark mode based on settings
@@ -196,10 +219,36 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
     }
   }, [settings.companyName]);
 
-  const updateSettings = useCallback((newSettings: Partial<WhiteLabelSettings>) => {
+  const updateSettings = useCallback(async (newSettings: Partial<WhiteLabelSettings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...newSettings };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      
+      // Save to Supabase in the background
+      const saveToSupabase = async () => {
+        try {
+          const { error } = await supabase
+            .from('whitelabel_settings')
+            .update({
+              auth_logo: updated.authLogo,
+              sidebar_logo: updated.sidebarLogo,
+              sidebar_icon: updated.sidebarIcon,
+              favicon: updated.favicon,
+              company_name: updated.companyName,
+              primary_color: updated.primaryColor,
+              accent_color: updated.accentColor,
+              dark_mode_default: updated.darkModeDefault,
+            })
+            .eq('id', updated.id || '');
+          
+          if (error) {
+            console.error('Failed to save whitelabel settings:', error);
+          }
+        } catch (error) {
+          console.error('Failed to save whitelabel settings:', error);
+        }
+      };
+      
+      saveToSupabase();
       return updated;
     });
   }, []);
