@@ -793,8 +793,9 @@ serve(async (req: Request) => {
         );
       }
 
-      // Determine the app URL (fallback to a placeholder)
-      const appUrl = Deno.env.get('APP_URL') || 'https://your-app.lovable.app';
+      // Determine the app URL from request origin or referer header
+      const origin = req.headers.get('origin') || req.headers.get('referer')?.replace(/\/$/, '') || Deno.env.get('APP_URL') || 'https://dduzbchuswwbefdunfct.lovable.app';
+      const appUrl = origin.replace(/\/+$/, ''); // Remove trailing slashes
       const inviteUrl = `${appUrl}/accept-invite?token=${token}`;
 
       // Send email
