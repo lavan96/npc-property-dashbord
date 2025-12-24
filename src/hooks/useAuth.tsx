@@ -24,8 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
 
-  const isSuperadmin = roles.includes('superadmin');
-  const isAdmin = roles.includes('admin') || isSuperadmin;
+  // Super admin check: either has superadmin role in user_roles OR has super_admin in custom_users.role
+  const isSuperadmin = roles.includes('superadmin') || user?.role === 'super_admin';
+  const isAdmin = roles.includes('admin') || isSuperadmin || user?.role === 'sub_admin';
 
   // Check for existing session on mount and ensure Supabase Auth is signed out
   useEffect(() => {
