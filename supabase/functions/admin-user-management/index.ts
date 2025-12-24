@@ -14,7 +14,10 @@ interface RequestBody {
           'assign_role' | 'remove_role' | 'update_permissions' | 'send_invite' |
           'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 
           'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile' |
-          'update_own_mailbox' | 'create_subadmin';
+          'update_own_mailbox' | 'create_subadmin' | 'update_own_credentials';
+  new_username?: string;
+  current_password?: string;
+  new_password?: string;
   session_token: string;
   user_id?: string;
   role?: 'superadmin' | 'admin' | 'user';
@@ -314,6 +317,105 @@ serve(async (req: Request) => {
       console.log(`User ${currentUser.username} updated their own mailbox`);
       return new Response(
         JSON.stringify({ success: true, message: 'Mailbox updated' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Update own credentials (username and/or password)
+    if (action === 'update_own_credentials') {
+      const { error: sessionError, user: currentUser } = await verifySession(session_token);
+      if (sessionError || !currentUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: sessionError || 'Not authenticated' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { new_username, current_password, new_password } = body;
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+
+      // Handle username update
+      if (new_username && new_username !== currentUser.username) {
+        if (new_username.trim().length < 3) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Username must be at least 3 characters' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if username already exists
+        const { data: existingUser } = await supabase
+          .from('custom_users')
+          .select('id')
+          .eq('username', new_username.trim())
+          .neq('id', currentUser.id)
+          .single();
+
+        if (existingUser) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Username already taken' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        updates.username = new_username.trim();
+      }
+
+      // Handle password update
+      if (new_password) {
+        if (!current_password) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Current password is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify current password
+        if (currentUser.password_hash !== current_password) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Current password is incorrect' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (new_password.length < 6) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'New password must be at least 6 characters' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        updates.password_hash = new_password;
+      }
+
+      // Only proceed if there are actual updates
+      if (Object.keys(updates).length === 1) { // Only updated_at
+        return new Response(
+          JSON.stringify({ success: false, error: 'No changes to update' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('custom_users')
+        .update(updates)
+        .eq('id', currentUser.id);
+
+      if (error) {
+        console.error('Failed to update credentials:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const changedFields = [];
+      if (updates.username) changedFields.push('username');
+      if (updates.password_hash) changedFields.push('password');
+
+      console.log(`User ${currentUser.username} updated their credentials: ${changedFields.join(', ')}`);
+      return new Response(
+        JSON.stringify({ success: true, message: `Updated: ${changedFields.join(', ')}` }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
