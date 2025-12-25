@@ -1,0 +1,36 @@
+{
+  "name": "NPC Property Dashboard",
+  "short_name": "NPC Property",
+  "description": "Admin dashboard for NPC Property Intake - manage and review property listings",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#d4a843",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/images/npc-signature-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Listings",
+      "url": "/listings",
+      "description": "View property listings"
+    },
+    {
+      "name": "Reports",
+      "url": "/reports",
+      "description": "View investment reports"
+    }
+  ]
+}
