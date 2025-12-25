@@ -158,6 +158,13 @@ serve(async (req) => {
     let supabaseClient = null;
     let existingManualOverrides = null;
     
+    // Get pre-generation overrides from request (passed from frontend)
+    const frontendManualOverrides = propertyDetails?.manualOverrides || null;
+    if (frontendManualOverrides && Object.keys(frontendManualOverrides).length > 0) {
+      console.log('📝 Received pre-generation overrides from frontend:', Object.keys(frontendManualOverrides).length, 'fields');
+      console.log('  Override keys:', Object.keys(frontendManualOverrides).join(', '));
+    }
+    
     if (reportId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -173,7 +180,7 @@ serve(async (req) => {
         
         if (existingReport?.manual_overrides) {
           existingManualOverrides = existingReport.manual_overrides;
-          console.log('📝 Fetched existing manual overrides:', Object.keys(existingManualOverrides).length, 'fields');
+          console.log('📝 Fetched existing manual overrides from DB:', Object.keys(existingManualOverrides).length, 'fields');
         }
         
         // Update status to processing
@@ -184,6 +191,16 @@ serve(async (req) => {
         
         console.log('Updated report status to processing');
       }
+    }
+    
+    // Merge overrides: frontend takes precedence over existing DB overrides
+    const mergedOverrides = {
+      ...(existingManualOverrides || {}),
+      ...(frontendManualOverrides || {})
+    };
+    const hasOverrides = Object.keys(mergedOverrides).length > 0;
+    if (hasOverrides) {
+      console.log('🔀 Merged overrides total:', Object.keys(mergedOverrides).length, 'fields');
     }
 
     // Check for Perplexity API key
@@ -482,6 +499,25 @@ serve(async (req) => {
       // Calculate financial projections if property details available
       if (propertyDetails?.price && weeklyRent) {
         try {
+          // Use override values if available, otherwise use defaults
+          const effectivePropertyValue = mergedOverrides.purchasePrice || propertyDetails.price;
+          const effectiveLvr = mergedOverrides.loanToValueRatio || 80;
+          const effectiveDeposit = mergedOverrides.depositValue || (effectivePropertyValue * ((100 - effectiveLvr) / 100));
+          const effectiveInterestRate = mergedOverrides.interestRate || 6.5;
+          const effectiveLoanTerm = mergedOverrides.loanTermYears || 30;
+          const effectiveWeeklyRent = mergedOverrides.weeklyRent || weeklyRent;
+          const effectiveIsFirstHomeBuyer = mergedOverrides.isFirstHomeBuyer || false;
+          const effectiveIsNewBuild = mergedOverrides.buildType === 'new_build';
+          
+          console.log('📊 Financial calculator inputs (with overrides applied):');
+          console.log(`  Property Value: $${effectivePropertyValue.toLocaleString()}`);
+          console.log(`  Deposit: $${effectiveDeposit.toLocaleString()} (LVR: ${effectiveLvr}%)`);
+          console.log(`  Interest Rate: ${effectiveInterestRate}%`);
+          console.log(`  Loan Term: ${effectiveLoanTerm} years`);
+          console.log(`  Weekly Rent: $${effectiveWeeklyRent}`);
+          console.log(`  First Home Buyer: ${effectiveIsFirstHomeBuyer}`);
+          console.log(`  New Build: ${effectiveIsNewBuild}`);
+          
           const financialResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/financial-calculator-service`, {
             method: 'POST',
             headers: {
@@ -489,14 +525,16 @@ serve(async (req) => {
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
             },
             body: JSON.stringify({
-              propertyValue: propertyDetails.price,
-              deposit: propertyDetails.price * 0.2,
-              interestRate: 6.5,
-              loanTerm: 30,
-              weeklyRent: weeklyRent,
+              propertyValue: effectivePropertyValue,
+              deposit: effectiveDeposit,
+              interestRate: effectiveInterestRate,
+              loanTerm: effectiveLoanTerm,
+              weeklyRent: effectiveWeeklyRent,
               weeklyRentSource: rentSource,
               state: state,
-              propertyType: propertyDetails.propertyType || 'house'
+              propertyType: propertyDetails.propertyType || 'house',
+              isFirstHomeBuyer: effectiveIsFirstHomeBuyer,
+              isNewBuild: effectiveIsNewBuild
             })
           });
           
@@ -504,7 +542,7 @@ serve(async (req) => {
             const financialData = await financialResponse.json();
             
             // Merge manual overrides with fresh financial calculations
-            if (existingManualOverrides && Object.keys(existingManualOverrides).length > 0) {
+            if (hasOverrides) {
               console.log('🔀 Merging manual overrides with fresh financial calculations');
               
               // Create a deep copy of financial data
@@ -530,11 +568,19 @@ serve(async (req) => {
                 'buildPrice': 'initialCosts.buildPrice',
                 'landPrice': 'initialCosts.landPrice',
                 'landSizeSqm': 'propertySpecs.landSizeSqm',
-                'buildSizeSqm': 'propertySpecs.buildSizeSqm'
+                'buildSizeSqm': 'propertySpecs.buildSizeSqm',
+                'landTax': 'annualCosts.landTax',
+                'depreciation': 'taxBenefits.depreciation',
+                'taxRate': 'taxBenefits.marginalTaxRate',
+                'occupancyRate': 'assumptions.occupancyWeeks',
+                'cpiGrowthRate': 'assumptions.cpiGrowth',
+                'loanType': 'loanDetails.loanType',
+                'loanAmount': 'loanDetails.loanAmount',
+                'interestOnlyPeriodYears': 'loanDetails.interestOnlyPeriod'
               };
               
               // Apply overrides to the nested structure
-              for (const [flatKey, overrideValue] of Object.entries(existingManualOverrides)) {
+              for (const [flatKey, overrideValue] of Object.entries(mergedOverrides)) {
                 const nestedPath = overrideMapping[flatKey];
                 if (nestedPath) {
                   const keys = nestedPath.split('.');
@@ -2517,22 +2563,25 @@ Always conduct your own research and due diligence to ensure that any property t
       
       if (propertyDetails?.price) extractedOverrides.purchasePrice = propertyDetails.price;
       if (propertyDetails?.weeklyRent) extractedOverrides.weeklyRent = propertyDetails.weeklyRent;
-      if (propertyDetails?.landSizeSqm) extractedOverrides.landSize = propertyDetails.landSizeSqm;
-      if (propertyDetails?.buildSizeSqm) extractedOverrides.buildSize = propertyDetails.buildSizeSqm;
+      if (propertyDetails?.landSizeSqm) extractedOverrides.landSizeSqm = propertyDetails.landSizeSqm;
+      if (propertyDetails?.buildSizeSqm) extractedOverrides.buildSizeSqm = propertyDetails.buildSizeSqm;
       if (propertyDetails?.landPrice) extractedOverrides.landPrice = propertyDetails.landPrice;
       if (propertyDetails?.buildPrice) extractedOverrides.buildPrice = propertyDetails.buildPrice;
       if (propertyDetails?.beds) extractedOverrides.bedrooms = propertyDetails.beds;
       if (propertyDetails?.baths) extractedOverrides.bathrooms = propertyDetails.baths;
       if (propertyDetails?.carSpaces) extractedOverrides.carSpaces = propertyDetails.carSpaces;
       if (propertyDetails?.isNewBuild !== undefined) extractedOverrides.isNewBuild = propertyDetails.isNewBuild;
+      if (propertyDetails?.buildType) extractedOverrides.buildType = propertyDetails.buildType;
       
-      // Merge with existing manual overrides (existing overrides take precedence)
-      if (existingManualOverrides && Object.keys(existingManualOverrides).length > 0) {
-        updateData.manual_overrides = { ...extractedOverrides, ...existingManualOverrides };
-        console.log('✓ Merged extracted data with existing manual overrides');
-      } else if (Object.keys(extractedOverrides).length > 0) {
-        updateData.manual_overrides = extractedOverrides;
-        console.log('✓ Injected extracted data into manual_overrides:', Object.keys(extractedOverrides));
+      // Merge all overrides: extracted < existing DB < frontend (priority order)
+      // Frontend overrides (mergedOverrides already contains frontend + existing DB)
+      // Now add extracted overrides as fallback
+      const finalOverrides = { ...extractedOverrides, ...mergedOverrides };
+      
+      if (Object.keys(finalOverrides).length > 0) {
+        updateData.manual_overrides = finalOverrides;
+        console.log('✓ Final manual_overrides saved:', Object.keys(finalOverrides).length, 'fields');
+        console.log('  Fields:', Object.keys(finalOverrides).join(', '));
       }
       
       const { error: updateError } = await supabaseClient
