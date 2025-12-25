@@ -191,6 +191,17 @@ export function InvestmentReportGenerator() {
       if (preGenData.loanTermYears) propertyDetails.loanTermYears = preGenData.loanTermYears;
       if (preGenData.marketValueNow) propertyDetails.marketValueNow = preGenData.marketValueNow;
       
+      // Additional cash flow fields (optional)
+      if (preGenData.loanAmount) propertyDetails.loanAmount = preGenData.loanAmount;
+      if (preGenData.interestOnlyPeriodYears) propertyDetails.interestOnlyPeriodYears = preGenData.interestOnlyPeriodYears;
+      if (preGenData.repaymentFrequency) propertyDetails.repaymentFrequency = preGenData.repaymentFrequency;
+      if (preGenData.extraRepaymentPerMonth) propertyDetails.extraRepaymentPerMonth = preGenData.extraRepaymentPerMonth;
+      if (preGenData.offsetBalance) propertyDetails.offsetBalance = preGenData.offsetBalance;
+      if (preGenData.constructionDurationMonths) propertyDetails.constructionDurationMonths = preGenData.constructionDurationMonths;
+      if (preGenData.constructionYear) propertyDetails.constructionYear = preGenData.constructionYear;
+      if (preGenData.landSizeSqm) propertyDetails.landSizeSqm = preGenData.landSizeSqm;
+      if (preGenData.buildSizeSqm) propertyDetails.buildSizeSqm = preGenData.buildSizeSqm;
+      
       // Add suburb year context if provided (only for suburb analysis)
       if (queryType === 'suburb') {
         if (dataYearType === 'single' && singleYear) {
