@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -309,7 +310,12 @@ export function InvestmentReportGenerator() {
         }
       }
 
-      // Create the report record first with pending status
+      // Create the report record first with pending status and pre-generation overrides
+      // Filter out undefined values and cast to Json for Supabase compatibility
+      const cleanedOverrides = Object.fromEntries(
+        Object.entries(preGenData).filter(([_, v]) => v !== undefined)
+      ) as Json;
+      
       const { data: pendingReport, error: insertError } = await supabase
         .from('investment_reports')
         .insert({
@@ -318,6 +324,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: queryType, // Track the scope type
           generated_by: null, // Set to null to avoid foreign key constraint issues
+          manual_overrides: cleanedOverrides, // Save pre-generation overrides immediately
         })
         .select()
         .single();
@@ -488,7 +495,11 @@ export function InvestmentReportGenerator() {
         description: extractedSummary + ". Starting report generation...",
       });
 
-      // Create the report record
+      // Create the report record with any manual overrides passed via propertyDetails
+      const scrapedOverrides = propertyDetails.manualOverrides 
+        ? Object.fromEntries(Object.entries(propertyDetails.manualOverrides).filter(([_, v]) => v !== undefined)) as Json
+        : null;
+      
       const { data: pendingReport, error: insertError } = await supabase
         .from('investment_reports')
         .insert({
@@ -497,6 +508,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: 'address',
           generated_by: null,
+          manual_overrides: scrapedOverrides,
         })
         .select()
         .single();
@@ -733,7 +745,14 @@ export function InvestmentReportGenerator() {
       if (extracted.extractedBuildPrice) propertyDetails.buildPrice = extracted.extractedBuildPrice;
       if (extracted.extractedIsNewBuild) propertyDetails.isNewBuild = extracted.extractedIsNewBuild;
 
-      // Create the report record
+      // Include pre-generation overrides if available
+      propertyDetails.manualOverrides = preGenData;
+      
+      // Create the report record with overrides
+      const pdfOverrides = Object.fromEntries(
+        Object.entries(preGenData).filter(([_, v]) => v !== undefined)
+      ) as Json;
+      
       const { data: pendingReport, error: insertError } = await supabase
         .from('investment_reports')
         .insert({
@@ -742,6 +761,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: 'address',
           generated_by: null,
+          manual_overrides: pdfOverrides,
         })
         .select()
         .single();
