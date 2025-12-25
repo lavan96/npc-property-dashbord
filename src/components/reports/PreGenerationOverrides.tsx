@@ -32,8 +32,10 @@ import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber
 export interface PreGenerationData {
   buildType: 'new_build' | 'existing_property';
   purchasePrice?: number;
+  propertyValue?: number;
   landPrice?: number;
   buildPrice?: number;
+  carSpaces?: number;
   depositValue?: number;
   loanToValueRatio?: number;
   interestRate?: number;
@@ -130,8 +132,10 @@ export function PreGenerationOverrides({
   
   // Core property values
   const [purchasePrice, setPurchasePrice] = useState<string>('');
+  const [propertyValue, setPropertyValue] = useState<string>('');
   const [landPrice, setLandPrice] = useState<string>('');
   const [buildPrice, setBuildPrice] = useState<string>('');
+  const [carSpaces, setCarSpaces] = useState<string>('');
   const [depositValue, setDepositValue] = useState<string>('');
   const [loanToValueRatio, setLoanToValueRatio] = useState<string>('80');
   const [interestRate, setInterestRate] = useState<string>('6.5');
@@ -270,17 +274,6 @@ export function PreGenerationOverrides({
       }
     }
   }, [externalWeeklyRent, weeklyRent]);
-
-  // Dynamic calculations - Purchase Price from Land + Build
-  useEffect(() => {
-    if (buildType === 'new_build' && landPrice && buildPrice) {
-      const land = parseFloat(landPrice) || 0;
-      const build = parseFloat(buildPrice) || 0;
-      if (land > 0 || build > 0) {
-        setPurchasePrice((land + build).toString());
-      }
-    }
-  }, [buildType, landPrice, buildPrice]);
 
   // Dynamic calculation - Deposit from Purchase Price and LVR
   useEffect(() => {
@@ -563,8 +556,10 @@ export function PreGenerationOverrides({
     const data: PreGenerationData = {
       buildType,
       purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
-      landPrice: buildType === 'new_build' && landPrice ? parseFloat(landPrice) : undefined,
-      buildPrice: buildType === 'new_build' && buildPrice ? parseFloat(buildPrice) : undefined,
+      propertyValue: propertyValue ? parseFloat(propertyValue) : undefined,
+      landPrice: landPrice ? parseFloat(landPrice) : undefined,
+      buildPrice: buildPrice ? parseFloat(buildPrice) : undefined,
+      carSpaces: carSpaces ? parseInt(carSpaces) : undefined,
       depositValue: buildType === 'existing_property' && depositValue ? parseFloat(depositValue) : undefined,
       loanToValueRatio: loanToValueRatio ? parseFloat(loanToValueRatio) : undefined,
       interestRate: interestRate ? parseFloat(interestRate) : undefined,
@@ -616,7 +611,7 @@ export function PreGenerationOverrides({
     
     onDataChange(data);
   }, [
-    buildType, purchasePrice, landPrice, buildPrice, depositValue, 
+    buildType, purchasePrice, propertyValue, landPrice, buildPrice, carSpaces, depositValue, 
     loanToValueRatio, interestRate, capitalGrowth, weeklyRent,
     stampDuty, bodyCorporateFees, strataAdminFund, strataSinkingFund, strataSpecialLevies,
     landTax, councilRates, waterRates, solicitorFees, buildingLandlordInsurance, 
@@ -747,12 +742,6 @@ export function PreGenerationOverrides({
                   <span className="text-xs text-muted-foreground mt-1">House & land package</span>
                 </Label>
               </RadioGroup>
-              
-              {isNewBuild && (
-                <Badge variant="secondary" className="mt-2">
-                  New Build: Land + Build prices will calculate total purchase price
-                </Badge>
-              )}
             </div>
 
             <Separator />
@@ -761,49 +750,136 @@ export function PreGenerationOverrides({
             <div className="space-y-4">
               <Label className="text-base font-semibold flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                Property Value
+                Property Details
               </Label>
 
-              {isNewBuild ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="landPrice">Land Price ($)</Label>
-                      <Input
-                        id="landPrice"
-                        type="text"
-                        inputMode="numeric"
-                        value={formatForDisplay(landPrice)}
-                        onChange={handleCurrencyChange(setLandPrice)}
-                        placeholder="e.g., 350,000"
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="buildPrice">Build Price ($)</Label>
-                      <Input
-                        id="buildPrice"
-                        type="text"
-                        inputMode="numeric"
-                        value={formatForDisplay(buildPrice)}
-                        onChange={handleCurrencyChange(setBuildPrice)}
-                        placeholder="e.g., 400,000"
-                        disabled={disabled}
-                      />
-                    </div>
+              {/* Purchase Price - always visible */}
+              <div className="space-y-2">
+                <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
+                <Input
+                  id="purchasePrice"
+                  type="text"
+                  inputMode="numeric"
+                  value={formatForDisplay(purchasePrice)}
+                  onChange={handleCurrencyChange(setPurchasePrice)}
+                  placeholder="e.g., 750,000"
+                  disabled={disabled}
+                />
+              </div>
+
+              {/* Property Value - separate field */}
+              <div className="space-y-2">
+                <Label htmlFor="propertyValue" className="flex items-center gap-1">
+                  Property Value ($)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Current market value (may differ from purchase price)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+                <Input
+                  id="propertyValue"
+                  type="text"
+                  inputMode="numeric"
+                  value={formatForDisplay(propertyValue)}
+                  onChange={handleCurrencyChange(setPropertyValue)}
+                  placeholder="e.g., 800,000"
+                  disabled={disabled}
+                />
+              </div>
+
+              {/* Land Price and Build Price - always visible */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="landPrice">Land Price ($)</Label>
+                  <Input
+                    id="landPrice"
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(landPrice)}
+                    onChange={handleCurrencyChange(setLandPrice)}
+                    placeholder="e.g., 350,000"
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="buildPrice">Build Price ($)</Label>
+                  <Input
+                    id="buildPrice"
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(buildPrice)}
+                    onChange={handleCurrencyChange(setBuildPrice)}
+                    placeholder="e.g., 400,000"
+                    disabled={disabled}
+                  />
+                </div>
+              </div>
+
+              {/* Car Spaces */}
+              <div className="space-y-2">
+                <Label htmlFor="carSpaces">Car Spaces</Label>
+                <Input
+                  id="carSpaces"
+                  type="number"
+                  min="0"
+                  value={carSpaces}
+                  onChange={(e) => setCarSpaces(e.target.value)}
+                  placeholder="e.g., 2"
+                  disabled={disabled}
+                />
+              </div>
+
+              {/* LVR and Deposit for existing property */}
+              {!isNewBuild && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="loanToValueRatio">Loan to Value Ratio (%)</Label>
+                    <Input
+                      id="loanToValueRatio"
+                      type="number"
+                      value={loanToValueRatio}
+                      onChange={(e) => setLoanToValueRatio(e.target.value)}
+                      placeholder="80"
+                      disabled={disabled}
+                    />
                   </div>
-                  
-                  {/* Calculated Total */}
-                  {(landPrice || buildPrice) && (
-                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Total Purchase Price:</span>
-                      <span className="font-semibold text-foreground">
-                        ${((parseFloat(landPrice) || 0) + (parseFloat(buildPrice) || 0)).toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                  
+                  <div className="space-y-2">
+                    <Label htmlFor="depositValue" className="flex items-center gap-1">
+                      Deposit Value ($)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Auto-calculated from Purchase Price × (100% - LVR)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="depositValue"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(depositValue)}
+                      onChange={handleCurrencyChange(setDepositValue)}
+                      placeholder="Auto-calculated"
+                      className="bg-muted/30"
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* New Build specific fields */}
+              {isNewBuild && (
+                <>
                   <div className="space-y-2">
                     <Label htmlFor="agentFee">Agent Fee / Commission ($)</Label>
                     <Input
@@ -927,60 +1003,6 @@ export function PreGenerationOverrides({
                       })()}
                     </CollapsibleContent>
                   </Collapsible>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
-                    <Input
-                      id="purchasePrice"
-                      type="text"
-                      inputMode="numeric"
-                      value={formatForDisplay(purchasePrice)}
-                      onChange={handleCurrencyChange(setPurchasePrice)}
-                      placeholder="e.g., 750,000"
-                      disabled={disabled}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="loanToValueRatio">Loan to Value Ratio (%)</Label>
-                      <Input
-                        id="loanToValueRatio"
-                        type="number"
-                        value={loanToValueRatio}
-                        onChange={(e) => setLoanToValueRatio(e.target.value)}
-                        placeholder="80"
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="depositValue" className="flex items-center gap-1">
-                        Deposit Value ($)
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info className="h-3 w-3 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Auto-calculated from Purchase Price × (100% - LVR)</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </Label>
-                      <Input
-                        id="depositValue"
-                        type="text"
-                        inputMode="numeric"
-                        value={formatForDisplay(depositValue)}
-                        onChange={handleCurrencyChange(setDepositValue)}
-                        placeholder="Auto-calculated"
-                        className="bg-muted/30"
-                        disabled={disabled}
-                      />
-                    </div>
-                  </div>
                 </>
               )}
             </div>
