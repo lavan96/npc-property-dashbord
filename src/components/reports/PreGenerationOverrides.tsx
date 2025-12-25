@@ -64,6 +64,17 @@ export interface PreGenerationData {
   loanType?: 'interest_only' | 'principal_interest';
   loanTermYears?: number;
   marketValueNow?: number;
+  
+  // Additional Cash Flow Fields (from ManualDataOverrideModal)
+  loanAmount?: number;
+  interestOnlyPeriodYears?: number;
+  repaymentFrequency?: 'weekly' | 'fortnightly' | 'monthly';
+  extraRepaymentPerMonth?: number;
+  offsetBalance?: number;
+  constructionDurationMonths?: number;
+  constructionYear?: number;
+  landSizeSqm?: number;
+  buildSizeSqm?: number;
 }
 
 interface PreGenerationOverridesProps {
@@ -121,6 +132,17 @@ export function PreGenerationOverrides({
   const [loanType, setLoanType] = useState<'interest_only' | 'principal_interest'>('interest_only');
   const [loanTermYears, setLoanTermYears] = useState<string>('30');
   const [marketValueNow, setMarketValueNow] = useState<string>('');
+  
+  // Additional Cash Flow Fields (from ManualDataOverrideModal)
+  const [loanAmount, setLoanAmount] = useState<string>('');
+  const [interestOnlyPeriodYears, setInterestOnlyPeriodYears] = useState<string>('');
+  const [repaymentFrequency, setRepaymentFrequency] = useState<'weekly' | 'fortnightly' | 'monthly'>('monthly');
+  const [extraRepaymentPerMonth, setExtraRepaymentPerMonth] = useState<string>('');
+  const [offsetBalance, setOffsetBalance] = useState<string>('');
+  const [constructionDurationMonths, setConstructionDurationMonths] = useState<string>('');
+  const [constructionYear, setConstructionYear] = useState<string>('');
+  const [landSizeSqm, setLandSizeSqm] = useState<string>('');
+  const [buildSizeSqm, setBuildSizeSqm] = useState<string>('');
   
   // Calculators visibility
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
@@ -337,6 +359,16 @@ export function PreGenerationOverrides({
       loanType: loanType || undefined,
       loanTermYears: loanTermYears ? parseFloat(loanTermYears) : undefined,
       marketValueNow: marketValueNow ? parseFloat(marketValueNow) : undefined,
+      // Additional Cash Flow Fields
+      loanAmount: loanAmount ? parseFloat(loanAmount) : undefined,
+      interestOnlyPeriodYears: interestOnlyPeriodYears ? parseFloat(interestOnlyPeriodYears) : undefined,
+      repaymentFrequency: repaymentFrequency || undefined,
+      extraRepaymentPerMonth: extraRepaymentPerMonth ? parseFloat(extraRepaymentPerMonth) : undefined,
+      offsetBalance: offsetBalance ? parseFloat(offsetBalance) : undefined,
+      constructionDurationMonths: buildType === 'new_build' && constructionDurationMonths ? parseFloat(constructionDurationMonths) : undefined,
+      constructionYear: constructionYear ? parseFloat(constructionYear) : undefined,
+      landSizeSqm: landSizeSqm ? parseFloat(landSizeSqm) : undefined,
+      buildSizeSqm: buildSizeSqm ? parseFloat(buildSizeSqm) : undefined,
     };
     
     onDataChange(data);
@@ -347,6 +379,8 @@ export function PreGenerationOverrides({
     landTax, councilRates, waterRates, solicitorFees, buildingLandlordInsurance, 
     propertyManagementFees, repairsMaintenance, lettingFees, agentFee, propertyType,
     cpiGrowthRate, depreciation, taxRate, occupancyRate, loanType, loanTermYears, marketValueNow,
+    loanAmount, interestOnlyPeriodYears, repaymentFrequency, extraRepaymentPerMonth, offsetBalance,
+    constructionDurationMonths, constructionYear, landSizeSqm, buildSizeSqm,
     onDataChange
   ]);
 
@@ -1188,7 +1222,7 @@ export function PreGenerationOverrides({
                       disabled={disabled}
                     />
                   </div>
-                  <div className="space-y-2 col-span-2">
+                  <div className="space-y-2">
                     <Label htmlFor="marketValueNow" className="flex items-center gap-1">
                       Current Market Value ($)
                       <TooltipProvider>
@@ -1211,6 +1245,138 @@ export function PreGenerationOverrides({
                       disabled={disabled}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="loanAmount" className="flex items-center gap-1">
+                      Loan Amount ($)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Override the calculated loan amount (Price × LVR)</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input
+                      id="loanAmount"
+                      type="number"
+                      value={loanAmount}
+                      onChange={(e) => setLoanAmount(e.target.value)}
+                      placeholder="Auto-calculated from LVR"
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="my-2" />
+                <p className="text-xs text-muted-foreground">Advanced Loan Settings</p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="interestOnlyPeriodYears">Interest Only Period (years)</Label>
+                    <Input
+                      id="interestOnlyPeriodYears"
+                      type="number"
+                      value={interestOnlyPeriodYears}
+                      onChange={(e) => setInterestOnlyPeriodYears(e.target.value)}
+                      placeholder="e.g., 5"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="repaymentFrequency">Repayment Frequency</Label>
+                    <div className="flex gap-1">
+                      {(['weekly', 'fortnightly', 'monthly'] as const).map((freq) => (
+                        <Button
+                          key={freq}
+                          type="button"
+                          variant={repaymentFrequency === freq ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setRepaymentFrequency(freq)}
+                          disabled={disabled}
+                          className="flex-1 capitalize text-xs"
+                        >
+                          {freq}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extraRepaymentPerMonth">Extra Repayment ($/month)</Label>
+                    <Input
+                      id="extraRepaymentPerMonth"
+                      type="number"
+                      value={extraRepaymentPerMonth}
+                      onChange={(e) => setExtraRepaymentPerMonth(e.target.value)}
+                      placeholder="e.g., 500"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="offsetBalance">Offset Account Balance ($)</Label>
+                    <Input
+                      id="offsetBalance"
+                      type="number"
+                      value={offsetBalance}
+                      onChange={(e) => setOffsetBalance(e.target.value)}
+                      placeholder="e.g., 20000"
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+
+                <Separator className="my-2" />
+                <p className="text-xs text-muted-foreground">Property Specifications</p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="landSizeSqm">Land Size (m²)</Label>
+                    <Input
+                      id="landSizeSqm"
+                      type="number"
+                      value={landSizeSqm}
+                      onChange={(e) => setLandSizeSqm(e.target.value)}
+                      placeholder="e.g., 450"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="buildSizeSqm">Build Size (m²)</Label>
+                    <Input
+                      id="buildSizeSqm"
+                      type="number"
+                      value={buildSizeSqm}
+                      onChange={(e) => setBuildSizeSqm(e.target.value)}
+                      placeholder="e.g., 180"
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="constructionYear">Construction Year</Label>
+                    <Input
+                      id="constructionYear"
+                      type="number"
+                      value={constructionYear}
+                      onChange={(e) => setConstructionYear(e.target.value)}
+                      placeholder="e.g., 2015"
+                      disabled={disabled}
+                    />
+                  </div>
+                  {isNewBuild && (
+                    <div className="space-y-2">
+                      <Label htmlFor="constructionDurationMonths">Construction Duration (months)</Label>
+                      <Input
+                        id="constructionDurationMonths"
+                        type="number"
+                        value={constructionDurationMonths}
+                        onChange={(e) => setConstructionDurationMonths(e.target.value)}
+                        placeholder="e.g., 12"
+                        disabled={disabled}
+                      />
+                    </div>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
