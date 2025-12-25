@@ -92,17 +92,32 @@ interface PreGenerationOverridesProps {
   propertyAddress?: string;
   onDataChange: (data: PreGenerationData) => void;
   disabled?: boolean;
+  buildType?: 'new_build' | 'existing_property';
+  onBuildTypeChange?: (buildType: 'new_build' | 'existing_property') => void;
 }
 
 export function PreGenerationOverrides({ 
   propertyAddress = '', 
   onDataChange, 
-  disabled = false 
+  disabled = false,
+  buildType: externalBuildType,
+  onBuildTypeChange
 }: PreGenerationOverridesProps) {
   const { toast } = useToast();
   
-  // Build type selection
-  const [buildType, setBuildType] = useState<'new_build' | 'existing_property'>('existing_property');
+  // Build type selection - sync with external prop if provided
+  const [internalBuildType, setInternalBuildType] = useState<'new_build' | 'existing_property'>(externalBuildType || 'existing_property');
+  
+  // Use external build type if provided, otherwise use internal state
+  const buildType = externalBuildType !== undefined ? externalBuildType : internalBuildType;
+  
+  // Handle build type change - notify parent if callback provided
+  const handleBuildTypeChange = (value: 'new_build' | 'existing_property') => {
+    setInternalBuildType(value);
+    if (onBuildTypeChange) {
+      onBuildTypeChange(value);
+    }
+  };
   
   // Property type for expense estimation
   const [propertyType, setPropertyType] = useState<string>('house');
@@ -500,7 +515,7 @@ export function PreGenerationOverrides({
               </Label>
               <RadioGroup
                 value={buildType}
-                onValueChange={(value) => setBuildType(value as 'new_build' | 'existing_property')}
+                onValueChange={(value) => handleBuildTypeChange(value as 'new_build' | 'existing_property')}
                 className="grid grid-cols-2 gap-4"
                 disabled={disabled}
               >

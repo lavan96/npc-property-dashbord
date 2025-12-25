@@ -1084,6 +1084,8 @@ export function InvestmentReportGenerator() {
                 propertyAddress={query}
                 onDataChange={setPreGenData}
                 disabled={isGenerating}
+                buildType={preGenData.buildType}
+                onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
               />
 
               {/* Info Box */}

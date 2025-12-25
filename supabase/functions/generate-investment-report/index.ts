@@ -1986,6 +1986,108 @@ ${sourceSpecificInstructions}
       console.log('ℹ️ No document content available - generating report from property address and web search only');
     }
 
+    // ========== MANUAL OVERRIDES INJECTION ==========
+    // Inject pre-generation overrides from the frontend into the prompt
+    const manualOverrides = propertyDetails?.manualOverrides;
+    if (manualOverrides && Object.keys(manualOverrides).length > 0) {
+      console.log('📝 Injecting manual overrides into prompt...');
+      const overrideLines: string[] = [];
+      
+      // Build Type
+      if (manualOverrides.buildType) {
+        overrideLines.push(`Build Type: ${manualOverrides.buildType === 'new_build' ? 'New Build (House & Land Package)' : 'Existing Property'}`);
+      }
+      
+      // Property Values
+      if (manualOverrides.purchasePrice) overrideLines.push(`Purchase Price: $${manualOverrides.purchasePrice.toLocaleString()}`);
+      if (manualOverrides.landPrice) overrideLines.push(`Land Price: $${manualOverrides.landPrice.toLocaleString()}`);
+      if (manualOverrides.buildPrice) overrideLines.push(`Build Price: $${manualOverrides.buildPrice.toLocaleString()}`);
+      if (manualOverrides.weeklyRent) overrideLines.push(`Weekly Rent: $${manualOverrides.weeklyRent}`);
+      if (manualOverrides.depositValue) overrideLines.push(`Deposit: $${manualOverrides.depositValue.toLocaleString()}`);
+      
+      // Loan Settings
+      if (manualOverrides.loanToValueRatio) overrideLines.push(`Loan-to-Value Ratio (LVR): ${manualOverrides.loanToValueRatio}%`);
+      if (manualOverrides.interestRate) overrideLines.push(`Interest Rate: ${manualOverrides.interestRate}%`);
+      if (manualOverrides.loanType) overrideLines.push(`Loan Type: ${manualOverrides.loanType === 'interest_only' ? 'Interest Only' : 'Principal & Interest'}`);
+      if (manualOverrides.loanTermYears) overrideLines.push(`Loan Term: ${manualOverrides.loanTermYears} years`);
+      if (manualOverrides.loanAmount) overrideLines.push(`Loan Amount: $${manualOverrides.loanAmount.toLocaleString()}`);
+      if (manualOverrides.interestOnlyPeriodYears) overrideLines.push(`Interest-Only Period: ${manualOverrides.interestOnlyPeriodYears} years`);
+      if (manualOverrides.repaymentFrequency) overrideLines.push(`Repayment Frequency: ${manualOverrides.repaymentFrequency}`);
+      if (manualOverrides.extraRepaymentPerMonth) overrideLines.push(`Extra Repayment/Month: $${manualOverrides.extraRepaymentPerMonth}`);
+      if (manualOverrides.offsetBalance) overrideLines.push(`Offset Balance: $${manualOverrides.offsetBalance.toLocaleString()}`);
+      
+      // Growth Assumptions
+      if (manualOverrides.capitalGrowth) overrideLines.push(`Capital Growth Rate: ${manualOverrides.capitalGrowth}% p.a.`);
+      if (manualOverrides.cpiGrowthRate) overrideLines.push(`CPI Growth Rate: ${manualOverrides.cpiGrowthRate}% p.a.`);
+      
+      // Acquisition Costs
+      if (manualOverrides.stampDuty) overrideLines.push(`Stamp Duty: $${manualOverrides.stampDuty.toLocaleString()}`);
+      if (manualOverrides.solicitorFees) overrideLines.push(`Solicitor Fees: $${manualOverrides.solicitorFees.toLocaleString()}`);
+      if (manualOverrides.agentFee) overrideLines.push(`Agent Fee/Commission: $${manualOverrides.agentFee.toLocaleString()}`);
+      if (manualOverrides.isFirstHomeBuyer) overrideLines.push(`First Home Buyer: Yes (apply stamp duty concessions)`);
+      
+      // Annual Expenses
+      if (manualOverrides.bodyCorporateFees) overrideLines.push(`Body Corporate/Strata Fees: $${manualOverrides.bodyCorporateFees.toLocaleString()} p.a.`);
+      if (manualOverrides.strataAdminFund) overrideLines.push(`Strata Admin Fund: $${manualOverrides.strataAdminFund.toLocaleString()} p.a.`);
+      if (manualOverrides.strataSinkingFund) overrideLines.push(`Strata Sinking Fund: $${manualOverrides.strataSinkingFund.toLocaleString()} p.a.`);
+      if (manualOverrides.strataSpecialLevies) overrideLines.push(`Strata Special Levies: $${manualOverrides.strataSpecialLevies.toLocaleString()} p.a.`);
+      if (manualOverrides.landTax) overrideLines.push(`Land Tax: $${manualOverrides.landTax.toLocaleString()} p.a.`);
+      if (manualOverrides.councilRates) overrideLines.push(`Council Rates: $${manualOverrides.councilRates.toLocaleString()} p.a.`);
+      if (manualOverrides.waterRates) overrideLines.push(`Water Rates: $${manualOverrides.waterRates.toLocaleString()} p.a.`);
+      if (manualOverrides.buildingLandlordInsurance) overrideLines.push(`Building/Landlord Insurance: $${manualOverrides.buildingLandlordInsurance.toLocaleString()} p.a.`);
+      if (manualOverrides.propertyManagementFees) overrideLines.push(`Property Management Fees: ${manualOverrides.propertyManagementFees}%`);
+      if (manualOverrides.repairsMaintenance) overrideLines.push(`Repairs & Maintenance: $${manualOverrides.repairsMaintenance.toLocaleString()} p.a.`);
+      if (manualOverrides.lettingFees) overrideLines.push(`Letting Fees: $${manualOverrides.lettingFees.toLocaleString()} p.a.`);
+      
+      // Cash Flow Analysis
+      if (manualOverrides.depreciation) overrideLines.push(`Depreciation: $${manualOverrides.depreciation.toLocaleString()} p.a.`);
+      if (manualOverrides.taxRate) overrideLines.push(`Marginal Tax Rate: ${manualOverrides.taxRate}%`);
+      if (manualOverrides.occupancyRate) overrideLines.push(`Occupancy Rate: ${manualOverrides.occupancyRate} weeks/year`);
+      if (manualOverrides.marketValueNow) overrideLines.push(`Current Market Value: $${manualOverrides.marketValueNow.toLocaleString()}`);
+      
+      // Property Specs
+      if (manualOverrides.landSizeSqm) overrideLines.push(`Land Size: ${manualOverrides.landSizeSqm} sqm`);
+      if (manualOverrides.buildSizeSqm) overrideLines.push(`Build Size: ${manualOverrides.buildSizeSqm} sqm`);
+      
+      // New Build Specifics
+      if (manualOverrides.buildType === 'new_build') {
+        if (manualOverrides.constructionDurationMonths) overrideLines.push(`Construction Duration: ${manualOverrides.constructionDurationMonths} months`);
+        if (manualOverrides.constructionYear) overrideLines.push(`Construction Year: ${manualOverrides.constructionYear}`);
+        
+        // Construction Stage Percentages
+        const stagePercentages: string[] = [];
+        if (manualOverrides.stageDepositPercent) stagePercentages.push(`Deposit: ${manualOverrides.stageDepositPercent}%`);
+        if (manualOverrides.stageSlabPercent) stagePercentages.push(`Slab: ${manualOverrides.stageSlabPercent}%`);
+        if (manualOverrides.stageFramePercent) stagePercentages.push(`Frame: ${manualOverrides.stageFramePercent}%`);
+        if (manualOverrides.stageLockupPercent) stagePercentages.push(`Lockup: ${manualOverrides.stageLockupPercent}%`);
+        if (manualOverrides.stageFixingPercent) stagePercentages.push(`Fixing: ${manualOverrides.stageFixingPercent}%`);
+        if (manualOverrides.stageCompletionPercent) stagePercentages.push(`Completion: ${manualOverrides.stageCompletionPercent}%`);
+        if (stagePercentages.length > 0) {
+          overrideLines.push(`Construction Stage Payment Schedule: ${stagePercentages.join(', ')}`);
+        }
+      }
+      
+      if (overrideLines.length > 0) {
+        const overridesSection = `
+---
+**PRE-GENERATION MANUAL OVERRIDES (USE THESE VALUES EXACTLY):**
+
+The following values have been manually specified by the user. Use these EXACT values in your calculations and report - do NOT estimate or override these with AI-fetched data:
+
+${overrideLines.join('\n')}
+
+**IMPORTANT:** These manual overrides take precedence over any data fetched from external sources. Apply them directly to all financial calculations, projections, and cost analyses.
+
+---
+
+`;
+        prompt = overridesSection + prompt;
+        console.log(`✓ Manual overrides injected (${overrideLines.length} values). New prompt length:`, prompt.length);
+      }
+    } else {
+      console.log('ℹ️ No manual overrides provided');
+    }
+
     // ========== DIRECT TEMPLATE INJECTION (Hard Enforced) ==========
     // Fetch AI structure template directly from database - bypasses RAG similarity search
     let templateContext = '';
