@@ -17,6 +17,7 @@ import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRo
 import { STATE_MAPPING } from '@/lib/states';
 import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
 import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
+import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 
 interface InvestmentReport {
   id: string;
@@ -848,7 +849,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         [key]: value || null
       }));
     } else {
-      const numValue = value === '' ? null : parseFloat(value);
+      // Remove commas before parsing
+      const cleanValue = removeCommas(value);
+      const numValue = cleanValue === '' ? null : parseFloat(cleanValue);
       
       // Validate construction duration months (1-24)
       if (key === 'constructionDurationMonths' && numValue !== null) {
@@ -1108,6 +1111,10 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const getFieldValue = (field: OverrideField) => {
     const overrideValue = overrides[field.key];
     if (overrideValue !== undefined && overrideValue !== null) {
+      // Format numeric values with commas for display
+      if (field.type !== 'select' && typeof overrideValue === 'number') {
+        return formatNumberWithCommas(overrideValue.toString());
+      }
       return overrideValue;
     }
     return '';
@@ -1191,11 +1198,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                   <span className="text-muted-foreground">{field.prefix}</span>
                 )}
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="numeric"
                   placeholder={`Enter ${field.label.toLowerCase()}`}
                   value={getFieldValue(field)}
-                  onChange={(e) => handleOverrideChange(field.key, e.target.value)}
+                  onChange={(e) => {
+                    const rawValue = removeCommas(e.target.value);
+                    // Only allow valid number formats
+                    if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*$/.test(rawValue)) {
+                      handleOverrideChange(field.key, rawValue);
+                    }
+                  }}
                   className={`${hasOverride(field.key) ? 'border-primary' : ''} ${validationErrors[field.key] ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
                 {field.suffix && (
