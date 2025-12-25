@@ -285,7 +285,7 @@ export function PreGenerationOverrides({
     }
   }, [strataAdminFund, strataSinkingFund, strataSpecialLevies]);
 
-  // Load stamp duty calculator script
+  // Load stamp duty calculator script and auto-configure based on state and first home buyer status
   useEffect(() => {
     if (showStampDutyCalculator) {
       // Remove any existing stamp duty scripts and reset container
@@ -294,13 +294,75 @@ export function PreGenerationOverrides({
         existingScript.remove();
       }
       
+      // Clear the calculator container to force a fresh reload
+      const container = document.getElementById('stamp-duty-anchors');
+      if (container) {
+        container.innerHTML = '<p class="text-sm text-muted-foreground">Loading calculator...</p>';
+      }
+      
       // Create fresh script element
       const script = document.createElement('script');
       script.id = 'stamp-src';
       script.type = 'text/javascript';
       script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-      script.setAttribute('data-state', detectedState);
+      script.setAttribute('data-state', detectedState !== 'All' ? detectedState : '');
       document.body.appendChild(script);
+      
+      // After script loads, try to auto-configure the calculator
+      script.onload = () => {
+        setTimeout(() => {
+          // Try to set the state dropdown
+          if (detectedState && detectedState !== 'All') {
+            const stateSelect = document.querySelector('#stamp-duty-calculator select, #stamp-duty-anchors select') as HTMLSelectElement;
+            if (stateSelect) {
+              // Find the option that matches the detected state
+              const options = Array.from(stateSelect.options);
+              const matchingOption = options.find(opt => 
+                opt.value.toUpperCase().includes(detectedState) || 
+                opt.text.toUpperCase().includes(detectedState) ||
+                opt.text.toUpperCase().includes(STATE_MAPPING[detectedState as keyof typeof STATE_MAPPING]?.toUpperCase() || '')
+              );
+              if (matchingOption) {
+                stateSelect.value = matchingOption.value;
+                stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          }
+          
+          // Try to set the first home buyer checkbox
+          const fhbCheckboxes = document.querySelectorAll('#stamp-duty-calculator input[type="checkbox"], #stamp-duty-anchors input[type="checkbox"]');
+          fhbCheckboxes.forEach((checkbox) => {
+            const label = checkbox.parentElement?.textContent?.toLowerCase() || '';
+            const checkboxEl = checkbox as HTMLInputElement;
+            if (label.includes('first home') || label.includes('first-home') || checkboxEl.id?.toLowerCase().includes('first') || checkboxEl.name?.toLowerCase().includes('first')) {
+              checkboxEl.checked = isFirstHomeBuyer;
+              checkboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+          
+          // Also try to set purchase price if available
+          const priceInputs = document.querySelectorAll('#stamp-duty-calculator input[type="text"], #stamp-duty-calculator input[type="number"], #stamp-duty-anchors input[type="text"], #stamp-duty-anchors input[type="number"]');
+          const currentPrice = buildType === 'new_build' 
+            ? (parseFloat(landPrice) || 0) + (parseFloat(buildPrice) || 0)
+            : parseFloat(purchasePrice) || 0;
+          
+          if (currentPrice > 0) {
+            priceInputs.forEach((input) => {
+              const inputEl = input as HTMLInputElement;
+              const placeholder = inputEl.placeholder?.toLowerCase() || '';
+              const name = inputEl.name?.toLowerCase() || '';
+              const id = inputEl.id?.toLowerCase() || '';
+              if (placeholder.includes('price') || placeholder.includes('value') || placeholder.includes('purchase') || 
+                  name.includes('price') || name.includes('value') || name.includes('purchase') ||
+                  id.includes('price') || id.includes('value') || id.includes('purchase')) {
+                inputEl.value = currentPrice.toString();
+                inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            });
+          }
+        }, 500); // Give the calculator time to initialize
+      };
       
       return () => {
         // Cleanup on unmount or when hiding
@@ -310,7 +372,24 @@ export function PreGenerationOverrides({
         }
       };
     }
-  }, [showStampDutyCalculator, detectedState]);
+  }, [showStampDutyCalculator, detectedState, isFirstHomeBuyer, buildType, landPrice, buildPrice, purchasePrice]);
+
+  // Dynamically update first home buyer checkbox when toggle changes (without reloading calculator)
+  useEffect(() => {
+    if (showStampDutyCalculator) {
+      const fhbCheckboxes = document.querySelectorAll('#stamp-duty-calculator input[type="checkbox"], #stamp-duty-anchors input[type="checkbox"]');
+      fhbCheckboxes.forEach((checkbox) => {
+        const label = checkbox.parentElement?.textContent?.toLowerCase() || '';
+        const checkboxEl = checkbox as HTMLInputElement;
+        if (label.includes('first home') || label.includes('first-home') || checkboxEl.id?.toLowerCase().includes('first') || checkboxEl.name?.toLowerCase().includes('first')) {
+          if (checkboxEl.checked !== isFirstHomeBuyer) {
+            checkboxEl.checked = isFirstHomeBuyer;
+            checkboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      });
+    }
+  }, [isFirstHomeBuyer, showStampDutyCalculator]);
 
   // Estimate expenses using edge function
   const estimateExpenses = useCallback(async () => {
