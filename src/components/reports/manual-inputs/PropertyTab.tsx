@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Building2, Home, Info, Car, Ruler, Building } from 'lucide-react';
+import { Building2, Home, Info, Ruler, Building } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { useCallback } from 'react';
 
@@ -20,8 +20,6 @@ interface PropertyTabProps {
   setLandPrice: (value: string) => void;
   buildPrice: string;
   setBuildPrice: (value: string) => void;
-  carSpaces: string;
-  setCarSpaces: (value: string) => void;
   landSizeSqm: string;
   setLandSizeSqm: (value: string) => void;
   buildSizeSqm: string;
@@ -44,8 +42,6 @@ export function PropertyTab({
   setLandPrice,
   buildPrice,
   setBuildPrice,
-  carSpaces,
-  setCarSpaces,
   landSizeSqm,
   setLandSizeSqm,
   buildSizeSqm,
@@ -229,22 +225,7 @@ export function PropertyTab({
             Property Specs
           </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="carSpaces" className="text-sm font-medium flex items-center gap-1">
-                <Car className="h-4 w-4" />
-                Car Spaces
-              </Label>
-              <Input
-                id="carSpaces"
-                type="number"
-                min="0"
-                value={carSpaces}
-                onChange={(e) => setCarSpaces(e.target.value)}
-                placeholder="2"
-                disabled={disabled}
-              />
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="landSizeSqm" className="text-sm font-medium">Land Size</Label>
               <div className="relative">
