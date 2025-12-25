@@ -380,10 +380,12 @@ serve(async (req) => {
     // Fetch emails from Outlook using the target mailbox
     const outlookEmails = await fetchEmails(accessToken, targetMailbox, limit);
 
-    // Get existing emails to avoid duplicates
+    // Get existing emails for this specific mailbox to avoid duplicates
+    // Filter by mailbox_source so admin and personal inboxes are treated separately
     const { data: existingEmails } = await supabase
       .from('email_copilot_emails')
-      .select('sender, subject, received_at');
+      .select('sender, subject, received_at')
+      .eq('mailbox_source', mailboxSource);
 
     // Create a set of composite keys for quick lookup
     const existingKeys = new Set<string>();
@@ -392,7 +394,7 @@ serve(async (req) => {
       existingKeys.add(`${e.sender?.toLowerCase()}|${e.subject?.toLowerCase()}|${normalizedDate}`);
     });
 
-    console.log(`[Outlook Sync] Found ${existingKeys.size} existing emails in database`);
+    console.log(`[Outlook Sync] Found ${existingKeys.size} existing ${mailboxSource} emails in database`);
 
     // Process and insert new emails
     let insertedCount = 0;
