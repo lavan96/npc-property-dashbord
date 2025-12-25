@@ -89,6 +89,9 @@ export default function AcceptInvite() {
       if (error || !data?.success) {
         setError(data?.error || 'Failed to create account');
       } else {
+        // Clear any existing session before redirecting to login
+        localStorage.removeItem('session_token');
+        
         setSuccess(`Account created successfully! Your username is: ${data.username}`);
         setTimeout(() => {
           navigate('/auth');
