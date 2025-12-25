@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
+import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 
 interface RecentReport {
   id: string;
@@ -71,45 +72,87 @@ export function InvestmentReportGenerator() {
   
   // Pre-generation overrides data
   const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
+  
+  // Track if sync is in progress to prevent loops
+  const isSyncingFromPreGen = useRef(false);
+  const isSyncingToPreGen = useRef(false);
+
+  // Handle currency input change with comma formatting
+  const handleCurrencyInputChange = useCallback((setter: (value: string) => void) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = removeCommas(e.target.value);
+      if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*$/.test(rawValue)) {
+        setter(rawValue);
+      }
+    };
+  }, []);
 
   // Sync propertyPrice with preGenData.purchasePrice (bidirectional)
   const handlePropertyPriceChange = useCallback((value: string) => {
-    setPropertyPrice(value);
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue > 0) {
-      setPreGenData(prev => ({ ...prev, purchasePrice: numValue }));
-    } else if (value === '') {
-      setPreGenData(prev => ({ ...prev, purchasePrice: undefined }));
+    const rawValue = removeCommas(value);
+    if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*$/.test(rawValue)) {
+      setPropertyPrice(rawValue);
+      
+      if (!isSyncingFromPreGen.current) {
+        isSyncingToPreGen.current = true;
+        const numValue = parseFloat(rawValue);
+        if (!isNaN(numValue) && numValue > 0) {
+          setPreGenData(prev => ({ ...prev, purchasePrice: numValue }));
+        } else if (rawValue === '') {
+          setPreGenData(prev => ({ ...prev, purchasePrice: undefined }));
+        }
+        setTimeout(() => { isSyncingToPreGen.current = false; }, 0);
+      }
     }
   }, []);
 
   // Sync weeklyRent with preGenData.weeklyRent (bidirectional)
   const handleWeeklyRentChange = useCallback((value: string) => {
-    setWeeklyRent(value);
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue > 0) {
-      setPreGenData(prev => ({ ...prev, weeklyRent: numValue }));
-    } else if (value === '') {
-      setPreGenData(prev => ({ ...prev, weeklyRent: undefined }));
+    const rawValue = removeCommas(value);
+    if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*$/.test(rawValue)) {
+      setWeeklyRent(rawValue);
+      
+      if (!isSyncingFromPreGen.current) {
+        isSyncingToPreGen.current = true;
+        const numValue = parseFloat(rawValue);
+        if (!isNaN(numValue) && numValue > 0) {
+          setPreGenData(prev => ({ ...prev, weeklyRent: numValue }));
+        } else if (rawValue === '') {
+          setPreGenData(prev => ({ ...prev, weeklyRent: undefined }));
+        }
+        setTimeout(() => { isSyncingToPreGen.current = false; }, 0);
+      }
     }
   }, []);
 
   // Handle preGenData changes from PreGenerationOverrides - sync back to main form fields
   const handlePreGenDataChange = useCallback((data: PreGenerationData) => {
     setPreGenData(data);
-    // Sync purchasePrice back to propertyPrice if changed in PreGenerationOverrides
-    if (data.purchasePrice !== undefined) {
-      const currentPrice = parseFloat(propertyPrice) || 0;
-      if (data.purchasePrice !== currentPrice) {
-        setPropertyPrice(data.purchasePrice.toString());
+    
+    // Only sync if not currently syncing from main form
+    if (!isSyncingToPreGen.current) {
+      isSyncingFromPreGen.current = true;
+      
+      // Sync purchasePrice back to propertyPrice if changed in PreGenerationOverrides
+      if (data.purchasePrice !== undefined) {
+        const currentPrice = parseFloat(propertyPrice) || 0;
+        if (Math.abs(data.purchasePrice - currentPrice) > 0.01) {
+          setPropertyPrice(data.purchasePrice.toString());
+        }
+      } else if (data.purchasePrice === undefined && propertyPrice !== '') {
+        // If preGen cleared the value, clear main form too
+        // But only if it was explicitly cleared (buildType change, etc.)
       }
-    }
-    // Sync weeklyRent back to main form if changed in PreGenerationOverrides
-    if (data.weeklyRent !== undefined) {
-      const currentRent = parseFloat(weeklyRent) || 0;
-      if (data.weeklyRent !== currentRent) {
-        setWeeklyRent(data.weeklyRent.toString());
+      
+      // Sync weeklyRent back to main form if changed in PreGenerationOverrides
+      if (data.weeklyRent !== undefined) {
+        const currentRent = parseFloat(weeklyRent) || 0;
+        if (Math.abs(data.weeklyRent - currentRent) > 0.01) {
+          setWeeklyRent(data.weeklyRent.toString());
+        }
       }
+      
+      setTimeout(() => { isSyncingFromPreGen.current = false; }, 0);
     }
   }, [propertyPrice, weeklyRent]);
 
@@ -953,10 +996,11 @@ export function InvestmentReportGenerator() {
                     </Label>
                     <Input
                       id="propertyPrice"
-                      type="number"
-                      value={propertyPrice}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatNumberWithCommas(propertyPrice)}
                       onChange={(e) => handlePropertyPriceChange(e.target.value)}
-                      placeholder="e.g., 750000"
+                      placeholder="e.g., 750,000"
                       disabled={isGenerating}
                       required
                     />
@@ -966,8 +1010,9 @@ export function InvestmentReportGenerator() {
                     <Label htmlFor="weeklyRent">Weekly Rent ($)</Label>
                     <Input
                       id="weeklyRent"
-                      type="number"
-                      value={weeklyRent}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatNumberWithCommas(weeklyRent)}
                       onChange={(e) => handleWeeklyRentChange(e.target.value)}
                       placeholder="e.g., 550"
                       disabled={isGenerating}
@@ -1127,6 +1172,8 @@ export function InvestmentReportGenerator() {
                 disabled={isGenerating}
                 buildType={preGenData.buildType}
                 onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
+                externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
               />
 
               {/* Info Box */}

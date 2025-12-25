@@ -95,6 +95,9 @@ interface PreGenerationOverridesProps {
   disabled?: boolean;
   buildType?: 'new_build' | 'existing_property';
   onBuildTypeChange?: (buildType: 'new_build' | 'existing_property') => void;
+  // External sync props for two-way binding
+  externalPurchasePrice?: number;
+  externalWeeklyRent?: number;
 }
 
 export function PreGenerationOverrides({ 
@@ -102,7 +105,9 @@ export function PreGenerationOverrides({
   onDataChange, 
   disabled = false,
   buildType: externalBuildType,
-  onBuildTypeChange
+  onBuildTypeChange,
+  externalPurchasePrice,
+  externalWeeklyRent
 }: PreGenerationOverridesProps) {
   const { toast } = useToast();
   
@@ -244,6 +249,26 @@ export function PreGenerationOverrides({
     }
   }, [propertyAddress, detectStateFromAddress]);
 
+  // Sync external purchasePrice prop with internal state (for two-way binding from parent)
+  useEffect(() => {
+    if (externalPurchasePrice !== undefined && buildType !== 'new_build') {
+      const currentInternal = parseFloat(purchasePrice) || 0;
+      if (Math.abs(externalPurchasePrice - currentInternal) > 0.01) {
+        setPurchasePrice(externalPurchasePrice.toString());
+      }
+    }
+  }, [externalPurchasePrice, buildType]);
+
+  // Sync external weeklyRent prop with internal state (for two-way binding from parent)
+  useEffect(() => {
+    if (externalWeeklyRent !== undefined) {
+      const currentInternal = parseFloat(weeklyRent) || 0;
+      if (Math.abs(externalWeeklyRent - currentInternal) > 0.01) {
+        setWeeklyRent(externalWeeklyRent.toString());
+      }
+    }
+  }, [externalWeeklyRent]);
+
   // Dynamic calculations - Purchase Price from Land + Build
   useEffect(() => {
     if (buildType === 'new_build' && landPrice && buildPrice) {
@@ -310,38 +335,71 @@ export function PreGenerationOverrides({
       
       // After script loads, try to auto-configure the calculator
       script.onload = () => {
-        setTimeout(() => {
+        // Use multiple timeouts to ensure calculator is fully initialized
+        const configureCalculator = () => {
           // Try to set the state dropdown
           if (detectedState && detectedState !== 'All') {
-            const stateSelect = document.querySelector('#stamp-duty-calculator select, #stamp-duty-anchors select') as HTMLSelectElement;
-            if (stateSelect) {
+            const stateSelects = document.querySelectorAll('#stamp-duty-calculator select, #stamp-duty-anchors select, [id*="stamp"] select');
+            stateSelects.forEach((select) => {
+              const stateSelect = select as HTMLSelectElement;
+              const fullStateName = STATE_MAPPING[detectedState as keyof typeof STATE_MAPPING] || '';
+              
               // Find the option that matches the detected state
               const options = Array.from(stateSelect.options);
-              const matchingOption = options.find(opt => 
-                opt.value.toUpperCase().includes(detectedState) || 
-                opt.text.toUpperCase().includes(detectedState) ||
-                opt.text.toUpperCase().includes(STATE_MAPPING[detectedState as keyof typeof STATE_MAPPING]?.toUpperCase() || '')
-              );
+              let matchingOption = options.find(opt => {
+                const optValue = opt.value.toUpperCase();
+                const optText = opt.text.toUpperCase();
+                return (
+                  optValue === detectedState ||
+                  optValue.includes(detectedState) ||
+                  optText === detectedState ||
+                  optText.includes(detectedState) ||
+                  optValue === fullStateName.toUpperCase() ||
+                  optText === fullStateName.toUpperCase() ||
+                  optText.includes(fullStateName.toUpperCase())
+                );
+              });
+              
               if (matchingOption) {
                 stateSelect.value = matchingOption.value;
                 stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                stateSelect.dispatchEvent(new Event('input', { bubbles: true }));
               }
-            }
+            });
           }
           
-          // Try to set the first home buyer checkbox
-          const fhbCheckboxes = document.querySelectorAll('#stamp-duty-calculator input[type="checkbox"], #stamp-duty-anchors input[type="checkbox"]');
-          fhbCheckboxes.forEach((checkbox) => {
-            const label = checkbox.parentElement?.textContent?.toLowerCase() || '';
+          // Try to set the first home buyer checkbox - look for various patterns
+          const allCheckboxes = document.querySelectorAll('#stamp-duty-calculator input[type="checkbox"], #stamp-duty-anchors input[type="checkbox"], [id*="stamp"] input[type="checkbox"]');
+          allCheckboxes.forEach((checkbox) => {
             const checkboxEl = checkbox as HTMLInputElement;
-            if (label.includes('first home') || label.includes('first-home') || checkboxEl.id?.toLowerCase().includes('first') || checkboxEl.name?.toLowerCase().includes('first')) {
-              checkboxEl.checked = isFirstHomeBuyer;
-              checkboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+            const id = (checkboxEl.id || '').toLowerCase();
+            const name = (checkboxEl.name || '').toLowerCase();
+            const parentText = (checkbox.parentElement?.textContent || '').toLowerCase();
+            const closestLabel = checkbox.closest('label')?.textContent?.toLowerCase() || '';
+            
+            const isFirstHomeCheckbox = 
+              id.includes('first') || 
+              id.includes('fhb') ||
+              id.includes('fhog') ||
+              name.includes('first') || 
+              name.includes('fhb') ||
+              parentText.includes('first home') || 
+              parentText.includes('first-home') ||
+              parentText.includes('fhb') ||
+              closestLabel.includes('first home') ||
+              closestLabel.includes('first-home');
+            
+            if (isFirstHomeCheckbox) {
+              if (checkboxEl.checked !== isFirstHomeBuyer) {
+                checkboxEl.checked = isFirstHomeBuyer;
+                checkboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+                checkboxEl.dispatchEvent(new Event('click', { bubbles: true }));
+              }
             }
           });
           
           // Also try to set purchase price if available
-          const priceInputs = document.querySelectorAll('#stamp-duty-calculator input[type="text"], #stamp-duty-calculator input[type="number"], #stamp-duty-anchors input[type="text"], #stamp-duty-anchors input[type="number"]');
+          const priceInputs = document.querySelectorAll('#stamp-duty-calculator input[type="text"], #stamp-duty-calculator input[type="number"], #stamp-duty-anchors input[type="text"], #stamp-duty-anchors input[type="number"], [id*="stamp"] input[type="text"], [id*="stamp"] input[type="number"]');
           const currentPrice = buildType === 'new_build' 
             ? (parseFloat(landPrice) || 0) + (parseFloat(buildPrice) || 0)
             : parseFloat(purchasePrice) || 0;
@@ -349,19 +407,31 @@ export function PreGenerationOverrides({
           if (currentPrice > 0) {
             priceInputs.forEach((input) => {
               const inputEl = input as HTMLInputElement;
-              const placeholder = inputEl.placeholder?.toLowerCase() || '';
-              const name = inputEl.name?.toLowerCase() || '';
-              const id = inputEl.id?.toLowerCase() || '';
-              if (placeholder.includes('price') || placeholder.includes('value') || placeholder.includes('purchase') || 
-                  name.includes('price') || name.includes('value') || name.includes('purchase') ||
-                  id.includes('price') || id.includes('value') || id.includes('purchase')) {
+              const placeholder = (inputEl.placeholder || '').toLowerCase();
+              const name = (inputEl.name || '').toLowerCase();
+              const id = (inputEl.id || '').toLowerCase();
+              const ariaLabel = (inputEl.getAttribute('aria-label') || '').toLowerCase();
+              
+              const isPriceInput = 
+                placeholder.includes('price') || placeholder.includes('value') || placeholder.includes('purchase') || placeholder.includes('amount') ||
+                name.includes('price') || name.includes('value') || name.includes('purchase') || name.includes('amount') ||
+                id.includes('price') || id.includes('value') || id.includes('purchase') || id.includes('amount') ||
+                ariaLabel.includes('price') || ariaLabel.includes('value');
+              
+              if (isPriceInput) {
                 inputEl.value = currentPrice.toString();
                 inputEl.dispatchEvent(new Event('input', { bubbles: true }));
                 inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+                inputEl.dispatchEvent(new Event('keyup', { bubbles: true }));
               }
             });
           }
-        }, 500); // Give the calculator time to initialize
+        };
+        
+        // Run configuration at multiple intervals to catch delayed initialization
+        setTimeout(configureCalculator, 300);
+        setTimeout(configureCalculator, 600);
+        setTimeout(configureCalculator, 1000);
       };
       
       return () => {
@@ -377,17 +447,37 @@ export function PreGenerationOverrides({
   // Dynamically update first home buyer checkbox when toggle changes (without reloading calculator)
   useEffect(() => {
     if (showStampDutyCalculator) {
-      const fhbCheckboxes = document.querySelectorAll('#stamp-duty-calculator input[type="checkbox"], #stamp-duty-anchors input[type="checkbox"]');
-      fhbCheckboxes.forEach((checkbox) => {
-        const label = checkbox.parentElement?.textContent?.toLowerCase() || '';
-        const checkboxEl = checkbox as HTMLInputElement;
-        if (label.includes('first home') || label.includes('first-home') || checkboxEl.id?.toLowerCase().includes('first') || checkboxEl.name?.toLowerCase().includes('first')) {
-          if (checkboxEl.checked !== isFirstHomeBuyer) {
+      const updateCheckbox = () => {
+        const allCheckboxes = document.querySelectorAll('#stamp-duty-calculator input[type="checkbox"], #stamp-duty-anchors input[type="checkbox"], [id*="stamp"] input[type="checkbox"]');
+        allCheckboxes.forEach((checkbox) => {
+          const checkboxEl = checkbox as HTMLInputElement;
+          const id = (checkboxEl.id || '').toLowerCase();
+          const name = (checkboxEl.name || '').toLowerCase();
+          const parentText = (checkbox.parentElement?.textContent || '').toLowerCase();
+          const closestLabel = checkbox.closest('label')?.textContent?.toLowerCase() || '';
+          
+          const isFirstHomeCheckbox = 
+            id.includes('first') || 
+            id.includes('fhb') ||
+            id.includes('fhog') ||
+            name.includes('first') || 
+            name.includes('fhb') ||
+            parentText.includes('first home') || 
+            parentText.includes('first-home') ||
+            parentText.includes('fhb') ||
+            closestLabel.includes('first home') ||
+            closestLabel.includes('first-home');
+          
+          if (isFirstHomeCheckbox && checkboxEl.checked !== isFirstHomeBuyer) {
             checkboxEl.checked = isFirstHomeBuyer;
             checkboxEl.dispatchEvent(new Event('change', { bubbles: true }));
+            checkboxEl.dispatchEvent(new Event('click', { bubbles: true }));
           }
-        }
-      });
+        });
+      };
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(updateCheckbox, 100);
     }
   }, [isFirstHomeBuyer, showStampDutyCalculator]);
 
