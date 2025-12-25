@@ -42,7 +42,7 @@ const navigationItems = [
   { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
   { title: 'Reports', url: '/reports', icon: BarChart3, moduleKey: 'reports' },
   { title: 'Generated Reports', url: '/generated-reports', icon: FileText, moduleKey: 'generated_reports' },
-  { title: 'Cash Flow Analysis', url: '/cash-flow-analysis', icon: Activity, moduleKey: 'cash_flow_analysis' },
+  { title: 'Cash Flow Analysis', url: '/cash-flow-analysis', icon: Activity, moduleKey: 'cash_flow' },
   { title: 'Report Q&A', url: '/report-qa', icon: MessageSquareText, moduleKey: 'report_qa' },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles, moduleKey: 'email_copilot' },
   { title: 'Call Logs', url: '/call-logs', icon: Phone, moduleKey: 'call_logs' },
@@ -53,11 +53,11 @@ const navigationItems = [
 const adminItems = [
   { title: 'Automation', url: '/automation', icon: Zap, moduleKey: 'automation' },
   { title: 'Templates', url: '/templates', icon: FileStack, moduleKey: 'templates' },
-  { title: 'Branding', url: '/branding', icon: Palette, moduleKey: 'branding' },
+  { title: 'Branding', url: '/white-label', icon: Palette, moduleKey: 'white_label' },
   { title: 'Monitoring', url: '/monitoring', icon: Activity, moduleKey: 'monitoring' },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },
-  { title: 'Errors', url: '/errors', icon: AlertTriangle, moduleKey: 'errors' },
+  { title: 'Error Logs', url: '/error-logs', icon: AlertTriangle, moduleKey: 'error_logs' },
   { title: 'Settings', url: '/settings', icon: Settings, moduleKey: 'settings' },
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
 ];
