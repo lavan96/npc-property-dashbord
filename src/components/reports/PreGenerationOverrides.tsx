@@ -926,7 +926,7 @@ export function PreGenerationOverrides({
                         Apply Value
                       </Button>
                     </div>
-                    <div id="stamp-duty-calculator" className="v-orange-theme min-h-[200px] bg-white rounded-lg p-4">
+                    <div id="stamp-duty-calculator" className="orange-theme min-h-[200px] bg-white rounded-lg p-4">
                       <div id="stamp-duty-anchors">
                         <p className="text-sm text-muted-foreground">
                           Stamp Duty Calculator from{' '}
