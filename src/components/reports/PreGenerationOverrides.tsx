@@ -250,24 +250,26 @@ export function PreGenerationOverrides({
   }, [propertyAddress, detectStateFromAddress]);
 
   // Sync external purchasePrice prop with internal state (for two-way binding from parent)
+  // This effect syncs changes from the main form down to this component
   useEffect(() => {
     if (externalPurchasePrice !== undefined && buildType !== 'new_build') {
-      const currentInternal = parseFloat(purchasePrice) || 0;
-      if (Math.abs(externalPurchasePrice - currentInternal) > 0.01) {
-        setPurchasePrice(externalPurchasePrice.toString());
+      const externalValue = externalPurchasePrice.toString();
+      // Always sync if the external value differs from internal (comparing as strings to avoid float issues)
+      if (purchasePrice !== externalValue) {
+        setPurchasePrice(externalValue);
       }
     }
-  }, [externalPurchasePrice, buildType]);
+  }, [externalPurchasePrice, buildType, purchasePrice]);
 
   // Sync external weeklyRent prop with internal state (for two-way binding from parent)
   useEffect(() => {
     if (externalWeeklyRent !== undefined) {
-      const currentInternal = parseFloat(weeklyRent) || 0;
-      if (Math.abs(externalWeeklyRent - currentInternal) > 0.01) {
-        setWeeklyRent(externalWeeklyRent.toString());
+      const externalValue = externalWeeklyRent.toString();
+      if (weeklyRent !== externalValue) {
+        setWeeklyRent(externalValue);
       }
     }
-  }, [externalWeeklyRent]);
+  }, [externalWeeklyRent, weeklyRent]);
 
   // Dynamic calculations - Purchase Price from Land + Build
   useEffect(() => {

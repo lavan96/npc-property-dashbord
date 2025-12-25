@@ -101,7 +101,7 @@ export function InvestmentReportGenerator() {
         } else if (rawValue === '') {
           setPreGenData(prev => ({ ...prev, purchasePrice: undefined }));
         }
-        setTimeout(() => { isSyncingToPreGen.current = false; }, 0);
+        requestAnimationFrame(() => { isSyncingToPreGen.current = false; });
       }
     }
   }, []);
@@ -120,7 +120,7 @@ export function InvestmentReportGenerator() {
         } else if (rawValue === '') {
           setPreGenData(prev => ({ ...prev, weeklyRent: undefined }));
         }
-        setTimeout(() => { isSyncingToPreGen.current = false; }, 0);
+        requestAnimationFrame(() => { isSyncingToPreGen.current = false; });
       }
     }
   }, []);
@@ -129,30 +129,28 @@ export function InvestmentReportGenerator() {
   const handlePreGenDataChange = useCallback((data: PreGenerationData) => {
     setPreGenData(data);
     
-    // Only sync if not currently syncing from main form
+    // Only sync back if not currently syncing TO PreGen (prevents loops)
     if (!isSyncingToPreGen.current) {
       isSyncingFromPreGen.current = true;
       
       // Sync purchasePrice back to propertyPrice if changed in PreGenerationOverrides
       if (data.purchasePrice !== undefined) {
-        const currentPrice = parseFloat(propertyPrice) || 0;
-        if (Math.abs(data.purchasePrice - currentPrice) > 0.01) {
-          setPropertyPrice(data.purchasePrice.toString());
+        const dataValueStr = data.purchasePrice.toString();
+        if (propertyPrice !== dataValueStr) {
+          setPropertyPrice(dataValueStr);
         }
-      } else if (data.purchasePrice === undefined && propertyPrice !== '') {
-        // If preGen cleared the value, clear main form too
-        // But only if it was explicitly cleared (buildType change, etc.)
       }
       
       // Sync weeklyRent back to main form if changed in PreGenerationOverrides
       if (data.weeklyRent !== undefined) {
-        const currentRent = parseFloat(weeklyRent) || 0;
-        if (Math.abs(data.weeklyRent - currentRent) > 0.01) {
-          setWeeklyRent(data.weeklyRent.toString());
+        const dataValueStr = data.weeklyRent.toString();
+        if (weeklyRent !== dataValueStr) {
+          setWeeklyRent(dataValueStr);
         }
       }
       
-      setTimeout(() => { isSyncingFromPreGen.current = false; }, 0);
+      // Reset flag after React has processed the state updates
+      requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
     }
   }, [propertyPrice, weeklyRent]);
 
