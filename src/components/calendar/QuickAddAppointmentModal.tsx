@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
 
 interface QuickAddAppointmentModalProps {
@@ -53,6 +56,7 @@ export function QuickAddAppointmentModal({
   onSubmit,
   onSearchContacts,
 }: QuickAddAppointmentModalProps) {
+  const isMobile = useIsMobile();
   const [title, setTitle] = useState('');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('');
   const [date, setDate] = useState('');
@@ -220,42 +224,34 @@ export function QuickAddAppointmentModal({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-primary" />
-            Quick Add Appointment
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Appointment Type */}
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <div className="flex gap-2">
-              {APPOINTMENT_TYPES.map((type) => {
-                const Icon = type.icon;
-                return (
-                  <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => setAppointmentType(type.value)}
-                    className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all flex-1',
-                      appointmentType === type.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {type.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Appointment Type */}
+      <div className="space-y-2">
+        <Label>Type</Label>
+        <div className={cn("flex gap-2", isMobile && "flex-wrap")}>
+          {APPOINTMENT_TYPES.map((type) => {
+            const Icon = type.icon;
+            return (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => setAppointmentType(type.value)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-all',
+                  isMobile ? 'flex-1 min-w-[30%] justify-center' : 'flex-1',
+                  appointmentType === type.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted hover:bg-muted/80'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span className={isMobile ? "text-xs" : ""}>{type.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
           {/* Contact/Recipient Search */}
           <div className="space-y-2">
@@ -438,47 +434,79 @@ export function QuickAddAppointmentModal({
             </div>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Optional notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
-          </div>
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          placeholder="Optional notes..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+        />
+      </div>
 
-          {/* Keyboard Shortcuts Help */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-            <Keyboard className="h-3 w-3" />
-            <span><kbd className="px-1 bg-background rounded">⌘/Ctrl+Enter</kbd> to save</span>
-            <span>•</span>
-            <span><kbd className="px-1 bg-background rounded">Esc</kbd> to close</span>
-            <span>•</span>
-            <span><kbd className="px-1 bg-background rounded">Alt+1-6</kbd> duration</span>
-          </div>
+      {/* Keyboard Shortcuts Help - hidden on mobile */}
+      {!isMobile && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
+          <Keyboard className="h-3 w-3" />
+          <span><kbd className="px-1 bg-background rounded">⌘/Ctrl+Enter</kbd> to save</span>
+          <span>•</span>
+          <span><kbd className="px-1 bg-background rounded">Esc</kbd> to close</span>
+          <span>•</span>
+          <span><kbd className="px-1 bg-background rounded">Alt+1-6</kbd> duration</span>
+        </div>
+      )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading || !title.trim() || !selectedCalendarId}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+      <div className="flex gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading || !title.trim() || !selectedCalendarId} className="flex-1">
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Create
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Quick Add Appointment
+            </DrawerTitle>
+          </DrawerHeader>
+          <ScrollArea className="px-4 pb-6 max-h-[70vh]">
+            {formContent}
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" />
+            Quick Add Appointment
+          </DialogTitle>
+        </DialogHeader>
+        {formContent}
       </DialogContent>
     </Dialog>
   );
