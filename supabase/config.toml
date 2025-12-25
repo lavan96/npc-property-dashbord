@@ -237,3 +237,7 @@ verify_jwt = false
 
 [functions.admin-user-management]
 verify_jwt = false
+
+[functions.regenerate-report-qualitative]
+verify_jwt = false
+request_timeout = 120

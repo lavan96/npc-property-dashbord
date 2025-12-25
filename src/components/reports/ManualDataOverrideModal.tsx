@@ -51,6 +51,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, any>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [cashFlowFieldToggles, setCashFlowFieldToggles] = useState<Record<string, boolean>>({});
@@ -940,7 +941,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
     setSaving(true);
     try {
-      console.log('💾 Saving manual overrides (data-only update, no AI regeneration)');
+      console.log('💾 Saving manual overrides with qualitative regeneration');
       
       // Merge overrides with existing financial_calculations
       const mergedFinancialData = { ...report.financial_calculations };
@@ -1059,7 +1060,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         reportId: report.id
       });
       
-      // Update database with merged data (NO Perplexity call)
+      // Update database with merged data
       const { error: updateError } = await supabase
         .from('investment_reports')
         .update({ 
@@ -1074,14 +1075,62 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         throw updateError;
       }
 
-      console.log('✓ Manual overrides saved (data-only, no AI regeneration)');
+      console.log('✅ Manual overrides saved successfully');
 
       toast({
-        title: "Overrides applied",
-        description: "Manual data overrides have been saved. The updated values are now reflected in the report.",
+        title: "Overrides saved",
+        description: "Regenerating qualitative analysis with updated figures...",
       });
 
       setHasChanges(false);
+      setSaving(false);
+      setRegenerating(true);
+
+      // Fetch current report content for regeneration
+      const { data: currentReport, error: fetchError } = await supabase
+        .from('investment_reports')
+        .select('report_content, property_address')
+        .eq('id', report.id)
+        .single();
+
+      if (fetchError) {
+        console.error('❌ Error fetching report for regeneration:', fetchError);
+        throw fetchError;
+      }
+
+      // Call the regenerate-report-qualitative edge function
+      console.log('🔄 Calling regenerate-report-qualitative...');
+      const { data: regenData, error: regenError } = await supabase.functions.invoke('regenerate-report-qualitative', {
+        body: {
+          reportId: report.id,
+          manualOverrides: overridesWithToggles,
+          currentReportContent: currentReport.report_content,
+          propertyAddress: currentReport.property_address,
+          financialCalculations: mergedFinancialData
+        }
+      });
+
+      if (regenError) {
+        console.error('❌ Regeneration error:', regenError);
+        toast({
+          title: "Partial Success",
+          description: "Overrides saved but qualitative regeneration failed. The numerical changes have been applied.",
+          variant: "destructive",
+        });
+      } else if (regenData?.success) {
+        console.log('✅ Qualitative analysis regenerated successfully');
+        toast({
+          title: "Report Updated",
+          description: "Overrides applied and qualitative analysis regenerated to reflect new figures.",
+        });
+      } else {
+        console.error('❌ Regeneration returned error:', regenData?.error);
+        toast({
+          title: "Partial Success",
+          description: regenData?.error || "Overrides saved but qualitative regeneration encountered an issue.",
+          variant: "destructive",
+        });
+      }
       
       // Call onSave callback and wait for it to complete (refetches data)
       await onSave?.();
@@ -1096,6 +1145,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       });
     } finally {
       setSaving(false);
+      setRegenerating(false);
     }
   };
 
@@ -2049,9 +2099,23 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!hasChanges || saving || Object.keys(validationErrors).length > 0}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Overrides'}
+            <Button onClick={handleSave} disabled={!hasChanges || saving || regenerating || Object.keys(validationErrors).length > 0}>
+              {regenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Regenerating Analysis...
+                </>
+              ) : saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save & Regenerate
+                </>
+              )}
             </Button>
           </div>
         </div>
