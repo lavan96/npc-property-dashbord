@@ -12,7 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap, Compass, Loader2 } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap, Compass, Loader2, SlidersHorizontal } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
@@ -563,36 +565,42 @@ export default function GeneratedReports() {
     );
   }
 
+  const isMobile = useIsMobile();
+
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6 pb-20 md:pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:space-y-2">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Generated Reports</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Generated Reports</h2>
+          <p className="text-sm md:text-base text-muted-foreground">
             View and download your generated property reports
           </p>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="secondary">{reports.length} quantitative reports</Badge>
-          <Badge variant="outline">{investmentReports.length} investment reports</Badge>
+        <div className="flex gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-xs">{reports.length} quantitative</Badge>
+          <Badge variant="outline" className="text-xs">{investmentReports.length} investment</Badge>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'quantitative' | 'investment' | 'comparisons')} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="quantitative" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Quantitative Reports
-          </TabsTrigger>
-          <TabsTrigger value="investment" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Investment Reports
-          </TabsTrigger>
-          <TabsTrigger value="comparisons" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Comparison Analyses
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className={isMobile ? "inline-flex w-auto min-w-full" : "grid w-full grid-cols-3"}>
+            <TabsTrigger value="quantitative" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap">
+              <BarChart3 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Quantitative</span>
+              <span className="sm:hidden">Quant.</span>
+            </TabsTrigger>
+            <TabsTrigger value="investment" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap">
+              <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Investment
+            </TabsTrigger>
+            <TabsTrigger value="comparisons" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap">
+              <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Comparisons</span>
+              <span className="sm:hidden">Compare</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="quantitative" className="space-y-4">
           {reports.length === 0 ? (
