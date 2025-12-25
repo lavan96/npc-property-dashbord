@@ -288,6 +288,7 @@ export default function EmailCopilot() {
 
   // Mailbox selection state
   const [personalMailbox, setPersonalMailbox] = useState<string | null>(null);
+  const [isUserProfileLoaded, setIsUserProfileLoaded] = useState(false);
   const [selectedMailbox, setSelectedMailbox] = useState<'admin' | 'personal'>(() => {
     const saved = localStorage.getItem('emailCopilotMailbox');
     return (saved === 'personal') ? 'personal' : 'admin';
@@ -299,10 +300,13 @@ export default function EmailCopilot() {
   useEffect(() => {
     const fetchUserProfile = async () => {
       const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) return;
+      if (!sessionToken) {
+        setIsUserProfileLoaded(true);
+        return;
+      }
 
       try {
-        const { data, error } = await supabase.functions.invoke('admin-user-management', {
+        const { data } = await supabase.functions.invoke('admin-user-management', {
           body: { action: 'get_own_profile', session_token: sessionToken }
         });
 
@@ -311,11 +315,21 @@ export default function EmailCopilot() {
         }
       } catch (err) {
         console.error('Failed to fetch user profile:', err);
+      } finally {
+        setIsUserProfileLoaded(true);
       }
     };
 
     fetchUserProfile();
   }, []);
+
+  // Prevent being stuck on "personal" when it isn't configured
+  useEffect(() => {
+    if (isUserProfileLoaded && selectedMailbox === 'personal' && !personalMailbox) {
+      setSelectedMailbox('admin');
+      toast.info('Personal mailbox is not configured. Switched to admin inbox.');
+    }
+  }, [isUserProfileLoaded, selectedMailbox, personalMailbox]);
 
   // Save mailbox preference
   useEffect(() => {
@@ -417,6 +431,12 @@ export default function EmailCopilot() {
 
   const handleSyncOutlook = async () => {
     // Determine which mailbox to sync from
+    if (selectedMailbox === 'personal' && !personalMailbox) {
+      toast.error('Personal mailbox is not configured');
+      setShowMailboxSettings(true);
+      return;
+    }
+
     const mailboxToSync = selectedMailbox === 'personal' && personalMailbox 
       ? personalMailbox 
       : null; // null means use default admin mailbox
