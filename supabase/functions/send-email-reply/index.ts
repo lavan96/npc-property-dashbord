@@ -28,6 +28,7 @@ interface SendEmailRequest {
   bcc?: string[];
   originalEmailId?: string;
   attachments?: EmailAttachment[];
+  mailboxSource?: 'admin' | 'personal';
 }
 
 async function getAccessToken(): Promise<string> {
@@ -86,7 +87,7 @@ serve(async (req) => {
       throw new Error('Microsoft Graph API credentials not configured');
     }
 
-    const { to, subject, body, cc, bcc, originalEmailId, attachments }: SendEmailRequest = await req.json();
+    const { to, subject, body, cc, bcc, originalEmailId, attachments, mailboxSource }: SendEmailRequest = await req.json();
 
     if (!to || !subject || !body) {
       throw new Error('Missing required fields: to, subject, body');
@@ -211,7 +212,8 @@ serve(async (req) => {
         cc_recipients: cc || [],
         bcc_recipients: bcc || [],
         attachments: attachmentMetadata,
-        sent_at: new Date().toISOString()
+        sent_at: new Date().toISOString(),
+        mailbox_source: mailboxSource || 'admin'
       });
 
     if (dbError) {

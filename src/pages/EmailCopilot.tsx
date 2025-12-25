@@ -110,6 +110,7 @@ interface Email {
   cc_recipients: string[];
   bcc_recipients: string[];
   attachments: EmailAttachment[];
+  mailbox_source: 'admin' | 'personal';
 }
 
 interface SentAttachment {
@@ -128,6 +129,7 @@ interface SentReply {
   bcc_recipients: string[];
   attachments: SentAttachment[];
   sent_at: string;
+  mailbox_source: 'admin' | 'personal';
 }
 
 // Helper to extract sender name from email
@@ -472,17 +474,28 @@ export default function EmailCopilot() {
     }
   };
 
+  // Re-fetch emails when mailbox changes
+  useEffect(() => {
+    fetchEmails();
+    fetchSentReplies();
+    // Reset selection when switching mailboxes
+    setSelectedEmail(null);
+    setSelectedSentReply(null);
+  }, [selectedMailbox]);
+
   useEffect(() => {
     // Auto-sync from Outlook on page load
     handleSyncOutlook();
-    fetchSentReplies();
   }, []);
 
   const fetchSentReplies = async () => {
     try {
+      const mailboxFilter = selectedMailbox;
+      
       const { data, error } = await supabase
         .from('email_copilot_sent_replies')
         .select('*')
+        .eq('mailbox_source', mailboxFilter)
         .order('sent_at', { ascending: false });
 
       if (error) throw error;
@@ -497,6 +510,7 @@ export default function EmailCopilot() {
         bcc_recipients: (reply.bcc_recipients as string[]) || [],
         attachments: (reply.attachments as unknown as SentAttachment[]) || [],
         sent_at: reply.sent_at,
+        mailbox_source: (reply.mailbox_source as 'admin' | 'personal') || 'admin',
       }));
       
       setSentReplies(typedReplies);
@@ -508,9 +522,13 @@ export default function EmailCopilot() {
   const fetchEmails = async () => {
     setIsLoading(true);
     try {
+      // Filter by mailbox source based on selection
+      const mailboxFilter = selectedMailbox;
+      
       const { data, error } = await supabase
         .from('email_copilot_emails')
         .select('*')
+        .eq('mailbox_source', mailboxFilter)
         .order('received_at', { ascending: false });
 
       if (error) throw error;
@@ -532,6 +550,7 @@ export default function EmailCopilot() {
         cc_recipients: (email.cc_recipients as string[]) || [],
         bcc_recipients: (email.bcc_recipients as string[]) || [],
         attachments: (email.attachments as unknown as EmailAttachment[]) || [],
+        mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
       }));
       
       setEmails(typedEmails);
@@ -981,7 +1000,8 @@ export default function EmailCopilot() {
           body: forwardBody,
           cc: ccList.length > 0 ? ccList : undefined,
           bcc: bccList.length > 0 ? bccList : undefined,
-          attachments: attachmentsData.length > 0 ? attachmentsData : undefined
+          attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
+          mailboxSource: selectedMailbox
         }
       });
 
@@ -1027,7 +1047,8 @@ export default function EmailCopilot() {
           cc: ccList.length > 0 ? ccList : undefined,
           bcc: bccList.length > 0 ? bccList : undefined,
           originalEmailId: selectedEmail.id,
-          attachments: attachmentsData.length > 0 ? attachmentsData : undefined
+          attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
+          mailboxSource: selectedMailbox
         }
       });
 
@@ -1085,7 +1106,8 @@ export default function EmailCopilot() {
           body: composeEmail.body,
           cc: ccList.length > 0 ? ccList : undefined,
           bcc: bccList.length > 0 ? bccList : undefined,
-          attachments: attachmentsData.length > 0 ? attachmentsData : undefined
+          attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
+          mailboxSource: selectedMailbox
         }
       });
 
