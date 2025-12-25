@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { 
   Mail, 
@@ -44,7 +45,8 @@ import {
   FileIcon,
   Image as ImageIcon,
   Forward,
-  Upload
+  Upload,
+  Settings
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,6 +75,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
@@ -187,6 +190,7 @@ function formatEmailBody(body: string): string {
 
 export default function EmailCopilot() {
   const isMobile = useIsMobile();
+  const { hasModuleAccess, loading: permissionsLoading } = usePermissions();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
@@ -279,6 +283,42 @@ export default function EmailCopilot() {
   const [isForwarding, setIsForwarding] = useState(false);
   const forwardFileInputRef = useRef<HTMLInputElement>(null);
   const [forwardDragActive, setForwardDragActive] = useState(false);
+
+  // Mailbox selection state
+  const [personalMailbox, setPersonalMailbox] = useState<string | null>(null);
+  const [selectedMailbox, setSelectedMailbox] = useState<'admin' | 'personal'>(() => {
+    const saved = localStorage.getItem('emailCopilotMailbox');
+    return (saved === 'personal') ? 'personal' : 'admin';
+  });
+  const [showMailboxSettings, setShowMailboxSettings] = useState(false);
+  const hasAdminEmailAccess = hasModuleAccess('admin_email_access');
+
+  // Fetch user profile to get personal mailbox
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-user-management', {
+          body: { action: 'get_own_profile', session_token: sessionToken }
+        });
+
+        if (data?.success && data.user?.personal_mailbox) {
+          setPersonalMailbox(data.user.personal_mailbox);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user profile:', err);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  // Save mailbox preference
+  useEffect(() => {
+    localStorage.setItem('emailCopilotMailbox', selectedMailbox);
+  }, [selectedMailbox]);
 
   // Email notifications hook - refetch emails when new ones arrive
   const { requestNotificationPermission } = useEmailNotifications({
@@ -374,18 +414,30 @@ export default function EmailCopilot() {
   };
 
   const handleSyncOutlook = async () => {
+    // Determine which mailbox to sync from
+    const mailboxToSync = selectedMailbox === 'personal' && personalMailbox 
+      ? personalMailbox 
+      : null; // null means use default admin mailbox
+
+    // Check permission if trying to sync admin mailbox
+    if (selectedMailbox === 'admin' && !hasAdminEmailAccess) {
+      toast.error('You do not have permission to access the admin email inbox');
+      return;
+    }
+
     setIsSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('outlook-email-sync', {
-        body: { action: 'sync', limit: 50 }
+        body: { action: 'sync', limit: 50, mailbox: mailboxToSync }
       });
 
       if (error) throw error;
 
+      const mailboxLabel = selectedMailbox === 'personal' ? 'personal mailbox' : 'admin inbox';
       if (data.inserted > 0) {
-        toast.success(`Synced ${data.inserted} new emails from Outlook`);
+        toast.success(`Synced ${data.inserted} new emails from ${mailboxLabel}`);
       } else {
-        toast.info('No new emails to sync');
+        toast.info(`No new emails to sync from ${mailboxLabel}`);
       }
       fetchEmails();
     } catch (error) {
@@ -1237,6 +1289,31 @@ export default function EmailCopilot() {
             )}
           </Button>
           
+          {/* Mailbox Selector */}
+          {(hasAdminEmailAccess || personalMailbox) && (
+            <Select
+              value={selectedMailbox}
+              onValueChange={(value: 'admin' | 'personal') => setSelectedMailbox(value)}
+            >
+              <SelectTrigger className="h-8 md:h-9 w-auto min-w-[120px] text-xs md:text-sm">
+                <Inbox className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                <SelectValue placeholder="Select mailbox" />
+              </SelectTrigger>
+              <SelectContent>
+                {hasAdminEmailAccess && (
+                  <SelectItem value="admin">Admin Inbox</SelectItem>
+                )}
+                {personalMailbox ? (
+                  <SelectItem value="personal">Personal Mailbox</SelectItem>
+                ) : (
+                  <SelectItem value="personal" disabled>
+                    Personal (Not configured)
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          )}
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3">
@@ -1245,6 +1322,24 @@ export default function EmailCopilot() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {!personalMailbox && (
+                <>
+                  <DropdownMenuItem onClick={() => setShowMailboxSettings(true)}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configure Personal Mailbox
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              {personalMailbox && (
+                <>
+                  <DropdownMenuItem onClick={() => setShowMailboxSettings(true)}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Personal Mailbox
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={handleClearAllEmails} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear All Emails
@@ -2804,6 +2899,120 @@ export default function EmailCopilot() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Personal Mailbox Settings Modal */}
+      <MailboxSettingsModal 
+        open={showMailboxSettings}
+        onOpenChange={setShowMailboxSettings}
+        currentMailbox={personalMailbox}
+        onMailboxUpdated={(newMailbox) => {
+          setPersonalMailbox(newMailbox);
+          if (newMailbox) {
+            toast.success('Personal mailbox configured successfully');
+          }
+        }}
+      />
     </div>
+  );
+}
+
+// Mailbox Settings Modal Component
+function MailboxSettingsModal({ 
+  open, 
+  onOpenChange, 
+  currentMailbox,
+  onMailboxUpdated 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  currentMailbox: string | null;
+  onMailboxUpdated: (mailbox: string | null) => void;
+}) {
+  const [mailboxValue, setMailboxValue] = useState(currentMailbox || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setMailboxValue(currentMailbox || '');
+  }, [currentMailbox, open]);
+
+  const handleSave = async () => {
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) {
+      toast.error('Session expired. Please log in again.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-user-management', {
+        body: { 
+          action: 'update_own_mailbox', 
+          session_token: sessionToken,
+          personal_mailbox: mailboxValue || null
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        onMailboxUpdated(mailboxValue || null);
+        onOpenChange(false);
+      } else {
+        toast.error(data?.error || 'Failed to update mailbox');
+      }
+    } catch (err) {
+      console.error('Failed to update mailbox:', err);
+      toast.error('Failed to update mailbox');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Configure Personal Mailbox
+          </DialogTitle>
+          <DialogDescription>
+            Enter your personal Microsoft 365 email address to sync emails from your own mailbox.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="personal-mailbox">Personal Email Address</Label>
+            <Input
+              id="personal-mailbox"
+              type="email"
+              placeholder="your.email@company.com"
+              value={mailboxValue}
+              onChange={(e) => setMailboxValue(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              This email must be part of the same Microsoft 365 organization.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Mailbox'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

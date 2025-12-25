@@ -10,7 +10,7 @@ const corsHeaders = {
 const MICROSOFT_CLIENT_ID = Deno.env.get('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET = Deno.env.get('MICROSOFT_CLIENT_SECRET');
 const MICROSOFT_TENANT_ID = Deno.env.get('MICROSOFT_TENANT_ID');
-const MICROSOFT_MAILBOX_EMAIL = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
+const DEFAULT_MAILBOX_EMAIL = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -91,10 +91,10 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-async function fetchEmails(accessToken: string, limit: number = 20): Promise<OutlookMessage[]> {
-  console.log(`[Outlook Sync] Fetching emails for ${MICROSOFT_MAILBOX_EMAIL}...`);
+async function fetchEmails(accessToken: string, mailboxEmail: string, limit: number = 20): Promise<OutlookMessage[]> {
+  console.log(`[Outlook Sync] Fetching emails for ${mailboxEmail}...`);
   
-  const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments`;
+  const graphUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -114,10 +114,10 @@ async function fetchEmails(accessToken: string, limit: number = 20): Promise<Out
   return data.value || [];
 }
 
-async function fetchAttachments(accessToken: string, messageId: string): Promise<Attachment[]> {
+async function fetchAttachments(accessToken: string, mailboxEmail: string, messageId: string): Promise<Attachment[]> {
   console.log(`[Outlook Sync] Fetching attachments for message ${messageId}...`);
   
-  const graphUrl = `https://graph.microsoft.com/v1.0/users/${MICROSOFT_MAILBOX_EMAIL}/messages/${messageId}/attachments`;
+  const graphUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages/${messageId}/attachments`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -310,9 +310,12 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { action, limit = 20 } = await req.json().catch(() => ({ action: 'sync', limit: 20 }));
+    const { action, limit = 20, mailbox } = await req.json().catch(() => ({ action: 'sync', limit: 20, mailbox: null }));
     
-    console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}`);
+    // Use provided mailbox or fall back to default
+    const targetMailbox = mailbox || DEFAULT_MAILBOX_EMAIL;
+    
+    console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}, Mailbox: ${targetMailbox}`);
 
     // Handle clear action
     if (action === 'clear') {
@@ -360,10 +363,10 @@ serve(async (req) => {
     }
 
     // Validate environment variables for sync
-    if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
-      console.error('[Outlook Sync] Missing Microsoft credentials');
+    if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !targetMailbox) {
+      console.error('[Outlook Sync] Missing Microsoft credentials or mailbox');
       return new Response(
-        JSON.stringify({ error: 'Microsoft credentials not configured' }),
+        JSON.stringify({ error: 'Microsoft credentials not configured or mailbox not specified' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -371,8 +374,8 @@ serve(async (req) => {
     // Get access token
     const accessToken = await getAccessToken();
 
-    // Fetch emails from Outlook
-    const outlookEmails = await fetchEmails(accessToken, limit);
+    // Fetch emails from Outlook using the target mailbox
+    const outlookEmails = await fetchEmails(accessToken, targetMailbox, limit);
 
     // Get existing emails to avoid duplicates
     const { data: existingEmails } = await supabase
@@ -430,7 +433,7 @@ serve(async (req) => {
         // Fetch and upload attachments if email has any
         if (email.hasAttachments && insertedEmail) {
           console.log(`[Outlook Sync] Email has attachments, fetching...`);
-          const attachments = await fetchAttachments(accessToken, email.id);
+          const attachments = await fetchAttachments(accessToken, targetMailbox, email.id);
           const storedAttachments: StoredAttachment[] = [];
 
           for (const attachment of attachments) {
