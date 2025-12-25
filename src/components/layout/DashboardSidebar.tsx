@@ -87,7 +87,7 @@ export function DashboardSidebar() {
     : settings.sidebarLogo;
 
   return (
-    <Sidebar className="border-r border-border bg-card">
+    <Sidebar collapsible="icon" className="border-r border-border bg-card">
       <SidebarContent>
         {/* Brand */}
         <div className={`border-b border-border ${isCollapsed ? 'p-3' : 'p-6'}`}>
@@ -112,18 +112,18 @@ export function DashboardSidebar() {
 
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+          {!isCollapsed && <SidebarGroupLabel>Dashboard</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <NavLink 
                       to={item.url} 
                       className="flex items-center gap-2 text-sm font-medium"
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -135,18 +135,18 @@ export function DashboardSidebar() {
         {/* Admin Section - only show if user has access to any admin items */}
         {visibleAdminItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            {!isCollapsed && <SidebarGroupLabel>Administration</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {visibleAdminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                       <NavLink 
                         to={item.url} 
                         className="flex items-center gap-2 text-sm font-medium"
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        {!isCollapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
