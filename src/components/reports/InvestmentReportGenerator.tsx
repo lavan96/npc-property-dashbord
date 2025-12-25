@@ -72,6 +72,47 @@ export function InvestmentReportGenerator() {
   // Pre-generation overrides data
   const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
 
+  // Sync propertyPrice with preGenData.purchasePrice (bidirectional)
+  const handlePropertyPriceChange = useCallback((value: string) => {
+    setPropertyPrice(value);
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      setPreGenData(prev => ({ ...prev, purchasePrice: numValue }));
+    } else if (value === '') {
+      setPreGenData(prev => ({ ...prev, purchasePrice: undefined }));
+    }
+  }, []);
+
+  // Sync weeklyRent with preGenData.weeklyRent (bidirectional)
+  const handleWeeklyRentChange = useCallback((value: string) => {
+    setWeeklyRent(value);
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      setPreGenData(prev => ({ ...prev, weeklyRent: numValue }));
+    } else if (value === '') {
+      setPreGenData(prev => ({ ...prev, weeklyRent: undefined }));
+    }
+  }, []);
+
+  // Handle preGenData changes from PreGenerationOverrides - sync back to main form fields
+  const handlePreGenDataChange = useCallback((data: PreGenerationData) => {
+    setPreGenData(data);
+    // Sync purchasePrice back to propertyPrice if changed in PreGenerationOverrides
+    if (data.purchasePrice !== undefined) {
+      const currentPrice = parseFloat(propertyPrice) || 0;
+      if (data.purchasePrice !== currentPrice) {
+        setPropertyPrice(data.purchasePrice.toString());
+      }
+    }
+    // Sync weeklyRent back to main form if changed in PreGenerationOverrides
+    if (data.weeklyRent !== undefined) {
+      const currentRent = parseFloat(weeklyRent) || 0;
+      if (data.weeklyRent !== currentRent) {
+        setWeeklyRent(data.weeklyRent.toString());
+      }
+    }
+  }, [propertyPrice, weeklyRent]);
+
   const handleGenerate = async () => {
     if (!query.trim()) {
       toast({
@@ -84,8 +125,8 @@ export function InvestmentReportGenerator() {
 
     if (!propertyPrice || parseFloat(propertyPrice) <= 0) {
       toast({
-        title: "Property Price Required",
-        description: "Please enter a valid property price to calculate investment score.",
+        title: "Purchase Price Required",
+        description: "Please enter a valid purchase price to calculate investment score.",
         variant: "destructive",
       });
       return;
@@ -902,19 +943,19 @@ export function InvestmentReportGenerator() {
                   <Badge variant="default" className="text-xs">Required for Scoring</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Property price is required for investment scoring. Other details are optional but enhance analysis accuracy.
+                  Purchase price is required for investment scoring. Other details are optional but enhance analysis accuracy.
                 </p>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="propertyPrice" className="flex items-center gap-1">
-                      Property Price ($) <span className="text-destructive">*</span>
+                      Purchase Price ($) <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="propertyPrice"
                       type="number"
                       value={propertyPrice}
-                      onChange={(e) => setPropertyPrice(e.target.value)}
+                      onChange={(e) => handlePropertyPriceChange(e.target.value)}
                       placeholder="e.g., 750000"
                       disabled={isGenerating}
                       required
@@ -927,7 +968,7 @@ export function InvestmentReportGenerator() {
                       id="weeklyRent"
                       type="number"
                       value={weeklyRent}
-                      onChange={(e) => setWeeklyRent(e.target.value)}
+                      onChange={(e) => handleWeeklyRentChange(e.target.value)}
                       placeholder="e.g., 550"
                       disabled={isGenerating}
                     />
@@ -1082,7 +1123,7 @@ export function InvestmentReportGenerator() {
               {/* Pre-Generation Manual Inputs */}
               <PreGenerationOverrides
                 propertyAddress={query}
-                onDataChange={setPreGenData}
+                onDataChange={handlePreGenDataChange}
                 disabled={isGenerating}
                 buildType={preGenData.buildType}
                 onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
