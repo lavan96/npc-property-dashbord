@@ -408,11 +408,11 @@ export default function Overview() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Overview</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Property intake dashboard overview and key metrics
           </p>
         </div>
@@ -424,7 +424,7 @@ export default function Overview() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+      <div className="grid gap-3 md:gap-6 grid-cols-2 lg:grid-cols-4 animate-fade-in">
         <KPICard
           title="New This Week"
           value={kpis.newThisWeek}
@@ -455,7 +455,7 @@ export default function Overview() {
       </div>
 
       {/* Content Statistics */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 animate-fade-in">
+      <div className="grid gap-3 md:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 animate-fade-in">
         <KPICard
           title="With Prices"
           value={contentStats.withPrices}

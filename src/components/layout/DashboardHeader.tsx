@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, LogOut, Settings, Moon, Sun } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -19,59 +19,17 @@ import { NotificationsDropdown } from './NotificationsDropdown';
 
 type Theme = 'light' | 'dark' | 'system';
 
-const getSystemTheme = () => {
-  if (typeof window !== 'undefined') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return 'dark';
-};
+interface DashboardHeaderProps {
+  theme: Theme;
+  isDark: boolean;
+  onCycleTheme: () => void;
+}
 
-const applyTheme = (theme: Theme) => {
-  const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
-  if (resolvedTheme === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-  return resolvedTheme === 'dark';
-};
-
-export function DashboardHeader() {
+export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeaderProps) {
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('theme') as Theme) || 'system';
-    }
-    return 'system';
-  });
-  const [isDark, setIsDark] = useState(() => applyTheme(theme));
-
-  // Apply theme and listen for system preference changes
-  useEffect(() => {
-    setIsDark(applyTheme(theme));
-    localStorage.setItem('theme', theme);
-
-    // Listen for system theme changes when in system mode
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = (e: MediaQueryListEvent) => {
-        setIsDark(applyTheme('system'));
-      };
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-  }, [theme]);
-
-  const cycleTheme = () => {
-    setTheme((current) => {
-      if (current === 'dark') return 'light';
-      if (current === 'light') return 'system';
-      return 'dark';
-    });
-  };
 
   const getThemeIcon = () => {
     if (theme === 'system') {
@@ -116,7 +74,7 @@ export function DashboardHeader() {
   };
 
   return (
-    <header className="border-b border-border bg-card px-6 py-3">
+    <header className="border-b border-border bg-card px-6 py-3 hidden md:block">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1">
           <SidebarTrigger />
@@ -138,7 +96,7 @@ export function DashboardHeader() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={cycleTheme}
+            onClick={onCycleTheme}
             className="h-9 w-9 transition-transform duration-200 hover:scale-105 relative group"
             title={`Theme: ${getThemeLabel()}`}
           >
