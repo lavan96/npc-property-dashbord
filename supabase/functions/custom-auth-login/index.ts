@@ -42,14 +42,17 @@ serve(async (req) => {
       )
     }
 
-    // Simple password validation (in production, use bcrypt or similar)
-    // For demo purposes, checking against "NPC123"
-    if (password !== 'NPC123') {
+    // Validate password against stored password_hash
+    // Note: Using simple comparison for this custom auth system
+    if (user.password_hash !== password) {
+      console.log(`Login failed for user ${username}: incorrect password`);
       return new Response(
         JSON.stringify({ error: 'Invalid username or password' }), 
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log(`Login successful for user ${username}`);
 
     // Generate session token
     const sessionToken = crypto.randomUUID()
