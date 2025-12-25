@@ -101,10 +101,11 @@ serve(async (req: Request) => {
         );
       }
 
-      // Send email via Resend
-      // Using Resend's default sender - for custom domain, verify at https://resend.com/domains
+      // Send email via Resend using verified domain
+      console.log(`Attempting to send OTP email to ${user.email} for user ${user.username}`);
+      
       const { data: emailData, error: emailError } = await resend.emails.send({
-        from: 'NPC Dashboard <onboarding@resend.dev>',
+        from: 'NPC Admin <admin@npcservices.com.au>',
         to: [user.email],
         subject: 'Password Reset OTP - NPC Dashboard',
         html: `
@@ -124,7 +125,7 @@ serve(async (req: Request) => {
         `,
       });
 
-      console.log('Resend response:', { emailData, emailError });
+      console.log('Resend email response:', JSON.stringify({ emailData, emailError }));
 
       if (emailError) {
         console.error('Failed to send email:', emailError);
