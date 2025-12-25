@@ -162,31 +162,32 @@ export default function Reports() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-start">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports</h1>
-          <p className="text-muted-foreground">Generate comprehensive property analysis and investment reports</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Reports</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Generate property analysis and investment reports</p>
         </div>
       </div>
 
       <Tabs defaultValue="quantitative" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="quantitative" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="quantitative" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
             <BarChart3 className="h-4 w-4" />
-            Quantitative Reports
+            <span className="hidden xs:inline">Quantitative</span>
+            <span className="xs:hidden">Quant</span>
           </TabsTrigger>
-          <TabsTrigger value="investment" className="flex items-center gap-2">
+          <TabsTrigger value="investment" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
             <TrendingUp className="h-4 w-4" />
-            Investment Reports
+            <span>Investment</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="quantitative" className="space-y-6">
-          <div className="flex justify-between items-start">
+        <TabsContent value="quantitative" className="space-y-4 md:space-y-6 mt-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Quantitative Analysis</h2>
-              <p className="text-muted-foreground">Statistical analysis of your property listings</p>
+              <h2 className="text-xl md:text-2xl font-bold text-foreground">Quantitative Analysis</h2>
+              <p className="text-sm text-muted-foreground">Statistical analysis of your property listings</p>
             </div>
             <ReportConfigModal 
               onGenerateReport={handleGenerateReport}
@@ -197,7 +198,7 @@ export default function Reports() {
           </div>
 
           {/* KPIs */}
-          <div ref={kpisRef} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div ref={kpisRef} className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             <KPICard
               title="Total Listings"
               value={totalListings.toLocaleString()}
@@ -240,36 +241,38 @@ export default function Reports() {
 
           {/* Charts and Analysis */}
           <Tabs defaultValue="temporal" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-7">
-              <TabsTrigger value="temporal" className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" />
-                Trends
-              </TabsTrigger>
-              <TabsTrigger value="geographic" className="flex items-center gap-1">
-                <Globe className="h-3 w-3" />
-                Geographic
-              </TabsTrigger>
-              <TabsTrigger value="agents" className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                Agents
-              </TabsTrigger>
-              <TabsTrigger value="data-quality" className="flex items-center gap-1">
-                <BarChart3 className="h-3 w-3" />
-                Quality
-              </TabsTrigger>
-              <TabsTrigger value="suburbs" className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                Suburbs
-              </TabsTrigger>
-              <TabsTrigger value="property-type" className="flex items-center gap-1">
-                <Building2 className="h-3 w-3" />
-                Types
-              </TabsTrigger>
-              <TabsTrigger value="price-range" className="flex items-center gap-1">
-                <DollarSign className="h-3 w-3" />
-                Pricing
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+              <TabsList className="inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto">
+                <TabsTrigger value="temporal" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <TrendingUp className="h-3 w-3" />
+                  Trends
+                </TabsTrigger>
+                <TabsTrigger value="geographic" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <Globe className="h-3 w-3" />
+                  Geographic
+                </TabsTrigger>
+                <TabsTrigger value="agents" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <Users className="h-3 w-3" />
+                  Agents
+                </TabsTrigger>
+                <TabsTrigger value="data-quality" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <BarChart3 className="h-3 w-3" />
+                  Quality
+                </TabsTrigger>
+                <TabsTrigger value="suburbs" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <MapPin className="h-3 w-3" />
+                  Suburbs
+                </TabsTrigger>
+                <TabsTrigger value="property-type" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <Building2 className="h-3 w-3" />
+                  Types
+                </TabsTrigger>
+                <TabsTrigger value="price-range" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                  <DollarSign className="h-3 w-3" />
+                  Pricing
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="temporal" className="space-y-4">
               <div ref={temporalAnalysisRef}>
