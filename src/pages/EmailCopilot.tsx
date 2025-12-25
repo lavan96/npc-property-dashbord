@@ -2222,6 +2222,15 @@ export default function EmailCopilot() {
             <div className="space-y-4">
               {/* Email Recipients Section */}
               <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                {/* From Field - Non-editable */}
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">From:</Label>
+                  <div className="h-8 px-3 flex items-center bg-muted/50 border rounded-md text-sm text-muted-foreground">
+                    {selectedMailbox === 'personal' && personalMailbox 
+                      ? personalMailbox 
+                      : 'Admin Mailbox'}
+                  </div>
+                </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
                   <Label className="text-sm text-muted-foreground">To:</Label>
                   <Input
@@ -2428,6 +2437,14 @@ export default function EmailCopilot() {
           
           <div className="space-y-3 py-4">
             <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <div className="flex gap-2">
+                <span className="text-sm font-medium w-16">From:</span>
+                <span className="text-sm text-muted-foreground flex-1">
+                  {selectedMailbox === 'personal' && personalMailbox 
+                    ? personalMailbox 
+                    : 'Admin Mailbox'}
+                </span>
+              </div>
               <div className="flex gap-2">
                 <span className="text-sm font-medium w-16">To:</span>
                 <span className="text-sm text-muted-foreground flex-1">{replyTo}</span>
