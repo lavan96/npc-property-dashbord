@@ -27,6 +27,7 @@ import {
   Building
 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
+import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 
 export interface PreGenerationData {
   buildType: 'new_build' | 'existing_property';
@@ -195,6 +196,21 @@ export function PreGenerationOverrides({
   // Loading state for expense estimation
   const [isEstimatingExpenses, setIsEstimatingExpenses] = useState(false);
 
+  // Helper to handle formatted currency input changes
+  const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = removeCommas(e.target.value);
+      // Only allow valid number formats
+      if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*$/.test(rawValue)) {
+        setter(rawValue);
+      }
+    };
+  }, []);
+
+  // Helper to format a value for display with commas
+  const formatForDisplay = useCallback((value: string) => {
+    return formatNumberWithCommas(value);
+  }, []);
   // Detect state from property address
   const detectStateFromAddress = useCallback((address: string): string => {
     if (!address) return 'All';
@@ -584,10 +600,11 @@ export function PreGenerationOverrides({
                       <Label htmlFor="landPrice">Land Price ($)</Label>
                       <Input
                         id="landPrice"
-                        type="number"
-                        value={landPrice}
-                        onChange={(e) => setLandPrice(e.target.value)}
-                        placeholder="e.g., 350000"
+                        type="text"
+                        inputMode="numeric"
+                        value={formatForDisplay(landPrice)}
+                        onChange={handleCurrencyChange(setLandPrice)}
+                        placeholder="e.g., 350,000"
                         disabled={disabled}
                       />
                     </div>
@@ -595,10 +612,11 @@ export function PreGenerationOverrides({
                       <Label htmlFor="buildPrice">Build Price ($)</Label>
                       <Input
                         id="buildPrice"
-                        type="number"
-                        value={buildPrice}
-                        onChange={(e) => setBuildPrice(e.target.value)}
-                        placeholder="e.g., 400000"
+                        type="text"
+                        inputMode="numeric"
+                        value={formatForDisplay(buildPrice)}
+                        onChange={handleCurrencyChange(setBuildPrice)}
+                        placeholder="e.g., 400,000"
                         disabled={disabled}
                       />
                     </div>
@@ -619,10 +637,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="agentFee">Agent Fee / Commission ($)</Label>
                     <Input
                       id="agentFee"
-                      type="number"
-                      value={agentFee}
-                      onChange={(e) => setAgentFee(e.target.value)}
-                      placeholder="e.g., 15000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(agentFee)}
+                      onChange={handleCurrencyChange(setAgentFee)}
+                      placeholder="e.g., 15,000"
                       disabled={disabled}
                     />
                   </div>
@@ -744,10 +763,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
                     <Input
                       id="purchasePrice"
-                      type="number"
-                      value={purchasePrice}
-                      onChange={(e) => setPurchasePrice(e.target.value)}
-                      placeholder="e.g., 750000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(purchasePrice)}
+                      onChange={handleCurrencyChange(setPurchasePrice)}
+                      placeholder="e.g., 750,000"
                       disabled={disabled}
                     />
                   </div>
@@ -780,9 +800,10 @@ export function PreGenerationOverrides({
                       </Label>
                       <Input
                         id="depositValue"
-                        type="number"
-                        value={depositValue}
-                        onChange={(e) => setDepositValue(e.target.value)}
+                        type="text"
+                        inputMode="numeric"
+                        value={formatForDisplay(depositValue)}
+                        onChange={handleCurrencyChange(setDepositValue)}
                         placeholder="Auto-calculated"
                         className="bg-muted/30"
                         disabled={disabled}
@@ -836,9 +857,10 @@ export function PreGenerationOverrides({
                   <Label htmlFor="weeklyRent">Weekly Rent ($)</Label>
                   <Input
                     id="weeklyRent"
-                    type="number"
-                    value={weeklyRent}
-                    onChange={(e) => setWeeklyRent(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(weeklyRent)}
+                    onChange={handleCurrencyChange(setWeeklyRent)}
                     placeholder="e.g., 550"
                     disabled={disabled}
                   />
@@ -895,9 +917,10 @@ export function PreGenerationOverrides({
                   </div>
                   <Input
                     id="stampDuty"
-                    type="number"
-                    value={stampDuty}
-                    onChange={(e) => setStampDuty(e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(stampDuty)}
+                    onChange={handleCurrencyChange(setStampDuty)}
                     placeholder="Use calculator or enter manually"
                     disabled={disabled}
                   />
@@ -949,10 +972,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="solicitorFees">Solicitor / Conveyancing Fees ($)</Label>
                     <Input
                       id="solicitorFees"
-                      type="number"
-                      value={solicitorFees}
-                      onChange={(e) => setSolicitorFees(e.target.value)}
-                      placeholder="e.g., 1500"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(solicitorFees)}
+                      onChange={handleCurrencyChange(setSolicitorFees)}
+                      placeholder="e.g., 1,500"
                       disabled={disabled}
                     />
                   </div>
@@ -961,10 +985,11 @@ export function PreGenerationOverrides({
                       <Label htmlFor="agentFee">Agent Fee / Commission ($)</Label>
                       <Input
                         id="agentFee"
-                        type="number"
-                        value={agentFee}
-                        onChange={(e) => setAgentFee(e.target.value)}
-                        placeholder="e.g., 15000"
+                        type="text"
+                        inputMode="numeric"
+                        value={formatForDisplay(agentFee)}
+                        onChange={handleCurrencyChange(setAgentFee)}
+                        placeholder="e.g., 15,000"
                         disabled={disabled}
                       />
                     </div>
@@ -1088,10 +1113,11 @@ export function PreGenerationOverrides({
                   </div>
                   <Input
                     id="bodyCorporateFees"
-                    type="number"
-                    value={bodyCorporateFees}
-                    onChange={(e) => setBodyCorporateFees(e.target.value)}
-                    placeholder="e.g., 3000"
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(bodyCorporateFees)}
+                    onChange={handleCurrencyChange(setBodyCorporateFees)}
+                    placeholder="e.g., 3,000"
                     className={showStrataBreakdown ? 'bg-muted/30' : ''}
                     disabled={disabled || showStrataBreakdown}
                   />
@@ -1108,10 +1134,11 @@ export function PreGenerationOverrides({
                         <Label htmlFor="strataAdminFund" className="text-xs">Admin Fund ($)</Label>
                         <Input
                           id="strataAdminFund"
-                          type="number"
-                          value={strataAdminFund}
-                          onChange={(e) => setStrataAdminFund(e.target.value)}
-                          placeholder="e.g., 1800"
+                          type="text"
+                          inputMode="numeric"
+                          value={formatForDisplay(strataAdminFund)}
+                          onChange={handleCurrencyChange(setStrataAdminFund)}
+                          placeholder="e.g., 1,800"
                           disabled={disabled}
                           className="h-8 text-sm"
                         />
@@ -1120,9 +1147,10 @@ export function PreGenerationOverrides({
                         <Label htmlFor="strataSinkingFund" className="text-xs">Sinking Fund ($)</Label>
                         <Input
                           id="strataSinkingFund"
-                          type="number"
-                          value={strataSinkingFund}
-                          onChange={(e) => setStrataSinkingFund(e.target.value)}
+                          type="text"
+                          inputMode="numeric"
+                          value={formatForDisplay(strataSinkingFund)}
+                          onChange={handleCurrencyChange(setStrataSinkingFund)}
                           placeholder="e.g., 900"
                           disabled={disabled}
                           className="h-8 text-sm"
@@ -1132,9 +1160,10 @@ export function PreGenerationOverrides({
                         <Label htmlFor="strataSpecialLevies" className="text-xs">Special Levies ($)</Label>
                         <Input
                           id="strataSpecialLevies"
-                          type="number"
-                          value={strataSpecialLevies}
-                          onChange={(e) => setStrataSpecialLevies(e.target.value)}
+                          type="text"
+                          inputMode="numeric"
+                          value={formatForDisplay(strataSpecialLevies)}
+                          onChange={handleCurrencyChange(setStrataSpecialLevies)}
                           placeholder="e.g., 300"
                           disabled={disabled}
                           className="h-8 text-sm"
@@ -1158,10 +1187,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="landTax">Land Tax ($)</Label>
                     <Input
                       id="landTax"
-                      type="number"
-                      value={landTax}
-                      onChange={(e) => setLandTax(e.target.value)}
-                      placeholder="e.g., 2500"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(landTax)}
+                      onChange={handleCurrencyChange(setLandTax)}
+                      placeholder="e.g., 2,500"
                       disabled={disabled}
                     />
                   </div>
@@ -1169,10 +1199,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="councilRates">Council Rates ($)</Label>
                     <Input
                       id="councilRates"
-                      type="number"
-                      value={councilRates}
-                      onChange={(e) => setCouncilRates(e.target.value)}
-                      placeholder="e.g., 2000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(councilRates)}
+                      onChange={handleCurrencyChange(setCouncilRates)}
+                      placeholder="e.g., 2,000"
                       disabled={disabled}
                     />
                   </div>
@@ -1180,10 +1211,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="waterRates">Water Rates ($)</Label>
                     <Input
                       id="waterRates"
-                      type="number"
-                      value={waterRates}
-                      onChange={(e) => setWaterRates(e.target.value)}
-                      placeholder="e.g., 1200"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(waterRates)}
+                      onChange={handleCurrencyChange(setWaterRates)}
+                      placeholder="e.g., 1,200"
                       disabled={disabled}
                     />
                   </div>
@@ -1191,10 +1223,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="buildingLandlordInsurance">Building & Landlord Insurance ($)</Label>
                     <Input
                       id="buildingLandlordInsurance"
-                      type="number"
-                      value={buildingLandlordInsurance}
-                      onChange={(e) => setBuildingLandlordInsurance(e.target.value)}
-                      placeholder="e.g., 1800"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(buildingLandlordInsurance)}
+                      onChange={handleCurrencyChange(setBuildingLandlordInsurance)}
+                      placeholder="e.g., 1,800"
                       disabled={disabled}
                     />
                   </div>
@@ -1214,10 +1247,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="repairsMaintenance">Repairs & Maintenance ($)</Label>
                     <Input
                       id="repairsMaintenance"
-                      type="number"
-                      value={repairsMaintenance}
-                      onChange={(e) => setRepairsMaintenance(e.target.value)}
-                      placeholder="e.g., 2000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(repairsMaintenance)}
+                      onChange={handleCurrencyChange(setRepairsMaintenance)}
+                      placeholder="e.g., 2,000"
                       disabled={disabled}
                     />
                   </div>
@@ -1237,9 +1271,10 @@ export function PreGenerationOverrides({
                     </Label>
                     <Input
                       id="lettingFees"
-                      type="number"
-                      value={lettingFees}
-                      onChange={(e) => setLettingFees(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(lettingFees)}
+                      onChange={handleCurrencyChange(setLettingFees)}
                       placeholder="= Weekly Rent"
                       className="bg-muted/30"
                       disabled={disabled}
@@ -1337,10 +1372,11 @@ export function PreGenerationOverrides({
                     </Label>
                     <Input
                       id="depreciation"
-                      type="number"
-                      value={depreciation}
-                      onChange={(e) => setDepreciation(e.target.value)}
-                      placeholder="e.g., 6000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(depreciation)}
+                      onChange={handleCurrencyChange(setDepreciation)}
+                      placeholder="e.g., 6,000"
                       disabled={disabled}
                     />
                   </div>
@@ -1444,9 +1480,10 @@ export function PreGenerationOverrides({
                     </Label>
                     <Input
                       id="marketValueNow"
-                      type="number"
-                      value={marketValueNow}
-                      onChange={(e) => setMarketValueNow(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(marketValueNow)}
+                      onChange={handleCurrencyChange(setMarketValueNow)}
                       placeholder="Leave empty to use purchase price"
                       disabled={disabled}
                     />
@@ -1467,9 +1504,10 @@ export function PreGenerationOverrides({
                     </Label>
                     <Input
                       id="loanAmount"
-                      type="number"
-                      value={loanAmount}
-                      onChange={(e) => setLoanAmount(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(loanAmount)}
+                      onChange={handleCurrencyChange(setLoanAmount)}
                       placeholder="Auto-calculated from LVR"
                       disabled={disabled}
                     />
@@ -1513,9 +1551,10 @@ export function PreGenerationOverrides({
                     <Label htmlFor="extraRepaymentPerMonth">Extra Repayment ($/month)</Label>
                     <Input
                       id="extraRepaymentPerMonth"
-                      type="number"
-                      value={extraRepaymentPerMonth}
-                      onChange={(e) => setExtraRepaymentPerMonth(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(extraRepaymentPerMonth)}
+                      onChange={handleCurrencyChange(setExtraRepaymentPerMonth)}
                       placeholder="e.g., 500"
                       disabled={disabled}
                     />
@@ -1524,10 +1563,11 @@ export function PreGenerationOverrides({
                     <Label htmlFor="offsetBalance">Offset Account Balance ($)</Label>
                     <Input
                       id="offsetBalance"
-                      type="number"
-                      value={offsetBalance}
-                      onChange={(e) => setOffsetBalance(e.target.value)}
-                      placeholder="e.g., 20000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(offsetBalance)}
+                      onChange={handleCurrencyChange(setOffsetBalance)}
+                      placeholder="e.g., 20,000"
                       disabled={disabled}
                     />
                   </div>
@@ -1541,9 +1581,10 @@ export function PreGenerationOverrides({
                     <Label htmlFor="landSizeSqm">Land Size (m²)</Label>
                     <Input
                       id="landSizeSqm"
-                      type="number"
-                      value={landSizeSqm}
-                      onChange={(e) => setLandSizeSqm(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(landSizeSqm)}
+                      onChange={handleCurrencyChange(setLandSizeSqm)}
                       placeholder="e.g., 450"
                       disabled={disabled}
                     />
@@ -1552,9 +1593,10 @@ export function PreGenerationOverrides({
                     <Label htmlFor="buildSizeSqm">Build Size (m²)</Label>
                     <Input
                       id="buildSizeSqm"
-                      type="number"
-                      value={buildSizeSqm}
-                      onChange={(e) => setBuildSizeSqm(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(buildSizeSqm)}
+                      onChange={handleCurrencyChange(setBuildSizeSqm)}
                       placeholder="e.g., 180"
                       disabled={disabled}
                     />
