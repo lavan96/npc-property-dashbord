@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Calculator, Home, DollarSign, TrendingUp, Settings2 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
 
@@ -91,6 +92,7 @@ export function PreGenerationOverrides({
   externalWeeklyRent
 }: PreGenerationOverridesProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('property');
   
   // Build type selection
@@ -403,36 +405,38 @@ export function PreGenerationOverrides({
   return (
     <Card className="border-dashed">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Calculator className="h-5 w-5" />
+        <CardTitle className="text-base md:text-lg flex items-center gap-2">
+          <Calculator className="h-4 w-4 md:h-5 md:w-5" />
           Pre-Generation Overrides
         </CardTitle>
-        <CardDescription>
-          Set manual values to inject into the report generation. These will override AI-fetched data.
+        <CardDescription className="text-xs md:text-sm">
+          Set manual values to inject into the report generation.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 md:px-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="property" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <Home className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Property</span>
-            </TabsTrigger>
-            <TabsTrigger value="financials" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <DollarSign className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Financials</span>
-            </TabsTrigger>
-            <TabsTrigger value="income" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Income</span>
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <Settings2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Advanced</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className={isMobile ? "overflow-x-auto -mx-3 px-3 pb-2" : ""}>
+            <TabsList className={isMobile ? "inline-flex w-auto min-w-full mb-4" : "grid w-full grid-cols-4 mb-4"}>
+              <TabsTrigger value="property" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                <Home className="h-3.5 w-3.5" />
+                <span className={isMobile ? "" : "hidden sm:inline"}>Property</span>
+              </TabsTrigger>
+              <TabsTrigger value="financials" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                <DollarSign className="h-3.5 w-3.5" />
+                <span className={isMobile ? "" : "hidden sm:inline"}>Financials</span>
+              </TabsTrigger>
+              <TabsTrigger value="income" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className={isMobile ? "" : "hidden sm:inline"}>Income</span>
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className={isMobile ? "" : "hidden sm:inline"}>Advanced</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <ScrollArea className="h-[450px] pr-4">
+          <ScrollArea className={isMobile ? "h-[350px] pr-2" : "h-[450px] pr-4"}>
             <TabsContent value="property" className="mt-0">
               <PropertyTab
                 buildType={buildType}
