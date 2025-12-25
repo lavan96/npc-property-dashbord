@@ -202,6 +202,19 @@ export function InvestmentReportGenerator() {
       if (preGenData.landSizeSqm) propertyDetails.landSizeSqm = preGenData.landSizeSqm;
       if (preGenData.buildSizeSqm) propertyDetails.buildSizeSqm = preGenData.buildSizeSqm;
       
+      // First Home Buyer flag for stamp duty concessions
+      if (preGenData.isFirstHomeBuyer) propertyDetails.isFirstHomeBuyer = preGenData.isFirstHomeBuyer;
+      
+      // Construction Stage Percentages (new build only)
+      if (preGenData.buildType === 'new_build') {
+        if (preGenData.stageDepositPercent) propertyDetails.stageDepositPercent = preGenData.stageDepositPercent;
+        if (preGenData.stageSlabPercent) propertyDetails.stageSlabPercent = preGenData.stageSlabPercent;
+        if (preGenData.stageFramePercent) propertyDetails.stageFramePercent = preGenData.stageFramePercent;
+        if (preGenData.stageLockupPercent) propertyDetails.stageLockupPercent = preGenData.stageLockupPercent;
+        if (preGenData.stageFixingPercent) propertyDetails.stageFixingPercent = preGenData.stageFixingPercent;
+        if (preGenData.stageCompletionPercent) propertyDetails.stageCompletionPercent = preGenData.stageCompletionPercent;
+      }
+      
       // Add suburb year context if provided (only for suburb analysis)
       if (queryType === 'suburb') {
         if (dataYearType === 'single' && singleYear) {
