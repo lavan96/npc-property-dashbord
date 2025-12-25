@@ -272,17 +272,27 @@ export function PreGenerationOverrides({
   // Load stamp duty calculator script
   useEffect(() => {
     if (showStampDutyCalculator) {
-      const existingScript = document.getElementById('stamp-src-pregen');
+      // Remove any existing stamp duty scripts and reset container
+      const existingScript = document.getElementById('stamp-src');
       if (existingScript) {
         existingScript.remove();
       }
       
+      // Create fresh script element
       const script = document.createElement('script');
-      script.id = 'stamp-src-pregen';
+      script.id = 'stamp-src';
       script.type = 'text/javascript';
       script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
       script.setAttribute('data-state', detectedState);
       document.body.appendChild(script);
+      
+      return () => {
+        // Cleanup on unmount or when hiding
+        const scriptToRemove = document.getElementById('stamp-src');
+        if (scriptToRemove) {
+          scriptToRemove.remove();
+        }
+      };
     }
   }, [showStampDutyCalculator, detectedState]);
 
@@ -434,7 +444,7 @@ export function PreGenerationOverrides({
 
   // Capture stamp duty from calculator
   const captureStampDuty = useCallback(() => {
-    const calcContainer = document.getElementById('stamp-duty-calculator-pregen');
+    const calcContainer = document.getElementById('stamp-duty-calculator');
     if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
@@ -916,8 +926,20 @@ export function PreGenerationOverrides({
                         Apply Value
                       </Button>
                     </div>
-                    <div id="stamp-duty-calculator-pregen" className="min-h-[200px]">
-                      <noscript>Enable JavaScript to use the stamp duty calculator</noscript>
+                    <div id="stamp-duty-calculator" className="v-orange-theme min-h-[200px] bg-white rounded-lg p-4">
+                      <div id="stamp-duty-anchors">
+                        <p className="text-sm text-muted-foreground">
+                          Stamp Duty Calculator from{' '}
+                          <a 
+                            href="https://calculatorsonline.com.au" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            calculatorsonline.com.au
+                          </a>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
