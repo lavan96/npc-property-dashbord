@@ -973,6 +973,7 @@ export type Database = {
           id: string
           linked_property_address: string | null
           linked_report_id: string | null
+          mailbox_source: string | null
           received_at: string | null
           sender: string
           status: string
@@ -992,6 +993,7 @@ export type Database = {
           id?: string
           linked_property_address?: string | null
           linked_report_id?: string | null
+          mailbox_source?: string | null
           received_at?: string | null
           sender: string
           status?: string
@@ -1011,6 +1013,7 @@ export type Database = {
           id?: string
           linked_property_address?: string | null
           linked_report_id?: string | null
+          mailbox_source?: string | null
           received_at?: string | null
           sender?: string
           status?: string
@@ -1044,6 +1047,7 @@ export type Database = {
           cc_recipients: string[] | null
           created_by: string | null
           id: string
+          mailbox_source: string | null
           original_email_id: string | null
           recipient: string
           sent_at: string
@@ -1056,6 +1060,7 @@ export type Database = {
           cc_recipients?: string[] | null
           created_by?: string | null
           id?: string
+          mailbox_source?: string | null
           original_email_id?: string | null
           recipient: string
           sent_at?: string
@@ -1068,6 +1073,7 @@ export type Database = {
           cc_recipients?: string[] | null
           created_by?: string | null
           id?: string
+          mailbox_source?: string | null
           original_email_id?: string | null
           recipient?: string
           sent_at?: string

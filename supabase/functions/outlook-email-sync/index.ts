@@ -315,7 +315,10 @@ serve(async (req) => {
     // Use provided mailbox or fall back to default
     const targetMailbox = mailbox || DEFAULT_MAILBOX_EMAIL;
     
-    console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}, Mailbox: ${targetMailbox}`);
+    // Determine mailbox source for tagging emails
+    const mailboxSource = mailbox ? 'personal' : 'admin';
+    
+    console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}, Mailbox: ${targetMailbox}, Source: ${mailboxSource}`);
 
     // Handle clear action
     if (action === 'clear') {
@@ -420,7 +423,8 @@ serve(async (req) => {
             status: 'unread',
             cc_recipients: ccRecipients,
             bcc_recipients: bccRecipients,
-            attachments: []
+            attachments: [],
+            mailbox_source: mailboxSource
           })
           .select('id')
           .single();
