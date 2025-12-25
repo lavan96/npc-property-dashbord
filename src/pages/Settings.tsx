@@ -210,10 +210,10 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Configure your dashboard and manage connections
         </p>
       </div>
@@ -223,9 +223,9 @@ export default function Settings() {
 
       {/* Airtable Configuration */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
+        <CardHeader className="pb-3 md:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Database className="h-4 w-4 md:h-5 md:w-5" />
             Airtable Configuration
           </CardTitle>
         </CardHeader>
@@ -420,15 +420,15 @@ export default function Settings() {
 
       {/* Display Settings */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
+        <CardHeader className="pb-3 md:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Palette className="h-4 w-4 md:h-5 md:w-5" />
             Display & Preferences
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <h4 className="text-sm font-medium">Theme</h4>
                 <p className="text-xs text-muted-foreground">
@@ -440,6 +440,7 @@ export default function Settings() {
                   variant={theme === 'light' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setTheme('light')}
+                  className="flex-1 sm:flex-none"
                 >
                   Light
                 </Button>
@@ -447,6 +448,7 @@ export default function Settings() {
                   variant={theme === 'dark' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setTheme('dark')}
+                  className="flex-1 sm:flex-none"
                 >
                   Dark
                 </Button>
@@ -454,6 +456,7 @@ export default function Settings() {
                   variant={theme === 'system' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setTheme('system')}
+                  className="flex-1 sm:flex-none"
                 >
                   System
                 </Button>
@@ -462,14 +465,14 @@ export default function Settings() {
 
             <Separator />
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <h4 className="text-sm font-medium">Timezone</h4>
                 <p className="text-xs text-muted-foreground">
                   Affects how dates and times are displayed
                 </p>
               </div>
-              <div className="w-48">
+              <div className="w-full sm:w-48">
                 <Input
                   value={settings.timezone}
                   onChange={(e) => handleSettingChange('timezone', e.target.value)}

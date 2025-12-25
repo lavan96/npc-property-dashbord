@@ -45,8 +45,11 @@ import {
   ArrowRight,
   Radio,
   LineChart,
-  Tag
+  Tag,
+  SlidersHorizontal
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 interface SquadAssistant {
   id: string;
@@ -114,6 +117,7 @@ interface CallStats {
 
 const CallLogs = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [filteredCalls, setFilteredCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +130,7 @@ const CallLogs = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [squads, setSquads] = useState<{ id: string; name: string }[]>([]);
   const [stats, setStats] = useState<CallStats>({
@@ -353,127 +358,131 @@ const CallLogs = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
             Call Logs
           </h1>
-          <p className="text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
+          <p className="text-sm text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
         </div>
-        <div className="flex items-center gap-2">
-          <WeeklyReportConfig />
-          <CallAlerts calls={filteredCalls} />
+        <div className="flex items-center gap-2 flex-wrap">
+          {!isMobile && <WeeklyReportConfig />}
+          {!isMobile && <CallAlerts calls={filteredCalls} />}
           <CallLogsExport calls={filteredCalls} stats={stats} />
           <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <Tabs defaultValue="logs" className="w-full">
-        <TabsList>
-          <TabsTrigger value="logs" className="flex items-center gap-2">
-            <Phone className="w-4 h-4" />
-            Call Logs
-          </TabsTrigger>
-          <TabsTrigger value="live" className="flex items-center gap-2">
-            <Radio className="w-4 h-4" />
-            Live Monitor
-          </TabsTrigger>
-          <TabsTrigger value="trends" className="flex items-center gap-2">
-            <LineChart className="w-4 h-4" />
-            Trends
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <PieChart className="w-4 h-4" />
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="squad-analytics" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Squad Analytics
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className={isMobile ? "inline-flex w-auto" : ""}>
+            <TabsTrigger value="logs" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+              <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Call</span> Logs
+            </TabsTrigger>
+            <TabsTrigger value="live" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+              <Radio className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              Live
+            </TabsTrigger>
+            <TabsTrigger value="trends" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+              <LineChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              Trends
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+              <PieChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+            {!isMobile && (
+              <TabsTrigger value="squad-analytics" className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Squad Analytics
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
-        <TabsContent value="live" className="mt-6">
+        <TabsContent value="live" className="mt-4 md:mt-6">
           <LiveCallsMonitor />
         </TabsContent>
 
-        <TabsContent value="trends" className="mt-6">
+        <TabsContent value="trends" className="mt-4 md:mt-6">
           <CallAnalyticsTrends calls={filteredCalls} />
         </TabsContent>
 
-        <TabsContent value="analytics" className="mt-6">
+        <TabsContent value="analytics" className="mt-4 md:mt-6">
           <CallAnalyticsDashboard calls={filteredCalls} />
         </TabsContent>
 
-        <TabsContent value="squad-analytics" className="mt-6">
+        <TabsContent value="squad-analytics" className="mt-4 md:mt-6">
           <SquadAnalyticsDashboard calls={filteredCalls} />
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-6 space-y-6">
+        <TabsContent value="logs" className="mt-4 md:mt-6 space-y-4 md:space-y-6">
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3">
+      {/* Stats Cards - Responsive grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 md:gap-3">
         <Card className="bg-gradient-to-br from-card to-card/50">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-muted">
-                <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+          <CardContent className="p-2 md:p-3">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+              <div className="p-1 md:p-1.5 rounded-lg bg-muted">
+                <Phone className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground" />
               </div>
-              <span className="text-xs text-muted-foreground">Total</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Total</span>
             </div>
-            <p className="text-xl font-bold">{stats.totalCalls}</p>
+            <p className="text-lg md:text-xl font-bold">{stats.totalCalls}</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+          <CardContent className="p-2 md:p-3">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+              <div className="p-1 md:p-1.5 rounded-lg bg-emerald-500/10">
+                <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-500" />
               </div>
-              <span className="text-xs text-muted-foreground">Completed</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Done</span>
             </div>
-            <p className="text-xl font-bold text-emerald-500">{stats.completedCalls}</p>
+            <p className="text-lg md:text-xl font-bold text-emerald-500">{stats.completedCalls}</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-blue-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-blue-500/10">
-                <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+          <CardContent className="p-2 md:p-3">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+              <div className="p-1 md:p-1.5 rounded-lg bg-blue-500/10">
+                <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-500" />
               </div>
-              <span className="text-xs text-muted-foreground">Success</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Rate</span>
             </div>
-            <p className="text-xl font-bold text-blue-500">{stats.successRate}%</p>
+            <p className="text-lg md:text-xl font-bold text-blue-500">{stats.successRate}%</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-muted">
-                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+        <Card className="hidden sm:block">
+          <CardContent className="p-2 md:p-3">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+              <div className="p-1 md:p-1.5 rounded-lg bg-muted">
+                <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground" />
               </div>
-              <span className="text-xs text-muted-foreground">Avg Time</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Avg</span>
             </div>
-            <p className="text-xl font-bold">{formatDuration(stats.avgDuration)}</p>
+            <p className="text-lg md:text-xl font-bold">{formatDuration(stats.avgDuration)}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-amber-500/10">
-                <DollarSign className="w-3.5 h-3.5 text-amber-500" />
+        <Card className="hidden md:block bg-gradient-to-br from-amber-500/5 to-card">
+          <CardContent className="p-2 md:p-3">
+            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
+              <div className="p-1 md:p-1.5 rounded-lg bg-amber-500/10">
+                <DollarSign className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-500" />
               </div>
-              <span className="text-xs text-muted-foreground">Cost</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Cost</span>
             </div>
-            <p className="text-xl font-bold text-amber-500">${stats.totalCost.toFixed(2)}</p>
+            <p className="text-lg md:text-xl font-bold text-amber-500">${stats.totalCost.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-green-500/5 to-card">
+        <Card className="hidden lg:block bg-gradient-to-br from-green-500/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1.5 rounded-lg bg-green-500/10">

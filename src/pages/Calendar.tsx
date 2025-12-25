@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,9 +88,11 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 ];
 
 export default function Calendar() {
+  const isMobile = useIsMobile();
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [pinnedTabs, setPinnedTabs] = useState<SidebarTab[]>(['events', 'conflicts']);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
   const [quickAddDefaultHour, setQuickAddDefaultHour] = useState<number | undefined>(undefined);
@@ -555,18 +559,63 @@ export default function Calendar() {
       />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-muted-foreground flex items-center gap-2">
-            GoHighLevel Appointments
-            {isUpdating && <span className="text-xs text-primary animate-pulse">(Updating...)</span>}
-            <GripVertical className="h-3 w-3 ml-2 text-muted-foreground/50" />
-            <span className="text-xs text-muted-foreground/70">Drag events to reschedule</span>
-          </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Calendar</h1>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              GoHighLevel Appointments
+              {isUpdating && <span className="text-xs text-primary animate-pulse">(Updating...)</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Mobile sidebar trigger */}
+            {isMobile && (
+              <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] p-0">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle>Calendar Tools</SheetTitle>
+                  </SheetHeader>
+                  <div className="p-4">
+                    <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as SidebarTab)}>
+                      <div className="overflow-x-auto -mx-4 px-4 pb-2">
+                        <TabsList className="inline-flex gap-1 h-auto flex-wrap">
+                          {SIDEBAR_TABS.slice(0, 6).map(tab => (
+                            <TabsTrigger 
+                              key={tab.id} 
+                              value={tab.id}
+                              className="text-xs px-2 py-1"
+                            >
+                              {tab.icon}
+                              <span className="ml-1">{tab.label}</span>
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </div>
+                    </Tabs>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <KeyboardShortcutsHint />
+        
+        {/* Controls row - scrollable on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 md:flex-wrap">
+          {!isMobile && <KeyboardShortcutsHint />}
           <CalendarSearchDropdown
             events={events}
             contactCache={contactCache}
@@ -582,14 +631,16 @@ export default function Calendar() {
             <TabsList className="h-9">
               <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
               <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
-              <TabsTrigger value="timeline" className="text-xs flex items-center gap-1">
-                <LayoutList className="h-3 w-3" />
-                Timeline
-              </TabsTrigger>
+              {!isMobile && (
+                <TabsTrigger value="timeline" className="text-xs flex items-center gap-1">
+                  <LayoutList className="h-3 w-3" />
+                  Timeline
+                </TabsTrigger>
+              )}
             </TabsList>
           </Tabs>
           <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-[160px] md:w-[220px] shrink-0">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="All Calendars" />
             </SelectTrigger>
@@ -602,20 +653,12 @@ export default function Calendar() {
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
                     />
-                    <span className="truncate max-w-[160px]">{cal.name}</span>
+                    <span className="truncate max-w-[120px]">{cal.name}</span>
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button 
-            variant="outline" 
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
         </div>
       </div>
 
