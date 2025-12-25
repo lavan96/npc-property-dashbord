@@ -12,6 +12,7 @@ interface KPICardProps {
     isPositive: boolean;
   };
   className?: string;
+  compact?: boolean;
 }
 
 export function KPICard({ 
@@ -20,23 +21,38 @@ export function KPICard({
   icon, 
   description, 
   trend, 
-  className 
+  className,
+  compact = false 
 }: KPICardProps) {
   return (
     <Card className={cn("", className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className={cn(
+        "flex flex-row items-center justify-between space-y-0",
+        compact ? "pb-1 pt-3 px-3" : "pb-2"
+      )}>
+        <CardTitle className={cn(
+          "font-medium text-muted-foreground",
+          compact ? "text-xs" : "text-sm"
+        )}>
           {title}
         </CardTitle>
         {icon && (
-          <div className="h-4 w-4 text-muted-foreground">
+          <div className={cn(
+            "text-muted-foreground",
+            compact ? "h-3.5 w-3.5" : "h-4 w-4"
+          )}>
             {icon}
           </div>
         )}
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
-        {description && (
+      <CardContent className={compact ? "pb-3 px-3" : ""}>
+        <div className={cn(
+          "font-bold text-foreground",
+          compact ? "text-lg" : "text-2xl"
+        )}>
+          {value}
+        </div>
+        {description && !compact && (
           <p className="text-xs text-muted-foreground mt-1">
             {description}
           </p>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { ListingFilters } from '@/components/listings/ListingFilters';
+import { MobileFilterSheet } from '@/components/listings/MobileFilterSheet';
+import { PropertyCard } from '@/components/listings/PropertyCard';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Table,
   TableBody,
@@ -37,6 +40,7 @@ export default function Listings() {
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const isMobile = useIsMobile();
   
   // Use React Query for caching and efficient data fetching
   const { data: listings = [], isLoading, refetch } = useQuery({
@@ -337,108 +341,170 @@ export default function Listings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Listings</h1>
-            <p className="text-muted-foreground">Manage and review property listings</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Listings</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Manage and review property listings</p>
           </div>
           <div className="flex gap-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-9 w-20" />
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-10 w-64" />
-              <Skeleton className="h-10 w-24" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {isMobile ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-64" />
+                <Skeleton className="h-10 w-24" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Listings</h1>
-          <p className="text-muted-foreground">
-            Manage and review property listings ({filteredListings.length} of {listings.length})
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Listings</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
+            {filteredListings.length} of {listings.length} properties
           </p>
         </div>
         
         <div className="flex gap-2">
-          {selectedListings.size > 0 && (
+          {selectedListings.size > 0 && !isMobile && (
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
-              Export CSV ({selectedListings.size})
+              Export ({selectedListings.size})
             </Button>
           )}
-          <Button onClick={loadListings} size="sm">
-            Refresh
+          <Button onClick={loadListings} size="sm" variant="outline">
+            <RefreshCw className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Refresh</span>
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search addresses, suburbs, agents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <ListingFilters 
-                filters={filters} 
-                setFilters={setFilters}
-                uniqueValues={uniqueValues}
-              />
-              {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                  <X className="h-4 w-4 mr-1" />
-                  Clear all filters
-                </Button>
-              )}
-            </div>
-
-            {/* Quick Filters */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={filters.hasInspection ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilters(prev => ({ ...prev, hasInspection: !prev.hasInspection }))}
-              >
-                Has Inspection
-              </Button>
-              <Button
-                variant={filters.lowConfidence ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilters(prev => ({ ...prev, lowConfidence: !prev.lowConfidence }))}
-              >
-                Low Confidence
-              </Button>
-            </div>
+      {/* Search and Filters */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search properties..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-10"
+            />
           </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          <Table>
+          
+          {/* Mobile uses sheet, desktop uses popover */}
+          {isMobile ? (
+            <MobileFilterSheet 
+              filters={filters} 
+              setFilters={setFilters}
+              uniqueValues={uniqueValues}
+            />
+          ) : (
+            <ListingFilters 
+              filters={filters} 
+              setFilters={setFilters}
+              uniqueValues={uniqueValues}
+            />
+          )}
+          
+          {hasActiveFilters && !isMobile && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Quick Filters */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant={filters.hasInspection ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilters(prev => ({ ...prev, hasInspection: !prev.hasInspection }))}
+            className="h-8 text-xs"
+          >
+            Has Inspection
+          </Button>
+          <Button
+            variant={filters.lowConfidence ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilters(prev => ({ ...prev, lowConfidence: !prev.lowConfidence }))}
+            className="h-8 text-xs"
+          >
+            Low Confidence
+          </Button>
+          {hasActiveFilters && isMobile && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearAllFilters}
+              className="h-8 text-xs text-destructive"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Clear filters
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Content: Cards on Mobile, Table on Desktop */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {filteredListings.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">No listings found.</p>
+                <Button variant="outline" onClick={loadListings} className="mt-4">
+                  Refresh
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredListings.map((listing) => (
+              <PropertyCard
+                key={listing.id}
+                listing={listing}
+                isSelected={selectedListings.has(listing.id)}
+                onSelect={(checked) => handleSelectListing(listing.id, checked)}
+                onOpenDetails={() => openDetailsModal(listing)}
+                onOpenInvestmentReport={() => openInvestmentReportModal(listing)}
+                onCopyAddress={() => copyToClipboard(listing.address || '', 'Address')}
+                onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
@@ -602,9 +668,9 @@ export default function Listings() {
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
-
+          </CardContent>
+        </Card>
+      )}
       {/* Lazy loaded modals - only load when needed */}
       {isDetailsModalOpen && (
         <Suspense fallback={null}>
@@ -643,41 +709,44 @@ export default function Listings() {
 
       {/* Floating Action Bar */}
       {selectedListings.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md md:max-w-lg md:w-auto">
           <Card className="shadow-lg border-2">
-            <CardContent className="py-3 px-6">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
+            <CardContent className="py-2 px-3 md:py-3 md:px-6">
+              <div className="flex items-center gap-2 md:gap-4">
+                <div className="flex items-center gap-2 min-w-0">
                   <Checkbox 
                     checked={selectedListings.size === filteredListings.length}
                     onCheckedChange={toggleSelectAll}
+                    className="shrink-0"
                   />
-                  <span className="font-medium">
-                    {selectedListings.size} {selectedListings.size === 1 ? 'property' : 'properties'} selected
+                  <span className="font-medium text-sm truncate">
+                    {selectedListings.size} selected
                   </span>
                 </div>
                 
-                <div className="h-6 w-px bg-border" />
+                <div className="h-6 w-px bg-border shrink-0 hidden md:block" />
                 
                 <Button
                   onClick={() => setIsBulkGenerationModalOpen(true)}
                   disabled={selectedListings.size < 2 || selectedListings.size > 10}
                   size="sm"
+                  className="shrink-0 text-xs md:text-sm"
                 >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Generate Reports
+                  <FileText className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Generate Reports</span>
                 </Button>
                 
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedListings(new Set())}
+                  className="shrink-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               
-              {(selectedListings.size < 2 || selectedListings.size > 10) && (
+              {(selectedListings.size < 2 || selectedListings.size > 10) && !isMobile && (
                 <p className="text-xs text-muted-foreground mt-2">
                   {selectedListings.size < 2 
                     ? 'Select at least 2 properties to generate bulk reports' 
