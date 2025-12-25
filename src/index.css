@@ -335,6 +335,26 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 }
 
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Mobile-specific optimizations */
 @media (max-width: 767px) {
   /* Prevent text size adjustment on orientation change */
@@ -343,9 +363,19 @@ Clean, modern admin dashboard with confidence-based color coding
     text-size-adjust: 100%;
   }
   
-  /* Smoother scrolling on iOS */
+  /* Smoother scrolling on iOS with momentum */
   body {
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  
+  /* Scrollable containers with momentum */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  [class*="scroll"] {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
   
   /* Better tap highlights */
@@ -353,17 +383,26 @@ Clean, modern admin dashboard with confidence-based color coding
     -webkit-tap-highlight-color: transparent;
   }
   
-  /* Prevent pull-to-refresh in Chrome */
-  body {
-    overscroll-behavior-y: contain;
-  }
-  
-  /* Mobile-optimized touch targets */
+  /* Mobile-optimized touch targets - 44x44px minimum */
   button, 
   a, 
-  [role="button"] {
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  .touch-target {
     min-height: 44px;
     min-width: 44px;
+  }
+  
+  /* Ensure clickable items in lists have proper touch targets */
+  li > a,
+  li > button,
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"] {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
   
   /* Compact header titles on mobile */
@@ -378,5 +417,56 @@ Clean, modern admin dashboard with confidence-based color coding
   /* Better table scrolling */
   .table-container {
     @apply overflow-x-auto -mx-4 px-4;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Touch-friendly utility classes */
+@layer utilities {
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  .touch-target-sm {
+    @apply min-h-[36px] min-w-[36px];
+  }
+  
+  .touch-target-lg {
+    @apply min-h-[48px] min-w-[48px];
+  }
+  
+  /* Momentum scrolling */
+  .scroll-momentum {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Thin scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
   }
 }
