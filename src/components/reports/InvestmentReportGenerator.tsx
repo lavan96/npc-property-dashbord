@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image, Car } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
@@ -54,6 +54,7 @@ export function InvestmentReportGenerator() {
   const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'townhouse'>('house');
   const [beds, setBeds] = useState('');
   const [baths, setBaths] = useState('');
+  const [carSpaces, setCarSpaces] = useState('');
   const [landSize, setLandSize] = useState('');
   const [buildSize, setBuildSize] = useState('');
   
@@ -126,6 +127,22 @@ export function InvestmentReportGenerator() {
     }
   }, []);
 
+  // Handle carSpaces change and sync to preGenData
+  const handleCarSpacesChange = useCallback((value: string) => {
+    setCarSpaces(value);
+    
+    if (!isSyncingFromPreGen.current) {
+      isSyncingToPreGen.current = true;
+      const numValue = parseInt(value);
+      if (!isNaN(numValue) && numValue >= 0) {
+        setPreGenData(prev => ({ ...prev, carSpaces: numValue }));
+      } else if (value === '') {
+        setPreGenData(prev => ({ ...prev, carSpaces: undefined }));
+      }
+      requestAnimationFrame(() => { isSyncingToPreGen.current = false; });
+    }
+  }, []);
+
   // Handle preGenData changes from PreGenerationOverrides - sync back to main form fields
   const handlePreGenDataChange = useCallback((data: PreGenerationData) => {
     setPreGenData(data);
@@ -150,10 +167,18 @@ export function InvestmentReportGenerator() {
         }
       }
       
+      // Sync carSpaces back to main form if changed in PreGenerationOverrides
+      if (data.carSpaces !== undefined) {
+        const dataValueStr = data.carSpaces.toString();
+        if (carSpaces !== dataValueStr) {
+          setCarSpaces(dataValueStr);
+        }
+      }
+      
       // Reset flag after React has processed the state updates
       requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
     }
-  }, [propertyPrice, weeklyRent]);
+  }, [propertyPrice, weeklyRent, carSpaces]);
 
   const handleGenerate = async () => {
     if (!query.trim()) {
@@ -228,6 +253,7 @@ export function InvestmentReportGenerator() {
       if (propertyType) propertyDetails.propertyType = propertyType;
       if (beds) propertyDetails.beds = parseInt(beds);
       if (baths) propertyDetails.baths = parseInt(baths);
+      if (carSpaces) propertyDetails.carSpaces = parseInt(carSpaces);
       if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
       if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
       
@@ -1076,6 +1102,22 @@ export function InvestmentReportGenerator() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="carSpaces" className="flex items-center gap-1">
+                      <Car className="h-4 w-4" />
+                      Car Spaces
+                    </Label>
+                    <Input
+                      id="carSpaces"
+                      type="number"
+                      min="0"
+                      value={carSpaces}
+                      onChange={(e) => handleCarSpacesChange(e.target.value)}
+                      placeholder="e.g., 2"
+                      disabled={isGenerating}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="landSize">Land Size (m²)</Label>
                     <Input
                       id="landSize"
@@ -1192,6 +1234,7 @@ export function InvestmentReportGenerator() {
                 onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                 externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
                 externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
+                externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
               />
 
               {/* Info Box */}

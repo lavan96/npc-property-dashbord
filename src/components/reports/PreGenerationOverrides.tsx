@@ -80,6 +80,7 @@ interface PreGenerationOverridesProps {
   onBuildTypeChange?: (buildType: 'new_build' | 'existing_property') => void;
   externalPurchasePrice?: number;
   externalWeeklyRent?: number;
+  externalCarSpaces?: number;
 }
 
 export function PreGenerationOverrides({ 
@@ -89,7 +90,8 @@ export function PreGenerationOverrides({
   buildType: externalBuildType,
   onBuildTypeChange,
   externalPurchasePrice,
-  externalWeeklyRent
+  externalWeeklyRent,
+  externalCarSpaces
 }: PreGenerationOverridesProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -229,6 +231,16 @@ export function PreGenerationOverrides({
       }
     }
   }, [externalWeeklyRent, weeklyRent]);
+
+  // Sync external carSpaces prop
+  useEffect(() => {
+    if (externalCarSpaces !== undefined) {
+      const externalValue = externalCarSpaces.toString();
+      if (carSpaces !== externalValue) {
+        setCarSpaces(externalValue);
+      }
+    }
+  }, [externalCarSpaces, carSpaces]);
 
   // Dynamic calculation - Deposit from Purchase Price and LVR
   useEffect(() => {
@@ -449,8 +461,6 @@ export function PreGenerationOverrides({
                 setLandPrice={setLandPrice}
                 buildPrice={buildPrice}
                 setBuildPrice={setBuildPrice}
-                carSpaces={carSpaces}
-                setCarSpaces={setCarSpaces}
                 landSizeSqm={landSizeSqm}
                 setLandSizeSqm={setLandSizeSqm}
                 buildSizeSqm={buildSizeSqm}
