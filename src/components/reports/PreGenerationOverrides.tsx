@@ -75,6 +75,17 @@ export interface PreGenerationData {
   constructionYear?: number;
   landSizeSqm?: number;
   buildSizeSqm?: number;
+  
+  // First Home Buyer flag for stamp duty concessions
+  isFirstHomeBuyer?: boolean;
+  
+  // Construction Stage Percentages (new build only)
+  stageDepositPercent?: number;
+  stageSlabPercent?: number;
+  stageFramePercent?: number;
+  stageLockupPercent?: number;
+  stageFixingPercent?: number;
+  stageCompletionPercent?: number;
 }
 
 interface PreGenerationOverridesProps {
@@ -143,6 +154,17 @@ export function PreGenerationOverrides({
   const [constructionYear, setConstructionYear] = useState<string>('');
   const [landSizeSqm, setLandSizeSqm] = useState<string>('');
   const [buildSizeSqm, setBuildSizeSqm] = useState<string>('');
+  
+  // First Home Buyer flag
+  const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState<boolean>(false);
+  
+  // Construction Stage Percentages (new build only)
+  const [stageDepositPercent, setStageDepositPercent] = useState<string>('5');
+  const [stageSlabPercent, setStageSlabPercent] = useState<string>('15');
+  const [stageFramePercent, setStageFramePercent] = useState<string>('20');
+  const [stageLockupPercent, setStageLockupPercent] = useState<string>('25');
+  const [stageFixingPercent, setStageFixingPercent] = useState<string>('20');
+  const [stageCompletionPercent, setStageCompletionPercent] = useState<string>('15');
   
   // Calculators visibility
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
@@ -369,6 +391,15 @@ export function PreGenerationOverrides({
       constructionYear: constructionYear ? parseFloat(constructionYear) : undefined,
       landSizeSqm: landSizeSqm ? parseFloat(landSizeSqm) : undefined,
       buildSizeSqm: buildSizeSqm ? parseFloat(buildSizeSqm) : undefined,
+      // First Home Buyer flag
+      isFirstHomeBuyer: isFirstHomeBuyer || undefined,
+      // Construction Stage Percentages (new build only)
+      stageDepositPercent: buildType === 'new_build' && stageDepositPercent ? parseFloat(stageDepositPercent) : undefined,
+      stageSlabPercent: buildType === 'new_build' && stageSlabPercent ? parseFloat(stageSlabPercent) : undefined,
+      stageFramePercent: buildType === 'new_build' && stageFramePercent ? parseFloat(stageFramePercent) : undefined,
+      stageLockupPercent: buildType === 'new_build' && stageLockupPercent ? parseFloat(stageLockupPercent) : undefined,
+      stageFixingPercent: buildType === 'new_build' && stageFixingPercent ? parseFloat(stageFixingPercent) : undefined,
+      stageCompletionPercent: buildType === 'new_build' && stageCompletionPercent ? parseFloat(stageCompletionPercent) : undefined,
     };
     
     onDataChange(data);
@@ -381,6 +412,8 @@ export function PreGenerationOverrides({
     cpiGrowthRate, depreciation, taxRate, occupancyRate, loanType, loanTermYears, marketValueNow,
     loanAmount, interestOnlyPeriodYears, repaymentFrequency, extraRepaymentPerMonth, offsetBalance,
     constructionDurationMonths, constructionYear, landSizeSqm, buildSizeSqm,
+    isFirstHomeBuyer, stageDepositPercent, stageSlabPercent, stageFramePercent, 
+    stageLockupPercent, stageFixingPercent, stageCompletionPercent,
     onDataChange
   ]);
 
@@ -568,6 +601,117 @@ export function PreGenerationOverrides({
                       disabled={disabled}
                     />
                   </div>
+                  
+                  {/* Construction Duration for New Builds */}
+                  <div className="space-y-2">
+                    <Label htmlFor="constructionDurationMonths">Construction Duration (months)</Label>
+                    <Input
+                      id="constructionDurationMonths"
+                      type="number"
+                      value={constructionDurationMonths}
+                      onChange={(e) => setConstructionDurationMonths(e.target.value)}
+                      placeholder="e.g., 12"
+                      disabled={disabled}
+                    />
+                  </div>
+                  
+                  {/* Construction Stage Percentages */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full">
+                      <Label className="text-sm font-medium flex items-center gap-2 cursor-pointer">
+                        <Building className="h-4 w-4" />
+                        Construction Stage Payments
+                      </Label>
+                      <ChevronRight className="h-4 w-4" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Define payment percentages at each construction stage (should total 100%)
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="stageDepositPercent" className="text-xs">Deposit Stage (%)</Label>
+                          <Input
+                            id="stageDepositPercent"
+                            type="number"
+                            value={stageDepositPercent}
+                            onChange={(e) => setStageDepositPercent(e.target.value)}
+                            placeholder="5"
+                            disabled={disabled}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="stageSlabPercent" className="text-xs">Slab/Base Stage (%)</Label>
+                          <Input
+                            id="stageSlabPercent"
+                            type="number"
+                            value={stageSlabPercent}
+                            onChange={(e) => setStageSlabPercent(e.target.value)}
+                            placeholder="15"
+                            disabled={disabled}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="stageFramePercent" className="text-xs">Frame Stage (%)</Label>
+                          <Input
+                            id="stageFramePercent"
+                            type="number"
+                            value={stageFramePercent}
+                            onChange={(e) => setStageFramePercent(e.target.value)}
+                            placeholder="20"
+                            disabled={disabled}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="stageLockupPercent" className="text-xs">Lock-up Stage (%)</Label>
+                          <Input
+                            id="stageLockupPercent"
+                            type="number"
+                            value={stageLockupPercent}
+                            onChange={(e) => setStageLockupPercent(e.target.value)}
+                            placeholder="25"
+                            disabled={disabled}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="stageFixingPercent" className="text-xs">Fixing Stage (%)</Label>
+                          <Input
+                            id="stageFixingPercent"
+                            type="number"
+                            value={stageFixingPercent}
+                            onChange={(e) => setStageFixingPercent(e.target.value)}
+                            placeholder="20"
+                            disabled={disabled}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="stageCompletionPercent" className="text-xs">Practical Completion (%)</Label>
+                          <Input
+                            id="stageCompletionPercent"
+                            type="number"
+                            value={stageCompletionPercent}
+                            onChange={(e) => setStageCompletionPercent(e.target.value)}
+                            placeholder="15"
+                            disabled={disabled}
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        const total = 
+                          (parseFloat(stageDepositPercent) || 0) +
+                          (parseFloat(stageSlabPercent) || 0) +
+                          (parseFloat(stageFramePercent) || 0) +
+                          (parseFloat(stageLockupPercent) || 0) +
+                          (parseFloat(stageFixingPercent) || 0) +
+                          (parseFloat(stageCompletionPercent) || 0);
+                        return (
+                          <div className={`text-xs p-2 rounded ${total === 100 ? 'bg-green-500/10 text-green-600' : 'bg-yellow-500/10 text-yellow-600'}`}>
+                            Total: {total}% {total !== 100 && '(should be 100%)'}
+                          </div>
+                        );
+                      })()}
+                    </CollapsibleContent>
+                  </Collapsible>
                 </>
               ) : (
                 <>
@@ -689,6 +833,26 @@ export function PreGenerationOverrides({
                 {showAcquisitionCosts ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-4">
+                {/* First Home Buyer Toggle */}
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isFirstHomeBuyer" className="text-sm font-medium cursor-pointer">
+                      First Home Buyer
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      May qualify for stamp duty concessions or exemptions
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    id="isFirstHomeBuyer"
+                    checked={isFirstHomeBuyer}
+                    onChange={(e) => setIsFirstHomeBuyer(e.target.checked)}
+                    disabled={disabled}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                </div>
+
                 {/* Stamp Duty with Calculator */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -712,6 +876,11 @@ export function PreGenerationOverrides({
                     placeholder="Use calculator or enter manually"
                     disabled={disabled}
                   />
+                  {isFirstHomeBuyer && (
+                    <p className="text-xs text-primary">
+                      First Home Buyer concessions will be applied based on state
+                    </p>
+                  )}
                 </div>
 
                 {showStampDutyCalculator && (
