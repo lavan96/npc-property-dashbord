@@ -102,10 +102,11 @@ serve(async (req: Request) => {
       }
 
       // Send email via Resend
-      const { error: emailError } = await resend.emails.send({
-        from: 'NPC Admin <admin@npcservices.com.au>',
+      // Using Resend's default sender - for custom domain, verify at https://resend.com/domains
+      const { data: emailData, error: emailError } = await resend.emails.send({
+        from: 'NPC Dashboard <onboarding@resend.dev>',
         to: [user.email],
-        subject: 'Password Reset OTP',
+        subject: 'Password Reset OTP - NPC Dashboard',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #333;">Password Reset Request</h1>
@@ -122,6 +123,8 @@ serve(async (req: Request) => {
           </div>
         `,
       });
+
+      console.log('Resend response:', { emailData, emailError });
 
       if (emailError) {
         console.error('Failed to send email:', emailError);
