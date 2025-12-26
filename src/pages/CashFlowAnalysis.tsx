@@ -15,7 +15,7 @@ interface InvestmentReport {
   id: string;
   property_address: string;
   property_listing_id: string | null;
-  report_content: string;
+  report_content?: string;
   sources_content?: string | null;
   created_at: string;
   current_version?: number;
@@ -98,9 +98,10 @@ export default function CashFlowAnalysis() {
   const fetchReports = async () => {
     try {
       setLoading(true);
+      // IMPORTANT: do not fetch report_content for the list view (very large payload)
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
+        .select('id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score')
         .eq('status', 'completed')
         .order('created_at', { ascending: false });
 
