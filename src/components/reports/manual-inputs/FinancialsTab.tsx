@@ -89,27 +89,75 @@ export function FinancialsTab({
   const rate = parseFloat(interestRate) || 6.5;
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
-  // Load stamp duty calculator script when shown
+  // Map state codes to calculator-compatible state names
+  const getCalculatorState = useCallback((stateCode: string): string => {
+    const stateMap: Record<string, string> = {
+      'NSW': 'NSW',
+      'VIC': 'VIC', 
+      'QLD': 'QLD',
+      'SA': 'SA',
+      'WA': 'WA',
+      'TAS': 'TAS',
+      'NT': 'NT',
+      'ACT': 'ACT',
+      'All': 'All'
+    };
+    return stateMap[stateCode] || 'All';
+  }, []);
+
+  // Load stamp duty calculator script when shown or when state/price changes
   useEffect(() => {
     if (showStampDutyCalc && stampDutyContainerRef.current) {
-      // Check if script already exists
+      // Remove existing script to reload with new parameters
       const existingScript = document.getElementById('stamp-src');
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.id = 'stamp-src';
-        script.type = 'text/javascript';
-        script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-        script.setAttribute('data-state', 'All');
-        document.body.appendChild(script);
+      if (existingScript) {
+        existingScript.remove();
       }
       
-      // Show the calculator container
+      // Clear existing calculator content
       const calcContainer = document.getElementById('stamp-duty-calculator');
+      if (calcContainer) {
+        // Keep the anchor div but clear any generated content
+        const anchors = calcContainer.querySelector('#stamp-duty-anchors');
+        calcContainer.innerHTML = '';
+        if (anchors) {
+          calcContainer.appendChild(anchors);
+        }
+      }
+      
+      // Create new script with detected state and price
+      const script = document.createElement('script');
+      script.id = 'stamp-src';
+      script.type = 'text/javascript';
+      script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+      
+      // Set the state based on detected property address
+      const calculatorState = getCalculatorState(detectedState);
+      script.setAttribute('data-state', calculatorState);
+      
+      // Set purchase price if available
+      if (price > 0) {
+        script.setAttribute('data-price', price.toString());
+      }
+      
+      document.body.appendChild(script);
+      
+      // Show the calculator container
       if (calcContainer) {
         calcContainer.classList.remove('hidden');
       }
     }
-  }, [showStampDutyCalc]);
+    
+    // Cleanup on unmount
+    return () => {
+      if (!showStampDutyCalc) {
+        const script = document.getElementById('stamp-src');
+        if (script) {
+          script.remove();
+        }
+      }
+    };
+  }, [showStampDutyCalc, detectedState, price, getCalculatorState]);
 
   // Total acquisition costs
   const totalAcquisitionCosts = 
