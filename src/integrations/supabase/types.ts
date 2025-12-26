@@ -1153,6 +1153,7 @@ export type Database = {
           generated_by: string | null
           id: string
           investment_score: Json | null
+          is_archived: boolean
           location_intelligence: Json | null
           manual_overrides: Json | null
           parent_report_id: string | null
@@ -1180,6 +1181,7 @@ export type Database = {
           generated_by?: string | null
           id?: string
           investment_score?: Json | null
+          is_archived?: boolean
           location_intelligence?: Json | null
           manual_overrides?: Json | null
           parent_report_id?: string | null
@@ -1207,6 +1209,7 @@ export type Database = {
           generated_by?: string | null
           id?: string
           investment_score?: Json | null
+          is_archived?: boolean
           location_intelligence?: Json | null
           manual_overrides?: Json | null
           parent_report_id?: string | null

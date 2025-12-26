@@ -43,6 +43,10 @@ export default function CashFlowAnalysis() {
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   
   const { toast } = useToast();
+  
+  // 30-day cutoff for active reports
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   useEffect(() => {
     fetchReports();
@@ -99,10 +103,13 @@ export default function CashFlowAnalysis() {
     try {
       setLoading(true);
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
+      // Apply 30-day cutoff and exclude archived reports
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score')
+        .select('id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived')
         .eq('status', 'completed')
+        .eq('is_archived', false)
+        .gte('created_at', thirtyDaysAgo.toISOString())
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -175,6 +182,9 @@ export default function CashFlowAnalysis() {
                   Cash flow analysis uses data from your investment report's manual overrides. 
                   First, configure the required fields (purchase price, rent, interest rate, etc.) 
                   in the Manual Data Override modal, then generate the 10-year projection here.
+                  <span className="block mt-1 text-xs opacity-75">
+                    Showing reports from the last 30 days. Archived reports are hidden.
+                  </span>
                 </p>
               </div>
             </div>

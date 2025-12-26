@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap, Compass, Loader2, SlidersHorizontal } from 'lucide-react';
+import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap, Compass, Loader2, SlidersHorizontal, Archive, ArchiveRestore } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
@@ -65,6 +65,7 @@ interface InvestmentReport {
   report_tier?: 'compass' | 'briefing' | 'snapshot'; // Report tier
   parent_report_id?: string | null;
   status?: string;
+  is_archived?: boolean;
   manual_overrides?: any;
   financial_calculations?: any;
   demographics_data?: any;
@@ -114,8 +115,16 @@ export default function GeneratedReports() {
   const [gradeFilter, setGradeFilter] = useState<string>('all'); // Filter by investment grade
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]); // Filter by score range
   const [tierFilter, setTierFilter] = useState<string>('all'); // Filter by report tier
+  const [showArchived, setShowArchived] = useState(false); // Show archived reports
   const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
+  
+  // 30-day cutoff for active reports
+  const thirtyDaysAgo = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString();
+  }, []);
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -212,7 +221,10 @@ export default function GeneratedReports() {
     const reportTier = report.report_tier || 'compass';
     const matchesTier = tierFilter === 'all' || reportTier === tierFilter;
     
-    return matchesSearch && matchesScope && matchesGrade && matchesScore && matchesTier;
+    // Archive filter - show archived only when toggle is on
+    const matchesArchive = showArchived ? report.is_archived === true : report.is_archived !== true;
+    
+    return matchesSearch && matchesScope && matchesGrade && matchesScore && matchesTier && matchesArchive;
   });
   
   const totalInvestmentPages = Math.ceil(filteredInvestmentReports.length / reportsPerPage);
@@ -383,12 +395,15 @@ export default function GeneratedReports() {
       console.log('🔍 Fetching investment reports (list view)...');
 
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
+      // Apply 30-day cutoff for non-archived reports to reduce payload
       const { data, error } = await supabase
         .from('investment_reports')
         .select(
-          'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, investment_score'
+          'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score'
         )
         .in('status', ['completed', 'pending'])
+        .gte('created_at', thirtyDaysAgo)
+        .eq('is_archived', false)
         .order('created_at', { ascending: false });
 
       console.log('📊 Investment reports response:', { count: data?.length, error });
@@ -413,6 +428,102 @@ export default function GeneratedReports() {
       });
     }
   };
+  
+  // Fetch archived reports separately when needed
+  const fetchArchivedReports = async () => {
+    try {
+      console.log('📦 Fetching archived investment reports...');
+      
+      const { data, error } = await supabase
+        .from('investment_reports')
+        .select(
+          'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score'
+        )
+        .in('status', ['completed', 'pending'])
+        .eq('is_archived', true)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('❌ Error fetching archived reports:', error);
+        return;
+      }
+
+      // Merge with existing reports
+      setInvestmentReports(prev => {
+        const existingIds = new Set(prev.map(r => r.id));
+        const newArchived = (data || []).filter(r => !existingIds.has(r.id));
+        return [...prev, ...(newArchived as InvestmentReport[])];
+      });
+    } catch (error) {
+      console.error('💥 Exception:', error);
+    }
+  };
+  
+  // Archive a report
+  const archiveReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from('investment_reports')
+        .update({ is_archived: true })
+        .eq('id', reportId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setInvestmentReports(prev => 
+        prev.map(r => r.id === reportId ? { ...r, is_archived: true } : r)
+      );
+      
+      toast({
+        title: 'Report archived',
+        description: 'The report has been archived and hidden from the main view.',
+      });
+    } catch (error: any) {
+      console.error('Archive error:', error);
+      toast({
+        title: 'Failed to archive',
+        description: error?.message || 'Could not archive the report.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Unarchive a report
+  const unarchiveReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from('investment_reports')
+        .update({ is_archived: false })
+        .eq('id', reportId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setInvestmentReports(prev => 
+        prev.map(r => r.id === reportId ? { ...r, is_archived: false } : r)
+      );
+      
+      toast({
+        title: 'Report restored',
+        description: 'The report has been restored to the main view.',
+      });
+    } catch (error: any) {
+      console.error('Unarchive error:', error);
+      toast({
+        title: 'Failed to restore',
+        description: error?.message || 'Could not restore the report.',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Toggle showing archived reports
+  useEffect(() => {
+    if (showArchived) {
+      fetchArchivedReports();
+    }
+  }, [showArchived]);
 
   const fetchComparisons = async () => {
     try {
@@ -912,10 +1023,27 @@ export default function GeneratedReports() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+              
+              {/* Archive Toggle */}
+              <Button
+                variant={showArchived ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowArchived(!showArchived)}
+                className="gap-2"
+              >
+                <Archive className="h-4 w-4" />
+                {showArchived ? 'Viewing Archived' : 'Show Archived'}
+              </Button>
 
               <Badge variant="secondary">
-                {filteredInvestmentReports.length} of {investmentReports.length} reports
+                {filteredInvestmentReports.length} of {investmentReports.filter(r => showArchived ? r.is_archived : !r.is_archived).length} reports
               </Badge>
+              
+              {!showArchived && (
+                <span className="text-xs text-muted-foreground">
+                  Showing last 30 days
+                </span>
+              )}
             </div>
             
             {/* Score Range Filter */}
@@ -1094,7 +1222,7 @@ export default function GeneratedReports() {
                         </Button>
                       </div>
                        <div className="flex gap-2">
-                        <RegenerateReportButton
+                         <RegenerateReportButton
                           reportId={report.id}
                           propertyAddress={report.property_address}
                           onRegenerated={handleInvestmentReportUpdate}
@@ -1110,6 +1238,20 @@ export default function GeneratedReports() {
                         >
                           <History className="mr-1 h-3 w-3" />
                           History ({report.current_version || 1})
+                        </Button>
+                        {/* Archive/Unarchive Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => report.is_archived ? unarchiveReport(report.id) : archiveReport(report.id)}
+                          className="px-2"
+                          title={report.is_archived ? "Restore report" : "Archive report"}
+                        >
+                          {report.is_archived ? (
+                            <ArchiveRestore className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <Archive className="h-3 w-3 text-muted-foreground" />
+                          )}
                         </Button>
                       </div>
                       {/* PDF download is available inside the report viewer (View) to avoid loading huge report payloads in the list. */}
