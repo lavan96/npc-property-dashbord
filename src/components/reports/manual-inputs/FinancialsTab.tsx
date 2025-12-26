@@ -108,6 +108,8 @@ export function FinancialsTab({
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
+  const [stampDutyEmbedStatus, setStampDutyEmbedStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [stampDutyEmbedError, setStampDutyEmbedError] = useState<string>('');
   const stampDutyIframeRef = useRef<HTMLIFrameElement>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
@@ -138,27 +140,13 @@ export function FinancialsTab({
   const rate = parseFloat(interestRate) || 6.5;
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
-  // Map state codes to calculator-compatible state names
-  const getCalculatorState = useCallback((stateCode: string): string => {
-    const stateMap: Record<string, string> = {
-      'NSW': 'NSW',
-      'VIC': 'VIC', 
-      'QLD': 'QLD',
-      'SA': 'SA',
-      'WA': 'WA',
-      'TAS': 'TAS',
-      'NT': 'NT',
-      'ACT': 'ACT',
-      'All': 'All'
-    };
-    return stateMap[stateCode] || 'All';
-  }, []);
+
+  // Stamp duty calculator embed uses the provider's `data-state="All"` setting.
+
 
   // Generate iframe content for stamp duty calculator - isolated from main DOM
   const getStampDutyIframeContent = useCallback(() => {
-    const calculatorState = getCalculatorState(detectedState);
-    
-    // IMPORTANT: Use HTTPS explicitly because protocol-relative URLs (//...) 
+    // NOTE: Using HTTPS explicitly because protocol-relative URLs (//...)
     // don't work in iframe srcDoc which runs in a blob: context
     return `
       <!DOCTYPE html>
@@ -182,16 +170,44 @@ export function FinancialsTab({
         </style>
       </head>
       <body>
-        <div id="stamp-duty-calculator" class="orange-theme"><div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div></div>
-        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
+        <div id="stamp-duty-calculator" class="orange-theme hidden"><div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div></div><script id="stamp-src" type="text/javascript" data-state="All" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"></script>
         <script>
+          const post = (payload) => {
+            try {
+              window.parent.postMessage(payload, '*');
+            } catch {
+              // noop
+            }
+          };
+
+          post({ type: 'stampDutyEmbed', status: 'loading' });
+
+          window.addEventListener('error', (e) => {
+            post({
+              type: 'stampDutyEmbed',
+              status: 'error',
+              message: (e && 'message' in e && (e as any).message) ? (e as any).message : 'Script error while loading calculator',
+            });
+          }, true);
+
+          window.addEventListener('unhandledrejection', (e) => {
+            post({
+              type: 'stampDutyEmbed',
+              status: 'error',
+              message: (e && 'reason' in e && (e as any).reason) ? String((e as any).reason) : 'Unhandled promise rejection while loading calculator',
+            });
+          });
+
           // Watch for stamp duty result and send to parent
           let lastSentValue = '';
+          const calcEl = () => document.getElementById('stamp-duty-calculator');
+          const initialCount = (calcEl()?.querySelectorAll('*').length ?? 0);
+
           const checkForResult = () => {
             const allElements = document.querySelectorAll('*');
             for (const el of allElements) {
               const text = el.textContent || '';
-              const matches = text.match(/\\$(\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})?)/g);
+              const matches = text.match(/\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g);
               if (matches && matches.length > 0) {
                 let maxValue = 0;
                 let maxMatch = '';
@@ -205,31 +221,65 @@ export function FinancialsTab({
                 });
                 if (maxMatch && maxMatch !== lastSentValue && maxValue > 100) {
                   lastSentValue = maxMatch;
+                  post({ type: 'stampDutyEmbed', status: 'loaded' });
                   window.parent.postMessage({ type: 'stampDutyResult', value: Math.round(maxValue).toString() }, '*');
                 }
               }
             }
           };
-          const observer = new MutationObserver(checkForResult);
+
+          const observer = new MutationObserver(() => {
+            checkForResult();
+            const nowCount = (calcEl()?.querySelectorAll('*').length ?? 0);
+            if (nowCount > initialCount + 5) {
+              post({ type: 'stampDutyEmbed', status: 'loaded' });
+            }
+          });
           observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
           setInterval(checkForResult, 1000);
-        <\/script>
+
+          setTimeout(() => {
+            const nowCount = (calcEl()?.querySelectorAll('*').length ?? 0);
+            if (nowCount <= initialCount + 5) {
+              post({
+                type: 'stampDutyEmbed',
+                status: 'error',
+                message: 'Calculator did not render. This is usually caused by the browser or the provider blocking the embed.',
+              });
+            }
+          }, 8000);
+        </script>
       </body>
       </html>
     `;
-  }, [detectedState, getCalculatorState]);
+  }, []);
 
   // Listen for stamp duty result from iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'stampDutyEmbed' && event.data?.status) {
+        setStampDutyEmbedStatus(event.data.status);
+        if (event.data.status === 'error') {
+          const msg = typeof event.data.message === 'string' ? event.data.message : 'Stamp duty calculator failed to load.';
+          setStampDutyEmbedError(msg);
+          toast({
+            title: 'Stamp Duty Calculator Error',
+            description: msg,
+            variant: 'destructive',
+          });
+        }
+      }
+
       if (event.data?.type === 'stampDutyResult' && event.data?.value) {
+        setStampDutyEmbedStatus('loaded');
         setCalculatedStampDuty(event.data.value);
       }
     };
-    
+
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [toast]);
 
   // Apply calculated stamp duty to the form
   const handleApplyStampDuty = useCallback(() => {
@@ -501,7 +551,15 @@ export function FinancialsTab({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowStampDutyCalc(!showStampDutyCalc)}
+                onClick={() => {
+                  const next = !showStampDutyCalc;
+                  setShowStampDutyCalc(next);
+                  if (next) {
+                    setStampDutyEmbedStatus('loading');
+                    setStampDutyEmbedError('');
+                    setCalculatedStampDuty('');
+                  }
+                }}
                 disabled={disabled}
               >
                 <Calculator className="h-4 w-4 mr-1" />
@@ -626,6 +684,13 @@ export function FinancialsTab({
                 style={{ minHeight: '450px', background: '#ffffff' }}
                 title="Stamp Duty Calculator"
               />
+
+              {stampDutyEmbedStatus === 'loading' && (
+                <p className="text-xs text-muted-foreground">Loading stamp duty calculator…</p>
+              )}
+              {stampDutyEmbedStatus === 'error' && (
+                <p className="text-xs text-destructive">{stampDutyEmbedError || 'Stamp duty calculator failed to load.'}</p>
+              )}
 
               {/* Apply Calculated Stamp Duty Button */}
               {calculatedStampDuty && (
