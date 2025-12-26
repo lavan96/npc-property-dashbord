@@ -139,7 +139,7 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Load stamp duty calculator script when expanded (exact same approach/IDs as ManualDataOverrideModal)
+  // Load stamp duty calculator script when expanded + cleanup when hidden/unmount
   useEffect(() => {
     if (showStampDutyCalc) {
       // Remove existing script to reload with new state
@@ -152,7 +152,7 @@ export function FinancialsTab({
       const script = document.createElement('script');
       script.id = 'stamp-src';
       script.type = 'text/javascript';
-      script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+      script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
       script.setAttribute('data-state', detectedState);
       document.body.appendChild(script);
 
@@ -161,7 +161,25 @@ export function FinancialsTab({
       if (calcDiv) {
         calcDiv.classList.remove('hidden');
       }
+    } else {
+      // Cleanup when hiding the calculator
+      const existingScript = document.getElementById('stamp-src');
+      if (existingScript) {
+        existingScript.remove();
+      }
+      const calcDiv = document.getElementById('stamp-duty-calculator');
+      if (calcDiv) {
+        calcDiv.classList.add('hidden');
+      }
     }
+
+    // Cleanup on unmount
+    return () => {
+      const existingScript = document.getElementById('stamp-src');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
   }, [showStampDutyCalc, detectedState]);
 
   // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
