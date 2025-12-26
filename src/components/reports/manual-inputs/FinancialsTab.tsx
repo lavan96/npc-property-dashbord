@@ -8,11 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote, Building, MapPin } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
 import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
 
+export type StampDutyPropertyType = 'primary_residence' | 'investment';
+export type StampDutyPurchaseType = 'established_home' | 'new_home' | 'vacant_land';
 
 interface FinancialsTabProps {
   buildType: 'new_build' | 'existing_property';
@@ -40,6 +43,11 @@ interface FinancialsTabProps {
   detectedState: string;
   propertyAddress: string;
   disabled?: boolean;
+  // Stamp duty calculator props
+  stampDutyPropertyType?: StampDutyPropertyType;
+  setStampDutyPropertyType?: (value: StampDutyPropertyType) => void;
+  stampDutyPurchaseType?: StampDutyPurchaseType;
+  setStampDutyPurchaseType?: (value: StampDutyPurchaseType) => void;
   // Mortgage calculator props
   loanAmount?: string;
   setLoanAmount?: (value: string) => void;
@@ -79,6 +87,10 @@ export function FinancialsTab({
   detectedState,
   propertyAddress,
   disabled = false,
+  stampDutyPropertyType: propStampDutyPropertyType,
+  setStampDutyPropertyType: propSetStampDutyPropertyType,
+  stampDutyPurchaseType: propStampDutyPurchaseType,
+  setStampDutyPurchaseType: propSetStampDutyPurchaseType,
   loanAmount: propLoanAmount,
   setLoanAmount: propSetLoanAmount,
   interestOnlyPeriodYears: propInterestOnlyPeriodYears,
@@ -92,8 +104,16 @@ export function FinancialsTab({
 }: FinancialsTabProps) {
   const [showStampDutyCalc, setShowStampDutyCalc] = useState(false);
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
+  const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
+  const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const stampDutyContainerRef = useRef<HTMLDivElement>(null);
   const isNewBuild = buildType === 'new_build';
+
+  // Use props or local state for stamp duty selections
+  const stampDutyPropertyType = propStampDutyPropertyType ?? localStampDutyPropertyType;
+  const setStampDutyPropertyType = propSetStampDutyPropertyType ?? setLocalStampDutyPropertyType;
+  const stampDutyPurchaseType = propStampDutyPurchaseType ?? localStampDutyPurchaseType;
+  const setStampDutyPurchaseType = propSetStampDutyPurchaseType ?? setLocalStampDutyPurchaseType;
 
   const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,30 +229,6 @@ export function FinancialsTab({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* First Home Buyer Toggle */}
-      <Card className="border-2 border-primary/20">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Home className="h-5 w-5 text-primary" />
-              <div>
-                <Label htmlFor="firstHomeBuyer" className="text-base font-semibold cursor-pointer">
-                  First Home Buyer
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Enable for stamp duty concessions and grants
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="firstHomeBuyer"
-              checked={isFirstHomeBuyer}
-              onCheckedChange={setIsFirstHomeBuyer}
-              disabled={disabled}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Loan Structure Card */}
       <Card>
@@ -477,7 +473,7 @@ export function FinancialsTab({
           </div>
 
           {/* Stamp Duty */}
-          <div className="space-y-2 mb-4">
+          <div className="space-y-4 mb-4">
             <div className="flex items-center justify-between">
               <Label htmlFor="stampDuty" className="text-sm font-medium">Stamp Duty</Label>
               <Button
@@ -512,9 +508,96 @@ export function FinancialsTab({
             )}
           </div>
 
-          {/* Stamp Duty Calculator Embed */}
+          {/* Stamp Duty Calculator Section */}
           {showStampDutyCalc && (
-            <div ref={stampDutyContainerRef} className="mb-4 border rounded-lg p-4 bg-muted/20">
+            <div ref={stampDutyContainerRef} className="mb-4 border rounded-lg p-4 bg-muted/20 space-y-4">
+              {/* First Home Buyer Toggle */}
+              <div className="flex items-center justify-between p-3 bg-background rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <Home className="h-5 w-5 text-primary" />
+                  <div>
+                    <Label htmlFor="firstHomeBuyerCalc" className="text-sm font-semibold cursor-pointer">
+                      First Home Buyer
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Enable for stamp duty concessions
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="firstHomeBuyerCalc"
+                  checked={isFirstHomeBuyer}
+                  onCheckedChange={setIsFirstHomeBuyer}
+                  disabled={disabled}
+                />
+              </div>
+
+              {/* Property Type Selection */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  Property Type
+                </Label>
+                <Select
+                  value={stampDutyPropertyType}
+                  onValueChange={(value) => setStampDutyPropertyType(value as StampDutyPropertyType)}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Select property type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="primary_residence">Primary Residence</SelectItem>
+                    <SelectItem value="investment">Investment</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Purchase Type Selection */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  Are you purchasing
+                </Label>
+                <Select
+                  value={stampDutyPurchaseType}
+                  onValueChange={(value) => setStampDutyPurchaseType(value as StampDutyPurchaseType)}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Select purchase type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="established_home">An established home</SelectItem>
+                    <SelectItem value="new_home">A new home</SelectItem>
+                    <SelectItem value="vacant_land">Vacant Land</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Property Value (Dynamic from Purchase Price) */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  Property Value
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="text"
+                    value={formatForDisplay(purchasePrice)}
+                    disabled
+                    className="pl-7 bg-muted/50"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Property value is pulled from the Purchase Price field
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* External Calculator Embed */}
               <div 
                 id="stamp-duty-calculator" 
                 className="orange-theme"
