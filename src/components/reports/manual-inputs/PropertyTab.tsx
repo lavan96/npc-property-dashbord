@@ -180,40 +180,43 @@ export function PropertyTab({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="landPrice" className="text-sm font-medium">Land Price</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="landPrice"
-                  type="text"
-                  inputMode="numeric"
-                  value={formatForDisplay(landPrice)}
-                  onChange={handleCurrencyChange(setLandPrice)}
-                  placeholder="350,000"
-                  disabled={disabled}
-                  className="pl-7"
-                />
+          {/* Land Price and Build Price - Only shown for New Builds */}
+          {isNewBuild && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="landPrice" className="text-sm font-medium">Land Price</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="landPrice"
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(landPrice)}
+                    onChange={handleCurrencyChange(setLandPrice)}
+                    placeholder="350,000"
+                    disabled={disabled}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="buildPrice" className="text-sm font-medium">Build Price</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="buildPrice"
+                    type="text"
+                    inputMode="numeric"
+                    value={formatForDisplay(buildPrice)}
+                    onChange={handleCurrencyChange(setBuildPrice)}
+                    placeholder="400,000"
+                    disabled={disabled}
+                    className="pl-7"
+                  />
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="buildPrice" className="text-sm font-medium">Build Price</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="buildPrice"
-                  type="text"
-                  inputMode="numeric"
-                  value={formatForDisplay(buildPrice)}
-                  onChange={handleCurrencyChange(setBuildPrice)}
-                  placeholder="400,000"
-                  disabled={disabled}
-                  className="pl-7"
-                />
-              </div>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
