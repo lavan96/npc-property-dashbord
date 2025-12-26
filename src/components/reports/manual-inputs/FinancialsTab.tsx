@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,10 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote, Building, MapPin } from 'lucide-react';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote, Building, MapPin, Check, Copy } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
+import { useToast } from '@/hooks/use-toast';
 import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
 
 export type StampDutyPropertyType = 'primary_residence' | 'investment';
@@ -106,8 +107,10 @@ export function FinancialsTab({
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
-  const stampDutyContainerRef = useRef<HTMLDivElement>(null);
+  const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
+  const stampDutyIframeRef = useRef<HTMLIFrameElement>(null);
   const isNewBuild = buildType === 'new_build';
+  const { toast } = useToast();
 
   // Use props or local state for stamp duty selections
   const stampDutyPropertyType = propStampDutyPropertyType ?? localStampDutyPropertyType;
@@ -151,75 +154,83 @@ export function FinancialsTab({
     return stateMap[stateCode] || 'All';
   }, []);
 
-  // Cleanup function for stamp duty calculator
-  const cleanupStampDutyScript = useCallback(() => {
-    try {
-      const script = document.getElementById('stamp-src');
-      if (script) {
-        script.remove();
+  // Generate iframe content for stamp duty calculator - isolated from main DOM
+  const getStampDutyIframeContent = useCallback(() => {
+    const calculatorState = getCalculatorState(detectedState);
+    const priceAttr = price > 0 ? `data-price="${price}"` : '';
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { 
+            margin: 0; 
+            padding: 16px; 
+            font-family: system-ui, -apple-system, sans-serif;
+            background: transparent;
+          }
+          #stamp-duty-anchors { margin-bottom: 12px; }
+          #stamp-duty-anchors a { color: #f97316; }
+          .stamp-duty-result {
+            font-size: 18px;
+            font-weight: bold;
+            color: #16a34a;
+            margin-top: 12px;
+            padding: 12px;
+            background: #f0fdf4;
+            border-radius: 8px;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="stamp-duty-calculator" class="orange-theme">
+          <div id="stamp-duty-anchors">
+            <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au" target="_blank">calculatorsonline.com.au</a></p>
+          </div>
+        </div>
+        <script id="stamp-src" type="text/javascript" src="//calculatorsonline.com.au/external/!main/stamp_duty.min.js" data-state="${calculatorState}" ${priceAttr}></script>
+        <script>
+          // Watch for stamp duty result and send to parent
+          const observer = new MutationObserver(() => {
+            const resultElements = document.querySelectorAll('span, div, strong');
+            resultElements.forEach(el => {
+              const text = el.textContent || '';
+              const match = text.match(/\\$([\\d,]+)/);
+              if (match && text.toLowerCase().includes('stamp')) {
+                window.parent.postMessage({ type: 'stampDutyResult', value: match[1].replace(/,/g, '') }, '*');
+              }
+            });
+          });
+          observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        </script>
+      </body>
+      </html>
+    `;
+  }, [detectedState, price, getCalculatorState]);
+
+  // Listen for stamp duty result from iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'stampDutyResult' && event.data?.value) {
+        setCalculatedStampDuty(event.data.value);
       }
-      // Also remove any elements the script may have created
-      const calcElements = document.querySelectorAll('[id^="stamp-duty-"]');
-      calcElements.forEach(el => {
-        if (el.id !== 'stamp-duty-calculator') {
-          el.remove();
-        }
-      });
-    } catch (e) {
-      console.warn('Error cleaning up stamp duty script:', e);
-    }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Load stamp duty calculator script when shown or when state/price changes
-  useEffect(() => {
-    if (!showStampDutyCalc) {
-      cleanupStampDutyScript();
-      return;
+  // Apply calculated stamp duty to the form
+  const handleApplyStampDuty = useCallback(() => {
+    if (calculatedStampDuty) {
+      setStampDuty(calculatedStampDuty);
+      toast({
+        title: "Stamp Duty Applied",
+        description: `$${formatNumberWithCommas(calculatedStampDuty)} has been applied to the form.`,
+      });
     }
-
-    if (stampDutyContainerRef.current) {
-      try {
-        // Remove existing script to reload with new parameters
-        cleanupStampDutyScript();
-        
-        // Clear existing calculator content
-        const calcContainer = document.getElementById('stamp-duty-calculator');
-        if (calcContainer) {
-          // Reset the container
-          calcContainer.innerHTML = '<div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div>';
-        }
-        
-        // Create new script with detected state and price
-        const script = document.createElement('script');
-        script.id = 'stamp-src';
-        script.type = 'text/javascript';
-        script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-        
-        // Set the state based on detected property address
-        const calculatorState = getCalculatorState(detectedState);
-        script.setAttribute('data-state', calculatorState);
-        
-        // Set purchase price if available
-        if (price > 0) {
-          script.setAttribute('data-price', price.toString());
-        }
-        
-        // Add error handler for script loading
-        script.onerror = () => {
-          console.warn('Failed to load stamp duty calculator script');
-        };
-        
-        document.body.appendChild(script);
-      } catch (e) {
-        console.warn('Error loading stamp duty calculator:', e);
-      }
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      cleanupStampDutyScript();
-    };
-  }, [showStampDutyCalc, detectedState, price, getCalculatorState, cleanupStampDutyScript]);
+  }, [calculatedStampDuty, setStampDuty, toast]);
 
   // Total acquisition costs
   const totalAcquisitionCosts = 
@@ -510,7 +521,7 @@ export function FinancialsTab({
 
           {/* Stamp Duty Calculator Section */}
           {showStampDutyCalc && (
-            <div ref={stampDutyContainerRef} className="mb-4 border rounded-lg p-4 bg-muted/20 space-y-4">
+            <div className="mb-4 border rounded-lg p-4 bg-muted/20 space-y-4">
               {/* First Home Buyer Toggle */}
               <div className="flex items-center justify-between p-3 bg-background rounded-lg border">
                 <div className="flex items-center gap-3">
@@ -597,16 +608,46 @@ export function FinancialsTab({
 
               <Separator />
 
-              {/* External Calculator Embed */}
-              <div 
-                id="stamp-duty-calculator" 
-                className="orange-theme"
-                dangerouslySetInnerHTML={{
-                  __html: '<div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div>'
-                }}
+              {/* External Calculator Embed - Isolated in iframe to prevent DOM interference */}
+              <iframe
+                ref={stampDutyIframeRef}
+                srcDoc={getStampDutyIframeContent()}
+                className="w-full border-0 rounded-lg bg-background"
+                style={{ minHeight: '400px' }}
+                title="Stamp Duty Calculator"
+                sandbox="allow-scripts allow-same-origin"
               />
-              <p className="text-xs text-muted-foreground mt-4">
-                * Calculate your stamp duty using the widget above, then enter the result in the Stamp Duty field.
+
+              {/* Apply Calculated Stamp Duty Button */}
+              {calculatedStampDuty && (
+                <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+                  <div className="flex items-center gap-3">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-700">
+                        Calculated Stamp Duty: ${formatNumberWithCommas(calculatedStampDuty)}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        Click to apply this amount to your report
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={handleApplyStampDuty}
+                    disabled={disabled}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Apply
+                  </Button>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground mt-2">
+                * Calculate your stamp duty using the widget above. The result will appear for you to apply to the form.
               </p>
             </div>
           )}
