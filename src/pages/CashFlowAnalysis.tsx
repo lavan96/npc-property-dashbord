@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,9 +44,12 @@ export default function CashFlowAnalysis() {
   
   const { toast } = useToast();
   
-  // 30-day cutoff for active reports
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // 30-day cutoff for active reports - memoized to prevent recreation on each render
+  const thirtyDaysAgo = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date;
+  }, []);
 
   useEffect(() => {
     fetchReports();
@@ -88,11 +91,11 @@ export default function CashFlowAnalysis() {
     const fc = report.financial_calculations || {};
     const mo = report.manual_overrides || {};
     
-    // Check for essential fields
+    // Check for purchase price (required) - rent is optional but helpful
     const hasPrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue;
-    const hasRent = mo.weeklyRent || fc.weeklyRent;
     
-    return hasPrice && hasRent;
+    // For now, only require price - rent can be estimated or added later
+    return !!hasPrice;
   };
 
   const getBuildType = (report: InvestmentReport): 'new_build' | 'existing_property' => {

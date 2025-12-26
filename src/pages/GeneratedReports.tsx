@@ -130,6 +130,7 @@ export default function GeneratedReports() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
+  const isMobile = useIsMobile(); // Must be called before any early returns
 
   const [activeTab, setActiveTab] = useState<'quantitative' | 'investment' | 'comparisons'>(() => {
     const tabParam = searchParams.get('tab');
@@ -756,8 +757,6 @@ export default function GeneratedReports() {
       </div>
     );
   }
-
-  const isMobile = useIsMobile();
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6 pb-20 md:pb-6">
