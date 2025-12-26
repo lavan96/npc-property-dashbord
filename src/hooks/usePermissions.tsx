@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -34,7 +34,12 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const isAdmin = authIsAdmin;
   const roles = authRoles;
 
-  const fetchPermissions = async () => {
+  const fetchPermissions = useCallback(async () => {
+    // Don't fetch if auth is still loading or no user
+    if (authLoading) {
+      return;
+    }
+
     if (!user) {
       setPermissions([]);
       setLoading(false);
@@ -42,6 +47,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      console.log('[Permissions] Fetching permissions for user:', user.username, 'isSuperadmin:', isSuperadmin);
+      
       // If superadmin, they have access to everything
       if (isSuperadmin) {
         // Fetch all modules for superadmin
@@ -50,7 +57,12 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           .select('module_key, module_name')
           .eq('is_active', true);
 
+        if (modulesError) {
+          console.error('[Permissions] Error fetching modules for superadmin:', modulesError);
+        }
+
         if (!modulesError && modules) {
+          console.log('[Permissions] Superadmin granted access to', modules.length, 'modules');
           setPermissions(modules.map(m => ({
             module_key: m.module_key,
             module_name: m.module_name,
@@ -60,65 +72,77 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           })));
         }
       } else {
-        // Fetch specific permissions for non-superadmin users via edge function
-        const sessionToken = localStorage.getItem('session_token');
-        if (sessionToken) {
-          const { data } = await supabase.functions.invoke('admin-user-management', {
-            body: { action: 'get_own_profile', session_token: sessionToken }
-          });
-          
-          // For non-superadmin, fetch their permissions
-          const { data: userPermissions, error: permError } = await supabase
-            .from('user_permissions')
-            .select(`
-              can_view,
-              can_edit,
-              can_delete,
-              dashboard_modules(module_key, module_name)
-            `)
-            .eq('user_id', user.id);
+        // Fetch specific permissions for non-superadmin users
+        console.log('[Permissions] Fetching specific permissions for user ID:', user.id);
+        
+        const { data: userPermissions, error: permError } = await supabase
+          .from('user_permissions')
+          .select(`
+            can_view,
+            can_edit,
+            can_delete,
+            dashboard_modules(module_key, module_name)
+          `)
+          .eq('user_id', user.id);
 
-          if (!permError && userPermissions) {
-            setPermissions(userPermissions.map(p => ({
-              module_key: (p.dashboard_modules as any)?.module_key || '',
-              module_name: (p.dashboard_modules as any)?.module_name || '',
-              can_view: p.can_view,
-              can_edit: p.can_edit,
-              can_delete: p.can_delete,
-            })).filter(p => p.module_key));
+        if (permError) {
+          console.error('[Permissions] Error fetching user permissions:', permError);
+        } else {
+          console.log('[Permissions] Raw permissions data:', userPermissions);
+          
+          if (userPermissions && userPermissions.length > 0) {
+            const mappedPermissions = userPermissions
+              .filter(p => p.can_view) // Only include permissions where can_view is true
+              .map(p => ({
+                module_key: (p.dashboard_modules as any)?.module_key || '',
+                module_name: (p.dashboard_modules as any)?.module_name || '',
+                can_view: p.can_view,
+                can_edit: p.can_edit,
+                can_delete: p.can_delete,
+              }))
+              .filter(p => p.module_key);
+            
+            console.log('[Permissions] Mapped permissions:', mappedPermissions.length, 'modules accessible');
+            setPermissions(mappedPermissions);
+          } else {
+            console.log('[Permissions] No permissions found for user');
+            setPermissions([]);
           }
         }
       }
     } catch (error) {
-      console.error('Error in fetchPermissions:', error);
+      console.error('[Permissions] Error in fetchPermissions:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, authLoading, isSuperadmin]);
 
+  // Fetch permissions when auth state changes and is ready
   useEffect(() => {
+    // Only fetch when auth is no longer loading
     if (!authLoading) {
+      console.log('[Permissions] Auth ready, fetching permissions. User:', user?.username, 'Roles:', roles);
       fetchPermissions();
     }
-  }, [user?.id, authLoading, isSuperadmin]);
+  }, [authLoading, user?.id, isSuperadmin, fetchPermissions]);
 
-  const hasModuleAccess = (moduleKey: string): boolean => {
+  const hasModuleAccess = useCallback((moduleKey: string): boolean => {
     if (isSuperadmin) return true;
     const perm = permissions.find(p => p.module_key === moduleKey);
     return perm?.can_view || false;
-  };
+  }, [isSuperadmin, permissions]);
 
-  const canEdit = (moduleKey: string): boolean => {
+  const canEdit = useCallback((moduleKey: string): boolean => {
     if (isSuperadmin) return true;
     const perm = permissions.find(p => p.module_key === moduleKey);
     return perm?.can_edit || false;
-  };
+  }, [isSuperadmin, permissions]);
 
-  const canDelete = (moduleKey: string): boolean => {
+  const canDelete = useCallback((moduleKey: string): boolean => {
     if (isSuperadmin) return true;
     const perm = permissions.find(p => p.module_key === moduleKey);
     return perm?.can_delete || false;
-  };
+  }, [isSuperadmin, permissions]);
 
   return (
     <PermissionsContext.Provider

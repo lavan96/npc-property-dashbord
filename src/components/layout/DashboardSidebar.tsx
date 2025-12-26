@@ -72,14 +72,15 @@ export function DashboardSidebar() {
   
   const isActive = (path: string) => currentPath === path;
 
-  // Filter items based on permissions (superadmin sees all)
-  const visibleNavItems = navigationItems.filter(item => 
-    isSuperadmin || hasModuleAccess(item.moduleKey)
-  );
+  // While permissions are loading, show all items to prevent flash
+  // Once loaded, filter based on actual permissions
+  const visibleNavItems = permissionsLoading 
+    ? navigationItems 
+    : navigationItems.filter(item => isSuperadmin || hasModuleAccess(item.moduleKey));
   
-  const visibleAdminItems = adminItems.filter(item => 
-    isSuperadmin || hasModuleAccess(item.moduleKey)
-  );
+  const visibleAdminItems = permissionsLoading
+    ? [] // Hide admin items while loading for security
+    : adminItems.filter(item => isSuperadmin || hasModuleAccess(item.moduleKey));
 
   // Determine which logo to show based on sidebar state
   const currentLogo = isCollapsed 

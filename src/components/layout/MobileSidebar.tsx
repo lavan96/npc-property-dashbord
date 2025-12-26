@@ -62,20 +62,22 @@ const adminItems = [
 export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   const location = useLocation();
   const { settings } = useWhiteLabel();
-  const { hasModuleAccess, isSuperadmin } = usePermissions();
+  const { hasModuleAccess, isSuperadmin, loading: permissionsLoading } = usePermissions();
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
-  const visibleNavItems = navigationItems.filter(item => 
-    isSuperadmin || hasModuleAccess(item.moduleKey)
-  );
+  // While permissions are loading, show nav items to prevent flash
+  // Once loaded, filter based on actual permissions
+  const visibleNavItems = permissionsLoading 
+    ? navigationItems 
+    : navigationItems.filter(item => isSuperadmin || hasModuleAccess(item.moduleKey));
   
-  const visibleAdminItems = adminItems.filter(item => 
-    isSuperadmin || hasModuleAccess(item.moduleKey)
-  );
+  const visibleAdminItems = permissionsLoading
+    ? [] // Hide admin items while loading for security
+    : adminItems.filter(item => isSuperadmin || hasModuleAccess(item.moduleKey));
 
   const handleClick = () => {
     onNavigate?.();
