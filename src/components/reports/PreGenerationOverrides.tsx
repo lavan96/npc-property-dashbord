@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -212,15 +212,17 @@ export function PreGenerationOverrides({
     }
   }, [propertyAddress, detectStateFromAddress]);
 
-  // Sync external purchasePrice prop
+  // Sync external purchasePrice prop - only react to external changes
+  const lastExternalPurchasePrice = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (externalPurchasePrice !== undefined && buildType !== 'new_build') {
-      const externalValue = externalPurchasePrice.toString();
-      if (purchasePrice !== externalValue) {
-        setPurchasePrice(externalValue);
+      // Only sync if the external value has actually changed from what we last saw
+      if (lastExternalPurchasePrice.current !== externalPurchasePrice) {
+        lastExternalPurchasePrice.current = externalPurchasePrice;
+        setPurchasePrice(externalPurchasePrice.toString());
       }
     }
-  }, [externalPurchasePrice, buildType, purchasePrice]);
+  }, [externalPurchasePrice, buildType]);
 
   // Sync external weeklyRent prop
   useEffect(() => {
