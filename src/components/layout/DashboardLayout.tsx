@@ -107,7 +107,7 @@ export function DashboardLayout() {
   // Desktop Layout
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-svh h-svh flex w-full bg-background overflow-hidden">
         {/* Sidebar is outside error boundary to prevent it from disappearing on page errors */}
         <DashboardSidebar />
         
