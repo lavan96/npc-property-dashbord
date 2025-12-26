@@ -39,7 +39,17 @@ const SidebarContext = React.createContext<SidebarContext | null>(null)
 function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider.")
+    // Return a safe default instead of throwing to prevent sidebar disappearing on errors
+    console.warn("useSidebar called outside of SidebarProvider, returning defaults")
+    return {
+      state: "expanded" as const,
+      open: true,
+      setOpen: () => {},
+      openMobile: false,
+      setOpenMobile: () => {},
+      isMobile: false,
+      toggleSidebar: () => {},
+    }
   }
 
   return context
