@@ -79,7 +79,7 @@ verify_jwt = false
 
 [functions.generate-investment-report]
 verify_jwt = false
-request_timeout = 300
+request_timeout = 540
 
 [functions.abs-data-service]
 verify_jwt = false
