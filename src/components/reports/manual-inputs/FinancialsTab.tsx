@@ -162,43 +162,69 @@ export function FinancialsTab({
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
+          * { box-sizing: border-box; }
           body { 
             margin: 0; 
             padding: 16px; 
-            font-family: system-ui, -apple-system, sans-serif;
-            background: transparent;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #333;
           }
-          #stamp-duty-calculator { display: block !important; }
+          #stamp-duty-calculator { 
+            display: block !important; 
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
+          #stamp-duty-calculator.hidden {
+            display: block !important;
+          }
           #stamp-duty-anchors { margin-bottom: 12px; }
-          #stamp-duty-anchors a { color: #f97316; }
+          #stamp-duty-anchors a { color: #f97316; text-decoration: none; }
+          #stamp-duty-anchors a:hover { text-decoration: underline; }
+          .loading-msg {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+          }
         </style>
       </head>
       <body>
         <div id="stamp-duty-calculator" class="orange-theme">
           <div id="stamp-duty-anchors">
-            <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au" target="_blank">calculatorsonline.com.au</a></p>
+            <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au" target="_blank" rel="noopener">calculatorsonline.com.au</a></p>
           </div>
+          <div class="loading-msg" id="loading">Loading calculator...</div>
         </div>
-        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="//calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
         <script>
-          // Watch for stamp duty result and send to parent - more aggressive detection
+          // Remove loading message when calculator loads
+          window.addEventListener('load', function() {
+            var loadingEl = document.getElementById('loading');
+            if (loadingEl) loadingEl.style.display = 'none';
+          });
+          setTimeout(function() {
+            var loadingEl = document.getElementById('loading');
+            if (loadingEl) loadingEl.style.display = 'none';
+          }, 3000);
+        <\/script>
+        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
+        <script>
+          // Watch for stamp duty result and send to parent
           let lastSentValue = '';
           const checkForResult = () => {
-            // Look for any element containing dollar amounts
             const allElements = document.querySelectorAll('*');
             for (const el of allElements) {
               const text = el.textContent || '';
-              // Match dollar amounts like $1,234 or $12,345.67
               const matches = text.match(/\\$(\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})?)/g);
               if (matches && matches.length > 0) {
-                // Get the largest dollar amount found (likely the stamp duty)
                 let maxValue = 0;
                 let maxMatch = '';
                 matches.forEach(m => {
                   const numStr = m.replace(/[$,]/g, '');
                   const num = parseFloat(numStr);
-                  if (num > maxValue && num < 1000000) { // Reasonable stamp duty range
+                  if (num > maxValue && num < 1000000) {
                     maxValue = num;
                     maxMatch = numStr;
                   }
@@ -210,12 +236,8 @@ export function FinancialsTab({
               }
             }
           };
-          
-          // Use MutationObserver for DOM changes
           const observer = new MutationObserver(checkForResult);
           observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-          
-          // Also check periodically as backup
           setInterval(checkForResult, 1000);
         <\/script>
       </body>
@@ -626,10 +648,9 @@ export function FinancialsTab({
               <iframe
                 ref={stampDutyIframeRef}
                 srcDoc={getStampDutyIframeContent()}
-                className="w-full border-0 rounded-lg bg-background"
-                style={{ minHeight: '400px' }}
+                className="w-full border rounded-lg bg-white"
+                style={{ minHeight: '450px', background: '#ffffff' }}
                 title="Stamp Duty Calculator"
-                sandbox="allow-scripts allow-same-origin"
               />
 
               {/* Apply Calculated Stamp Duty Button */}
