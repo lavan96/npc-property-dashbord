@@ -1273,10 +1273,10 @@ export default function GeneratedReports() {
         </Suspense>
       )}
 
-      {investmentViewerOpen && selectedInvestmentReport && (
+      {investmentViewerOpen && selectedInvestmentReport && selectedInvestmentReport.report_content && (
         <Suspense fallback={<ModalLoader />}>
           <InvestmentReportViewer
-            report={selectedInvestmentReport}
+            report={selectedInvestmentReport as InvestmentReport & { report_content: string }}
             isOpen={investmentViewerOpen}
             onClose={() => {
               setInvestmentViewerOpen(false);
