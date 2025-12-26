@@ -494,6 +494,16 @@ export function PreGenerationOverrides({
                 detectedState={detectedState}
                 propertyAddress={propertyAddress}
                 disabled={disabled}
+                loanAmount={loanAmount}
+                setLoanAmount={setLoanAmount}
+                interestOnlyPeriodYears={interestOnlyPeriodYears}
+                setInterestOnlyPeriodYears={setInterestOnlyPeriodYears}
+                repaymentFrequency={repaymentFrequency}
+                setRepaymentFrequency={setRepaymentFrequency}
+                extraRepaymentPerMonth={extraRepaymentPerMonth}
+                setExtraRepaymentPerMonth={setExtraRepaymentPerMonth}
+                offsetBalance={offsetBalance}
+                setOffsetBalance={setOffsetBalance}
               />
             </TabsContent>
 

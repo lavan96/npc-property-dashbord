@@ -5,9 +5,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, Home } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
+import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
+import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
 
 
 interface FinancialsTabProps {
@@ -36,6 +40,17 @@ interface FinancialsTabProps {
   detectedState: string;
   propertyAddress: string;
   disabled?: boolean;
+  // Mortgage calculator props
+  loanAmount?: string;
+  setLoanAmount?: (value: string) => void;
+  interestOnlyPeriodYears?: string;
+  setInterestOnlyPeriodYears?: (value: string) => void;
+  repaymentFrequency?: 'weekly' | 'fortnightly' | 'monthly';
+  setRepaymentFrequency?: (value: 'weekly' | 'fortnightly' | 'monthly') => void;
+  extraRepaymentPerMonth?: string;
+  setExtraRepaymentPerMonth?: (value: string) => void;
+  offsetBalance?: string;
+  setOffsetBalance?: (value: string) => void;
 }
 
 export function FinancialsTab({
@@ -63,9 +78,20 @@ export function FinancialsTab({
   setIsFirstHomeBuyer,
   detectedState,
   propertyAddress,
-  disabled = false
+  disabled = false,
+  loanAmount: propLoanAmount,
+  setLoanAmount: propSetLoanAmount,
+  interestOnlyPeriodYears: propInterestOnlyPeriodYears,
+  setInterestOnlyPeriodYears: propSetInterestOnlyPeriodYears,
+  repaymentFrequency: propRepaymentFrequency,
+  setRepaymentFrequency: propSetRepaymentFrequency,
+  extraRepaymentPerMonth: propExtraRepaymentPerMonth,
+  setExtraRepaymentPerMonth: propSetExtraRepaymentPerMonth,
+  offsetBalance: propOffsetBalance,
+  setOffsetBalance: propSetOffsetBalance
 }: FinancialsTabProps) {
   const [showStampDutyCalc, setShowStampDutyCalc] = useState(false);
+  const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const stampDutyContainerRef = useRef<HTMLDivElement>(null);
   const isNewBuild = buildType === 'new_build';
 
@@ -362,6 +388,78 @@ export function FinancialsTab({
           )}
         </CardContent>
       </Card>
+
+      {/* Mortgage Repayment Calculator */}
+      <Collapsible open={showMortgageCalculator} onOpenChange={setShowMortgageCalculator}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="w-full justify-between p-4 h-auto border-2 border-dashed border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/5 rounded-lg"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <Banknote className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-foreground">Mortgage Repayment Calculator</p>
+                <p className="text-sm text-muted-foreground">
+                  Calculate repayments, view amortisation schedule, and apply to cash flow
+                </p>
+              </div>
+            </div>
+            {showMortgageCalculator ? (
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            )}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 space-y-4">
+            <Separator />
+            <MortgageRepaymentCalculator
+              initialLoanAmount={loanAmount}
+              initialInterestRate={parseFloat(interestRate) || 6.5}
+              initialLoanTermYears={parseFloat(loanTermYears) || 30}
+              initialLoanType={(loanType || 'principal_interest') as LoanType}
+              initialInterestOnlyPeriodYears={parseFloat(propInterestOnlyPeriodYears || '0') || 0}
+              initialRepaymentFrequency={(propRepaymentFrequency || 'monthly') as RepaymentFrequency}
+              initialExtraRepayment={parseFloat(propExtraRepaymentPerMonth || '0') || 0}
+              initialOffsetBalance={parseFloat(propOffsetBalance || '0') || 0}
+              onApplyToOverrides={(values) => {
+                if (values.loanAmount !== undefined && propSetLoanAmount) {
+                  propSetLoanAmount(values.loanAmount.toString());
+                }
+                if (values.interestRate !== undefined) {
+                  setInterestRate(values.interestRate.toString());
+                }
+                if (values.loanTermYears !== undefined) {
+                  setLoanTermYears(values.loanTermYears.toString());
+                }
+                if (values.loanType !== undefined) {
+                  setLoanType(values.loanType as 'interest_only' | 'principal_interest');
+                }
+                if (values.interestOnlyPeriodYears !== undefined && propSetInterestOnlyPeriodYears) {
+                  propSetInterestOnlyPeriodYears(values.interestOnlyPeriodYears.toString());
+                }
+                if (values.repaymentFrequency !== undefined && propSetRepaymentFrequency) {
+                  propSetRepaymentFrequency(values.repaymentFrequency);
+                }
+                if (values.extraRepaymentPerMonth !== undefined && propSetExtraRepaymentPerMonth) {
+                  propSetExtraRepaymentPerMonth(values.extraRepaymentPerMonth.toString());
+                }
+                if (values.offsetBalance !== undefined && propSetOffsetBalance) {
+                  propSetOffsetBalance(values.offsetBalance.toString());
+                }
+              }}
+              onApplyLoanProjection={(projection) => {
+                // The projection is available for parent components if needed
+                console.log('Loan projection applied:', projection);
+              }}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Acquisition Costs Card */}
       <Card>
