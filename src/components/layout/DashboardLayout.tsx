@@ -6,6 +6,30 @@ import { DashboardHeader } from './DashboardHeader';
 import { MobileHeader } from './MobileHeader';
 import { MobileNav } from './MobileNav';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
+
+// Fallback for main content area errors
+const MainContentErrorFallback = () => (
+  <Card className="m-6">
+    <CardContent className="p-6">
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Something went wrong</h3>
+        <p className="text-muted-foreground mb-4">
+          This page encountered an error. Please try refreshing or navigate to a different page.
+        </p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -70,7 +94,9 @@ export function DashboardLayout() {
         />
         
         <main className="flex-1 p-4 pb-20 overflow-auto">
-          <Outlet />
+          <ErrorBoundary fallback={<MainContentErrorFallback />}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
 
         <MobileNav />
@@ -92,7 +118,9 @@ export function DashboardLayout() {
           />
           
           <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
+            <ErrorBoundary fallback={<MainContentErrorFallback />}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>
