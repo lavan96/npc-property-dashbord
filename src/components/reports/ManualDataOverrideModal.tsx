@@ -1561,10 +1561,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         <Separator />
                         <MortgageRepaymentCalculator
                           initialLoanAmount={
-                            overrides.loanAmount || 
-                            report?.manual_overrides?.loanAmount ||
-                            report?.financial_calculations?.loanAmount || 
-                            ((report?.financial_calculations?.purchasePrice || 0) * (report?.financial_calculations?.loanToValueRatio || 80) / 100)
+                            overrides.loanAmount ?? 
+                            report?.manual_overrides?.loanAmount ??
+                            report?.financial_calculations?.loanAmount ?? 
+                            Math.round(((overrides.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? 0) * 
+                              (overrides.loanToValueRatio ?? report?.financial_calculations?.loanToValueRatio ?? 80) / 100))
                           }
                           initialInterestRate={
                             overrides.interestRate || 
