@@ -173,43 +173,14 @@ export function FinancialsTab({
             background: #ffffff;
             color: #333;
           }
-          #stamp-duty-calculator { 
-            display: block !important; 
-            visibility: visible !important;
-            opacity: 1 !important;
-          }
-          #stamp-duty-calculator.hidden {
-            display: block !important;
-          }
           #stamp-duty-anchors { margin-bottom: 12px; }
           #stamp-duty-anchors a { color: #f97316; text-decoration: none; }
           #stamp-duty-anchors a:hover { text-decoration: underline; }
-          .loading-msg {
-            padding: 20px;
-            text-align: center;
-            color: #666;
-          }
         </style>
       </head>
       <body>
-        <div id="stamp-duty-calculator" class="orange-theme">
-          <div id="stamp-duty-anchors">
-            <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au" target="_blank" rel="noopener">calculatorsonline.com.au</a></p>
-          </div>
-          <div class="loading-msg" id="loading">Loading calculator...</div>
-        </div>
-        <script>
-          // Remove loading message when calculator loads
-          window.addEventListener('load', function() {
-            var loadingEl = document.getElementById('loading');
-            if (loadingEl) loadingEl.style.display = 'none';
-          });
-          setTimeout(function() {
-            var loadingEl = document.getElementById('loading');
-            if (loadingEl) loadingEl.style.display = 'none';
-          }, 3000);
-        <\/script>
-        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
+        <div id="stamp-duty-calculator" class="orange-theme"><div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div></div>
+        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="//calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
         <script>
           // Watch for stamp duty result and send to parent
           let lastSentValue = '';
