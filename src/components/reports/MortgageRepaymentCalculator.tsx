@@ -128,9 +128,15 @@ export function MortgageRepaymentCalculator({
 const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset');
   const [selectedPresetRate, setSelectedPresetRate] = useState<string>('5.34');
   
-  // Sync with initial values when they change
+  // Sync loan amount dynamically when initial value changes (from purchase price * LVR)
   useEffect(() => {
-    if (initialLoanAmount > 0) setLoanAmount(initialLoanAmount);
+    if (initialLoanAmount >= 0) {
+      setLoanAmount(initialLoanAmount);
+    }
+  }, [initialLoanAmount]);
+  
+  // Sync other initial values when they change
+  useEffect(() => {
     if (initialInterestRate > 0) {
       setInterestRate(initialInterestRate);
       // Check if it matches a preset, otherwise set to custom
@@ -148,7 +154,7 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
     if (initialRepaymentFrequency) setRepaymentFrequency(initialRepaymentFrequency);
     if (initialExtraRepayment >= 0) setExtraRepayment(initialExtraRepayment);
     if (initialOffsetBalance >= 0) setOffsetBalance(initialOffsetBalance);
-  }, [initialLoanAmount, initialInterestRate, initialLoanTermYears, initialLoanType, initialInterestOnlyPeriodYears, initialRepaymentFrequency, initialExtraRepayment, initialOffsetBalance]);
+  }, [initialInterestRate, initialLoanTermYears, initialLoanType, initialInterestOnlyPeriodYears, initialRepaymentFrequency, initialExtraRepayment, initialOffsetBalance]);
   
   // Handle preset rate selection
   const handlePresetRateChange = (value: string) => {
@@ -339,22 +345,35 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
           <Label className="text-sm font-medium">Interest Rate</Label>
           {rateInputMode === 'preset' ? (
             <div className="space-y-2">
-              <Select 
-                value={selectedPresetRate} 
-                onValueChange={handlePresetRateChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select interest rate" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {PRESET_INTEREST_RATES.map((rate) => (
-                    <SelectItem key={rate.value + rate.label} value={rate.value === 'custom' ? 'custom' : rate.value + '|' + rate.label}>
-                      {rate.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={selectedPresetRate} 
+                  onValueChange={handlePresetRateChange}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select interest rate" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {PRESET_INTEREST_RATES.map((rate) => (
+                      <SelectItem key={rate.value + rate.label} value={rate.value === 'custom' ? 'custom' : rate.value + '|' + rate.label}>
+                        {rate.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setRateInputMode('custom');
+                    setSelectedPresetRate('custom');
+                  }}
+                  className="text-xs whitespace-nowrap"
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Manual
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
