@@ -108,7 +108,7 @@ export function FinancialsTab({
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
-  const stampDutyIframeRef = useRef<HTMLIFrameElement>(null);
+  const stampDutyContainerRef = useRef<HTMLDivElement>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
 
@@ -139,49 +139,56 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Build iframe srcDoc for isolated stamp duty calculator (CSS won't leak to parent)
-  const stampDutyIframeSrcDoc = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <base href="https://calculatorsonline.com.au/">
-</head>
-<body style="margin:0;padding:0;background:#fff;">
-  <div id="stamp-duty-calculator" class="orange-theme">
-    <div id="stamp-duty-anchors">
-      <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p>
-    </div>
-  </div>
-  <script id="stamp-src" type="text/javascript" data-state="${detectedState}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"></script>
-</body>
-</html>
-  `.trim();
+  // Load stamp duty calculator script when expanded + cleanup when hidden/unmount
+  useEffect(() => {
+    if (showStampDutyCalc) {
+      // Remove existing script to reload with new state
+      const existingScript = document.getElementById('stamp-src');
+      if (existingScript) {
+        existingScript.remove();
+      }
+
+      // Create and append new script with detected state
+      const script = document.createElement('script');
+      script.id = 'stamp-src';
+      script.type = 'text/javascript';
+      script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+      script.setAttribute('data-state', detectedState);
+      document.body.appendChild(script);
+
+      // Show the calculator div
+      const calcDiv = document.getElementById('stamp-duty-calculator');
+      if (calcDiv) {
+        calcDiv.classList.remove('hidden');
+      }
+    } else {
+      // Cleanup when hiding the calculator
+      const existingScript = document.getElementById('stamp-src');
+      if (existingScript) {
+        existingScript.remove();
+      }
+      const calcDiv = document.getElementById('stamp-duty-calculator');
+      if (calcDiv) {
+        calcDiv.classList.add('hidden');
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      const existingScript = document.getElementById('stamp-src');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, [showStampDutyCalc, detectedState]);
 
   // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const iframe = stampDutyIframeRef.current;
-    if (!iframe) {
-      toast({
-        title: "Calculator not loaded",
-        description: "Please wait for the calculator to load first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    let calcContainer: Document | null = null;
-    try {
-      calcContainer = iframe.contentDocument || iframe.contentWindow?.document || null;
-    } catch (e) {
-      // Cross-origin access blocked
-    }
-
+    const calcContainer = document.getElementById('stamp-duty-calculator');
     if (!calcContainer) {
       toast({
-        title: "Cannot access calculator",
-        description: "Please manually enter the stamp duty value shown in the calculator.",
+        title: "Calculator not loaded",
+        description: "Please wait for the calculator to load and calculate a value first.",
         variant: "destructive"
       });
       return;
@@ -641,16 +648,16 @@ export function FinancialsTab({
 
               <Separator />
 
-              {/* External Calculator Embed - Isolated in iframe to prevent CSS leaking */}
-              <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
-                <iframe
-                  ref={stampDutyIframeRef}
-                  srcDoc={stampDutyIframeSrcDoc}
-                  title="Stamp Duty Calculator"
-                  className="w-full border-0"
-                  style={{ minHeight: '480px', background: '#fff' }}
-                  sandbox="allow-scripts allow-same-origin"
-                />
+              {/* External Calculator Embed (exact markup/IDs used by ManualDataOverrideModal) */}
+              <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
+                <div id="stamp-duty-calculator" className="orange-theme hidden">
+                  <div id="stamp-duty-anchors">
+                    <p>
+                      Stamp Duty Calculator from{' '}
+                      <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Capture Button */}
