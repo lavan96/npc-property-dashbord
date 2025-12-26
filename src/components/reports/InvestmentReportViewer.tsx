@@ -24,9 +24,10 @@ interface InvestmentReport {
   id: string;
   property_address: string;
   property_listing_id: string | null;
-  report_content: string;
+  report_content: string; // Required for the viewer (lazy-fetched before opening)
   sources_content?: string | null;
   created_at: string;
+  current_version?: number;
   status?: string;
   report_tier?: ReportTier;
   parent_report_id?: string | null;
