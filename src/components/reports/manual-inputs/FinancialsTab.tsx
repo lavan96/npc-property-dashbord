@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, Home } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { STATE_MAPPING } from '@/lib/states';
 
@@ -31,6 +32,7 @@ interface FinancialsTabProps {
   agentFee: string;
   setAgentFee: (value: string) => void;
   isFirstHomeBuyer: boolean;
+  setIsFirstHomeBuyer: (value: boolean) => void;
   detectedState: string;
   propertyAddress: string;
   disabled?: boolean;
@@ -58,6 +60,7 @@ export function FinancialsTab({
   agentFee,
   setAgentFee,
   isFirstHomeBuyer,
+  setIsFirstHomeBuyer,
   detectedState,
   propertyAddress,
   disabled = false
@@ -113,6 +116,31 @@ export function FinancialsTab({
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* First Home Buyer Toggle */}
+      <Card className="border-2 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Home className="h-5 w-5 text-primary" />
+              <div>
+                <Label htmlFor="firstHomeBuyer" className="text-base font-semibold cursor-pointer">
+                  First Home Buyer
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable for stamp duty concessions and grants
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="firstHomeBuyer"
+              checked={isFirstHomeBuyer}
+              onCheckedChange={setIsFirstHomeBuyer}
+              disabled={disabled}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Loan Structure Card */}
       <Card>
         <CardContent className="pt-6">

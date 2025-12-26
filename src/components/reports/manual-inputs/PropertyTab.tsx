@@ -2,10 +2,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Building2, Home, Info, Ruler, Building } from 'lucide-react';
+import { Building2, Home, Info } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { useCallback } from 'react';
 
@@ -20,14 +18,6 @@ interface PropertyTabProps {
   setLandPrice: (value: string) => void;
   buildPrice: string;
   setBuildPrice: (value: string) => void;
-  landSizeSqm: string;
-  setLandSizeSqm: (value: string) => void;
-  buildSizeSqm: string;
-  setBuildSizeSqm: (value: string) => void;
-  propertyType: string;
-  setPropertyType: (value: string) => void;
-  isFirstHomeBuyer: boolean;
-  setIsFirstHomeBuyer: (value: boolean) => void;
   disabled?: boolean;
 }
 
@@ -42,14 +32,6 @@ export function PropertyTab({
   setLandPrice,
   buildPrice,
   setBuildPrice,
-  landSizeSqm,
-  setLandSizeSqm,
-  buildSizeSqm,
-  setBuildSizeSqm,
-  propertyType,
-  setPropertyType,
-  isFirstHomeBuyer,
-  setIsFirstHomeBuyer,
   disabled = false
 }: PropertyTabProps) {
   const isNewBuild = buildType === 'new_build';
@@ -115,23 +97,10 @@ export function PropertyTab({
       {/* Pricing Section */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              Pricing
-            </h3>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="firstHomeBuyer" className="text-sm text-muted-foreground cursor-pointer">
-                First Home Buyer
-              </Label>
-              <Switch
-                id="firstHomeBuyer"
-                checked={isFirstHomeBuyer}
-                onCheckedChange={setIsFirstHomeBuyer}
-                disabled={disabled}
-              />
-            </div>
-          </div>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <Building2 className="h-5 w-5 text-primary" />
+            Pricing
+          </h3>
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="space-y-2">
@@ -217,67 +186,6 @@ export function PropertyTab({
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Property Specs */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <Ruler className="h-5 w-5 text-primary" />
-            Property Specs
-          </h3>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="landSizeSqm" className="text-sm font-medium">Land Size</Label>
-              <div className="relative">
-                <Input
-                  id="landSizeSqm"
-                  type="number"
-                  value={landSizeSqm}
-                  onChange={(e) => setLandSizeSqm(e.target.value)}
-                  placeholder="450"
-                  disabled={disabled}
-                  className="pr-12"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="buildSizeSqm" className="text-sm font-medium">Build Size</Label>
-              <div className="relative">
-                <Input
-                  id="buildSizeSqm"
-                  type="number"
-                  value={buildSizeSqm}
-                  onChange={(e) => setBuildSizeSqm(e.target.value)}
-                  placeholder="180"
-                  disabled={disabled}
-                  className="pr-12"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="propertyType" className="text-sm font-medium flex items-center gap-1">
-                <Building className="h-4 w-4" />
-                Type
-              </Label>
-              <Select value={propertyType} onValueChange={setPropertyType} disabled={disabled}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="house">House</SelectItem>
-                  <SelectItem value="apartment">Apartment</SelectItem>
-                  <SelectItem value="townhouse">Townhouse</SelectItem>
-                  <SelectItem value="unit">Unit</SelectItem>
-                  <SelectItem value="villa">Villa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

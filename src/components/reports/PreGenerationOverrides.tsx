@@ -463,14 +463,6 @@ export function PreGenerationOverrides({
                 setLandPrice={setLandPrice}
                 buildPrice={buildPrice}
                 setBuildPrice={setBuildPrice}
-                landSizeSqm={landSizeSqm}
-                setLandSizeSqm={setLandSizeSqm}
-                buildSizeSqm={buildSizeSqm}
-                setBuildSizeSqm={setBuildSizeSqm}
-                propertyType={propertyType}
-                setPropertyType={setPropertyType}
-                isFirstHomeBuyer={isFirstHomeBuyer}
-                setIsFirstHomeBuyer={setIsFirstHomeBuyer}
                 disabled={disabled}
               />
             </TabsContent>
@@ -498,6 +490,7 @@ export function PreGenerationOverrides({
                 agentFee={agentFee}
                 setAgentFee={setAgentFee}
                 isFirstHomeBuyer={isFirstHomeBuyer}
+                setIsFirstHomeBuyer={setIsFirstHomeBuyer}
                 detectedState={detectedState}
                 propertyAddress={propertyAddress}
                 disabled={disabled}
