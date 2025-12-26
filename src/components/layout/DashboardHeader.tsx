@@ -74,7 +74,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
   };
 
   return (
-    <header className="border-b border-border bg-card px-6 py-3 hidden md:block">
+    <header className="sticky top-0 z-40 border-b border-border bg-card px-6 py-3 hidden md:block">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1">
           <SidebarTrigger />
