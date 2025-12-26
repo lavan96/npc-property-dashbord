@@ -241,3 +241,9 @@ verify_jwt = false
 [functions.regenerate-report-qualitative]
 verify_jwt = false
 request_timeout = 120
+
+[functions.archive-old-reports]
+verify_jwt = false
+
+[functions.fix-report-status]
+verify_jwt = false
