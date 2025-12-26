@@ -108,9 +108,10 @@ export function DashboardLayout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
+        {/* Sidebar is outside error boundary to prevent it from disappearing on page errors */}
         <DashboardSidebar />
         
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <DashboardHeader 
             theme={theme}
             isDark={isDark}

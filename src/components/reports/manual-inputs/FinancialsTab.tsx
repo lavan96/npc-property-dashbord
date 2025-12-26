@@ -105,59 +105,75 @@ export function FinancialsTab({
     return stateMap[stateCode] || 'All';
   }, []);
 
+  // Cleanup function for stamp duty calculator
+  const cleanupStampDutyScript = useCallback(() => {
+    try {
+      const script = document.getElementById('stamp-src');
+      if (script) {
+        script.remove();
+      }
+      // Also remove any elements the script may have created
+      const calcElements = document.querySelectorAll('[id^="stamp-duty-"]');
+      calcElements.forEach(el => {
+        if (el.id !== 'stamp-duty-calculator') {
+          el.remove();
+        }
+      });
+    } catch (e) {
+      console.warn('Error cleaning up stamp duty script:', e);
+    }
+  }, []);
+
   // Load stamp duty calculator script when shown or when state/price changes
   useEffect(() => {
-    if (showStampDutyCalc && stampDutyContainerRef.current) {
-      // Remove existing script to reload with new parameters
-      const existingScript = document.getElementById('stamp-src');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      
-      // Clear existing calculator content
-      const calcContainer = document.getElementById('stamp-duty-calculator');
-      if (calcContainer) {
-        // Keep the anchor div but clear any generated content
-        const anchors = calcContainer.querySelector('#stamp-duty-anchors');
-        calcContainer.innerHTML = '';
-        if (anchors) {
-          calcContainer.appendChild(anchors);
+    if (!showStampDutyCalc) {
+      cleanupStampDutyScript();
+      return;
+    }
+
+    if (stampDutyContainerRef.current) {
+      try {
+        // Remove existing script to reload with new parameters
+        cleanupStampDutyScript();
+        
+        // Clear existing calculator content
+        const calcContainer = document.getElementById('stamp-duty-calculator');
+        if (calcContainer) {
+          // Reset the container
+          calcContainer.innerHTML = '<div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div>';
         }
-      }
-      
-      // Create new script with detected state and price
-      const script = document.createElement('script');
-      script.id = 'stamp-src';
-      script.type = 'text/javascript';
-      script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-      
-      // Set the state based on detected property address
-      const calculatorState = getCalculatorState(detectedState);
-      script.setAttribute('data-state', calculatorState);
-      
-      // Set purchase price if available
-      if (price > 0) {
-        script.setAttribute('data-price', price.toString());
-      }
-      
-      document.body.appendChild(script);
-      
-      // Show the calculator container
-      if (calcContainer) {
-        calcContainer.classList.remove('hidden');
+        
+        // Create new script with detected state and price
+        const script = document.createElement('script');
+        script.id = 'stamp-src';
+        script.type = 'text/javascript';
+        script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+        
+        // Set the state based on detected property address
+        const calculatorState = getCalculatorState(detectedState);
+        script.setAttribute('data-state', calculatorState);
+        
+        // Set purchase price if available
+        if (price > 0) {
+          script.setAttribute('data-price', price.toString());
+        }
+        
+        // Add error handler for script loading
+        script.onerror = () => {
+          console.warn('Failed to load stamp duty calculator script');
+        };
+        
+        document.body.appendChild(script);
+      } catch (e) {
+        console.warn('Error loading stamp duty calculator:', e);
       }
     }
     
     // Cleanup on unmount
     return () => {
-      if (!showStampDutyCalc) {
-        const script = document.getElementById('stamp-src');
-        if (script) {
-          script.remove();
-        }
-      }
+      cleanupStampDutyScript();
     };
-  }, [showStampDutyCalc, detectedState, price, getCalculatorState]);
+  }, [showStampDutyCalc, detectedState, price, getCalculatorState, cleanupStampDutyScript]);
 
   // Total acquisition costs
   const totalAcquisitionCosts = 
