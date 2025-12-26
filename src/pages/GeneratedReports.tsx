@@ -27,7 +27,6 @@ const ReportVersionHistory = lazy(() => import('@/components/reports/ReportVersi
 const ManualDataOverrideModal = lazy(() => import('@/components/reports/ManualDataOverrideModal').then(m => ({ default: m.ManualDataOverrideModal })));
 
 // Non-lazy imports for components used inline without Suspense
-import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { TierBadge, type ReportTier } from '@/components/reports/TierBadge';
 
 // Loading fallback for modals
@@ -58,7 +57,8 @@ interface InvestmentReport {
   id: string;
   property_address: string;
   property_listing_id: string | null;
-  report_content: string;
+  report_content?: string;
+  sources_content?: string | null;
   created_at: string;
   current_version: number;
   report_scope?: string; // Track report generation scope
@@ -156,6 +156,45 @@ export default function GeneratedReports() {
     return 'text-red-600 dark:text-red-400';
   };
 
+  const fetchInvestmentReportDetails = async (reportId: string): Promise<InvestmentReport | null> => {
+    const { data, error } = await supabase
+      .from('investment_reports')
+      .select(
+        'id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
+      )
+      .eq('id', reportId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return (data || null) as any;
+  };
+
+  const downloadInvestmentReportText = async (report: Pick<InvestmentReport, 'id' | 'property_address' | 'created_at'>) => {
+    try {
+      const full = await fetchInvestmentReportDetails(report.id);
+      if (!full?.report_content) {
+        throw new Error('Report content is missing');
+      }
+
+      const blob = new Blob([full.report_content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `investment-report-${report.property_address.replace(/[^a-zA-Z0-9]/g, '-')}-${format(new Date(report.created_at), 'yyyy-MM-dd')}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download failed',
+        description: error?.message || 'Could not download this report.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Filter and paginate investment reports
   const filteredInvestmentReports = investmentReports.filter(report => {
     const matchesSearch = report.property_address.toLowerCase().includes(investmentSearchQuery.toLowerCase());
@@ -222,7 +261,7 @@ export default function GeneratedReports() {
         if (!report) {
           const { data, error } = await supabase
             .from('investment_reports')
-            .select('id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
+            .select('id')
             .eq('id', reportId)
             .maybeSingle();
 
@@ -236,9 +275,29 @@ export default function GeneratedReports() {
 
         if (cancelled) return;
 
-        if (report) {
-          setSelectedInvestmentReport(report);
-          setInvestmentViewerOpen(true);
+        if (report?.id) {
+          try {
+            const full = await fetchInvestmentReportDetails(report.id);
+            if (cancelled) return;
+
+            if (full) {
+              setSelectedInvestmentReport(full);
+              setInvestmentViewerOpen(true);
+            } else {
+              toast({
+                title: 'Report not found',
+                description: 'The requested investment report could not be found.',
+                variant: 'destructive',
+              });
+            }
+          } catch (error: any) {
+            console.error('Deep-link details fetch error:', error);
+            toast({
+              title: 'Could not open report',
+              description: error?.message || 'Failed to load report details.',
+              variant: 'destructive',
+            });
+          }
         } else {
           toast({
             title: 'Report not found',
@@ -321,33 +380,36 @@ export default function GeneratedReports() {
 
   const fetchInvestmentReports = async () => {
     try {
-      console.log('🔍 Fetching investment reports...');
+      console.log('🔍 Fetching investment reports (list view)...');
+
+      // IMPORTANT: do not fetch report_content for the list view (very large payload)
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
-        .in('status', ['completed', 'pending']) // Show both completed and pending reports
+        .select(
+          'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, investment_score'
+        )
+        .in('status', ['completed', 'pending'])
         .order('created_at', { ascending: false });
 
-      console.log('📊 Investment reports response:', { data, error, count: data?.length });
+      console.log('📊 Investment reports response:', { count: data?.length, error });
 
       if (error) {
         console.error('❌ Error fetching investment reports:', error);
         toast({
-          title: "Error fetching investment reports",
+          title: 'Error fetching investment reports',
           description: error.message,
-          variant: "destructive",
+          variant: 'destructive',
         });
         return;
       }
 
-      console.log('✅ Setting investment reports:', data?.length || 0);
       setInvestmentReports((data || []) as InvestmentReport[]);
     } catch (error) {
       console.error('💥 Exception:', error);
       toast({
-        title: "Error",
-        description: "Failed to fetch investment reports",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to fetch investment reports',
+        variant: 'destructive',
       });
     }
   };
@@ -397,9 +459,28 @@ export default function GeneratedReports() {
     }
   };
 
-  const handleViewInvestmentReport = (report: InvestmentReport) => {
-    setSelectedInvestmentReport(report);
-    setInvestmentViewerOpen(true);
+  const handleViewInvestmentReport = async (report: InvestmentReport) => {
+    try {
+      const full = await fetchInvestmentReportDetails(report.id);
+      if (!full) {
+        toast({
+          title: 'Report not found',
+          description: 'This report could not be loaded.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setSelectedInvestmentReport(full);
+      setInvestmentViewerOpen(true);
+    } catch (error: any) {
+      console.error('Error opening report:', error);
+      toast({
+        title: 'Could not open report',
+        description: error?.message || 'Failed to load report details.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleInvestmentReportUpdate = () => {
@@ -1005,18 +1086,7 @@ export default function GeneratedReports() {
                         <Button 
                           variant="default" 
                           size="sm" 
-                          onClick={() => {
-                            // Download as text or PDF
-                            const blob = new Blob([report.report_content], { type: 'text/plain' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `investment-report-${report.property_address.replace(/[^a-zA-Z0-9]/g, '-')}-${format(new Date(report.created_at), 'yyyy-MM-dd')}.txt`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                          }}
+                          onClick={() => downloadInvestmentReportText(report)}
                           className="flex-1"
                         >
                           <Download className="mr-1 h-3 w-3" />
@@ -1042,7 +1112,7 @@ export default function GeneratedReports() {
                           History ({report.current_version || 1})
                         </Button>
                       </div>
-                      <ClientPDFGenerator report={report} />
+                      {/* PDF download is available inside the report viewer (View) to avoid loading huge report payloads in the list. */}
                       
                       {/* Quick Tier Generation - Only show for Compass reports */}
                       {report.report_tier === 'compass' && (
