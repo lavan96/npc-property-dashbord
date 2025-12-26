@@ -157,7 +157,6 @@ export function FinancialsTab({
   // Generate iframe content for stamp duty calculator - isolated from main DOM
   const getStampDutyIframeContent = useCallback(() => {
     const calculatorState = getCalculatorState(detectedState);
-    const priceAttr = price > 0 ? `data-price="${price}"` : '';
     
     return `
       <!DOCTYPE html>
@@ -170,17 +169,9 @@ export function FinancialsTab({
             font-family: system-ui, -apple-system, sans-serif;
             background: transparent;
           }
+          #stamp-duty-calculator { display: block !important; }
           #stamp-duty-anchors { margin-bottom: 12px; }
           #stamp-duty-anchors a { color: #f97316; }
-          .stamp-duty-result {
-            font-size: 18px;
-            font-weight: bold;
-            color: #16a34a;
-            margin-top: 12px;
-            padding: 12px;
-            background: #f0fdf4;
-            border-radius: 8px;
-          }
         </style>
       </head>
       <body>
@@ -189,25 +180,48 @@ export function FinancialsTab({
             <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au" target="_blank">calculatorsonline.com.au</a></p>
           </div>
         </div>
-        <script id="stamp-src" type="text/javascript" src="//calculatorsonline.com.au/external/!main/stamp_duty.min.js" data-state="${calculatorState}" ${priceAttr}></script>
+        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="//calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
         <script>
-          // Watch for stamp duty result and send to parent
-          const observer = new MutationObserver(() => {
-            const resultElements = document.querySelectorAll('span, div, strong');
-            resultElements.forEach(el => {
+          // Watch for stamp duty result and send to parent - more aggressive detection
+          let lastSentValue = '';
+          const checkForResult = () => {
+            // Look for any element containing dollar amounts
+            const allElements = document.querySelectorAll('*');
+            for (const el of allElements) {
               const text = el.textContent || '';
-              const match = text.match(/\\$([\\d,]+)/);
-              if (match && text.toLowerCase().includes('stamp')) {
-                window.parent.postMessage({ type: 'stampDutyResult', value: match[1].replace(/,/g, '') }, '*');
+              // Match dollar amounts like $1,234 or $12,345.67
+              const matches = text.match(/\\$(\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})?)/g);
+              if (matches && matches.length > 0) {
+                // Get the largest dollar amount found (likely the stamp duty)
+                let maxValue = 0;
+                let maxMatch = '';
+                matches.forEach(m => {
+                  const numStr = m.replace(/[$,]/g, '');
+                  const num = parseFloat(numStr);
+                  if (num > maxValue && num < 1000000) { // Reasonable stamp duty range
+                    maxValue = num;
+                    maxMatch = numStr;
+                  }
+                });
+                if (maxMatch && maxMatch !== lastSentValue && maxValue > 100) {
+                  lastSentValue = maxMatch;
+                  window.parent.postMessage({ type: 'stampDutyResult', value: Math.round(maxValue).toString() }, '*');
+                }
               }
-            });
-          });
+            }
+          };
+          
+          // Use MutationObserver for DOM changes
+          const observer = new MutationObserver(checkForResult);
           observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-        </script>
+          
+          // Also check periodically as backup
+          setInterval(checkForResult, 1000);
+        <\/script>
       </body>
       </html>
     `;
-  }, [detectedState, price, getCalculatorState]);
+  }, [detectedState, getCalculatorState]);
 
   // Listen for stamp duty result from iframe
   useEffect(() => {
