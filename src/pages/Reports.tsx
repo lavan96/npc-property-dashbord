@@ -11,6 +11,7 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
 import { useReportGenerator } from '@/hooks/useReportGenerator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb } from 'lucide-react';
 
 // Lazy load heavy analytics components
@@ -409,9 +410,19 @@ export default function Reports() {
         </TabsContent>
 
         <TabsContent value="investment" className="space-y-6">
-          <Suspense fallback={<ComponentLoader />}>
-            <InvestmentReportGenerator />
-          </Suspense>
+          <ErrorBoundary fallback={
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Investment Report Generator encountered an error. Please refresh the page.</p>
+                </div>
+              </CardContent>
+            </Card>
+          }>
+            <Suspense fallback={<ComponentLoader />}>
+              <InvestmentReportGenerator />
+            </Suspense>
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>
