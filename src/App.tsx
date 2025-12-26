@@ -109,8 +109,8 @@ const App = () => (
                 <Route path="report-qa" element={<ReportQA />} />
                 <Route path="investment-report/:id" element={<InvestmentReportView />} />
                 <Route path="templates" element={<Templates />} />
-                <Route path="branding" element={<WhiteLabel />} />
-                <Route path="errors" element={<ErrorLogs />} />
+                <Route path="white-label" element={<WhiteLabel />} />
+                <Route path="error-logs" element={<ErrorLogs />} />
                           <Route path="settings" element={<Settings />} />
                           <Route path="admin/users" element={<UserManagement />} />
                         </Route>
