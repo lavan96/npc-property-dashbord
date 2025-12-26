@@ -139,23 +139,7 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Map state codes to calculator-compatible state names
-  const getCalculatorState = useCallback((stateCode: string): string => {
-    const stateMap: Record<string, string> = {
-      'NSW': 'NSW',
-      'VIC': 'VIC', 
-      'QLD': 'QLD',
-      'SA': 'SA',
-      'WA': 'WA',
-      'TAS': 'TAS',
-      'NT': 'NT',
-      'ACT': 'ACT',
-      'All': 'All'
-    };
-    return stateMap[stateCode] || 'All';
-  }, []);
-
-  // Load stamp duty calculator script when expanded (same approach as ManualDataOverrideModal)
+  // Load stamp duty calculator script when expanded (exact same approach/IDs as ManualDataOverrideModal)
   useEffect(() => {
     if (showStampDutyCalc) {
       // Remove existing script to reload with new state
@@ -163,26 +147,26 @@ export function FinancialsTab({
       if (existingScript) {
         existingScript.remove();
       }
-      
+
       // Create and append new script with detected state
       const script = document.createElement('script');
       script.id = 'stamp-src';
       script.type = 'text/javascript';
       script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-      script.setAttribute('data-state', getCalculatorState(detectedState));
+      script.setAttribute('data-state', detectedState);
       document.body.appendChild(script);
-      
+
       // Show the calculator div
-      const calcDiv = document.getElementById('stamp-duty-calculator-pregen');
+      const calcDiv = document.getElementById('stamp-duty-calculator');
       if (calcDiv) {
         calcDiv.classList.remove('hidden');
       }
     }
-  }, [showStampDutyCalc, detectedState, getCalculatorState]);
+  }, [showStampDutyCalc, detectedState]);
 
   // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const calcContainer = document.getElementById('stamp-duty-calculator-pregen');
+    const calcContainer = document.getElementById('stamp-duty-calculator');
     if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
@@ -646,20 +630,13 @@ export function FinancialsTab({
 
               <Separator />
 
-              {/* External Calculator Embed - Direct DOM injection like ManualDataOverrideModal */}
+              {/* External Calculator Embed (exact markup/IDs used by ManualDataOverrideModal) */}
               <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                <div id="stamp-duty-calculator-pregen" className="orange-theme">
+                <div id="stamp-duty-calculator" className="orange-theme hidden">
                   <div id="stamp-duty-anchors">
-                    <p className="text-sm text-muted-foreground">
+                    <p>
                       Stamp Duty Calculator from{' '}
-                      <a 
-                        href="https://calculatorsonline.com.au" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        calculatorsonline.com.au
-                      </a>
+                      <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
                     </p>
                   </div>
                 </div>
