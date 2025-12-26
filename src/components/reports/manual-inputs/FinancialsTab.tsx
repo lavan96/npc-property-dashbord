@@ -158,12 +158,15 @@ export function FinancialsTab({
   const getStampDutyIframeContent = useCallback(() => {
     const calculatorState = getCalculatorState(detectedState);
     
+    // IMPORTANT: Use HTTPS explicitly because protocol-relative URLs (//...) 
+    // don't work in iframe srcDoc which runs in a blob: context
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <base href="https://calculatorsonline.com.au/">
         <style>
           * { box-sizing: border-box; }
           body { 
@@ -180,7 +183,7 @@ export function FinancialsTab({
       </head>
       <body>
         <div id="stamp-duty-calculator" class="orange-theme"><div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div></div>
-        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="//calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
+        <script id="stamp-src" type="text/javascript" data-state="${calculatorState}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"><\/script>
         <script>
           // Watch for stamp duty result and send to parent
           let lastSentValue = '';
