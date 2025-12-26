@@ -2233,6 +2233,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Capital Growth %', '', ...projections.slice(1).map(p => p.capitalGrowthRate.toFixed(1))]);
       drawRow(['CPI Growth %', '', ...projections.slice(1).map(p => p.cpiGrowthRate.toFixed(1))]);
       drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...projections.slice(1).map(p => formatCurrency(p.propertyMarketValue))]);
+      drawRow(['Purchase Price $', formatCurrency(baseFinancialData.purchasePrice), ...Array(10).fill('')]);
       drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
       
       yPos += 2;
@@ -2390,6 +2391,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <div class="metric-label">Property Value</div>
             <div class="metric-value">${formatCurrency(baseFinancialData.marketValueNow)}</div>
             <div class="metric-sub">Current market value</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Purchase Price</div>
+            <div class="metric-value">${formatCurrency(baseFinancialData.purchasePrice)}</div>
+            <div class="metric-sub">Original purchase price</div>
           </div>
           <div class="metric">
             <div class="metric-label">Loan Amount</div>
@@ -2553,6 +2559,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               <td>Property Value $</td>
               <td>${formatCurrency(projections[0].propertyMarketValue)}</td>
               ${projections.slice(1).map(p => `<td>${formatCurrency(p.propertyMarketValue)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td>Purchase Price $</td>
+              <td>${formatCurrency(baseFinancialData.purchasePrice)}</td>
+              ${Array(10).fill('<td></td>').join('')}
             </tr>
             <tr>
               <td>Loan Amount $</td>
@@ -2761,7 +2772,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         <ScrollArea className="flex-1 px-6 py-4">
           <div className="space-y-6">
             {/* Key Metrics Summary */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-5 gap-4">
               <Card>
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -2770,6 +2781,16 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
                   <p className="text-2xl font-bold">{formatCurrency(baseFinancialData.marketValueNow)}</p>
                   <p className="text-xs text-muted-foreground">Current market value</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="text-xs font-medium">Purchase Price</span>
+                  </div>
+                  <p className="text-2xl font-bold">{formatCurrency(baseFinancialData.purchasePrice)}</p>
+                  <p className="text-xs text-muted-foreground">Original purchase price</p>
                 </CardContent>
               </Card>
               <Card>
