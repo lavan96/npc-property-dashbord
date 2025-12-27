@@ -60,8 +60,8 @@ export type ActivityActionType =
   | 'whitelabel_settings_updated'
   | 'whitelabel_logo_changed'
   // Auth actions
-  | 'user_login'
-  | 'user_logout'
+  | 'login'
+  | 'logout'
   // Bulk actions
   | 'bulk_generation_started'
   | 'bulk_generation_completed'
@@ -84,6 +84,7 @@ export type ActivityEntityType =
   | 'user'
   | 'whitelabel_settings'
   | 'bulk_generation_job'
+  | 'session'
   | 'system';
 
 interface LogActivityParams {
@@ -147,17 +148,36 @@ export function useActivityLogger(): UseActivityLoggerReturn {
   return { logActivity };
 }
 
-// Utility function for logging without hook (for use in non-component code)
-export async function logActivityDirect(params: LogActivityParams): Promise<void> {
-  const { actionType, entityType, entityId, entityName, metadata } = params;
+// Direct function interface for non-hook usage (like in useAuth)
+interface DirectLogParams {
+  userId?: string;
+  username?: string;
+  actionType: ActivityActionType;
+  entityType: ActivityEntityType;
+  entityId?: string;
+  entityName?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Utility function for logging without hook (for use in non-component code like useAuth)
+export async function logActivity(params: DirectLogParams): Promise<void> {
+  const { userId, username, actionType, entityType, entityId, entityName, metadata } = params;
   
   try {
-    const user = getCurrentUser();
+    // If userId/username not provided, try to get from session
+    let finalUserId = userId;
+    let finalUsername = username;
+    
+    if (!finalUserId || !finalUsername) {
+      const user = getCurrentUser();
+      finalUserId = finalUserId || user?.userId || undefined;
+      finalUsername = finalUsername || user?.username || 'Unknown';
+    }
     
     const { error } = await supabase.functions.invoke('log-activity', {
       body: {
-        user_id: user?.userId || null,
-        username: user?.username || 'Unknown',
+        user_id: finalUserId || null,
+        username: finalUsername || 'Unknown',
         action_type: actionType,
         entity_type: entityType,
         entity_id: entityId,
@@ -173,3 +193,6 @@ export async function logActivityDirect(params: LogActivityParams): Promise<void
     console.error('[ActivityLogger] Error logging activity:', error);
   }
 }
+
+// Alias for backwards compatibility
+export const logActivityDirect = logActivity;
