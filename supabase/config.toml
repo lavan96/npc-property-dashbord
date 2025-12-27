@@ -247,3 +247,6 @@ verify_jwt = false
 
 [functions.fix-report-status]
 verify_jwt = false
+
+[functions.log-activity]
+verify_jwt = false
