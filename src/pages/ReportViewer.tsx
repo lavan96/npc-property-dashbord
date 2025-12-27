@@ -10,6 +10,7 @@ import { Download, ArrowLeft, Building2, DollarSign, MapPin, Calendar, TrendingU
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface GeneratedReport {
   id: string;
@@ -51,6 +52,13 @@ export default function ReportViewer() {
   useEffect(() => {
     if (reportId) {
       fetchReport();
+      // Log report viewed
+      logActivityDirect({
+        actionType: 'report_viewed',
+        entityType: 'investment_report',
+        entityId: reportId,
+        metadata: { source: 'report_viewer' }
+      });
     }
   }, [reportId]);
 

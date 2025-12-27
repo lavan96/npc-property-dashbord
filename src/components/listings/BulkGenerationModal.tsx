@@ -98,6 +98,19 @@ export function BulkGenerationModal({
         if (typedJob.status === 'completed' || typedJob.status === 'failed') {
           setIsGenerating(false);
           
+          // Log bulk generation completion
+          logActivity({
+            actionType: 'bulk_generation_completed',
+            entityType: 'bulk_generation_job',
+            entityId: jobId,
+            metadata: { 
+              status: typedJob.status,
+              completed_reports: typedJob.completed_reports,
+              failed_reports: typedJob.failed_reports,
+              total_reports: typedJob.total_reports
+            }
+          });
+          
           // Show completion notification
           if (typedJob.status === 'completed') {
             toast({
