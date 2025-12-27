@@ -2577,6 +2577,8 @@ export type Database = {
         | "bulk_generation_completed"
         | "settings_updated"
         | "data_exported"
+        | "login"
+        | "logout"
       activity_entity_type:
         | "investment_report"
         | "property_comparison"
@@ -2592,6 +2594,7 @@ export type Database = {
         | "whitelabel_settings"
         | "bulk_generation_job"
         | "system"
+        | "session"
       app_role: "superadmin" | "admin" | "user"
       report_category_enum:
         | "investment"
@@ -2780,6 +2783,8 @@ export const Constants = {
         "bulk_generation_completed",
         "settings_updated",
         "data_exported",
+        "login",
+        "logout",
       ],
       activity_entity_type: [
         "investment_report",
@@ -2796,6 +2801,7 @@ export const Constants = {
         "whitelabel_settings",
         "bulk_generation_job",
         "system",
+        "session",
       ],
       app_role: ["superadmin", "admin", "user"],
       report_category_enum: [
