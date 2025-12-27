@@ -14,6 +14,7 @@ import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
 import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
 import { useAuth } from '@/hooks/useAuth';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -96,6 +97,12 @@ export default function Settings() {
         toast({
           title: "Mailbox Updated",
           description: "Your personal mailbox has been saved successfully.",
+        });
+        logActivityDirect({
+          actionType: 'settings_updated',
+          entityType: 'user',
+          entityName: 'Personal Mailbox',
+          metadata: { setting: 'personal_mailbox' }
         });
       } else {
         toast({
@@ -197,6 +204,12 @@ export default function Settings() {
       toast({
         title: "Settings Saved",
         description: "Your preferences have been saved successfully.",
+      });
+      logActivityDirect({
+        actionType: 'settings_updated',
+        entityType: 'system',
+        entityName: 'Dashboard Settings',
+        metadata: settings
       });
     } catch (error) {
       toast({

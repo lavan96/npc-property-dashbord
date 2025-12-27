@@ -31,6 +31,7 @@ import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings } 
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface LogoUploadCardProps {
   title: string;
@@ -96,6 +97,12 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
       const publicUrl = await uploadToSupabase(fileToUpload, file.name);
       onUpload(publicUrl);
       toast.success(removeBackgroundEnabled ? 'Background removed and logo uploaded' : 'Logo uploaded successfully');
+      logActivityDirect({
+        actionType: 'whitelabel_logo_changed',
+        entityType: 'whitelabel_settings',
+        entityName: title,
+        metadata: { logoType, action: 'upload' }
+      });
     } catch (error) {
       console.error('Error processing image:', error);
       toast.error('Failed to process image', { 
@@ -154,6 +161,12 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
     }
     onRemove();
     toast.success('Logo removed');
+    logActivityDirect({
+      actionType: 'whitelabel_logo_changed',
+      entityType: 'whitelabel_settings',
+      entityName: title,
+      metadata: { logoType, action: 'remove' }
+    });
   };
 
   return (
@@ -444,6 +457,12 @@ export default function WhiteLabel() {
   const handleCompanyNameSave = () => {
     updateSettings({ companyName });
     toast.success('Company name updated');
+    logActivityDirect({
+      actionType: 'whitelabel_settings_updated',
+      entityType: 'whitelabel_settings',
+      entityName: 'Company Name',
+      metadata: { companyName }
+    });
   };
 
   if (isLoading) {

@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Tag, Plus, X, Settings, Trash2 } from 'lucide-react';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface CallTag {
   id: string;
@@ -78,9 +79,17 @@ export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = fals
       if (error) throw error;
 
       onTagsUpdated(newTags);
+      const wasRemoved = currentTags.includes(tagName);
       toast({
-        title: currentTags.includes(tagName) ? 'Tag removed' : 'Tag added',
-        description: `${tagName} ${currentTags.includes(tagName) ? 'removed from' : 'added to'} call`,
+        title: wasRemoved ? 'Tag removed' : 'Tag added',
+        description: `${tagName} ${wasRemoved ? 'removed from' : 'added to'} call`,
+      });
+      logActivityDirect({
+        actionType: 'call_tagged',
+        entityType: 'call_log',
+        entityId: callId,
+        entityName: tagName,
+        metadata: { action: wasRemoved ? 'remove' : 'add', tag: tagName }
       });
     } catch (error) {
       console.error('Error updating tags:', error);
