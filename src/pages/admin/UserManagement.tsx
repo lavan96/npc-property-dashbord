@@ -29,6 +29,7 @@ import {
   AlertCircle,
   ShieldOff
 } from 'lucide-react';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface User {
   id: string;
@@ -218,6 +219,7 @@ export default function UserManagement() {
 
   const handleSavePermissions = async () => {
     if (!editingUserId) return;
+    const targetUser = users.find(u => u.id === editingUserId);
 
     setSavingPermissions(true);
     try {
@@ -232,6 +234,13 @@ export default function UserManagement() {
 
       if (data?.success) {
         toast.success('Permissions updated');
+        logActivityDirect({
+          actionType: 'user_permissions_changed',
+          entityType: 'user',
+          entityId: editingUserId,
+          entityName: targetUser?.username,
+          metadata: { permissions_count: editPermissions.filter(p => p.can_view).length },
+        });
         setEditPermDialogOpen(false);
         fetchUsers();
       } else {
@@ -267,6 +276,7 @@ export default function UserManagement() {
   };
 
   const handlePromoteToSuperadmin = async (userId: string) => {
+    const targetUser = users.find(u => u.id === userId);
     try {
       const { data } = await supabase.functions.invoke('admin-user-management', {
         body: {
@@ -278,6 +288,13 @@ export default function UserManagement() {
 
       if (data?.success) {
         toast.success('User promoted to superadmin');
+        logActivityDirect({
+          actionType: 'user_invited',
+          entityType: 'user',
+          entityId: userId,
+          entityName: targetUser?.username,
+          metadata: { action: 'promoted_to_superadmin' },
+        });
         fetchUsers();
       } else {
         toast.error(data?.error || 'Failed to promote user');
@@ -289,6 +306,7 @@ export default function UserManagement() {
 
   const handleDemoteFromSuperadmin = async (userId: string) => {
     if (!confirm('Are you sure you want to demote this user from superadmin? They will become a regular admin.')) return;
+    const targetUser = users.find(u => u.id === userId);
 
     try {
       const { data } = await supabase.functions.invoke('admin-user-management', {
@@ -301,6 +319,13 @@ export default function UserManagement() {
 
       if (data?.success) {
         toast.success('User demoted to admin');
+        logActivityDirect({
+          actionType: 'user_deactivated',
+          entityType: 'user',
+          entityId: userId,
+          entityName: targetUser?.username,
+          metadata: { action: 'demoted_from_superadmin' },
+        });
         fetchUsers();
       } else {
         toast.error(data?.error || 'Failed to demote user');
@@ -312,6 +337,7 @@ export default function UserManagement() {
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+    const targetUser = users.find(u => u.id === userId);
 
     try {
       const { data } = await supabase.functions.invoke('admin-user-management', {
@@ -324,6 +350,13 @@ export default function UserManagement() {
 
       if (data?.success) {
         toast.success('User deleted');
+        logActivityDirect({
+          actionType: 'user_deactivated',
+          entityType: 'user',
+          entityId: userId,
+          entityName: targetUser?.username,
+          metadata: { action: 'deleted' },
+        });
         fetchUsers();
       } else {
         toast.error(data?.error || 'Failed to delete user');
@@ -385,6 +418,13 @@ export default function UserManagement() {
 
       if (data?.success) {
         toast.success('Sub-admin created successfully!');
+        logActivityDirect({
+          actionType: 'user_invited',
+          entityType: 'user',
+          entityId: data.user_id,
+          entityName: createUsername,
+          metadata: { action: 'created_subadmin', has_email: !!createEmail },
+        });
         setCreateDialogOpen(false);
         setCreateUsername('');
         setCreatePassword('');

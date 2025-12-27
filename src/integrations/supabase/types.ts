@@ -2579,6 +2579,14 @@ export type Database = {
         | "data_exported"
         | "login"
         | "logout"
+        | "branding_created"
+        | "branding_updated"
+        | "branding_deleted"
+        | "user_created"
+        | "user_deleted"
+        | "user_promoted"
+        | "user_demoted"
+        | "permissions_updated"
       activity_entity_type:
         | "investment_report"
         | "property_comparison"
@@ -2595,6 +2603,7 @@ export type Database = {
         | "bulk_generation_job"
         | "system"
         | "session"
+        | "branding"
       app_role: "superadmin" | "admin" | "user"
       report_category_enum:
         | "investment"
@@ -2785,6 +2794,14 @@ export const Constants = {
         "data_exported",
         "login",
         "logout",
+        "branding_created",
+        "branding_updated",
+        "branding_deleted",
+        "user_created",
+        "user_deleted",
+        "user_promoted",
+        "user_demoted",
+        "permissions_updated",
       ],
       activity_entity_type: [
         "investment_report",
@@ -2802,6 +2819,7 @@ export const Constants = {
         "bulk_generation_job",
         "system",
         "session",
+        "branding",
       ],
       app_role: ["superadmin", "admin", "user"],
       report_category_enum: [
