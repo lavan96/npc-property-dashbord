@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -5,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, MapPin, AlertTriangle, Target } from 'lucide-react';
 import { ComparisonPDFGenerator } from './ComparisonPDFGenerator';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface ComparisonViewerProps {
   isOpen: boolean;
@@ -28,6 +30,22 @@ interface ComparisonViewerProps {
 }
 
 export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonViewerProps) {
+  // Log comparison viewed when opened
+  useEffect(() => {
+    if (isOpen && comparison) {
+      logActivityDirect({
+        actionType: 'comparison_viewed',
+        entityType: 'property_comparison',
+        entityId: comparison.id,
+        entityName: comparison.report_title || `${comparison.property_count} Property Comparison`,
+        metadata: { 
+          property_count: comparison.property_count,
+          property_addresses: comparison.property_addresses 
+        }
+      });
+    }
+  }, [isOpen, comparison]);
+
   if (!comparison) return null;
 
   const getRankIcon = (rank: number) => {

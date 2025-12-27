@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { QAPDFGenerator } from '@/components/reports/QAPDFGenerator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -327,6 +328,15 @@ export default function ReportQA() {
       setMessages([]);
       loadSavedConversations();
       
+      // Log conversation created
+      logActivityDirect({
+        actionType: 'qa_conversation_created',
+        entityType: 'qa_conversation',
+        entityId: newConversationId,
+        entityName: title,
+        metadata: { report_count: uploadedReports.length }
+      });
+      
       toast({
         title: 'Conversation started',
         description: 'Your chat will be saved automatically',
@@ -430,6 +440,14 @@ export default function ReportQA() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Log question asked
+      logActivityDirect({
+        actionType: 'qa_question_asked',
+        entityType: 'qa_conversation',
+        entityId: activeConversationId,
+        metadata: { question_length: userMessage.content.length }
+      });
 
       if (messages.length === 0) {
         setTimeout(() => loadSavedConversations(), 1000);
@@ -618,6 +636,15 @@ export default function ReportQA() {
         .eq('id', convId);
       
       if (error) throw error;
+      
+      // Log conversation deleted
+      const deletedConv = savedConversations.find(c => c.id === convId);
+      logActivityDirect({
+        actionType: 'qa_conversation_deleted',
+        entityType: 'qa_conversation',
+        entityId: convId,
+        entityName: deletedConv?.title
+      });
       
       setSavedConversations(prev => prev.filter(c => c.id !== convId));
       if (conversationId === convId) {

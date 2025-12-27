@@ -17,6 +17,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
   id: string;
@@ -83,6 +84,15 @@ export default function InvestmentReportView() {
 
       setReport(data as InvestmentReport);
       setLoading(false);
+      
+      // Log report viewed
+      logActivityDirect({
+        actionType: 'report_viewed',
+        entityType: 'investment_report',
+        entityId: id,
+        entityName: data.property_address,
+        metadata: { source: 'investment_report_view' }
+      });
     };
 
     fetchReport();

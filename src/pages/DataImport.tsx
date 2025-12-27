@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, Database, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 const DATA_TYPES = [
   { value: 'suburb_directory', label: 'Suburb Directory', table: 'suburb_directory', requiresState: false },
@@ -239,6 +240,19 @@ export default function DataImport() {
         toast({
           title: "Upload Successful",
           description: `Imported ${records.length} records into ${dataType.label}`,
+        });
+        
+        // Log data import
+        logActivityDirect({
+          actionType: 'data_exported',
+          entityType: 'system',
+          entityName: dataType.label,
+          metadata: { 
+            action: 'import',
+            table: dataType.table,
+            records_count: records.length,
+            state: selectedState || undefined
+          }
         });
       }
     } catch (error: any) {

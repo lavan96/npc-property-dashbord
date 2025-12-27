@@ -10,6 +10,7 @@ import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModa
 import { format } from 'date-fns';
 import { Calculator, Search, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
   id: string;
@@ -155,6 +156,15 @@ export default function CashFlowAnalysis() {
   const handleViewAnalysis = (report: InvestmentReport) => {
     setSelectedReport(report);
     setAnalysisModalOpen(true);
+    
+    // Log cash flow analysis viewed
+    logActivityDirect({
+      actionType: 'cash_flow_created',
+      entityType: 'cash_flow_analysis',
+      entityId: report.id,
+      entityName: report.property_address,
+      metadata: { action: 'view_analysis' }
+    });
   };
 
   return (
