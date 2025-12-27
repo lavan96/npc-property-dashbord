@@ -19,7 +19,8 @@ import {
   MessageSquareText,
   FileStack,
   Palette,
-  Users
+  Users,
+  History
 } from 'lucide-react';
 import {
   Sidebar,
@@ -58,6 +59,7 @@ const adminItems = [
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },
   { title: 'Error Logs', url: '/error-logs', icon: AlertTriangle, moduleKey: 'error_logs' },
+  { title: 'Activity Logs', url: '/admin/activity-logs', icon: History, moduleKey: 'activity_logs' },
   { title: 'Settings', url: '/settings', icon: Settings, moduleKey: 'settings' },
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
 ];
