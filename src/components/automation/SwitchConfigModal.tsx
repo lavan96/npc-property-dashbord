@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SwitchCriteria } from '@/pages/Automation';
 import { AlertTriangle, X } from 'lucide-react';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface SwitchConfigModalProps {
   open: boolean;
@@ -214,6 +215,12 @@ export const SwitchConfigModal = ({
         toast.error('Failed to create switch');
       } else {
         toast.success('Switch created');
+        logActivityDirect({
+          actionType: 'automation_switch_created',
+          entityType: 'automation_switch',
+          entityName: name,
+          metadata: { criteriaCount: Object.keys(criteria).length }
+        });
         onSaved();
       }
     }

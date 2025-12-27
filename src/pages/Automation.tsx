@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SwitchConfigModal } from '@/components/automation/SwitchConfigModal';
 import { GenerationLogModal } from '@/components/automation/GenerationLogModal';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface AutoReportSwitch {
   id: string;
@@ -147,6 +148,12 @@ const Automation = () => {
     } else {
       setMasterEnabled(newValue);
       toast.success(newValue ? 'Auto-generation enabled' : 'Auto-generation disabled');
+      logActivityDirect({
+        actionType: 'automation_master_toggle_changed',
+        entityType: 'automation_switch',
+        entityName: 'Master Switch',
+        metadata: { enabled: newValue }
+      });
     }
     setMasterLoading(false);
   };
@@ -166,6 +173,12 @@ const Automation = () => {
         s.id === switchItem.id ? { ...s, is_enabled: newValue } : s
       ));
       toast.success(`Switch "${switchItem.name}" ${newValue ? 'enabled' : 'disabled'}`);
+      logActivityDirect({
+        actionType: newValue ? 'automation_switch_enabled' : 'automation_switch_disabled',
+        entityType: 'automation_switch',
+        entityId: switchItem.id,
+        entityName: switchItem.name
+      });
     }
   };
 
@@ -182,6 +195,12 @@ const Automation = () => {
     } else {
       setSwitches(prev => prev.filter(s => s.id !== switchItem.id));
       toast.success('Switch deleted');
+      logActivityDirect({
+        actionType: 'automation_switch_deleted',
+        entityType: 'automation_switch',
+        entityId: switchItem.id,
+        entityName: switchItem.name
+      });
     }
   };
 

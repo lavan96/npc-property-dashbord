@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { FileText, Send, Loader2, CheckCircle, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 export const WeeklyReportConfig: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,6 +47,12 @@ export const WeeklyReportConfig: React.FC = () => {
       setLastSent(now);
 
       toast.success(`Report sent to ${recipientEmail}`);
+      logActivityDirect({
+        actionType: 'weekly_report_config_changed',
+        entityType: 'call_log',
+        entityName: 'Weekly Report',
+        metadata: { recipient: recipientEmail, daysBack: parseInt(reportPeriod) }
+      });
       setIsOpen(false);
     } catch (error: any) {
       console.error('Error sending report:', error);

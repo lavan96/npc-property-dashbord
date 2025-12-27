@@ -27,6 +27,7 @@ import {
   Send
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface AlertRule {
   id: string;
@@ -315,6 +316,12 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
       if (error) throw error;
 
       toast({ title: 'Rule created', description: `"${newRuleName}" alert rule created` });
+      logActivityDirect({
+        actionType: 'alert_rule_created',
+        entityType: 'call_alert_rule',
+        entityName: newRuleName,
+        metadata: { conditionType: newConditionType, notificationType: newNotificationType }
+      });
       setNewRuleName('');
       setNewValue('');
       setNewIsPositive(false);
@@ -339,8 +346,17 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   };
 
   const deleteRule = async (ruleId: string) => {
+    const rule = rules.find(r => r.id === ruleId);
     const { error } = await supabase.from('call_alert_rules').delete().eq('id', ruleId);
-    if (!error) fetchRules();
+    if (!error) {
+      logActivityDirect({
+        actionType: 'alert_rule_deleted',
+        entityType: 'call_alert_rule',
+        entityId: ruleId,
+        entityName: rule?.name
+      });
+      fetchRules();
+    }
   };
 
   const markAllRead = async () => {
