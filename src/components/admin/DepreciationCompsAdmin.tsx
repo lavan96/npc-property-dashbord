@@ -46,6 +46,7 @@ export function DepreciationCompsAdmin() {
   const [uploading, setUploading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [csvPreview, setCsvPreview] = useState<string[][]>([]);
+  const [csvFullData, setCsvFullData] = useState<string[][]>([]);
   const [csvError, setCsvError] = useState<string | null>(null);
   
   // Add form state
@@ -94,19 +95,21 @@ export function DepreciationCompsAdmin() {
     
     setCsvError(null);
     setCsvPreview([]);
+    setCsvFullData([]);
     
     try {
       const text = await file.text();
-      const lines = text.split('\n').map(line => 
-        line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''))
-      );
+      const lines = text.split('\n')
+        .map(line => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')))
+        .filter(line => line.some(cell => cell.length > 0)); // Filter out empty lines
       
       if (lines.length < 2) {
         setCsvError('CSV must have at least a header row and one data row');
         return;
       }
       
-      setCsvPreview(lines.slice(0, 6)); // Show first 5 rows + header
+      setCsvFullData(lines); // Store ALL parsed lines
+      setCsvPreview(lines.slice(0, 6)); // Show first 5 rows + header for preview
     } catch (error) {
       console.error('Error parsing CSV:', error);
       setCsvError('Failed to parse CSV file');
@@ -115,12 +118,12 @@ export function DepreciationCompsAdmin() {
   
   // Import CSV data
   const handleImportCsv = async () => {
-    if (csvPreview.length < 2) return;
+    if (csvFullData.length < 2) return;
     
     setUploading(true);
     try {
-      const headers = csvPreview[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
-      const rows = csvPreview.slice(1);
+      const headers = csvFullData[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
+      const rows = csvFullData.slice(1); // Use FULL data, not preview
       
       const records: Partial<DepreciationComp>[] = [];
       
@@ -152,18 +155,27 @@ export function DepreciationCompsAdmin() {
         throw new Error('No valid records found in CSV');
       }
       
-      const { error } = await supabase
-        .from('depreciation_comps')
-        .insert(records as any);
+      // Insert in batches of 500 to handle large datasets
+      const batchSize = 500;
+      let imported = 0;
       
-      if (error) throw error;
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        const { error } = await supabase
+          .from('depreciation_comps')
+          .insert(batch as any);
+        
+        if (error) throw error;
+        imported += batch.length;
+      }
       
       toast({
         title: "Import Successful",
-        description: `Imported ${records.length} depreciation comparables.`,
+        description: `Imported ${imported} depreciation comparables.`,
       });
       
       setCsvPreview([]);
+      setCsvFullData([]);
       fetchComps();
     } catch (error) {
       console.error('Error importing CSV:', error);
@@ -447,7 +459,12 @@ export function DepreciationCompsAdmin() {
               
               {csvPreview.length > 0 && (
                 <div className="space-y-4">
-                  <h4 className="font-medium">Preview (first 5 rows):</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Preview (first 5 rows):</h4>
+                    <Badge variant="secondary">
+                      {csvFullData.length - 1} total rows found
+                    </Badge>
+                  </div>
                   <ScrollArea className="h-[200px] rounded-md border">
                     <Table>
                       <TableHeader>
@@ -478,7 +495,7 @@ export function DepreciationCompsAdmin() {
                     ) : (
                       <>
                         <Upload className="mr-2 h-4 w-4" />
-                        Import {csvPreview.length - 1} Records
+                        Import All {csvFullData.length - 1} Records
                       </>
                     )}
                   </Button>
