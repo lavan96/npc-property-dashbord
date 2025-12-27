@@ -943,6 +943,253 @@ export type Database = {
         }
         Relationships: []
       }
+      depreciation_comps: {
+        Row: {
+          build_year: number
+          created_at: string
+          created_by: string | null
+          dv_year1: number
+          dv_year10: number
+          dv_year2: number
+          dv_year3: number
+          dv_year4: number
+          dv_year5: number
+          dv_year6: number
+          dv_year7: number
+          dv_year8: number
+          dv_year9: number
+          finish_standard: Database["public"]["Enums"]["depreciation_finish_standard"]
+          fully_furnished: boolean
+          id: string
+          nearest_city: Database["public"]["Enums"]["depreciation_nearest_city"]
+          notes: string | null
+          pc_year1: number
+          pc_year10: number
+          pc_year2: number
+          pc_year3: number
+          pc_year4: number
+          pc_year5: number
+          pc_year6: number
+          pc_year7: number
+          pc_year8: number
+          pc_year9: number
+          property_type: Database["public"]["Enums"]["depreciation_property_type"]
+          purchase_date_category: Database["public"]["Enums"]["depreciation_purchase_date_category"]
+          purchase_price: number
+          renovated: boolean
+          source_schedule_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          build_year: number
+          created_at?: string
+          created_by?: string | null
+          dv_year1?: number
+          dv_year10?: number
+          dv_year2?: number
+          dv_year3?: number
+          dv_year4?: number
+          dv_year5?: number
+          dv_year6?: number
+          dv_year7?: number
+          dv_year8?: number
+          dv_year9?: number
+          finish_standard: Database["public"]["Enums"]["depreciation_finish_standard"]
+          fully_furnished?: boolean
+          id?: string
+          nearest_city: Database["public"]["Enums"]["depreciation_nearest_city"]
+          notes?: string | null
+          pc_year1?: number
+          pc_year10?: number
+          pc_year2?: number
+          pc_year3?: number
+          pc_year4?: number
+          pc_year5?: number
+          pc_year6?: number
+          pc_year7?: number
+          pc_year8?: number
+          pc_year9?: number
+          property_type: Database["public"]["Enums"]["depreciation_property_type"]
+          purchase_date_category: Database["public"]["Enums"]["depreciation_purchase_date_category"]
+          purchase_price: number
+          renovated?: boolean
+          source_schedule_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          build_year?: number
+          created_at?: string
+          created_by?: string | null
+          dv_year1?: number
+          dv_year10?: number
+          dv_year2?: number
+          dv_year3?: number
+          dv_year4?: number
+          dv_year5?: number
+          dv_year6?: number
+          dv_year7?: number
+          dv_year8?: number
+          dv_year9?: number
+          finish_standard?: Database["public"]["Enums"]["depreciation_finish_standard"]
+          fully_furnished?: boolean
+          id?: string
+          nearest_city?: Database["public"]["Enums"]["depreciation_nearest_city"]
+          notes?: string | null
+          pc_year1?: number
+          pc_year10?: number
+          pc_year2?: number
+          pc_year3?: number
+          pc_year4?: number
+          pc_year5?: number
+          pc_year6?: number
+          pc_year7?: number
+          pc_year8?: number
+          pc_year9?: number
+          property_type?: Database["public"]["Enums"]["depreciation_property_type"]
+          purchase_date_category?: Database["public"]["Enums"]["depreciation_purchase_date_category"]
+          purchase_price?: number
+          renovated?: boolean
+          source_schedule_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depreciation_comps_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      depreciation_estimator_runs: {
+        Row: {
+          build_year: number
+          confidence_score: number | null
+          created_at: string
+          dv_total: number | null
+          dv_year1: number | null
+          dv_year10: number | null
+          dv_year2: number | null
+          dv_year3: number | null
+          dv_year4: number | null
+          dv_year5: number | null
+          dv_year6: number | null
+          dv_year7: number | null
+          dv_year8: number | null
+          dv_year9: number | null
+          finish_standard: Database["public"]["Enums"]["depreciation_finish_standard"]
+          fully_furnished: boolean
+          id: string
+          match_count: number
+          nearest_city: Database["public"]["Enums"]["depreciation_nearest_city"]
+          pc_total: number | null
+          pc_year1: number | null
+          pc_year10: number | null
+          pc_year2: number | null
+          pc_year3: number | null
+          pc_year4: number | null
+          pc_year5: number | null
+          pc_year6: number | null
+          pc_year7: number | null
+          pc_year8: number | null
+          pc_year9: number | null
+          property_type: Database["public"]["Enums"]["depreciation_property_type"]
+          purchase_date: string | null
+          purchase_date_category: Database["public"]["Enums"]["depreciation_purchase_date_category"]
+          purchase_price: number
+          renovated: boolean
+          top_comp_ids: string[] | null
+          user_id: string | null
+        }
+        Insert: {
+          build_year: number
+          confidence_score?: number | null
+          created_at?: string
+          dv_total?: number | null
+          dv_year1?: number | null
+          dv_year10?: number | null
+          dv_year2?: number | null
+          dv_year3?: number | null
+          dv_year4?: number | null
+          dv_year5?: number | null
+          dv_year6?: number | null
+          dv_year7?: number | null
+          dv_year8?: number | null
+          dv_year9?: number | null
+          finish_standard: Database["public"]["Enums"]["depreciation_finish_standard"]
+          fully_furnished?: boolean
+          id?: string
+          match_count?: number
+          nearest_city: Database["public"]["Enums"]["depreciation_nearest_city"]
+          pc_total?: number | null
+          pc_year1?: number | null
+          pc_year10?: number | null
+          pc_year2?: number | null
+          pc_year3?: number | null
+          pc_year4?: number | null
+          pc_year5?: number | null
+          pc_year6?: number | null
+          pc_year7?: number | null
+          pc_year8?: number | null
+          pc_year9?: number | null
+          property_type: Database["public"]["Enums"]["depreciation_property_type"]
+          purchase_date?: string | null
+          purchase_date_category: Database["public"]["Enums"]["depreciation_purchase_date_category"]
+          purchase_price: number
+          renovated?: boolean
+          top_comp_ids?: string[] | null
+          user_id?: string | null
+        }
+        Update: {
+          build_year?: number
+          confidence_score?: number | null
+          created_at?: string
+          dv_total?: number | null
+          dv_year1?: number | null
+          dv_year10?: number | null
+          dv_year2?: number | null
+          dv_year3?: number | null
+          dv_year4?: number | null
+          dv_year5?: number | null
+          dv_year6?: number | null
+          dv_year7?: number | null
+          dv_year8?: number | null
+          dv_year9?: number | null
+          finish_standard?: Database["public"]["Enums"]["depreciation_finish_standard"]
+          fully_furnished?: boolean
+          id?: string
+          match_count?: number
+          nearest_city?: Database["public"]["Enums"]["depreciation_nearest_city"]
+          pc_total?: number | null
+          pc_year1?: number | null
+          pc_year10?: number | null
+          pc_year2?: number | null
+          pc_year3?: number | null
+          pc_year4?: number | null
+          pc_year5?: number | null
+          pc_year6?: number | null
+          pc_year7?: number | null
+          pc_year8?: number | null
+          pc_year9?: number | null
+          property_type?: Database["public"]["Enums"]["depreciation_property_type"]
+          purchase_date?: string | null
+          purchase_date_category?: Database["public"]["Enums"]["depreciation_purchase_date_category"]
+          purchase_price?: number
+          renovated?: boolean
+          top_comp_ids?: string[] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depreciation_estimator_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_chunks: {
         Row: {
           chunk_index: number
@@ -2605,6 +2852,28 @@ export type Database = {
         | "session"
         | "branding"
       app_role: "superadmin" | "admin" | "user"
+      depreciation_finish_standard: "low" | "medium" | "high"
+      depreciation_nearest_city:
+        | "sydney_nsw"
+        | "melbourne_vic"
+        | "perth_wa"
+        | "brisbane_qld"
+        | "adelaide_sa"
+        | "cairns_qld"
+        | "canberra_act"
+        | "darwin_nt"
+        | "hobart_tas"
+      depreciation_property_type:
+        | "house"
+        | "townhouse"
+        | "unit"
+        | "highrise"
+        | "commercial"
+        | "industrial"
+      depreciation_purchase_date_category:
+        | "pre_budget"
+        | "post_budget_second_hand"
+        | "post_budget_brand_new"
       report_category_enum:
         | "investment"
         | "comparison"
@@ -2822,6 +3091,31 @@ export const Constants = {
         "branding",
       ],
       app_role: ["superadmin", "admin", "user"],
+      depreciation_finish_standard: ["low", "medium", "high"],
+      depreciation_nearest_city: [
+        "sydney_nsw",
+        "melbourne_vic",
+        "perth_wa",
+        "brisbane_qld",
+        "adelaide_sa",
+        "cairns_qld",
+        "canberra_act",
+        "darwin_nt",
+        "hobart_tas",
+      ],
+      depreciation_property_type: [
+        "house",
+        "townhouse",
+        "unit",
+        "highrise",
+        "commercial",
+        "industrial",
+      ],
+      depreciation_purchase_date_category: [
+        "pre_budget",
+        "post_budget_second_hand",
+        "post_budget_brand_new",
+      ],
       report_category_enum: [
         "investment",
         "comparison",
