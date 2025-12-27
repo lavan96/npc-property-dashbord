@@ -1,10 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Building2, 
-  Calendar, 
-  Mail, 
-  AlertTriangle, 
+import {
+  Home,
+  Building2,
+  Calendar,
+  Mail,
+  AlertTriangle,
   Settings,
   Database,
   BarChart3,
@@ -20,7 +20,8 @@ import {
   FileStack,
   Palette,
   Users,
-  ChevronRight
+  History,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
@@ -54,7 +55,9 @@ const adminItems = [
   { title: 'Monitoring', url: '/monitoring', icon: Activity, moduleKey: 'monitoring' },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },
+  { title: 'Depreciation Comps', url: '/admin/depreciation-comps', icon: Database, moduleKey: 'depreciation_comps' },
   { title: 'Error Logs', url: '/error-logs', icon: AlertTriangle, moduleKey: 'error_logs' },
+  { title: 'Activity Logs', url: '/admin/activity-logs', icon: History, moduleKey: 'activity_logs' },
   { title: 'Settings', url: '/settings', icon: Settings, moduleKey: 'settings' },
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
 ];
