@@ -58,6 +58,7 @@ const adminItems = [
   { title: 'Monitoring', url: '/monitoring', icon: Activity, moduleKey: 'monitoring' },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },
+  { title: 'Depreciation Comps', url: '/admin/depreciation-comps', icon: Database, moduleKey: 'depreciation_comps' },
   { title: 'Error Logs', url: '/error-logs', icon: AlertTriangle, moduleKey: 'error_logs' },
   { title: 'Activity Logs', url: '/admin/activity-logs', icon: History, moduleKey: 'activity_logs' },
   { title: 'Settings', url: '/settings', icon: Settings, moduleKey: 'settings' },

@@ -1,20 +1,25 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Calculator, 
   Info, 
   TrendingUp, 
   Wallet, 
   Building2,
-  AlertTriangle
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
+import { DepreciationValueCalculator } from '../DepreciationValueCalculator';
 
 interface AdvancedTabProps {
   buildType: 'new_build' | 'existing_property';
@@ -53,6 +58,9 @@ interface AdvancedTabProps {
   stageCompletionPercent: string;
   setStageCompletionPercent: (value: string) => void;
   disabled?: boolean;
+  // New props for depreciation calculator integration
+  purchasePrice?: string;
+  nearestCity?: string;
 }
 
 export function AdvancedTab({
@@ -91,9 +99,12 @@ export function AdvancedTab({
   setStageFixingPercent,
   stageCompletionPercent,
   setStageCompletionPercent,
-  disabled = false
+  disabled = false,
+  purchasePrice,
+  nearestCity
 }: AdvancedTabProps) {
   const isNewBuild = buildType === 'new_build';
+  const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
 
   const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,6 +127,11 @@ export function AdvancedTab({
     (parseFloat(stageLockupPercent) || 0) +
     (parseFloat(stageFixingPercent) || 0) +
     (parseFloat(stageCompletionPercent) || 0);
+
+  // Handle applying depreciation from calculator
+  const handleApplyDepreciation = (year1Value: number) => {
+    setDepreciation(year1Value.toString());
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -191,6 +207,19 @@ export function AdvancedTab({
                   className="pl-7"
                 />
               </div>
+              {isNewBuild && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDepreciationCalculator(!showDepreciationCalculator)}
+                  className="w-full mt-1 text-xs"
+                  type="button"
+                >
+                  <Calculator className="h-3 w-3 mr-1" />
+                  {showDepreciationCalculator ? 'Hide' : 'Calculate'} Depreciation
+                  {showDepreciationCalculator ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronRight className="h-3 w-3 ml-1" />}
+                </Button>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="taxRate" className="text-sm font-medium flex items-center gap-1">
@@ -251,6 +280,16 @@ export function AdvancedTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Depreciation Value Calculator - New Builds Only */}
+      {isNewBuild && showDepreciationCalculator && (
+        <DepreciationValueCalculator
+          onApplyYear1={handleApplyDepreciation}
+          defaultPurchasePrice={purchasePrice ? parseFloat(purchasePrice) : undefined}
+          defaultBuildYear={constructionYear ? parseInt(constructionYear) : new Date().getFullYear()}
+          isNewBuild={true}
+        />
+      )}
 
       {/* Loan Adjustments */}
       <Card>

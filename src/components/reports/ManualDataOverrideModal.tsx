@@ -18,6 +18,7 @@ import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, Ch
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { STATE_MAPPING } from '@/lib/states';
 import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
+import { DepreciationValueCalculator } from './DepreciationValueCalculator';
 import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 
@@ -1835,7 +1836,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                     />
                   </div>
 
-                  {/* Washington Brown Depreciation Calculator */}
+                  {/* Depreciation Value Calculator */}
                   <Collapsible 
                     open={showDepreciationCalculator} 
                     onOpenChange={setShowDepreciationCalculator}
@@ -1851,9 +1852,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                             <Calculator className="h-5 w-5 text-primary" />
                           </div>
                           <div className="text-left">
-                            <p className="font-semibold text-foreground">Washington Brown Depreciation Calculator</p>
+                            <p className="font-semibold text-foreground">Depreciation Value Calculator</p>
                             <p className="text-sm text-muted-foreground">
-                              Calculate accurate tax depreciation estimates for this property
+                              Calculate tax depreciation estimates based on similar properties
                             </p>
                           </div>
                         </div>
@@ -1867,45 +1868,40 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                     <CollapsibleContent>
                       <div className="px-4 pb-4 space-y-4">
                         <Separator />
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <ExternalLink className="h-4 w-4" />
-                          <span>Powered by Washington Brown - Australia's leading quantity surveyors</span>
-                        </div>
-                        
-                        {/* Iframe Container */}
-                        <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
-                          <iframe 
-                            src="https://www.washingtonbrown.com.au/public/static/external/"
-                            className="w-full border-0"
-                            style={{ 
-                              height: '680px',
-                              minHeight: '680px'
-                            }}
-                            title="Washington Brown Depreciation Calculator"
-                            loading="lazy"
-                          />
-                        </div>
-
-                        {/* Instructions */}
-                        <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
-                          <p className="text-sm font-medium text-foreground">How to use:</p>
-                          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                            <li>Enter the property details in the calculator above</li>
-                            <li>Click "Calculate" to get the depreciation estimate</li>
-                            <li>Copy the <strong>Year 1</strong> depreciation value (either Diminishing Value or Prime Cost)</li>
-                            <li>Enter that value in the "Annual Depreciation" field below</li>
-                          </ol>
-                        </div>
-
-                        {/* Disclaimer */}
-                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-1">
-                          <div className="flex items-start gap-2">
-                            <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-amber-700 dark:text-amber-400">
-                              <strong>Disclaimer:</strong> The depreciation values provided by this calculator are purely estimates for indicative purposes only. Users should consult with a qualified quantity surveyor or tax professional before relying on these figures for financial or tax planning purposes. Use at your own discretion.
-                            </p>
-                          </div>
-                        </div>
+                        <DepreciationValueCalculator
+                          onApplyYear1={(value) => {
+                            setOverrides(prev => ({
+                              ...prev,
+                              depreciation: value
+                            }));
+                            setYear1Depreciation(value);
+                            setHasChanges(true);
+                            toast({
+                              title: "Year 1 Depreciation Applied",
+                              description: `$${value.toLocaleString()} has been applied to the depreciation field.`,
+                            });
+                          }}
+                          onApplySchedule={(schedule, method) => {
+                            setDepreciationSchedule(schedule);
+                            setDepreciationMethod(method === 'dv' ? 'diminishing_value' : 'prime_cost');
+                            setYear1Depreciation(schedule[1] || 0);
+                            toast({
+                              title: "Depreciation Schedule Loaded",
+                              description: "10-year schedule has been loaded. Use the Schedule Builder below to apply it to cash flow.",
+                            });
+                          }}
+                          defaultPurchasePrice={
+                            overrides.purchasePrice ?? 
+                            report?.financial_calculations?.purchasePrice ?? 
+                            report?.financial_calculations?.propertyValue
+                          }
+                          defaultBuildYear={
+                            overrides.constructionYear ??
+                            report?.manual_overrides?.constructionYear ??
+                            new Date().getFullYear()
+                          }
+                          isNewBuild={isNewBuild}
+                        />
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
