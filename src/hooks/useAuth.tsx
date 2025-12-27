@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivity } from '@/hooks/useActivityLogger';
 
 interface User {
   id: string;
@@ -105,6 +106,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setRoles(data.roles || []);
       
+      // Log successful login activity
+      logActivity({
+        userId: data.user.id,
+        username: data.user.username,
+        actionType: 'login',
+        entityType: 'session',
+        entityName: data.user.username,
+        metadata: { roles: data.roles || [] }
+      });
+      
       return {};
     } catch (error) {
       console.error('Sign in error:', error);
@@ -114,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     const sessionToken = localStorage.getItem('session_token');
+    const currentUser = user; // Capture before clearing
     
     if (sessionToken) {
       try {
@@ -123,6 +135,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Logout error:', error);
       }
+    }
+
+    // Log logout activity before clearing user
+    if (currentUser) {
+      logActivity({
+        userId: currentUser.id,
+        username: currentUser.username,
+        actionType: 'logout',
+        entityType: 'session',
+        entityName: currentUser.username
+      });
     }
 
     // Also ensure Supabase Auth is signed out to prevent conflicts

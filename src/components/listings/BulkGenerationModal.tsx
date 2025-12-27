@@ -11,6 +11,7 @@ import { PropertyListing } from '@/lib/airtable';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 interface BulkGenerationModalProps {
   open: boolean;
@@ -53,6 +54,7 @@ export function BulkGenerationModal({
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const { user } = useAuth();
+  const { logActivity } = useActivityLogger();
 
   // Reset state when modal opens
   useEffect(() => {
@@ -157,6 +159,19 @@ export function BulkGenerationModal({
       }
 
       setJobId(data.jobId);
+      
+      // Log bulk generation activity
+      logActivity({
+        actionType: 'bulk_generation_started',
+        entityType: 'bulk_generation_job',
+        entityId: data.jobId,
+        entityName: `Bulk: ${selectedProperties.length} properties`,
+        metadata: { 
+          propertyCount: selectedProperties.length,
+          background,
+          addresses: properties.map(p => p.address).slice(0, 5) // First 5 addresses
+        }
+      });
       
       if (background) {
         addBackgroundJob({

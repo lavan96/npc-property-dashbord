@@ -13,6 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 
 interface RegenerateReportButtonProps {
   reportId: string;
@@ -33,6 +34,7 @@ export function RegenerateReportButton({
 }: RegenerateReportButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const { logActivity } = useActivityLogger();
 
   const handleRegenerate = async () => {
     try {
@@ -68,6 +70,14 @@ export function RegenerateReportButton({
 
       toast.success('Report regenerated successfully', {
         description: 'The latest version is now available with updated data and calculations.'
+      });
+
+      // Log report regeneration activity
+      logActivity({
+        actionType: 'report_regenerated',
+        entityType: 'investment_report',
+        entityId: reportId,
+        entityName: propertyAddress
       });
 
       // Callback to refresh the parent component
