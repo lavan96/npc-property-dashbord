@@ -9,7 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote, Building, MapPin, Check, Copy } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote, Building, MapPin, Check, Copy, X } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
 import { useToast } from '@/hooks/use-toast';
@@ -103,7 +104,7 @@ export function FinancialsTab({
   offsetBalance: propOffsetBalance,
   setOffsetBalance: propSetOffsetBalance
 }: FinancialsTabProps) {
-  const [showStampDutyCalc, setShowStampDutyCalc] = useState(false);
+  const [showStampDutyModal, setShowStampDutyModal] = useState(false);
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
@@ -139,35 +140,40 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Load stamp duty calculator script when expanded + cleanup when hidden/unmount
+  // Load stamp duty calculator script when modal is open + cleanup when closed/unmount
   useEffect(() => {
-    if (showStampDutyCalc) {
-      // Remove existing script to reload with new state
-      const existingScript = document.getElementById('stamp-src');
-      if (existingScript) {
-        existingScript.remove();
-      }
+    if (showStampDutyModal) {
+      // Small delay to ensure modal DOM is ready
+      const timer = setTimeout(() => {
+        // Remove existing script to reload with new state
+        const existingScript = document.getElementById('stamp-src-modal');
+        if (existingScript) {
+          existingScript.remove();
+        }
 
-      // Create and append new script with detected state
-      const script = document.createElement('script');
-      script.id = 'stamp-src';
-      script.type = 'text/javascript';
-      script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-      script.setAttribute('data-state', detectedState);
-      document.body.appendChild(script);
+        // Create and append new script with detected state
+        const script = document.createElement('script');
+        script.id = 'stamp-src-modal';
+        script.type = 'text/javascript';
+        script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+        script.setAttribute('data-state', detectedState);
+        document.body.appendChild(script);
 
-      // Show the calculator div
-      const calcDiv = document.getElementById('stamp-duty-calculator');
-      if (calcDiv) {
-        calcDiv.classList.remove('hidden');
-      }
+        // Show the calculator div
+        const calcDiv = document.getElementById('stamp-duty-calculator-modal');
+        if (calcDiv) {
+          calcDiv.classList.remove('hidden');
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
     } else {
-      // Cleanup when hiding the calculator
-      const existingScript = document.getElementById('stamp-src');
+      // Cleanup when closing the modal
+      const existingScript = document.getElementById('stamp-src-modal');
       if (existingScript) {
         existingScript.remove();
       }
-      const calcDiv = document.getElementById('stamp-duty-calculator');
+      const calcDiv = document.getElementById('stamp-duty-calculator-modal');
       if (calcDiv) {
         calcDiv.classList.add('hidden');
       }
@@ -175,16 +181,16 @@ export function FinancialsTab({
 
     // Cleanup on unmount
     return () => {
-      const existingScript = document.getElementById('stamp-src');
+      const existingScript = document.getElementById('stamp-src-modal');
       if (existingScript) {
         existingScript.remove();
       }
     };
-  }, [showStampDutyCalc, detectedState]);
+  }, [showStampDutyModal, detectedState]);
 
   // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const calcContainer = document.getElementById('stamp-duty-calculator');
+    const calcContainer = document.getElementById('stamp-duty-calculator-modal');
     if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
@@ -526,17 +532,13 @@ export function FinancialsTab({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  const next = !showStampDutyCalc;
-                  setShowStampDutyCalc(next);
-                  if (next) {
-                    setCalculatedStampDuty('');
-                  }
+                  setShowStampDutyModal(true);
+                  setCalculatedStampDuty('');
                 }}
                 disabled={disabled}
               >
                 <Calculator className="h-4 w-4 mr-1" />
-                {showStampDutyCalc ? 'Hide' : 'Calculator'}
-                {showStampDutyCalc ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+                Calculator
               </Button>
             </div>
             <div className="relative">
@@ -559,150 +561,165 @@ export function FinancialsTab({
             )}
           </div>
 
-          {/* Stamp Duty Calculator Section */}
-          {showStampDutyCalc && (
-            <div className="mb-4 border rounded-lg p-4 bg-muted/20 space-y-4">
-              {/* First Home Buyer Toggle */}
-              <div className="flex items-center justify-between p-3 bg-background rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <Home className="h-5 w-5 text-primary" />
-                  <div>
-                    <Label htmlFor="firstHomeBuyerCalc" className="text-sm font-semibold cursor-pointer">
-                      First Home Buyer
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Enable for stamp duty concessions
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="firstHomeBuyerCalc"
-                  checked={isFirstHomeBuyer}
-                  onCheckedChange={setIsFirstHomeBuyer}
-                  disabled={disabled}
-                />
-              </div>
-
-              {/* Property Type Selection */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  Property Type
-                </Label>
-                <Select
-                  value={stampDutyPropertyType}
-                  onValueChange={(value) => setStampDutyPropertyType(value as StampDutyPropertyType)}
-                  disabled={disabled}
-                >
-                  <SelectTrigger className="w-full bg-background">
-                    <SelectValue placeholder="Select property type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="primary_residence">Primary Residence</SelectItem>
-                    <SelectItem value="investment">Investment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Purchase Type Selection */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Are you purchasing
-                </Label>
-                <Select
-                  value={stampDutyPurchaseType}
-                  onValueChange={(value) => setStampDutyPurchaseType(value as StampDutyPurchaseType)}
-                  disabled={disabled}
-                >
-                  <SelectTrigger className="w-full bg-background">
-                    <SelectValue placeholder="Select purchase type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="established_home">An established home</SelectItem>
-                    <SelectItem value="new_home">A new home</SelectItem>
-                    <SelectItem value="vacant_land">Vacant Land</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Property Value (Dynamic from Purchase Price) */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  Property Value
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    type="text"
-                    value={formatForDisplay(purchasePrice)}
-                    disabled
-                    className="pl-7 bg-muted/50"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Property value is pulled from the Purchase Price field
-                </p>
-              </div>
-
-              <Separator />
-
-              {/* External Calculator Embed (exact markup/IDs used by ManualDataOverrideModal) */}
-              <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                <div id="stamp-duty-calculator" className="orange-theme hidden">
-                  <div id="stamp-duty-anchors">
-                    <p>
-                      Stamp Duty Calculator from{' '}
-                      <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Capture Button */}
-              <Button 
-                onClick={captureStampDutyFromCalculator}
-                className="w-full gap-2"
-                variant="outline"
-              >
-                <Copy className="h-4 w-4" />
-                Capture Calculated Stamp Duty Value
-              </Button>
-
-              {/* Apply Calculated Stamp Duty Button */}
-              {calculatedStampDuty && (
-                <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+          {/* Stamp Duty Calculator Modal */}
+          <Dialog open={showStampDutyModal} onOpenChange={setShowStampDutyModal}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  Stamp Duty Calculator
+                </DialogTitle>
+                <DialogDescription>
+                  Calculate stamp duty for {propertyAddress || 'your property'} ({detectedState})
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                {/* First Home Buyer Toggle */}
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                   <div className="flex items-center gap-3">
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Home className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-sm font-semibold text-green-700">
-                        Calculated Stamp Duty: ${formatNumberWithCommas(calculatedStampDuty)}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        Click to apply this amount to your report
+                      <Label htmlFor="firstHomeBuyerCalcModal" className="text-sm font-semibold cursor-pointer">
+                        First Home Buyer
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Enable for stamp duty concessions
                       </p>
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    onClick={handleApplyStampDuty}
+                  <Switch
+                    id="firstHomeBuyerCalcModal"
+                    checked={isFirstHomeBuyer}
+                    onCheckedChange={setIsFirstHomeBuyer}
                     disabled={disabled}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Copy className="h-4 w-4 mr-1" />
-                    Apply
-                  </Button>
+                  />
                 </div>
-              )}
 
-              <p className="text-xs text-muted-foreground mt-2">
-                * Calculate your stamp duty using the widget above, then click "Capture" to use the value.
-              </p>
-            </div>
-          )}
+                {/* Property Type Selection */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    Property Type
+                  </Label>
+                  <Select
+                    value={stampDutyPropertyType}
+                    onValueChange={(value) => setStampDutyPropertyType(value as StampDutyPropertyType)}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className="w-full bg-background">
+                      <SelectValue placeholder="Select property type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="primary_residence">Primary Residence</SelectItem>
+                      <SelectItem value="investment">Investment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Purchase Type Selection */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Are you purchasing
+                  </Label>
+                  <Select
+                    value={stampDutyPurchaseType}
+                    onValueChange={(value) => setStampDutyPurchaseType(value as StampDutyPurchaseType)}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger className="w-full bg-background">
+                      <SelectValue placeholder="Select purchase type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      <SelectItem value="established_home">An established home</SelectItem>
+                      <SelectItem value="new_home">A new home</SelectItem>
+                      <SelectItem value="vacant_land">Vacant Land</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Property Value (Dynamic from Purchase Price) */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    Property Value
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="text"
+                      value={formatForDisplay(purchasePrice)}
+                      disabled
+                      className="pl-7 bg-muted/50"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Property value is pulled from the Purchase Price field
+                  </p>
+                </div>
+
+                <Separator />
+
+                {/* External Calculator Embed */}
+                <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
+                  <div id="stamp-duty-calculator-modal" className="orange-theme hidden">
+                    <div id="stamp-duty-anchors-modal">
+                      <p>
+                        Stamp Duty Calculator from{' '}
+                        <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Capture Button */}
+                <Button 
+                  onClick={captureStampDutyFromCalculator}
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  <Copy className="h-4 w-4" />
+                  Capture Calculated Stamp Duty Value
+                </Button>
+
+                {/* Apply Calculated Stamp Duty Button */}
+                {calculatedStampDuty && (
+                  <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+                    <div className="flex items-center gap-3">
+                      <Check className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-green-700">
+                          Calculated Stamp Duty: ${formatNumberWithCommas(calculatedStampDuty)}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Click to apply this amount to your report
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        handleApplyStampDuty();
+                        setShowStampDutyModal(false);
+                      }}
+                      disabled={disabled}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Apply & Close
+                    </Button>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground mt-2">
+                  * Calculate your stamp duty using the widget above, then click "Capture" to use the value.
+                </p>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
