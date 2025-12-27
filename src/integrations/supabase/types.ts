@@ -50,6 +50,56 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_logs: {
+        Row: {
+          action_type: Database["public"]["Enums"]["activity_action_type"]
+          created_at: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: Database["public"]["Enums"]["activity_entity_type"]
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["activity_action_type"]
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: Database["public"]["Enums"]["activity_entity_type"]
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["activity_action_type"]
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: Database["public"]["Enums"]["activity_entity_type"]
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_health_log: {
         Row: {
           created_at: string
@@ -2285,7 +2335,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      activity_logs_with_user: {
+        Row: {
+          action_type:
+            | Database["public"]["Enums"]["activity_action_type"]
+            | null
+          created_at: string | null
+          display_username: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type:
+            | Database["public"]["Enums"]["activity_entity_type"]
+            | null
+          id: string | null
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+          user_role: string | null
+          username: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_data_quality_score: {
@@ -2340,6 +2420,24 @@ export type Database = {
           total_entries: number
         }[]
       }
+      get_recent_activities: {
+        Args: {
+          p_entity_type?: Database["public"]["Enums"]["activity_entity_type"]
+          p_limit?: number
+          p_user_id?: string
+        }
+        Returns: {
+          action_type: Database["public"]["Enums"]["activity_action_type"]
+          created_at: string
+          entity_id: string
+          entity_name: string
+          entity_type: Database["public"]["Enums"]["activity_entity_type"]
+          id: string
+          metadata: Json
+          user_id: string
+          username: string
+        }[]
+      }
       get_report_changelog: {
         Args: {
           p_report_id: string
@@ -2366,6 +2464,15 @@ export type Database = {
           total_students: number
         }[]
       }
+      get_user_activity_summary: {
+        Args: { p_days_back?: number; p_user_id: string }
+        Returns: {
+          action_type: Database["public"]["Enums"]["activity_action_type"]
+          count: number
+          entity_type: Database["public"]["Enums"]["activity_entity_type"]
+          last_occurrence: string
+        }[]
+      }
       has_module_access: {
         Args: { _module_key: string; _user_id: string }
         Returns: boolean
@@ -2376,6 +2483,20 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_activity: {
+        Args: {
+          p_action_type: Database["public"]["Enums"]["activity_action_type"]
+          p_entity_id?: string
+          p_entity_name?: string
+          p_entity_type: Database["public"]["Enums"]["activity_entity_type"]
+          p_ip_address?: string
+          p_metadata?: Json
+          p_user_agent?: string
+          p_user_id: string
+          p_username: string
+        }
+        Returns: string
       }
       match_document_chunks: {
         Args: {
@@ -2403,6 +2524,74 @@ export type Database = {
       }
     }
     Enums: {
+      activity_action_type:
+        | "report_generated"
+        | "report_regenerated"
+        | "report_viewed"
+        | "report_edited"
+        | "report_archived"
+        | "report_deleted"
+        | "report_pdf_downloaded"
+        | "report_shared"
+        | "manual_override_applied"
+        | "comparison_created"
+        | "comparison_viewed"
+        | "comparison_deleted"
+        | "cash_flow_created"
+        | "cash_flow_updated"
+        | "cash_flow_deleted"
+        | "email_read"
+        | "email_reply_generated"
+        | "email_reply_sent"
+        | "email_linked_to_report"
+        | "call_tagged"
+        | "alert_rule_created"
+        | "alert_rule_updated"
+        | "alert_rule_deleted"
+        | "weekly_report_config_changed"
+        | "qa_conversation_created"
+        | "qa_question_asked"
+        | "qa_conversation_deleted"
+        | "automation_switch_created"
+        | "automation_switch_enabled"
+        | "automation_switch_disabled"
+        | "automation_switch_deleted"
+        | "automation_master_toggle_changed"
+        | "template_uploaded"
+        | "template_activated"
+        | "template_deactivated"
+        | "template_deleted"
+        | "branding_profile_created"
+        | "branding_profile_updated"
+        | "branding_profile_deleted"
+        | "user_invited"
+        | "user_permissions_changed"
+        | "user_deactivated"
+        | "user_activated"
+        | "password_reset_initiated"
+        | "whitelabel_settings_updated"
+        | "whitelabel_logo_changed"
+        | "user_login"
+        | "user_logout"
+        | "bulk_generation_started"
+        | "bulk_generation_completed"
+        | "settings_updated"
+        | "data_exported"
+      activity_entity_type:
+        | "investment_report"
+        | "property_comparison"
+        | "cash_flow_analysis"
+        | "email"
+        | "call_log"
+        | "call_alert_rule"
+        | "qa_conversation"
+        | "automation_switch"
+        | "template"
+        | "branding_profile"
+        | "user"
+        | "whitelabel_settings"
+        | "bulk_generation_job"
+        | "system"
       app_role: "superadmin" | "admin" | "user"
       report_category_enum:
         | "investment"
@@ -2538,6 +2727,76 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_action_type: [
+        "report_generated",
+        "report_regenerated",
+        "report_viewed",
+        "report_edited",
+        "report_archived",
+        "report_deleted",
+        "report_pdf_downloaded",
+        "report_shared",
+        "manual_override_applied",
+        "comparison_created",
+        "comparison_viewed",
+        "comparison_deleted",
+        "cash_flow_created",
+        "cash_flow_updated",
+        "cash_flow_deleted",
+        "email_read",
+        "email_reply_generated",
+        "email_reply_sent",
+        "email_linked_to_report",
+        "call_tagged",
+        "alert_rule_created",
+        "alert_rule_updated",
+        "alert_rule_deleted",
+        "weekly_report_config_changed",
+        "qa_conversation_created",
+        "qa_question_asked",
+        "qa_conversation_deleted",
+        "automation_switch_created",
+        "automation_switch_enabled",
+        "automation_switch_disabled",
+        "automation_switch_deleted",
+        "automation_master_toggle_changed",
+        "template_uploaded",
+        "template_activated",
+        "template_deactivated",
+        "template_deleted",
+        "branding_profile_created",
+        "branding_profile_updated",
+        "branding_profile_deleted",
+        "user_invited",
+        "user_permissions_changed",
+        "user_deactivated",
+        "user_activated",
+        "password_reset_initiated",
+        "whitelabel_settings_updated",
+        "whitelabel_logo_changed",
+        "user_login",
+        "user_logout",
+        "bulk_generation_started",
+        "bulk_generation_completed",
+        "settings_updated",
+        "data_exported",
+      ],
+      activity_entity_type: [
+        "investment_report",
+        "property_comparison",
+        "cash_flow_analysis",
+        "email",
+        "call_log",
+        "call_alert_rule",
+        "qa_conversation",
+        "automation_switch",
+        "template",
+        "branding_profile",
+        "user",
+        "whitelabel_settings",
+        "bulk_generation_job",
+        "system",
+      ],
       app_role: ["superadmin", "admin", "user"],
       report_category_enum: [
         "investment",
