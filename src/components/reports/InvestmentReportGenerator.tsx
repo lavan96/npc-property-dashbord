@@ -13,6 +13,7 @@ import type { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image, Car } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
@@ -71,6 +72,7 @@ export function InvestmentReportGenerator() {
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const { user } = useAuth();
+  const { logActivity } = useActivityLogger();
   
   // Pre-generation overrides data
   const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
@@ -364,6 +366,15 @@ export function InvestmentReportGenerator() {
       addBackgroundJob({
         id: pendingReport.id,
         type: 'investment_report'
+      });
+
+      // Log report generation activity
+      logActivity({
+        actionType: 'report_generated',
+        entityType: 'investment_report',
+        entityId: pendingReport.id,
+        entityName: propertyAddress,
+        metadata: { queryType, scope: queryType }
       });
 
       // Get scope text for notification
