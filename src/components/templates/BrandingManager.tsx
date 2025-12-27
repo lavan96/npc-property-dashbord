@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Palette, Trash2, Edit, Upload, Star, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface BrandingProfile {
   id: string;
@@ -136,13 +137,29 @@ export function BrandingManager({ profiles, isLoading }: BrandingManagerProps) {
 
         if (error) throw error;
         toast({ title: 'Branding profile updated' });
+        
+        logActivityDirect({
+          actionType: 'branding_profile_updated',
+          entityType: 'branding_profile',
+          entityId: editingProfile.id,
+          entityName: formData.client_name,
+        });
       } else {
-        const { error } = await supabase
+        const { data: newProfile, error } = await supabase
           .from('client_branding_profiles')
-          .insert(profileData);
+          .insert(profileData)
+          .select('id')
+          .single();
 
         if (error) throw error;
         toast({ title: 'Branding profile created' });
+        
+        logActivityDirect({
+          actionType: 'branding_profile_created',
+          entityType: 'branding_profile',
+          entityId: newProfile?.id,
+          entityName: formData.client_name,
+        });
       }
 
       queryClient.invalidateQueries({ queryKey: ['client-branding-profiles'] });
@@ -173,10 +190,18 @@ export function BrandingManager({ profiles, isLoading }: BrandingManagerProps) {
         .eq('id', profile.id);
 
       if (error) throw error;
+      return profile;
     },
-    onSuccess: () => {
+    onSuccess: (profile) => {
       queryClient.invalidateQueries({ queryKey: ['client-branding-profiles'] });
       toast({ title: 'Profile deleted' });
+      
+      logActivityDirect({
+        actionType: 'branding_profile_deleted',
+        entityType: 'branding_profile',
+        entityId: profile.id,
+        entityName: profile.client_name,
+      });
     },
     onError: (error: any) => {
       toast({

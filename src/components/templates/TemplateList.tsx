@@ -35,6 +35,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Trash2, RefreshCw, Download, Eye, Loader2, FileCode, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface Template {
   id: string;
@@ -131,10 +132,23 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
         .eq('id', template.id);
       
       if (error) throw error;
+      return template;
     },
-    onSuccess: () => {
+    onSuccess: (template) => {
       queryClient.invalidateQueries({ queryKey: ['report-structure-templates'] });
       toast({ title: 'Template deleted' });
+      
+      // Log activity
+      logActivityDirect({
+        actionType: 'template_deleted',
+        entityType: 'template',
+        entityId: template.id,
+        entityName: template.name,
+        metadata: {
+          template_type: template.template_type,
+          file_name: template.file_name,
+        },
+      });
     },
     onError: (error: any) => {
       toast({

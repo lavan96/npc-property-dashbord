@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface TemplateUploaderProps {
   templateType: 'ai_structure' | 'pdf_layout' | 'client_branding';
@@ -112,6 +113,21 @@ export function TemplateUploader({ templateType }: TemplateUploaderProps) {
         .single();
 
       if (dbError) throw dbError;
+
+      // Log activity
+      logActivityDirect({
+        actionType: 'template_uploaded',
+        entityType: 'template',
+        entityId: template.id,
+        entityName: name,
+        metadata: {
+          template_type: templateType,
+          file_name: file.name,
+          file_size: file.size,
+          report_tier: reportTier || null,
+          report_category: reportCategory || null,
+        },
+      });
 
       // If AI structure template, trigger parsing for RAG
       if (templateType === 'ai_structure') {
