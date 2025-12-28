@@ -2111,6 +2111,29 @@ ${sourceSpecificInstructions}
         if (stagePercentages.length > 0) {
           overrideLines.push(`Construction Stage Payment Schedule: ${stagePercentages.join(', ')}`);
         }
+        
+        // Construction Schedule Preset Mode
+        if (manualOverrides.schedulePreset) {
+          const presetDescriptions: Record<string, string> = {
+            'rapid': 'Rapid Front-Load (accelerated early stages)',
+            'even': 'Even Distribution (equal monthly spread)',
+            'custom': 'Custom Timing (user-defined month positions)'
+          };
+          overrideLines.push(`Construction Schedule Mode: ${presetDescriptions[manualOverrides.schedulePreset] || manualOverrides.schedulePreset}`);
+        }
+        
+        // Custom Stage Months (when custom schedule preset is used)
+        if (manualOverrides.schedulePreset === 'custom' && manualOverrides.customStageMonths) {
+          const stageNames = ['Deposit', 'Slab', 'Frame', 'Lockup', 'Fixing', 'Completion'];
+          const stageTiming: string[] = [];
+          for (const [index, month] of Object.entries(manualOverrides.customStageMonths)) {
+            const stageName = stageNames[parseInt(index)] || `Stage ${index}`;
+            stageTiming.push(`${stageName}: Month ${month}`);
+          }
+          if (stageTiming.length > 0) {
+            overrideLines.push(`Custom Stage Timing: ${stageTiming.join(', ')}`);
+          }
+        }
       }
       
       if (overrideLines.length > 0) {
