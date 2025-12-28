@@ -57,8 +57,13 @@ interface AdvancedTabProps {
   setStageFixingPercent: (value: string) => void;
   stageCompletionPercent: string;
   setStageCompletionPercent: (value: string) => void;
+  // Construction Schedule Preset props
+  schedulePreset: 'rapid' | 'even' | 'custom';
+  setSchedulePreset: (value: 'rapid' | 'even' | 'custom') => void;
+  customStageMonths: { [stageIndex: number]: number };
+  setCustomStageMonths: (value: { [stageIndex: number]: number }) => void;
   disabled?: boolean;
-  // New props for depreciation calculator integration
+  // Optional props for depreciation calculator integration
   purchasePrice?: string;
   nearestCity?: string;
 }
@@ -99,6 +104,10 @@ export function AdvancedTab({
   setStageFixingPercent,
   stageCompletionPercent,
   setStageCompletionPercent,
+  schedulePreset,
+  setSchedulePreset,
+  customStageMonths,
+  setCustomStageMonths,
   disabled = false,
   purchasePrice,
   nearestCity
@@ -412,6 +421,77 @@ export function AdvancedTab({
                 Total: {stageTotal}%
               </Badge>
             </div>
+
+            {/* Schedule Preset Selection */}
+            <div className="flex flex-wrap items-center gap-4 mb-4 p-3 bg-muted/20 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Schedule Mode:</span>
+                <Select 
+                  value={schedulePreset} 
+                  onValueChange={(value: 'rapid' | 'even' | 'custom') => setSchedulePreset(value)}
+                  disabled={disabled}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select mode" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    <SelectItem value="rapid">Rapid Build (Months 2-7)</SelectItem>
+                    <SelectItem value="even">Even Distribution</SelectItem>
+                    <SelectItem value="custom">Custom Positioning</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {schedulePreset === 'rapid' && 'Stages are fixed at months 2-7. Additional months show interest-only rows.'}
+                {schedulePreset === 'even' && `Stages are evenly distributed across ${constructionDurationMonths || 12} months.`}
+                {schedulePreset === 'custom' && 'Customize which month each stage occurs.'}
+              </span>
+            </div>
+
+            {/* Custom Stage Month Selection (only in custom mode) */}
+            {schedulePreset === 'custom' && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {[
+                    { index: 0, label: 'Deposit' },
+                    { index: 1, label: 'Slab/Base' },
+                    { index: 2, label: 'Frame' },
+                    { index: 3, label: 'Lock-up' },
+                    { index: 4, label: 'Fixing' },
+                    { index: 5, label: 'Completion' },
+                  ].map(({ index, label }) => (
+                    <div key={index} className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground">{label}</label>
+                      <Select 
+                        value={String(customStageMonths[index] || (index + 2))}
+                        onValueChange={(value) => {
+                          setCustomStageMonths({
+                            ...customStageMonths,
+                            [index]: parseInt(value, 10)
+                          });
+                        }}
+                        disabled={disabled}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background z-50">
+                          {Array.from({ length: Math.max(parseInt(constructionDurationMonths) || 12, 7) - 1 }, (_, i) => i + 2).map(month => (
+                            <SelectItem key={month} value={String(month)}>
+                              Month {month}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Note: Multiple stages can occur in the same month. Interest calculations update automatically.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="space-y-2">
