@@ -70,6 +70,10 @@ export interface PreGenerationData {
   stageLockupPercent?: number;
   stageFixingPercent?: number;
   stageCompletionPercent?: number;
+  
+  // Construction Schedule Preset Mode (new build only)
+  schedulePreset?: 'rapid' | 'even' | 'custom';
+  customStageMonths?: { [stageIndex: number]: number };
 }
 
 interface PreGenerationOverridesProps {
@@ -171,6 +175,13 @@ export function PreGenerationOverrides({
   const [stageLockupPercent, setStageLockupPercent] = useState<string>('25');
   const [stageFixingPercent, setStageFixingPercent] = useState<string>('20');
   const [stageCompletionPercent, setStageCompletionPercent] = useState<string>('15');
+  
+  // Construction Schedule Preset Mode
+  type SchedulePreset = 'rapid' | 'even' | 'custom';
+  const [schedulePreset, setSchedulePreset] = useState<SchedulePreset>('rapid');
+  const [customStageMonths, setCustomStageMonths] = useState<{ [stageIndex: number]: number }>({
+    0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7
+  });
   
   // State detection
   const [detectedState, setDetectedState] = useState<string>('All');
@@ -399,6 +410,8 @@ export function PreGenerationOverrides({
       stageLockupPercent: buildType === 'new_build' && stageLockupPercent ? parseFloat(stageLockupPercent) : undefined,
       stageFixingPercent: buildType === 'new_build' && stageFixingPercent ? parseFloat(stageFixingPercent) : undefined,
       stageCompletionPercent: buildType === 'new_build' && stageCompletionPercent ? parseFloat(stageCompletionPercent) : undefined,
+      schedulePreset: buildType === 'new_build' ? schedulePreset : undefined,
+      customStageMonths: buildType === 'new_build' && schedulePreset === 'custom' ? customStageMonths : undefined,
     };
     
     onDataChange(data);
@@ -413,6 +426,7 @@ export function PreGenerationOverrides({
     constructionDurationMonths, constructionYear, landSizeSqm, buildSizeSqm,
     isFirstHomeBuyer, stageDepositPercent, stageSlabPercent, stageFramePercent, 
     stageLockupPercent, stageFixingPercent, stageCompletionPercent,
+    schedulePreset, customStageMonths,
     onDataChange
   ]);
 
@@ -578,6 +592,10 @@ export function PreGenerationOverrides({
                 setStageFixingPercent={setStageFixingPercent}
                 stageCompletionPercent={stageCompletionPercent}
                 setStageCompletionPercent={setStageCompletionPercent}
+                schedulePreset={schedulePreset}
+                setSchedulePreset={setSchedulePreset}
+                customStageMonths={customStageMonths}
+                setCustomStageMonths={setCustomStageMonths}
                 disabled={disabled}
               />
             </TabsContent>
