@@ -35,7 +35,31 @@ const REPORT_SECTIONS = [
   }
 ];
 
-// Helper function to generate a single section via API
+// Helper function to fetch with timeout
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 90000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.log(`⏱️ Request timeout after ${timeoutMs}ms, aborting...`);
+    controller.abort();
+  }, timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs / 1000} seconds`);
+    }
+    throw error;
+  }
+}
+
+// Helper function to generate a single section via API with retry logic
 async function generateReportSection(
   sectionDef: typeof REPORT_SECTIONS[0],
   basePrompt: string,
@@ -43,7 +67,8 @@ async function generateReportSection(
   perplexityApiKey: string,
   previousSections: string,
   propertyAddress: string,
-  enhancedData: any
+  enhancedData: any,
+  maxRetries: number = 2
 ): Promise<{ content: string; citations: any[]; error?: string }> {
   // For section 4, inject explicit investment score data
   let investmentScoreContext = '';
@@ -98,43 +123,66 @@ ${sectionDef.id === 'section4' ? '8. MUST include the Investment Score Analysis 
 
 Generate the ${sectionDef.name} sections now:`;
 
-  try {
-    console.log(`📝 Generating section: ${sectionDef.name}...`);
-    
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar-pro',
-        max_tokens: sectionDef.maxTokens,
-        temperature: 0.1,
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: sectionPrompt }
-        ]
-      }),
-    });
+  // Retry loop
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📝 Generating section: ${sectionDef.name}... (attempt ${attempt}/${maxRetries})`);
+      
+      const response = await fetchWithTimeout('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${perplexityApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sonar-pro',
+          max_tokens: sectionDef.maxTokens,
+          temperature: 0.1,
+          messages: [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: sectionPrompt }
+          ]
+        }),
+      }, 120000); // 120 second timeout per section
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Section ${sectionDef.id} API error:`, response.status, errorText);
-      return { content: '', citations: [], error: `API error ${response.status}: ${errorText}` };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Section ${sectionDef.id} API error (attempt ${attempt}):`, response.status, errorText);
+        
+        // If rate limited or server error, wait and retry
+        if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
+          const waitTime = attempt * 5000; // 5s, 10s
+          console.log(`⏳ Waiting ${waitTime/1000}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        return { content: '', citations: [], error: `API error ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      const citations = data.citations || [];
+      
+      console.log(`✓ Section ${sectionDef.name} generated: ${content.length} chars`);
+      
+      return { content, citations };
+    } catch (error: any) {
+      console.error(`❌ Error generating section ${sectionDef.id} (attempt ${attempt}):`, error?.message);
+      
+      // Retry on timeout or network errors
+      if (attempt < maxRetries) {
+        const waitTime = attempt * 3000; // 3s, 6s
+        console.log(`⏳ Waiting ${waitTime/1000}s before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      return { content: '', citations: [], error: error?.message };
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    const citations = data.citations || [];
-    
-    console.log(`✓ Section ${sectionDef.name} generated: ${content.length} chars`);
-    
-    return { content, citations };
-  } catch (error: any) {
-    console.error(`❌ Error generating section ${sectionDef.id}:`, error?.message);
-    return { content: '', citations: [], error: error?.message };
   }
+  
+  return { content: '', citations: [], error: 'Max retries exceeded' };
 }
 
 // Helper function to update report status to failed
