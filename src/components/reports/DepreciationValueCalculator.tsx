@@ -126,12 +126,14 @@ export function DepreciationValueCalculator({
       console.group('🏠 Depreciation Calculator - Fetch & Calculate');
       console.log('Fetching comps from database...');
       
-      // Fetch comps from database
+      // Fetch ALL comps from database - must use .range() to override default 1000 row limit
+      // We need all records to find matching comparables across all criteria combinations
       const { data: comps, error, count } = await supabase
         .from('depreciation_comps')
         .select('*', { count: 'exact' })
         .eq('renovated', false)
-        .eq('fully_furnished', false);
+        .eq('fully_furnished', false)
+        .range(0, 49999); // Fetch up to 50,000 records (well above our ~21k dataset)
       
       console.log('Database query result:', {
         error: error ? error.message : null,
