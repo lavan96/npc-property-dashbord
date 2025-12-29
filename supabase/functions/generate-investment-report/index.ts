@@ -2467,6 +2467,24 @@ YOUR DEDICATED PROPERTY PARTNER
         
         combinedContent += cleanContent + '\n\n---\n\n';
         allCitations = [...allCitations, ...result.citations];
+        
+        // === PROGRESSIVE SAVE: Save after each section ===
+        if (reportId && supabaseClient) {
+          try {
+            console.log(`💾 Progressive save after section ${i + 1}...`);
+            await supabaseClient
+              .from('investment_reports')
+              .update({
+                report_content: combinedContent,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', reportId);
+            console.log(`✓ Progress saved: ${combinedContent.length} chars (section ${i + 1}/${REPORT_SECTIONS.length})`);
+          } catch (saveError: any) {
+            console.warn(`⚠️ Progressive save failed (non-blocking):`, saveError?.message);
+          }
+        }
+        // === END PROGRESSIVE SAVE ===
       }
       
       // Small delay between sections to avoid rate limiting
