@@ -88,26 +88,112 @@ export function DepreciationCompsAdmin() {
     fetchComps();
   }, [fetchComps]);
   
+  // CSV helpers (handles quoted commas, BOMs, and messy column names)
+  const normalizeCsvHeader = (header: string) => {
+    const h = (header ?? '')
+      .toString()
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .toLowerCase();
+
+    return h
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  };
+
+  const parseCsvText = (text: string): string[][] => {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = '';
+    let inQuotes = false;
+
+    const pushCell = () => {
+      row.push(cell.trim());
+      cell = '';
+    };
+
+    const pushRow = () => {
+      if (row.some((c) => c.length > 0)) rows.push(row);
+      row = [];
+    };
+
+    const s = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+
+      if (ch === '"') {
+        // Escaped quote within a quoted cell
+        if (inQuotes && s[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (!inQuotes && ch === ',') {
+        pushCell();
+        continue;
+      }
+
+      if (!inQuotes && ch === '\n') {
+        pushCell();
+        pushRow();
+        continue;
+      }
+
+      cell += ch;
+    }
+
+    // flush last row
+    pushCell();
+    pushRow();
+
+    return rows;
+  };
+
+  const parseBoolean = (value: string): boolean => {
+    const v = (value ?? '').toString().replace(/^\uFEFF/, '').trim().toLowerCase();
+    return v === 'true' || v === '1' || v === 'yes' || v === 'y';
+  };
+
+  const formatImportError = (err: any): string => {
+    if (!err) return 'Could not import CSV data.';
+    if (typeof err === 'string') return err;
+
+    const message = typeof err?.message === 'string' && err.message.trim().length > 0
+      ? err.message
+      : 'Could not import CSV data.';
+
+    const extra: string[] = [];
+    if (typeof err?.details === 'string' && err.details.trim().length > 0) extra.push(`Details: ${err.details}`);
+    if (typeof err?.hint === 'string' && err.hint.trim().length > 0) extra.push(`Hint: ${err.hint}`);
+    if (typeof err?.code === 'string' && err.code.trim().length > 0) extra.push(`Code: ${err.code}`);
+
+    return extra.length ? `${message} | ${extra.join(' | ')}` : message;
+  };
+
   // Handle CSV file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     setCsvError(null);
     setCsvPreview([]);
     setCsvFullData([]);
-    
+
     try {
       const text = await file.text();
-      const lines = text.split('\n')
-        .map(line => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')))
-        .filter(line => line.some(cell => cell.length > 0)); // Filter out empty lines
-      
+      const lines = parseCsvText(text);
+
       if (lines.length < 2) {
         setCsvError('CSV must have at least a header row and one data row');
         return;
       }
-      
+
       setCsvFullData(lines); // Store ALL parsed lines
       setCsvPreview(lines.slice(0, 6)); // Show first 5 rows + header for preview
     } catch (error) {
@@ -118,11 +204,16 @@ export function DepreciationCompsAdmin() {
   
   // Normalize enum values to match database expectations (lowercase with underscores)
   const normalizeEnumValue = (value: string, fieldName: string): string => {
-    if (!value) return value;
-    
-    // Convert to lowercase and replace spaces with underscores
-    let normalized = value.toLowerCase().replace(/\s+/g, '_');
-    
+    const cleaned = (value ?? '').toString().replace(/^\uFEFF/, '').trim();
+    if (!cleaned) return cleaned;
+
+    // Normalize: lowercase and replace non-alphanumerics with underscores
+    const normalized = cleaned
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
     // Valid enum values for each field
     const validValues: Record<string, string[]> = {
       nearest_city: ['sydney_nsw', 'melbourne_vic', 'perth_wa', 'brisbane_qld', 'adelaide_sa', 'cairns_qld', 'canberra_act', 'darwin_nt', 'hobart_tas'],
@@ -130,95 +221,103 @@ export function DepreciationCompsAdmin() {
       finish_standard: ['low', 'medium', 'high'],
       purchase_date_category: ['pre_budget', 'post_budget_second_hand', 'post_budget_brand_new'],
     };
-    
-    // Check if this field has valid values defined
+
     if (validValues[fieldName]) {
-      // Try to find a matching valid value
-      const match = validValues[fieldName].find(v => v === normalized);
+      const match = validValues[fieldName].find((v) => v === normalized);
       if (match) return match;
-      
-      // Try partial matching for common variations
-      const partialMatch = validValues[fieldName].find(v => 
-        v.replace(/_/g, '') === normalized.replace(/_/g, '') ||
-        normalized.includes(v) || v.includes(normalized)
-      );
+
+      const compact = normalized.replace(/_/g, '');
+      const partialMatch = validValues[fieldName].find((v) => {
+        const vCompact = v.replace(/_/g, '');
+        return vCompact === compact || compact.includes(vCompact) || vCompact.includes(compact);
+      });
       if (partialMatch) return partialMatch;
     }
-    
+
     return normalized;
   };
 
   // Import CSV data
   const handleImportCsv = async () => {
     if (csvFullData.length < 2) return;
-    
+
     setUploading(true);
     try {
-      const headers = csvFullData[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
+      const headers = csvFullData[0].map(normalizeCsvHeader);
       const rows = csvFullData.slice(1); // Use FULL data, not preview
-      
+
       const records: Partial<DepreciationComp>[] = [];
-      const enumFields = ['nearest_city', 'property_type', 'finish_standard', 'purchase_date_category'];
-      
+      const enumFields = new Set(['nearest_city', 'property_type', 'finish_standard', 'purchase_date_category']);
+
       for (const row of rows) {
         if (row.length < headers.length) continue;
-        
+
         const record: Record<string, any> = {};
         headers.forEach((header, i) => {
-          const value = row[i];
-          
-          // Parse numeric fields
-          if (header.includes('price') || header.includes('year') || header.startsWith('dv_') || header.startsWith('pc_')) {
-            record[header] = parseFloat(value) || 0;
+          if (!header) return;
+
+          const raw = row[i] ?? '';
+          const value = (typeof raw === 'string' ? raw : String(raw)).replace(/^\uFEFF/, '').trim();
+
+          // Parse numeric fields (strip thousand separators)
+          if (
+            header.includes('price') ||
+            header.includes('year') ||
+            header.startsWith('dv_') ||
+            header.startsWith('pc_')
+          ) {
+            record[header] = parseFloat(removeCommas(value)) || 0;
           } else if (header === 'renovated' || header === 'fully_furnished') {
-            record[header] = value.toLowerCase() === 'true' || value === '1';
-          } else if (enumFields.includes(header)) {
-            // Normalize enum values
+            record[header] = parseBoolean(value);
+          } else if (enumFields.has(header)) {
             record[header] = normalizeEnumValue(value, header);
           } else {
             record[header] = value;
           }
         });
-        
+
         // Validate required fields
-        if (record.purchase_price && record.purchase_date_category && record.build_year && 
-            record.property_type && record.finish_standard && record.nearest_city) {
+        if (
+          record.purchase_price &&
+          record.purchase_date_category &&
+          record.build_year &&
+          record.property_type &&
+          record.finish_standard &&
+          record.nearest_city
+        ) {
           records.push(record as Partial<DepreciationComp>);
         }
       }
-      
+
       if (records.length === 0) {
         throw new Error('No valid records found in CSV');
       }
-      
+
       // Insert in batches of 500 to handle large datasets
       const batchSize = 500;
       let imported = 0;
-      
+
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
-        const { error } = await supabase
-          .from('depreciation_comps')
-          .insert(batch as any);
-        
+        const { error } = await supabase.from('depreciation_comps').insert(batch as any);
         if (error) throw error;
         imported += batch.length;
       }
-      
+
       toast({
-        title: "Import Successful",
+        title: 'Import Successful',
         description: `Imported ${imported} depreciation comparables.`,
       });
-      
+
       setCsvPreview([]);
       setCsvFullData([]);
       fetchComps();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error importing CSV:', error);
       toast({
-        title: "Import Failed",
-        description: error instanceof Error ? error.message : "Could not import CSV data.",
-        variant: "destructive",
+        title: 'Import Failed',
+        description: formatImportError(error),
+        variant: 'destructive',
       });
     } finally {
       setUploading(false);
