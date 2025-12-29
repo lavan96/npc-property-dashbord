@@ -248,6 +248,8 @@ export function DepreciationCompsAdmin() {
 
       const records: Partial<DepreciationComp>[] = [];
       const enumFields = new Set(['nearest_city', 'property_type', 'finish_standard', 'purchase_date_category']);
+      // Fields to exclude from import - these are auto-generated or use UUID format
+      const excludeFields = new Set(['id', 'source_schedule_id', 'created_at', 'updated_at', 'created_by']);
 
       for (const row of rows) {
         if (row.length < headers.length) continue;
@@ -255,6 +257,9 @@ export function DepreciationCompsAdmin() {
         const record: Record<string, any> = {};
         headers.forEach((header, i) => {
           if (!header) return;
+          
+          // Skip fields that should not be imported (auto-generated UUIDs, timestamps, etc.)
+          if (excludeFields.has(header)) return;
 
           const raw = row[i] ?? '';
           const value = (typeof raw === 'string' ? raw : String(raw)).replace(/^\uFEFF/, '').trim();
