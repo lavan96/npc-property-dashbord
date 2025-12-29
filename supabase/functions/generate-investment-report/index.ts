@@ -7,6 +7,105 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Report section definitions for multi-call generation
+const REPORT_SECTIONS = [
+  {
+    id: 'section1',
+    name: 'Location & Market Overview',
+    sections: ['Location Overview', 'Current Market Performance', 'Current Economic Context', 'Demographics & Demand Drivers'],
+    maxTokens: 4000,
+  },
+  {
+    id: 'section2', 
+    name: 'Amenities & Infrastructure',
+    sections: ['Schools & Education', 'Healthcare & Shopping', 'Recreational Amenities', 'Transport & Accessibility', 'Environmental Risks & Climate', 'Crime & Safety'],
+    maxTokens: 4000,
+  },
+  {
+    id: 'section3',
+    name: 'Property & Financial Analysis',
+    sections: ['Property-Level Information', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
+    maxTokens: 4000,
+  },
+  {
+    id: 'section4',
+    name: 'Projections & Recommendations',
+    sections: ['10-Year Investment Projections', 'SWOT Analysis', 'Top 3 Opportunities', 'Top 3 Risks', 'Data Transparency Statement', 'Investment Recommendations', 'Investment Suitability Screening', 'Final Conclusion', 'Data Sources'],
+    maxTokens: 5000,
+  }
+];
+
+// Helper function to generate a single section via API
+async function generateReportSection(
+  sectionDef: typeof REPORT_SECTIONS[0],
+  basePrompt: string,
+  systemMessage: string,
+  perplexityApiKey: string,
+  previousSections: string,
+  propertyAddress: string,
+  enhancedData: any
+): Promise<{ content: string; citations: any[]; error?: string }> {
+  const sectionPrompt = `${basePrompt}
+
+---
+**SECTION GENERATION TASK:**
+You are generating ONLY the following sections of a comprehensive investment report:
+${sectionDef.sections.map(s => `- ${s}`).join('\n')}
+
+${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency, DO NOT repeat this content):**
+${previousSections.substring(0, 3000)}...
+` : ''}
+
+**CRITICAL INSTRUCTIONS:**
+1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
+2. Follow the exact markdown formatting with proper headings (# for main sections)
+3. Include all required tables with complete data (no placeholders like "XX" or "N/A")
+4. Use proper horizontal rules (---) between sections
+5. Each section must meet minimum word counts as specified in the template
+6. Be thorough and data-driven - this is a premium client-facing report
+7. Start immediately with the first section heading - no preamble
+
+Generate the ${sectionDef.name} sections now:`;
+
+  try {
+    console.log(`📝 Generating section: ${sectionDef.name}...`);
+    
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar-pro',
+        max_tokens: sectionDef.maxTokens,
+        temperature: 0.1,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: sectionPrompt }
+        ]
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Section ${sectionDef.id} API error:`, response.status, errorText);
+      return { content: '', citations: [], error: `API error ${response.status}: ${errorText}` };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const citations = data.citations || [];
+    
+    console.log(`✓ Section ${sectionDef.name} generated: ${content.length} chars`);
+    
+    return { content, citations };
+  } catch (error: any) {
+    console.error(`❌ Error generating section ${sectionDef.id}:`, error?.message);
+    return { content: '', citations: [], error: error?.message };
+  }
+}
+
 // Helper function to update report status to failed
 async function markReportFailed(reportId: string | null, errorMessage: string): Promise<void> {
   if (!reportId) return;
@@ -2229,81 +2328,78 @@ ${templateContext}
     
     const systemMessage = reportScope === 'suburb' 
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
-      : 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You MUST produce comprehensive, professional-grade investment reports of EXACTLY 38 pages following the strict template structure provided. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include minimum 10 bullet points per SWOT category with 2-3 sentence explanations. Top 3 Opportunities and Risks must each be 150+ words with specific dollar amounts. All 10-year projection tables must include all 10 years. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Maintenance is ALWAYS fixed at $1,500 annually. This is a premium client-facing report - be thorough, professional, and data-driven throughout.';
+      : 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Maintenance is ALWAYS fixed at $1,500 annually. This is a premium client-facing report - be thorough, professional, and data-driven.';
 
-    console.log('Calling Perplexity API with sonar-pro model (multi-step reasoning)...');
+    console.log('=== MULTI-SECTION REPORT GENERATION ===');
     console.log('Report scope:', reportScope);
-    console.log('Prompt length:', prompt.length);
+    console.log('Base prompt length:', prompt.length);
     console.log('Document content included:', !!documentContent);
     console.log('Template context included:', !!templateContext);
     console.log('Content source:', contentSource);
+    console.log('Generating report in', REPORT_SECTIONS.length, 'sections...');
 
-    // Retry logic with exponential backoff
-    const maxRetries = 3;
-    const baseDelay = 1000; // 1 second
-    let response;
-    let lastError;
+    // Generate report in multiple sections
+    let combinedContent = '';
+    let allCitations: any[] = [];
+    let generationErrors: string[] = [];
+    
+    // Add report header
+    const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`API call attempt ${attempt}/${maxRetries}`);
+YOUR DEDICATED PROPERTY PARTNER
+
+# Investment Report: ${formattedInput}
+
+---
+
+`;
+    combinedContent = reportHeader;
+
+    for (let i = 0; i < REPORT_SECTIONS.length; i++) {
+      const sectionDef = REPORT_SECTIONS[i];
+      console.log(`\n📄 Generating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name}`);
+      
+      // Pass context from previous sections for consistency
+      const previousContext = combinedContent.length > 500 ? combinedContent.substring(combinedContent.length - 2000) : '';
+      
+      const result = await generateReportSection(
+        sectionDef,
+        prompt,
+        systemMessage,
+        perplexityApiKey,
+        previousContext,
+        formattedInput,
+        enhancedData
+      );
+      
+      if (result.error) {
+        console.error(`⚠️ Section ${sectionDef.name} failed:`, result.error);
+        generationErrors.push(`${sectionDef.name}: ${result.error}`);
+        // Continue with next section instead of failing completely
+        continue;
+      }
+      
+      if (result.content) {
+        // Clean the content - remove any preamble or meta-text
+        let cleanContent = result.content
+          .replace(/^(Here|I will|Let me|Now|The following).*?:\s*/im, '')
+          .replace(/^(Certainly|Sure|Of course).*?\n/im, '')
+          .trim();
         
-        // Using the correct Perplexity API configuration based on their docs
-        response = await fetch('https://api.perplexity.ai/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${perplexityApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'sonar-pro', // Multi-step reasoning with 2x more citations for comprehensive analysis
-            max_tokens: 16000, // Enable full 40-page comprehensive report generation
-            temperature: 0.1, // Lower temperature for consistent, factual output
-            messages: [
-              {
-                role: 'system',
-                content: systemMessage
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ]
-          }),
-        });
-        
-        // If we got a response, break out of retry loop
-        console.log(`✓ API call successful on attempt ${attempt}`);
-        break;
-        
-      } catch (fetchError: any) {
-        lastError = fetchError;
-        console.error(`Network error on attempt ${attempt}/${maxRetries}:`, fetchError?.message || fetchError);
-        
-        // If this was the last attempt, return error
-        if (attempt === maxRetries) {
-          console.error('All retry attempts failed');
-          const errorMsg = `Failed to connect to Perplexity API after ${maxRetries} attempts: ${fetchError?.message || 'Network error'}`;
-          await markReportFailed(reportId, errorMsg);
-          return new Response(JSON.stringify({ 
-            error: errorMsg,
-            success: false 
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        
-        // Calculate exponential backoff delay
-        const delay = baseDelay * Math.pow(2, attempt - 1);
-        console.log(`Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        combinedContent += cleanContent + '\n\n---\n\n';
+        allCitations = [...allCitations, ...result.citations];
+      }
+      
+      // Small delay between sections to avoid rate limiting
+      if (i < REPORT_SECTIONS.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
-    // Safety check (should never happen given the retry logic above)
-    if (!response) {
-      const errorMsg = 'Failed to get response from Perplexity API';
+    // Check if we have substantial content
+    if (combinedContent.length < 5000) {
+      const errorMsg = `Report generation produced insufficient content (${combinedContent.length} chars). Errors: ${generationErrors.join('; ')}`;
+      console.error('❌', errorMsg);
       await markReportFailed(reportId, errorMsg);
       return new Response(JSON.stringify({ 
         error: errorMsg,
@@ -2314,89 +2410,13 @@ ${templateContext}
       });
     }
 
-    console.log('Perplexity API response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Perplexity API error response:', errorText);
-      
-      let errorMessage;
-      if (response.status === 401) {
-        errorMessage = 'Invalid Perplexity API key. Please check your PERPLEXITY_API_KEY secret.';
-      } else if (response.status === 429) {
-        errorMessage = 'Perplexity API rate limit exceeded. Please try again later.';
-      } else if (response.status === 400) {
-        errorMessage = `Bad request to Perplexity API: ${errorText}`;
-      } else {
-        errorMessage = `Perplexity API error (${response.status}): ${errorText}`;
-      }
-      
-      await markReportFailed(reportId, errorMessage);
-      return new Response(JSON.stringify({ 
-        error: errorMessage,
-        success: false 
-      }), {
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    console.log(`\n✓ Multi-section generation complete`);
+    console.log(`  Total content length: ${combinedContent.length} chars`);
+    console.log(`  Total citations: ${allCitations.length}`);
+    console.log(`  Sections with errors: ${generationErrors.length}`);
 
-    let data;
-    let responseText;
-    try {
-      // Read response as text first (more reliable than direct .json())
-      responseText = await response.text();
-      console.log('✓ Response text received, length:', responseText.length);
-      
-      // Parse the text as JSON
-      data = JSON.parse(responseText);
-      console.log('✓ Response parsed successfully');
-      console.log('✓ Response structure keys:', Object.keys(data));
-      console.log('✓ Model used by API:', data.model || 'unknown');
-    } catch (jsonError) {
-      console.error('❌ Error parsing JSON response:', jsonError);
-      console.error('❌ Raw response text (first 500 chars):', responseText?.substring(0, 500));
-      const errorMsg = 'Invalid JSON response from Perplexity API';
-      await markReportFailed(reportId, errorMsg);
-      return new Response(JSON.stringify({ 
-        error: errorMsg,
-        success: false,
-        details: jsonError.message
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    let reportContent = combinedContent;
     
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected API response structure:', data);
-      const errorMsg = 'Invalid response structure from Perplexity API';
-      await markReportFailed(reportId, errorMsg);
-      return new Response(JSON.stringify({ 
-        error: errorMsg,
-        success: false 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    let reportContent = data.choices[0].message.content;
-    
-    if (!reportContent) {
-      console.error('No content in API response');
-      const errorMsg = 'No report content received from Perplexity API';
-      await markReportFailed(reportId, errorMsg);
-      return new Response(JSON.stringify({ 
-        error: errorMsg,
-        success: false 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Filter out reasoning sections from Sonar Deep Research model
     // Remove content between reasoning markers and thinking blocks
     reportContent = reportContent
@@ -2412,8 +2432,8 @@ ${templateContext}
       .trim();
 
     // Extract citations and sources from the response
-    const citations = data.citations || [];
-    const searchResults = data.search_results || [];
+    const citations = allCitations;
+    const searchResults: any[] = [];
     
     // Format sources section
     let sourcesContent = '';
@@ -2422,8 +2442,10 @@ ${templateContext}
       
       if (citations.length > 0) {
         sourcesContent += '### Citations:\n';
-        citations.forEach((citation: any, index: number) => {
-          sourcesContent += `${index + 1}. ${citation.url || citation.title || citation}\n`;
+        // Deduplicate citations
+        const uniqueCitations = [...new Set(citations.map((c: any) => c.url || c.title || c))];
+        uniqueCitations.forEach((citation: any, index: number) => {
+          sourcesContent += `${index + 1}. ${citation}\n`;
         });
         sourcesContent += '\n';
       }
@@ -2440,39 +2462,6 @@ ${templateContext}
 
     console.log('Report generated successfully, content length:', reportContent.length);
     console.log('Citations found:', citations.length);
-    console.log('Search results found:', searchResults.length);
-
-    // Add contact details and professional disclaimer at the end of the report
-    const contactAndDisclaimer = `\n\n---
-
-## 📞 CONTACT US
-
-**Let's discuss your next investment opportunity**
-
-- 🌐 **Website:** [npcservices.com.au](https://npcservices.com.au)
-- 📧 **Email:** [admin@npcservices.com.au](mailto:admin@npcservices.com.au)
-- 📱 **Phone:** [0433 005 110](tel:+61433005110)
-
----
-
-## ⚖️ PROFESSIONAL DISCLAIMER
-
-As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice.
-
-While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment.
-
-It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses.
-
-Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process.
-
-Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors.
-
-By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions.
-
-Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.`;
-
-    // Append contact details and disclaimer to report content
-    reportContent = reportContent + contactAndDisclaimer;
 
     // Validate report structure against schema
     console.log('🔍 Validating report structure...');
