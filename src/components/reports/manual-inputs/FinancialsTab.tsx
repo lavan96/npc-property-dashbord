@@ -159,8 +159,8 @@ export function FinancialsTab({
         script.setAttribute('data-state', detectedState);
         document.body.appendChild(script);
 
-        // Show the calculator div
-        const calcDiv = document.getElementById('stamp-duty-calculator-modal');
+        // Show the calculator div (must use exact ID the external script expects)
+        const calcDiv = document.getElementById('stamp-duty-calculator');
         if (calcDiv) {
           calcDiv.classList.remove('hidden');
         }
@@ -173,7 +173,7 @@ export function FinancialsTab({
       if (existingScript) {
         existingScript.remove();
       }
-      const calcDiv = document.getElementById('stamp-duty-calculator-modal');
+      const calcDiv = document.getElementById('stamp-duty-calculator');
       if (calcDiv) {
         calcDiv.classList.add('hidden');
       }
@@ -190,7 +190,7 @@ export function FinancialsTab({
 
   // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const calcContainer = document.getElementById('stamp-duty-calculator-modal');
+    const calcContainer = document.getElementById('stamp-duty-calculator');
     if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
@@ -662,9 +662,10 @@ export function FinancialsTab({
                 <Separator />
 
                 {/* External Calculator Embed */}
+                {/* External Calculator Embed - IDs must match exactly what the script expects */}
                 <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                  <div id="stamp-duty-calculator-modal" className="orange-theme hidden">
-                    <div id="stamp-duty-anchors-modal">
+                  <div id="stamp-duty-calculator" className="orange-theme hidden">
+                    <div id="stamp-duty-anchors">
                       <p>
                         Stamp Duty Calculator from{' '}
                         <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
