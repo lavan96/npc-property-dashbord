@@ -116,31 +116,106 @@ export function calculateDepreciation(
   allComps: DepreciationComp[], 
   input: DepreciationInput
 ): DepreciationResult | null {
+  console.group('🧮 Depreciation Calculation Debug');
+  console.log('📊 Input Parameters:', {
+    purchasePrice: input.purchasePrice,
+    buildYear: input.buildYear,
+    purchaseDateCategory: input.purchaseDateCategory,
+    propertyType: input.propertyType,
+    finishStandard: input.finishStandard,
+    nearestCity: input.nearestCity,
+    renovated: input.renovated,
+    fullyFurnished: input.fullyFurnished,
+  });
+  console.log('📦 Total comps received from database:', allComps.length);
+  
+  // Validate comps data
+  if (!allComps || allComps.length === 0) {
+    console.error('❌ No comps data received from database!');
+    console.groupEnd();
+    return null;
+  }
+  
+  // Log sample of comps to verify structure
+  console.log('🔍 Sample comp structure (first record):', allComps[0]);
+  
   // Step A: Hard filter
   let filtered = hardFilterComps(allComps, input);
+  console.log('Step A - Hard filter results:', filtered.length, 'comps');
+  
+  // Debug: Check what's in the data that doesn't match
+  if (filtered.length < MIN_COMPS_REQUIRED) {
+    const uniqueCategories = [...new Set(allComps.map(c => c.purchase_date_category))];
+    const uniqueTypes = [...new Set(allComps.map(c => c.property_type))];
+    const uniqueFinish = [...new Set(allComps.map(c => c.finish_standard))];
+    const uniqueCities = [...new Set(allComps.map(c => c.nearest_city))];
+    
+    console.warn('⚠️ Not enough matches after hard filter. Available values in database:');
+    console.log('  - purchase_date_categories:', uniqueCategories);
+    console.log('  - property_types:', uniqueTypes);
+    console.log('  - finish_standards:', uniqueFinish);
+    console.log('  - nearest_cities:', uniqueCities);
+    
+    // Check each filter individually
+    const byCategory = allComps.filter(c => c.purchase_date_category === input.purchaseDateCategory);
+    const byType = allComps.filter(c => c.property_type === input.propertyType);
+    const byFinish = allComps.filter(c => c.finish_standard === input.finishStandard);
+    const byCity = allComps.filter(c => c.nearest_city === input.nearestCity);
+    
+    console.log('  Filter breakdown:');
+    console.log(`    - Matching purchase_date_category "${input.purchaseDateCategory}":`, byCategory.length);
+    console.log(`    - Matching property_type "${input.propertyType}":`, byType.length);
+    console.log(`    - Matching finish_standard "${input.finishStandard}":`, byFinish.length);
+    console.log(`    - Matching nearest_city "${input.nearestCity}":`, byCity.length);
+  }
   
   // Fallback: If townhouse has no matches, try house data
   if (filtered.length < MIN_COMPS_REQUIRED && input.propertyType === 'townhouse') {
     const fallbackInput = { ...input, propertyType: 'house' as const };
     filtered = hardFilterComps(allComps, fallbackInput);
-    console.log(`Townhouse fallback: Using house data (${filtered.length} comps found)`);
+    console.log(`🔄 Townhouse fallback: Using house data (${filtered.length} comps found)`);
   }
   
   // Step B: Score
   const scored = scoreComps(filtered, input);
+  console.log('Step B - Scored comps:', scored.length);
+  if (scored.length > 0) {
+    const scores = scored.map(c => c.score);
+    console.log('  Score range:', Math.min(...scores).toFixed(3), '-', Math.max(...scores).toFixed(3));
+    console.log('  Average score:', (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(3));
+  }
   
   // Step C: Select top comps
   const topComps = selectTopComps(scored);
+  console.log('Step C - Top comps selected:', topComps.length, `(max ${MAX_COMPS_TO_USE})`);
   
   // Check minimum requirement
   if (topComps.length < MIN_COMPS_REQUIRED) {
+    console.error(`❌ FAILED: Only ${topComps.length} comps found, need minimum ${MIN_COMPS_REQUIRED}`);
+    console.groupEnd();
     return null;
   }
   
+  // Log top comp details
+  console.log('📋 Top 3 comps used:');
+  topComps.slice(0, 3).forEach((comp, i) => {
+    console.log(`  ${i + 1}. Price: $${comp.purchase_price.toLocaleString()}, Year: ${comp.build_year}, Score: ${comp.score.toFixed(3)}`);
+  });
+  
   // Step D: Blend results
   const blended = blendResults(topComps);
+  console.log('Step D - Blended DV Year 1:', blended.dv[0]?.toFixed(0));
+  console.log('Step D - Blended PC Year 1:', blended.pc[0]?.toFixed(0));
   
   // Step E: Scale by price
+  const avgCompPrice = topComps.reduce((sum, c) => sum + c.purchase_price, 0) / topComps.length;
+  const scale = input.purchasePrice / avgCompPrice;
+  console.log('Step E - Price scaling:', {
+    userPrice: input.purchasePrice,
+    avgCompPrice: avgCompPrice.toFixed(0),
+    scaleFactor: scale.toFixed(4),
+  });
+  
   const scaled = scaleByPrice(blended, topComps, input.purchasePrice);
   
   // Calculate totals
@@ -150,6 +225,14 @@ export function calculateDepreciation(
   // Calculate confidence score (based on count and score distribution)
   const avgScore = topComps.reduce((sum, c) => sum + c.score, 0) / topComps.length;
   const confidenceScore = Math.min(100, (topComps.length / MAX_COMPS_TO_USE) * 50 + (avgScore * 50));
+  
+  console.log('✅ CALCULATION COMPLETE:');
+  console.log('  DV Year 1:', roundToThousand(scaled.dv[0]).toLocaleString());
+  console.log('  PC Year 1:', roundToThousand(scaled.pc[0]).toLocaleString());
+  console.log('  DV 10-Year Total:', roundToThousand(dvTotal).toLocaleString());
+  console.log('  PC 10-Year Total:', roundToThousand(pcTotal).toLocaleString());
+  console.log('  Confidence:', confidenceScore.toFixed(0) + '%');
+  console.groupEnd();
   
   return {
     dv: scaled.dv,
