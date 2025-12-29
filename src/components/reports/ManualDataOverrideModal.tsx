@@ -19,6 +19,7 @@ import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRo
 import { STATE_MAPPING } from '@/lib/states';
 import { MortgageRepaymentCalculator } from './MortgageRepaymentCalculator';
 import { DepreciationValueCalculator } from './DepreciationValueCalculator';
+import { LandTaxCalculator } from './LandTaxCalculator';
 import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 
@@ -60,6 +61,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [includeDepreciationInCashFlow, setIncludeDepreciationInCashFlow] = useState(true);
   const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
   const [showStampDutyCalculator, setShowStampDutyCalculator] = useState(false);
+  const [showLandTaxCalculator, setShowLandTaxCalculator] = useState(false);
   const [detectedState, setDetectedState] = useState<string>('All');
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const [estimatingExpenses, setEstimatingExpenses] = useState(false);
@@ -1523,6 +1525,72 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                             <li>Click "Use Calculated Stamp Duty Value" to auto-populate</li>
                           </ol>
                         </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {/* Land Tax Calculator */}
+                  <Collapsible 
+                    open={showLandTaxCalculator} 
+                    onOpenChange={setShowLandTaxCalculator}
+                    className="rounded-lg border bg-gradient-to-br from-card to-muted/20"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-green-500/10">
+                            <Calculator className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div className="text-left">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-foreground">Land Tax Calculator</p>
+                              {detectedState !== 'All' && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {detectedState} detected
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Calculate annual land tax based on state rates and owner type
+                            </p>
+                          </div>
+                        </div>
+                        {showLandTaxCalculator ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-4">
+                        <Separator />
+                        <LandTaxCalculator
+                          propertyAddress={report?.property_address}
+                          detectedState={detectedState !== 'All' ? detectedState : undefined}
+                          purchasePrice={
+                            overrides.purchasePrice ?? 
+                            report?.financial_calculations?.purchasePrice ?? 
+                            report?.financial_calculations?.propertyValue ?? 
+                            0
+                          }
+                          onLandTaxCalculated={(landTax) => {
+                            if (landTax) {
+                              setOverrides(prev => ({
+                                ...prev,
+                                landTax: landTax
+                              }));
+                              setHasChanges(true);
+                              toast({
+                                title: "Land Tax Applied",
+                                description: `$${landTax.toLocaleString()} annual land tax has been applied.`,
+                              });
+                            }
+                          }}
+                        />
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
