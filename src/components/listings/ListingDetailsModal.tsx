@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Copy, Bed, Bath, Car, Calendar, MapPin, Building, User, Eye, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
+import { ExternalLink, Copy, Bed, Bath, Car, Calendar, MapPin, Building, User, Eye, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,6 @@ import { InvestmentReportModal } from '@/components/listings/InvestmentReportMod
 import { getFullStateName } from '@/lib/states';
 import { PropertyListing } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 interface ListingDetailsModalProps {
   listing: PropertyListing | null;
@@ -20,9 +18,7 @@ interface ListingDetailsModalProps {
 
 export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetailsModalProps) {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [investmentModalOpen, setInvestmentModalOpen] = useState(false);
-  const [generatingWithPerplexity, setGeneratingWithPerplexity] = useState(false);
 
   if (!listing) return null;
 
@@ -79,90 +75,6 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
   const openWebLink = () => {
     if (listing.webLinks) {
       window.open(listing.webLinks, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  const handleGenerateWithPerplexity = async () => {
-    if (!listing) return;
-    
-    setGeneratingWithPerplexity(true);
-    
-    try {
-      const propertyAddress = listing.location || listing.address || 'Unknown Address';
-      
-      toast({
-        title: "Generating Report",
-        description: "Creating investment report with Perplexity AI...",
-      });
-
-      // Create initial report record
-      const { data: reportData, error: createError } = await supabase
-        .from('investment_reports')
-        .insert({
-          property_address: propertyAddress,
-          property_listing_id: listing.id,
-          report_content: 'Generating with Perplexity AI...',
-          status: 'processing',
-          report_tier: 'standard',
-          property_specs: {
-            bedrooms: listing.beds,
-            bathrooms: listing.baths,
-            carSpaces: listing.carSpaces,
-            propertyType: listing.propertyType,
-            price: listing.price,
-            suburb: listing.suburb,
-            state: listing.state,
-            postcode: listing.zipCode
-          }
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-
-      // Call generate-investment-report which uses OpenAI, then enhance with Perplexity
-      const { data: genData, error: genError } = await supabase.functions.invoke('generate-investment-report', {
-        body: {
-          propertyAddress,
-          propertyDetails: {
-            id: listing.id,
-            price: listing.price,
-            propertyType: listing.propertyType,
-            beds: listing.beds,
-            baths: listing.baths,
-            carSpaces: listing.carSpaces,
-            suburb: listing.suburb,
-            state: listing.state,
-            zipCode: listing.zipCode,
-            landSize: listing.landSize,
-            description: listing.description,
-            features: listing.features
-          },
-          reportId: reportData.id,
-          usePerplexity: true // Flag to use Perplexity for enhanced analysis
-        }
-      });
-
-      if (genError) throw genError;
-
-      toast({
-        title: "Report Generated",
-        description: "Your Perplexity-enhanced investment report is ready!",
-      });
-
-      // Navigate to the report
-      onClose();
-      navigate(`/reports/${reportData.id}`);
-      
-    } catch (error: any) {
-      console.error('Error generating report with Perplexity:', error);
-      toast({
-        title: "Generation Failed",
-        description: error.message || "Failed to generate report with Perplexity",
-        variant: "destructive",
-      });
-    } finally {
-      setGeneratingWithPerplexity(false);
     }
   };
 
@@ -486,28 +398,6 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               Investment Report
-            </Button>
-
-            {/* Perplexity-branded button */}
-            <Button 
-              onClick={handleGenerateWithPerplexity}
-              disabled={generatingWithPerplexity}
-              className="bg-[#1A1A2E] hover:bg-[#1A1A2E]/90 text-white border-0"
-              style={{ 
-                background: 'linear-gradient(135deg, #1A1A2E 0%, #20B2AA 100%)',
-              }}
-            >
-              {generatingWithPerplexity ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Investment Report with Perplexity
-                </>
-              )}
             </Button>
 
             {listing.webLinks && (
