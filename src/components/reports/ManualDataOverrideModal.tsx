@@ -315,6 +315,20 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       ]
     },
     {
+      key: 'propertyType',
+      label: 'Property Type',
+      originalValue: report?.financial_calculations?.propertyType || 'house',
+      overrideValue: report?.manual_overrides?.propertyType || null,
+      type: 'select',
+      options: [
+        { value: 'house', label: 'House' },
+        { value: 'apartment', label: 'Apartment/Unit' },
+        { value: 'townhouse', label: 'Townhouse' },
+        { value: 'villa', label: 'Villa' },
+        { value: 'land', label: 'Vacant Land' }
+      ]
+    },
+    {
       key: 'purchasePrice',
       label: 'Purchase Price',
       originalValue: report?.financial_calculations?.purchasePrice || report?.financial_calculations?.propertyValue || null,
@@ -334,6 +348,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       originalValue: report?.financial_calculations?.buildPrice || null,
       overrideValue: report?.manual_overrides?.buildPrice || null,
       prefix: '$'
+    },
+    {
+      key: 'carSpaces',
+      label: 'Car Spaces',
+      originalValue: report?.financial_calculations?.carSpaces || null,
+      overrideValue: report?.manual_overrides?.carSpaces || null
     },
     // Only show deposit value for existing properties (not new builds)
     ...(!isNewBuild ? [{
@@ -385,10 +405,42 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       prefix: '$'
     },
     {
+      key: 'isFirstHomeBuyer',
+      label: 'First Home Buyer',
+      originalValue: report?.manual_overrides?.isFirstHomeBuyer || false,
+      overrideValue: report?.manual_overrides?.isFirstHomeBuyer || null,
+      type: 'select',
+      options: [
+        { value: 'true', label: 'Yes - Eligible for concessions' },
+        { value: 'false', label: 'No' }
+      ]
+    },
+    {
       key: 'bodyCorporateFees',
       label: 'Body Corporate / Strata Fees',
       originalValue: report?.financial_calculations?.bodyCorporateFees || report?.financial_calculations?.strataFees || null,
       overrideValue: report?.manual_overrides?.bodyCorporateFees || null,
+      prefix: '$'
+    },
+    {
+      key: 'strataAdminFund',
+      label: 'Strata Admin Fund',
+      originalValue: report?.financial_calculations?.strataAdminFund || null,
+      overrideValue: report?.manual_overrides?.strataAdminFund || null,
+      prefix: '$'
+    },
+    {
+      key: 'strataSinkingFund',
+      label: 'Strata Sinking Fund',
+      originalValue: report?.financial_calculations?.strataSinkingFund || null,
+      overrideValue: report?.manual_overrides?.strataSinkingFund || null,
+      prefix: '$'
+    },
+    {
+      key: 'strataSpecialLevies',
+      label: 'Strata Special Levies',
+      originalValue: report?.financial_calculations?.strataSpecialLevies || null,
+      overrideValue: report?.manual_overrides?.strataSpecialLevies || null,
       prefix: '$'
     },
     {
@@ -457,6 +509,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       isCashFlowField: true
     }] : []),
   ];
+
 
   const propertySpecFields: OverrideField[] = [
     {
@@ -950,7 +1003,10 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       // Apply override mapping to nested structure
       const overrideMapping: Record<string, string> = {
         'purchasePrice': 'initialCosts.propertyValue',
+        'propertyType': 'propertySpecs.propertyType',
+        'carSpaces': 'propertySpecs.carSpaces',
         'stampDuty': 'initialCosts.stampDuty',
+        'isFirstHomeBuyer': 'purchaseDetails.isFirstHomeBuyer',
         'depositValue': 'initialCosts.deposit',
         'loanToValueRatio': 'keyMetrics.lvr',
         'interestRate': 'loanDetails.interestRate',
@@ -958,6 +1014,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         'councilRates': 'annualCosts.councilRates',
         'waterRates': 'annualCosts.waterRates',
         'bodyCorporateFees': 'annualCosts.strataFees',
+        'strataAdminFund': 'annualCosts.strataAdminFund',
+        'strataSinkingFund': 'annualCosts.strataSinkingFund',
+        'strataSpecialLevies': 'annualCosts.strataSpecialLevies',
         'landTax': 'annualCosts.landTax',
         'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
         'propertyManagementFees': 'annualCosts.propertyManagementPercent',
