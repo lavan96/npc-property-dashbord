@@ -45,6 +45,36 @@ async function generateReportSection(
   propertyAddress: string,
   enhancedData: any
 ): Promise<{ content: string; citations: any[]; error?: string }> {
+  // For section 4, inject explicit investment score data
+  let investmentScoreContext = '';
+  if (sectionDef.id === 'section4' && enhancedData?.investmentScore) {
+    const score = enhancedData.investmentScore;
+    console.log('📊 Injecting investment score data into section 4:', {
+      totalScore: score.totalScore,
+      grade: score.grade,
+      recommendation: score.recommendation
+    });
+    
+    investmentScoreContext = `
+**INVESTMENT SCORE DATA (USE THESE EXACT VALUES):**
+- Total Investment Score: ${score.totalScore}/100
+- Investment Grade: ${score.grade}
+- Recommendation: ${score.recommendation}
+- Growth Score: ${score.breakdown?.growthScore?.score || 'N/A'}/100 (Weight: ${score.breakdown?.growthScore?.weight || 40}%)
+- Location Score: ${score.breakdown?.locationScore?.score || 'N/A'}/100 (Weight: ${score.breakdown?.locationScore?.weight || 25}%)
+- Yield Score: ${score.breakdown?.yieldScore?.score || 'N/A'}/100 (Weight: ${score.breakdown?.yieldScore?.weight || 15}%)
+- Demand Score: ${score.breakdown?.demandScore?.score || 'N/A'}/100 (Weight: ${score.breakdown?.demandScore?.weight || 15}%)
+- Risk Score: ${score.breakdown?.riskScore?.score || 'N/A'}/100 (Weight: ${score.breakdown?.riskScore?.weight || 5}%)
+${score.strengths?.length ? `- Strengths: ${score.strengths.join(', ')}` : ''}
+${score.weaknesses?.length ? `- Weaknesses: ${score.weaknesses.join(', ')}` : ''}
+${score.opportunities?.length ? `- Opportunities: ${score.opportunities.join(', ')}` : ''}
+${score.risks?.length ? `- Risks: ${score.risks.join(', ')}` : ''}
+
+**CRITICAL: You MUST include the Investment Score Analysis section with the EXACT values above. Do NOT skip this section or use placeholder values.**
+
+`;
+  }
+
   const sectionPrompt = `${basePrompt}
 
 ---
@@ -52,7 +82,7 @@ async function generateReportSection(
 You are generating ONLY the following sections of a comprehensive investment report:
 ${sectionDef.sections.map(s => `- ${s}`).join('\n')}
 
-${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency, DO NOT repeat this content):**
+${investmentScoreContext}${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency, DO NOT repeat this content):**
 ${previousSections.substring(0, 3000)}...
 ` : ''}
 
@@ -64,6 +94,7 @@ ${previousSections.substring(0, 3000)}...
 5. Each section must meet minimum word counts as specified in the template
 6. Be thorough and data-driven - this is a premium client-facing report
 7. Start immediately with the first section heading - no preamble
+${sectionDef.id === 'section4' ? '8. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
 
 Generate the ${sectionDef.name} sections now:`;
 

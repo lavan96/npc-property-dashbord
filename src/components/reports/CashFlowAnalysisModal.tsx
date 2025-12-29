@@ -864,10 +864,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const monthlyRate = interestRate / 12;
     const durationMonths = Math.min(baseFinancialData.constructionDurationMonths || 7, 24);
 
-    // Land loan (assuming 90% LVR on land, 10% deposit)
-    const landDeposit = landPrice * 0.10;
-    const landLoan = landPrice - landDeposit;
-    const monthlyLandInterest = landLoan * monthlyRate;
+    // Land interest calculation: Land Cost × Interest Rate / 12
+    // This calculates monthly interest on the full land value
+    const monthlyLandInterest = landPrice * interestRate / 12;
 
     // Get custom stage percentages from manual overrides or use defaults
     const stagePercentages = {
