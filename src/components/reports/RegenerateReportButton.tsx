@@ -41,22 +41,52 @@ export function RegenerateReportButton({
       setRegenerating(true);
       setShowConfirm(false);
 
-      // Update status to processing
-      const { error: updateError } = await supabase
-        .from('investment_reports')
-        .update({ status: 'processing' })
-        .eq('id', reportId);
+      toast.info('Regenerating report...', {
+        description: 'Fetching report data and manual overrides...'
+      });
 
-      if (updateError) {
-        throw updateError;
+      // Fetch the full report with manual overrides
+      const { data: report, error: fetchError } = await supabase
+        .from('investment_reports')
+        .select('report_content, manual_overrides, financial_calculations, current_version')
+        .eq('id', reportId)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
       }
 
-      // Call the edge function to regenerate the report
-      const { data, error } = await supabase.functions.invoke('generate-investment-report', {
+      if (!report?.report_content) {
+        throw new Error('Report content not found');
+      }
+
+      const newVersion = (report.current_version || 1) + 1;
+
+      // Update version and set status to processing
+      const { error: updateVersionError } = await supabase
+        .from('investment_reports')
+        .update({ 
+          current_version: newVersion,
+          status: 'processing'
+        })
+        .eq('id', reportId);
+
+      if (updateVersionError) {
+        throw updateVersionError;
+      }
+
+      toast.info('Processing with Perplexity AI...', {
+        description: 'Updating qualitative analysis with manual overrides...'
+      });
+
+      // Call the regenerate-report-qualitative edge function
+      const { data, error } = await supabase.functions.invoke('regenerate-report-qualitative', {
         body: {
           reportId,
+          manualOverrides: report.manual_overrides || {},
+          currentReportContent: report.report_content,
           propertyAddress,
-          propertyDetails: null // Will fetch fresh data
+          financialCalculations: report.financial_calculations || {}
         }
       });
 
@@ -68,8 +98,14 @@ export function RegenerateReportButton({
         throw new Error(data.error || 'Failed to regenerate report');
       }
 
+      // Update status back to completed
+      await supabase
+        .from('investment_reports')
+        .update({ status: 'completed' })
+        .eq('id', reportId);
+
       toast.success('Report regenerated successfully', {
-        description: 'The latest version is now available with updated data and calculations.'
+        description: `Version ${newVersion} created with updated qualitative analysis.`
       });
 
       // Log report regeneration activity
@@ -77,7 +113,11 @@ export function RegenerateReportButton({
         actionType: 'report_regenerated',
         entityType: 'investment_report',
         entityId: reportId,
-        entityName: propertyAddress
+        entityName: propertyAddress,
+        metadata: {
+          version: newVersion,
+          hasManualOverrides: Object.keys(report.manual_overrides || {}).length > 0
+        }
       });
 
       // Callback to refresh the parent component
@@ -129,13 +169,12 @@ export function RegenerateReportButton({
             <AlertDialogTitle>Regenerate Report?</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                This will create a new version of the report with:
+                This will use Perplexity AI to create a new version of the report with:
               </p>
               <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Latest property data from all sources</li>
-                <li>Updated financial calculations</li>
-                <li>Current market analysis</li>
-                <li>Refreshed validation checks</li>
+                <li>All manual overrides injected as context</li>
+                <li>Updated qualitative analysis reflecting your changes</li>
+                <li>Revised recommendations and risk assessments</li>
               </ul>
               <p className="pt-2 font-medium">
                 The previous version will be archived for comparison.
