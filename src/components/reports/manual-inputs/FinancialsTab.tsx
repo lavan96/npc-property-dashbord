@@ -276,7 +276,7 @@ export function FinancialsTab({
   const totalAcquisitionCosts = 
     (parseFloat(stampDuty) || 0) +
     (parseFloat(solicitorFees) || 0) +
-    (isNewBuild && agentFee ? parseFloat(agentFee) : 0);
+    (!isNewBuild && agentFee ? parseFloat(agentFee) : 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -739,7 +739,7 @@ export function FinancialsTab({
                 />
               </div>
             </div>
-            {isNewBuild && (
+            {!isNewBuild && (
               <div className="space-y-2">
                 <Label htmlFor="agentFee" className="text-sm font-medium">Agent Fee / Commission</Label>
                 <div className="relative">

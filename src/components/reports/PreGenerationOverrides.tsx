@@ -385,7 +385,7 @@ export function PreGenerationOverrides({
       propertyManagementFees: propertyManagementFees ? parseFloat(propertyManagementFees) : undefined,
       repairsMaintenance: repairsMaintenance ? parseFloat(repairsMaintenance) : undefined,
       lettingFees: lettingFees ? parseFloat(lettingFees) : undefined,
-      agentFee: buildType === 'new_build' && agentFee ? parseFloat(agentFee) : undefined,
+      agentFee: buildType === 'existing_property' && agentFee ? parseFloat(agentFee) : undefined,
       propertyType,
       cpiGrowthRate: cpiGrowthRate ? parseFloat(cpiGrowthRate) : undefined,
       depreciation: depreciation ? parseFloat(depreciation) : undefined,
