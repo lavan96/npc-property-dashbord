@@ -99,10 +99,24 @@ interface UseActivityLoggerReturn {
   logActivity: (params: LogActivityParams) => Promise<void>;
 }
 
-// Get user info from session storage (set during login)
+// Get user info from localStorage session token by decoding or fetching user data
+// This needs to work with the custom auth system that stores session_token in localStorage
 const getCurrentUser = (): { userId: string; username: string } | null => {
   try {
-    const sessionData = sessionStorage.getItem('dashboard_session');
+    // First, check sessionStorage for cached user data (set by auth context)
+    const cachedUser = sessionStorage.getItem('current_user');
+    if (cachedUser) {
+      const user = JSON.parse(cachedUser);
+      if (user.id && user.username) {
+        return {
+          userId: user.id,
+          username: user.username
+        };
+      }
+    }
+    
+    // Fallback: check localStorage for dashboard_session (legacy)
+    const sessionData = localStorage.getItem('dashboard_session');
     if (sessionData) {
       const session = JSON.parse(sessionData);
       return {
@@ -110,6 +124,7 @@ const getCurrentUser = (): { userId: string; username: string } | null => {
         username: session.user?.username || session.username || 'Unknown'
       };
     }
+    
     return null;
   } catch {
     return null;

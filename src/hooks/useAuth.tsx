@@ -58,24 +58,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error.message && error.message.includes('401')) {
           // Expired session - clear silently without logging
           localStorage.removeItem('session_token');
+          sessionStorage.removeItem('current_user');
           setUser(null);
           setRoles([]);
         } else {
           // Unexpected error - log it but still clear session
           console.warn('Session verification error:', error.message || error);
           localStorage.removeItem('session_token');
+          sessionStorage.removeItem('current_user');
           setUser(null);
           setRoles([]);
         }
       } else if (!data?.valid) {
         // Invalid session response - clear silently
         localStorage.removeItem('session_token');
+        sessionStorage.removeItem('current_user');
         setUser(null);
         setRoles([]);
       } else {
         // Valid session - set user and roles
         setUser(data.user);
         setRoles(data.roles || []);
+        
+        // Cache user data in sessionStorage for activity logging
+        sessionStorage.setItem('current_user', JSON.stringify({
+          id: data.user.id,
+          username: data.user.username
+        }));
       }
     } catch (error: any) {
       // Network or other errors - clear session silently
@@ -84,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('Session check failed:', error?.message || 'Unknown error');
       }
       localStorage.removeItem('session_token');
+      sessionStorage.removeItem('current_user');
       setUser(null);
       setRoles([]);
     } finally {
@@ -103,6 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Store session token
       localStorage.setItem('session_token', data.session_token);
+      
+      // Cache user data in sessionStorage for activity logging
+      sessionStorage.setItem('current_user', JSON.stringify({
+        id: data.user.id,
+        username: data.user.username
+      }));
+      
       setUser(data.user);
       setRoles(data.roles || []);
       
@@ -152,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 
     localStorage.removeItem('session_token');
+    sessionStorage.removeItem('current_user');
     setUser(null);
     setRoles([]);
   };
