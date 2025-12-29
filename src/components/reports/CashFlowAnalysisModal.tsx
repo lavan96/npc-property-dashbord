@@ -861,7 +861,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const landPrice = baseFinancialData.landPrice || 0;
     const buildPrice = baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - landPrice);
     const interestRate = baseFinancialData.interestRate / 100; // Annual rate
-    const monthlyRate = interestRate / 12;
     const durationMonths = Math.min(baseFinancialData.constructionDurationMonths || 7, 24);
 
     // Land interest calculation: Land Cost × Interest Rate / 12
@@ -951,9 +950,27 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         stagesThisMonth.forEach((stageData) => {
           const s = stageData.stage;
           const buildAmount = (buildPrice * s.percentage) / 100;
+          
+          // For Deposit stage, no build interest is charged
+          // For other stages: Build Interest = (Cumulative Stage Pricing up to and including this stage) × Interest Rate ÷ 12
+          const isDeposit = s.stage === 'Deposit';
+          
+          // Add this stage to cumulative drawn
           cumulativeDrawn += buildAmount;
           
-          const buildInterest = cumulativeDrawn * monthlyRate;
+          // Calculate build interest based on the formula:
+          // - Deposit: No interest (0)
+          // - Slab/Base: (Slab pricing) × Interest Rate ÷ 12
+          // - Frame: (Slab + Frame pricing) × Interest Rate ÷ 12
+          // - Lock-up: (Slab + Frame + Lock-up pricing) × Interest Rate ÷ 12
+          // - Fixing: (Slab + Frame + Lock-up + Fixing pricing) × Interest Rate ÷ 12
+          // - Practical Completion: (All stage pricings) × Interest Rate ÷ 12
+          // Note: "cumulativeDrawn" at this point includes all stages up to and including current
+          // But for interest calc, we exclude the deposit amount
+          const depositAmount = (buildPrice * stagePercentages.deposit) / 100;
+          const cumulativeForInterest = isDeposit ? 0 : (cumulativeDrawn - depositAmount);
+          const buildInterest = isDeposit ? 0 : (cumulativeForInterest * interestRate / 12);
+          
           const combinedRepayment = monthlyLandInterest + buildInterest;
           
           totalBuildInterest += buildInterest;
@@ -973,7 +990,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         });
       } else {
         // No stage this month - interest-only row
-        const buildInterest = cumulativeDrawn * monthlyRate;
+        // Use cumulative drawn excluding deposit for interest calculation
+        const depositAmount = (buildPrice * stagePercentages.deposit) / 100;
+        const cumulativeForInterest = Math.max(0, cumulativeDrawn - depositAmount);
+        const buildInterest = cumulativeForInterest * interestRate / 12;
         const combinedRepayment = monthlyLandInterest + buildInterest;
         
         totalBuildInterest += buildInterest;
