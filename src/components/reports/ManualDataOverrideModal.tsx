@@ -2045,7 +2045,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
                         {/* Year 1 Input */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Year 1 Depreciation (from Washington Brown)</Label>
+                          <Label className="text-sm font-medium">Year 1 Depreciation (from calculator)</Label>
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground">$</span>
                             <Input
@@ -2057,7 +2057,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                             />
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Copy the Year 1 value from Washington Brown calculator above
+                            Copy the Year 1 value from the Depreciation Value Calculator above
                           </p>
                         </div>
 
