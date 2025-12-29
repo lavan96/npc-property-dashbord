@@ -513,7 +513,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               </CardHeader>
               <Separator className="flex-shrink-0" />
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="p-4 border-b bg-muted/50 flex-shrink-0 flex items-center gap-4">
+                <div className="p-4 border-b bg-muted/50 flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-4">
                   <ErrorBoundary
                     fallback={
                       <div className="text-sm text-muted-foreground">
