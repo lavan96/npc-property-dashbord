@@ -477,6 +477,14 @@ export function PreGenerationOverrides({
                 setLandPrice={setLandPrice}
                 buildPrice={buildPrice}
                 setBuildPrice={setBuildPrice}
+                propertyType={propertyType}
+                setPropertyType={setPropertyType}
+                carSpaces={carSpaces}
+                setCarSpaces={setCarSpaces}
+                landSizeSqm={landSizeSqm}
+                setLandSizeSqm={setLandSizeSqm}
+                buildSizeSqm={buildSizeSqm}
+                setBuildSizeSqm={setBuildSizeSqm}
                 disabled={disabled}
               />
             </TabsContent>

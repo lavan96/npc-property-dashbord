@@ -1,8 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Building2, Info } from 'lucide-react';
+import { Building2, Info, Car, Ruler } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { useCallback } from 'react';
 import { BuildTypeSelector } from '../shared/BuildTypeSelector';
@@ -18,6 +19,15 @@ interface PropertyTabProps {
   setLandPrice: (value: string) => void;
   buildPrice: string;
   setBuildPrice: (value: string) => void;
+  // New fields for feature parity
+  propertyType?: string;
+  setPropertyType?: (value: string) => void;
+  carSpaces?: string;
+  setCarSpaces?: (value: string) => void;
+  landSizeSqm?: string;
+  setLandSizeSqm?: (value: string) => void;
+  buildSizeSqm?: string;
+  setBuildSizeSqm?: (value: string) => void;
   disabled?: boolean;
 }
 
@@ -32,6 +42,14 @@ export function PropertyTab({
   setLandPrice,
   buildPrice,
   setBuildPrice,
+  propertyType,
+  setPropertyType,
+  carSpaces,
+  setCarSpaces,
+  landSizeSqm,
+  setLandSizeSqm,
+  buildSizeSqm,
+  setBuildSizeSqm,
   disabled = false
 }: PropertyTabProps) {
   const isNewBuild = buildType === 'new_build';
@@ -41,6 +59,15 @@ export function PropertyTab({
       const rawValue = removeCommas(e.target.value);
       if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*$/.test(rawValue)) {
         setter(rawValue);
+      }
+    };
+  }, []);
+
+  const handleNumberChange = useCallback((setter: (value: string) => void) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      if (value === '' || /^\d*$/.test(value)) {
+        setter(value);
       }
     };
   }, []);
@@ -152,6 +179,102 @@ export function PropertyTab({
           )}
         </CardContent>
       </Card>
+
+      {/* Property Specifications - New Section */}
+      {(setPropertyType || setCarSpaces || setLandSizeSqm || setBuildSizeSqm) && (
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+              <Ruler className="h-5 w-5 text-primary" />
+              Property Specifications
+            </h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Property Type */}
+              {setPropertyType && (
+                <div className="space-y-2">
+                  <Label htmlFor="propertyType" className="text-sm font-medium">Property Type</Label>
+                  <Select 
+                    value={propertyType || 'house'} 
+                    onValueChange={setPropertyType}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="house">House</SelectItem>
+                      <SelectItem value="apartment">Apartment/Unit</SelectItem>
+                      <SelectItem value="townhouse">Townhouse</SelectItem>
+                      <SelectItem value="villa">Villa</SelectItem>
+                      <SelectItem value="land">Vacant Land</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Car Spaces */}
+              {setCarSpaces && (
+                <div className="space-y-2">
+                  <Label htmlFor="carSpaces" className="text-sm font-medium flex items-center gap-1">
+                    <Car className="h-3 w-3" />
+                    Car Spaces
+                  </Label>
+                  <Input
+                    id="carSpaces"
+                    type="text"
+                    inputMode="numeric"
+                    value={carSpaces || ''}
+                    onChange={handleNumberChange(setCarSpaces)}
+                    placeholder="2"
+                    disabled={disabled}
+                  />
+                </div>
+              )}
+
+              {/* Land Size */}
+              {setLandSizeSqm && (
+                <div className="space-y-2">
+                  <Label htmlFor="landSizeSqm" className="text-sm font-medium">Land Size</Label>
+                  <div className="relative">
+                    <Input
+                      id="landSizeSqm"
+                      type="text"
+                      inputMode="numeric"
+                      value={landSizeSqm || ''}
+                      onChange={handleNumberChange(setLandSizeSqm)}
+                      placeholder="450"
+                      disabled={disabled}
+                      className="pr-12"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Build Size */}
+              {setBuildSizeSqm && (
+                <div className="space-y-2">
+                  <Label htmlFor="buildSizeSqm" className="text-sm font-medium">Build Size</Label>
+                  <div className="relative">
+                    <Input
+                      id="buildSizeSqm"
+                      type="text"
+                      inputMode="numeric"
+                      value={buildSizeSqm || ''}
+                      onChange={handleNumberChange(setBuildSizeSqm)}
+                      placeholder="180"
+                      disabled={disabled}
+                      className="pr-12"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
