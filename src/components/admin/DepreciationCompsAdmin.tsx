@@ -116,6 +116,38 @@ export function DepreciationCompsAdmin() {
     }
   };
   
+  // Normalize enum values to match database expectations (lowercase with underscores)
+  const normalizeEnumValue = (value: string, fieldName: string): string => {
+    if (!value) return value;
+    
+    // Convert to lowercase and replace spaces with underscores
+    let normalized = value.toLowerCase().replace(/\s+/g, '_');
+    
+    // Valid enum values for each field
+    const validValues: Record<string, string[]> = {
+      nearest_city: ['sydney_nsw', 'melbourne_vic', 'perth_wa', 'brisbane_qld', 'adelaide_sa', 'cairns_qld', 'canberra_act', 'darwin_nt', 'hobart_tas'],
+      property_type: ['house', 'townhouse', 'unit', 'highrise', 'commercial', 'industrial'],
+      finish_standard: ['low', 'medium', 'high'],
+      purchase_date_category: ['pre_budget', 'post_budget_second_hand', 'post_budget_brand_new'],
+    };
+    
+    // Check if this field has valid values defined
+    if (validValues[fieldName]) {
+      // Try to find a matching valid value
+      const match = validValues[fieldName].find(v => v === normalized);
+      if (match) return match;
+      
+      // Try partial matching for common variations
+      const partialMatch = validValues[fieldName].find(v => 
+        v.replace(/_/g, '') === normalized.replace(/_/g, '') ||
+        normalized.includes(v) || v.includes(normalized)
+      );
+      if (partialMatch) return partialMatch;
+    }
+    
+    return normalized;
+  };
+
   // Import CSV data
   const handleImportCsv = async () => {
     if (csvFullData.length < 2) return;
@@ -126,6 +158,7 @@ export function DepreciationCompsAdmin() {
       const rows = csvFullData.slice(1); // Use FULL data, not preview
       
       const records: Partial<DepreciationComp>[] = [];
+      const enumFields = ['nearest_city', 'property_type', 'finish_standard', 'purchase_date_category'];
       
       for (const row of rows) {
         if (row.length < headers.length) continue;
@@ -139,6 +172,9 @@ export function DepreciationCompsAdmin() {
             record[header] = parseFloat(value) || 0;
           } else if (header === 'renovated' || header === 'fully_furnished') {
             record[header] = value.toLowerCase() === 'true' || value === '1';
+          } else if (enumFields.includes(header)) {
+            // Normalize enum values
+            record[header] = normalizeEnumValue(value, header);
           } else {
             record[header] = value;
           }
