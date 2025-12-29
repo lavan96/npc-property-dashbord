@@ -117,7 +117,14 @@ export function calculateDepreciation(
   input: DepreciationInput
 ): DepreciationResult | null {
   // Step A: Hard filter
-  const filtered = hardFilterComps(allComps, input);
+  let filtered = hardFilterComps(allComps, input);
+  
+  // Fallback: If townhouse has no matches, try house data
+  if (filtered.length < MIN_COMPS_REQUIRED && input.propertyType === 'townhouse') {
+    const fallbackInput = { ...input, propertyType: 'house' as const };
+    filtered = hardFilterComps(allComps, fallbackInput);
+    console.log(`Townhouse fallback: Using house data (${filtered.length} comps found)`);
+  }
   
   // Step B: Score
   const scored = scoreComps(filtered, input);
