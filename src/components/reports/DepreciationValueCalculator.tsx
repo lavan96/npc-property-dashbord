@@ -123,14 +123,41 @@ export function DepreciationValueCalculator({
     setResult(null);
     
     try {
+      console.group('🏠 Depreciation Calculator - Fetch & Calculate');
+      console.log('Fetching comps from database...');
+      
       // Fetch comps from database
-      const { data: comps, error } = await supabase
+      const { data: comps, error, count } = await supabase
         .from('depreciation_comps')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('renovated', false)
         .eq('fully_furnished', false);
       
-      if (error) throw error;
+      console.log('Database query result:', {
+        error: error ? error.message : null,
+        recordsReturned: comps?.length ?? 0,
+        totalCount: count,
+      });
+      
+      if (error) {
+        console.error('❌ Supabase query error:', error);
+        throw error;
+      }
+      
+      if (!comps || comps.length === 0) {
+        console.error('❌ No comps returned from database!');
+        console.groupEnd();
+        setNoMatchFound(true);
+        toast({
+          title: "Database Empty",
+          description: "No depreciation comparison data found in the database.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log('✅ Comps fetched successfully:', comps.length, 'records');
+      console.log('Sample record keys:', Object.keys(comps[0]));
       
       const input: DepreciationInput = {
         purchasePrice: parseFloat(removeCommas(purchasePrice)),
@@ -144,8 +171,13 @@ export function DepreciationValueCalculator({
         fullyFurnished: false,
       };
       
+      console.log('Calling calculateDepreciation with input:', input);
+      
       // Calculate using matching algorithm
       const calcResult = calculateDepreciation(comps as DepreciationComp[] || [], input);
+      
+      console.log('Calculation result:', calcResult ? 'Success' : 'Failed (null)');
+      console.groupEnd();
       
       if (!calcResult) {
         setNoMatchFound(true);
