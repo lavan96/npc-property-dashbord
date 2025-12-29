@@ -1,11 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Building2, Home, Info } from 'lucide-react';
+import { Building2, Info } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { useCallback } from 'react';
+import { BuildTypeSelector } from '../shared/BuildTypeSelector';
 
 interface PropertyTabProps {
   buildType: 'new_build' | 'existing_property';
@@ -51,48 +51,12 @@ export function PropertyTab({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Build Type Selection */}
-      <Card className="border-2">
-        <CardContent className="pt-6">
-          <RadioGroup
-            value={buildType}
-            onValueChange={(value) => onBuildTypeChange(value as 'new_build' | 'existing_property')}
-            className="grid grid-cols-2 gap-4"
-            disabled={disabled}
-          >
-            <Label
-              htmlFor="existing_property"
-              className={`flex flex-col items-center justify-center p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                !isNewBuild 
-                  ? 'border-primary bg-primary/5 shadow-md' 
-                  : 'border-border hover:border-primary/50 hover:bg-muted/50'
-              }`}
-            >
-              <RadioGroupItem value="existing_property" id="existing_property" className="sr-only" />
-              <Home className={`h-10 w-10 mb-3 ${!isNewBuild ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span className={`font-semibold text-lg ${!isNewBuild ? 'text-primary' : 'text-foreground'}`}>
-                Existing Property
-              </span>
-              <span className="text-sm text-muted-foreground mt-1">Established home or apartment</span>
-            </Label>
-            <Label
-              htmlFor="new_build"
-              className={`flex flex-col items-center justify-center p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                isNewBuild 
-                  ? 'border-primary bg-primary/5 shadow-md' 
-                  : 'border-border hover:border-primary/50 hover:bg-muted/50'
-              }`}
-            >
-              <RadioGroupItem value="new_build" id="new_build" className="sr-only" />
-              <Building2 className={`h-10 w-10 mb-3 ${isNewBuild ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span className={`font-semibold text-lg ${isNewBuild ? 'text-primary' : 'text-foreground'}`}>
-                New Build
-              </span>
-              <span className="text-sm text-muted-foreground mt-1">House & land package</span>
-            </Label>
-          </RadioGroup>
-        </CardContent>
-      </Card>
+      {/* Build Type Selection - Using Shared Component */}
+      <BuildTypeSelector
+        value={buildType}
+        onChange={onBuildTypeChange}
+        disabled={disabled}
+      />
 
       {/* Pricing Section */}
       <Card>
