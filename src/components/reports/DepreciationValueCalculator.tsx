@@ -125,22 +125,40 @@ export function DepreciationValueCalculator({
     try {
       console.group('🏠 Depreciation Calculator - Fetch & Calculate');
       console.log('Fetching comps from database...');
-      
-      // Fetch ALL comps from database - must use .range() to override default 1000 row limit
-      // We need all records to find matching comparables across all criteria combinations
-      const { data: comps, error, count } = await supabase
-        .from('depreciation_comps')
-        .select('*', { count: 'exact' })
-        .eq('renovated', false)
-        .eq('fully_furnished', false)
-        .range(0, 49999); // Fetch up to 50,000 records (well above our ~21k dataset)
-      
+
+      // IMPORTANT: Supabase/PostgREST has a default max row limit (often 1000).
+      // To avoid missing matches, we query ONLY the required matching bucket.
+      const fetchBucket = async (typeToUse: PropertyType) => {
+        return supabase
+          .from('depreciation_comps')
+          .select('*', { count: 'exact' })
+          .eq('renovated', false)
+          .eq('fully_furnished', false)
+          .eq('purchase_date_category', purchaseDateCategory)
+          .eq('property_type', typeToUse)
+          .eq('finish_standard', finishStandard)
+          .eq('nearest_city', nearestCity);
+      };
+
+      const MIN_MATCHES_FOR_CALC = 5;
+
+      let { data: comps, error, count } = await fetchBucket(propertyType);
+
+      // If townhouse is selected but there is no townhouse dataset, fall back to house bucket.
+      if (!error && (comps?.length ?? 0) < MIN_MATCHES_FOR_CALC && propertyType === 'townhouse') {
+        console.log('🔄 Townhouse selected but insufficient townhouse comps; falling back to house bucket query.');
+        const fallback = await fetchBucket('house');
+        comps = fallback.data;
+        error = fallback.error;
+        count = fallback.count;
+      }
+
       console.log('Database query result:', {
         error: error ? error.message : null,
         recordsReturned: comps?.length ?? 0,
         totalCount: count,
       });
-      
+
       if (error) {
         console.error('❌ Supabase query error:', error);
         throw error;
