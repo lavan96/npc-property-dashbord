@@ -67,6 +67,7 @@ export function OverrideFieldGroup({
             "font-semibold flex items-center gap-2",
             size === 'sm' ? 'text-base' : 'text-lg'
           )}>
+            <span className="w-2 h-2 bg-primary rounded-full" />
             <IconComponent className={cn(
               "text-primary",
               size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'
