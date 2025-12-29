@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
+import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
@@ -336,10 +337,18 @@ export default function InvestmentReportView() {
           </CardHeader>
           <Separator />
           <CardContent className="p-0 flex-1 flex flex-col">
-            <div className="p-4 border-b bg-muted/50">
+            <div className="p-4 border-b bg-muted/50 flex flex-wrap items-center gap-3">
               <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">PDF tools are unavailable.</div>}>
                 <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
               </ErrorBoundary>
+
+              <RegenerateWithPerplexityButton
+                reportId={report.id}
+                propertyAddress={report.property_address}
+                onRegenerated={handleReportUpdate}
+                variant="default"
+                size="sm"
+              />
             </div>
             <div className="p-6 prose prose-sm max-w-none dark:prose-invert">
               <ErrorBoundary
