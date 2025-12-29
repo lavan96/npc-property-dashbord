@@ -78,7 +78,7 @@ export const CITY_LABELS: Record<NearestCity, string> = {
 };
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
-  house: 'House / Townhouse',
+  house: 'House',
   townhouse: 'Townhouse',
   unit: 'Unit',
   highrise: 'Highrise',
