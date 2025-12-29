@@ -1539,6 +1539,111 @@ export type Database = {
           },
         ]
       }
+      land_tax_addons: {
+        Row: {
+          addon_name: string
+          applies_when: string
+          created_at: string
+          id: string
+          notes: string | null
+          rate: number
+          state: string
+          threshold: number
+        }
+        Insert: {
+          addon_name: string
+          applies_when: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          rate?: number
+          state: string
+          threshold?: number
+        }
+        Update: {
+          addon_name?: string
+          applies_when?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          rate?: number
+          state?: string
+          threshold?: number
+        }
+        Relationships: []
+      }
+      land_tax_quarterly_splits: {
+        Row: {
+          created_at: string
+          id: string
+          leap_year_pct: number
+          non_leap_year_pct: number
+          quarter: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leap_year_pct: number
+          non_leap_year_pct: number
+          quarter: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leap_year_pct?: number
+          non_leap_year_pct?: number
+          quarter?: string
+        }
+        Relationships: []
+      }
+      land_tax_rates: {
+        Row: {
+          base_tax: number
+          created_at: string
+          effective_year: number
+          fixed_charge: number
+          id: string
+          lower_bound: number
+          marginal_rate: number
+          marginal_threshold: number
+          notes: string | null
+          owner_type: string
+          state: string
+          updated_at: string
+          upper_bound: number
+        }
+        Insert: {
+          base_tax?: number
+          created_at?: string
+          effective_year?: number
+          fixed_charge?: number
+          id?: string
+          lower_bound?: number
+          marginal_rate?: number
+          marginal_threshold?: number
+          notes?: string | null
+          owner_type: string
+          state: string
+          updated_at?: string
+          upper_bound?: number
+        }
+        Update: {
+          base_tax?: number
+          created_at?: string
+          effective_year?: number
+          fixed_charge?: number
+          id?: string
+          lower_bound?: number
+          marginal_rate?: number
+          marginal_threshold?: number
+          notes?: string | null
+          owner_type?: string
+          state?: string
+          updated_at?: string
+          upper_bound?: number
+        }
+        Relationships: []
+      }
       median_rent_cache: {
         Row: {
           bedrooms: number
