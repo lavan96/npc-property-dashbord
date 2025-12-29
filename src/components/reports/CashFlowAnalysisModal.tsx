@@ -2177,7 +2177,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           '',
           '',
           '100%',
-          formatCurrency(constructionProgressSchedule.buildPrice),
+          formatCurrency(constructionProgressSchedule.landPrice + constructionProgressSchedule.buildPrice),
           'Total',
           '',
           formatCurrency(constructionProgressSchedule.totals.totalCombinedRepayment),
@@ -2187,19 +2187,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.text(cell, xPos + 1, yPos);
           xPos += scheduleColWidths[idx];
         });
-        yPos += 7;
-
-        // Upfront costs summary
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Total Overall Expenditure to Completion:', margin, yPos);
-        yPos += 4;
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(7);
-        pdf.text(`10% Land: ${formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}   |   5% Build: ${formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}   |   Stamp Duty: ${formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}   |   Solicitor: ${formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}   |   Agent: ${formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}`, margin, yPos);
-        yPos += 4;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`Upfront Cost: ${formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}   |   ${constructionProgressSchedule.durationMonths} Mo Interest: ${formatCurrency(constructionProgressSchedule.totals.totalInterest)}   |   GRAND TOTAL: ${formatCurrency(constructionProgressSchedule.grandTotal)}`, margin, yPos);
         yPos += 10;
       }
 
@@ -2528,7 +2515,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <td></td>
                 <td></td>
                 <td style="text-align: center;">100%</td>
-                <td style="text-align: right;">${formatCurrency(constructionProgressSchedule.buildPrice)}</td>
+                <td style="text-align: right;">${formatCurrency(constructionProgressSchedule.landPrice + constructionProgressSchedule.buildPrice)}</td>
                 <td style="text-align: right;">Total</td>
                 <td></td>
                 <td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalCombinedRepayment)}</td>
@@ -2536,21 +2523,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </tr>
             </tbody>
           </table>
-          <div style="margin-top: 16px; border-top: 1px solid #ddd; padding-top: 12px;">
-            <p style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Total Overall Expenditure to Completion</p>
-            <table style="margin-bottom: 0;">
-              <tbody>
-                <tr><td style="width: 60%;">10% Land Purchase Price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</td></tr>
-                <tr><td>5% Build Contract Price</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</td></tr>
-                <tr><td>Stamp Duty</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</td></tr>
-                <tr><td>Solicitor Cost</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</td></tr>
-                <tr><td>Agent Fee</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}</td></tr>
-                <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</td></tr>
-                <tr><td>${constructionProgressSchedule.durationMonths} Month Staged Progress (Interest)</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td></tr>
-                <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
-              </tbody>
-            </table>
-          </div>
           <p style="font-size: 10px; color: #888; margin-top: 8px;">* Interest calculated at ${constructionProgressSchedule.interestRate}% p.a. Land interest is constant; build interest increases as stages are drawn.</p>
         </div>
         ` : ''}
@@ -3952,7 +3924,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             <TableCell></TableCell>
                             <TableCell></TableCell>
                             <TableCell className="text-center font-bold">100%</TableCell>
-                            <TableCell className="text-right font-bold">{formatCurrency(constructionProgressSchedule.buildPrice)}</TableCell>
+                            <TableCell className="text-right font-bold">{formatCurrency(constructionProgressSchedule.landPrice + constructionProgressSchedule.buildPrice)}</TableCell>
                             <TableCell className="text-right font-semibold">Total</TableCell>
                             <TableCell className="text-right"></TableCell>
                             <TableCell className="text-right font-bold">{formatCurrency(constructionProgressSchedule.totals.totalCombinedRepayment)}</TableCell>
@@ -3960,47 +3932,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           </TableRow>
                         </TableBody>
                       </Table>
-
-                      {/* Total Overall Expenditure to Completion */}
-                      <div className="mt-4 pt-4 border-t">
-                        <h4 className="text-sm font-semibold mb-3">Total Overall Expenditure to Completion</h4>
-                        <Table>
-                          <TableBody>
-                            <TableRow>
-                              <TableCell className="font-medium w-1/2">10% Land Purchase Price</TableCell>
-                              <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.tenPercentLand)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">5% Build Contract Price</TableCell>
-                              <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.fivePercentBuild)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Stamp Duty</TableCell>
-                              <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.stampDuty)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Solicitor Cost</TableCell>
-                              <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.solicitorFees)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Agent Fee</TableCell>
-                              <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.upfrontCosts.agentFee)}</TableCell>
-                            </TableRow>
-                            <TableRow className="bg-muted/30">
-                              <TableCell className="font-semibold">Total Upfront Cost</TableCell>
-                              <TableCell className="text-right font-semibold">{formatCurrency(constructionProgressSchedule.upfrontCosts.totalUpfrontCost)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">{constructionProgressSchedule.durationMonths} Month Staged Progress (Interest)</TableCell>
-                              <TableCell className="text-right">{formatCurrency(constructionProgressSchedule.totals.totalInterest)}</TableCell>
-                            </TableRow>
-                            <TableRow className="bg-primary/10">
-                              <TableCell className="font-bold text-primary">Total</TableCell>
-                              <TableCell className="text-right font-bold text-primary">{formatCurrency(constructionProgressSchedule.grandTotal)}</TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </div>
 
                       <p className="text-xs text-muted-foreground mt-3">
                         * Interest calculated at {constructionProgressSchedule.interestRate}% p.a. Land interest is constant; build interest increases as stages are drawn.
