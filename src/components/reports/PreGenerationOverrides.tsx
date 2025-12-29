@@ -560,6 +560,9 @@ export function PreGenerationOverrides({
                 isEstimatingExpenses={isEstimatingExpenses}
                 onEstimateExpenses={estimateExpenses}
                 disabled={disabled}
+                propertyAddress={propertyAddress}
+                detectedState={detectedState}
+                purchasePrice={parseFloat(purchasePrice) || undefined}
               />
             </TabsContent>
 

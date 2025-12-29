@@ -16,6 +16,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
+import { LandTaxCalculator } from '../LandTaxCalculator';
 
 interface IncomeExpensesTabProps {
   weeklyRent: string;
@@ -47,6 +48,10 @@ interface IncomeExpensesTabProps {
   isEstimatingExpenses: boolean;
   onEstimateExpenses: () => void;
   disabled?: boolean;
+  // Land Tax Calculator props
+  propertyAddress?: string;
+  detectedState?: string;
+  purchasePrice?: number;
 }
 
 export function IncomeExpensesTab({
@@ -78,8 +83,16 @@ export function IncomeExpensesTab({
   setLettingFees,
   isEstimatingExpenses,
   onEstimateExpenses,
-  disabled = false
+  disabled = false,
+  propertyAddress,
+  detectedState,
+  purchasePrice,
 }: IncomeExpensesTabProps) {
+  
+  // Handler for land tax calculator results
+  const handleLandTaxCalculated = useCallback((calculatedTax: number) => {
+    setLandTax(calculatedTax.toString());
+  }, [setLandTax]);
   const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = removeCommas(e.target.value);
@@ -255,7 +268,19 @@ export function IncomeExpensesTab({
                 </div>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="landTax" className="text-sm">Land Tax</Label>
+                <Label htmlFor="landTax" className="text-sm flex items-center gap-1">
+                  Land Tax (Annual)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Use the calculator below to estimate based on state rates</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                   <Input
@@ -273,6 +298,16 @@ export function IncomeExpensesTab({
             </div>
           </CardContent>
         </Card>
+
+        {/* Land Tax Calculator */}
+        <LandTaxCalculator
+          propertyAddress={propertyAddress}
+          detectedState={detectedState}
+          purchasePrice={purchasePrice}
+          landValue={undefined}
+          onLandTaxCalculated={handleLandTaxCalculated}
+          disabled={disabled}
+        />
 
         {/* Strata / Body Corp */}
         <Card>
