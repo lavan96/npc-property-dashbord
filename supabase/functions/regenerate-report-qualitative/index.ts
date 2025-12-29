@@ -73,7 +73,8 @@ async function regenerateSection(
   perplexityApiKey: string,
   previousSections: string,
   propertyAddress: string,
-  financialCalculations?: Record<string, any>
+  financialCalculations?: Record<string, any>,
+  templateContext?: string
 ): Promise<{ content: string; citations: any[]; error?: string }> {
   
   // Build section-specific context
@@ -92,12 +93,28 @@ async function regenerateSection(
     }
   }
 
+  // Build template reference section
+  let templateSection = '';
+  if (templateContext) {
+    templateSection = `
+---
+**REFERENCE TEMPLATE STRUCTURE (Follow this structure closely):**
+
+The following is extracted from your reference templates. Use this structure and formatting as a guide:
+
+${templateContext.substring(0, 4000)}
+
+---
+
+`;
+  }
+
   const sectionPrompt = `You are regenerating a specific section of an investment property report for: ${propertyAddress}
 
 **SECTION TO REGENERATE:** ${sectionDef.name}
 **Subsections to include:** ${sectionDef.sections.join(', ')}
 
-**MANUAL OVERRIDES (Use these EXACT values in your analysis):**
+${templateSection}**MANUAL OVERRIDES (Use these EXACT values in your analysis):**
 ${overrideSummary}
 
 ${financialContext}
@@ -118,17 +135,19 @@ ${previousSections.substring(0, 2500)}...
 6. Ensure tables are complete with actual numbers - no placeholders like "XX" or "N/A"
 7. Be thorough and professional - this is a premium client-facing report
 8. Start immediately with the first section heading - no preamble or introduction
+9. Follow the REFERENCE TEMPLATE STRUCTURE if provided
 
 Generate the ${sectionDef.name} sections now:`;
 
   const systemMessage = `You are an expert Australian property investment analyst for Naidu Property Consulting Services. You are regenerating sections of an investment report with updated financial figures from manual overrides. 
 
 Your task is to:
-1. Preserve the structure and format of the original report sections
-2. Update ALL narrative commentary to reflect the new financial figures
-3. Ensure calculations, tables, and projections use the override values
-4. Maintain professional, analytical tone throughout
-5. Be data-driven and specific - avoid vague statements`;
+1. Follow the reference template structure if provided
+2. Preserve the structure and format of the original report sections
+3. Update ALL narrative commentary to reflect the new financial figures
+4. Ensure calculations, tables, and projections use the override values
+5. Maintain professional, analytical tone throughout
+6. Be data-driven and specific - avoid vague statements`;
 
   try {
     console.log(`📝 Regenerating section: ${sectionDef.name}...`);
@@ -199,9 +218,63 @@ serve(async (req) => {
     console.log('📊 Manual overrides:', Object.keys(manualOverrides).length, 'fields');
     console.log('📄 Original content length:', currentReportContent?.length || 0, 'chars');
 
+    // ========== FETCH TEMPLATE FROM DATABASE ==========
+    let templateContext = '';
+    try {
+      console.log('🔍 Fetching AI structure template from database...');
+      
+      // Get report tier from the report if available
+      const { data: reportData } = await supabase
+        .from('investment_reports')
+        .select('report_tier, report_scope')
+        .eq('id', reportId)
+        .single();
+      
+      const reportTier = reportData?.report_tier || 'compass';
+      const reportCategory = reportData?.report_scope === 'suburb' ? 'suburb_snapshot' : 'investment';
+      
+      // Query report_structure_templates for the matching template
+      const { data: templates, error: templateError } = await supabase
+        .from('report_structure_templates')
+        .select('id, name, parsed_content, report_tier, report_category')
+        .eq('template_type', 'ai_structure')
+        .eq('is_active', true)
+        .order('priority', { ascending: false });
+      
+      if (templateError) {
+        console.log('⚠️ Template query error:', templateError.message);
+      } else if (templates && templates.length > 0) {
+        // Find best matching template: exact match > tier match > category match > any active
+        let selectedTemplate = templates.find(t => 
+          t.report_tier === reportTier && t.report_category === reportCategory
+        ) || templates.find(t => 
+          t.report_tier === reportTier && !t.report_category
+        ) || templates.find(t => 
+          !t.report_tier && t.report_category === reportCategory
+        ) || templates.find(t => 
+          !t.report_tier && !t.report_category
+        ) || templates[0]; // Fallback to highest priority
+        
+        if (selectedTemplate?.parsed_content) {
+          templateContext = selectedTemplate.parsed_content;
+          console.log(`✓ Template loaded: "${selectedTemplate.name}"`);
+          console.log(`  Tier: ${selectedTemplate.report_tier || 'any'}, Category: ${selectedTemplate.report_category || 'any'}`);
+          console.log(`  Content size: ${templateContext.length} chars`);
+        } else {
+          console.log('⚠️ Template found but parsed_content is empty');
+        }
+      } else {
+        console.log('ℹ️ No active AI structure templates found in database');
+      }
+    } catch (templateError: any) {
+      console.log('⚠️ Template fetch failed (non-critical):', templateError?.message || 'Unknown error');
+    }
+    // ========== END TEMPLATE FETCH ==========
+
     // Build override summary for the AI
     const overrideSummary = buildOverrideSummary(manualOverrides, financialCalculations);
     console.log('📋 Override summary built:', overrideSummary.split('\n').length, 'lines');
+    console.log('📄 Template context loaded:', templateContext ? `${templateContext.length} chars` : 'none');
 
     // Generate report header
     const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
@@ -238,7 +311,8 @@ YOUR DEDICATED PROPERTY PARTNER
         PERPLEXITY_API_KEY,
         previousContext,
         propertyAddress,
-        financialCalculations
+        financialCalculations,
+        templateContext
       );
       
       if (result.error) {
