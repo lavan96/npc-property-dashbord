@@ -9,7 +9,7 @@ import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber
 import { OverrideFieldConfig } from '@/types/overrideFields';
 import { cn } from '@/lib/utils';
 
-interface OverrideInputProps {
+export interface OverrideInputProps {
   config: OverrideFieldConfig;
   value: string | number | boolean | undefined;
   onChange: (value: string | number | boolean) => void;

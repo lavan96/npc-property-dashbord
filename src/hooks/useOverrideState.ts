@@ -141,7 +141,7 @@ export function useOverrideState(options: UseOverrideStateOptions = {}) {
 /**
  * Convert internal values to UnifiedOverrideData
  */
-function convertToUnifiedData(values: OverrideValues): UnifiedOverrideData {
+export function convertToUnifiedData(values: OverrideValues): UnifiedOverrideData {
   const data: UnifiedOverrideData = {
     buildType: (values.buildType as 'new_build' | 'existing_property') || 'existing_property'
   };
@@ -181,28 +181,40 @@ export function useComputedOverrides(
   const strataSinkingFund = parseFloat(values.strataSinkingFund?.toString() || '0') || 0;
   const strataSpecialLevies = parseFloat(values.strataSpecialLevies?.toString() || '0') || 0;
 
-  // Auto-calculate deposit from Purchase Price and LVR
+  // Auto-calculate deposit from Purchase Price and LVR (only for existing properties)
   useEffect(() => {
     if (buildType === 'existing_property' && purchasePrice > 0) {
       const deposit = purchasePrice * ((100 - loanToValueRatio) / 100);
-      setValue('depositValue', Math.round(deposit).toString());
+      const depositStr = Math.round(deposit).toString();
+      const currentDeposit = values.depositValue?.toString() || '';
+      if (currentDeposit !== depositStr) {
+        setValue('depositValue', depositStr);
+      }
     }
-  }, [buildType, purchasePrice, loanToValueRatio, setValue]);
+  }, [buildType, purchasePrice, loanToValueRatio, setValue, values.depositValue]);
 
   // Auto-calculate letting fees = weekly rent
   useEffect(() => {
     if (weeklyRent > 0) {
-      setValue('lettingFees', weeklyRent.toString());
+      const rentStr = weeklyRent.toString();
+      const currentLetting = values.lettingFees?.toString() || '';
+      if (currentLetting !== rentStr) {
+        setValue('lettingFees', rentStr);
+      }
     }
-  }, [weeklyRent, setValue]);
+  }, [weeklyRent, setValue, values.lettingFees]);
 
   // Auto-calculate body corporate = admin + sinking + special levies
   useEffect(() => {
     const total = strataAdminFund + strataSinkingFund + strataSpecialLevies;
     if (total > 0) {
-      setValue('bodyCorporateFees', total.toString());
+      const totalStr = total.toString();
+      const currentBody = values.bodyCorporateFees?.toString() || '';
+      if (currentBody !== totalStr) {
+        setValue('bodyCorporateFees', totalStr);
+      }
     }
-  }, [strataAdminFund, strataSinkingFund, strataSpecialLevies, setValue]);
+  }, [strataAdminFund, strataSinkingFund, strataSpecialLevies, setValue, values.bodyCorporateFees]);
 
   // Return computed values for display
   const occupancyRate = parseFloat(values.occupancyRate?.toString() || '52') || 52;
