@@ -18,7 +18,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
-import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 
 // Lazy load heavy modal components
 const InvestmentReportViewer = lazy(() => import('@/components/reports/InvestmentReportViewer').then(m => ({ default: m.InvestmentReportViewer })));
@@ -1223,14 +1222,6 @@ export default function GeneratedReports() {
                       </div>
                        <div className="flex gap-2">
                          <RegenerateReportButton
-                          reportId={report.id}
-                          propertyAddress={report.property_address}
-                          onRegenerated={handleInvestmentReportUpdate}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                        />
-                        <RegenerateWithPerplexityButton
                           reportId={report.id}
                           propertyAddress={report.property_address}
                           onRegenerated={handleInvestmentReportUpdate}

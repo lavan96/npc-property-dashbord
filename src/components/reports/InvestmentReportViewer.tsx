@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
+import { RegenerateWithPerplexityButton } from './RegenerateWithPerplexityButton';
 import { TierBadge, type ReportTier } from './TierBadge';
 import { TierSwitcher } from './TierSwitcher';
 
@@ -512,7 +513,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
               </CardHeader>
               <Separator className="flex-shrink-0" />
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="p-4 border-b bg-muted/50 flex-shrink-0">
+                <div className="p-4 border-b bg-muted/50 flex-shrink-0 flex items-center gap-4">
                   <ErrorBoundary
                     fallback={
                       <div className="text-sm text-muted-foreground">
@@ -522,6 +523,13 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                   >
                     <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
                   </ErrorBoundary>
+                  <RegenerateWithPerplexityButton
+                    reportId={report.id}
+                    propertyAddress={report.property_address}
+                    onRegenerated={onReportUpdate}
+                    variant="default"
+                    size="sm"
+                  />
                 </div>
                 <ScrollArea className="flex-1 min-h-0 p-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
