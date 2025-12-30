@@ -89,6 +89,8 @@ interface PreGenerationOverridesProps {
   externalPurchasePrice?: number;
   externalWeeklyRent?: number;
   externalCarSpaces?: number;
+  externalLandSize?: number;
+  externalBuildSize?: number;
 }
 
 export function PreGenerationOverrides({ 
@@ -99,7 +101,9 @@ export function PreGenerationOverrides({
   onBuildTypeChange,
   externalPurchasePrice,
   externalWeeklyRent,
-  externalCarSpaces
+  externalCarSpaces,
+  externalLandSize,
+  externalBuildSize
 }: PreGenerationOverridesProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -243,25 +247,49 @@ export function PreGenerationOverrides({
     }
   }, [externalPurchasePrice, buildType]);
 
-  // Sync external weeklyRent prop
+  // Sync external weeklyRent prop - using ref to prevent loops
+  const lastExternalWeeklyRent = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (externalWeeklyRent !== undefined) {
-      const externalValue = externalWeeklyRent.toString();
-      if (weeklyRent !== externalValue) {
-        setWeeklyRent(externalValue);
+      if (lastExternalWeeklyRent.current !== externalWeeklyRent) {
+        lastExternalWeeklyRent.current = externalWeeklyRent;
+        setWeeklyRent(externalWeeklyRent.toString());
       }
     }
-  }, [externalWeeklyRent, weeklyRent]);
+  }, [externalWeeklyRent]);
 
-  // Sync external carSpaces prop
+  // Sync external carSpaces prop - using ref to prevent loops
+  const lastExternalCarSpaces = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (externalCarSpaces !== undefined) {
-      const externalValue = externalCarSpaces.toString();
-      if (carSpaces !== externalValue) {
-        setCarSpaces(externalValue);
+      if (lastExternalCarSpaces.current !== externalCarSpaces) {
+        lastExternalCarSpaces.current = externalCarSpaces;
+        setCarSpaces(externalCarSpaces.toString());
       }
     }
-  }, [externalCarSpaces, carSpaces]);
+  }, [externalCarSpaces]);
+
+  // Sync external landSize prop - using ref to prevent loops
+  const lastExternalLandSize = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalLandSize !== undefined) {
+      if (lastExternalLandSize.current !== externalLandSize) {
+        lastExternalLandSize.current = externalLandSize;
+        setLandSizeSqm(externalLandSize.toString());
+      }
+    }
+  }, [externalLandSize]);
+
+  // Sync external buildSize prop - using ref to prevent loops
+  const lastExternalBuildSize = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalBuildSize !== undefined) {
+      if (lastExternalBuildSize.current !== externalBuildSize) {
+        lastExternalBuildSize.current = externalBuildSize;
+        setBuildSizeSqm(externalBuildSize.toString());
+      }
+    }
+  }, [externalBuildSize]);
 
   // Track if user has manually edited loan amount
   const [userEditedLoanAmount, setUserEditedLoanAmount] = useState(false);
