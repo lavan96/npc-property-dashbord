@@ -250,3 +250,6 @@ verify_jwt = false
 
 [functions.log-activity]
 verify_jwt = false
+
+[functions.check-integration-secrets]
+verify_jwt = false
