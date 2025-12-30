@@ -672,6 +672,7 @@ export function PreGenerationOverrides({
                 propertyAddress={propertyAddress}
                 detectedState={detectedState}
                 purchasePrice={parseFloat(purchasePrice) || undefined}
+                landPrice={parseFloat(landPrice) || undefined}
               />
             </TabsContent>
 

@@ -29,6 +29,7 @@ interface LandTaxCalculatorProps {
   detectedState?: string;
   purchasePrice?: number;
   landValue?: string;
+  initialLandTax?: number; // Restore calculated land tax when remounting
   onLandTaxCalculated: (landTax: number) => void;
   disabled?: boolean;
   compact?: boolean;
@@ -39,6 +40,7 @@ export function LandTaxCalculator({
   detectedState: externalState,
   purchasePrice,
   landValue: externalLandValue,
+  initialLandTax,
   onLandTaxCalculated,
   disabled = false,
   compact = false,
@@ -51,7 +53,22 @@ export function LandTaxCalculator({
   
   // Calculation state
   const [isCalculating, setIsCalculating] = useState(false);
-  const [result, setResult] = useState<LandTaxResult | null>(null);
+  const [result, setResult] = useState<LandTaxResult | null>(() => {
+    // Initialize with previous calculated value if available
+    if (initialLandTax !== undefined && initialLandTax > 0) {
+      return {
+        annualLandTax: initialLandTax,
+        baseTax: 0,
+        marginalTax: 0,
+        fixedCharge: 0,
+        mritAddon: 0,
+        effectiveRate: 0,
+        bracket: null,
+        notes: 'Restored from previous calculation'
+      };
+    }
+    return null;
+  });
   const [error, setError] = useState<string | null>(null);
 
   // Auto-detect state from address

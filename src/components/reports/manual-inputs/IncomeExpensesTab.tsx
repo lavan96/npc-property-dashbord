@@ -52,6 +52,7 @@ interface IncomeExpensesTabProps {
   propertyAddress?: string;
   detectedState?: string;
   purchasePrice?: number;
+  landPrice?: number; // For land tax calculation - taxable land value
 }
 
 export function IncomeExpensesTab({
@@ -87,6 +88,7 @@ export function IncomeExpensesTab({
   propertyAddress,
   detectedState,
   purchasePrice,
+  landPrice,
 }: IncomeExpensesTabProps) {
   
   // Handler for land tax calculator results
@@ -304,7 +306,8 @@ export function IncomeExpensesTab({
           propertyAddress={propertyAddress}
           detectedState={detectedState}
           purchasePrice={purchasePrice}
-          landValue={undefined}
+          landValue={landPrice ? landPrice.toString() : undefined}
+          initialLandTax={parseFloat(landTax) || undefined}
           onLandTaxCalculated={handleLandTaxCalculated}
           disabled={disabled}
         />
