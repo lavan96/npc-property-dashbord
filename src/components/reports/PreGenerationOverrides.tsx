@@ -263,6 +263,9 @@ export function PreGenerationOverrides({
     }
   }, [externalCarSpaces, carSpaces]);
 
+  // Track if user has manually edited loan amount
+  const [userEditedLoanAmount, setUserEditedLoanAmount] = useState(false);
+  
   // Dynamic calculation - Deposit from Purchase Price and LVR
   useEffect(() => {
     if (buildType === 'existing_property' && purchasePrice && loanToValueRatio) {
@@ -274,6 +277,22 @@ export function PreGenerationOverrides({
       }
     }
   }, [buildType, purchasePrice, loanToValueRatio]);
+
+  // Dynamic calculation - Loan Amount from Purchase Price and LVR (unless manually overridden)
+  useEffect(() => {
+    // Only auto-calculate if user hasn't manually edited the loan amount
+    if (!userEditedLoanAmount) {
+      const price = buildType === 'new_build' 
+        ? (parseFloat(landPrice) || 0) + (parseFloat(buildPrice) || 0)
+        : parseFloat(purchasePrice) || 0;
+      const lvr = parseFloat(loanToValueRatio) || 80;
+      
+      if (price > 0) {
+        const calculatedLoan = price * (lvr / 100);
+        setLoanAmount(Math.round(calculatedLoan).toString());
+      }
+    }
+  }, [buildType, purchasePrice, landPrice, buildPrice, loanToValueRatio, userEditedLoanAmount]);
 
   // Dynamic calculation - Letting Fees = Weekly Rent
   useEffect(() => {
@@ -601,7 +620,10 @@ export function PreGenerationOverrides({
                 marketValueNow={marketValueNow}
                 setMarketValueNow={setMarketValueNow}
                 loanAmount={loanAmount}
-                setLoanAmount={setLoanAmount}
+                setLoanAmount={(value: string) => {
+                  setLoanAmount(value);
+                  setUserEditedLoanAmount(true); // Mark as manually edited
+                }}
                 interestOnlyPeriodYears={interestOnlyPeriodYears}
                 setInterestOnlyPeriodYears={setInterestOnlyPeriodYears}
                 repaymentFrequency={repaymentFrequency}
