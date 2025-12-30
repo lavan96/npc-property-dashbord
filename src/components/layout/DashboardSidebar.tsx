@@ -21,7 +21,8 @@ import {
   Palette,
   Users,
   History,
-  Plug
+  Plug,
+  UserCircle
 } from 'lucide-react';
 import {
   Sidebar,
@@ -48,6 +49,7 @@ const navigationItems = [
   { title: 'Report Q&A', url: '/report-qa', icon: MessageSquareText, moduleKey: 'report_qa' },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles, moduleKey: 'email_copilot' },
   { title: 'Call Logs', url: '/call-logs', icon: Phone, moduleKey: 'call_logs' },
+  { title: 'Clients', url: '/clients', icon: UserCircle, moduleKey: 'clients' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
 ];
