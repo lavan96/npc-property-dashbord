@@ -1,0 +1,570 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Settings2, 
+  Database, 
+  Phone, 
+  Mail, 
+  Brain, 
+  Webhook,
+  Eye,
+  EyeOff,
+  Save,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ExternalLink
+} from 'lucide-react';
+
+interface IntegrationConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  fields: {
+    key: string;
+    label: string;
+    placeholder: string;
+    type: 'text' | 'password';
+    required?: boolean;
+  }[];
+  docsUrl?: string;
+}
+
+const integrations: IntegrationConfig[] = [
+  {
+    id: 'airtable',
+    name: 'Airtable',
+    description: 'Connect to Airtable for property listings and data management',
+    icon: <Database className="h-6 w-6" />,
+    docsUrl: 'https://airtable.com/developers/web/api/introduction',
+    fields: [
+      { key: 'AIRTABLE_API_KEY', label: 'API Key', placeholder: 'pat...', type: 'password', required: true },
+      { key: 'AIRTABLE_BASE_ID', label: 'Base ID', placeholder: 'app...', type: 'text', required: true },
+    ],
+  },
+  {
+    id: 'vapi',
+    name: 'Vapi',
+    description: 'Voice AI platform for call handling and transcription',
+    icon: <Phone className="h-6 w-6" />,
+    docsUrl: 'https://docs.vapi.ai',
+    fields: [
+      { key: 'VAPI_API_KEY', label: 'API Key', placeholder: 'Enter Vapi API key', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'gohighlevel',
+    name: 'GoHighLevel',
+    description: 'CRM and marketing automation platform integration',
+    icon: <Settings2 className="h-6 w-6" />,
+    docsUrl: 'https://highlevel.stoplight.io/docs/integrations',
+    fields: [
+      { key: 'GHL_API_KEY', label: 'API Key', placeholder: 'Enter GHL API key', type: 'password', required: true },
+      { key: 'GHL_LOCATION_ID', label: 'Location ID', placeholder: 'Enter location ID', type: 'text', required: true },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    description: 'AI-powered analysis, chart generation, and report Q&A',
+    icon: <Brain className="h-6 w-6" />,
+    docsUrl: 'https://platform.openai.com/docs',
+    fields: [
+      { key: 'OPENAI_API_KEY', label: 'API Key', placeholder: 'sk-...', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    description: 'AI search for report regeneration and research',
+    icon: <Brain className="h-6 w-6" />,
+    docsUrl: 'https://docs.perplexity.ai',
+    fields: [
+      { key: 'PERPLEXITY_API_KEY', label: 'API Key', placeholder: 'pplx-...', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'twilio',
+    name: 'Twilio',
+    description: 'SMS and voice communication services',
+    icon: <Phone className="h-6 w-6" />,
+    docsUrl: 'https://www.twilio.com/docs',
+    fields: [
+      { key: 'TWILIO_ACCOUNT_SID', label: 'Account SID', placeholder: 'AC...', type: 'text', required: true },
+      { key: 'TWILIO_AUTH_TOKEN', label: 'Auth Token', placeholder: 'Enter auth token', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'microsoft',
+    name: 'Microsoft / Outlook',
+    description: 'Email sync and calendar integration via Microsoft Graph',
+    icon: <Mail className="h-6 w-6" />,
+    docsUrl: 'https://learn.microsoft.com/en-us/graph/overview',
+    fields: [
+      { key: 'MICROSOFT_CLIENT_ID', label: 'Client ID', placeholder: 'Enter client ID', type: 'text', required: true },
+      { key: 'MICROSOFT_CLIENT_SECRET', label: 'Client Secret', placeholder: 'Enter client secret', type: 'password', required: true },
+      { key: 'MICROSOFT_TENANT_ID', label: 'Tenant ID', placeholder: 'Enter tenant ID', type: 'text', required: true },
+    ],
+  },
+  {
+    id: 'make',
+    name: 'Make.com',
+    description: 'Workflow automation webhooks',
+    icon: <Webhook className="h-6 w-6" />,
+    docsUrl: 'https://www.make.com/en/help',
+    fields: [
+      { key: 'MAKE_WEBHOOK_URL', label: 'Webhook URL', placeholder: 'https://hook.make.com/...', type: 'text' },
+    ],
+  },
+];
+
+export default function Integrations() {
+  const { toast } = useToast();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load saved integration configs from database
+  useEffect(() => {
+    loadIntegrationConfigs();
+  }, []);
+
+  const loadIntegrationConfigs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('integration_configs')
+        .select('*');
+
+      if (error) {
+        console.error('Error loading integration configs:', error);
+        // Table might not exist yet, that's okay
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        const loadedValues: Record<string, string> = {};
+        const loadedKeys = new Set<string>();
+        
+        data.forEach((config: any) => {
+          loadedValues[config.key_name] = config.key_value || '';
+          if (config.key_value) {
+            loadedKeys.add(config.key_name);
+          }
+        });
+        
+        setValues(loadedValues);
+        setSavedKeys(loadedKeys);
+      }
+    } catch (error) {
+      console.error('Failed to load configs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleValueChange = (key: string, value: string) => {
+    setValues(prev => ({ ...prev, [key]: value }));
+  };
+
+  const togglePasswordVisibility = (key: string) => {
+    setShowPasswords(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const saveIntegration = async (integrationId: string) => {
+    const integration = integrations.find(i => i.id === integrationId);
+    if (!integration) return;
+
+    setSaving(integrationId);
+
+    try {
+      // Save each field for this integration
+      for (const field of integration.fields) {
+        const value = values[field.key] || '';
+        
+        const { error } = await supabase
+          .from('integration_configs')
+          .upsert({
+            key_name: field.key,
+            key_value: value,
+            integration_id: integrationId,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'key_name'
+          });
+
+        if (error) throw error;
+
+        if (value) {
+          setSavedKeys(prev => new Set([...prev, field.key]));
+        } else {
+          setSavedKeys(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(field.key);
+            return newSet;
+          });
+        }
+      }
+
+      toast({
+        title: 'Configuration Saved',
+        description: `${integration.name} settings have been saved successfully.`,
+      });
+    } catch (error) {
+      console.error('Error saving integration:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save configuration. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const getIntegrationStatus = (integration: IntegrationConfig) => {
+    const requiredFields = integration.fields.filter(f => f.required !== false);
+    const configuredFields = requiredFields.filter(f => savedKeys.has(f.key));
+    
+    if (configuredFields.length === 0) return 'not_configured';
+    if (configuredFields.length === requiredFields.length) return 'configured';
+    return 'partial';
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'configured':
+        return (
+          <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Configured
+          </Badge>
+        );
+      case 'partial':
+        return (
+          <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+            <XCircle className="h-3 w-3 mr-1" />
+            Incomplete
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="text-muted-foreground">
+            Not Configured
+          </Badge>
+        );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Integrations</h1>
+        <p className="text-muted-foreground mt-1">
+          Configure API keys and credentials for external services
+        </p>
+      </div>
+
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList>
+          <TabsTrigger value="all">All Integrations</TabsTrigger>
+          <TabsTrigger value="configured">Configured</TabsTrigger>
+          <TabsTrigger value="pending">Pending Setup</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            {integrations.map(integration => {
+              const status = getIntegrationStatus(integration);
+              return (
+                <Card key={integration.id} className="bg-card border-border">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                          {integration.icon}
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{integration.name}</CardTitle>
+                          <CardDescription className="text-sm mt-0.5">
+                            {integration.description}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {getStatusBadge(status)}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {integration.fields.map(field => (
+                      <div key={field.key} className="space-y-2">
+                        <Label htmlFor={field.key} className="text-sm">
+                          {field.label}
+                          {field.required !== false && <span className="text-destructive ml-1">*</span>}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id={field.key}
+                            type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                            placeholder={field.placeholder}
+                            value={values[field.key] || ''}
+                            onChange={(e) => handleValueChange(field.key, e.target.value)}
+                            className="pr-10"
+                          />
+                          {field.type === 'password' && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                              onClick={() => togglePasswordVisibility(field.key)}
+                            >
+                              {showPasswords[field.key] ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="flex items-center justify-between pt-2">
+                      {integration.docsUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => window.open(integration.docsUrl, '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Documentation
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => saveIntegration(integration.id)}
+                        disabled={saving === integration.id}
+                        className="ml-auto"
+                      >
+                        {saving === integration.id ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="configured" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            {integrations
+              .filter(i => getIntegrationStatus(i) === 'configured')
+              .map(integration => {
+                const status = getIntegrationStatus(integration);
+                return (
+                  <Card key={integration.id} className="bg-card border-border">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                            {integration.icon}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{integration.name}</CardTitle>
+                            <CardDescription className="text-sm mt-0.5">
+                              {integration.description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                        {getStatusBadge(status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {integration.fields.map(field => (
+                        <div key={field.key} className="space-y-2">
+                          <Label htmlFor={field.key} className="text-sm">
+                            {field.label}
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id={field.key}
+                              type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                              placeholder={field.placeholder}
+                              value={values[field.key] || ''}
+                              onChange={(e) => handleValueChange(field.key, e.target.value)}
+                              className="pr-10"
+                            />
+                            {field.type === 'password' && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                                onClick={() => togglePasswordVisibility(field.key)}
+                              >
+                                {showPasswords[field.key] ? (
+                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="flex items-center justify-between pt-2">
+                        {integration.docsUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => window.open(integration.docsUrl, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Documentation
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => saveIntegration(integration.id)}
+                          disabled={saving === integration.id}
+                          className="ml-auto"
+                        >
+                          {saving === integration.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            {integrations.filter(i => getIntegrationStatus(i) === 'configured').length === 0 && (
+              <div className="col-span-2 text-center py-12 text-muted-foreground">
+                No integrations have been fully configured yet.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="pending" className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            {integrations
+              .filter(i => getIntegrationStatus(i) !== 'configured')
+              .map(integration => {
+                const status = getIntegrationStatus(integration);
+                return (
+                  <Card key={integration.id} className="bg-card border-border">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                            {integration.icon}
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{integration.name}</CardTitle>
+                            <CardDescription className="text-sm mt-0.5">
+                              {integration.description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                        {getStatusBadge(status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {integration.fields.map(field => (
+                        <div key={field.key} className="space-y-2">
+                          <Label htmlFor={field.key} className="text-sm">
+                            {field.label}
+                            {field.required !== false && <span className="text-destructive ml-1">*</span>}
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id={field.key}
+                              type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                              placeholder={field.placeholder}
+                              value={values[field.key] || ''}
+                              onChange={(e) => handleValueChange(field.key, e.target.value)}
+                              className="pr-10"
+                            />
+                            {field.type === 'password' && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                                onClick={() => togglePasswordVisibility(field.key)}
+                              >
+                                {showPasswords[field.key] ? (
+                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="flex items-center justify-between pt-2">
+                        {integration.docsUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => window.open(integration.docsUrl, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Documentation
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => saveIntegration(integration.id)}
+                          disabled={saving === integration.id}
+                          className="ml-auto"
+                        >
+                          {saving === integration.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Save
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
