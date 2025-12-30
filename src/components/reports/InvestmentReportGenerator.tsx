@@ -181,10 +181,26 @@ export function InvestmentReportGenerator() {
         }
       }
       
+      // Sync landSizeSqm back to main form if changed in PreGenerationOverrides
+      if (data.landSizeSqm !== undefined) {
+        const dataValueStr = data.landSizeSqm.toString();
+        if (landSize !== dataValueStr) {
+          setLandSize(dataValueStr);
+        }
+      }
+      
+      // Sync buildSizeSqm back to main form if changed in PreGenerationOverrides
+      if (data.buildSizeSqm !== undefined) {
+        const dataValueStr = data.buildSizeSqm.toString();
+        if (buildSize !== dataValueStr) {
+          setBuildSize(dataValueStr);
+        }
+      }
+      
       // Reset flag after React has processed the state updates
       requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
     }
-  }, [propertyPrice, weeklyRent, carSpaces]);
+  }, [propertyPrice, weeklyRent, carSpaces, landSize, buildSize]);
 
   const handleGenerate = async () => {
     if (!query.trim()) {
@@ -1573,6 +1589,8 @@ export function InvestmentReportGenerator() {
                 externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
                 externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
                 externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
+                externalLandSize={landSize ? parseFloat(landSize) : undefined}
+                externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
               />
 
               {/* Info Box */}
@@ -1865,6 +1883,8 @@ export function InvestmentReportGenerator() {
                     externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
                     externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
                     externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
+                    externalLandSize={landSize ? parseFloat(landSize) : undefined}
+                    externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
                   />
 
                   {/* Info for URL mode */}
@@ -2197,6 +2217,8 @@ export function InvestmentReportGenerator() {
                     externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
                     externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
                     externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
+                    externalLandSize={landSize ? parseFloat(landSize) : undefined}
+                    externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
                   />
 
                   {/* Info for PDF mode */}
