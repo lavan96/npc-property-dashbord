@@ -101,6 +101,84 @@ const EDITABLE_FIELDS = [
 
 type EditableFieldKey = typeof EDITABLE_FIELDS[number]['key'];
 
+// Template configuration interface for Cash Flow PDF export
+interface CashFlowTemplateConfig {
+  id: string;
+  name: string;
+  companyName: string;
+  companyNameLine2: string;
+  tagline: string;
+  contactPhone: string;
+  contactEmail: string;
+  website: string;
+  disclaimer: string;
+}
+
+// Default NPC Brand configuration for Cash Flow exports
+const defaultCashFlowConfig: CashFlowTemplateConfig = {
+  id: 'default',
+  name: 'Default NPC Template',
+  companyName: 'NAIDU PROPERTY',
+  companyNameLine2: 'CONSULTING SERVICES',
+  tagline: 'YOUR DEDICATED PROPERTY PARTNER',
+  contactPhone: '0433 005 110',
+  contactEmail: 'admin@npcservices.com.au',
+  website: 'npcservices.com.au',
+  disclaimer: 'This analysis is for informational purposes only and does not constitute financial advice. Projections are estimates based on assumed growth rates.',
+};
+
+// Function to load active Cash Flow export template
+const loadActiveCashFlowTemplate = async (): Promise<CashFlowTemplateConfig> => {
+  try {
+    // Fetch active cashflow_export template
+    const { data: template, error } = await supabase
+      .from('report_structure_templates')
+      .select('*')
+      .eq('template_type', 'cashflow_export' as any)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Error fetching Cash Flow template:', error);
+      return defaultCashFlowConfig;
+    }
+
+    if (!template) {
+      console.log('No active Cash Flow template found, using default');
+      return defaultCashFlowConfig;
+    }
+
+    // Parse metadata for custom configuration if available
+    const metadata = template.metadata as Record<string, any> | null;
+    
+    if (metadata?.branding) {
+      const branding = metadata.branding;
+      return {
+        id: template.id,
+        name: template.name,
+        companyName: branding.companyName || defaultCashFlowConfig.companyName,
+        companyNameLine2: branding.companyNameLine2 || defaultCashFlowConfig.companyNameLine2,
+        tagline: branding.tagline || defaultCashFlowConfig.tagline,
+        contactPhone: branding.contactPhone || defaultCashFlowConfig.contactPhone,
+        contactEmail: branding.contactEmail || defaultCashFlowConfig.contactEmail,
+        website: branding.website || defaultCashFlowConfig.website,
+        disclaimer: branding.disclaimer || defaultCashFlowConfig.disclaimer,
+      };
+    }
+
+    // Template exists but no custom branding - use default with template name
+    console.log(`Using template "${template.name}" with default styling`);
+    return {
+      ...defaultCashFlowConfig,
+      id: template.id,
+      name: template.name,
+    };
+  } catch (err) {
+    console.error('Failed to load Cash Flow template:', err);
+    return defaultCashFlowConfig;
+  }
+};
+
 export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated }: CashFlowAnalysisModalProps) {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
@@ -2022,6 +2100,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     if (!report || !baseFinancialData) return;
 
     try {
+      // Load active template configuration
+      const templateConfig = await loadActiveCashFlowTemplate();
+      console.log(`📋 Using Cash Flow template: ${templateConfig.name}`);
+
       const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape for wide table
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -2041,6 +2123,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           console.warn('Failed to capture chart:', e);
         }
       }
+
+      // Company branding header (from template)
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(150);
+      pdf.text(`${templateConfig.companyName} ${templateConfig.companyNameLine2}`, pageWidth - margin, yPos, { align: 'right' });
+      pdf.setTextColor(0);
 
       // Header
       pdf.setFontSize(18);
@@ -2327,11 +2416,16 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.text('Chart shows Property Value, Equity, Rental Income, and After-Tax Cash Flow trends over 10 years.', margin, yPos);
       }
 
-      // Footer disclaimer on last page
-      yPos = pageHeight - 10;
+      // Footer disclaimer on last page (from template)
+      yPos = pageHeight - 15;
       pdf.setFontSize(7);
       pdf.setTextColor(120);
-      pdf.text('This analysis is for informational purposes only and does not constitute financial advice. Projections are estimates based on assumed growth rates.', margin, yPos);
+      pdf.text(templateConfig.disclaimer, margin, yPos);
+      
+      // Contact info footer
+      yPos = pageHeight - 8;
+      pdf.setFontSize(6);
+      pdf.text(`${templateConfig.contactPhone} | ${templateConfig.contactEmail} | ${templateConfig.website}`, pageWidth / 2, yPos, { align: 'center' });
 
       // Save PDF
       const fileName = `Cash_Flow_10Year_${report.property_address.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;

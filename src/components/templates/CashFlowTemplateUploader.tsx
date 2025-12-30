@@ -102,27 +102,26 @@ export function CashFlowTemplateUploader({ onUploadComplete }: CashFlowTemplateU
       if (uploadError) throw uploadError;
 
       // Create database record with cashflow_export template type
-      const insertData = {
-        name,
-        description: description || null,
-        template_type: 'cashflow_export' as const,
-        report_tier: null,
-        report_category: 'cash_flow',
-        file_name: file.name,
-        file_path: filePath,
-        file_size: file.size,
-        mime_type: file.type,
-        is_active: false,
-        priority: 0,
-        metadata: {
-          purpose: 'cashflow_export',
-          uploadedAt: new Date().toISOString(),
-        },
-      };
-
+      // Note: We cast to 'any' because the TypeScript types may not include the new enum value yet
       const { data: template, error: dbError } = await supabase
         .from('report_structure_templates')
-        .insert(insertData)
+        .insert({
+          name,
+          description: description || null,
+          template_type: 'cashflow_export' as any,
+          report_tier: null,
+          report_category: 'cash_flow',
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          mime_type: file.type,
+          is_active: false,
+          priority: 0,
+          metadata: {
+            purpose: 'cashflow_export',
+            uploadedAt: new Date().toISOString(),
+          },
+        })
         .select()
         .single();
 

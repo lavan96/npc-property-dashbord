@@ -9,7 +9,9 @@ import { BrandingManager } from '@/components/templates/BrandingManager';
 import { GlobalReportSettings } from '@/components/templates/GlobalReportSettings';
 import { QATemplateUploader } from '@/components/templates/QATemplateUploader';
 import { QATemplateList } from '@/components/templates/QATemplateList';
-import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare } from 'lucide-react';
+import { CashFlowTemplateUploader } from '@/components/templates/CashFlowTemplateUploader';
+import { CashFlowTemplateList } from '@/components/templates/CashFlowTemplateList';
+import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 type ReportFormat = 
   | 'investment_compass' 
@@ -143,7 +145,7 @@ export default function Templates() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="report-formats" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             Report Formats
@@ -159,6 +161,10 @@ export default function Templates() {
           <TabsTrigger value="qa-export" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Q&A Export
+          </TabsTrigger>
+          <TabsTrigger value="cashflow-export" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            Cash Flow
           </TabsTrigger>
           <TabsTrigger value="branding" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
@@ -395,6 +401,26 @@ export default function Templates() {
             <CardContent className="space-y-6">
               <QATemplateUploader />
               <QATemplateList />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="cashflow-export" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-primary" />
+                Cash Flow Export Templates
+              </CardTitle>
+              <CardDescription>
+                Upload PDF templates to customize how 10-Year Cash Flow analyses are exported.
+                The active template defines the cover page design, branding, colors, and styling
+                for PDF exports from the Cash Flow Analysis tool.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <CashFlowTemplateUploader />
+              <CashFlowTemplateList />
             </CardContent>
           </Card>
         </TabsContent>
