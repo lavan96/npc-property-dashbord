@@ -23,8 +23,11 @@ import {
   Loader2,
   ExternalLink,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface IntegrationConfig {
   id: string;
@@ -144,6 +147,8 @@ export default function Integrations() {
   const [loading, setLoading] = useState(true);
   const [supabaseSecrets, setSupabaseSecrets] = useState<Record<string, SupabaseSecretStatus>>({});
   const [loadingSecrets, setLoadingSecrets] = useState(false);
+  const [syncingToSupabase, setSyncingToSupabase] = useState<string | null>(null);
+  const [supabaseSetupRequired, setSupabaseSetupRequired] = useState(false);
 
   // Load saved integration configs from database
   useEffect(() => {
@@ -261,6 +266,94 @@ export default function Integrations() {
       });
     } finally {
       setSaving(null);
+    }
+  };
+
+  // Map frontend field keys to Supabase secret names
+  const getSupabaseSecretName = (fieldKey: string): string => {
+    const keyMap: Record<string, string> = {
+      'AIRTABLE_API_KEY': 'AIRTABLE_TOKEN',
+      'GHL_API_KEY': 'GOHIGHLEVEL_API_KEY',
+      'GHL_LOCATION_ID': 'GOHIGHLEVEL_LOCATION_ID',
+    };
+    return keyMap[fieldKey] || fieldKey;
+  };
+
+  const syncToSupabase = async (integrationId: string) => {
+    const integration = integrations.find(i => i.id === integrationId);
+    if (!integration) return;
+
+    // Get session token from localStorage
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to sync secrets to Supabase.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSyncingToSupabase(integrationId);
+
+    try {
+      // Collect secrets for this integration
+      const secrets = integration.fields
+        .filter(field => values[field.key]?.trim())
+        .map(field => ({
+          name: getSupabaseSecretName(field.key),
+          value: values[field.key].trim()
+        }));
+
+      if (secrets.length === 0) {
+        toast({
+          title: 'No Values to Sync',
+          description: 'Please enter API key values before syncing to Supabase.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('update-integration-secret', {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`
+        },
+        body: { secrets }
+      });
+
+      if (error) throw error;
+
+      if (data?.setupRequired) {
+        setSupabaseSetupRequired(true);
+        toast({
+          title: 'Setup Required',
+          description: data.error || 'SUPABASE_ACCESS_TOKEN needs to be configured.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to sync secrets');
+      }
+
+      toast({
+        title: 'Synced to Supabase',
+        description: `${data.updatedSecrets?.length || 0} secret(s) updated successfully.`,
+      });
+
+      // Refresh the Supabase secrets status
+      await checkSupabaseSecrets();
+
+    } catch (error) {
+      console.error('Error syncing to Supabase:', error);
+      toast({
+        title: 'Sync Failed',
+        description: error instanceof Error ? error.message : 'Failed to sync secrets to Supabase.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingToSupabase(null);
     }
   };
 
@@ -386,6 +479,33 @@ export default function Integrations() {
         </Button>
       </div>
 
+      {supabaseSetupRequired && (
+        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertCircle className="h-4 w-4 text-yellow-500" />
+          <AlertDescription className="text-sm">
+            <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets, 
+            add a <code className="bg-muted px-1 rounded">SUPABASE_ACCESS_TOKEN</code> secret in your{' '}
+            <a 
+              href="https://supabase.com/dashboard/project/dduzbchuswwbefdunfct/settings/functions" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary underline"
+            >
+              Supabase dashboard
+            </a>. 
+            Get your token from{' '}
+            <a 
+              href="https://supabase.com/dashboard/account/tokens" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary underline"
+            >
+              Account → Access Tokens
+            </a>.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="all" className="w-full">
         <TabsList>
           <TabsTrigger value="all">All Integrations</TabsTrigger>
@@ -453,7 +573,7 @@ export default function Integrations() {
                       </div>
                     ))}
                     
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-2 gap-2">
                       {integration.docsUrl && (
                         <Button
                           variant="ghost"
@@ -462,21 +582,43 @@ export default function Integrations() {
                           onClick={() => window.open(integration.docsUrl, '_blank')}
                         >
                           <ExternalLink className="h-4 w-4 mr-1" />
-                          Documentation
+                          Docs
                         </Button>
                       )}
-                      <Button
-                        onClick={() => saveIntegration(integration.id)}
-                        disabled={saving === integration.id}
-                        className="ml-auto"
-                      >
-                        {saving === integration.id ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Save
-                      </Button>
+                      <div className="flex gap-2 ml-auto">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => syncToSupabase(integration.id)}
+                                disabled={syncingToSupabase === integration.id || saving === integration.id}
+                              >
+                                {syncingToSupabase === integration.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Upload className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Sync to Supabase Secrets</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <Button
+                          onClick={() => saveIntegration(integration.id)}
+                          disabled={saving === integration.id || syncingToSupabase === integration.id}
+                        >
+                          {saving === integration.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Save
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -546,7 +688,7 @@ export default function Integrations() {
                         </div>
                       ))}
                       
-                      <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center justify-between pt-2 gap-2">
                         {integration.docsUrl && (
                           <Button
                             variant="ghost"
@@ -555,21 +697,43 @@ export default function Integrations() {
                             onClick={() => window.open(integration.docsUrl, '_blank')}
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
-                            Documentation
+                            Docs
                           </Button>
                         )}
-                        <Button
-                          onClick={() => saveIntegration(integration.id)}
-                          disabled={saving === integration.id}
-                          className="ml-auto"
-                        >
-                          {saving === integration.id ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          Save
-                        </Button>
+                        <div className="flex gap-2 ml-auto">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => syncToSupabase(integration.id)}
+                                  disabled={syncingToSupabase === integration.id || saving === integration.id}
+                                >
+                                  {syncingToSupabase === integration.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Upload className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Sync to Supabase Secrets</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <Button
+                            onClick={() => saveIntegration(integration.id)}
+                            disabled={saving === integration.id || syncingToSupabase === integration.id}
+                          >
+                            {saving === integration.id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Save
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -645,7 +809,7 @@ export default function Integrations() {
                         </div>
                       ))}
                       
-                      <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center justify-between pt-2 gap-2">
                         {integration.docsUrl && (
                           <Button
                             variant="ghost"
@@ -654,21 +818,43 @@ export default function Integrations() {
                             onClick={() => window.open(integration.docsUrl, '_blank')}
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
-                            Documentation
+                            Docs
                           </Button>
                         )}
-                        <Button
-                          onClick={() => saveIntegration(integration.id)}
-                          disabled={saving === integration.id}
-                          className="ml-auto"
-                        >
-                          {saving === integration.id ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          Save
-                        </Button>
+                        <div className="flex gap-2 ml-auto">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => syncToSupabase(integration.id)}
+                                  disabled={syncingToSupabase === integration.id || saving === integration.id}
+                                >
+                                  {syncingToSupabase === integration.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Upload className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Sync to Supabase Secrets</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <Button
+                            onClick={() => saveIntegration(integration.id)}
+                            disabled={saving === integration.id || syncingToSupabase === integration.id}
+                          >
+                            {saving === integration.id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Save
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
