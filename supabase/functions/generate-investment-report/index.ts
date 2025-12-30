@@ -2806,6 +2806,55 @@ YOUR DEDICATED PROPERTY PARTNER
 
     let reportContent = combinedContent;
     
+    // ========== DEDUPLICATE HEADERS ==========
+    // The AI sometimes generates duplicate company headers and report titles
+    // This removes all occurrences except the first one
+    console.log('🧹 Deduplicating headers from report content...');
+    
+    // Helper function to remove duplicate header patterns
+    const deduplicateHeaders = (content: string): string => {
+      // Patterns to deduplicate (keep only first occurrence)
+      const headerPatterns = [
+        // Company name header (with # or without)
+        /^#?\s*NAIDU PROPERTY CONSULTING SERVICES\s*$/gim,
+        // Company slogan
+        /^YOUR DEDICATED PROPERTY PARTNER\s*$/gim,
+        // Investment Report title (with # or without, captures the address)
+        /^#?\s*Investment Report:\s*.+$/gim,
+      ];
+      
+      let result = content;
+      
+      for (const pattern of headerPatterns) {
+        // Find all matches
+        const matches = result.match(pattern);
+        if (matches && matches.length > 1) {
+          console.log(`  Found ${matches.length} occurrences of pattern, keeping first only`);
+          // Keep only the first occurrence by replacing subsequent ones
+          let count = 0;
+          result = result.replace(pattern, (match) => {
+            count++;
+            return count === 1 ? match : '';
+          });
+        }
+      }
+      
+      // Clean up excessive newlines and separators left after removal
+      result = result
+        .replace(/\n{4,}/g, '\n\n\n') // Max 3 consecutive newlines
+        .replace(/(\n---\s*){2,}/g, '\n---\n') // Remove duplicate separators
+        .replace(/^\s*---\s*\n\s*---/gm, '---') // Clean adjacent separators
+        .trim();
+      
+      return result;
+    };
+    
+    const beforeDedup = reportContent.length;
+    reportContent = deduplicateHeaders(reportContent);
+    const afterDedup = reportContent.length;
+    console.log(`✓ Header deduplication complete: ${beforeDedup} → ${afterDedup} chars (removed ${beforeDedup - afterDedup} chars)`);
+    // ========== END DEDUPLICATE HEADERS ==========
+    
     // Filter out reasoning sections from Sonar Deep Research model
     // Remove content between reasoning markers and thinking blocks
     reportContent = reportContent
