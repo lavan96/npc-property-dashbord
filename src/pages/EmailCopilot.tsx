@@ -1149,7 +1149,7 @@ export default function EmailCopilot() {
       const ccList = parseEmailList(composeEmail.cc);
       const bccList = parseEmailList(composeEmail.bcc);
 
-      // Convert attachments to base64
+      // Convert regular attachments to base64
       const attachmentsData = await Promise.all(
         composeAttachments.map(async (file) => ({
           name: file.name,
@@ -1157,6 +1157,34 @@ export default function EmailCopilot() {
           contentBytes: await fileToBase64(file)
         }))
       );
+
+      // Handle QA PDF attachment from Report Q&A (fetch from URL and convert to base64)
+      if (qaPDFAttachment) {
+        try {
+          const pdfResponse = await fetch(qaPDFAttachment.url);
+          if (pdfResponse.ok) {
+            const pdfBlob = await pdfResponse.blob();
+            const pdfBase64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const base64 = (reader.result as string).split(',')[1];
+                resolve(base64);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(pdfBlob);
+            });
+            
+            attachmentsData.push({
+              name: qaPDFAttachment.fileName,
+              contentType: 'application/pdf',
+              contentBytes: pdfBase64
+            });
+          }
+        } catch (pdfError) {
+          console.error('Failed to fetch QA PDF attachment:', pdfError);
+          toast.error('Failed to attach Q&A PDF. Sending email without it.');
+        }
+      }
 
       const { data, error } = await supabase.functions.invoke('send-email-reply', {
         body: {
@@ -1176,6 +1204,7 @@ export default function EmailCopilot() {
       setShowComposeModal(false);
       setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
       setComposeAttachments([]);
+      setQaPDFAttachment(null); // Clear the QA PDF attachment after sending
       fetchSentReplies();
     } catch (error) {
       console.error('Error sending composed email:', error);
