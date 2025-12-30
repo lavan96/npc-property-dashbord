@@ -77,6 +77,7 @@ import { FullScreenToggle, useFullScreen } from '@/components/report-qa/FullScre
 import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report-qa/AccessibilityWrapper';
 import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySettings';
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
+import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
 
 interface UploadProgress {
   fileName: string;
@@ -150,6 +151,14 @@ export default function ReportQA() {
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
   const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
+  const [showInPlaceEmailCompose, setShowInPlaceEmailCompose] = useState(false);
+  const [emailContext, setEmailContext] = useState<{
+    title: string;
+    reportNames: string;
+    messageCount: number;
+    sampleQuestions: string[];
+    generatedAt: string;
+  } | null>(null);
   
   // Phase 1 UX improvements
   const [streamingContent, setStreamingContent] = useState('');
@@ -2084,7 +2093,7 @@ export default function ReportQA() {
             </div>
           )}
           
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2">
             <Button 
               variant="outline" 
               onClick={() => {
@@ -2092,28 +2101,77 @@ export default function ReportQA() {
                 setPendingPDFAttachment(null);
                 setPdfValidationError(null);
               }}
+              className="sm:mr-auto"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleConfirmEmailCopilot}
-              disabled={isValidatingPDF}
-            >
-              {isValidatingPDF ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Validating...
-                </>
-              ) : (
-                <>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Open Email Copilot
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button 
+                variant="secondary"
+                onClick={handleConfirmEmailCopilot}
+                disabled={isValidatingPDF}
+                className="flex-1 sm:flex-none"
+              >
+                {isValidatingPDF ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Validating...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Open Email Copilot
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={() => {
+                  // Build context for in-place compose
+                  const reportNames = uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ');
+                  const messageCount = messages.length;
+                  const userQuestions = messages.filter(m => m.role === 'user').slice(0, 3).map(m => m.content.substring(0, 100));
+                  
+                  setEmailContext({
+                    title: getCurrentTitle(),
+                    reportNames,
+                    messageCount,
+                    sampleQuestions: userQuestions,
+                    generatedAt: new Date().toISOString(),
+                  });
+                  
+                  setShowEmailCopilotModal(false);
+                  setShowInPlaceEmailCompose(true);
+                }}
+                disabled={isValidatingPDF || !!pdfValidationError}
+                className="flex-1 sm:flex-none"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Send Now
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* In-Place Email Compose Modal */}
+      <InPlaceEmailCompose
+        open={showInPlaceEmailCompose}
+        onOpenChange={(open) => {
+          setShowInPlaceEmailCompose(open);
+          if (!open) {
+            setPendingPDFAttachment(null);
+            setEmailContext(null);
+          }
+        }}
+        attachment={pendingPDFAttachment}
+        context={emailContext || undefined}
+        onSuccess={() => {
+          toast({
+            title: 'Email Sent Successfully',
+            description: 'Your Q&A conversation PDF has been delivered.',
+          });
+        }}
+      />
       </div>
     </>
   );
