@@ -7,6 +7,7 @@ import {
 
 const MIN_COMPS_REQUIRED = 5;
 const MAX_COMPS_TO_USE = 25;
+const TOTAL_DEPRECIATION_YEARS = 10; // We have 10 years of data in comps
 
 /**
  * Step A: Hard filter comps by exact match criteria
@@ -103,6 +104,93 @@ function scaleByPrice(
 }
 
 /**
+ * Calculate property age in years from build year to current year
+ */
+function calculatePropertyAge(buildYear: number, calculationYear: number = new Date().getFullYear()): number {
+  return Math.max(0, calculationYear - buildYear);
+}
+
+/**
+ * Age-adjust the depreciation schedule.
+ * 
+ * For a property built in 2016 (9 years old in 2025):
+ * - We start at Year 9 of the depreciation curve (or closest available)
+ * - Years 1-8 have already been "consumed"
+ * - We project forward from Year 9, 10, then extrapolate beyond if needed
+ * 
+ * For properties older than 10 years:
+ * - Division 40 (plant/equipment) is mostly depleted, use minimal values
+ * - Division 43 (building at 2.5%) continues for up to 40 years post-1987
+ */
+function ageAdjustSchedule(
+  scaledResults: { dv: number[]; pc: number[] },
+  propertyAge: number,
+  userPrice: number
+): { dv: number[]; pc: number[]; startingYear: number; isExtrapolated: boolean } {
+  // If property is brand new (age 0 or 1), use Year 1 as starting point
+  if (propertyAge <= 0) {
+    return {
+      dv: scaledResults.dv,
+      pc: scaledResults.pc,
+      startingYear: 1,
+      isExtrapolated: false,
+    };
+  }
+
+  const adjustedDv: number[] = [];
+  const adjustedPc: number[] = [];
+  
+  // Calculate starting year index (0-based) - property age maps to which "year" we're in
+  // Age 1 = currently in Year 1 → next claim is Year 2 → start at index 1
+  // Age 9 = currently in Year 9 → next claim is Year 10 → start at index 9
+  const startingYearIndex = Math.min(propertyAge, TOTAL_DEPRECIATION_YEARS - 1);
+  const startingYear = startingYearIndex + 1; // 1-based for display
+  const isExtrapolated = propertyAge >= TOTAL_DEPRECIATION_YEARS;
+
+  console.log(`📅 Age adjustment: Property is ${propertyAge} years old, starting from Year ${startingYear}${isExtrapolated ? ' (extrapolated)' : ''}`);
+
+  for (let i = 0; i < TOTAL_DEPRECIATION_YEARS; i++) {
+    const sourceIndex = startingYearIndex + i;
+    
+    if (sourceIndex < TOTAL_DEPRECIATION_YEARS) {
+      // We have actual data for this year
+      adjustedDv.push(scaledResults.dv[sourceIndex]);
+      adjustedPc.push(scaledResults.pc[sourceIndex]);
+    } else {
+      // Beyond Year 10 - need to extrapolate
+      // Division 40 (plant/equipment): Use minimal declining value (most items fully depreciated)
+      // Division 43 (building): 2.5% of construction cost continues
+      
+      // Estimate construction cost as ~60-70% of purchase price for older properties
+      const estimatedConstructionCost = userPrice * 0.65;
+      const annualDiv43 = estimatedConstructionCost * 0.025; // 2.5% per year
+      
+      // Diminishing value: Very small residual for any remaining plant items
+      // Use last known value and decay it by ~20% per year
+      const lastKnownDv = scaledResults.dv[TOTAL_DEPRECIATION_YEARS - 1];
+      const yearsExtrapolated = sourceIndex - TOTAL_DEPRECIATION_YEARS + 1;
+      const extrapolatedDv = lastKnownDv * Math.pow(0.80, yearsExtrapolated);
+      
+      // Prime cost: Primarily Division 43 building allowance
+      // Very minimal plant/equipment remaining after 10 years
+      const extrapolatedPc = annualDiv43 * 0.4; // Building allowance portion only
+      
+      adjustedDv.push(Math.max(0, extrapolatedDv));
+      adjustedPc.push(Math.max(0, extrapolatedPc));
+      
+      console.log(`  📊 Year ${i + 1} (extrapolated from comp Year ${sourceIndex + 1}): DV=$${Math.round(extrapolatedDv)}, PC=$${Math.round(extrapolatedPc)}`);
+    }
+  }
+
+  return {
+    dv: adjustedDv,
+    pc: adjustedPc,
+    startingYear,
+    isExtrapolated,
+  };
+}
+
+/**
  * Round to nearest $1,000 for display
  */
 export function roundToThousand(value: number): number {
@@ -110,16 +198,21 @@ export function roundToThousand(value: number): number {
 }
 
 /**
- * Main calculation function
+ * Main calculation function with age-adjusted projections
  */
 export function calculateDepreciation(
   allComps: DepreciationComp[], 
   input: DepreciationInput
 ): DepreciationResult | null {
+  const currentYear = new Date().getFullYear();
+  const propertyAge = calculatePropertyAge(input.buildYear, currentYear);
+  
   console.group('🧮 Depreciation Calculation Debug');
   console.log('📊 Input Parameters:', {
     purchasePrice: input.purchasePrice,
     buildYear: input.buildYear,
+    propertyAge: propertyAge,
+    currentYear: currentYear,
     purchaseDateCategory: input.purchaseDateCategory,
     propertyType: input.propertyType,
     finishStandard: input.finishStandard,
@@ -218,30 +311,53 @@ export function calculateDepreciation(
   
   const scaled = scaleByPrice(blended, topComps, input.purchasePrice);
   
-  // Calculate totals
-  const dvTotal = scaled.dv.reduce((sum, v) => sum + v, 0);
-  const pcTotal = scaled.pc.reduce((sum, v) => sum + v, 0);
+  // Step F: Age-adjust the schedule based on property age
+  console.log('Step F - Age adjustment:');
+  const ageAdjusted = ageAdjustSchedule(scaled, propertyAge, input.purchasePrice);
+  
+  // Calculate totals from age-adjusted values
+  const dvTotal = ageAdjusted.dv.reduce((sum, v) => sum + v, 0);
+  const pcTotal = ageAdjusted.pc.reduce((sum, v) => sum + v, 0);
+  
+  // Generate projection years (next 10 calendar years from current year)
+  const projectionYears = Array.from({ length: TOTAL_DEPRECIATION_YEARS }, (_, i) => currentYear + i);
   
   // Calculate confidence score (based on count and score distribution)
+  // Reduce confidence for heavily extrapolated results
   const avgScore = topComps.reduce((sum, c) => sum + c.score, 0) / topComps.length;
-  const confidenceScore = Math.min(100, (topComps.length / MAX_COMPS_TO_USE) * 50 + (avgScore * 50));
+  let confidenceScore = Math.min(100, (topComps.length / MAX_COMPS_TO_USE) * 50 + (avgScore * 50));
+  
+  // Reduce confidence for extrapolated results
+  if (ageAdjusted.isExtrapolated) {
+    const extrapolationPenalty = Math.min(30, (propertyAge - TOTAL_DEPRECIATION_YEARS) * 5);
+    confidenceScore = Math.max(20, confidenceScore - extrapolationPenalty);
+    console.log(`  ⚠️ Extrapolation confidence penalty: -${extrapolationPenalty}%`);
+  }
   
   console.log('✅ CALCULATION COMPLETE:');
-  console.log('  DV Year 1:', roundToThousand(scaled.dv[0]).toLocaleString());
-  console.log('  PC Year 1:', roundToThousand(scaled.pc[0]).toLocaleString());
+  console.log('  Property Age:', propertyAge, 'years');
+  console.log('  Starting Year:', ageAdjusted.startingYear);
+  console.log('  Extrapolated:', ageAdjusted.isExtrapolated);
+  console.log('  DV Year 1 (of projection):', roundToThousand(ageAdjusted.dv[0]).toLocaleString());
+  console.log('  PC Year 1 (of projection):', roundToThousand(ageAdjusted.pc[0]).toLocaleString());
   console.log('  DV 10-Year Total:', roundToThousand(dvTotal).toLocaleString());
   console.log('  PC 10-Year Total:', roundToThousand(pcTotal).toLocaleString());
   console.log('  Confidence:', confidenceScore.toFixed(0) + '%');
+  console.log('  Projection Years:', projectionYears.join(', '));
   console.groupEnd();
   
   return {
-    dv: scaled.dv,
-    pc: scaled.pc,
+    dv: ageAdjusted.dv,
+    pc: ageAdjusted.pc,
     dvTotal,
     pcTotal,
     matchCount: topComps.length,
     topCompIds: topComps.map(c => c.id),
     confidenceScore,
+    propertyAge,
+    startingYear: ageAdjusted.startingYear,
+    isExtrapolated: ageAdjusted.isExtrapolated,
+    projectionYears,
   };
 }
 

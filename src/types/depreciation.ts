@@ -59,6 +59,11 @@ export interface DepreciationResult {
   matchCount: number;
   topCompIds: string[];
   confidenceScore: number;
+  // Age-adjusted projection metadata
+  propertyAge: number;           // Years since build (e.g., 9 for 2016 property in 2025)
+  startingYear: number;          // Which depreciation year we're starting from (1-10, or extrapolated)
+  isExtrapolated: boolean;       // True if property is older than 10 years and we're extrapolating
+  projectionYears: number[];     // Calendar years for the 10-year projection (e.g., [2025, 2026, ...])
 }
 
 export interface ScoredComp extends DepreciationComp {
