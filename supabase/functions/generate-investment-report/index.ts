@@ -431,27 +431,78 @@ serve(async (req) => {
           console.log('   Existing content length:', existingReportContent.length, 'chars');
           
           // Detect completed sections based on content markers
+          // Each section needs BOTH start AND end markers to be considered complete
           const sectionPatterns = [
-            { index: 0, patterns: [/##?\s*(Location\s*(Overview|&)|Current\s*Market\s*Performance)/i, /##?\s*Current\s*Economic\s*Context/i] },
-            { index: 1, patterns: [/##?\s*(Amenities|Schools\s*&\s*Education)/i, /##?\s*(Transport\s*&|Crime\s*&\s*Safety)/i] },
-            { index: 2, patterns: [/##?\s*(Property-Level|Purchase\s*&\s*Ongoing)/i, /##?\s*(Loan\s*Structure|Cashflow\s*Analysis)/i] },
-            { index: 3, patterns: [/##?\s*(10-Year\s*Investment|SWOT\s*Analysis)/i, /##?\s*(Final\s*Conclusion|Data\s*Sources)/i] }
+            { 
+              index: 0, 
+              startPatterns: [/##?\s*(Location\s*(Overview|&)|Current\s*Market\s*Performance)/i],
+              endPatterns: [/##?\s*(Demographics\s*&\s*Demand|Current\s*Economic\s*Context)/i],
+              name: 'Location & Market Overview'
+            },
+            { 
+              index: 1, 
+              startPatterns: [/##?\s*(Amenities|Schools\s*&\s*Education)/i],
+              endPatterns: [/##?\s*(Crime\s*&\s*Safety|Environmental\s*Risks)/i],
+              name: 'Amenities & Infrastructure'
+            },
+            { 
+              index: 2, 
+              startPatterns: [/##?\s*(Property-Level|Purchase\s*&\s*Ongoing)/i],
+              endPatterns: [/##?\s*(Cashflow\s*Analysis|Cash\s*Flow\s*Analysis)/i],
+              name: 'Property & Financial Analysis'
+            },
+            { 
+              index: 3, 
+              startPatterns: [/##?\s*(10-Year\s*Investment|SWOT\s*Analysis)/i],
+              endPatterns: [/##?\s*(Final\s*Conclusion|Data\s*Sources)/i],
+              name: 'Projections & Recommendations'
+            }
           ];
           
+          let firstIncompleteSection = -1;
+          let incompleteStartPosition = -1;
+          
           for (const section of sectionPatterns) {
-            // A section is considered complete if we find BOTH start and end markers
-            const hasStartMarker = section.patterns[0].test(existingReportContent);
-            const hasEndMarker = section.patterns[1].test(existingReportContent);
+            // Check for start marker
+            const hasStartMarker = section.startPatterns.some(p => p.test(existingReportContent));
+            const hasEndMarker = section.endPatterns.some(p => p.test(existingReportContent));
             
             if (hasStartMarker && hasEndMarker) {
               completedSectionIndices.push(section.index);
-              console.log(`   ✓ Section ${section.index + 1} appears complete`);
-            } else if (hasStartMarker) {
-              console.log(`   ⚠️ Section ${section.index + 1} started but incomplete`);
+              console.log(`   ✓ Section ${section.index + 1} (${section.name}) is complete`);
+            } else if (hasStartMarker && !hasEndMarker) {
+              console.log(`   ⚠️ Section ${section.index + 1} (${section.name}) started but INCOMPLETE`);
+              
+              // Track the first incomplete section - we need to strip from here
+              if (firstIncompleteSection === -1) {
+                firstIncompleteSection = section.index;
+                
+                // Find the position where this incomplete section starts
+                for (const pattern of section.startPatterns) {
+                  const match = existingReportContent.match(pattern);
+                  if (match && match.index !== undefined) {
+                    incompleteStartPosition = match.index;
+                    console.log(`   📍 Incomplete section starts at char position: ${incompleteStartPosition}`);
+                    break;
+                  }
+                }
+              }
+            } else {
+              console.log(`   ○ Section ${section.index + 1} (${section.name}) not started`);
             }
           }
           
+          // CRITICAL FIX: Strip incomplete section content before resuming
+          // This prevents duplicate/garbled content when regenerating
+          if (firstIncompleteSection !== -1 && incompleteStartPosition > 0) {
+            const cleanedContent = existingReportContent.substring(0, incompleteStartPosition).trim();
+            console.log(`   ✂️ Stripping incomplete section ${firstIncompleteSection + 1} content`);
+            console.log(`   📏 Content reduced from ${existingReportContent.length} to ${cleanedContent.length} chars`);
+            existingReportContent = cleanedContent;
+          }
+          
           console.log(`   Completed sections: ${completedSectionIndices.length}/4`);
+          console.log(`   Will regenerate from section: ${completedSectionIndices.length + 1}`);
           
           // Use property address from existing report if not provided
           if (!propertyAddress && existingReport.property_address) {
