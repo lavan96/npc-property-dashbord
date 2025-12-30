@@ -485,6 +485,24 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="reminders" className="mt-4">
+              <ClientReminders clientId={client.id} />
+            </TabsContent>
+
+            <TabsContent value="files" className="mt-4">
+              <ClientFiles clientId={client.id} />
+            </TabsContent>
+
+            <TabsContent value="activity" className="mt-4">
+              <ClientActivityTimeline clientId={client.id} />
+            </TabsContent>
+
+            <TabsContent value="insights" className="mt-4 space-y-4">
+              <ClientScoreCard clientId={client.id} />
+              <ClientTags clientId={client.id} />
+              <ClientAIInsights clientId={client.id} />
+            </TabsContent>
           </Tabs>
         </ScrollArea>
       </DialogContent>

@@ -19,11 +19,6 @@ import ReactMarkdown from 'react-markdown';
 
 interface ClientAIInsightsProps {
   clientId: string;
-  clientName: string;
-  portfolioValue: number;
-  debt: number;
-  cashFlow: number;
-  propertyCount: number;
 }
 
 interface AIInsight {
@@ -34,15 +29,27 @@ interface AIInsight {
   recommendations: string[];
 }
 
-export function ClientAIInsights({ 
-  clientId, 
-  clientName,
-  portfolioValue, 
-  debt, 
-  cashFlow, 
-  propertyCount 
-}: ClientAIInsightsProps) {
+export function ClientAIInsights({ clientId }: ClientAIInsightsProps) {
   const [insights, setInsights] = useState<AIInsight | null>(null);
+
+  // Fetch client data
+  const { data: clientData } = useQuery({
+    queryKey: ['client-ai-data', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('primary_first_name, primary_surname, total_portfolio_value, total_debt, net_monthly_cash_flow')
+        .eq('id', clientId)
+        .single();
+      if (error) throw error;
+      return {
+        clientName: `${data.primary_first_name} ${data.primary_surname}`,
+        portfolioValue: Number(data.total_portfolio_value) || 0,
+        debt: Number(data.total_debt) || 0,
+        cashFlow: Number(data.net_monthly_cash_flow) || 0
+      };
+    }
+  });
 
   // Fetch properties for deeper analysis
   const { data: properties = [] } = useQuery({
@@ -56,6 +63,12 @@ export function ClientAIInsights({
       return data;
     }
   });
+
+  const clientName = clientData?.clientName || 'Client';
+  const portfolioValue = clientData?.portfolioValue || 0;
+  const debt = clientData?.debt || 0;
+  const cashFlow = clientData?.cashFlow || 0;
+  const propertyCount = properties.length;
 
   const generateInsightsMutation = useMutation({
     mutationFn: async () => {
