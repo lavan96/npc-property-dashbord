@@ -827,7 +827,7 @@ No investment report has been uploaded. You are having an open conversation abou
       );
     }
 
-    // Handle PDF export
+    // Handle PDF export (basic)
     if (action === "export-pdf") {
       const { content, reportName } = body;
       console.log(`[report-qa] Generating PDF for: ${reportName}`);
@@ -886,6 +886,146 @@ ${cleanContent.length + 500}
         JSON.stringify({
           success: true,
           pdfDataUrl: `data:application/pdf;base64,${base64Pdf}`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle generate PDF and store to bucket for chat integration
+    if (action === "generate-qa-pdf") {
+      const { conversationId, messages, reportNames, title } = body;
+      console.log(`[report-qa] Generating QA PDF for conversation: ${conversationId}`);
+
+      if (!conversationId || !messages || messages.length === 0) {
+        throw new Error("Missing required parameters: conversationId and messages");
+      }
+
+      // Build PDF content from messages
+      const pdfLines: string[] = [];
+      pdfLines.push(`Q&A Summary: ${title || 'Conversation Export'}`);
+      pdfLines.push(`Generated: ${new Date().toLocaleString()}`);
+      if (reportNames?.length) {
+        pdfLines.push(`Reports: ${reportNames.join(', ')}`);
+      }
+      pdfLines.push('---');
+      pdfLines.push('');
+
+      messages.forEach((msg: { role: string; content: string; timestamp?: string }) => {
+        const role = msg.role === 'user' ? 'You' : 'Assistant';
+        const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
+        pdfLines.push(`[${role}] ${timestamp}`);
+        // Split long content into lines
+        const words = msg.content.split(' ');
+        let currentLine = '';
+        words.forEach((word: string) => {
+          if ((currentLine + ' ' + word).length > 80) {
+            pdfLines.push(currentLine.trim());
+            currentLine = word;
+          } else {
+            currentLine += ' ' + word;
+          }
+        });
+        if (currentLine.trim()) {
+          pdfLines.push(currentLine.trim());
+        }
+        pdfLines.push('');
+      });
+
+      // Create PDF content
+      const cleanContent = pdfLines.join('\n').replace(/[^\x00-\x7F]/g, " ");
+      const pdfContent = `
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length ${cleanContent.length + 200} >>
+stream
+BT
+/F1 11 Tf
+50 750 Td
+${pdfLines.slice(0, 60).map((line: string) => `0 -14 Td (${line.replace(/[()\\]/g, '\\$&').substring(0, 85)}) Tj`).join('\n')}
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000266 00000 n
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+${cleanContent.length + 500}
+%%EOF`;
+
+      // Convert to binary
+      const pdfBytes = new TextEncoder().encode(pdfContent);
+      const fileName = `qa-export-${conversationId}-${Date.now()}.pdf`;
+      
+      // Upload to qa_exports bucket
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('qa_exports')
+        .upload(fileName, pdfBytes, {
+          contentType: 'application/pdf',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('[report-qa] Upload error:', uploadError);
+        throw new Error(`Failed to upload PDF: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('qa_exports')
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+      console.log(`[report-qa] PDF uploaded: ${publicUrl}`);
+
+      // Create attachment object
+      const attachment = {
+        url: publicUrl,
+        fileName: fileName,
+        fileSize: pdfBytes.length,
+        createdAt: new Date().toISOString(),
+        conversationId: conversationId,
+      };
+
+      // Store the message with attachment in the conversation
+      const { data: msgData, error: msgError } = await supabase
+        .from('report_qa_messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: `📄 I've generated a PDF summary of our conversation. You can download it or send it via email using the options below.`,
+          attachments: [attachment],
+        })
+        .select()
+        .single();
+
+      if (msgError) {
+        console.error('[report-qa] Message insert error:', msgError);
+        // Don't fail - PDF was still generated
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          attachment,
+          messageId: msgData?.id || null,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
