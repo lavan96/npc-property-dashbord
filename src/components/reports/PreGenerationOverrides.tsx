@@ -244,14 +244,14 @@ export function PreGenerationOverrides({
   // Sync external purchasePrice prop - only react to external changes
   const lastExternalPurchasePrice = useRef<number | undefined>(undefined);
   useEffect(() => {
-    if (externalPurchasePrice !== undefined && buildType !== 'new_build') {
+    if (externalPurchasePrice !== undefined) {
       // Only sync if the external value has actually changed from what we last saw
       if (lastExternalPurchasePrice.current !== externalPurchasePrice) {
         lastExternalPurchasePrice.current = externalPurchasePrice;
         setPurchasePrice(externalPurchasePrice.toString());
       }
     }
-  }, [externalPurchasePrice, buildType]);
+  }, [externalPurchasePrice]);
 
   // Sync external weeklyRent prop - using ref to prevent loops
   const lastExternalWeeklyRent = useRef<number | undefined>(undefined);
