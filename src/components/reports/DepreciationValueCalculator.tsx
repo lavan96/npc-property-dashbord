@@ -551,22 +551,56 @@ export function DepreciationValueCalculator({
                 </AlertDescription>
               </Alert>
             ) : result && (
-              <>
+            <>
+                {/* Property Age Context */}
+                {result.propertyAge > 0 && (
+                  <Alert className={result.isExtrapolated ? "border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" : "border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20"}>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle className="text-sm font-medium">
+                      {result.isExtrapolated ? 'Extrapolated Projection' : 'Age-Adjusted Projection'}
+                    </AlertTitle>
+                    <AlertDescription className="text-xs">
+                      {result.isExtrapolated ? (
+                        <>
+                          This property is <strong>{result.propertyAge} years old</strong> (built {parseInt(buildYear)}). 
+                          Most plant &amp; equipment has been fully depreciated. 
+                          The projection below includes primarily Division 43 building allowance (2.5% p.a.) 
+                          with minimal residual plant values.
+                        </>
+                      ) : (
+                        <>
+                          This property is <strong>{result.propertyAge} years old</strong> (built {parseInt(buildYear)}). 
+                          The projection starts from <strong>Year {result.startingYear}</strong> of the depreciation curve, 
+                          reflecting that Years 1-{result.propertyAge} have already been claimed by previous owners.
+                        </>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* Primary Output */}
                 <div className="text-center space-y-2 py-4 bg-primary/5 rounded-lg">
                   <p className="text-sm text-muted-foreground uppercase tracking-wide">
-                    First 10 Year Total Claim
+                    {result.propertyAge > 0 
+                      ? `Projected Claims ${result.projectionYears[0]}–${result.projectionYears[9]}`
+                      : 'First 10 Year Total Claim'
+                    }
                   </p>
                   <p className="text-4xl font-bold text-primary">
                     {formatDepreciationValue(result.dvTotal)}
                   </p>
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
                     <Badge variant="secondary">
                       {result.matchCount} properties matched
                     </Badge>
                     <Badge variant="outline">
                       {result.confidenceScore.toFixed(0)}% confidence
                     </Badge>
+                    {result.propertyAge > 0 && (
+                      <Badge variant={result.isExtrapolated ? "destructive" : "default"} className="text-xs">
+                        {result.propertyAge} years old
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 
@@ -597,7 +631,14 @@ export function DepreciationValueCalculator({
                         <TableBody>
                           {result.dv.map((dv, i) => (
                             <TableRow key={i}>
-                              <TableCell className="font-medium">Year {i + 1}</TableCell>
+                              <TableCell className="font-medium">
+                                {result.projectionYears[i]}
+                                {result.propertyAge > 0 && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    (Yr {result.startingYear + i})
+                                  </span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">{formatDepreciationValue(dv)}</TableCell>
                               <TableCell className="text-right">{formatDepreciationValue(result.pc[i])}</TableCell>
                             </TableRow>
