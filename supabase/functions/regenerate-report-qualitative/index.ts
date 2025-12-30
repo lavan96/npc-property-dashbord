@@ -14,33 +14,78 @@ interface RegenerateRequest {
   financialCalculations?: Record<string, any>;
 }
 
-// Report section definitions - mirroring generate-investment-report structure
+// Report section definitions - mirroring generate-investment-report structure with CONSISTENCY THRESHOLDS
 const REPORT_SECTIONS = [
   {
     id: 'section1',
     name: 'Location & Market Overview',
     sections: ['Location Overview', 'Current Market Performance', 'Current Economic Context', 'Demographics & Demand Drivers'],
-    maxTokens: 4000,
+    maxTokens: 4500,
+    minContentLength: 8000,
+    requiredKeywords: ['location', 'market', 'demographic', 'population', 'growth'],
   },
   {
     id: 'section2', 
     name: 'Amenities & Infrastructure',
     sections: ['Schools & Education', 'Healthcare & Shopping', 'Recreational Amenities', 'Transport & Accessibility', 'Environmental Risks & Climate', 'Crime & Safety'],
-    maxTokens: 4000,
+    maxTokens: 5000,
+    minContentLength: 10000,
+    requiredKeywords: ['school', 'transport', 'hospital', 'crime', 'risk', 'flood', 'bushfire'],
   },
   {
     id: 'section3',
     name: 'Property & Financial Analysis',
     sections: ['Property-Level Information', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
-    maxTokens: 4000,
+    maxTokens: 4500,
+    minContentLength: 8000,
+    requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent'],
   },
   {
     id: 'section4',
     name: 'Projections & Recommendations',
     sections: ['10-Year Investment Projections', 'SWOT Analysis', 'Top 3 Opportunities', 'Top 3 Risks', 'Data Transparency Statement', 'Investment Recommendations', 'Investment Suitability Screening', 'Final Conclusion', 'Data Sources'],
-    maxTokens: 5000,
+    maxTokens: 5500,
+    minContentLength: 7000,
+    requiredKeywords: ['projection', 'swot', 'opportunity', 'risk', 'recommendation', 'score'],
   }
 ];
+
+// Section validation helper - ensures content meets minimum requirements
+function validateSectionContent(
+  sectionDef: typeof REPORT_SECTIONS[0],
+  content: string
+): { isValid: boolean; issues: string[]; score: number } {
+  const issues: string[] = [];
+  let score = 100;
+  
+  const contentLength = content?.length || 0;
+  if (contentLength < sectionDef.minContentLength) {
+    issues.push(`Content too short: ${contentLength} chars (min: ${sectionDef.minContentLength})`);
+    score -= 30;
+  }
+  
+  const contentLower = (content || '').toLowerCase();
+  const missingKeywords = (sectionDef.requiredKeywords || []).filter(
+    kw => !contentLower.includes(kw.toLowerCase())
+  );
+  
+  if (missingKeywords.length > 0) {
+    issues.push(`Missing content areas: ${missingKeywords.join(', ')}`);
+    score -= missingKeywords.length * 10;
+  }
+  
+  const headingCount = (content?.match(/^#{1,3}\s+/gm) || []).length;
+  if (headingCount < 3) {
+    issues.push(`Insufficient structure: only ${headingCount} headings found`);
+    score -= 15;
+  }
+  
+  return {
+    isValid: score >= 60,
+    issues,
+    score: Math.max(0, score)
+  };
+}
 
 // Helper function to extract content for a specific section from the original report
 function extractSectionContent(fullContent: string, sectionNames: string[]): string {
@@ -293,6 +338,9 @@ YOUR DEDICATED PROPERTY PARTNER
 
     console.log('🔄 Regenerating report in', REPORT_SECTIONS.length, 'sections...');
 
+    // Track section quality for validation
+    const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
+    
     for (let i = 0; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
       console.log(`\n📄 Regenerating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name}`);
@@ -304,38 +352,82 @@ YOUR DEDICATED PROPERTY PARTNER
       // Pass context from previously regenerated sections for consistency
       const previousContext = combinedContent.length > 500 ? combinedContent.substring(combinedContent.length - 2000) : '';
       
-      const result = await regenerateSection(
-        sectionDef,
-        originalSectionContent,
-        overrideSummary,
-        PERPLEXITY_API_KEY,
-        previousContext,
-        propertyAddress,
-        financialCalculations,
-        templateContext
-      );
+      // === SECTION GENERATION WITH VALIDATION AND RETRY ===
+      let bestContent = '';
+      let bestScore = 0;
+      let sectionAttempts = 0;
+      const maxSectionAttempts = 2;
       
-      if (result.error) {
-        console.error(`⚠️ Section ${sectionDef.name} failed:`, result.error);
-        generationErrors.push(`${sectionDef.name}: ${result.error}`);
+      for (let attempt = 1; attempt <= maxSectionAttempts; attempt++) {
+        sectionAttempts = attempt;
         
-        // If we have original content, use it as fallback
-        if (originalSectionContent) {
-          console.log(`  Using original content as fallback for ${sectionDef.name}`);
-          combinedContent += originalSectionContent + '\n\n---\n\n';
+        const result = await regenerateSection(
+          sectionDef,
+          originalSectionContent,
+          overrideSummary,
+          PERPLEXITY_API_KEY,
+          previousContext,
+          propertyAddress,
+          financialCalculations,
+          templateContext
+        );
+        
+        if (result.error) {
+          console.error(`⚠️ Section ${sectionDef.name} attempt ${attempt} failed:`, result.error);
+          if (attempt === maxSectionAttempts) {
+            generationErrors.push(`${sectionDef.name}: ${result.error}`);
+            // Use original content as fallback
+            if (originalSectionContent && originalSectionContent.length > 500) {
+              console.log(`  Using original content as fallback for ${sectionDef.name}`);
+              bestContent = originalSectionContent;
+              bestScore = 50; // Lower score for fallback content
+            }
+          }
+          continue;
         }
-        continue;
-      }
-      
-      if (result.content) {
-        // Clean the content - remove any preamble or meta-text
-        let cleanContent = result.content
-          .replace(/^(Here|I will|Let me|Now|The following).*?:\s*/im, '')
-          .replace(/^(Certainly|Sure|Of course).*?\n/im, '')
-          .trim();
         
-        combinedContent += cleanContent + '\n\n---\n\n';
-        allCitations = [...allCitations, ...result.citations];
+        if (result.content) {
+          let cleanContent = result.content
+            .replace(/^(Here|I will|Let me|Now|The following).*?:\s*/im, '')
+            .replace(/^(Certainly|Sure|Of course).*?\n/im, '')
+            .trim();
+          
+          // Validate section content
+          const validation = validateSectionContent(sectionDef, cleanContent);
+          console.log(`📊 Section ${sectionDef.name} validation (attempt ${attempt}):`, {
+            contentLength: cleanContent.length,
+            minRequired: sectionDef.minContentLength,
+            score: validation.score,
+            isValid: validation.isValid
+          });
+          
+          if (validation.score > bestScore) {
+            bestContent = cleanContent;
+            bestScore = validation.score;
+            allCitations = [...allCitations, ...result.citations];
+          }
+          
+          if (validation.isValid) {
+            console.log(`✓ Section ${sectionDef.name} passed validation with score ${validation.score}`);
+            break;
+          } else if (attempt < maxSectionAttempts) {
+            console.log(`⚠️ Section ${sectionDef.name} below threshold, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+      }
+      // === END SECTION GENERATION WITH VALIDATION ===
+      
+      if (bestContent) {
+        combinedContent += bestContent + '\n\n---\n\n';
+        sectionResults.push({
+          id: sectionDef.id,
+          name: sectionDef.name,
+          content: bestContent,
+          valid: bestScore >= 60,
+          score: bestScore,
+          attempts: sectionAttempts
+        });
       }
       
       // Small delay between sections to avoid rate limiting
@@ -343,6 +435,15 @@ YOUR DEDICATED PROPERTY PARTNER
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
+    
+    // === FINAL VALIDATION SUMMARY ===
+    const totalScore = sectionResults.reduce((sum, s) => sum + s.score, 0);
+    const avgScore = Math.round(totalScore / Math.max(sectionResults.length, 1));
+    
+    console.log('\n📊 === REGENERATION QUALITY SUMMARY ===');
+    console.log(`Total content length: ${combinedContent.length} chars`);
+    console.log(`Average section score: ${avgScore}/100`);
+    console.log(`Sections regenerated: ${sectionResults.length}/${REPORT_SECTIONS.length}`);
 
     // Check if we have substantial content
     if (combinedContent.length < 5000) {
