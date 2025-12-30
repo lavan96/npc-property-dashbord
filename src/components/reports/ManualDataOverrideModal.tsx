@@ -1366,11 +1366,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'investment' | 'cashflow')} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-6 pt-2">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="investment" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="investment" 
+                className="flex items-center gap-2 data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+              >
                 <FileText className="h-4 w-4" />
                 Investment Report
               </TabsTrigger>
-              <TabsTrigger value="cashflow" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="cashflow" 
+                className="flex items-center gap-2 data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+              >
                 <TrendingUp className="h-4 w-4" />
                 Cash Flow Analysis
               </TabsTrigger>
