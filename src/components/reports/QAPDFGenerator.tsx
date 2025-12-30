@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont, RGB } from 'pdf-lib';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QAPDFGeneratorProps {
   content: string;
@@ -22,6 +23,42 @@ interface PDFColors {
   darkText: RGB;
 }
 
+// Template configuration interface
+interface TemplateConfig {
+  id: string;
+  name: string;
+  colors: PDFColors;
+  companyName: string;
+  companyNameLine2: string;
+  tagline: string;
+  contactPhone: string;
+  contactEmail: string;
+  website: string;
+  disclaimer: string;
+}
+
+// Default NPC Brand configuration
+const defaultConfig: TemplateConfig = {
+  id: 'default',
+  name: 'Default NPC Template',
+  colors: {
+    black: rgb(0.04, 0.04, 0.04),         // #0a0a0a
+    darkGray: rgb(0.18, 0.18, 0.18),       // #2d2d2d
+    gold: rgb(0.79, 0.64, 0.15),           // #c9a227
+    lightGold: rgb(0.91, 0.84, 0.62),      // #e8d59d
+    white: rgb(1, 1, 1),
+    gray: rgb(0.53, 0.53, 0.53),           // #888888
+    darkText: rgb(0.1, 0.1, 0.1),          // #1a1a1a
+  },
+  companyName: 'NAIDU PROPERTY',
+  companyNameLine2: 'CONSULTING SERVICES',
+  tagline: 'YOUR DEDICATED PROPERTY PARTNER',
+  contactPhone: '0433 005 110',
+  contactEmail: 'admin@npcservices.com.au',
+  website: 'npcservices.com.au',
+  disclaimer: 'Disclaimer: This summary is provided for informational purposes only and does not constitute financial advice.',
+};
+
 export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({ 
   content, 
   title, 
@@ -30,15 +67,74 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
-  // NPC Brand colors
-  const colors: PDFColors = {
-    black: rgb(0.04, 0.04, 0.04),         // #0a0a0a
-    darkGray: rgb(0.18, 0.18, 0.18),       // #2d2d2d
-    gold: rgb(0.79, 0.64, 0.15),           // #c9a227
-    lightGold: rgb(0.91, 0.84, 0.62),      // #e8d59d
-    white: rgb(1, 1, 1),
-    gray: rgb(0.53, 0.53, 0.53),           // #888888
-    darkText: rgb(0.1, 0.1, 0.1),          // #1a1a1a
+  const loadActiveTemplate = async (): Promise<TemplateConfig> => {
+    try {
+      // Fetch active qa_export template
+      const { data: template, error } = await supabase
+        .from('report_structure_templates')
+        .select('*')
+        .eq('template_type', 'qa_export')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Error fetching QA template:', error);
+        return defaultConfig;
+      }
+
+      if (!template) {
+        console.log('No active QA template found, using default');
+        return defaultConfig;
+      }
+
+      // Parse metadata for custom configuration if available
+      const metadata = template.metadata as Record<string, any> | null;
+      
+      if (metadata?.branding) {
+        // If template has branding configuration, use it
+        const branding = metadata.branding;
+        return {
+          id: template.id,
+          name: template.name,
+          colors: {
+            black: branding.colors?.black ? parseColor(branding.colors.black) : defaultConfig.colors.black,
+            darkGray: branding.colors?.darkGray ? parseColor(branding.colors.darkGray) : defaultConfig.colors.darkGray,
+            gold: branding.colors?.primary ? parseColor(branding.colors.primary) : defaultConfig.colors.gold,
+            lightGold: branding.colors?.primaryLight ? parseColor(branding.colors.primaryLight) : defaultConfig.colors.lightGold,
+            white: defaultConfig.colors.white,
+            gray: branding.colors?.gray ? parseColor(branding.colors.gray) : defaultConfig.colors.gray,
+            darkText: branding.colors?.text ? parseColor(branding.colors.text) : defaultConfig.colors.darkText,
+          },
+          companyName: branding.companyName || defaultConfig.companyName,
+          companyNameLine2: branding.companyNameLine2 || defaultConfig.companyNameLine2,
+          tagline: branding.tagline || defaultConfig.tagline,
+          contactPhone: branding.contactPhone || defaultConfig.contactPhone,
+          contactEmail: branding.contactEmail || defaultConfig.contactEmail,
+          website: branding.website || defaultConfig.website,
+          disclaimer: branding.disclaimer || defaultConfig.disclaimer,
+        };
+      }
+
+      // Template exists but no custom branding - use default with template name
+      console.log(`Using template "${template.name}" with default styling`);
+      return {
+        ...defaultConfig,
+        id: template.id,
+        name: template.name,
+      };
+    } catch (err) {
+      console.error('Failed to load template:', err);
+      return defaultConfig;
+    }
+  };
+
+  const parseColor = (hexColor: string): RGB => {
+    // Parse hex color to RGB values
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    return rgb(r, g, b);
   };
 
   const generatePDF = async () => {
@@ -46,6 +142,10 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
     console.log('🚀 Starting Q&A PDF generation');
     
     try {
+      // Load template configuration
+      const templateConfig = await loadActiveTemplate();
+      console.log(`📋 Using template: ${templateConfig.name}`);
+      
       // Create a new PDF document
       const pdfDoc = await PDFDocument.create();
       
@@ -68,7 +168,8 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
         title,
         reportNames,
         fonts: { helvetica, helveticaBold, timesRoman, timesRomanBold },
-        colors,
+        colors: templateConfig.colors,
+        config: templateConfig,
       });
 
       // Create content pages
@@ -78,7 +179,8 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
         margin,
         content,
         fonts: { helvetica, helveticaBold, timesRoman, timesRomanBold, timesRomanItalic },
-        colors,
+        colors: templateConfig.colors,
+        config: templateConfig,
       });
 
       // Generate PDF bytes
@@ -146,6 +248,7 @@ interface PageConfig {
     timesRomanBold: PDFFont;
   };
   colors: PDFColors;
+  config: TemplateConfig;
 }
 
 interface ContentConfig {
@@ -161,10 +264,11 @@ interface ContentConfig {
     timesRomanItalic: PDFFont;
   };
   colors: PDFColors;
+  config: TemplateConfig;
 }
 
-async function createCoverPage(pdfDoc: PDFDocument, config: PageConfig) {
-  const { pageWidth, pageHeight, title, reportNames, fonts, colors } = config;
+async function createCoverPage(pdfDoc: PDFDocument, pageConfig: PageConfig) {
+  const { pageWidth, pageHeight, title, reportNames, fonts, colors, config } = pageConfig;
   
   const page = pdfDoc.addPage([pageWidth, pageHeight]);
   
@@ -263,9 +367,9 @@ async function createCoverPage(pdfDoc: PDFDocument, config: PageConfig) {
     color: colors.gold,
   });
 
-  // Company name
-  const companyLine1 = 'NAIDU PROPERTY';
-  const companyLine2 = 'CONSULTING SERVICES';
+  // Company name - use config values
+  const companyLine1 = config.companyName;
+  const companyLine2 = config.companyNameLine2;
   const companySize = 24;
   
   const line1Width = fonts.timesRoman.widthOfTextAtSize(companyLine1, companySize);
@@ -295,8 +399,7 @@ async function createCoverPage(pdfDoc: PDFDocument, config: PageConfig) {
     thickness: 2,
     color: colors.gold,
   });
-  // Diamond shape using a small rotated rectangle - simplified without rotation
-  // Draw as a diamond using lines instead
+  // Diamond shape using lines
   const diamondSize = 6;
   const cx = pageWidth / 2;
   const cy = dividerY;
@@ -331,8 +434,8 @@ async function createCoverPage(pdfDoc: PDFDocument, config: PageConfig) {
     color: colors.gold,
   });
 
-  // Tagline
-  const tagline = 'YOUR DEDICATED PROPERTY PARTNER';
+  // Tagline - use config value
+  const tagline = config.tagline;
   const taglineSize = 10;
   const taglineWidth = fonts.helvetica.widthOfTextAtSize(tagline, taglineSize);
   page.drawText(tagline, {
@@ -381,8 +484,8 @@ async function createCoverPage(pdfDoc: PDFDocument, config: PageConfig) {
   });
 }
 
-async function createContentPages(pdfDoc: PDFDocument, config: ContentConfig) {
-  const { pageWidth, pageHeight, margin, content, fonts, colors } = config;
+async function createContentPages(pdfDoc: PDFDocument, contentConfig: ContentConfig) {
+  const { pageWidth, pageHeight, margin, content, fonts, colors, config } = contentConfig;
   
   const topMargin = 80;
   const bottomMargin = 80;
@@ -417,7 +520,7 @@ async function createContentPages(pdfDoc: PDFDocument, config: ContentConfig) {
     // Check if we need a new page
     if (yPosition < bottomMargin + 40) {
       // Add footer to current page before starting new one
-      addPageFooter(currentPage!, pageWidth, pageNumber, totalPages, fonts.helvetica, colors);
+      addPageFooter(currentPage!, pageWidth, pageNumber, totalPages, fonts.helvetica, colors, config);
       currentPage = startNewPage();
     }
 
@@ -511,14 +614,14 @@ async function createContentPages(pdfDoc: PDFDocument, config: ContentConfig) {
 
   // Add footer to last page
   if (currentPage) {
-    addPageFooter(currentPage, pageWidth, pageNumber, totalPages, fonts.helvetica, colors);
+    addPageFooter(currentPage, pageWidth, pageNumber, totalPages, fonts.helvetica, colors, config);
     
     // Add contact info and disclaimer on last page
-    addLastPageInfo(currentPage, pageWidth, margin, fonts, colors);
+    addLastPageInfo(currentPage, pageWidth, margin, fonts, colors, config);
   }
 }
 
-function drawPageDecorations(page: PDFPage, pageWidth: number, pageHeight: number, colors: ContentConfig['colors']) {
+function drawPageDecorations(page: PDFPage, pageWidth: number, pageHeight: number, colors: PDFColors) {
   // Top-left corner accent
   page.drawRectangle({
     x: 0,
@@ -550,11 +653,20 @@ function drawPageDecorations(page: PDFPage, pageWidth: number, pageHeight: numbe
   });
 }
 
-function addPageFooter(page: PDFPage, pageWidth: number, pageNumber: number, totalPages: number, font: PDFFont, colors: ContentConfig['colors']) {
+function addPageFooter(
+  page: PDFPage, 
+  pageWidth: number, 
+  pageNumber: number, 
+  totalPages: number, 
+  font: PDFFont, 
+  colors: PDFColors,
+  config: TemplateConfig
+) {
   const footerY = 30;
   
-  // Left side - company info
-  page.drawText('NPC Services | npcservices.com.au', {
+  // Left side - company info (use config values)
+  const footerLeft = `NPC Services | ${config.website}`;
+  page.drawText(footerLeft, {
     x: 60,
     y: footerY,
     size: 8,
@@ -582,7 +694,14 @@ function addPageFooter(page: PDFPage, pageWidth: number, pageNumber: number, tot
   });
 }
 
-function addLastPageInfo(page: PDFPage, pageWidth: number, margin: number, fonts: ContentConfig['fonts'], colors: ContentConfig['colors']) {
+function addLastPageInfo(
+  page: PDFPage, 
+  pageWidth: number, 
+  margin: number, 
+  fonts: ContentConfig['fonts'], 
+  colors: PDFColors,
+  config: TemplateConfig
+) {
   const contactY = 120;
   
   // Gold divider line
@@ -604,8 +723,8 @@ function addLastPageInfo(page: PDFPage, pageWidth: number, margin: number, fonts
     color: colors.darkText,
   });
   
-  // Contact details
-  const contactDetails = 'Phone: 0433 005 110 | Email: admin@npcservices.com.au | Website: npcservices.com.au';
+  // Contact details - use config values
+  const contactDetails = `Phone: ${config.contactPhone} | Email: ${config.contactEmail} | Website: ${config.website}`;
   const detailsWidth = fonts.timesRoman.widthOfTextAtSize(contactDetails, 9);
   page.drawText(contactDetails, {
     x: (pageWidth - detailsWidth) / 2,
@@ -615,10 +734,9 @@ function addLastPageInfo(page: PDFPage, pageWidth: number, margin: number, fonts
     color: colors.gray,
   });
   
-  // Disclaimer
-  const disclaimer = 'Disclaimer: This summary is provided for informational purposes only and does not constitute financial advice.';
-  const disclaimerWidth = fonts.timesRomanItalic.widthOfTextAtSize(disclaimer, 8);
-  page.drawText(disclaimer, {
+  // Disclaimer - use config value
+  const disclaimerWidth = fonts.timesRomanItalic.widthOfTextAtSize(config.disclaimer, 8);
+  page.drawText(config.disclaimer, {
     x: (pageWidth - disclaimerWidth) / 2,
     y: contactY - 40,
     size: 8,

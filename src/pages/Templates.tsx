@@ -7,9 +7,10 @@ import { TemplateUploader } from '@/components/templates/TemplateUploader';
 import { TemplateList } from '@/components/templates/TemplateList';
 import { BrandingManager } from '@/components/templates/BrandingManager';
 import { GlobalReportSettings } from '@/components/templates/GlobalReportSettings';
-import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings } from 'lucide-react';
+import { QATemplateUploader } from '@/components/templates/QATemplateUploader';
+import { QATemplateList } from '@/components/templates/QATemplateList';
+import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
 type ReportFormat = 
   | 'investment_compass' 
   | 'investment_executive' 
@@ -142,7 +143,7 @@ export default function Templates() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="report-formats" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             Report Formats
@@ -154,6 +155,10 @@ export default function Templates() {
           <TabsTrigger value="pdf-layout" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             PDF Layouts
+          </TabsTrigger>
+          <TabsTrigger value="qa-export" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Q&A Export
           </TabsTrigger>
           <TabsTrigger value="branding" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
@@ -370,6 +375,26 @@ export default function Templates() {
                 isLoading={templatesLoading}
                 templateType="pdf_layout"
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="qa-export" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                Q&A Export Templates
+              </CardTitle>
+              <CardDescription>
+                Upload PDF templates to customize how Report Q&A conversations are exported.
+                The active template defines the cover page design, fonts, colors, headers, and footers
+                for PDF exports from the Q&A agent.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <QATemplateUploader />
+              <QATemplateList />
             </CardContent>
           </Card>
         </TabsContent>
