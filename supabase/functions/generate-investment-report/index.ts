@@ -2491,8 +2491,19 @@ ${overrideLines.join('\n')}
     try {
       console.log('🔍 Fetching AI structure template directly from database...');
       
-      const reportTier = propertyDetails?.reportTier || 'compass';
+      // Map frontend tier names to database tier names
+      // Frontend sends 'briefing' but database stores 'executive'
+      const rawTier = propertyDetails?.reportTier || 'compass';
+      const tierMapping: Record<string, string> = {
+        'briefing': 'executive',  // Executive Briefing tier mapping
+        'compass': 'compass',     // Investor Compass
+        'snapshot': 'snapshot',   // Suburb Snapshot
+        'executive': 'executive', // Direct match (in case already mapped)
+      };
+      const reportTier = tierMapping[rawTier] || rawTier;
       const reportCategory = reportScope === 'suburb' ? 'suburb_snapshot' : 'investment';
+      
+      console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
       
       // Query report_structure_templates directly for the matching template
       const templateClient = createClient(
