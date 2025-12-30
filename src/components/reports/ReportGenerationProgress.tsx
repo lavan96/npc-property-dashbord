@@ -13,6 +13,7 @@ interface ReportProgress {
   totalSections: number;
   contentLength: number;
   error_message?: string | null;
+  lastUpdated: Date;
 }
 
 export function ReportGenerationProgress() {
@@ -73,7 +74,8 @@ export function ReportGenerationProgress() {
         sectionsCompleted,
         totalSections: 4,
         contentLength: content.length,
-        error_message: report.error_message
+        error_message: report.error_message,
+        lastUpdated: new Date(report.updated_at)
       };
     });
 
@@ -203,10 +205,15 @@ interface ReportProgressItemProps {
 function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressItemProps) {
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
   
+  // Calculate time since last update
+  const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
+  const minutesSinceUpdate = Math.floor(timeSinceUpdate / 60000);
+  
   // Determine if report is stuck - has partial content but not all 4 sections complete
-  // Also consider it stuck if processing but has been at less than 4 sections
+  // Also consider timing: if processing for more than 2 minutes without progress, likely stuck
   const isIncomplete = report.sectionsCompleted > 0 && report.sectionsCompleted < report.totalSections;
-  const isStuck = report.status === 'processing' && isIncomplete;
+  const isTimedOut = timeSinceUpdate > 120000; // 2 minutes without update
+  const isStuck = report.status === 'processing' && (isIncomplete || isTimedOut) && report.contentLength > 1000;
   
   // Show continue button if:
   // 1. Currently processing but incomplete (stuck)
@@ -227,18 +234,24 @@ function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressIte
             {report.property_address}
           </p>
           <div className="flex items-center gap-1.5 mt-1">
-            {report.status === 'pending' && (
+            {report.status === 'pending' && !isStuck && (
               <>
                 <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />
                 <span className="text-xs text-muted-foreground">Queued</span>
               </>
             )}
-            {report.status === 'processing' && (
+            {report.status === 'processing' && !isStuck && (
               <>
                 <Loader2 className="h-3 w-3 text-primary animate-spin" />
                 <span className="text-xs text-primary">
                   Section {currentSection}/{report.totalSections}
                 </span>
+              </>
+            )}
+            {isStuck && (
+              <>
+                <AlertCircle className="h-3 w-3 text-amber-500" />
+                <span className="text-xs text-amber-500 font-medium">Stalled</span>
               </>
             )}
           </div>
@@ -264,6 +277,24 @@ function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressIte
           <span>{percentage}%</span>
         </div>
       </div>
+      
+      {/* Stuck indicator with explanation */}
+      {isStuck && (
+        <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600 dark:text-amber-400">
+          <div className="flex items-start gap-1.5">
+            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium">Generation stalled</p>
+              <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
+                {minutesSinceUpdate > 0 
+                  ? `No progress for ${minutesSinceUpdate} min. `
+                  : 'The server timed out. '}
+                Press <span className="font-medium">Continue</span> to resume from section {currentSection}.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {report.error_message && (
         <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive flex items-start gap-1.5">
