@@ -68,6 +68,15 @@ import { RecordingIndicator } from '@/components/report-qa/RecordingIndicator';
 import { PDFAttachmentMessage } from '@/components/report-qa/PDFAttachmentMessage';
 import { MessageDateSeparator, shouldShowDateSeparator } from '@/components/report-qa/MessageDateSeparator';
 import { CharacterCount, FailedMessageIndicator } from '@/components/report-qa/ChatInputEnhancements';
+import { PDFThumbnail, UploadProgressItem } from '@/components/report-qa/PDFThumbnail';
+import { ReportSwitcher, ReportSearch } from '@/components/report-qa/ReportContextSearch';
+
+interface UploadProgress {
+  fileName: string;
+  progress: number;
+  status: 'uploading' | 'processing' | 'complete' | 'error';
+  error?: string;
+}
 
 interface PDFAttachment {
   url: string;
@@ -138,6 +147,11 @@ export default function ReportQA() {
   const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const MAX_MESSAGE_LENGTH = 4000;
+  
+  // Phase 2 UX improvements
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [activeReportIndex, setActiveReportIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -258,11 +272,32 @@ export default function ReportQA() {
       return;
     }
 
-    setIsUploading(true);
+    // Add progress item
+    const progressItem: UploadProgress = {
+      fileName: file.name,
+      progress: 0,
+      status: 'uploading'
+    };
+    setUploadProgress(prev => [...prev, progressItem]);
 
     try {
+      // Simulate upload progress
+      const updateProgress = (progress: number, status: UploadProgress['status']) => {
+        setUploadProgress(prev => 
+          prev.map(p => p.fileName === file.name ? { ...p, progress, status } : p)
+        );
+      };
+      
       const reader = new FileReader();
+      reader.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 50);
+          updateProgress(percent, 'uploading');
+        }
+      };
+      
       reader.onload = async (e) => {
+        updateProgress(50, 'processing');
         const base64 = e.target?.result as string;
         
         const { data, error } = await supabase.functions.invoke('report-qa', {
@@ -276,6 +311,8 @@ export default function ReportQA() {
         if (error) throw error;
 
         if (data.success) {
+          updateProgress(100, 'complete');
+          
           const newReport: UploadedReport = {
             name: file.name,
             content: data.extractedText,
@@ -283,6 +320,12 @@ export default function ReportQA() {
           };
           
           setUploadedReports(prev => [...prev, newReport]);
+          
+          // Remove from progress after a short delay
+          setTimeout(() => {
+            setUploadProgress(prev => prev.filter(p => p.fileName !== file.name));
+          }, 1500);
+          
           toast({
             title: 'Report uploaded',
             description: `${file.name} added. ${uploadedReports.length + 1} report(s) loaded.`,
@@ -296,6 +339,12 @@ export default function ReportQA() {
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Upload error:', error);
+      setUploadProgress(prev => 
+        prev.map(p => p.fileName === file.name 
+          ? { ...p, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' } 
+          : p
+        )
+      );
       toast({
         title: 'Upload failed',
         description: error instanceof Error ? error.message : 'Failed to process the report',
@@ -457,8 +506,13 @@ export default function ReportQA() {
 
     try {
       // Use streaming for better UX
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const SUPABASE_URL = 'https://dduzbchuswwbefdunfct.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
+      
+      // Filter reports based on active selection
+      const reportsToUse = activeReportIndex !== null 
+        ? [uploadedReports[activeReportIndex]]
+        : uploadedReports;
       
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
         method: 'POST',
@@ -468,8 +522,8 @@ export default function ReportQA() {
         },
         body: JSON.stringify({
           action: 'chat',
-          reportContents: uploadedReports.map(r => r.content),
-          reportNames: uploadedReports.map(r => r.name),
+          reportContents: reportsToUse.map(r => r.content),
+          reportNames: reportsToUse.map(r => r.name),
           question: messageContent,
           chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
           conversationId: activeConversationId,
@@ -1087,35 +1141,73 @@ export default function ReportQA() {
               )}
             </div>
 
-            {/* Uploaded Reports List */}
+            {/* Upload Progress */}
+            {uploadProgress.length > 0 && (
+              <div className="space-y-2">
+                {uploadProgress.map((item) => (
+                  <UploadProgressItem
+                    key={item.fileName}
+                    fileName={item.fileName}
+                    progress={item.progress}
+                    status={item.status}
+                    error={item.error}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Reports Toolbar */}
+            {uploadedReports.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <ReportSwitcher
+                  reports={uploadedReports}
+                  activeReportIndex={activeReportIndex}
+                  onSelectReport={setActiveReportIndex}
+                />
+                <ReportSearch
+                  reports={uploadedReports}
+                  onResultClick={(reportIndex, _snippet) => {
+                    setActiveReportIndex(reportIndex);
+                    toast({
+                      title: 'Report selected',
+                      description: `Focused on ${uploadedReports[reportIndex].name}`,
+                    });
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Uploaded Reports Grid */}
             {uploadedReports.length > 0 && (
               <ScrollArea className="flex-1">
-                <div className="space-y-2">
-                  {uploadedReports.map((report) => (
-                    <div key={report.name} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      <span className="text-sm truncate flex-1" title={report.name}>
-                        {report.name}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => removeReport(report.name)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {uploadedReports.map((report, index) => (
+                    <PDFThumbnail
+                      key={report.name}
+                      fileName={report.name}
+                      content={report.content}
+                      uploadedAt={report.uploadedAt}
+                      isActive={activeReportIndex === index}
+                      onClick={() => setActiveReportIndex(
+                        activeReportIndex === index ? null : index
+                      )}
+                      onRemove={() => {
+                        removeReport(report.name);
+                        if (activeReportIndex === index) {
+                          setActiveReportIndex(null);
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               </ScrollArea>
             )}
 
             {/* Comparison Badge */}
-            {uploadedReports.length > 1 && (
+            {uploadedReports.length > 1 && activeReportIndex === null && (
               <div className="flex items-center gap-2 p-2 bg-blue-500/10 rounded-lg">
                 <GitCompare className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-blue-600">Comparison mode active</span>
+                <span className="text-sm text-blue-600 dark:text-blue-400">Comparison mode active</span>
               </div>
             )}
 
