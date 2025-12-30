@@ -149,6 +149,44 @@ export function InvestmentReportGenerator() {
     }
   }, []);
 
+  // Handle landSize change and sync to preGenData (bidirectional)
+  const handleLandSizeChange = useCallback((value: string) => {
+    // Allow empty, digits, and decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setLandSize(value);
+      
+      if (!isSyncingFromPreGen.current) {
+        isSyncingToPreGen.current = true;
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          setPreGenData(prev => ({ ...prev, landSizeSqm: numValue }));
+        } else if (value === '') {
+          setPreGenData(prev => ({ ...prev, landSizeSqm: undefined }));
+        }
+        requestAnimationFrame(() => { isSyncingToPreGen.current = false; });
+      }
+    }
+  }, []);
+
+  // Handle buildSize change and sync to preGenData (bidirectional)
+  const handleBuildSizeChange = useCallback((value: string) => {
+    // Allow empty, digits, and decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setBuildSize(value);
+      
+      if (!isSyncingFromPreGen.current) {
+        isSyncingToPreGen.current = true;
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          setPreGenData(prev => ({ ...prev, buildSizeSqm: numValue }));
+        } else if (value === '') {
+          setPreGenData(prev => ({ ...prev, buildSizeSqm: undefined }));
+        }
+        requestAnimationFrame(() => { isSyncingToPreGen.current = false; });
+      }
+    }
+  }, []);
+
   // Handle preGenData changes from PreGenerationOverrides - sync back to main form fields
   const handlePreGenDataChange = useCallback((data: PreGenerationData) => {
     setPreGenData(data);
@@ -1481,26 +1519,28 @@ export function InvestmentReportGenerator() {
 
                   <div className="space-y-2">
                     <Label htmlFor="landSize">Land Size (m²)</Label>
-                    <Input
-                      id="landSize"
-                      type="number"
-                      value={landSize}
-                      onChange={(e) => setLandSize(e.target.value)}
-                      placeholder="e.g., 450"
-                      disabled={isGenerating}
-                    />
+                      <Input
+                        id="landSize"
+                        type="text"
+                        inputMode="decimal"
+                        value={landSize}
+                        onChange={(e) => handleLandSizeChange(e.target.value)}
+                        placeholder="e.g., 450"
+                        disabled={isGenerating}
+                      />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="buildSize">Build Size (m²)</Label>
-                    <Input
-                      id="buildSize"
-                      type="number"
-                      value={buildSize}
-                      onChange={(e) => setBuildSize(e.target.value)}
-                      placeholder="e.g., 180"
-                      disabled={isGenerating}
-                    />
+                      <Input
+                        id="buildSize"
+                        type="text"
+                        inputMode="decimal"
+                        value={buildSize}
+                        onChange={(e) => handleBuildSizeChange(e.target.value)}
+                        placeholder="e.g., 180"
+                        disabled={isGenerating}
+                      />
                   </div>
                 </div>
               </div>
@@ -1859,9 +1899,10 @@ export function InvestmentReportGenerator() {
                         <Label htmlFor="urlLandSize">Land Size (m²)</Label>
                         <Input
                           id="urlLandSize"
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={landSize}
-                          onChange={(e) => setLandSize(e.target.value)}
+                          onChange={(e) => handleLandSizeChange(e.target.value)}
                           placeholder="e.g., 450"
                           disabled={isScraping}
                         />
@@ -1871,9 +1912,10 @@ export function InvestmentReportGenerator() {
                         <Label htmlFor="urlBuildSize">Build Size (m²)</Label>
                         <Input
                           id="urlBuildSize"
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={buildSize}
-                          onChange={(e) => setBuildSize(e.target.value)}
+                          onChange={(e) => handleBuildSizeChange(e.target.value)}
                           placeholder="e.g., 180"
                           disabled={isScraping}
                         />
@@ -2195,9 +2237,10 @@ export function InvestmentReportGenerator() {
                         <Label htmlFor="pdfLandSize">Land Size (m²)</Label>
                         <Input
                           id="pdfLandSize"
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={landSize}
-                          onChange={(e) => setLandSize(e.target.value)}
+                          onChange={(e) => handleLandSizeChange(e.target.value)}
                           placeholder="e.g., 450"
                           disabled={isParsing}
                         />
@@ -2207,9 +2250,10 @@ export function InvestmentReportGenerator() {
                         <Label htmlFor="pdfBuildSize">Build Size (m²)</Label>
                         <Input
                           id="pdfBuildSize"
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={buildSize}
-                          onChange={(e) => setBuildSize(e.target.value)}
+                          onChange={(e) => handleBuildSizeChange(e.target.value)}
                           placeholder="e.g., 180"
                           disabled={isParsing}
                         />
