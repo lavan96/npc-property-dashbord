@@ -498,9 +498,10 @@ export function InvestmentReportGenerator() {
         scrapedContent: scrapedResult.markdown,
         sourceUrl: scrapedResult.sourceUrl || propertyUrl,
         fromUrlScrape: true, // Flag to indicate this came from URL scrape
+        manualOverrides: preGenData,
       };
       
-      // Include all extracted fields
+      // Include all extracted fields (scraped values as fallbacks, preGenData overrides take precedence)
       if (extracted.extractedPrice) propertyDetails.price = extracted.extractedPrice;
       if (extracted.extractedBedrooms) propertyDetails.beds = extracted.extractedBedrooms;
       if (extracted.extractedBathrooms) propertyDetails.baths = extracted.extractedBathrooms;
@@ -511,6 +512,80 @@ export function InvestmentReportGenerator() {
       if (extracted.extractedPostcode) propertyDetails.postcode = extracted.extractedPostcode;
       if (extracted.extractedState) propertyDetails.state = extracted.extractedState;
       if (extracted.extractedSuburb) propertyDetails.suburb = extracted.extractedSuburb;
+
+      // Apply preGenData overrides (these take precedence over scraped values)
+      propertyDetails.buildType = preGenData.buildType;
+      if (preGenData.purchasePrice) propertyDetails.price = preGenData.purchasePrice;
+      if (preGenData.weeklyRent) propertyDetails.weeklyRent = preGenData.weeklyRent;
+      if (preGenData.carSpaces) propertyDetails.carSpaces = preGenData.carSpaces;
+      if (preGenData.landSizeSqm) propertyDetails.landSizeSqm = preGenData.landSizeSqm;
+      if (preGenData.buildSizeSqm) propertyDetails.buildSizeSqm = preGenData.buildSizeSqm;
+      
+      // For new builds, add land and build prices
+      if (preGenData.buildType === 'new_build') {
+        if (preGenData.landPrice) propertyDetails.landPrice = preGenData.landPrice;
+        if (preGenData.buildPrice) propertyDetails.buildPrice = preGenData.buildPrice;
+        if (preGenData.agentFee) propertyDetails.agentFee = preGenData.agentFee;
+      } else {
+        if (preGenData.depositValue) propertyDetails.depositValue = preGenData.depositValue;
+      }
+      
+      // Add financial assumptions
+      if (preGenData.loanToValueRatio) propertyDetails.loanToValueRatio = preGenData.loanToValueRatio;
+      if (preGenData.interestRate) propertyDetails.interestRate = preGenData.interestRate;
+      if (preGenData.capitalGrowth) propertyDetails.capitalGrowth = preGenData.capitalGrowth;
+      
+      // Add expense overrides
+      if (preGenData.stampDuty) propertyDetails.stampDuty = preGenData.stampDuty;
+      if (preGenData.bodyCorporateFees) propertyDetails.bodyCorporateFees = preGenData.bodyCorporateFees;
+      if (preGenData.landTax) propertyDetails.landTax = preGenData.landTax;
+      if (preGenData.councilRates) propertyDetails.councilRates = preGenData.councilRates;
+      if (preGenData.waterRates) propertyDetails.waterRates = preGenData.waterRates;
+      if (preGenData.solicitorFees) propertyDetails.solicitorFees = preGenData.solicitorFees;
+      if (preGenData.buildingLandlordInsurance) propertyDetails.buildingLandlordInsurance = preGenData.buildingLandlordInsurance;
+      if (preGenData.propertyManagementFees) propertyDetails.propertyManagementFees = preGenData.propertyManagementFees;
+      if (preGenData.repairsMaintenance) propertyDetails.repairsMaintenance = preGenData.repairsMaintenance;
+      if (preGenData.lettingFees) propertyDetails.lettingFees = preGenData.lettingFees;
+      
+      // Add strata breakdown
+      if (preGenData.strataAdminFund) propertyDetails.strataAdminFund = preGenData.strataAdminFund;
+      if (preGenData.strataSinkingFund) propertyDetails.strataSinkingFund = preGenData.strataSinkingFund;
+      if (preGenData.strataSpecialLevies) propertyDetails.strataSpecialLevies = preGenData.strataSpecialLevies;
+      
+      // Add cash flow analysis overrides
+      if (preGenData.cpiGrowthRate) propertyDetails.cpiGrowthRate = preGenData.cpiGrowthRate;
+      if (preGenData.depreciation) propertyDetails.depreciation = preGenData.depreciation;
+      if (preGenData.taxRate) propertyDetails.taxRate = preGenData.taxRate;
+      if (preGenData.occupancyRate) propertyDetails.occupancyRate = preGenData.occupancyRate;
+      if (preGenData.loanType) propertyDetails.loanType = preGenData.loanType;
+      if (preGenData.loanTermYears) propertyDetails.loanTermYears = preGenData.loanTermYears;
+      if (preGenData.marketValueNow) propertyDetails.marketValueNow = preGenData.marketValueNow;
+      
+      // Additional cash flow fields
+      if (preGenData.loanAmount) propertyDetails.loanAmount = preGenData.loanAmount;
+      if (preGenData.interestOnlyPeriodYears) propertyDetails.interestOnlyPeriodYears = preGenData.interestOnlyPeriodYears;
+      if (preGenData.repaymentFrequency) propertyDetails.repaymentFrequency = preGenData.repaymentFrequency;
+      if (preGenData.extraRepaymentPerMonth) propertyDetails.extraRepaymentPerMonth = preGenData.extraRepaymentPerMonth;
+      if (preGenData.offsetBalance) propertyDetails.offsetBalance = preGenData.offsetBalance;
+      if (preGenData.constructionDurationMonths) propertyDetails.constructionDurationMonths = preGenData.constructionDurationMonths;
+      if (preGenData.constructionYear) propertyDetails.constructionYear = preGenData.constructionYear;
+      
+      // First Home Buyer flag
+      if (preGenData.isFirstHomeBuyer) propertyDetails.isFirstHomeBuyer = preGenData.isFirstHomeBuyer;
+      
+      // Construction Stage Percentages (new build only)
+      if (preGenData.buildType === 'new_build') {
+        if (preGenData.stageDepositPercent) propertyDetails.stageDepositPercent = preGenData.stageDepositPercent;
+        if (preGenData.stageSlabPercent) propertyDetails.stageSlabPercent = preGenData.stageSlabPercent;
+        if (preGenData.stageFramePercent) propertyDetails.stageFramePercent = preGenData.stageFramePercent;
+        if (preGenData.stageLockupPercent) propertyDetails.stageLockupPercent = preGenData.stageLockupPercent;
+        if (preGenData.stageFixingPercent) propertyDetails.stageFixingPercent = preGenData.stageFixingPercent;
+        if (preGenData.stageCompletionPercent) propertyDetails.stageCompletionPercent = preGenData.stageCompletionPercent;
+      }
+      
+      // Depreciation schedule
+      if (preGenData.depreciationSchedule) propertyDetails.depreciationSchedule = preGenData.depreciationSchedule;
+      if (preGenData.depreciationMethod) propertyDetails.depreciationMethod = preGenData.depreciationMethod;
 
       // Log what was extracted for debugging
       console.log('Final property address:', propertyAddress);
@@ -532,10 +607,10 @@ export function InvestmentReportGenerator() {
         description: extractedSummary + ". Starting report generation...",
       });
 
-      // Create the report record with any manual overrides passed via propertyDetails
-      const scrapedOverrides = propertyDetails.manualOverrides 
-        ? Object.fromEntries(Object.entries(propertyDetails.manualOverrides).filter(([_, v]) => v !== undefined)) as Json
-        : null;
+      // Create the report record with pre-generation overrides
+      const cleanedOverrides = Object.fromEntries(
+        Object.entries(preGenData).filter(([_, v]) => v !== undefined)
+      ) as Json;
       
       const { data: pendingReport, error: insertError } = await supabase
         .from('investment_reports')
@@ -545,7 +620,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: 'address',
           generated_by: null,
-          manual_overrides: scrapedOverrides,
+          manual_overrides: cleanedOverrides,
         })
         .select()
         .single();
@@ -764,9 +839,10 @@ export function InvestmentReportGenerator() {
         originalQuery: propertyAddress,
         pdfContent: data.pdfContent,
         fromPdfUpload: true,
+        manualOverrides: preGenData,
       };
       
-      // Include all extracted fields
+      // Include all extracted fields (PDF values as fallbacks, preGenData overrides take precedence)
       if (extracted.extractedPrice) propertyDetails.price = extracted.extractedPrice;
       if (extracted.extractedBedrooms) propertyDetails.beds = extracted.extractedBedrooms;
       if (extracted.extractedBathrooms) propertyDetails.baths = extracted.extractedBathrooms;
@@ -782,8 +858,79 @@ export function InvestmentReportGenerator() {
       if (extracted.extractedBuildPrice) propertyDetails.buildPrice = extracted.extractedBuildPrice;
       if (extracted.extractedIsNewBuild) propertyDetails.isNewBuild = extracted.extractedIsNewBuild;
 
-      // Include pre-generation overrides if available
-      propertyDetails.manualOverrides = preGenData;
+      // Apply preGenData overrides (these take precedence over PDF-extracted values)
+      propertyDetails.buildType = preGenData.buildType;
+      if (preGenData.purchasePrice) propertyDetails.price = preGenData.purchasePrice;
+      if (preGenData.weeklyRent) propertyDetails.weeklyRent = preGenData.weeklyRent;
+      if (preGenData.carSpaces) propertyDetails.carSpaces = preGenData.carSpaces;
+      if (preGenData.landSizeSqm) propertyDetails.landSizeSqm = preGenData.landSizeSqm;
+      if (preGenData.buildSizeSqm) propertyDetails.buildSizeSqm = preGenData.buildSizeSqm;
+      
+      // For new builds, add land and build prices
+      if (preGenData.buildType === 'new_build') {
+        if (preGenData.landPrice) propertyDetails.landPrice = preGenData.landPrice;
+        if (preGenData.buildPrice) propertyDetails.buildPrice = preGenData.buildPrice;
+        if (preGenData.agentFee) propertyDetails.agentFee = preGenData.agentFee;
+      } else {
+        if (preGenData.depositValue) propertyDetails.depositValue = preGenData.depositValue;
+      }
+      
+      // Add financial assumptions
+      if (preGenData.loanToValueRatio) propertyDetails.loanToValueRatio = preGenData.loanToValueRatio;
+      if (preGenData.interestRate) propertyDetails.interestRate = preGenData.interestRate;
+      if (preGenData.capitalGrowth) propertyDetails.capitalGrowth = preGenData.capitalGrowth;
+      
+      // Add expense overrides
+      if (preGenData.stampDuty) propertyDetails.stampDuty = preGenData.stampDuty;
+      if (preGenData.bodyCorporateFees) propertyDetails.bodyCorporateFees = preGenData.bodyCorporateFees;
+      if (preGenData.landTax) propertyDetails.landTax = preGenData.landTax;
+      if (preGenData.councilRates) propertyDetails.councilRates = preGenData.councilRates;
+      if (preGenData.waterRates) propertyDetails.waterRates = preGenData.waterRates;
+      if (preGenData.solicitorFees) propertyDetails.solicitorFees = preGenData.solicitorFees;
+      if (preGenData.buildingLandlordInsurance) propertyDetails.buildingLandlordInsurance = preGenData.buildingLandlordInsurance;
+      if (preGenData.propertyManagementFees) propertyDetails.propertyManagementFees = preGenData.propertyManagementFees;
+      if (preGenData.repairsMaintenance) propertyDetails.repairsMaintenance = preGenData.repairsMaintenance;
+      if (preGenData.lettingFees) propertyDetails.lettingFees = preGenData.lettingFees;
+      
+      // Add strata breakdown
+      if (preGenData.strataAdminFund) propertyDetails.strataAdminFund = preGenData.strataAdminFund;
+      if (preGenData.strataSinkingFund) propertyDetails.strataSinkingFund = preGenData.strataSinkingFund;
+      if (preGenData.strataSpecialLevies) propertyDetails.strataSpecialLevies = preGenData.strataSpecialLevies;
+      
+      // Add cash flow analysis overrides
+      if (preGenData.cpiGrowthRate) propertyDetails.cpiGrowthRate = preGenData.cpiGrowthRate;
+      if (preGenData.depreciation) propertyDetails.depreciation = preGenData.depreciation;
+      if (preGenData.taxRate) propertyDetails.taxRate = preGenData.taxRate;
+      if (preGenData.occupancyRate) propertyDetails.occupancyRate = preGenData.occupancyRate;
+      if (preGenData.loanType) propertyDetails.loanType = preGenData.loanType;
+      if (preGenData.loanTermYears) propertyDetails.loanTermYears = preGenData.loanTermYears;
+      if (preGenData.marketValueNow) propertyDetails.marketValueNow = preGenData.marketValueNow;
+      
+      // Additional cash flow fields
+      if (preGenData.loanAmount) propertyDetails.loanAmount = preGenData.loanAmount;
+      if (preGenData.interestOnlyPeriodYears) propertyDetails.interestOnlyPeriodYears = preGenData.interestOnlyPeriodYears;
+      if (preGenData.repaymentFrequency) propertyDetails.repaymentFrequency = preGenData.repaymentFrequency;
+      if (preGenData.extraRepaymentPerMonth) propertyDetails.extraRepaymentPerMonth = preGenData.extraRepaymentPerMonth;
+      if (preGenData.offsetBalance) propertyDetails.offsetBalance = preGenData.offsetBalance;
+      if (preGenData.constructionDurationMonths) propertyDetails.constructionDurationMonths = preGenData.constructionDurationMonths;
+      if (preGenData.constructionYear) propertyDetails.constructionYear = preGenData.constructionYear;
+      
+      // First Home Buyer flag
+      if (preGenData.isFirstHomeBuyer) propertyDetails.isFirstHomeBuyer = preGenData.isFirstHomeBuyer;
+      
+      // Construction Stage Percentages (new build only)
+      if (preGenData.buildType === 'new_build') {
+        if (preGenData.stageDepositPercent) propertyDetails.stageDepositPercent = preGenData.stageDepositPercent;
+        if (preGenData.stageSlabPercent) propertyDetails.stageSlabPercent = preGenData.stageSlabPercent;
+        if (preGenData.stageFramePercent) propertyDetails.stageFramePercent = preGenData.stageFramePercent;
+        if (preGenData.stageLockupPercent) propertyDetails.stageLockupPercent = preGenData.stageLockupPercent;
+        if (preGenData.stageFixingPercent) propertyDetails.stageFixingPercent = preGenData.stageFixingPercent;
+        if (preGenData.stageCompletionPercent) propertyDetails.stageCompletionPercent = preGenData.stageCompletionPercent;
+      }
+      
+      // Depreciation schedule
+      if (preGenData.depreciationSchedule) propertyDetails.depreciationSchedule = preGenData.depreciationSchedule;
+      if (preGenData.depreciationMethod) propertyDetails.depreciationMethod = preGenData.depreciationMethod;
       
       // Create the report record with overrides
       const pdfOverrides = Object.fromEntries(
@@ -1331,6 +1478,20 @@ export function InvestmentReportGenerator() {
                     </div>
                   )}
 
+                  <Separator />
+
+                  {/* Pre-Generation Overrides for URL mode */}
+                  <PreGenerationOverrides
+                    propertyAddress={propertyUrl}
+                    onDataChange={handlePreGenDataChange}
+                    disabled={isScraping}
+                    buildType={preGenData.buildType}
+                    onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
+                    externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
+                    externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
+                  />
+
                   {/* Info for URL mode */}
                   <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                     <div className="flex items-start gap-2">
@@ -1344,7 +1505,7 @@ export function InvestmentReportGenerator() {
                           <li>Most Australian property listing sites</li>
                         </ul>
                         <p className="mt-2">
-                          The scraper will extract property details and automatically generate a comprehensive investment report.
+                          The scraper will extract property details and automatically generate a comprehensive investment report. Override values above will be used if provided.
                         </p>
                       </div>
                     </div>
@@ -1456,6 +1617,20 @@ export function InvestmentReportGenerator() {
                     </div>
                   )}
 
+                  <Separator />
+
+                  {/* Pre-Generation Overrides for PDF mode */}
+                  <PreGenerationOverrides
+                    propertyAddress={pdfFile?.name || ''}
+                    onDataChange={handlePreGenDataChange}
+                    disabled={isParsing}
+                    buildType={preGenData.buildType}
+                    onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
+                    externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
+                    externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
+                  />
+
                   {/* Info for PDF mode */}
                   <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                     <div className="flex items-start gap-2">
@@ -1469,7 +1644,7 @@ export function InvestmentReportGenerator() {
                           <li>Property investment summaries</li>
                         </ul>
                         <p className="mt-2">
-                          AI will extract property details (address, price, size, etc.) and generate a comprehensive investment report.
+                          AI will extract property details (address, price, size, etc.) and generate a comprehensive investment report. Override values above will be used if provided.
                         </p>
                       </div>
                     </div>
