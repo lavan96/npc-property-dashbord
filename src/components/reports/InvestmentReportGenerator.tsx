@@ -1641,6 +1641,12 @@ export function InvestmentReportGenerator() {
                 externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
                 externalLandSize={landSize ? parseFloat(landSize) : undefined}
                 externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
+                externalCouncilRates={preGenData.councilRates}
+                externalWaterRates={preGenData.waterRates}
+                externalBodyCorporateFees={preGenData.bodyCorporateFees}
+                externalBuildingInsurance={preGenData.buildingLandlordInsurance}
+                externalPropertyManagementPercent={preGenData.propertyManagementFees}
+                externalConstructionYear={preGenData.constructionYear}
               />
 
               {/* Info Box */}
@@ -1927,7 +1933,7 @@ export function InvestmentReportGenerator() {
 
                   {/* Pre-Generation Overrides for URL mode */}
                   <PreGenerationOverrides
-                    propertyAddress={propertyUrl}
+                    propertyAddress={urlScrapedData?.propertyAddress || propertyUrl}
                     onDataChange={handlePreGenDataChange}
                     disabled={isScraping}
                     buildType={preGenData.buildType}
@@ -1939,6 +1945,12 @@ export function InvestmentReportGenerator() {
                     externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
                     externalLandSize={landSize ? parseFloat(landSize) : undefined}
                     externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
+                    externalCouncilRates={preGenData.councilRates}
+                    externalWaterRates={preGenData.waterRates}
+                    externalBodyCorporateFees={preGenData.bodyCorporateFees}
+                    externalBuildingInsurance={preGenData.buildingLandlordInsurance}
+                    externalPropertyManagementPercent={preGenData.propertyManagementFees}
+                    externalConstructionYear={preGenData.constructionYear}
                   />
 
                   {/* Info for URL mode */}
@@ -2265,7 +2277,7 @@ export function InvestmentReportGenerator() {
 
                   {/* Pre-Generation Overrides for PDF mode */}
                   <PreGenerationOverrides
-                    propertyAddress={pdfFile?.name || ''}
+                    propertyAddress={pdfParsedData?.propertyAddress || pdfFile?.name || ''}
                     onDataChange={handlePreGenDataChange}
                     disabled={isParsing}
                     buildType={preGenData.buildType}
@@ -2277,6 +2289,12 @@ export function InvestmentReportGenerator() {
                     externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
                     externalLandSize={landSize ? parseFloat(landSize) : undefined}
                     externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
+                    externalCouncilRates={preGenData.councilRates}
+                    externalWaterRates={preGenData.waterRates}
+                    externalBodyCorporateFees={preGenData.bodyCorporateFees}
+                    externalBuildingInsurance={preGenData.buildingLandlordInsurance}
+                    externalPropertyManagementPercent={preGenData.propertyManagementFees}
+                    externalConstructionYear={preGenData.constructionYear}
                   />
 
                   {/* Info for PDF mode */}

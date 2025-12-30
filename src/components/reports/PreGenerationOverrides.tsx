@@ -94,6 +94,13 @@ interface PreGenerationOverridesProps {
   externalCarSpaces?: number;
   externalLandSize?: number;
   externalBuildSize?: number;
+  // Extended external props for URL scrape data
+  externalCouncilRates?: number;
+  externalWaterRates?: number;
+  externalBodyCorporateFees?: number;
+  externalBuildingInsurance?: number;
+  externalPropertyManagementPercent?: number;
+  externalConstructionYear?: number;
 }
 
 export function PreGenerationOverrides({ 
@@ -109,7 +116,13 @@ export function PreGenerationOverrides({
   externalWeeklyRent,
   externalCarSpaces,
   externalLandSize,
-  externalBuildSize
+  externalBuildSize,
+  externalCouncilRates,
+  externalWaterRates,
+  externalBodyCorporateFees,
+  externalBuildingInsurance,
+  externalPropertyManagementPercent,
+  externalConstructionYear
 }: PreGenerationOverridesProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -329,6 +342,72 @@ export function PreGenerationOverrides({
       }
     }
   }, [externalBuildPrice]);
+
+  // Sync external councilRates prop - using ref to prevent loops
+  const lastExternalCouncilRates = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalCouncilRates !== undefined) {
+      if (lastExternalCouncilRates.current !== externalCouncilRates) {
+        lastExternalCouncilRates.current = externalCouncilRates;
+        setCouncilRates(externalCouncilRates.toString());
+      }
+    }
+  }, [externalCouncilRates]);
+
+  // Sync external waterRates prop - using ref to prevent loops
+  const lastExternalWaterRates = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalWaterRates !== undefined) {
+      if (lastExternalWaterRates.current !== externalWaterRates) {
+        lastExternalWaterRates.current = externalWaterRates;
+        setWaterRates(externalWaterRates.toString());
+      }
+    }
+  }, [externalWaterRates]);
+
+  // Sync external bodyCorporateFees prop - using ref to prevent loops
+  const lastExternalBodyCorporateFees = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalBodyCorporateFees !== undefined) {
+      if (lastExternalBodyCorporateFees.current !== externalBodyCorporateFees) {
+        lastExternalBodyCorporateFees.current = externalBodyCorporateFees;
+        setBodyCorporateFees(externalBodyCorporateFees.toString());
+      }
+    }
+  }, [externalBodyCorporateFees]);
+
+  // Sync external buildingInsurance prop - using ref to prevent loops
+  const lastExternalBuildingInsurance = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalBuildingInsurance !== undefined) {
+      if (lastExternalBuildingInsurance.current !== externalBuildingInsurance) {
+        lastExternalBuildingInsurance.current = externalBuildingInsurance;
+        setBuildingLandlordInsurance(externalBuildingInsurance.toString());
+      }
+    }
+  }, [externalBuildingInsurance]);
+
+  // Sync external propertyManagementPercent prop - using ref to prevent loops
+  const lastExternalPropertyManagementPercent = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalPropertyManagementPercent !== undefined) {
+      if (lastExternalPropertyManagementPercent.current !== externalPropertyManagementPercent) {
+        lastExternalPropertyManagementPercent.current = externalPropertyManagementPercent;
+        setPropertyManagementFees(externalPropertyManagementPercent.toString());
+      }
+    }
+  }, [externalPropertyManagementPercent]);
+
+  // Sync external constructionYear prop - using ref to prevent loops
+  const lastExternalConstructionYear = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalConstructionYear !== undefined) {
+      if (lastExternalConstructionYear.current !== externalConstructionYear) {
+        lastExternalConstructionYear.current = externalConstructionYear;
+        setConstructionYear(externalConstructionYear.toString());
+      }
+    }
+  }, [externalConstructionYear]);
 
   // Track if user has manually edited loan amount
   const [userEditedLoanAmount, setUserEditedLoanAmount] = useState(false);
