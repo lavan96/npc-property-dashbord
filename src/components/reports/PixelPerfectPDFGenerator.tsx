@@ -995,7 +995,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       pdfDoc.removePage(1); // Remove index 1 (second page)
       console.log('✓ Template pages configured');
 
-      // Page settings
+      // ========================================
+      // PAGE BREAK SETTINGS (Global Configuration)
+      // ========================================
       const pageWidth = 595; // A4 width in points
       const pageHeight = 842; // A4 height in points
       const margin = 60; // Left/right margin
@@ -1004,6 +1006,19 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const lineHeight = 16;
       const titleSize = 14;
       const textSize = 10;
+      
+      // Smart page break thresholds
+      const PAGE_BREAK_CONFIG = {
+        // Minimum space required before starting a new element
+        MIN_SPACE_FOR_TABLE: 150, // If less than this, move entire table to new page
+        MIN_SPACE_FOR_SECTION: 100, // Minimum space for a new section title + some content
+        MIN_SPACE_FOR_PARAGRAPH: 60, // Minimum space for a paragraph
+        MIN_SPACE_FOR_HEADING: 80, // Minimum space for headings
+        // Table-specific settings
+        TABLE_ORPHAN_ROWS: 3, // Minimum rows to keep together (avoid orphan rows)
+        PREFER_FULL_TABLES: true, // If true, move entire table to new page rather than split
+        TABLE_SAFETY_MARGIN: 40, // Extra margin to ensure table fits
+      };
 
       let currentPage: any = null;
       let yPosition = 0;
@@ -1236,6 +1251,80 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         if (lines.length < 2) return false;
         // Check if it has pipe separators
         return lines.some(line => line.includes('|'));
+      };
+
+      // Helper to calculate TOTAL table height without drawing (for smart page breaks)
+      const calculateTableHeight = (tableText: string, maxWidth: number, normalFont: any, boldFont: any, size: number): number => {
+        const lines = tableText.trim().split('\n').map(l => l.trim()).filter(l => l);
+        if (lines.length === 0) return 0;
+
+        // Parse table rows (same logic as drawTable)
+        const rows = lines
+          .filter(line => {
+            const withoutPipes = line.replace(/\|/g, '').trim();
+            const isSeparator = /^[\s\-:]+$/.test(withoutPipes);
+            return !isSeparator;
+          })
+          .map(line => {
+            const cells = line.split('|')
+              .map(cell => cell.trim())
+              .filter(cell => cell.length > 0);
+            
+            const lineText = line.toLowerCase();
+            const isTotalRow = lineText.includes('total') && /\$[\d,]+/.test(line);
+            
+            if (!isTotalRow && cells.length > 3) {
+              return cells.slice(0, -1);
+            }
+            return cells;
+          })
+          .filter(row => row.length > 0);
+
+        if (rows.length === 0) return 0;
+
+        const columnCount = Math.max(...rows.map(r => r.length));
+        const cellPadding = 5;
+        const tableLineHeight = size + 4;
+        
+        // Calculate column widths (simplified version for estimation)
+        const colWidth = maxWidth / columnCount;
+        
+        let totalHeight = 0;
+        
+        // Calculate height for each row
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const isHeader = i === 0;
+          let maxRowHeight = tableLineHeight + 8;
+          
+          for (let j = 0; j < row.length; j++) {
+            const cellText = stripEmojis(row[j] || '');
+            const maxCellWidth = colWidth - 2 * cellPadding;
+            
+            // Estimate lines needed
+            let currentLineWidth = 0;
+            let cellLines = 1;
+            const font = isHeader ? boldFont : normalFont;
+            const words = cellText.replace(/\*+/g, '').split(' ').filter(w => w.length > 0);
+            
+            for (const word of words) {
+              const wordWidth = font.widthOfTextAtSize(word + ' ', size);
+              if (currentLineWidth + wordWidth > maxCellWidth && currentLineWidth > 0) {
+                cellLines++;
+                currentLineWidth = wordWidth;
+              } else {
+                currentLineWidth += wordWidth;
+              }
+            }
+            
+            const cellHeight = (cellLines * tableLineHeight) + 8;
+            maxRowHeight = Math.max(maxRowHeight, cellHeight);
+          }
+          
+          totalHeight += maxRowHeight;
+        }
+        
+        return totalHeight + 25; // Add spacing after table
       };
 
       // Helper to parse and draw markdown table
@@ -1981,8 +2070,36 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           if (isMarkdownTable(paragraph) && !cleanSectionName.toLowerCase().includes('contact')) {
             console.log('     ✓ Detected markdown table, rendering...');
             try {
-              // Check if we need a new page
-              if (yPosition < bottomMargin + 100) {
+              // SMART PAGE BREAKING FOR TABLES
+              // Calculate the full table height BEFORE drawing
+              const estimatedTableHeight = calculateTableHeight(
+                paragraph,
+                pageWidth - 2 * margin,
+                helveticaFont,
+                helveticaBold,
+                textSize
+              );
+              
+              const availableSpace = yPosition - bottomMargin - PAGE_BREAK_CONFIG.TABLE_SAFETY_MARGIN;
+              const canFitOnCurrentPage = estimatedTableHeight <= availableSpace;
+              const canFitOnNewPage = estimatedTableHeight <= (pageHeight - topMargin - bottomMargin - 40);
+              
+              console.log(`     📊 Table height analysis:`, {
+                estimatedHeight: Math.round(estimatedTableHeight),
+                availableSpace: Math.round(availableSpace),
+                canFitOnCurrentPage,
+                canFitOnNewPage,
+                preferFullTables: PAGE_BREAK_CONFIG.PREFER_FULL_TABLES
+              });
+              
+              // If PREFER_FULL_TABLES is true and table won't fit on current page but will fit on new page
+              // Move the ENTIRE table to a new page rather than splitting
+              if (PAGE_BREAK_CONFIG.PREFER_FULL_TABLES && !canFitOnCurrentPage && canFitOnNewPage) {
+                console.log('     → Moving entire table to new page (smart page break)');
+                currentPage = await addContentPage();
+                yPosition = pageHeight - topMargin - 20;
+              } else if (yPosition < bottomMargin + PAGE_BREAK_CONFIG.MIN_SPACE_FOR_TABLE) {
+                // Minimal space check - always start new page if less than minimum threshold
                 currentPage = await addContentPage();
                 yPosition = pageHeight - topMargin - 20;
               }
@@ -1999,9 +2116,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               );
 
               if (tableResult.needsNewPage) {
+                // Table got split during drawing (very large table), continue on new page
                 currentPage = await addContentPage();
                 yPosition = pageHeight - topMargin - 20;
-                // Retry drawing the table on new page
+                // Retry drawing the remaining table content on new page
                 const retryResult = drawTable(
                   currentPage,
                   paragraph,
@@ -2016,7 +2134,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               } else {
                 yPosition = tableResult.lastY;
               }
-              console.log('     ✓ Table rendered successfully');
+              console.log('     ✓ Table rendered successfully with smart page breaking');
             } catch (tableError) {
               console.error('     ❌ Error rendering table:', tableError);
               console.error('     Table content:', paragraph.substring(0, 200));
