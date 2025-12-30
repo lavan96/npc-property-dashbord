@@ -302,8 +302,12 @@ serve(async (req) => {
       });
     }
     
-    let { reportId, propertyAddress, propertyDetails } = requestBody;
+    let { reportId, propertyAddress, propertyDetails, continueFrom } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
+    
+    // Flag to indicate if we're continuing from existing content
+    const isContinuation = continueFrom === true;
+    console.log('Continuation mode:', isContinuation);
     
     // UNIFIED DOCUMENT CONTENT: Accept both scrapedContent (URL scrape) AND pdfContent (PDF upload)
     // This ensures consistent content injection regardless of the input source
@@ -398,22 +402,62 @@ serve(async (req) => {
       console.log('  Override keys:', Object.keys(frontendManualOverrides).join(', '));
     }
     
+    // Variables for continuation mode
+    let existingReportContent = '';
+    let completedSectionIndices: number[] = [];
+    
     if (reportId) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (supabaseUrl && supabaseKey) {
         supabaseClient = createClient(supabaseUrl, supabaseKey);
         
-        // Fetch existing manual overrides before regeneration
+        // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides')
+          .select('manual_overrides, report_content, property_address')
           .eq('id', reportId)
           .single();
         
         if (existingReport?.manual_overrides) {
           existingManualOverrides = existingReport.manual_overrides;
           console.log('📝 Fetched existing manual overrides from DB:', Object.keys(existingManualOverrides).length, 'fields');
+        }
+        
+        // If continuing, analyze existing content to determine which sections are complete
+        if (isContinuation && existingReport?.report_content) {
+          existingReportContent = existingReport.report_content;
+          console.log('🔄 CONTINUATION MODE: Analyzing existing content...');
+          console.log('   Existing content length:', existingReportContent.length, 'chars');
+          
+          // Detect completed sections based on content markers
+          const sectionPatterns = [
+            { index: 0, patterns: [/##?\s*(Location\s*(Overview|&)|Current\s*Market\s*Performance)/i, /##?\s*Current\s*Economic\s*Context/i] },
+            { index: 1, patterns: [/##?\s*(Amenities|Schools\s*&\s*Education)/i, /##?\s*(Transport\s*&|Crime\s*&\s*Safety)/i] },
+            { index: 2, patterns: [/##?\s*(Property-Level|Purchase\s*&\s*Ongoing)/i, /##?\s*(Loan\s*Structure|Cashflow\s*Analysis)/i] },
+            { index: 3, patterns: [/##?\s*(10-Year\s*Investment|SWOT\s*Analysis)/i, /##?\s*(Final\s*Conclusion|Data\s*Sources)/i] }
+          ];
+          
+          for (const section of sectionPatterns) {
+            // A section is considered complete if we find BOTH start and end markers
+            const hasStartMarker = section.patterns[0].test(existingReportContent);
+            const hasEndMarker = section.patterns[1].test(existingReportContent);
+            
+            if (hasStartMarker && hasEndMarker) {
+              completedSectionIndices.push(section.index);
+              console.log(`   ✓ Section ${section.index + 1} appears complete`);
+            } else if (hasStartMarker) {
+              console.log(`   ⚠️ Section ${section.index + 1} started but incomplete`);
+            }
+          }
+          
+          console.log(`   Completed sections: ${completedSectionIndices.length}/4`);
+          
+          // Use property address from existing report if not provided
+          if (!propertyAddress && existingReport.property_address) {
+            propertyAddress = existingReport.property_address;
+            console.log('   Using property address from existing report:', propertyAddress);
+          }
         }
         
         // Update status to processing
@@ -2470,6 +2514,8 @@ ${templateContext}
     console.log('Document content included:', !!documentContent);
     console.log('Template context included:', !!templateContext);
     console.log('Content source:', contentSource);
+    console.log('Continuation mode:', isContinuation);
+    console.log('Completed sections to skip:', completedSectionIndices);
     console.log('Generating report in', REPORT_SECTIONS.length, 'sections...');
 
     // Generate report in multiple sections
@@ -2477,8 +2523,18 @@ ${templateContext}
     let allCitations: any[] = [];
     let generationErrors: string[] = [];
     
-    // Add report header
-    const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
+    // Handle continuation mode: start with existing content if available
+    if (isContinuation && existingReportContent && existingReportContent.length > 0) {
+      combinedContent = existingReportContent;
+      console.log('🔄 Starting from existing content:', combinedContent.length, 'chars');
+      
+      // Ensure content ends with proper separator for appending new sections
+      if (!combinedContent.trim().endsWith('---')) {
+        combinedContent = combinedContent.trim() + '\n\n---\n\n';
+      }
+    } else {
+      // Fresh generation: Add report header
+      const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
 
 YOUR DEDICATED PROPERTY PARTNER
 
@@ -2487,13 +2543,29 @@ YOUR DEDICATED PROPERTY PARTNER
 ---
 
 `;
-    combinedContent = reportHeader;
+      combinedContent = reportHeader;
+    }
 
     // Track section quality for final validation
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
     
     for (let i = 0; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
+      
+      // CONTINUATION MODE: Skip already-completed sections
+      if (isContinuation && completedSectionIndices.includes(i)) {
+        console.log(`\n⏭️ Skipping section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name} (already complete)`);
+        sectionResults.push({
+          id: sectionDef.id,
+          name: sectionDef.name,
+          content: '[Retained from previous generation]',
+          valid: true,
+          score: 100,
+          attempts: 0
+        });
+        continue;
+      }
+      
       console.log(`\n📄 Generating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name}`);
       
       // Pass context from previous sections for consistency

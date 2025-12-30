@@ -81,24 +81,27 @@ export function ReportGenerationProgress() {
   };
 
   const countSections = (content: string): number => {
-    // Count sections based on various header patterns
+    // Count sections by detecting actual section markers in the content
+    // More accurate than length-based heuristics
     let count = 0;
-    const sectionPatterns = [
-      /##\s*Location\s*Overview/i,
-      /##\s*1\./,
-      /##\s*Amenities/i,
-      /##\s*2\./,
-      /##\s*Financial/i,
-      /##\s*3\./,
-      /##\s*Investment\s*Analysis/i,
-      /##\s*4\./,
-    ];
     
-    // Simple heuristic: check content length thresholds
-    if (content.length > 5000) count = 1;
-    if (content.length > 15000) count = 2;
-    if (content.length > 25000) count = 3;
-    if (content.length > 40000) count = 4;
+    // Check for section 1 markers (Location & Market Overview)
+    const hasSection1 = /##?\s*(Location\s*(Overview|&)|Current\s*Market\s*Performance|1\.\s*Location)/i.test(content);
+    if (hasSection1) count++;
+    
+    // Check for section 2 markers (Amenities & Infrastructure)
+    const hasSection2 = /##?\s*(Amenities|Schools\s*&\s*Education|Transport\s*&|2\.\s*(Amenities|Infrastructure))/i.test(content);
+    if (hasSection2) count++;
+    
+    // Check for section 3 markers (Property & Financial Analysis)
+    const hasSection3 = /##?\s*(Property-Level|Purchase\s*&\s*Ongoing|Financial\s*Analysis|3\.\s*(Property|Financial))/i.test(content);
+    if (hasSection3) count++;
+    
+    // Check for section 4 markers (Projections & Recommendations)
+    // Only count if we see BOTH the section header AND substantial content (recommendations, conclusion, etc.)
+    const hasSection4Header = /##?\s*(10-Year\s*Investment|Projections|SWOT\s*Analysis|4\.\s*(Projections|Recommendations))/i.test(content);
+    const hasSection4Conclusion = /##?\s*(Final\s*Conclusion|Investment\s*Recommendations|Data\s*Sources)/i.test(content);
+    if (hasSection4Header && hasSection4Conclusion) count++;
     
     return count;
   };
@@ -199,10 +202,22 @@ interface ReportProgressItemProps {
 
 function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressItemProps) {
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
-  const isStuck = report.status === 'processing' && report.sectionsCompleted > 0 && report.sectionsCompleted < 4;
   
-  // Show continue button if stuck (has partial content but not complete)
-  const showContinueButton = isStuck || (report.status === 'pending' && report.sectionsCompleted > 0);
+  // Determine if report is stuck - has partial content but not all 4 sections complete
+  // Also consider it stuck if processing but has been at less than 4 sections
+  const isIncomplete = report.sectionsCompleted > 0 && report.sectionsCompleted < report.totalSections;
+  const isStuck = report.status === 'processing' && isIncomplete;
+  
+  // Show continue button if:
+  // 1. Currently processing but incomplete (stuck)
+  // 2. Pending with partial content (can resume)
+  // 3. Processing with substantial content but missing sections (timeout recovery)
+  const showContinueButton = isStuck || 
+    (report.status === 'pending' && report.sectionsCompleted > 0) ||
+    (report.status === 'processing' && report.contentLength > 30000 && report.sectionsCompleted < report.totalSections);
+
+  // Calculate which section is currently being worked on (cap at totalSections)
+  const currentSection = Math.min(report.sectionsCompleted + 1, report.totalSections);
 
   return (
     <div className="p-3 border-b border-border last:border-b-0">
@@ -222,7 +237,7 @@ function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressIte
               <>
                 <Loader2 className="h-3 w-3 text-primary animate-spin" />
                 <span className="text-xs text-primary">
-                  Section {report.sectionsCompleted + 1}/4
+                  Section {currentSection}/{report.totalSections}
                 </span>
               </>
             )}
