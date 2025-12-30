@@ -22,6 +22,8 @@ import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientDetailsModal } from '@/components/clients/ClientDetailsModal';
 import { ClientFilters, ClientFiltersState, defaultFilters } from '@/components/clients/ClientFilters';
 import { ClientBulkActions } from '@/components/clients/ClientBulkActions';
+import { ClientAnalyticsDashboard } from '@/components/clients/ClientAnalyticsDashboard';
+import { ClientComparison } from '@/components/clients/ClientComparison';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -274,6 +276,8 @@ export default function ClientManagement() {
       <Tabs defaultValue="clients" className="space-y-4">
         <TabsList>
           <TabsTrigger value="clients">Clients</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="compare">Compare</TabsTrigger>
           <TabsTrigger value="import">Import</TabsTrigger>
         </TabsList>
 
@@ -355,6 +359,14 @@ export default function ClientManagement() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <ClientAnalyticsDashboard clients={clients} />
+        </TabsContent>
+
+        <TabsContent value="compare" className="space-y-4">
+          <ClientComparison clients={clients} />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4">

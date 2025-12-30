@@ -21,20 +21,28 @@ import { toast } from 'sonner';
 
 interface ClientScoreCardProps {
   clientId: string;
-  portfolioValue: number;
-  debt: number;
-  cashFlow: number;
-  propertyCount: number;
 }
 
-export function ClientScoreCard({ 
-  clientId, 
-  portfolioValue, 
-  debt, 
-  cashFlow, 
-  propertyCount 
-}: ClientScoreCardProps) {
+export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
   const queryClient = useQueryClient();
+
+  // Fetch client data
+  const { data: clientData } = useQuery({
+    queryKey: ['client-score-data', clientId],
+    queryFn: async () => {
+      const [clientRes, propertiesRes] = await Promise.all([
+        supabase.from('clients').select('total_portfolio_value, total_debt, net_monthly_cash_flow').eq('id', clientId).single(),
+        supabase.from('client_properties').select('id').eq('client_id', clientId)
+      ]);
+      if (clientRes.error) throw clientRes.error;
+      return {
+        portfolioValue: Number(clientRes.data?.total_portfolio_value) || 0,
+        debt: Number(clientRes.data?.total_debt) || 0,
+        cashFlow: Number(clientRes.data?.net_monthly_cash_flow) || 0,
+        propertyCount: propertiesRes.data?.length || 0
+      };
+    }
+  });
 
   const { data: scores, isLoading } = useQuery({
     queryKey: ['client-scores', clientId],
@@ -48,6 +56,11 @@ export function ClientScoreCard({
       return data;
     }
   });
+
+  const portfolioValue = clientData?.portfolioValue || 0;
+  const debt = clientData?.debt || 0;
+  const cashFlow = clientData?.cashFlow || 0;
+  const propertyCount = clientData?.propertyCount || 0;
 
   const calculateScoreMutation = useMutation({
     mutationFn: async () => {
