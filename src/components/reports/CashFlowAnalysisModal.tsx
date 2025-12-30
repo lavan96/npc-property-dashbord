@@ -3694,8 +3694,56 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           <TableCell className="font-medium">Letting Fees (1 Week Rent)</TableCell>
                           <TableCell className="text-right">{formatCurrency(baseFinancialData.lettingFees || baseFinancialData.weeklyRent)}</TableCell>
                         </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Land Tax (p.a.)</TableCell>
+                          <TableCell className="text-right">{formatCurrency(baseFinancialData.landTax)}</TableCell>
+                        </TableRow>
                       </TableBody>
                     </Table>
+                    
+                    {/* Cash Flow Analysis Inputs Section */}
+                    <div className="mt-6 pt-4 border-t-2 border-muted">
+                      <div className="border-b border-muted pb-2 mb-3">
+                        <h4 className="text-sm font-bold">Cash Flow Analysis Inputs</h4>
+                      </div>
+                      <Table>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="font-medium w-1/2">Loan Amount</TableCell>
+                            <TableCell className="text-right">{formatCurrency(baseFinancialData.loanAmount)}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Loan Type</TableCell>
+                            <TableCell className="text-right">{baseFinancialData.loanType === 'interest_only' ? 'Interest Only' : 'Principal & Interest'}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Loan Term</TableCell>
+                            <TableCell className="text-right">{baseFinancialData.loanTermYears} years</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Occupancy Rate</TableCell>
+                            <TableCell className="text-right">{baseFinancialData.occupancyRate} weeks/year</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">CPI / Expense Growth Rate</TableCell>
+                            <TableCell className="text-right">{baseFinancialData.cpiGrowthRate}%</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Tax Rate (Marginal)</TableCell>
+                            <TableCell className="text-right">{baseFinancialData.taxRate}%</TableCell>
+                          </TableRow>
+                          <TableRow className={baseFinancialData.depreciation > 0 ? 'bg-yellow-50 dark:bg-yellow-950/30' : ''}>
+                            <TableCell className="font-medium">
+                              Annual Depreciation (Year 1)
+                              {baseFinancialData.includeDepreciationInCashFlow ? '' : ' (Excluded)'}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {formatCurrency(baseFinancialData.depreciation)}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
                     
                     {/* Total Overall Expenditure to Completion */}
                     <div className="mt-6 pt-4 border-t-2 border-muted">
