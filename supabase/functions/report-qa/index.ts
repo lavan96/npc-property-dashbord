@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "npm:pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -900,79 +901,510 @@ ${cleanContent.length + 500}
         throw new Error("Missing required parameters: conversationId and messages");
       }
 
-      // Build PDF content from messages
-      const pdfLines: string[] = [];
-      pdfLines.push(`Q&A Summary: ${title || 'Conversation Export'}`);
-      pdfLines.push(`Generated: ${new Date().toLocaleString()}`);
-      if (reportNames?.length) {
-        pdfLines.push(`Reports: ${reportNames.join(', ')}`);
-      }
-      pdfLines.push('---');
-      pdfLines.push('');
+      // Fetch active QA export template from database
+      const { data: activeTemplate, error: templateError } = await supabase
+        .from('report_structure_templates')
+        .select('*')
+        .eq('template_type', 'qa_export')
+        .eq('is_active', true)
+        .single();
 
-      messages.forEach((msg: { role: string; content: string; timestamp?: string }) => {
-        const role = msg.role === 'user' ? 'You' : 'Assistant';
-        const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '';
-        pdfLines.push(`[${role}] ${timestamp}`);
-        // Split long content into lines
-        const words = msg.content.split(' ');
+      let templatePdfBytes: Uint8Array | null = null;
+      
+      if (activeTemplate && !templateError) {
+        console.log(`[report-qa] Using active template: ${activeTemplate.name}`);
+        
+        // Download template PDF from storage
+        const { data: templateData, error: downloadError } = await supabase.storage
+          .from('report-templates')
+          .download(activeTemplate.file_path);
+          
+        if (templateData && !downloadError) {
+          templatePdfBytes = new Uint8Array(await templateData.arrayBuffer());
+          console.log(`[report-qa] Template loaded: ${templatePdfBytes.length} bytes`);
+        } else {
+          console.warn(`[report-qa] Failed to download template: ${downloadError?.message}`);
+        }
+      } else {
+        console.log('[report-qa] No active template found, using default styling');
+      }
+
+      // Create PDF document
+      let pdfDoc: PDFDocument;
+      let startContentPage = 0;
+      
+      // NPC default colors
+      const primaryColor = rgb(0.07, 0.2, 0.38); // Dark blue
+      const accentColor = rgb(0.89, 0.71, 0.31); // Gold
+      const textColor = rgb(0.2, 0.2, 0.2);
+      const lightGray = rgb(0.95, 0.95, 0.95);
+      
+      if (templatePdfBytes) {
+        // Load template PDF and use first page as cover
+        const templateDoc = await PDFDocument.load(templatePdfBytes);
+        pdfDoc = await PDFDocument.create();
+        
+        // Copy first page from template as cover
+        const [coverPage] = await pdfDoc.copyPages(templateDoc, [0]);
+        pdfDoc.addPage(coverPage);
+        startContentPage = 1;
+        
+        console.log('[report-qa] Cover page copied from template');
+      } else {
+        // Create new PDF with default cover
+        pdfDoc = await PDFDocument.create();
+        
+        // Create default cover page
+        const coverPage = pdfDoc.addPage([612, 792]);
+        const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        
+        // Background header
+        coverPage.drawRectangle({
+          x: 0,
+          y: 692,
+          width: 612,
+          height: 100,
+          color: primaryColor,
+        });
+        
+        // Gold accent line
+        coverPage.drawRectangle({
+          x: 0,
+          y: 688,
+          width: 612,
+          height: 4,
+          color: accentColor,
+        });
+        
+        // Title
+        coverPage.drawText('Q&A Conversation Export', {
+          x: 50,
+          y: 725,
+          size: 24,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+        
+        // Report info
+        coverPage.drawText(title || 'Investment Report Analysis', {
+          x: 50,
+          y: 620,
+          size: 18,
+          font: helveticaBold,
+          color: primaryColor,
+        });
+        
+        if (reportNames?.length) {
+          coverPage.drawText(`Reports: ${reportNames.join(', ')}`, {
+            x: 50,
+            y: 590,
+            size: 12,
+            font: helvetica,
+            color: textColor,
+          });
+        }
+        
+        coverPage.drawText(`Generated: ${new Date().toLocaleString('en-AU', { 
+          dateStyle: 'full', 
+          timeStyle: 'short' 
+        })}`, {
+          x: 50,
+          y: 560,
+          size: 11,
+          font: helvetica,
+          color: textColor,
+        });
+        
+        // Footer
+        coverPage.drawRectangle({
+          x: 0,
+          y: 0,
+          width: 612,
+          height: 60,
+          color: lightGray,
+        });
+        
+        coverPage.drawText('NPC Services', {
+          x: 50,
+          y: 35,
+          size: 10,
+          font: helveticaBold,
+          color: primaryColor,
+        });
+        
+        coverPage.drawText('admin@npcservices.com.au | 0433 005 110', {
+          x: 50,
+          y: 20,
+          size: 9,
+          font: helvetica,
+          color: textColor,
+        });
+        
+        startContentPage = 1;
+      }
+
+      // Embed fonts for content pages
+      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+
+      // Page dimensions and margins (matching template layout)
+      const pageWidth = 612;
+      const pageHeight = 792;
+      const marginLeft = 50;
+      const marginRight = 50;
+      const marginTop = 60;
+      const marginBottom = 80;
+      const contentWidth = pageWidth - marginLeft - marginRight;
+      
+      // Helper function to wrap text
+      const wrapText = (text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] => {
+        const words = text.split(' ');
+        const lines: string[] = [];
         let currentLine = '';
-        words.forEach((word: string) => {
-          if ((currentLine + ' ' + word).length > 80) {
-            pdfLines.push(currentLine.trim());
+        
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const width = font.widthOfTextAtSize(testLine, fontSize);
+          
+          if (width > maxWidth && currentLine) {
+            lines.push(currentLine);
             currentLine = word;
           } else {
-            currentLine += ' ' + word;
+            currentLine = testLine;
           }
-        });
-        if (currentLine.trim()) {
-          pdfLines.push(currentLine.trim());
         }
-        pdfLines.push('');
-      });
+        
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+        
+        return lines;
+      };
 
-      // Create PDF content
-      const cleanContent = pdfLines.join('\n').replace(/[^\x00-\x7F]/g, " ");
-      const pdfContent = `
-%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
-endobj
-4 0 obj
-<< /Length ${cleanContent.length + 200} >>
-stream
-BT
-/F1 11 Tf
-50 750 Td
-${pdfLines.slice(0, 60).map((line: string) => `0 -14 Td (${line.replace(/[()\\]/g, '\\$&').substring(0, 85)}) Tj`).join('\n')}
-ET
-endstream
-endobj
-5 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-xref
-0 6
-0000000000 65535 f
-0000000009 00000 n
-0000000058 00000 n
-0000000115 00000 n
-0000000266 00000 n
-trailer
-<< /Size 6 /Root 1 0 R >>
-startxref
-${cleanContent.length + 500}
-%%EOF`;
+      // Helper function to create a content page with header/footer
+      const createContentPage = (pageNum: number): PDFPage => {
+        const page = pdfDoc.addPage([pageWidth, pageHeight]);
+        
+        // Header bar
+        page.drawRectangle({
+          x: 0,
+          y: pageHeight - 45,
+          width: pageWidth,
+          height: 45,
+          color: primaryColor,
+        });
+        
+        // Gold accent
+        page.drawRectangle({
+          x: 0,
+          y: pageHeight - 48,
+          width: pageWidth,
+          height: 3,
+          color: accentColor,
+        });
+        
+        // Header text
+        page.drawText('Q&A Conversation Export', {
+          x: marginLeft,
+          y: pageHeight - 30,
+          size: 12,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+        
+        // Footer line
+        page.drawLine({
+          start: { x: marginLeft, y: marginBottom - 10 },
+          end: { x: pageWidth - marginRight, y: marginBottom - 10 },
+          thickness: 1,
+          color: lightGray,
+        });
+        
+        // Page number
+        page.drawText(`Page ${pageNum}`, {
+          x: pageWidth - marginRight - 40,
+          y: 30,
+          size: 9,
+          font: helvetica,
+          color: textColor,
+        });
+        
+        // Footer text
+        page.drawText('NPC Services | admin@npcservices.com.au', {
+          x: marginLeft,
+          y: 30,
+          size: 8,
+          font: helvetica,
+          color: textColor,
+        });
+        
+        return page;
+      };
 
-      // Convert to binary
-      const pdfBytes = new TextEncoder().encode(pdfContent);
+      // Parse markdown-style formatting
+      const parseFormatting = (text: string): Array<{text: string; bold: boolean; italic: boolean}> => {
+        const segments: Array<{text: string; bold: boolean; italic: boolean}> = [];
+        
+        // Simple parsing for **bold** and *italic*
+        let remaining = text;
+        
+        while (remaining.length > 0) {
+          // Check for bold (**text**)
+          const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
+          if (boldMatch) {
+            segments.push({ text: boldMatch[1], bold: true, italic: false });
+            remaining = remaining.slice(boldMatch[0].length);
+            continue;
+          }
+          
+          // Check for italic (*text*)
+          const italicMatch = remaining.match(/^\*(.+?)\*/);
+          if (italicMatch) {
+            segments.push({ text: italicMatch[1], bold: false, italic: true });
+            remaining = remaining.slice(italicMatch[0].length);
+            continue;
+          }
+          
+          // Find next formatting marker
+          const nextBold = remaining.indexOf('**');
+          const nextItalic = remaining.indexOf('*');
+          const nextMarker = Math.min(
+            nextBold === -1 ? Infinity : nextBold,
+            nextItalic === -1 ? Infinity : nextItalic
+          );
+          
+          if (nextMarker === Infinity) {
+            segments.push({ text: remaining, bold: false, italic: false });
+            break;
+          } else if (nextMarker > 0) {
+            segments.push({ text: remaining.slice(0, nextMarker), bold: false, italic: false });
+            remaining = remaining.slice(nextMarker);
+          } else {
+            // Edge case: marker at start but no closing marker
+            segments.push({ text: remaining.charAt(0), bold: false, italic: false });
+            remaining = remaining.slice(1);
+          }
+        }
+        
+        return segments;
+      };
+
+      // Process messages and create content pages
+      let currentPage = createContentPage(1);
+      let pageCount = 1;
+      let yPosition = pageHeight - marginTop - 50;
+      const lineHeight = 14;
+      const paragraphSpacing = 20;
+
+      for (const msg of messages as Array<{ role: string; content: string; timestamp?: string }>) {
+        const isUser = msg.role === 'user';
+        const roleLabel = isUser ? 'You' : 'Assistant';
+        const timestamp = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('en-AU', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }) : '';
+        
+        // Check if we need a new page for the header
+        if (yPosition < marginBottom + 100) {
+          pageCount++;
+          currentPage = createContentPage(pageCount);
+          yPosition = pageHeight - marginTop - 50;
+        }
+        
+        // Draw role header with colored background
+        const headerBgColor = isUser ? rgb(0.93, 0.95, 0.98) : rgb(0.95, 0.98, 0.95);
+        currentPage.drawRectangle({
+          x: marginLeft - 5,
+          y: yPosition - 5,
+          width: contentWidth + 10,
+          height: 22,
+          color: headerBgColor,
+        });
+        
+        // Role label
+        currentPage.drawText(roleLabel, {
+          x: marginLeft,
+          y: yPosition,
+          size: 11,
+          font: helveticaBold,
+          color: isUser ? rgb(0.2, 0.4, 0.6) : rgb(0.2, 0.5, 0.3),
+        });
+        
+        // Timestamp
+        if (timestamp) {
+          const labelWidth = helveticaBold.widthOfTextAtSize(roleLabel, 11);
+          currentPage.drawText(`  ${timestamp}`, {
+            x: marginLeft + labelWidth + 5,
+            y: yPosition,
+            size: 9,
+            font: helvetica,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+        }
+        
+        yPosition -= lineHeight + 10;
+        
+        // Process message content by lines
+        const contentLines = msg.content.split('\n');
+        
+        for (const line of contentLines) {
+          // Skip empty lines but add spacing
+          if (!line.trim()) {
+            yPosition -= lineHeight / 2;
+            continue;
+          }
+          
+          // Check for headers (## or ###)
+          let font = helvetica;
+          let fontSize = 10;
+          let lineColor = textColor;
+          let indent = 0;
+          let processedLine = line;
+          
+          if (line.startsWith('### ')) {
+            font = helveticaBold;
+            fontSize = 11;
+            processedLine = line.slice(4);
+            lineColor = primaryColor;
+          } else if (line.startsWith('## ')) {
+            font = helveticaBold;
+            fontSize = 12;
+            processedLine = line.slice(3);
+            lineColor = primaryColor;
+          } else if (line.startsWith('# ')) {
+            font = helveticaBold;
+            fontSize = 14;
+            processedLine = line.slice(2);
+            lineColor = primaryColor;
+          } else if (line.startsWith('- ') || line.startsWith('• ')) {
+            // Bullet point
+            processedLine = line.slice(2);
+            indent = 15;
+            
+            // Check if we need new page
+            if (yPosition < marginBottom + lineHeight) {
+              pageCount++;
+              currentPage = createContentPage(pageCount);
+              yPosition = pageHeight - marginTop - 50;
+            }
+            
+            // Draw bullet
+            currentPage.drawText('•', {
+              x: marginLeft,
+              y: yPosition,
+              size: 10,
+              font: helvetica,
+              color: accentColor,
+            });
+          } else if (line.match(/^\d+\. /)) {
+            // Numbered list
+            const match = line.match(/^(\d+)\. (.*)$/);
+            if (match) {
+              indent = 20;
+              
+              // Check if we need new page
+              if (yPosition < marginBottom + lineHeight) {
+                pageCount++;
+                currentPage = createContentPage(pageCount);
+                yPosition = pageHeight - marginTop - 50;
+              }
+              
+              // Draw number
+              currentPage.drawText(`${match[1]}.`, {
+                x: marginLeft,
+                y: yPosition,
+                size: 10,
+                font: helveticaBold,
+                color: accentColor,
+              });
+              
+              processedLine = match[2];
+            }
+          }
+          
+          // Wrap and draw text
+          const wrappedLines = wrapText(processedLine, font, fontSize, contentWidth - indent);
+          
+          for (const wrappedLine of wrappedLines) {
+            // Check if we need a new page
+            if (yPosition < marginBottom + lineHeight) {
+              pageCount++;
+              currentPage = createContentPage(pageCount);
+              yPosition = pageHeight - marginTop - 50;
+            }
+            
+            // Parse and draw formatted text
+            const segments = parseFormatting(wrappedLine);
+            let xPos = marginLeft + indent;
+            
+            for (const segment of segments) {
+              const segmentFont = segment.bold ? helveticaBold : 
+                                  segment.italic ? helveticaOblique : font;
+              
+              currentPage.drawText(segment.text, {
+                x: xPos,
+                y: yPosition,
+                size: fontSize,
+                font: segmentFont,
+                color: lineColor,
+              });
+              
+              xPos += segmentFont.widthOfTextAtSize(segment.text, fontSize);
+            }
+            
+            yPosition -= lineHeight;
+          }
+        }
+        
+        // Add spacing between messages
+        yPosition -= paragraphSpacing;
+      }
+
+      // Add final page with disclaimer
+      if (yPosition > marginBottom + 100) {
+        // Add disclaimer on current page
+        yPosition -= 30;
+        currentPage.drawLine({
+          start: { x: marginLeft, y: yPosition },
+          end: { x: pageWidth - marginRight, y: yPosition },
+          thickness: 1,
+          color: lightGray,
+        });
+        
+        yPosition -= 20;
+        
+        currentPage.drawText('Disclaimer', {
+          x: marginLeft,
+          y: yPosition,
+          size: 10,
+          font: helveticaBold,
+          color: textColor,
+        });
+        
+        yPosition -= 15;
+        
+        const disclaimer = 'This document is generated from an AI-powered conversation and is intended for informational purposes only. The analysis provided should not be considered as financial advice. Please consult with qualified professionals before making any investment decisions.';
+        const disclaimerLines = wrapText(disclaimer, helvetica, 8, contentWidth);
+        
+        for (const line of disclaimerLines) {
+          currentPage.drawText(line, {
+            x: marginLeft,
+            y: yPosition,
+            size: 8,
+            font: helvetica,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+          yPosition -= 10;
+        }
+      }
+
+      // Save PDF
+      const pdfBytes = await pdfDoc.save();
       const fileName = `qa-export-${conversationId}-${Date.now()}.pdf`;
+      
+      console.log(`[report-qa] PDF generated: ${pdfBytes.length} bytes, ${pageCount + 1} pages`);
       
       // Upload to qa_exports bucket
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -1010,7 +1442,7 @@ ${cleanContent.length + 500}
         .insert({
           conversation_id: conversationId,
           role: 'assistant',
-          content: `📄 I've generated a PDF summary of our conversation. You can download it or send it via email using the options below.`,
+          content: `📄 I've generated a PDF summary of our conversation using ${activeTemplate ? `the "${activeTemplate.name}" template` : 'default styling'}. You can download it or send it via email using the options below.`,
           attachments: [attachment],
         })
         .select()
@@ -1026,6 +1458,7 @@ ${cleanContent.length + 500}
           success: true,
           attachment,
           messageId: msgData?.id || null,
+          templateUsed: activeTemplate?.name || 'Default',
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
