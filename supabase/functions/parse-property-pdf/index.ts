@@ -22,6 +22,15 @@ interface ExtractedPropertyData {
   landPrice?: number;
   buildPrice?: number;
   isNewBuild?: boolean;
+  // Extended fields for pre-generation overrides
+  councilRates?: number;
+  waterRates?: number;
+  strataFees?: number;
+  insuranceEstimate?: number;
+  propertyManagementPercent?: number;
+  yearBuilt?: number;
+  stampDuty?: number;
+  agentFee?: number;
 }
 
 interface StructuredPropertyPayload {
@@ -40,6 +49,15 @@ interface StructuredPropertyPayload {
   landPrice?: number;
   buildPrice?: number;
   isNewBuild: boolean;
+  // Extended fields
+  councilRates?: number;
+  waterRates?: number;
+  strataFees?: number;
+  insuranceEstimate?: number;
+  propertyManagementPercent?: number;
+  yearBuilt?: number;
+  stampDuty?: number;
+  agentFee?: number;
 }
 
 interface PageImage {
@@ -75,11 +93,22 @@ Extract ALL property information you can find, including:
 - For house & land packages: separate land and build prices
 - Whether it's a new build (look for "house and land", "new home", "off the plan", "build contract", builder logos, etc.)
 
+ALSO EXTRACT these financial details if mentioned:
+- Council rates (annual amount)
+- Water rates (annual amount)
+- Strata/body corporate fees (annual amount)
+- Building/landlord insurance estimate (annual amount)
+- Property management fee (as percentage, usually 6-10%)
+- Year built or construction year
+- Stamp duty amount if calculated
+- Agent/buyer's agent fee if mentioned
+
 Pay special attention to:
 - Header/hero sections with address and key features
 - Floorplans that show dimensions
 - Price breakdowns showing land + build costs
 - Feature lists and specifications
+- Financial summaries or cost breakdowns
 - Agent contact information that might include suburb/area
 
 Return ONLY valid JSON with these exact fields (use null for values not found).`;
@@ -105,7 +134,15 @@ Return JSON format:
   "propertyType": "house" or "apartment" or "townhouse" or "land" or "house_and_land",
   "landPrice": numeric land component price,
   "buildPrice": numeric build component price,
-  "isNewBuild": true if new build or house and land package
+  "isNewBuild": true if new build or house and land package,
+  "councilRates": numeric annual council rates,
+  "waterRates": numeric annual water rates,
+  "strataFees": numeric annual strata/body corp fees,
+  "insuranceEstimate": numeric annual insurance,
+  "propertyManagementPercent": numeric percentage (e.g., 8 for 8%),
+  "yearBuilt": numeric year of construction,
+  "stampDuty": numeric stamp duty amount,
+  "agentFee": numeric agent/buyer's agent fee
 }`
     }
   ];
@@ -176,6 +213,15 @@ Return JSON format:
       landPrice: parsed.landPrice || undefined,
       buildPrice: parsed.buildPrice || undefined,
       isNewBuild: parsed.isNewBuild || false,
+      // Extended fields
+      councilRates: parsed.councilRates || undefined,
+      waterRates: parsed.waterRates || undefined,
+      strataFees: parsed.strataFees || undefined,
+      insuranceEstimate: parsed.insuranceEstimate || undefined,
+      propertyManagementPercent: parsed.propertyManagementPercent || undefined,
+      yearBuilt: parsed.yearBuilt || undefined,
+      stampDuty: parsed.stampDuty || undefined,
+      agentFee: parsed.agentFee || undefined,
     };
     
   } catch (error) {
@@ -195,7 +241,7 @@ async function extractFromSingleImage(
   console.log(`🔍 Analyzing single image with GPT-4o Vision...`);
   
   const systemPrompt = `You are an expert at extracting property details from Australian real estate documents.
-Extract ALL property information from this image.`;
+Extract ALL property information from this image including financial details like rates, fees, and insurance.`;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -228,7 +274,15 @@ Extract ALL property information from this image.`;
   "propertyType": "house/apartment/townhouse/land",
   "landPrice": numeric,
   "buildPrice": numeric,
-  "isNewBuild": boolean
+  "isNewBuild": boolean,
+  "councilRates": numeric annual,
+  "waterRates": numeric annual,
+  "strataFees": numeric annual,
+  "insuranceEstimate": numeric annual,
+  "propertyManagementPercent": numeric percentage,
+  "yearBuilt": numeric year,
+  "stampDuty": numeric,
+  "agentFee": numeric
 }`
             },
             {
@@ -242,7 +296,7 @@ Extract ALL property information from this image.`;
         }
       ],
       temperature: 0.1,
-      max_tokens: 2000,
+      max_tokens: 2500,
     }),
   });
 
@@ -280,6 +334,15 @@ Extract ALL property information from this image.`;
     landPrice: parsed.landPrice || undefined,
     buildPrice: parsed.buildPrice || undefined,
     isNewBuild: parsed.isNewBuild || false,
+    // Extended fields
+    councilRates: parsed.councilRates || undefined,
+    waterRates: parsed.waterRates || undefined,
+    strataFees: parsed.strataFees || undefined,
+    insuranceEstimate: parsed.insuranceEstimate || undefined,
+    propertyManagementPercent: parsed.propertyManagementPercent || undefined,
+    yearBuilt: parsed.yearBuilt || undefined,
+    stampDuty: parsed.stampDuty || undefined,
+    agentFee: parsed.agentFee || undefined,
   };
 }
 
@@ -329,6 +392,17 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
     landPrice: extractedData.landPrice,
     buildPrice: extractedData.buildPrice,
     isNewBuild: extractedData.isNewBuild || false,
+    // Extended fields
+    councilRates: extractedData.councilRates,
+    waterRates: extractedData.waterRates,
+    strataFees: extractedData.strataFees,
+    insuranceEstimate: extractedData.insuranceEstimate,
+    propertyManagementPercent: extractedData.propertyManagementPercent,
+    yearBuilt: extractedData.yearBuilt,
+    stampDuty: extractedData.stampDuty,
+    agentFee: extractedData.agentFee,
+  };
+}
   };
 }
 
