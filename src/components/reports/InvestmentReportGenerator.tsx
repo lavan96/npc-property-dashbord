@@ -1587,6 +1587,9 @@ export function InvestmentReportGenerator() {
                 buildType={preGenData.buildType}
                 onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                 externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                externalPropertyValue={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
+                externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
                 externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
                 externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
                 externalLandSize={landSize ? parseFloat(landSize) : undefined}
@@ -1881,6 +1884,9 @@ export function InvestmentReportGenerator() {
                     buildType={preGenData.buildType}
                     onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                     externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalPropertyValue={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
+                    externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
                     externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
                     externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
                     externalLandSize={landSize ? parseFloat(landSize) : undefined}
@@ -2215,6 +2221,9 @@ export function InvestmentReportGenerator() {
                     buildType={preGenData.buildType}
                     onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                     externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalPropertyValue={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
+                    externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
                     externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
                     externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
                     externalLandSize={landSize ? parseFloat(landSize) : undefined}

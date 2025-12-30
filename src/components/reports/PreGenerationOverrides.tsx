@@ -87,6 +87,9 @@ interface PreGenerationOverridesProps {
   buildType?: 'new_build' | 'existing_property';
   onBuildTypeChange?: (buildType: 'new_build' | 'existing_property') => void;
   externalPurchasePrice?: number;
+  externalPropertyValue?: number;
+  externalLandPrice?: number;
+  externalBuildPrice?: number;
   externalWeeklyRent?: number;
   externalCarSpaces?: number;
   externalLandSize?: number;
@@ -100,6 +103,9 @@ export function PreGenerationOverrides({
   buildType: externalBuildType,
   onBuildTypeChange,
   externalPurchasePrice,
+  externalPropertyValue,
+  externalLandPrice,
+  externalBuildPrice,
   externalWeeklyRent,
   externalCarSpaces,
   externalLandSize,
@@ -290,6 +296,39 @@ export function PreGenerationOverrides({
       }
     }
   }, [externalBuildSize]);
+
+  // Sync external propertyValue prop - using ref to prevent loops
+  const lastExternalPropertyValue = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalPropertyValue !== undefined) {
+      if (lastExternalPropertyValue.current !== externalPropertyValue) {
+        lastExternalPropertyValue.current = externalPropertyValue;
+        setPropertyValue(externalPropertyValue.toString());
+      }
+    }
+  }, [externalPropertyValue]);
+
+  // Sync external landPrice prop - using ref to prevent loops
+  const lastExternalLandPrice = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalLandPrice !== undefined) {
+      if (lastExternalLandPrice.current !== externalLandPrice) {
+        lastExternalLandPrice.current = externalLandPrice;
+        setLandPrice(externalLandPrice.toString());
+      }
+    }
+  }, [externalLandPrice]);
+
+  // Sync external buildPrice prop - using ref to prevent loops
+  const lastExternalBuildPrice = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (externalBuildPrice !== undefined) {
+      if (lastExternalBuildPrice.current !== externalBuildPrice) {
+        lastExternalBuildPrice.current = externalBuildPrice;
+        setBuildPrice(externalBuildPrice.toString());
+      }
+    }
+  }, [externalBuildPrice]);
 
   // Track if user has manually edited loan amount
   const [userEditedLoanAmount, setUserEditedLoanAmount] = useState(false);
