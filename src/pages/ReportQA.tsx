@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils';
 // Feature components
 import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcuts';
 import { TypingIndicator } from '@/components/report-qa/TypingIndicator';
+import { StreamingTypingIndicator } from '@/components/report-qa/StreamingTypingIndicator';
 import { MessageReactions } from '@/components/report-qa/MessageReactions';
 import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
 import { ConversationTags } from '@/components/report-qa/ConversationTags';
@@ -65,6 +66,8 @@ import { KeyboardShortcutsHelp } from '@/components/report-qa/KeyboardShortcutsH
 import { VoiceMessagePlayer } from '@/components/report-qa/VoiceMessagePlayer';
 import { RecordingIndicator } from '@/components/report-qa/RecordingIndicator';
 import { PDFAttachmentMessage } from '@/components/report-qa/PDFAttachmentMessage';
+import { MessageDateSeparator, shouldShowDateSeparator } from '@/components/report-qa/MessageDateSeparator';
+import { CharacterCount, FailedMessageIndicator } from '@/components/report-qa/ChatInputEnhancements';
 
 interface PDFAttachment {
   url: string;
@@ -129,6 +132,12 @@ export default function ReportQA() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showEmailCopilotModal, setShowEmailCopilotModal] = useState(false);
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
+  
+  // Phase 1 UX improvements
+  const [streamingContent, setStreamingContent] = useState('');
+  const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const MAX_MESSAGE_LENGTH = 4000;
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -402,8 +411,19 @@ export default function ReportQA() {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isProcessing) return;
+  const handleSendMessage = async (retryContent?: string, retryAudioUrl?: string) => {
+    const messageContent = retryContent || inputMessage.trim();
+    const audioUrl = retryAudioUrl || pendingAudioUrl;
+    
+    if (!messageContent || isProcessing) return;
+    if (messageContent.length > MAX_MESSAGE_LENGTH) {
+      toast({
+        title: 'Message too long',
+        description: `Please shorten your message to ${MAX_MESSAGE_LENGTH} characters or less.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     let activeConversationId = conversationId;
     if (!activeConversationId) {
@@ -421,45 +441,117 @@ export default function ReportQA() {
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: inputMessage.trim(),
+      content: messageContent,
       timestamp: new Date(),
-      audioUrl: pendingAudioUrl || undefined,
+      audioUrl: audioUrl || undefined,
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setPendingAudioUrl(null); // Clear pending audio after adding to message
+    if (!retryContent) {
+      setMessages(prev => [...prev, userMessage]);
+      setInputMessage('');
+    }
+    setPendingAudioUrl(null);
+    setFailedMessage(null);
     setIsProcessing(true);
+    setStreamingContent('');
 
     try {
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
+      // Use streaming for better UX
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({
           action: 'chat',
           reportContents: uploadedReports.map(r => r.content),
           reportNames: uploadedReports.map(r => r.name),
-          question: userMessage.content,
+          question: messageContent,
           chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
           conversationId: activeConversationId,
-        },
+          stream: true,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // Stream the response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process line by line
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullContent += content;
+              setStreamingContent(fullContent);
+            }
+          } catch {
+            // Re-buffer partial JSON
+            buffer = line + '\n' + buffer;
+            break;
+          }
+        }
+      }
+
+      // Create the final assistant message
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: data.response,
+        content: fullContent || 'I couldn\'t generate a response. Please try again.',
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      setStreamingContent('');
+
+      // Save to database in background
+      if (activeConversationId && fullContent) {
+        supabase.from('report_qa_messages').insert([
+          { conversation_id: activeConversationId, role: 'user', content: messageContent },
+          { conversation_id: activeConversationId, role: 'assistant', content: fullContent },
+        ]).then(() => {
+          console.log('[ReportQA] Messages saved to database');
+        });
+      }
 
       // Log question asked
       logActivityDirect({
         actionType: 'qa_question_asked',
         entityType: 'qa_conversation',
         entityId: activeConversationId,
-        metadata: { question_length: userMessage.content.length }
+        metadata: { question_length: messageContent.length }
       });
 
       if (messages.length === 0) {
@@ -467,13 +559,25 @@ export default function ReportQA() {
       }
     } catch (error) {
       console.error('Chat error:', error);
+      setStreamingContent('');
+      setFailedMessage({ content: messageContent, audioUrl: audioUrl || undefined });
       toast({
-        title: 'Error',
-        description: 'Failed to get a response. Please try again.',
+        title: 'Failed to send message',
+        description: 'Click retry to try again.',
         variant: 'destructive',
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Retry failed message
+  const handleRetryMessage = () => {
+    if (failedMessage) {
+      setIsRetrying(true);
+      handleSendMessage(failedMessage.content, failedMessage.audioUrl).finally(() => {
+        setIsRetrying(false);
+      });
     }
   };
 
@@ -1151,12 +1255,18 @@ export default function ReportQA() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {message.role === 'assistant' && (
+                  {messages.map((message, index) => {
+                    const previousMessage = index > 0 ? messages[index - 1] : null;
+                    const showDateSep = shouldShowDateSeparator(
+                      message.timestamp,
+                      previousMessage?.timestamp || null
+                    );
+                    
+                    return (
+                      <div key={message.id}>
+                        {showDateSep && <MessageDateSeparator date={message.timestamp} />}
+                        <div className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          {message.role === 'assistant' && (
                         <div className={cn("h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0", getAccentClass())}>
                           <Bot className="h-4 w-4 text-primary" />
                         </div>
@@ -1268,10 +1378,22 @@ export default function ReportQA() {
                           <User className="h-4 w-4" />
                         </div>
                       )}
-                    </div>
-                  ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                   {isProcessing && (
-                    <TypingIndicator isMultiReport={uploadedReports.length > 1} />
+                    <StreamingTypingIndicator 
+                      isMultiReport={uploadedReports.length > 1} 
+                      streamingContent={streamingContent}
+                    />
+                  )}
+                  {failedMessage && !isProcessing && (
+                    <FailedMessageIndicator
+                      content={failedMessage.content}
+                      onRetry={handleRetryMessage}
+                      isRetrying={isRetrying}
+                    />
                   )}
                   <div ref={chatEndRef} />
                 </div>
@@ -1303,32 +1425,33 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="flex gap-2 pt-2 border-t items-end">
-              <Textarea
-                ref={inputRef}
-                placeholder={
-                  uploadedReports.length === 0 
-                    ? 'Ask anything or upload a report for context...' 
-                    : uploadedReports.length > 1 
-                      ? 'Ask a comparison question...'
-                      : 'Ask a question about the report...'
-                }
-                value={inputMessage}
-                onChange={(e) => {
-                  setInputMessage(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
+            <div className="space-y-1 pt-2 border-t">
+              <div className="flex gap-2 items-end">
+                <Textarea
+                  ref={inputRef}
+                  placeholder={
+                    uploadedReports.length === 0 
+                      ? 'Ask anything or upload a report for context...' 
+                      : uploadedReports.length > 1 
+                        ? 'Ask a comparison question...'
+                        : 'Ask a question about the report...'
                   }
-                }}
-                disabled={isProcessing || isRecording || isTranscribing}
-                className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
-                rows={1}
-              />
+                  value={inputMessage}
+                  onChange={(e) => {
+                    setInputMessage(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  disabled={isProcessing || isRecording || isTranscribing}
+                  className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
+                  rows={1}
+                />
               <Button
                 variant={isRecording ? "destructive" : "outline"}
                 size="icon"
@@ -1345,13 +1468,15 @@ export default function ReportQA() {
                   <Mic className="h-4 w-4" />
                 )}
               </Button>
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isProcessing || isRecording}
-                className="h-10 flex-shrink-0"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+                <Button
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputMessage.trim() || isProcessing || isRecording || inputMessage.length > MAX_MESSAGE_LENGTH}
+                  className="h-10 flex-shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <CharacterCount current={inputMessage.length} max={MAX_MESSAGE_LENGTH} />
             </div>
           </CardContent>
         </Card>
