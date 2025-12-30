@@ -148,6 +148,8 @@ export default function ReportQA() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showEmailCopilotModal, setShowEmailCopilotModal] = useState(false);
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
+  const [isValidatingPDF, setIsValidatingPDF] = useState(false);
+  const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
   
   // Phase 1 UX improvements
   const [streamingContent, setStreamingContent] = useState('');
@@ -1017,9 +1019,24 @@ export default function ReportQA() {
   };
 
   // Handle sending PDF via Email Copilot
-  const handleSendPDFViaEmail = (attachment: PDFAttachment) => {
+  const handleSendPDFViaEmail = async (attachment: PDFAttachment) => {
     setPendingPDFAttachment(attachment);
+    setPdfValidationError(null);
     setShowEmailCopilotModal(true);
+    
+    // Validate that the PDF URL is still accessible
+    setIsValidatingPDF(true);
+    try {
+      const response = await fetch(attachment.url, { method: 'HEAD' });
+      if (!response.ok) {
+        setPdfValidationError('PDF file may have expired or is no longer accessible. Try generating a new PDF.');
+      }
+    } catch (error) {
+      console.error('PDF validation error:', error);
+      setPdfValidationError('Unable to verify PDF accessibility. The file may still work.');
+    } finally {
+      setIsValidatingPDF(false);
+    }
   };
 
   // Navigate to Email Copilot with the attachment pre-filled and dynamic draft
@@ -1049,6 +1066,7 @@ export default function ReportQA() {
     }
     setShowEmailCopilotModal(false);
     setPendingPDFAttachment(null);
+    setPdfValidationError(null);
   };
 
   // Filter conversations based on search query
@@ -1987,43 +2005,111 @@ export default function ReportQA() {
       </Dialog>
 
       {/* Email Copilot Confirmation Modal */}
-      <Dialog open={showEmailCopilotModal} onOpenChange={setShowEmailCopilotModal}>
+      <Dialog open={showEmailCopilotModal} onOpenChange={(open) => {
+        setShowEmailCopilotModal(open);
+        if (!open) {
+          setPendingPDFAttachment(null);
+          setPdfValidationError(null);
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
+              <Mail className="h-5 w-5 text-primary" />
               Send PDF via Email Copilot
             </DialogTitle>
             <DialogDescription>
-              You'll be redirected to Email Copilot with this PDF attached as a file attachment.
+              You'll be redirected to Email Copilot with this PDF ready to send.
             </DialogDescription>
           </DialogHeader>
+          
           {pendingPDFAttachment && (
-            <div className="p-4 bg-muted rounded-lg">
-              <div className="flex items-center gap-3">
-                <FileText className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="font-medium text-sm">{pendingPDFAttachment.fileName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(pendingPDFAttachment.fileSize / 1024).toFixed(1)} KB
-                  </p>
+            <div className="space-y-4">
+              {/* PDF File Preview */}
+              <div className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-primary/10 rounded-lg">
+                    <FileText className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{pendingPDFAttachment.fileName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(pendingPDFAttachment.fileSize / 1024).toFixed(1)} KB • Generated {new Date(pendingPDFAttachment.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  {isValidatingPDF ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : pdfValidationError ? (
+                    <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                      Warning
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Ready
+                    </Badge>
+                  )}
                 </div>
               </div>
+              
+              {/* Email Preview */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Email Subject Preview</Label>
+                <div className="p-3 bg-muted/50 rounded-md text-sm">
+                  {uploadedReports.length > 0 
+                    ? `Property Analysis: ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ').substring(0, 50)}${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ').length > 50 ? '...' : ''}`
+                    : `Q&A Conversation Export - ${pendingPDFAttachment.fileName}`
+                  }
+                </div>
+              </div>
+              
+              {/* Context info */}
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {messages.length} messages
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  {uploadedReports.length} report{uploadedReports.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+              
+              {/* Validation warning */}
+              {pdfValidationError && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <p className="text-xs text-amber-700 dark:text-amber-400">{pdfValidationError}</p>
+                </div>
+              )}
             </div>
           )}
-          <DialogFooter className="gap-2">
+          
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button 
               variant="outline" 
               onClick={() => {
                 setShowEmailCopilotModal(false);
                 setPendingPDFAttachment(null);
+                setPdfValidationError(null);
               }}
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmEmailCopilot}>
-              <Mail className="h-4 w-4 mr-2" />
-              Open Email Copilot
+            <Button 
+              onClick={handleConfirmEmailCopilot}
+              disabled={isValidatingPDF}
+            >
+              {isValidatingPDF ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Open Email Copilot
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
