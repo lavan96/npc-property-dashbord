@@ -987,6 +987,51 @@ export type Database = {
           },
         ]
       }
+      client_notes: {
+        Row: {
+          client_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note_type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note_type?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_properties: {
         Row: {
           address: string
