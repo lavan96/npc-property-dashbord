@@ -209,19 +209,20 @@ function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressIte
   const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
   const minutesSinceUpdate = Math.floor(timeSinceUpdate / 60000);
   
-  // Determine if report is stuck - has partial content but not all 4 sections complete
-  // Also consider timing: if processing for more than 2 minutes without progress, likely stuck
-  const isIncomplete = report.sectionsCompleted > 0 && report.sectionsCompleted < report.totalSections;
+  // Determine if report is stuck - ONLY if no updates for 2+ minutes
+  // This prevents false "stalled" indicators when the report is actively progressing
   const isTimedOut = timeSinceUpdate > 120000; // 2 minutes without update
-  const isStuck = report.status === 'processing' && (isIncomplete || isTimedOut) && report.contentLength > 1000;
+  const hasPartialContent = report.contentLength > 1000;
+  const isIncomplete = report.sectionsCompleted < report.totalSections;
+  
+  // Only mark as stuck if there's been no database update for 2+ minutes AND has partial content
+  const isStuck = report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
   
   // Show continue button if:
-  // 1. Currently processing but incomplete (stuck)
+  // 1. Currently processing but timed out (actually stuck)
   // 2. Pending with partial content (can resume)
-  // 3. Processing with substantial content but missing sections (timeout recovery)
   const showContinueButton = isStuck || 
-    (report.status === 'pending' && report.sectionsCompleted > 0) ||
-    (report.status === 'processing' && report.contentLength > 30000 && report.sectionsCompleted < report.totalSections);
+    (report.status === 'pending' && report.sectionsCompleted > 0);
 
   // Calculate which section is currently being worked on (cap at totalSections)
   const currentSection = Math.min(report.sectionsCompleted + 1, report.totalSections);
