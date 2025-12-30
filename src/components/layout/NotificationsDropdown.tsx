@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,6 +31,12 @@ export function NotificationsDropdown() {
         return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'call_completed':
         return <Phone className="h-4 w-4 text-primary" />;
+      case 'appointment_created':
+        return <CalendarPlus className="h-4 w-4 text-green-500" />;
+      case 'appointment_rescheduled':
+        return <CalendarClock className="h-4 w-4 text-amber-500" />;
+      case 'appointment_cancelled':
+        return <CalendarX className="h-4 w-4 text-destructive" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }

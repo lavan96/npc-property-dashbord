@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export interface GHLCalendar {
   id: string;
@@ -139,6 +140,7 @@ export function useGHLCalendar() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   const fetchCalendarData = useCallback(async (
     startTime?: string,
@@ -275,12 +277,22 @@ export function useGHLCalendar() {
       }
 
       if (data?.success) {
+        // Get the event for notification details
+        const event = events.find(e => e.id === eventId);
+        
         // Update local state
         setEvents(prev => prev.map(event => 
           event.id === eventId 
             ? { ...event, startTime: newStartTime, endTime: newEndTime }
             : event
         ));
+        
+        // Add notification for rescheduled appointment
+        addNotification({
+          type: 'appointment_rescheduled',
+          title: 'Appointment Rescheduled',
+          message: `"${event?.title || 'Appointment'}" has been moved to ${new Date(newStartTime).toLocaleString()}`
+        });
         
         // Return undo function if original times were provided
         const undoFn = originalStartTime && originalEndTime
@@ -391,8 +403,19 @@ export function useGHLCalendar() {
       }
 
       if (data?.success) {
+        // Get the event for notification details before removing
+        const deletedEvent = events.find(e => e.id === eventId);
+        
         // Remove from local state
         setEvents(prev => prev.filter(event => event.id !== eventId));
+        
+        // Add notification for cancelled appointment
+        addNotification({
+          type: 'appointment_cancelled',
+          title: 'Appointment Cancelled',
+          message: `"${deletedEvent?.title || 'Appointment'}" has been cancelled`
+        });
+        
         toast({
           title: 'Event deleted',
           description: 'The event has been removed.',
@@ -568,6 +591,14 @@ export function useGHLCalendar() {
           // Add to local state
           setEvents((prev) => [...prev, newEvent]);
         }
+        
+        // Add notification for created appointment
+        addNotification({
+          type: 'appointment_created',
+          title: 'Appointment Created',
+          message: `"${payload.title}" scheduled for ${new Date(payload.startTime).toLocaleString()}`
+        });
+        
         toast({
           title: 'Appointment created',
           description: `"${payload.title}" has been scheduled.`,
