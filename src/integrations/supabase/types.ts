@@ -1437,6 +1437,30 @@ export type Database = {
         }
         Relationships: []
       }
+      global_report_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integration_configs: {
         Row: {
           created_at: string

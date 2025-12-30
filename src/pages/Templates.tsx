@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TemplateUploader } from '@/components/templates/TemplateUploader';
 import { TemplateList } from '@/components/templates/TemplateList';
 import { BrandingManager } from '@/components/templates/BrandingManager';
-import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2 } from 'lucide-react';
+import { GlobalReportSettings } from '@/components/templates/GlobalReportSettings';
+import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type ReportFormat = 
@@ -141,7 +142,7 @@ export default function Templates() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="report-formats" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             Report Formats
@@ -157,6 +158,10 @@ export default function Templates() {
           <TabsTrigger value="branding" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Client Branding
+          </TabsTrigger>
+          <TabsTrigger value="global-settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Global Settings
           </TabsTrigger>
         </TabsList>
 
@@ -383,6 +388,20 @@ export default function Templates() {
                 profiles={brandingProfiles || []} 
                 isLoading={brandingLoading}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="global-settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Global Report Settings</CardTitle>
+              <CardDescription>
+                Configure contact details and professional disclaimer that will be applied across all generated reports.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <GlobalReportSettings />
             </CardContent>
           </Card>
         </TabsContent>
