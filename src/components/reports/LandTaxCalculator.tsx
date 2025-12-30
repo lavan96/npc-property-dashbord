@@ -90,6 +90,11 @@ export function LandTaxCalculator({
             setIsWAMetro(isWAMetroPostcode(postcodeMatch[1]));
           }
         }
+        
+        // When state is auto-detected and we have a land value, clear restored flag to trigger calculation
+        if (landValue && parseFloat(removeCommas(landValue)) > 0) {
+          setIsRestoredFromInitial(false);
+        }
       }
     }
   }, [propertyAddress, externalState]);
