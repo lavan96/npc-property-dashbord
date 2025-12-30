@@ -1447,6 +1447,39 @@ export function InvestmentReportGenerator() {
 
                 {/* URL Scrape Tab */}
                 <TabsContent value="url" className="space-y-6 pt-4">
+                  {/* Build Type Radio Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Build Type</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="urlBuildType"
+                          value="existing_property"
+                          checked={preGenData.buildType === 'existing_property'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isScraping}
+                        />
+                        <span className="text-sm">Existing Property</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="urlBuildType"
+                          value="new_build"
+                          checked={preGenData.buildType === 'new_build'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isScraping}
+                        />
+                        <span className="text-sm">New Build</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   {/* URL Input */}
                   <div className="space-y-3">
                     <Label htmlFor="propertyUrl" className="flex items-center gap-2">
@@ -1477,6 +1510,128 @@ export function InvestmentReportGenerator() {
                       </div>
                     </div>
                   )}
+
+                  <Separator />
+
+                  {/* Property Details - Required for URL Scrape */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Property Details</Label>
+                      <Badge variant="default" className="text-xs">Required for Scoring</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Purchase price is required for investment scoring. Other details are optional but will override scraped values.
+                    </p>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="urlPropertyPrice" className="flex items-center gap-1">
+                          Purchase Price ($) <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="urlPropertyPrice"
+                          type="text"
+                          inputMode="numeric"
+                          value={formatNumberWithCommas(propertyPrice)}
+                          onChange={(e) => handlePropertyPriceChange(e.target.value)}
+                          placeholder="e.g., 750,000"
+                          disabled={isScraping}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlWeeklyRent">Weekly Rent ($)</Label>
+                        <Input
+                          id="urlWeeklyRent"
+                          type="text"
+                          inputMode="numeric"
+                          value={formatNumberWithCommas(weeklyRent)}
+                          onChange={(e) => handleWeeklyRentChange(e.target.value)}
+                          placeholder="e.g., 550"
+                          disabled={isScraping}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlPropertyType">Property Type</Label>
+                        <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="house">House</SelectItem>
+                            <SelectItem value="apartment">Apartment</SelectItem>
+                            <SelectItem value="townhouse">Townhouse</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlBeds">Bedrooms</Label>
+                        <Input
+                          id="urlBeds"
+                          type="number"
+                          value={beds}
+                          onChange={(e) => setBeds(e.target.value)}
+                          placeholder="e.g., 3"
+                          disabled={isScraping}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlBaths">Bathrooms</Label>
+                        <Input
+                          id="urlBaths"
+                          type="number"
+                          value={baths}
+                          onChange={(e) => setBaths(e.target.value)}
+                          placeholder="e.g., 2"
+                          disabled={isScraping}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlCarSpaces" className="flex items-center gap-1">
+                          <Car className="h-4 w-4" />
+                          Car Spaces
+                        </Label>
+                        <Input
+                          id="urlCarSpaces"
+                          type="number"
+                          min="0"
+                          value={carSpaces}
+                          onChange={(e) => handleCarSpacesChange(e.target.value)}
+                          placeholder="e.g., 2"
+                          disabled={isScraping}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlLandSize">Land Size (m²)</Label>
+                        <Input
+                          id="urlLandSize"
+                          type="number"
+                          value={landSize}
+                          onChange={(e) => setLandSize(e.target.value)}
+                          placeholder="e.g., 450"
+                          disabled={isScraping}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="urlBuildSize">Build Size (m²)</Label>
+                        <Input
+                          id="urlBuildSize"
+                          type="number"
+                          value={buildSize}
+                          onChange={(e) => setBuildSize(e.target.value)}
+                          placeholder="e.g., 180"
+                          disabled={isScraping}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   <Separator />
 
@@ -1534,6 +1689,39 @@ export function InvestmentReportGenerator() {
 
                 {/* PDF Upload Tab */}
                 <TabsContent value="pdf" className="space-y-6 pt-4">
+                  {/* Build Type Radio Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Build Type</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="pdfBuildType"
+                          value="existing_property"
+                          checked={preGenData.buildType === 'existing_property'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isParsing}
+                        />
+                        <span className="text-sm">Existing Property</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="pdfBuildType"
+                          value="new_build"
+                          checked={preGenData.buildType === 'new_build'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isParsing}
+                        />
+                        <span className="text-sm">New Build</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   {/* PDF Drop Zone */}
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2">
@@ -1616,6 +1804,128 @@ export function InvestmentReportGenerator() {
                       </div>
                     </div>
                   )}
+
+                  <Separator />
+
+                  {/* Property Details - Required for PDF mode */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Property Details</Label>
+                      <Badge variant="default" className="text-xs">Required for Scoring</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Purchase price is required for investment scoring. Other details are optional but will override extracted values.
+                    </p>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfPropertyPrice" className="flex items-center gap-1">
+                          Purchase Price ($) <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="pdfPropertyPrice"
+                          type="text"
+                          inputMode="numeric"
+                          value={formatNumberWithCommas(propertyPrice)}
+                          onChange={(e) => handlePropertyPriceChange(e.target.value)}
+                          placeholder="e.g., 750,000"
+                          disabled={isParsing}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfWeeklyRent">Weekly Rent ($)</Label>
+                        <Input
+                          id="pdfWeeklyRent"
+                          type="text"
+                          inputMode="numeric"
+                          value={formatNumberWithCommas(weeklyRent)}
+                          onChange={(e) => handleWeeklyRentChange(e.target.value)}
+                          placeholder="e.g., 550"
+                          disabled={isParsing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfPropertyType">Property Type</Label>
+                        <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="house">House</SelectItem>
+                            <SelectItem value="apartment">Apartment</SelectItem>
+                            <SelectItem value="townhouse">Townhouse</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfBeds">Bedrooms</Label>
+                        <Input
+                          id="pdfBeds"
+                          type="number"
+                          value={beds}
+                          onChange={(e) => setBeds(e.target.value)}
+                          placeholder="e.g., 3"
+                          disabled={isParsing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfBaths">Bathrooms</Label>
+                        <Input
+                          id="pdfBaths"
+                          type="number"
+                          value={baths}
+                          onChange={(e) => setBaths(e.target.value)}
+                          placeholder="e.g., 2"
+                          disabled={isParsing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfCarSpaces" className="flex items-center gap-1">
+                          <Car className="h-4 w-4" />
+                          Car Spaces
+                        </Label>
+                        <Input
+                          id="pdfCarSpaces"
+                          type="number"
+                          min="0"
+                          value={carSpaces}
+                          onChange={(e) => handleCarSpacesChange(e.target.value)}
+                          placeholder="e.g., 2"
+                          disabled={isParsing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfLandSize">Land Size (m²)</Label>
+                        <Input
+                          id="pdfLandSize"
+                          type="number"
+                          value={landSize}
+                          onChange={(e) => setLandSize(e.target.value)}
+                          placeholder="e.g., 450"
+                          disabled={isParsing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pdfBuildSize">Build Size (m²)</Label>
+                        <Input
+                          id="pdfBuildSize"
+                          type="number"
+                          value={buildSize}
+                          onChange={(e) => setBuildSize(e.target.value)}
+                          placeholder="e.g., 180"
+                          disabled={isParsing}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
                   <Separator />
 
