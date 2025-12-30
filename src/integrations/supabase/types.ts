@@ -1437,6 +1437,33 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_configs: {
+        Row: {
+          created_at: string
+          id: string
+          integration_id: string
+          key_name: string
+          key_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          integration_id: string
+          key_name: string
+          key_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          integration_id?: string
+          key_name?: string
+          key_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       investment_reports: {
         Row: {
           calculation_version: string | null

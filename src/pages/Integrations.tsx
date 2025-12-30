@@ -142,7 +142,7 @@ export default function Integrations() {
   const loadIntegrationConfigs = async () => {
     try {
       const { data, error } = await supabase
-        .from('integration_configs')
+        .from('integration_configs' as any)
         .select('*');
 
       if (error) {
@@ -193,7 +193,7 @@ export default function Integrations() {
         const value = values[field.key] || '';
         
         const { error } = await supabase
-          .from('integration_configs')
+          .from('integration_configs' as any)
           .upsert({
             key_name: field.key,
             key_value: value,

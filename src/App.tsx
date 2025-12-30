@@ -45,6 +45,7 @@ import AcceptInvite from "./pages/AcceptInvite";
 import UserManagement from "./pages/admin/UserManagement";
 import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
+import Integrations from "./pages/Integrations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -121,6 +122,7 @@ const App = () => (
                           <Route path="admin/users" element={<UserManagement />} />
                           <Route path="admin/activity-logs" element={<ActivityLogs />} />
                           <Route path="admin/depreciation-comps" element={<DepreciationCompsAdmin />} />
+                          <Route path="integrations" element={<Integrations />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
