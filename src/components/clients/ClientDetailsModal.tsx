@@ -24,10 +24,21 @@ import {
   Phone,
   Mail,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Tag,
+  Bell,
+  Activity,
+  FileUp,
+  Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
+import { ClientTags } from './ClientTags';
+import { ClientReminders } from './ClientReminders';
+import { ClientActivityTimeline } from './ClientActivityTimeline';
+import { ClientFiles } from './ClientFiles';
+import { ClientScoreCard } from './ClientScoreCard';
+import { ClientAIInsights } from './ClientAIInsights';
 
 interface ClientDetailsModalProps {
   client: {
@@ -155,12 +166,16 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
 
         <ScrollArea className="max-h-[calc(90vh-120px)]">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="w-full justify-start">
+            <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="properties">Properties ({properties.length})</TabsTrigger>
               <TabsTrigger value="employment">Employment</TabsTrigger>
               <TabsTrigger value="financials">Financials</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="reminders">Reminders</TabsTrigger>
+              <TabsTrigger value="files">Files</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="insights">AI Insights</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 mt-4">
