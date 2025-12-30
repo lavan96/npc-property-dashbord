@@ -22,6 +22,7 @@ import {
   Users,
   History,
   ChevronRight,
+  Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
@@ -52,6 +53,7 @@ const adminItems = [
   { title: 'Automation', url: '/automation', icon: Zap, moduleKey: 'automation' },
   { title: 'Templates', url: '/templates', icon: FileStack, moduleKey: 'templates' },
   { title: 'Branding', url: '/white-label', icon: Palette, moduleKey: 'white_label' },
+  { title: 'Integrations', url: '/integrations', icon: Plug, moduleKey: 'integrations' },
   { title: 'Monitoring', url: '/monitoring', icon: Activity, moduleKey: 'monitoring' },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },
