@@ -684,6 +684,53 @@ export type Database = {
           },
         ]
       }
+      client_assets: {
+        Row: {
+          asset_type: string
+          client_id: string
+          created_at: string
+          description: string | null
+          id: string
+          institution_name: string | null
+          make_model: string | null
+          updated_at: string
+          value: number | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          asset_type: string
+          client_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          institution_name?: string | null
+          make_model?: string | null
+          updated_at?: string
+          value?: number | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          asset_type?: string
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          institution_name?: string | null
+          make_model?: string | null
+          updated_at?: string
+          value?: number | null
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_assets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_branding_profiles: {
         Row: {
           accent_color: string | null
@@ -736,6 +783,405 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "client_branding_profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_employment: {
+        Row: {
+          client_id: string
+          contact_type: string
+          created_at: string
+          employer_name: string | null
+          employment_type: string | null
+          id: string
+          is_current: boolean | null
+          occupation_role: string | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          contact_type?: string
+          created_at?: string
+          employer_name?: string | null
+          employment_type?: string | null
+          id?: string
+          is_current?: boolean | null
+          occupation_role?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          contact_type?: string
+          created_at?: string
+          employer_name?: string | null
+          employment_type?: string | null
+          id?: string
+          is_current?: boolean | null
+          occupation_role?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_employment_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_import_logs: {
+        Row: {
+          clients_created: number | null
+          completed_at: string | null
+          created_at: string
+          errors: Json | null
+          file_name: string
+          id: string
+          imported_by: string | null
+          properties_created: number | null
+          status: string
+        }
+        Insert: {
+          clients_created?: number | null
+          completed_at?: string | null
+          created_at?: string
+          errors?: Json | null
+          file_name: string
+          id?: string
+          imported_by?: string | null
+          properties_created?: number | null
+          status?: string
+        }
+        Update: {
+          clients_created?: number | null
+          completed_at?: string | null
+          created_at?: string
+          errors?: Json | null
+          file_name?: string
+          id?: string
+          imported_by?: string | null
+          properties_created?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_import_logs_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_income: {
+        Row: {
+          allowance: number | null
+          bonus: number | null
+          client_id: string
+          commission: number | null
+          contact_type: string
+          created_at: string
+          gross_salary: number | null
+          id: string
+          other_taxable_income: number | null
+          overtime_essential: number | null
+          overtime_non_essential: number | null
+          salary_frequency: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowance?: number | null
+          bonus?: number | null
+          client_id: string
+          commission?: number | null
+          contact_type?: string
+          created_at?: string
+          gross_salary?: number | null
+          id?: string
+          other_taxable_income?: number | null
+          overtime_essential?: number | null
+          overtime_non_essential?: number | null
+          salary_frequency?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowance?: number | null
+          bonus?: number | null
+          client_id?: string
+          commission?: number | null
+          contact_type?: string
+          created_at?: string
+          gross_salary?: number | null
+          id?: string
+          other_taxable_income?: number | null
+          overtime_essential?: number | null
+          overtime_non_essential?: number | null
+          salary_frequency?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_income_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_liabilities: {
+        Row: {
+          client_id: string
+          created_at: string
+          credit_limit: number | null
+          current_balance: number | null
+          id: string
+          interest_rate: number | null
+          liability_type: string
+          monthly_repayment: number | null
+          provider_name: string | null
+          repayment_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          credit_limit?: number | null
+          current_balance?: number | null
+          id?: string
+          interest_rate?: number | null
+          liability_type: string
+          monthly_repayment?: number | null
+          provider_name?: string | null
+          repayment_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          credit_limit?: number | null
+          current_balance?: number | null
+          id?: string
+          interest_rate?: number | null
+          liability_type?: string
+          monthly_repayment?: number | null
+          provider_name?: string | null
+          repayment_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_liabilities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_properties: {
+        Row: {
+          address: string
+          client_id: string
+          created_at: string
+          id: string
+          interest_rate: number | null
+          loan_remaining: number | null
+          monthly_body_corporate: number | null
+          monthly_building_insurance: number | null
+          monthly_council_rates: number | null
+          monthly_interest_repayment: number | null
+          monthly_landlord_insurance: number | null
+          monthly_property_management: number | null
+          monthly_rental_income: number | null
+          monthly_repairs_maintenance: number | null
+          monthly_water_rates: number | null
+          net_monthly_cashflow: number | null
+          ownership_percentage: number | null
+          property_type: string
+          total_monthly_expenditure: number | null
+          updated_at: string
+          value: number | null
+          weekly_rental_income: number | null
+        }
+        Insert: {
+          address: string
+          client_id: string
+          created_at?: string
+          id?: string
+          interest_rate?: number | null
+          loan_remaining?: number | null
+          monthly_body_corporate?: number | null
+          monthly_building_insurance?: number | null
+          monthly_council_rates?: number | null
+          monthly_interest_repayment?: number | null
+          monthly_landlord_insurance?: number | null
+          monthly_property_management?: number | null
+          monthly_rental_income?: number | null
+          monthly_repairs_maintenance?: number | null
+          monthly_water_rates?: number | null
+          net_monthly_cashflow?: number | null
+          ownership_percentage?: number | null
+          property_type?: string
+          total_monthly_expenditure?: number | null
+          updated_at?: string
+          value?: number | null
+          weekly_rental_income?: number | null
+        }
+        Update: {
+          address?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          interest_rate?: number | null
+          loan_remaining?: number | null
+          monthly_body_corporate?: number | null
+          monthly_building_insurance?: number | null
+          monthly_council_rates?: number | null
+          monthly_interest_repayment?: number | null
+          monthly_landlord_insurance?: number | null
+          monthly_property_management?: number | null
+          monthly_rental_income?: number | null
+          monthly_repairs_maintenance?: number | null
+          monthly_water_rates?: number | null
+          net_monthly_cashflow?: number | null
+          ownership_percentage?: number | null
+          property_type?: string
+          total_monthly_expenditure?: number | null
+          updated_at?: string
+          value?: number | null
+          weekly_rental_income?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_properties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          country: string | null
+          created_at: string
+          created_by: string | null
+          current_address: string | null
+          dependents_count: number | null
+          ghl_contact_id: string | null
+          ghl_last_synced_at: string | null
+          ghl_sync_status: string | null
+          id: string
+          living_situation: string | null
+          marital_status: string | null
+          net_monthly_cash_flow: number | null
+          notes: string | null
+          primary_dob: string | null
+          primary_email: string | null
+          primary_first_name: string
+          primary_gender: string | null
+          primary_middle_name: string | null
+          primary_mobile: string | null
+          primary_surname: string
+          residential_status: string | null
+          secondary_dob: string | null
+          secondary_email: string | null
+          secondary_first_name: string | null
+          secondary_gender: string | null
+          secondary_middle_name: string | null
+          secondary_mobile: string | null
+          secondary_surname: string | null
+          total_debt: number | null
+          total_monthly_expenditure: number | null
+          total_monthly_income: number | null
+          total_monthly_rental_income: number | null
+          total_portfolio_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_address?: string | null
+          dependents_count?: number | null
+          ghl_contact_id?: string | null
+          ghl_last_synced_at?: string | null
+          ghl_sync_status?: string | null
+          id?: string
+          living_situation?: string | null
+          marital_status?: string | null
+          net_monthly_cash_flow?: number | null
+          notes?: string | null
+          primary_dob?: string | null
+          primary_email?: string | null
+          primary_first_name: string
+          primary_gender?: string | null
+          primary_middle_name?: string | null
+          primary_mobile?: string | null
+          primary_surname: string
+          residential_status?: string | null
+          secondary_dob?: string | null
+          secondary_email?: string | null
+          secondary_first_name?: string | null
+          secondary_gender?: string | null
+          secondary_middle_name?: string | null
+          secondary_mobile?: string | null
+          secondary_surname?: string | null
+          total_debt?: number | null
+          total_monthly_expenditure?: number | null
+          total_monthly_income?: number | null
+          total_monthly_rental_income?: number | null
+          total_portfolio_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_address?: string | null
+          dependents_count?: number | null
+          ghl_contact_id?: string | null
+          ghl_last_synced_at?: string | null
+          ghl_sync_status?: string | null
+          id?: string
+          living_situation?: string | null
+          marital_status?: string | null
+          net_monthly_cash_flow?: number | null
+          notes?: string | null
+          primary_dob?: string | null
+          primary_email?: string | null
+          primary_first_name?: string
+          primary_gender?: string | null
+          primary_middle_name?: string | null
+          primary_mobile?: string | null
+          primary_surname?: string
+          residential_status?: string | null
+          secondary_dob?: string | null
+          secondary_email?: string | null
+          secondary_first_name?: string | null
+          secondary_gender?: string | null
+          secondary_middle_name?: string | null
+          secondary_mobile?: string | null
+          secondary_surname?: string | null
+          total_debt?: number | null
+          total_monthly_expenditure?: number | null
+          total_monthly_income?: number | null
+          total_monthly_rental_income?: number | null
+          total_portfolio_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "custom_users"
