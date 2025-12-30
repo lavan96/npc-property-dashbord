@@ -3036,7 +3036,11 @@ export type Database = {
         | "suburb_snapshot"
         | "cash_flow"
       report_tier_enum: "compass" | "executive" | "snapshot"
-      template_type: "ai_structure" | "pdf_layout" | "client_branding"
+      template_type:
+        | "ai_structure"
+        | "pdf_layout"
+        | "client_branding"
+        | "qa_export"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3279,7 +3283,12 @@ export const Constants = {
         "cash_flow",
       ],
       report_tier_enum: ["compass", "executive", "snapshot"],
-      template_type: ["ai_structure", "pdf_layout", "client_branding"],
+      template_type: [
+        "ai_structure",
+        "pdf_layout",
+        "client_branding",
+        "qa_export",
+      ],
     },
   },
 } as const
