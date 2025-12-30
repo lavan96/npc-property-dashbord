@@ -403,8 +403,6 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
     agentFee: extractedData.agentFee,
   };
 }
-  };
-}
 
 // ============= GOOGLE MAPS GEOCODING =============
 
