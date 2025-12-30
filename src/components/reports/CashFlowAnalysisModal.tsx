@@ -340,6 +340,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const baseCpiRate = (mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3) / 100;
       const taxRate = (mo.taxRate || cashFlow.taxRate || 30) / 100;
       const baseDepreciation = includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0;
+      const depreciationSchedule = mo.depreciationSchedule as Record<number, number> | undefined;
       const baseLandTax = mo.landTax || fc.landTax || 0;
       const marketValueNow = mo.marketValueNow || cashFlow.marketValueNow || purchasePrice;
 
@@ -393,7 +394,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           yearOverrides.interestPayment != null ? yearOverrides.interestPayment : 
           year === 1 ? currentLoanAmount * baseInterestRate : currentLoanAmount * yearInterestRate;
         let principalPayments = year === 0 ? 0 : yearOverrides.principalPayment ?? 0;
-        let depreciation = year === 0 ? 0 : yearOverrides.depreciation ?? baseDepreciation;
+        // Depreciation - use schedule if available
+        let depreciation: number;
+        if (year === 0) {
+          depreciation = 0;
+        } else if (yearOverrides.depreciation != null) {
+          depreciation = yearOverrides.depreciation;
+        } else if (depreciationSchedule && depreciationSchedule[year]) {
+          depreciation = depreciationSchedule[year];
+        } else {
+          depreciation = baseDepreciation;
+        }
         let landTax = year === 0 ? 0 : yearOverrides.landTax ?? baseLandTax;
 
         const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
@@ -491,6 +502,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       depreciation: includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0,
       taxRate: mo.taxRate || cashFlow.taxRate || 30,
       constructionYear: mo.constructionYear || cashFlow.constructionYear || new Date().getFullYear(),
+      
+      // 10-Year Depreciation Schedule (from calculator)
+      depreciationSchedule: mo.depreciationSchedule as Record<number, number> | undefined,
+      depreciationMethod: mo.depreciationMethod as 'dv' | 'pc' | undefined,
       
       // Construction Settings
       constructionDurationMonths: mo.constructionDurationMonths || 7,
@@ -775,13 +790,18 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       // Net yield
       const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
 
-      // Depreciation
+      // Depreciation - use schedule if available, otherwise fallback to single value
       let depreciation: number;
       if (year === 0) {
         depreciation = 0;
       } else if (yearOverrides.depreciation !== undefined && yearOverrides.depreciation !== null) {
+        // Manual per-year override takes precedence
         depreciation = yearOverrides.depreciation;
+      } else if (baseFinancialData.depreciationSchedule && baseFinancialData.depreciationSchedule[year]) {
+        // Use year-specific value from 10-year schedule
+        depreciation = baseFinancialData.depreciationSchedule[year];
       } else {
+        // Fallback to single depreciation value (Year 1 applied to all years)
         depreciation = baseFinancialData.depreciation;
       }
 
@@ -3736,6 +3756,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             <TableCell className="font-medium">
                               Annual Depreciation (Year 1)
                               {baseFinancialData.includeDepreciationInCashFlow ? '' : ' (Excluded)'}
+                              {baseFinancialData.depreciationSchedule ? (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  10-Year Schedule ({baseFinancialData.depreciationMethod?.toUpperCase() || 'DV'})
+                                </Badge>
+                              ) : null}
                             </TableCell>
                             <TableCell className="text-right font-semibold">
                               {formatCurrency(baseFinancialData.depreciation)}

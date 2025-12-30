@@ -61,6 +61,8 @@ interface AdvancedTabProps {
   // Optional props for depreciation calculator integration
   purchasePrice?: string;
   nearestCity?: string;
+  // Callback for applying full 10-year depreciation schedule
+  onApplyDepreciationSchedule?: (schedule: Record<number, number>, method: 'dv' | 'pc') => void;
 }
 
 export function AdvancedTab({
@@ -105,7 +107,8 @@ export function AdvancedTab({
   setCustomStageMonths,
   disabled = false,
   purchasePrice,
-  nearestCity
+  nearestCity,
+  onApplyDepreciationSchedule
 }: AdvancedTabProps) {
   const isNewBuild = buildType === 'new_build';
 
@@ -131,9 +134,21 @@ export function AdvancedTab({
     (parseFloat(stageFixingPercent) || 0) +
     (parseFloat(stageCompletionPercent) || 0);
 
-  // Handle applying depreciation from calculator
+  // Handle applying depreciation from calculator (Year 1 only)
   const handleApplyDepreciation = (year1Value: number) => {
     setDepreciation(year1Value.toString());
+  };
+
+  // Handle applying full 10-year depreciation schedule
+  const handleApplySchedule = (schedule: Record<number, number>, method: 'dv' | 'pc') => {
+    // Set Year 1 as the primary depreciation value
+    if (schedule[1]) {
+      setDepreciation(schedule[1].toString());
+    }
+    // Pass full schedule to parent if callback provided
+    if (onApplyDepreciationSchedule) {
+      onApplyDepreciationSchedule(schedule, method);
+    }
   };
 
   return (
@@ -274,6 +289,7 @@ export function AdvancedTab({
       {/* Depreciation Value Calculator - Available for all property types */}
       <DepreciationValueCalculator
         onApplyYear1={handleApplyDepreciation}
+        onApplySchedule={handleApplySchedule}
         defaultPurchasePrice={purchasePrice ? parseFloat(purchasePrice) : undefined}
         defaultBuildYear={constructionYear ? parseInt(constructionYear) : undefined}
         isNewBuild={isNewBuild}
