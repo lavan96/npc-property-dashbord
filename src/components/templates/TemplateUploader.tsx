@@ -13,14 +13,16 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface TemplateUploaderProps {
   templateType: 'ai_structure' | 'pdf_layout' | 'client_branding';
+  defaultCategory?: 'investment' | 'comparison' | 'cash_flow';
+  defaultTier?: 'compass' | 'executive' | 'snapshot';
 }
 
-export function TemplateUploader({ templateType }: TemplateUploaderProps) {
+export function TemplateUploader({ templateType, defaultCategory, defaultTier }: TemplateUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [reportTier, setReportTier] = useState<string>('');
-  const [reportCategory, setReportCategory] = useState<string>('');
+  const [reportTier, setReportTier] = useState<string>(defaultTier || '');
+  const [reportCategory, setReportCategory] = useState<string>(defaultCategory || '');
   const [isUploading, setIsUploading] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -274,7 +276,8 @@ export function TemplateUploader({ templateType }: TemplateUploaderProps) {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="investment">Investment Report</SelectItem>
-                <SelectItem value="comparison">Comparison Report</SelectItem>
+                <SelectItem value="comparison">Comparison Analysis</SelectItem>
+                <SelectItem value="cash_flow">Cash Flow Analysis</SelectItem>
                 <SelectItem value="suburb_snapshot">Suburb Snapshot</SelectItem>
               </SelectContent>
             </Select>
