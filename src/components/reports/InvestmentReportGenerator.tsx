@@ -2064,13 +2064,6 @@ export function InvestmentReportGenerator() {
                   )}
 
                   <Separator />
-                          <p className="text-sm text-destructive/80">{pdfError}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <Separator />
 
                   {/* Property Details - Required for PDF mode */}
                   <div className="space-y-4">
