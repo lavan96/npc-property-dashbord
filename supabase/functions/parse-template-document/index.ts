@@ -23,17 +23,91 @@ interface TemplateParseRequest {
   useAIExtraction?: boolean; // Flag to use AI-powered extraction
 }
 
+// Company names, branding, and irrelevant content to filter out
+const CONTENT_FILTERS = [
+  // Company names - add more as needed
+  /NPC\s*(Services?|Property|Consulting|Group)?/gi,
+  /National\s*Property\s*Collective/gi,
+  /npcservices\.com\.au/gi,
+  
+  // Generic company patterns
+  /\b(ABN|ACN)\s*:?\s*\d[\d\s]+\d/gi,
+  /©\s*\d{4}\s*[A-Za-z\s]+/g, // Copyright notices
+  /All\s+rights?\s+reserved\.?/gi,
+  
+  // Contact details that should not affect embeddings
+  /\b\d{2}\s*\d{4}\s*\d{4}\b/g, // Phone numbers
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, // Email addresses
+  /www\.[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/gi, // Website URLs
+  
+  // Page numbers and headers/footers
+  /Page\s+\d+\s*(of\s*\d+)?/gi,
+  /^\s*\d+\s*$/gm, // Standalone page numbers
+  
+  // Watermarks and confidentiality notices
+  /CONFIDENTIAL/gi,
+  /DRAFT/gi,
+  /For\s+internal\s+use\s+only/gi,
+  
+  // Prepared by/for lines
+  /Prepared\s+(by|for)\s*:?\s*[A-Za-z\s]+/gi,
+  /Author\s*:?\s*[A-Za-z\s]+/gi,
+  
+  // Date formats that are template-specific
+  /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
+  /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
+];
+
+// Words/phrases to replace with generic placeholders
+const CONTENT_REPLACEMENTS: [RegExp, string][] = [
+  // Replace specific company references with generic terms
+  [/NPC(\s+Services?)?/gi, '[Company]'],
+  [/National\s*Property\s*Collective/gi, '[Company]'],
+  
+  // Normalize property address placeholders
+  [/\{\{property_address\}\}/gi, '[PROPERTY_ADDRESS]'],
+  [/\{\{suburb\}\}/gi, '[SUBURB]'],
+  [/\{\{postcode\}\}/gi, '[POSTCODE]'],
+  [/\{\{state\}\}/gi, '[STATE]'],
+];
+
+// Sanitize extracted text to remove company-specific content before embedding
+function sanitizeForEmbedding(text: string): string {
+  let sanitized = text;
+  
+  // Apply replacements first (preserve structure with placeholders)
+  for (const [pattern, replacement] of CONTENT_REPLACEMENTS) {
+    sanitized = sanitized.replace(pattern, replacement);
+  }
+  
+  // Apply filters to remove irrelevant content
+  for (const filter of CONTENT_FILTERS) {
+    sanitized = sanitized.replace(filter, '');
+  }
+  
+  // Clean up excessive whitespace
+  sanitized = sanitized
+    .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines
+    .replace(/[ \t]{2,}/g, ' ')   // Max 1 space
+    .trim();
+  
+  return sanitized;
+}
+
 // Split text into overlapping chunks for better RAG retrieval
 function chunkText(text: string, chunkSize: number = CHUNK_SIZE, overlap: number = CHUNK_OVERLAP): string[] {
+  // Sanitize the text before chunking
+  const sanitizedText = sanitizeForEmbedding(text);
+  
   const chunks: string[] = [];
   let start = 0;
   
-  while (start < text.length) {
-    const end = Math.min(start + chunkSize, text.length);
-    chunks.push(text.slice(start, end));
+  while (start < sanitizedText.length) {
+    const end = Math.min(start + chunkSize, sanitizedText.length);
+    chunks.push(sanitizedText.slice(start, end));
     start = end - overlap;
     
-    if (start >= text.length - overlap) break;
+    if (start >= sanitizedText.length - overlap) break;
   }
   
   return chunks;
@@ -308,9 +382,10 @@ serve(async (req) => {
       console.error('Failed to update template:', updateError);
     }
     
-    // Chunk the text for RAG
+    // Chunk the text for RAG (chunking now includes sanitization)
     const chunks = chunkText(extractedText);
-    console.log(`🔪 Split into ${chunks.length} chunks for embedding (chunk size: ${CHUNK_SIZE})`);
+    console.log(`🔪 Split into ${chunks.length} sanitized chunks for embedding (chunk size: ${CHUNK_SIZE})`);
+    console.log(`🧹 Content sanitized: company names, contact details, and irrelevant content filtered`);
     
     // Delete existing chunks for this template
     const { error: deleteError } = await supabase
