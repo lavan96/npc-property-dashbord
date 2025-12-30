@@ -1,22 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
-  Calculator, 
   Info, 
   TrendingUp, 
   Wallet, 
   Building2,
   AlertTriangle,
-  ChevronDown,
-  ChevronRight
 } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { DepreciationValueCalculator } from '../DepreciationValueCalculator';
@@ -113,7 +108,6 @@ export function AdvancedTab({
   nearestCity
 }: AdvancedTabProps) {
   const isNewBuild = buildType === 'new_build';
-  const [showDepreciationCalculator, setShowDepreciationCalculator] = useState(false);
 
   const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,19 +210,6 @@ export function AdvancedTab({
                   className="pl-7"
                 />
               </div>
-              {isNewBuild && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDepreciationCalculator(!showDepreciationCalculator)}
-                  className="w-full mt-1 text-xs"
-                  type="button"
-                >
-                  <Calculator className="h-3 w-3 mr-1" />
-                  {showDepreciationCalculator ? 'Hide' : 'Calculate'} Depreciation
-                  {showDepreciationCalculator ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronRight className="h-3 w-3 ml-1" />}
-                </Button>
-              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="taxRate" className="text-sm font-medium flex items-center gap-1">
@@ -290,15 +271,13 @@ export function AdvancedTab({
         </CardContent>
       </Card>
 
-      {/* Depreciation Value Calculator - New Builds Only */}
-      {isNewBuild && showDepreciationCalculator && (
-        <DepreciationValueCalculator
-          onApplyYear1={handleApplyDepreciation}
-          defaultPurchasePrice={purchasePrice ? parseFloat(purchasePrice) : undefined}
-          defaultBuildYear={constructionYear ? parseInt(constructionYear) : new Date().getFullYear()}
-          isNewBuild={true}
-        />
-      )}
+      {/* Depreciation Value Calculator - Available for all property types */}
+      <DepreciationValueCalculator
+        onApplyYear1={handleApplyDepreciation}
+        defaultPurchasePrice={purchasePrice ? parseFloat(purchasePrice) : undefined}
+        defaultBuildYear={constructionYear ? parseInt(constructionYear) : undefined}
+        isNewBuild={isNewBuild}
+      />
 
       {/* Loan Adjustments */}
       <Card>
