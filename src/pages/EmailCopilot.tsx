@@ -311,66 +311,110 @@ export default function EmailCopilot() {
     if (attachmentParam === 'qa_pdf') {
       const storedData = localStorage.getItem('qa_pdf_attachment');
       if (storedData) {
-        try {
-          const parsed = JSON.parse(storedData);
-          
-          // Check if it's the new enhanced format with conversationContext
-          const attachment = parsed.attachment || parsed;
-          const context = parsed.conversationContext;
-          
-          setQaPDFAttachment(attachment);
-          
-          // Open compose modal with the attachment info
-          setShowComposeModal(true);
-          
-          // Compose dynamic email draft based on conversation context
-          let emailSubject = `Q&A Conversation Export - ${attachment.fileName}`;
-          let emailBody = `Please find attached the Q&A conversation export.\n\nBest regards`;
-          
-          if (context) {
-            // Enhanced subject with report names
-            emailSubject = context.reportNames 
-              ? `Property Analysis: ${context.reportNames}`
-              : `Q&A Conversation Export - ${context.title || attachment.fileName}`;
+        const processAttachment = async () => {
+          try {
+            const parsed = JSON.parse(storedData);
             
-            // Build dynamic email body
-            const bodyParts: string[] = [];
-            bodyParts.push(`Hi,\n`);
-            bodyParts.push(`Please find attached the Q&A conversation summary regarding ${context.reportNames || 'the property analysis'}.`);
+            // Check if it's the new enhanced format with conversationContext
+            const attachment = parsed.attachment || parsed;
+            const context = parsed.conversationContext;
             
-            if (context.messageCount) {
-              bodyParts.push(`\nThis document contains a comprehensive summary of our ${context.messageCount}-message discussion.`);
+            setQaPDFAttachment(attachment);
+            
+            // Open compose modal with the attachment info
+            setShowComposeModal(true);
+            
+            // Compose dynamic email draft based on conversation context
+            let emailSubject = `Q&A Conversation Export - ${attachment.fileName}`;
+            let emailBody = `Please find attached the Q&A conversation export.\n\nBest regards`;
+            
+            if (context) {
+              // Enhanced subject with report names
+              emailSubject = context.reportNames 
+                ? `Property Analysis: ${context.reportNames}`
+                : `Q&A Conversation Export - ${context.title || attachment.fileName}`;
+              
+              // Build dynamic email body
+              const bodyParts: string[] = [];
+              bodyParts.push(`Hi,\n`);
+              bodyParts.push(`Please find attached the Q&A conversation summary regarding ${context.reportNames || 'the property analysis'}.`);
+              
+              if (context.messageCount) {
+                bodyParts.push(`\nThis document contains a comprehensive summary of our ${context.messageCount}-message discussion.`);
+              }
+              
+              if (context.sampleQuestions && context.sampleQuestions.length > 0) {
+                bodyParts.push(`\nKey topics covered include:`);
+                context.sampleQuestions.forEach((q: string) => {
+                  bodyParts.push(`  • ${q}${q.length >= 100 ? '...' : ''}`);
+                });
+              }
+              
+              bodyParts.push(`\nPlease review at your earliest convenience and let me know if you have any questions.`);
+              bodyParts.push(`\nBest regards`);
+              
+              emailBody = bodyParts.join('\n');
             }
             
-            if (context.sampleQuestions && context.sampleQuestions.length > 0) {
-              bodyParts.push(`\nKey topics covered include:`);
-              context.sampleQuestions.forEach((q: string) => {
-                bodyParts.push(`  • ${q}${q.length >= 100 ? '...' : ''}`);
+            setComposeEmail(prev => ({
+              ...prev,
+              subject: emailSubject,
+              body: emailBody
+            }));
+            
+            // Actually fetch the PDF and add it to composeAttachments
+            if (attachment.url) {
+              try {
+                toast.info('Downloading PDF...', { 
+                  description: 'Preparing attachment for email',
+                  id: 'pdf-download'
+                });
+                
+                const response = await fetch(attachment.url);
+                if (response.ok) {
+                  const blob = await response.blob();
+                  const file = new File([blob], attachment.fileName, { 
+                    type: 'application/pdf' 
+                  });
+                  setComposeAttachments([file]);
+                  
+                  toast.success('PDF attached from Report Q&A', {
+                    description: `${attachment.fileName} (${(attachment.fileSize / 1024).toFixed(1)} KB)`,
+                    id: 'pdf-download'
+                  });
+                } else {
+                  console.error('Failed to fetch PDF:', response.status);
+                  toast.warning('PDF metadata attached', {
+                    description: 'Could not download the actual file. You may need to re-generate the PDF.',
+                    id: 'pdf-download'
+                  });
+                }
+              } catch (fetchError) {
+                console.error('Error fetching PDF:', fetchError);
+                toast.warning('PDF reference attached', {
+                  description: 'Could not download the file. The PDF URL is saved but may need re-generation.',
+                  id: 'pdf-download'
+                });
+              }
+            } else {
+              toast.success('PDF attached from Report Q&A', {
+                description: attachment.fileName
               });
             }
             
-            bodyParts.push(`\nPlease review at your earliest convenience and let me know if you have any questions.`);
-            bodyParts.push(`\nBest regards`);
-            
-            emailBody = bodyParts.join('\n');
+            // Clear from localStorage
+            localStorage.removeItem('qa_pdf_attachment');
+            // Clean URL
+            window.history.replaceState({}, '', '/email-copilot');
+          } catch (e) {
+            console.error('Failed to parse QA attachment:', e);
+            toast.error('Failed to load PDF attachment', {
+              description: 'Please try sending from Report Q&A again.'
+            });
           }
-          
-          setComposeEmail(prev => ({
-            ...prev,
-            subject: emailSubject,
-            body: emailBody
-          }));
-          
-          // Clear from localStorage
-          localStorage.removeItem('qa_pdf_attachment');
-          // Clean URL
-          window.history.replaceState({}, '', '/email-copilot');
-          toast.success('PDF attached from Report Q&A', {
-            description: attachment.fileName
-          });
-        } catch (e) {
-          console.error('Failed to parse QA attachment:', e);
-        }
+        };
+        
+        processAttachment();
       }
     }
   }, []);
@@ -2794,16 +2838,23 @@ export default function EmailCopilot() {
                     Max 10MB per file
                   </p>
                 </div>
-                {/* QA PDF Attachment (from Report Q&A) */}
+                {/* QA PDF Attachment Badge (from Report Q&A) */}
                 {qaPDFAttachment && (
-                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <FileIcon className="h-8 w-8 text-primary" />
+                        <div className="p-2 bg-primary/20 rounded-lg">
+                          <FileIcon className="h-6 w-6 text-primary" />
+                        </div>
                         <div>
-                          <p className="font-medium text-sm">{qaPDFAttachment.fileName}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{qaPDFAttachment.fileName}</p>
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-primary/30 text-primary">
+                              From Q&A
+                            </Badge>
+                          </div>
                           <p className="text-xs text-muted-foreground">
-                            {(qaPDFAttachment.fileSize / 1024).toFixed(1)} KB • From Report Q&A
+                            {(qaPDFAttachment.fileSize / 1024).toFixed(1)} KB • Attached and ready to send
                           </p>
                         </div>
                       </div>
@@ -2811,7 +2862,13 @@ export default function EmailCopilot() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setQaPDFAttachment(null)}
+                        onClick={() => {
+                          setQaPDFAttachment(null);
+                          // Also remove from composeAttachments if it's the QA PDF
+                          setComposeAttachments(prev => 
+                            prev.filter(f => f.name !== qaPDFAttachment.fileName)
+                          );
+                        }}
                         className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                       >
                         <X className="h-4 w-4" />
@@ -2819,28 +2876,35 @@ export default function EmailCopilot() {
                     </div>
                   </div>
                 )}
-                {composeAttachments.length > 0 && (
+                {/* Other Attachments (excluding QA PDF if already shown above) */}
+                {composeAttachments.filter(f => !qaPDFAttachment || f.name !== qaPDFAttachment.fileName).length > 0 && (
                   <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
-                    {composeAttachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{file.name}</span>
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
-                            ({formatFileSize(file.size)})
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); removeComposeAttachment(index); }}
-                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                    {composeAttachments
+                      .filter(f => !qaPDFAttachment || f.name !== qaPDFAttachment.fileName)
+                      .map((file, index) => {
+                        // Find the original index for removal
+                        const originalIndex = composeAttachments.findIndex(f2 => f2 === file);
+                        return (
+                          <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate">{file.name}</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                ({formatFileSize(file.size)})
+                              </span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); removeComposeAttachment(originalIndex); }}
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                   </div>
                 )}
               </div>
