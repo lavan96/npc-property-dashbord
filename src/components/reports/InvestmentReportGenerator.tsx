@@ -533,7 +533,7 @@ export function InvestmentReportGenerator() {
         setWeeklyRent(extracted.extractedWeeklyRent.toString());
       }
 
-      // Update preGenData with scraped values
+      // Update preGenData with ALL scraped values (including extended fields)
       setPreGenData(prev => ({
         ...prev,
         purchasePrice: extracted.extractedPrice || prev.purchasePrice,
@@ -541,6 +541,16 @@ export function InvestmentReportGenerator() {
         carSpaces: extracted.extractedCarSpaces || prev.carSpaces,
         landSizeSqm: extracted.extractedLandSize || prev.landSizeSqm,
         buildSizeSqm: extracted.extractedBuildSize || prev.buildSizeSqm,
+        // Extended fields from enhanced scraper
+        buildType: extracted.extractedIsNewBuild ? 'new_build' : prev.buildType,
+        landPrice: extracted.extractedLandPrice || prev.landPrice,
+        buildPrice: extracted.extractedBuildPrice || prev.buildPrice,
+        councilRates: extracted.extractedCouncilRates || prev.councilRates,
+        waterRates: extracted.extractedWaterRates || prev.waterRates,
+        bodyCorporateFees: extracted.extractedStrataFees || prev.bodyCorporateFees,
+        buildingLandlordInsurance: extracted.extractedInsurance || prev.buildingLandlordInsurance,
+        propertyManagementFees: extracted.extractedPropertyManagementPercent || prev.propertyManagementFees,
+        constructionYear: extracted.extractedYearBuilt || prev.constructionYear,
       }));
 
       requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
@@ -936,7 +946,7 @@ export function InvestmentReportGenerator() {
         setPreGenData(prev => ({ ...prev, buildType: 'new_build' }));
       }
 
-      // Update preGenData with extracted values
+      // Update preGenData with ALL extracted values (including extended fields)
       setPreGenData(prev => ({
         ...prev,
         purchasePrice: extracted.extractedPrice || prev.purchasePrice,
@@ -946,6 +956,15 @@ export function InvestmentReportGenerator() {
         buildSizeSqm: extracted.extractedBuildSize || prev.buildSizeSqm,
         landPrice: extracted.extractedLandPrice || prev.landPrice,
         buildPrice: extracted.extractedBuildPrice || prev.buildPrice,
+        // Extended fields from enhanced PDF parser
+        councilRates: extracted.extractedCouncilRates || prev.councilRates,
+        waterRates: extracted.extractedWaterRates || prev.waterRates,
+        bodyCorporateFees: extracted.extractedStrataFees || prev.bodyCorporateFees,
+        buildingLandlordInsurance: extracted.extractedInsurance || prev.buildingLandlordInsurance,
+        propertyManagementFees: extracted.extractedPropertyManagementPercent || prev.propertyManagementFees,
+        stampDuty: extracted.extractedStampDuty || prev.stampDuty,
+        agentFee: extracted.extractedAgentFee || prev.agentFee,
+        constructionYear: extracted.extractedYearBuilt || prev.constructionYear,
       }));
 
       requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
@@ -1655,8 +1674,36 @@ export function InvestmentReportGenerator() {
                       disabled={isScraping}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Paste a URL from Domain, REA, or other property listing sites. We'll extract property details and generate a report automatically.
+                      Paste a URL from Domain, REA, or other property listing sites. Click "Scrape URL" to extract property details.
                     </p>
+                  </div>
+
+                  {/* Scrape Button - Moved to top right after URL input */}
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleScrapeUrlOnly}
+                      disabled={isScraping || !propertyUrl.trim()}
+                      size="lg"
+                      variant={urlScrapedData ? "outline" : "default"}
+                      className="flex-1"
+                    >
+                      {isScraping ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Scraping...
+                        </>
+                      ) : urlScrapedData ? (
+                        <>
+                          <Link className="h-4 w-4 mr-2" />
+                          Re-Scrape URL
+                        </>
+                      ) : (
+                        <>
+                          <Link className="h-4 w-4 mr-2" />
+                          Scrape URL
+                        </>
+                      )}
+                    </Button>
                   </div>
 
                   {/* Scrape Error */}
@@ -1669,6 +1716,18 @@ export function InvestmentReportGenerator() {
                           <p className="text-sm text-destructive/80">{scrapeError}</p>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Scraped data indicator - Moved to after scrape button */}
+                  {urlScrapedData && (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                      <p className="text-sm text-green-700 dark:text-green-400">
+                        ✓ Scraped: <strong>{urlScrapedData.propertyAddress}</strong>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Review the fields below, add any overrides, then click "Generate Report"
+                      </p>
                     </div>
                   )}
 
@@ -1827,64 +1886,25 @@ export function InvestmentReportGenerator() {
                     </div>
                   </div>
 
-                  {/* Scrape Button */}
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={handleScrapeUrlOnly}
-                      disabled={isScraping || !propertyUrl.trim()}
-                      size="lg"
-                      variant={urlScrapedData ? "outline" : "default"}
-                      className="flex-1"
-                    >
-                      {isScraping ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Scraping...
-                        </>
-                      ) : urlScrapedData ? (
-                        <>
-                          <Link className="h-4 w-4 mr-2" />
-                          Re-Scrape URL
-                        </>
-                      ) : (
-                        <>
-                          <Link className="h-4 w-4 mr-2" />
-                          Scrape URL
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      onClick={handleGenerateFromUrl}
-                      disabled={isUrlGenerating || !urlScrapedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
-                      size="lg"
-                      className="flex-1"
-                    >
-                      {isUrlGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Generating Report...
-                        </>
-                      ) : (
-                        <>
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Generate Report
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Scraped data indicator */}
-                  {urlScrapedData && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-700 dark:text-green-400">
-                        ✓ Scraped: <strong>{urlScrapedData.propertyAddress}</strong>
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Review the fields above, add any overrides, then click "Generate Report"
-                      </p>
-                    </div>
-                  )}
+                  {/* Generate Button - At bottom after overrides */}
+                  <Button
+                    onClick={handleGenerateFromUrl}
+                    disabled={isUrlGenerating || !urlScrapedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {isUrlGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating Report...
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Generate Report
+                      </>
+                    )}
+                  </Button>
                 </TabsContent>
 
                 {/* PDF Upload Tab */}
@@ -1992,6 +2012,32 @@ export function InvestmentReportGenerator() {
                     )}
                   </div>
 
+                  {/* Parse Button - Moved to top right after file upload */}
+                  <Button
+                    onClick={handleParsePdfOnly}
+                    disabled={isParsing || !pdfFile}
+                    size="lg"
+                    variant={pdfParsedData ? "outline" : "default"}
+                    className="w-full"
+                  >
+                    {isParsing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Parsing...
+                      </>
+                    ) : pdfParsedData ? (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Re-Parse PDF
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Parse PDF
+                      </>
+                    )}
+                  </Button>
+
                   {/* PDF Error */}
                   {pdfError && (
                     <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
@@ -1999,6 +2045,25 @@ export function InvestmentReportGenerator() {
                         <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-destructive">Processing Failed</p>
+                          <p className="text-sm text-destructive/80">{pdfError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Parsed data indicator - Moved to after parse button */}
+                  {pdfParsedData && (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                      <p className="text-sm text-green-700 dark:text-green-400">
+                        ✓ Parsed: <strong>{pdfParsedData.propertyAddress}</strong>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Review the fields below, add any overrides, then click "Generate Report"
+                      </p>
+                    </div>
+                  )}
+
+                  <Separator />
                           <p className="text-sm text-destructive/80">{pdfError}</p>
                         </div>
                       </div>
@@ -2160,64 +2225,25 @@ export function InvestmentReportGenerator() {
                     </div>
                   </div>
 
-                  {/* Parse & Generate Buttons */}
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={handleParsePdfOnly}
-                      disabled={isParsing || !pdfFile}
-                      size="lg"
-                      variant={pdfParsedData ? "outline" : "default"}
-                      className="flex-1"
-                    >
-                      {isParsing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Parsing...
-                        </>
-                      ) : pdfParsedData ? (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Re-Parse PDF
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Parse PDF
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      onClick={handleGenerateFromPdf}
-                      disabled={isPdfGenerating || !pdfParsedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
-                      size="lg"
-                      className="flex-1"
-                    >
-                      {isPdfGenerating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Generating Report...
-                        </>
-                      ) : (
-                        <>
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Generate Report
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Parsed data indicator */}
-                  {pdfParsedData && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-700 dark:text-green-400">
-                        ✓ Parsed: <strong>{pdfParsedData.propertyAddress}</strong>
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Review the fields above, add any overrides, then click "Generate Report"
-                      </p>
-                    </div>
-                  )}
+                  {/* Generate Button - At bottom after overrides */}
+                  <Button
+                    onClick={handleGenerateFromPdf}
+                    disabled={isPdfGenerating || !pdfParsedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {isPdfGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating Report...
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Generate Report
+                      </>
+                    )}
+                  </Button>
                 </TabsContent>
 
               </Tabs>
