@@ -16,9 +16,10 @@ const shortcuts = [
   { keys: ['⌘/Ctrl', '⇧', 'C'], description: 'Copy last response' },
   { keys: ['⌘/Ctrl', 'J'], description: 'Scroll to bottom' },
   { keys: ['⌘/Ctrl', 'B'], description: 'Toggle reports panel' },
+  { keys: ['⌘/Ctrl', 'Enter'], description: 'Toggle full screen' },
   { keys: ['Enter'], description: 'Send message' },
   { keys: ['Shift', 'Enter'], description: 'New line in message' },
-  { keys: ['Esc'], description: 'Close dialogs' },
+  { keys: ['Esc'], description: 'Close dialogs / Exit full screen' },
 ];
 
 export function KeyboardShortcutsHelp() {

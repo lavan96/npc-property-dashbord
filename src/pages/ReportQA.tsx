@@ -73,6 +73,8 @@ import { ReportSwitcher, ReportSearch } from '@/components/report-qa/ReportConte
 import { FollowUpSuggestions } from '@/components/report-qa/FollowUpSuggestions';
 import { TextToSpeech } from '@/components/report-qa/TextToSpeech';
 import { CopyWithFeedback } from '@/components/report-qa/CopyWithFeedback';
+import { FullScreenToggle, useFullScreen } from '@/components/report-qa/FullScreenToggle';
+import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report-qa/AccessibilityWrapper';
 
 interface UploadProgress {
   fileName: string;
@@ -166,6 +168,11 @@ export default function ReportQA() {
   // Custom hooks
   const { addReply, getReplies } = useMessageThreads();
   const { getPinnedIds, togglePin, isPinned } = usePinnedConversations();
+  const { isFullScreen, toggleFullScreen } = useFullScreen();
+  const reducedMotion = useReducedMotion();
+  
+  // Accessibility - live region announcements
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
 
   // Get last assistant message for follow-up suggestions
   const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop()?.content || '';
@@ -1076,16 +1083,27 @@ export default function ReportQA() {
   };
 
   return (
-    <div className="p-6 space-y-6 h-[calc(100vh-4rem)]">
+    <>
+      <SkipToContent targetId="chat-main" />
+      <LiveRegion message={liveAnnouncement} />
+      <div 
+        className={cn(
+          "p-6 space-y-6 h-[calc(100vh-4rem)]",
+          isFullScreen && "report-qa-fullscreen"
+        )}
+        role="main"
+        aria-label="Report Q&A Chat"
+      >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Report Q&A</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Report Q&A</h1>
+          <p className="text-sm text-muted-foreground hidden sm:block">
             Upload investment reports and ask questions to generate summaries
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} />
           <Button onClick={handleNewChat} className="gap-2">
             <Plus className="h-4 w-4" />
             New Chat
@@ -1373,9 +1391,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col min-h-0">
+          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0">
             {/* Messages */}
-            <ScrollArea className="flex-1 pr-4 mb-4">
+            <ScrollArea className="flex-1 pr-4 mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center p-8">
                   <div className="space-y-2">
@@ -1957,6 +1975,7 @@ export default function ReportQA() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
