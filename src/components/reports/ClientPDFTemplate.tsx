@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface ClientPDFTemplateProps {
   suburb: string;
@@ -18,6 +19,8 @@ interface ClientPDFTemplateProps {
 
 export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplateProps>(
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
+    const { settings, isLoading } = useGlobalReportSettings();
+    const { contactDetails, disclaimer } = settings;
     
     const cleanText = (text: string) => {
       return text
@@ -639,25 +642,43 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           </h2>
 
           <div style={{ marginBottom: '40px' }}>
-            <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
-              <strong>WEBSITE:</strong> npcservices.com.au
-            </p>
-            <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
-              <strong>EMAIL:</strong> admin@npcservices.com.au
-            </p>
-            <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0' }}>
-              <strong>PHONE:</strong> 0433 005 110
-            </p>
+            {contactDetails.website && (
+              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+                <strong>WEBSITE:</strong> {contactDetails.website}
+              </p>
+            )}
+            {contactDetails.email && (
+              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+                <strong>EMAIL:</strong> {contactDetails.email}
+              </p>
+            )}
+            {contactDetails.phone && (
+              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+                <strong>PHONE:</strong> {contactDetails.phone}
+              </p>
+            )}
+            {contactDetails.address && (
+              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+                <strong>ADDRESS:</strong> {contactDetails.address}
+              </p>
+            )}
+            {contactDetails.abn && (
+              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0' }}>
+                <strong>ABN:</strong> {contactDetails.abn}
+              </p>
+            )}
           </div>
 
-          <p style={{
-            fontSize: '9px',
-            color: '#999',
-            lineHeight: '1.6',
-            textAlign: 'justify',
-          }}>
-            AS A PROFESSIONAL PROPERTY CONSULTANT & BUYERS AGENT, WE PROVIDE INFORMATION AND ADVICE BASED ON OUR EXPERTISE AND EXPERIENCE IN THE REAL ESTATE MARKET. PLEASE BE AWARE THAT THE ADVICE AND INSIGHTS OFFERED ARE FOR GENERAL INFORMATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSIDERED FINANCIAL ADVICE. WHILE WE STRIVE TO ENSURE THE ACCURACY AND RELEVANCE OF THE INFORMATION PROVIDED, REAL ESTATE MARKETS ARE DYNAMIC AND SUBJECT TO CHANGE AND WE CANNOT GUARANTEE THE FUTURE PERFORMANCE OR OUTCOMES OF ANY PROPERTY INVESTMENT.
-          </p>
+          {disclaimer.is_enabled && disclaimer.text && (
+            <p style={{
+              fontSize: '9px',
+              color: '#999',
+              lineHeight: '1.6',
+              textAlign: 'justify',
+            }}>
+              {disclaimer.text}
+            </p>
+          )}
         </div>
       </div>
     );
