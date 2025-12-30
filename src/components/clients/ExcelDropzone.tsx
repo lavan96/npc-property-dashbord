@@ -233,6 +233,35 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       
       if (result.clientsCreated > 0) {
         toast.success(`Successfully imported ${result.clientsCreated} client(s) with ${result.propertiesCreated} properties`);
+        
+        // Auto-sync imported clients to GHL
+        try {
+          const { data: newClients } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('ghl_sync_status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(result.clientsCreated);
+          
+          if (newClients && newClients.length > 0) {
+            toast.info('Syncing clients to GoHighLevel...');
+            const clientIds = newClients.map(c => c.id);
+            
+            const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-client-to-ghl', {
+              body: { action: 'batch', clientIds }
+            });
+            
+            if (syncError) {
+              console.error('Auto-sync error:', syncError);
+              toast.warning('Import complete, but GHL sync failed. You can retry manually.');
+            } else if (syncResult?.success) {
+              toast.success(`Synced ${syncResult.results?.filter((r: any) => r.success).length || 0} clients to GHL`);
+            }
+          }
+        } catch (syncErr) {
+          console.error('Auto-sync error:', syncErr);
+        }
+        
         onImportComplete();
       }
 
