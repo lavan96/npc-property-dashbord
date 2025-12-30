@@ -34,6 +34,8 @@ export function InvestmentReportGenerator() {
   const [propertyUrl, setPropertyUrl] = useState('');
   const [isScraping, setIsScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [urlScrapedData, setUrlScrapedData] = useState<{ propertyAddress: string; scrapedContent: string; sourceUrl: string } | null>(null);
+  const [isUrlGenerating, setIsUrlGenerating] = useState(false);
   
   // PDF upload state
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -41,6 +43,8 @@ export function InvestmentReportGenerator() {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [conversionProgress, setConversionProgress] = useState<{ current: number; total: number } | null>(null);
+  const [pdfParsedData, setPdfParsedData] = useState<{ propertyAddress: string; pdfContent: string } | null>(null);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   
   const [queryType, setQueryType] = useState<'address' | 'zipcode' | 'suburb' | 'state'>('address');
   const [query, setQuery] = useState('');
@@ -430,8 +434,8 @@ export function InvestmentReportGenerator() {
     }
   };
 
-  // Handle URL scraping and auto-generate report
-  const handleScrapeUrl = async () => {
+  // Handle URL scraping ONLY - populates fields without generating report
+  const handleScrapeUrlOnly = async () => {
     if (!propertyUrl.trim()) {
       toast({
         title: "URL Required",
@@ -444,7 +448,7 @@ export function InvestmentReportGenerator() {
     if (!user) {
       toast({
         title: "Authentication Required",
-        description: "Please log in to generate reports.",
+        description: "Please log in to scrape listings.",
         variant: "destructive",
       });
       return;
@@ -452,6 +456,7 @@ export function InvestmentReportGenerator() {
 
     setIsScraping(true);
     setScrapeError(null);
+    setUrlScrapedData(null);
 
     try {
       console.log('Scraping property URL:', propertyUrl);
@@ -469,7 +474,7 @@ export function InvestmentReportGenerator() {
         throw new Error(data.error || 'Scraping failed');
       }
 
-      console.log('Scrape successful, auto-generating report:', data);
+      console.log('Scrape successful:', data);
       const scrapedResult = data.data;
       
       // Extract property details
@@ -482,7 +487,6 @@ export function InvestmentReportGenerator() {
         propertyAddress = `${extracted.extractedSuburb}, ${extracted.extractedState}${extracted.extractedPostcode ? ' ' + extracted.extractedPostcode : ''}`;
       }
       if (!propertyAddress) {
-        // Try to clean up the title - remove common prefixes/suffixes
         const title = scrapedResult.metadata?.title || '';
         const cleanedTitle = title
           .replace(/\s*[-|]\s*(Domain|realestate\.com\.au|Real Estate|Property|For Sale|Sold).*$/i, '')
@@ -491,29 +495,141 @@ export function InvestmentReportGenerator() {
         propertyAddress = cleanedTitle || `Property from ${new URL(propertyUrl).hostname}`;
       }
 
-      // Build property details with scraped context - include ALL extracted data
+      // Store scraped data for later generation
+      setUrlScrapedData({
+        propertyAddress,
+        scrapedContent: scrapedResult.markdown,
+        sourceUrl: scrapedResult.sourceUrl || propertyUrl,
+      });
+
+      // Populate form fields with scraped data (without triggering sync loops)
+      isSyncingFromPreGen.current = true;
+      
+      if (extracted.extractedPrice) {
+        setPropertyPrice(extracted.extractedPrice.toString());
+      }
+      if (extracted.extractedBedrooms) {
+        setBeds(extracted.extractedBedrooms.toString());
+      }
+      if (extracted.extractedBathrooms) {
+        setBaths(extracted.extractedBathrooms.toString());
+      }
+      if (extracted.extractedCarSpaces) {
+        setCarSpaces(extracted.extractedCarSpaces.toString());
+      }
+      if (extracted.extractedLandSize) {
+        setLandSize(extracted.extractedLandSize.toString());
+      }
+      if (extracted.extractedBuildSize) {
+        setBuildSize(extracted.extractedBuildSize.toString());
+      }
+      if (extracted.extractedPropertyType) {
+        const pType = extracted.extractedPropertyType.toLowerCase();
+        if (pType === 'house' || pType === 'apartment' || pType === 'townhouse') {
+          setPropertyType(pType);
+        }
+      }
+      if (extracted.extractedWeeklyRent) {
+        setWeeklyRent(extracted.extractedWeeklyRent.toString());
+      }
+
+      // Update preGenData with scraped values
+      setPreGenData(prev => ({
+        ...prev,
+        purchasePrice: extracted.extractedPrice || prev.purchasePrice,
+        weeklyRent: extracted.extractedWeeklyRent || prev.weeklyRent,
+        carSpaces: extracted.extractedCarSpaces || prev.carSpaces,
+        landSizeSqm: extracted.extractedLandSize || prev.landSizeSqm,
+        buildSizeSqm: extracted.extractedBuildSize || prev.buildSizeSqm,
+      }));
+
+      requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
+
+      // Show what was extracted
+      const extractedInfo = [];
+      if (extracted.extractedPrice) extractedInfo.push(`$${extracted.extractedPrice.toLocaleString()}`);
+      if (extracted.extractedBedrooms) extractedInfo.push(`${extracted.extractedBedrooms} beds`);
+      if (extracted.extractedBathrooms) extractedInfo.push(`${extracted.extractedBathrooms} baths`);
+      if (extracted.extractedLandSize) extractedInfo.push(`${extracted.extractedLandSize}m²`);
+      
+      const extractedSummary = extractedInfo.length > 0 
+        ? `Found: ${extractedInfo.join(', ')}` 
+        : 'Limited details extracted - review and add missing data';
+
+      toast({
+        title: "Scraping Successful",
+        description: extractedSummary + ". Review the fields below, add any overrides, then generate the report.",
+      });
+
+    } catch (error) {
+      console.error('Error scraping URL:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to scrape property listing';
+      setScrapeError(errorMessage);
+      toast({
+        title: "Scraping Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  // Handle report generation from scraped URL data
+  const handleGenerateFromUrl = async () => {
+    if (!urlScrapedData) {
+      toast({
+        title: "Scrape Required",
+        description: "Please scrape a URL first before generating a report.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!propertyPrice || parseFloat(propertyPrice) <= 0) {
+      toast({
+        title: "Purchase Price Required",
+        description: "Please enter a valid purchase price to calculate investment score.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUrlGenerating(true);
+
+    try {
+      const { propertyAddress, scrapedContent, sourceUrl } = urlScrapedData;
+
+      // Build property details with form values and preGenData
       const propertyDetails: any = { 
         queryType: 'address', 
         originalQuery: propertyAddress,
-        scrapedContent: scrapedResult.markdown,
-        sourceUrl: scrapedResult.sourceUrl || propertyUrl,
-        fromUrlScrape: true, // Flag to indicate this came from URL scrape
+        scrapedContent,
+        sourceUrl,
+        fromUrlScrape: true,
         manualOverrides: preGenData,
       };
       
-      // Include all extracted fields (scraped values as fallbacks, preGenData overrides take precedence)
-      if (extracted.extractedPrice) propertyDetails.price = extracted.extractedPrice;
-      if (extracted.extractedBedrooms) propertyDetails.beds = extracted.extractedBedrooms;
-      if (extracted.extractedBathrooms) propertyDetails.baths = extracted.extractedBathrooms;
-      if (extracted.extractedCarSpaces) propertyDetails.carSpaces = extracted.extractedCarSpaces;
-      if (extracted.extractedLandSize) propertyDetails.landSizeSqm = extracted.extractedLandSize;
-      if (extracted.extractedBuildSize) propertyDetails.buildSizeSqm = extracted.extractedBuildSize;
-      if (extracted.extractedPropertyType) propertyDetails.propertyType = extracted.extractedPropertyType.toLowerCase();
-      if (extracted.extractedPostcode) propertyDetails.postcode = extracted.extractedPostcode;
-      if (extracted.extractedState) propertyDetails.state = extracted.extractedState;
-      if (extracted.extractedSuburb) propertyDetails.suburb = extracted.extractedSuburb;
+      // Add form field values
+      if (propertyPrice) propertyDetails.price = parseFloat(propertyPrice);
+      if (weeklyRent) propertyDetails.weeklyRent = parseFloat(weeklyRent);
+      if (propertyType) propertyDetails.propertyType = propertyType;
+      if (beds) propertyDetails.beds = parseInt(beds);
+      if (baths) propertyDetails.baths = parseInt(baths);
+      if (carSpaces) propertyDetails.carSpaces = parseInt(carSpaces);
+      if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
+      if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
 
-      // Apply preGenData overrides (these take precedence over scraped values)
+      // Apply all preGenData overrides
       propertyDetails.buildType = preGenData.buildType;
       if (preGenData.purchasePrice) propertyDetails.price = preGenData.purchasePrice;
       if (preGenData.weeklyRent) propertyDetails.weeklyRent = preGenData.weeklyRent;
@@ -521,7 +637,6 @@ export function InvestmentReportGenerator() {
       if (preGenData.landSizeSqm) propertyDetails.landSizeSqm = preGenData.landSizeSqm;
       if (preGenData.buildSizeSqm) propertyDetails.buildSizeSqm = preGenData.buildSizeSqm;
       
-      // For new builds, add land and build prices
       if (preGenData.buildType === 'new_build') {
         if (preGenData.landPrice) propertyDetails.landPrice = preGenData.landPrice;
         if (preGenData.buildPrice) propertyDetails.buildPrice = preGenData.buildPrice;
@@ -530,12 +645,9 @@ export function InvestmentReportGenerator() {
         if (preGenData.depositValue) propertyDetails.depositValue = preGenData.depositValue;
       }
       
-      // Add financial assumptions
       if (preGenData.loanToValueRatio) propertyDetails.loanToValueRatio = preGenData.loanToValueRatio;
       if (preGenData.interestRate) propertyDetails.interestRate = preGenData.interestRate;
       if (preGenData.capitalGrowth) propertyDetails.capitalGrowth = preGenData.capitalGrowth;
-      
-      // Add expense overrides
       if (preGenData.stampDuty) propertyDetails.stampDuty = preGenData.stampDuty;
       if (preGenData.bodyCorporateFees) propertyDetails.bodyCorporateFees = preGenData.bodyCorporateFees;
       if (preGenData.landTax) propertyDetails.landTax = preGenData.landTax;
@@ -546,13 +658,9 @@ export function InvestmentReportGenerator() {
       if (preGenData.propertyManagementFees) propertyDetails.propertyManagementFees = preGenData.propertyManagementFees;
       if (preGenData.repairsMaintenance) propertyDetails.repairsMaintenance = preGenData.repairsMaintenance;
       if (preGenData.lettingFees) propertyDetails.lettingFees = preGenData.lettingFees;
-      
-      // Add strata breakdown
       if (preGenData.strataAdminFund) propertyDetails.strataAdminFund = preGenData.strataAdminFund;
       if (preGenData.strataSinkingFund) propertyDetails.strataSinkingFund = preGenData.strataSinkingFund;
       if (preGenData.strataSpecialLevies) propertyDetails.strataSpecialLevies = preGenData.strataSpecialLevies;
-      
-      // Add cash flow analysis overrides
       if (preGenData.cpiGrowthRate) propertyDetails.cpiGrowthRate = preGenData.cpiGrowthRate;
       if (preGenData.depreciation) propertyDetails.depreciation = preGenData.depreciation;
       if (preGenData.taxRate) propertyDetails.taxRate = preGenData.taxRate;
@@ -560,8 +668,6 @@ export function InvestmentReportGenerator() {
       if (preGenData.loanType) propertyDetails.loanType = preGenData.loanType;
       if (preGenData.loanTermYears) propertyDetails.loanTermYears = preGenData.loanTermYears;
       if (preGenData.marketValueNow) propertyDetails.marketValueNow = preGenData.marketValueNow;
-      
-      // Additional cash flow fields
       if (preGenData.loanAmount) propertyDetails.loanAmount = preGenData.loanAmount;
       if (preGenData.interestOnlyPeriodYears) propertyDetails.interestOnlyPeriodYears = preGenData.interestOnlyPeriodYears;
       if (preGenData.repaymentFrequency) propertyDetails.repaymentFrequency = preGenData.repaymentFrequency;
@@ -569,11 +675,8 @@ export function InvestmentReportGenerator() {
       if (preGenData.offsetBalance) propertyDetails.offsetBalance = preGenData.offsetBalance;
       if (preGenData.constructionDurationMonths) propertyDetails.constructionDurationMonths = preGenData.constructionDurationMonths;
       if (preGenData.constructionYear) propertyDetails.constructionYear = preGenData.constructionYear;
-      
-      // First Home Buyer flag
       if (preGenData.isFirstHomeBuyer) propertyDetails.isFirstHomeBuyer = preGenData.isFirstHomeBuyer;
       
-      // Construction Stage Percentages (new build only)
       if (preGenData.buildType === 'new_build') {
         if (preGenData.stageDepositPercent) propertyDetails.stageDepositPercent = preGenData.stageDepositPercent;
         if (preGenData.stageSlabPercent) propertyDetails.stageSlabPercent = preGenData.stageSlabPercent;
@@ -583,31 +686,10 @@ export function InvestmentReportGenerator() {
         if (preGenData.stageCompletionPercent) propertyDetails.stageCompletionPercent = preGenData.stageCompletionPercent;
       }
       
-      // Depreciation schedule
       if (preGenData.depreciationSchedule) propertyDetails.depreciationSchedule = preGenData.depreciationSchedule;
       if (preGenData.depreciationMethod) propertyDetails.depreciationMethod = preGenData.depreciationMethod;
 
-      // Log what was extracted for debugging
-      console.log('Final property address:', propertyAddress);
-      console.log('Final property details:', propertyDetails);
-
-      // Show what was extracted in the toast
-      const extractedInfo = [];
-      if (extracted.extractedPrice) extractedInfo.push(`$${extracted.extractedPrice.toLocaleString()}`);
-      if (extracted.extractedBedrooms) extractedInfo.push(`${extracted.extractedBedrooms} beds`);
-      if (extracted.extractedBathrooms) extractedInfo.push(`${extracted.extractedBathrooms} baths`);
-      if (extracted.extractedLandSize) extractedInfo.push(`${extracted.extractedLandSize}m²`);
-      
-      const extractedSummary = extractedInfo.length > 0 
-        ? `Found: ${extractedInfo.join(', ')}` 
-        : 'Limited details extracted - AI will analyze listing content';
-
-      toast({
-        title: "Scraping Successful",
-        description: extractedSummary + ". Starting report generation...",
-      });
-
-      // Create the report record with pre-generation overrides
+      // Create the report record
       const cleanedOverrides = Object.fromEntries(
         Object.entries(preGenData).filter(([_, v]) => v !== undefined)
       ) as Json;
@@ -634,7 +716,7 @@ export function InvestmentReportGenerator() {
         type: 'investment_report'
       });
 
-      // Start generation in background with scraped content
+      // Start generation in background
       supabase.functions.invoke('generate-investment-report', {
         body: {
           reportId: pendingReport.id,
@@ -652,22 +734,22 @@ export function InvestmentReportGenerator() {
 
       fetchRecentReports();
       
-      // Clear URL form
+      // Clear form
       setPropertyUrl('');
+      setUrlScrapedData(null);
 
     } catch (error) {
-      console.error('Error scraping URL:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to scrape property listing';
-      setScrapeError(errorMessage);
+      console.error('Error generating report from URL:', error);
       toast({
-        title: "Scraping Failed",
-        description: errorMessage,
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : 'Failed to generate report',
         variant: "destructive",
       });
     } finally {
-      setIsScraping(false);
+      setIsUrlGenerating(false);
     }
   };
+
 
   // Handle PDF/image file drop
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -709,8 +791,8 @@ export function InvestmentReportGenerator() {
     }
   };
 
-  // Handle PDF/image upload and parse
-  const handlePdfUpload = async () => {
+  // Handle PDF/image parsing ONLY - populates fields without generating report
+  const handleParsePdfOnly = async () => {
     if (!pdfFile) {
       toast({
         title: "File Required",
@@ -723,7 +805,7 @@ export function InvestmentReportGenerator() {
     if (!user) {
       toast({
         title: "Authentication Required",
-        description: "Please log in to generate reports.",
+        description: "Please log in to parse documents.",
         variant: "destructive",
       });
       return;
@@ -732,15 +814,14 @@ export function InvestmentReportGenerator() {
     setIsParsing(true);
     setPdfError(null);
     setConversionProgress(null);
+    setPdfParsedData(null);
 
     try {
       console.log('Processing file:', pdfFile.name, 'Type:', pdfFile.type);
       
       let requestBody: any = { fileName: pdfFile.name };
       
-      // Check if it's a PDF or image
       if (isPdfFile(pdfFile)) {
-        // PDF: Convert to images using PDF.js
         console.log('🔄 Converting PDF to images...');
         
         toast({
@@ -759,7 +840,6 @@ export function InvestmentReportGenerator() {
         
         console.log(`✅ PDF converted: ${conversionResult.images.length} pages rendered`);
         
-        // Prepare page images for the edge function
         requestBody.pageImages = conversionResult.images.map(img => ({
           pageNumber: img.pageNumber,
           base64: img.base64,
@@ -773,7 +853,6 @@ export function InvestmentReportGenerator() {
         });
         
       } else if (isImageFile(pdfFile)) {
-        // Image: Convert to base64 directly
         console.log('🖼️ Processing image file...');
         
         const base64 = await imageFileToBase64(pdfFile);
@@ -789,7 +868,6 @@ export function InvestmentReportGenerator() {
         throw new Error('Unsupported file type. Please upload a PDF or image file.');
       }
 
-      // Call edge function with rendered images
       const { data, error } = await supabase.functions.invoke('parse-property-pdf', {
         body: requestBody
       });
@@ -816,6 +894,62 @@ export function InvestmentReportGenerator() {
         propertyAddress = `Property from ${pdfFile.name}`;
       }
 
+      // Store parsed data for later generation
+      setPdfParsedData({
+        propertyAddress,
+        pdfContent: data.pdfContent,
+      });
+
+      // Populate form fields with extracted data (without triggering sync loops)
+      isSyncingFromPreGen.current = true;
+      
+      if (extracted.extractedPrice) {
+        setPropertyPrice(extracted.extractedPrice.toString());
+      }
+      if (extracted.extractedBedrooms) {
+        setBeds(extracted.extractedBedrooms.toString());
+      }
+      if (extracted.extractedBathrooms) {
+        setBaths(extracted.extractedBathrooms.toString());
+      }
+      if (extracted.extractedCarSpaces) {
+        setCarSpaces(extracted.extractedCarSpaces.toString());
+      }
+      if (extracted.extractedLandSize) {
+        setLandSize(extracted.extractedLandSize.toString());
+      }
+      if (extracted.extractedBuildSize) {
+        setBuildSize(extracted.extractedBuildSize.toString());
+      }
+      if (extracted.extractedPropertyType) {
+        const pType = extracted.extractedPropertyType.toLowerCase();
+        if (pType === 'house' || pType === 'apartment' || pType === 'townhouse') {
+          setPropertyType(pType);
+        }
+      }
+      if (extracted.extractedWeeklyRent) {
+        setWeeklyRent(extracted.extractedWeeklyRent.toString());
+      }
+
+      // If new build detected, update build type
+      if (extracted.extractedIsNewBuild) {
+        setPreGenData(prev => ({ ...prev, buildType: 'new_build' }));
+      }
+
+      // Update preGenData with extracted values
+      setPreGenData(prev => ({
+        ...prev,
+        purchasePrice: extracted.extractedPrice || prev.purchasePrice,
+        weeklyRent: extracted.extractedWeeklyRent || prev.weeklyRent,
+        carSpaces: extracted.extractedCarSpaces || prev.carSpaces,
+        landSizeSqm: extracted.extractedLandSize || prev.landSizeSqm,
+        buildSizeSqm: extracted.extractedBuildSize || prev.buildSizeSqm,
+        landPrice: extracted.extractedLandPrice || prev.landPrice,
+        buildPrice: extracted.extractedBuildPrice || prev.buildPrice,
+      }));
+
+      requestAnimationFrame(() => { isSyncingFromPreGen.current = false; });
+
       // Show what was extracted
       const extractedInfo = [];
       if (extracted.extractedPrice) extractedInfo.push(`$${extracted.extractedPrice.toLocaleString()}`);
@@ -826,39 +960,82 @@ export function InvestmentReportGenerator() {
       
       const extractedSummary = extractedInfo.length > 0 
         ? `Found: ${extractedInfo.join(', ')}` 
-        : 'Limited details extracted - AI will analyze document content';
+        : 'Limited details extracted - review and add missing data';
 
       toast({
         title: "PDF Parsed Successfully",
-        description: extractedSummary + ". Starting report generation...",
+        description: extractedSummary + ". Review the fields below, add any overrides, then generate the report.",
       });
 
-      // Build property details with extracted context
+    } catch (error) {
+      console.error('Error processing document:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process document';
+      setPdfError(errorMessage);
+      toast({
+        title: "Document Processing Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsParsing(false);
+      setConversionProgress(null);
+    }
+  };
+
+  // Handle report generation from parsed PDF data
+  const handleGenerateFromPdf = async () => {
+    if (!pdfParsedData) {
+      toast({
+        title: "Parse Required",
+        description: "Please parse a PDF first before generating a report.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!propertyPrice || parseFloat(propertyPrice) <= 0) {
+      toast({
+        title: "Purchase Price Required",
+        description: "Please enter a valid purchase price to calculate investment score.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPdfGenerating(true);
+
+    try {
+      const { propertyAddress, pdfContent } = pdfParsedData;
+
+      // Build property details with form values and preGenData
       const propertyDetails: any = { 
         queryType: 'address', 
         originalQuery: propertyAddress,
-        pdfContent: data.pdfContent,
+        pdfContent,
         fromPdfUpload: true,
         manualOverrides: preGenData,
       };
       
-      // Include all extracted fields (PDF values as fallbacks, preGenData overrides take precedence)
-      if (extracted.extractedPrice) propertyDetails.price = extracted.extractedPrice;
-      if (extracted.extractedBedrooms) propertyDetails.beds = extracted.extractedBedrooms;
-      if (extracted.extractedBathrooms) propertyDetails.baths = extracted.extractedBathrooms;
-      if (extracted.extractedCarSpaces) propertyDetails.carSpaces = extracted.extractedCarSpaces;
-      if (extracted.extractedLandSize) propertyDetails.landSizeSqm = extracted.extractedLandSize;
-      if (extracted.extractedBuildSize) propertyDetails.buildSizeSqm = extracted.extractedBuildSize;
-      if (extracted.extractedPropertyType) propertyDetails.propertyType = extracted.extractedPropertyType.toLowerCase();
-      if (extracted.extractedPostcode) propertyDetails.postcode = extracted.extractedPostcode;
-      if (extracted.extractedState) propertyDetails.state = extracted.extractedState;
-      if (extracted.extractedSuburb) propertyDetails.suburb = extracted.extractedSuburb;
-      if (extracted.extractedWeeklyRent) propertyDetails.weeklyRent = extracted.extractedWeeklyRent;
-      if (extracted.extractedLandPrice) propertyDetails.landPrice = extracted.extractedLandPrice;
-      if (extracted.extractedBuildPrice) propertyDetails.buildPrice = extracted.extractedBuildPrice;
-      if (extracted.extractedIsNewBuild) propertyDetails.isNewBuild = extracted.extractedIsNewBuild;
+      // Add form field values
+      if (propertyPrice) propertyDetails.price = parseFloat(propertyPrice);
+      if (weeklyRent) propertyDetails.weeklyRent = parseFloat(weeklyRent);
+      if (propertyType) propertyDetails.propertyType = propertyType;
+      if (beds) propertyDetails.beds = parseInt(beds);
+      if (baths) propertyDetails.baths = parseInt(baths);
+      if (carSpaces) propertyDetails.carSpaces = parseInt(carSpaces);
+      if (landSize) propertyDetails.landSizeSqm = parseFloat(landSize);
+      if (buildSize) propertyDetails.buildSizeSqm = parseFloat(buildSize);
 
-      // Apply preGenData overrides (these take precedence over PDF-extracted values)
+      // Apply all preGenData overrides
       propertyDetails.buildType = preGenData.buildType;
       if (preGenData.purchasePrice) propertyDetails.price = preGenData.purchasePrice;
       if (preGenData.weeklyRent) propertyDetails.weeklyRent = preGenData.weeklyRent;
@@ -866,7 +1043,6 @@ export function InvestmentReportGenerator() {
       if (preGenData.landSizeSqm) propertyDetails.landSizeSqm = preGenData.landSizeSqm;
       if (preGenData.buildSizeSqm) propertyDetails.buildSizeSqm = preGenData.buildSizeSqm;
       
-      // For new builds, add land and build prices
       if (preGenData.buildType === 'new_build') {
         if (preGenData.landPrice) propertyDetails.landPrice = preGenData.landPrice;
         if (preGenData.buildPrice) propertyDetails.buildPrice = preGenData.buildPrice;
@@ -875,12 +1051,9 @@ export function InvestmentReportGenerator() {
         if (preGenData.depositValue) propertyDetails.depositValue = preGenData.depositValue;
       }
       
-      // Add financial assumptions
       if (preGenData.loanToValueRatio) propertyDetails.loanToValueRatio = preGenData.loanToValueRatio;
       if (preGenData.interestRate) propertyDetails.interestRate = preGenData.interestRate;
       if (preGenData.capitalGrowth) propertyDetails.capitalGrowth = preGenData.capitalGrowth;
-      
-      // Add expense overrides
       if (preGenData.stampDuty) propertyDetails.stampDuty = preGenData.stampDuty;
       if (preGenData.bodyCorporateFees) propertyDetails.bodyCorporateFees = preGenData.bodyCorporateFees;
       if (preGenData.landTax) propertyDetails.landTax = preGenData.landTax;
@@ -891,13 +1064,9 @@ export function InvestmentReportGenerator() {
       if (preGenData.propertyManagementFees) propertyDetails.propertyManagementFees = preGenData.propertyManagementFees;
       if (preGenData.repairsMaintenance) propertyDetails.repairsMaintenance = preGenData.repairsMaintenance;
       if (preGenData.lettingFees) propertyDetails.lettingFees = preGenData.lettingFees;
-      
-      // Add strata breakdown
       if (preGenData.strataAdminFund) propertyDetails.strataAdminFund = preGenData.strataAdminFund;
       if (preGenData.strataSinkingFund) propertyDetails.strataSinkingFund = preGenData.strataSinkingFund;
       if (preGenData.strataSpecialLevies) propertyDetails.strataSpecialLevies = preGenData.strataSpecialLevies;
-      
-      // Add cash flow analysis overrides
       if (preGenData.cpiGrowthRate) propertyDetails.cpiGrowthRate = preGenData.cpiGrowthRate;
       if (preGenData.depreciation) propertyDetails.depreciation = preGenData.depreciation;
       if (preGenData.taxRate) propertyDetails.taxRate = preGenData.taxRate;
@@ -905,8 +1074,6 @@ export function InvestmentReportGenerator() {
       if (preGenData.loanType) propertyDetails.loanType = preGenData.loanType;
       if (preGenData.loanTermYears) propertyDetails.loanTermYears = preGenData.loanTermYears;
       if (preGenData.marketValueNow) propertyDetails.marketValueNow = preGenData.marketValueNow;
-      
-      // Additional cash flow fields
       if (preGenData.loanAmount) propertyDetails.loanAmount = preGenData.loanAmount;
       if (preGenData.interestOnlyPeriodYears) propertyDetails.interestOnlyPeriodYears = preGenData.interestOnlyPeriodYears;
       if (preGenData.repaymentFrequency) propertyDetails.repaymentFrequency = preGenData.repaymentFrequency;
@@ -914,11 +1081,8 @@ export function InvestmentReportGenerator() {
       if (preGenData.offsetBalance) propertyDetails.offsetBalance = preGenData.offsetBalance;
       if (preGenData.constructionDurationMonths) propertyDetails.constructionDurationMonths = preGenData.constructionDurationMonths;
       if (preGenData.constructionYear) propertyDetails.constructionYear = preGenData.constructionYear;
-      
-      // First Home Buyer flag
       if (preGenData.isFirstHomeBuyer) propertyDetails.isFirstHomeBuyer = preGenData.isFirstHomeBuyer;
       
-      // Construction Stage Percentages (new build only)
       if (preGenData.buildType === 'new_build') {
         if (preGenData.stageDepositPercent) propertyDetails.stageDepositPercent = preGenData.stageDepositPercent;
         if (preGenData.stageSlabPercent) propertyDetails.stageSlabPercent = preGenData.stageSlabPercent;
@@ -928,11 +1092,10 @@ export function InvestmentReportGenerator() {
         if (preGenData.stageCompletionPercent) propertyDetails.stageCompletionPercent = preGenData.stageCompletionPercent;
       }
       
-      // Depreciation schedule
       if (preGenData.depreciationSchedule) propertyDetails.depreciationSchedule = preGenData.depreciationSchedule;
       if (preGenData.depreciationMethod) propertyDetails.depreciationMethod = preGenData.depreciationMethod;
-      
-      // Create the report record with overrides
+
+      // Create the report record
       const pdfOverrides = Object.fromEntries(
         Object.entries(preGenData).filter(([_, v]) => v !== undefined)
       ) as Json;
@@ -959,7 +1122,7 @@ export function InvestmentReportGenerator() {
         type: 'investment_report'
       });
 
-      // Start generation in background with PDF content
+      // Start generation in background
       supabase.functions.invoke('generate-investment-report', {
         body: {
           reportId: pendingReport.id,
@@ -977,21 +1140,19 @@ export function InvestmentReportGenerator() {
 
       fetchRecentReports();
       
-      // Clear PDF form
+      // Clear form
       setPdfFile(null);
+      setPdfParsedData(null);
 
     } catch (error) {
-      console.error('Error processing document:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process document';
-      setPdfError(errorMessage);
+      console.error('Error generating report from PDF:', error);
       toast({
-        title: "Document Processing Failed",
-        description: errorMessage,
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : 'Failed to generate report',
         variant: "destructive",
       });
     } finally {
-      setIsParsing(false);
-      setConversionProgress(null);
+      setIsPdfGenerating(false);
     }
   };
 
@@ -1666,25 +1827,64 @@ export function InvestmentReportGenerator() {
                     </div>
                   </div>
 
-                  {/* Scrape & Generate Button */}
-                  <Button
-                    onClick={handleScrapeUrl}
-                    disabled={isScraping || !propertyUrl.trim()}
-                    size="lg"
-                    className="w-full"
-                  >
-                    {isScraping ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Scraping & Generating Report...
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Scrape & Generate Report
-                      </>
-                    )}
-                  </Button>
+                  {/* Scrape Button */}
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleScrapeUrlOnly}
+                      disabled={isScraping || !propertyUrl.trim()}
+                      size="lg"
+                      variant={urlScrapedData ? "outline" : "default"}
+                      className="flex-1"
+                    >
+                      {isScraping ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Scraping...
+                        </>
+                      ) : urlScrapedData ? (
+                        <>
+                          <Link className="h-4 w-4 mr-2" />
+                          Re-Scrape URL
+                        </>
+                      ) : (
+                        <>
+                          <Link className="h-4 w-4 mr-2" />
+                          Scrape URL
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={handleGenerateFromUrl}
+                      disabled={isUrlGenerating || !urlScrapedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
+                      size="lg"
+                      className="flex-1"
+                    >
+                      {isUrlGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating Report...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Generate Report
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Scraped data indicator */}
+                  {urlScrapedData && (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                      <p className="text-sm text-green-700 dark:text-green-400">
+                        ✓ Scraped: <strong>{urlScrapedData.propertyAddress}</strong>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Review the fields above, add any overrides, then click "Generate Report"
+                      </p>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* PDF Upload Tab */}
@@ -1960,25 +2160,64 @@ export function InvestmentReportGenerator() {
                     </div>
                   </div>
 
-                  {/* Parse & Generate Button */}
-                  <Button
-                    onClick={handlePdfUpload}
-                    disabled={isParsing || !pdfFile}
-                    size="lg"
-                    className="w-full"
-                  >
-                    {isParsing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Processing PDF & Generating Report...
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="h-4 w-4 mr-2" />
-                        Parse PDF & Generate Report
-                      </>
-                    )}
-                  </Button>
+                  {/* Parse & Generate Buttons */}
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleParsePdfOnly}
+                      disabled={isParsing || !pdfFile}
+                      size="lg"
+                      variant={pdfParsedData ? "outline" : "default"}
+                      className="flex-1"
+                    >
+                      {isParsing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Parsing...
+                        </>
+                      ) : pdfParsedData ? (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Re-Parse PDF
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Parse PDF
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={handleGenerateFromPdf}
+                      disabled={isPdfGenerating || !pdfParsedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
+                      size="lg"
+                      className="flex-1"
+                    >
+                      {isPdfGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating Report...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Generate Report
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Parsed data indicator */}
+                  {pdfParsedData && (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                      <p className="text-sm text-green-700 dark:text-green-400">
+                        ✓ Parsed: <strong>{pdfParsedData.propertyAddress}</strong>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Review the fields above, add any overrides, then click "Generate Report"
+                      </p>
+                    </div>
+                  )}
                 </TabsContent>
 
               </Tabs>
