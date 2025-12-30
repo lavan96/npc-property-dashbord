@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Settings2, 
   Database, 
@@ -20,7 +21,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
 
 interface IntegrationConfig {
@@ -126,6 +129,12 @@ const integrations: IntegrationConfig[] = [
   },
 ];
 
+interface SupabaseSecretStatus {
+  configured: boolean;
+  configuredSecrets: string[];
+  missingSecrets: string[];
+}
+
 export default function Integrations() {
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -133,11 +142,34 @@ export default function Integrations() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [supabaseSecrets, setSupabaseSecrets] = useState<Record<string, SupabaseSecretStatus>>({});
+  const [loadingSecrets, setLoadingSecrets] = useState(false);
 
   // Load saved integration configs from database
   useEffect(() => {
     loadIntegrationConfigs();
+    checkSupabaseSecrets();
   }, []);
+
+  const checkSupabaseSecrets = async () => {
+    setLoadingSecrets(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-integration-secrets');
+      
+      if (error) {
+        console.error('Error checking Supabase secrets:', error);
+        return;
+      }
+
+      if (data?.success && data?.integrations) {
+        setSupabaseSecrets(data.integrations);
+      }
+    } catch (error) {
+      console.error('Failed to check Supabase secrets:', error);
+    } finally {
+      setLoadingSecrets(false);
+    }
+  };
 
   const loadIntegrationConfigs = async () => {
     try {
@@ -266,6 +298,61 @@ export default function Integrations() {
     }
   };
 
+  const getSupabaseSecretBadge = (integrationId: string) => {
+    const secretStatus = supabaseSecrets[integrationId];
+    
+    if (!secretStatus) return null;
+    
+    if (secretStatus.configured) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-xs">
+                <Cloud className="h-3 w-3 mr-1" />
+                Supabase
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Configured in Supabase secrets:</p>
+              <ul className="text-xs mt-1">
+                {secretStatus.configuredSecrets.map(s => (
+                  <li key={s} className="text-green-400">✓ {s}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (secretStatus.configuredSecrets.length > 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30 text-xs">
+                <Cloud className="h-3 w-3 mr-1" />
+                Partial
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Supabase secrets status:</p>
+              <ul className="text-xs mt-1">
+                {secretStatus.configuredSecrets.map(s => (
+                  <li key={s} className="text-green-400">✓ {s}</li>
+                ))}
+                {secretStatus.missingSecrets.map(s => (
+                  <li key={s} className="text-red-400">✗ {s}</li>
+                ))}
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -276,11 +363,27 @@ export default function Integrations() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Integrations</h1>
-        <p className="text-muted-foreground mt-1">
-          Configure API keys and credentials for external services
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Integrations</h1>
+          <p className="text-muted-foreground mt-1">
+            Configure API keys and credentials for external services
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={checkSupabaseSecrets}
+          disabled={loadingSecrets}
+          className="gap-2"
+        >
+          {loadingSecrets ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          Sync Supabase Status
+        </Button>
       </div>
 
       <Tabs defaultValue="all" className="w-full">
@@ -309,7 +412,10 @@ export default function Integrations() {
                           </CardDescription>
                         </div>
                       </div>
-                      {getStatusBadge(status)}
+                      <div className="flex flex-col gap-1.5 items-end">
+                        {getStatusBadge(status)}
+                        {getSupabaseSecretBadge(integration.id)}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -400,7 +506,10 @@ export default function Integrations() {
                             </CardDescription>
                           </div>
                         </div>
-                        {getStatusBadge(status)}
+                        <div className="flex flex-col gap-1.5 items-end">
+                          {getStatusBadge(status)}
+                          {getSupabaseSecretBadge(integration.id)}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -495,7 +604,10 @@ export default function Integrations() {
                             </CardDescription>
                           </div>
                         </div>
-                        {getStatusBadge(status)}
+                        <div className="flex flex-col gap-1.5 items-end">
+                          {getStatusBadge(status)}
+                          {getSupabaseSecretBadge(integration.id)}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
