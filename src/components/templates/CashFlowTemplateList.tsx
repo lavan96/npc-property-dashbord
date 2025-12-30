@@ -50,10 +50,11 @@ export function CashFlowTemplateList() {
   const { data: templates, isLoading } = useQuery({
     queryKey: ['cashflow-export-templates'],
     queryFn: async () => {
+      // Cast to 'any' because the TypeScript types may not include the new enum value yet
       const { data, error } = await supabase
         .from('report_structure_templates')
         .select('*')
-        .eq('template_type', 'cashflow_export')
+        .eq('template_type', 'cashflow_export' as any)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -66,10 +67,11 @@ export function CashFlowTemplateList() {
     try {
       if (!template.is_active) {
         // Deactivate all other cashflow_export templates first
+        // Cast to 'any' because the TypeScript types may not include the new enum value yet
         await supabase
           .from('report_structure_templates')
           .update({ is_active: false })
-          .eq('template_type', 'cashflow_export');
+          .eq('template_type', 'cashflow_export' as any);
       }
 
       // Toggle the selected template
