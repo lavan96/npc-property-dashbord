@@ -70,6 +70,9 @@ import { MessageDateSeparator, shouldShowDateSeparator } from '@/components/repo
 import { CharacterCount, FailedMessageIndicator } from '@/components/report-qa/ChatInputEnhancements';
 import { PDFThumbnail, UploadProgressItem } from '@/components/report-qa/PDFThumbnail';
 import { ReportSwitcher, ReportSearch } from '@/components/report-qa/ReportContextSearch';
+import { FollowUpSuggestions } from '@/components/report-qa/FollowUpSuggestions';
+import { TextToSpeech } from '@/components/report-qa/TextToSpeech';
+import { CopyWithFeedback } from '@/components/report-qa/CopyWithFeedback';
 
 interface UploadProgress {
   fileName: string;
@@ -152,6 +155,7 @@ export default function ReportQA() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [activeReportIndex, setActiveReportIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [showReportsPanel, setShowReportsPanel] = useState(true);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -163,6 +167,30 @@ export default function ReportQA() {
   const { addReply, getReplies } = useMessageThreads();
   const { getPinnedIds, togglePin, isPinned } = usePinnedConversations();
 
+  // Get last assistant message for follow-up suggestions
+  const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop()?.content || '';
+  
+  // Copy last response handler
+  const handleCopyLastResponse = useCallback(() => {
+    if (lastAssistantMessage) {
+      navigator.clipboard.writeText(lastAssistantMessage);
+      toast({
+        title: 'Copied',
+        description: 'Last response copied to clipboard',
+      });
+    }
+  }, [lastAssistantMessage, toast]);
+
+  // Scroll to bottom handler
+  const handleScrollToBottom = useCallback(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  // Toggle reports panel
+  const handleToggleReportsPanel = useCallback(() => {
+    setShowReportsPanel(prev => !prev);
+  }, []);
+
   // Keyboard shortcuts
   useReportQAKeyboardShortcuts({
     onNewChat: handleNewChat,
@@ -172,6 +200,9 @@ export default function ReportQA() {
       setShowEmailModal(false);
     },
     onFocusInput: () => inputRef.current?.focus(),
+    onCopyLastResponse: handleCopyLastResponse,
+    onScrollToBottom: handleScrollToBottom,
+    onToggleReportsPanel: handleToggleReportsPanel,
   });
 
   // Load saved conversations and pinned IDs on mount
@@ -1093,7 +1124,8 @@ export default function ReportQA() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
-        {/* Upload Section */}
+        {/* Upload Section - Collapsible */}
+        {showReportsPanel && (
         <Card className="lg:col-span-1 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1222,12 +1254,24 @@ export default function ReportQA() {
             />
           </CardContent>
         </Card>
+        )}
 
         {/* Chat Section */}
-        <Card className="lg:col-span-2 flex flex-col">
+        <Card className={cn("flex flex-col", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
+                {!showReportsPanel && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={handleToggleReportsPanel}
+                    title="Show reports panel (⌘B)"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                )}
                 <MessageSquare className="h-5 w-5" />
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-2">
@@ -1427,15 +1471,8 @@ export default function ReportQA() {
                         {message.role === 'assistant' && !message.attachments?.length && (
                           <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
                             <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => handleCopyResponse(message.content)}
-                              >
-                                <Copy className="h-3 w-3 mr-1" />
-                                Copy
-                              </Button>
+                              <CopyWithFeedback content={message.content} />
+                              <TextToSpeech text={message.content} />
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1462,6 +1499,17 @@ export default function ReportQA() {
                               onReply={handleReply}
                               replies={getReplies(message.id)}
                             />
+                            {/* Follow-up suggestions for the last message */}
+                            {index === messages.length - 1 && (
+                              <FollowUpSuggestions
+                                lastAssistantMessage={message.content}
+                                reportContext={
+                                  uploadedReports.length > 1 ? 'comparison' : 
+                                  uploadedReports.length === 1 ? 'single' : 'none'
+                                }
+                                onSelect={(suggestion) => setInputMessage(suggestion)}
+                              />
+                            )}
                           </div>
                         )}
                       </div>

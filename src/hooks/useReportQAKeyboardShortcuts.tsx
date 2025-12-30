@@ -5,6 +5,9 @@ interface KeyboardShortcutsConfig {
   onOpenHistory: () => void;
   onCloseDialogs: () => void;
   onFocusInput?: () => void;
+  onCopyLastResponse?: () => void;
+  onScrollToBottom?: () => void;
+  onToggleReportsPanel?: () => void;
 }
 
 export function useReportQAKeyboardShortcuts({
@@ -12,6 +15,9 @@ export function useReportQAKeyboardShortcuts({
   onOpenHistory,
   onCloseDialogs,
   onFocusInput,
+  onCopyLastResponse,
+  onScrollToBottom,
+  onToggleReportsPanel,
 }: KeyboardShortcutsConfig) {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -38,12 +44,33 @@ export function useReportQAKeyboardShortcuts({
       return;
     }
 
+    // Cmd/Ctrl + Shift + C - Copy last response
+    if (cmdKey && e.shiftKey && e.key === 'C' && onCopyLastResponse) {
+      e.preventDefault();
+      onCopyLastResponse();
+      return;
+    }
+
+    // Cmd/Ctrl + J - Scroll to bottom
+    if (cmdKey && e.key === 'j' && onScrollToBottom) {
+      e.preventDefault();
+      onScrollToBottom();
+      return;
+    }
+
+    // Cmd/Ctrl + B - Toggle reports panel
+    if (cmdKey && e.key === 'b' && onToggleReportsPanel) {
+      e.preventDefault();
+      onToggleReportsPanel();
+      return;
+    }
+
     // Escape - Close dialogs
     if (e.key === 'Escape') {
       onCloseDialogs();
       return;
     }
-  }, [onNewChat, onOpenHistory, onCloseDialogs, onFocusInput]);
+  }, [onNewChat, onOpenHistory, onCloseDialogs, onFocusInput, onCopyLastResponse, onScrollToBottom, onToggleReportsPanel]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -55,5 +82,8 @@ export const keyboardShortcutsHelp = [
   { keys: ['⌘', 'K'], description: 'Search history' },
   { keys: ['⌘', 'N'], description: 'New chat' },
   { keys: ['⌘', '/'], description: 'Focus input' },
+  { keys: ['⌘', '⇧', 'C'], description: 'Copy last response' },
+  { keys: ['⌘', 'J'], description: 'Scroll to bottom' },
+  { keys: ['⌘', 'B'], description: 'Toggle reports panel' },
   { keys: ['Esc'], description: 'Close dialogs' },
 ];
