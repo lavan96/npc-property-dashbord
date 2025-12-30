@@ -962,6 +962,14 @@ export function InvestmentReportGenerator() {
         setPreGenData(prev => ({ ...prev, buildType: 'new_build' }));
       }
 
+      // Populate land price and build price form fields if extracted
+      if (extracted.extractedLandPrice) {
+        setLandPrice(extracted.extractedLandPrice.toString());
+      }
+      if (extracted.extractedBuildPrice) {
+        setBuildPrice(extracted.extractedBuildPrice.toString());
+      }
+
       // Update preGenData with ALL extracted values (including extended fields)
       setPreGenData(prev => ({
         ...prev,
@@ -1587,7 +1595,6 @@ export function InvestmentReportGenerator() {
                 buildType={preGenData.buildType}
                 onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                 externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
-                externalPropertyValue={propertyPrice ? parseFloat(propertyPrice) : undefined}
                 externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
                 externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
                 externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
@@ -1884,7 +1891,6 @@ export function InvestmentReportGenerator() {
                     buildType={preGenData.buildType}
                     onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                     externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
-                    externalPropertyValue={propertyPrice ? parseFloat(propertyPrice) : undefined}
                     externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
                     externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
                     externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
@@ -2221,7 +2227,6 @@ export function InvestmentReportGenerator() {
                     buildType={preGenData.buildType}
                     onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
                     externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
-                    externalPropertyValue={propertyPrice ? parseFloat(propertyPrice) : undefined}
                     externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
                     externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
                     externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
