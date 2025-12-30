@@ -112,8 +112,14 @@ export function LandTaxCalculator({
       // Default estimate: land is ~40-60% of property value
       const estimatedLandValue = Math.round(purchasePrice * 0.5);
       setLandValue(estimatedLandValue.toString());
+      
+      // If we have a detected state and are setting land value from purchase price,
+      // clear the restored flag to allow auto-calculation (fixes PDF upload tab issue)
+      if (selectedState && isRestoredFromInitial) {
+        setIsRestoredFromInitial(false);
+      }
     }
-  }, [purchasePrice, landValue]);
+  }, [purchasePrice, landValue, selectedState, isRestoredFromInitial]);
 
   // Update land value from external
   useEffect(() => {
