@@ -4,6 +4,7 @@ import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface InvestmentReportData {
   id: string;
@@ -933,6 +934,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     console.log('🚀 Starting PDF generation for report:', report.id);
     
     try {
+      // Fetch global report settings (contact details and disclaimer)
+      console.log('⚙️ Step 0: Fetching global report settings...');
+      const globalSettings = await fetchGlobalReportSettings();
+      console.log('✓ Global settings loaded:', {
+        company: globalSettings.contactDetails.company_name,
+        disclaimerEnabled: globalSettings.disclaimer.is_enabled
+      });
+
       console.log('📍 Step 1: Extracting suburb and state from address:', report.address);
       const { suburb, state } = extractSuburbState(report.address);
       console.log('✓ Extracted:', { suburb, state });
@@ -1079,6 +1088,145 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const [copiedPage] = await pdfDoc.copyPages(freshTemplate, [1]);
         pdfDoc.addPage(copiedPage);
         return pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+      };
+
+      // Helper function to add a contact/disclaimer page with global settings
+      const addContactDisclaimerPage = async (settings: GlobalReportSettings) => {
+        const page = pdfDoc.addPage([pageWidth, pageHeight]);
+        const { contactDetails, disclaimer } = settings;
+        
+        // Dark background
+        page.drawRectangle({
+          x: 0,
+          y: 0,
+          width: pageWidth,
+          height: pageHeight,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+
+        // Gold color for text
+        const goldColor = rgb(0.788, 0.647, 0.353); // #c9a55a
+        const grayColor = rgb(0.6, 0.6, 0.6);
+        
+        let yPos = pageHeight - 80;
+        
+        // Company Name / Header
+        const companyName = contactDetails.company_name || 'NPC Services';
+        page.drawText(companyName.toUpperCase(), {
+          x: 60,
+          y: yPos,
+          size: 28,
+          font: helveticaBold,
+          color: goldColor,
+        });
+        
+        yPos -= 50;
+        
+        // "CONTACT US" heading
+        page.drawText('CONTACT US', {
+          x: 60,
+          y: yPos,
+          size: 18,
+          font: helveticaBold,
+          color: goldColor,
+        });
+        
+        yPos -= 40;
+        
+        // Contact details
+        if (contactDetails.website) {
+          page.drawText('WEBSITE:', {
+            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
+          });
+          page.drawText(contactDetails.website, {
+            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
+          });
+          yPos -= 22;
+        }
+        
+        if (contactDetails.email) {
+          page.drawText('EMAIL:', {
+            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
+          });
+          page.drawText(contactDetails.email, {
+            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
+          });
+          yPos -= 22;
+        }
+        
+        if (contactDetails.phone) {
+          page.drawText('PHONE:', {
+            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
+          });
+          page.drawText(contactDetails.phone, {
+            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
+          });
+          yPos -= 22;
+        }
+        
+        if (contactDetails.address) {
+          page.drawText('ADDRESS:', {
+            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
+          });
+          page.drawText(contactDetails.address, {
+            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
+          });
+          yPos -= 22;
+        }
+        
+        if (contactDetails.abn) {
+          page.drawText('ABN:', {
+            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
+          });
+          page.drawText(contactDetails.abn, {
+            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
+          });
+          yPos -= 22;
+        }
+        
+        // Disclaimer section (if enabled)
+        if (disclaimer.is_enabled && disclaimer.text) {
+          yPos = Math.min(yPos - 40, 200); // Position disclaimer near bottom
+          
+          const disclaimerText = stripEmojis(disclaimer.text);
+          const maxWidth = pageWidth - 120;
+          const fontSize = 8;
+          const lineHeightDisclaimer = 12;
+          
+          // Word-wrap disclaimer text
+          const words = disclaimerText.split(' ');
+          let currentLine = '';
+          const lines: string[] = [];
+          
+          for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
+            
+            if (testWidth > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) lines.push(currentLine);
+          
+          // Draw disclaimer lines
+          for (const line of lines) {
+            if (yPos < 40) break; // Don't go below page margin
+            page.drawText(line, {
+              x: 60,
+              y: yPos,
+              size: fontSize,
+              font: helveticaFont,
+              color: grayColor,
+            });
+            yPos -= lineHeightDisclaimer;
+          }
+        }
+        
+        console.log('✓ Added contact/disclaimer page with global settings');
+        return page;
       };
 
       // Helper to check if text is a markdown table
@@ -1922,8 +2070,12 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         yPosition -= 15; // Space between sections
       }
 
+      // Add contact/disclaimer page with global settings (replaces static template last page)
+      console.log('📞 Step 5.5: Adding contact/disclaimer page with global settings...');
+      await addContactDisclaimerPage(globalSettings);
+
       // Add page numbers to all pages except first and last
-      console.log('🔢 Step 5.5: Adding page numbers...');
+      console.log('🔢 Step 5.6: Adding page numbers...');
       const allPages = pdfDoc.getPages();
       const totalPages = allPages.length;
       console.log(`✓ Total pages in document: ${totalPages}`);

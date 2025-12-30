@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface HybridPDFTemplateProps {
   suburb: string;
@@ -18,6 +19,8 @@ interface HybridPDFTemplateProps {
 
 export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplateProps>(
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
+    const { settings } = useGlobalReportSettings();
+    const { contactDetails, disclaimer } = settings;
     
     const cleanText = (text: string) => {
       return text
@@ -401,7 +404,7 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
           </div>
         </div>
 
-        {/* CONTACT PAGE - Keeping original design */}
+        {/* CONTACT PAGE - Using global settings */}
         <div className="pdf-page" style={{
           width: '210mm',
           height: '297mm',
@@ -421,7 +424,7 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
               color: '#00d4ff',
               marginBottom: '10pt'
             }}>
-              NPC SERVICES
+              {contactDetails.company_name || 'NPC SERVICES'}
             </div>
             <div style={{
               fontSize: '12pt',
@@ -443,15 +446,26 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             </h2>
             
             <div style={{ fontSize: '14pt', lineHeight: '2', color: '#ccc' }}>
-              <div style={{ marginBottom: '15pt' }}>
-                <strong style={{ color: 'white' }}>Email:</strong> info@npcservices.com.au
-              </div>
-              <div style={{ marginBottom: '15pt' }}>
-                <strong style={{ color: 'white' }}>Phone:</strong> 1300 NPC SERVICES
-              </div>
-              <div style={{ marginBottom: '15pt' }}>
-                <strong style={{ color: 'white' }}>Website:</strong> www.npcservices.com.au
-              </div>
+              {contactDetails.email && (
+                <div style={{ marginBottom: '15pt' }}>
+                  <strong style={{ color: 'white' }}>Email:</strong> {contactDetails.email}
+                </div>
+              )}
+              {contactDetails.phone && (
+                <div style={{ marginBottom: '15pt' }}>
+                  <strong style={{ color: 'white' }}>Phone:</strong> {contactDetails.phone}
+                </div>
+              )}
+              {contactDetails.website && (
+                <div style={{ marginBottom: '15pt' }}>
+                  <strong style={{ color: 'white' }}>Website:</strong> {contactDetails.website}
+                </div>
+              )}
+              {contactDetails.address && (
+                <div style={{ marginBottom: '15pt' }}>
+                  <strong style={{ color: 'white' }}>Address:</strong> {contactDetails.address}
+                </div>
+              )}
             </div>
           </div>
 
@@ -463,11 +477,17 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
             borderTop: '1pt solid #333',
             paddingTop: '15pt'
           }}>
+            {disclaimer.is_enabled && disclaimer.text ? (
+              <p style={{ margin: '5pt 0' }}>
+                {disclaimer.text}
+              </p>
+            ) : (
+              <p style={{ margin: '5pt 0' }}>
+                This report is for informational purposes only and should not be considered as financial or investment advice.
+              </p>
+            )}
             <p style={{ margin: '5pt 0' }}>
-              This report is for informational purposes only and should not be considered as financial or investment advice.
-            </p>
-            <p style={{ margin: '5pt 0' }}>
-              © {new Date().getFullYear()} NPC Services. All rights reserved.
+              © {new Date().getFullYear()} {contactDetails.company_name || 'NPC Services'}. All rights reserved.
             </p>
           </div>
         </div>

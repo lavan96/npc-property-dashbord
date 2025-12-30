@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface StrictPDFTemplateProps {
   suburb: string;
@@ -18,6 +19,8 @@ interface StrictPDFTemplateProps {
 
 export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplateProps>(
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
+    const { settings } = useGlobalReportSettings();
+    const { contactDetails, disclaimer } = settings;
 
     const cleanText = (text: string) => {
       return text
@@ -457,7 +460,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               color: '#C5A572',
               marginBottom: '12pt'
             }}>
-              NPC SERVICES
+              {contactDetails.company_name || 'NPC SERVICES'}
             </div>
             <div style={{
               fontSize: '13pt',
@@ -480,15 +483,21 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             </h2>
             
             <div style={{ fontSize: '14pt', lineHeight: '2.2', color: 'rgba(255,255,255,0.9)' }}>
-              <div style={{ marginBottom: '18pt' }}>
-                <strong style={{ color: '#C5A572' }}>Email:</strong> info@npcservices.com.au
-              </div>
-              <div style={{ marginBottom: '18pt' }}>
-                <strong style={{ color: '#C5A572' }}>Phone:</strong> 1300 NPC SERVICES
-              </div>
-              <div style={{ marginBottom: '18pt' }}>
-                <strong style={{ color: '#C5A572' }}>Website:</strong> www.npcservices.com.au
-              </div>
+              {contactDetails.email && (
+                <div style={{ marginBottom: '18pt' }}>
+                  <strong style={{ color: '#C5A572' }}>Email:</strong> {contactDetails.email}
+                </div>
+              )}
+              {contactDetails.phone && (
+                <div style={{ marginBottom: '18pt' }}>
+                  <strong style={{ color: '#C5A572' }}>Phone:</strong> {contactDetails.phone}
+                </div>
+              )}
+              {contactDetails.website && (
+                <div style={{ marginBottom: '18pt' }}>
+                  <strong style={{ color: '#C5A572' }}>Website:</strong> {contactDetails.website}
+                </div>
+              )}
             </div>
           </div>
 
@@ -501,11 +510,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             paddingTop: '15pt',
             lineHeight: '1.4'
           }}>
+            {disclaimer.is_enabled && disclaimer.text ? (
+              <p style={{ margin: '5pt 0' }}>
+                {disclaimer.text}
+              </p>
+            ) : (
+              <p style={{ margin: '5pt 0' }}>
+                This report is for informational purposes only and should not be considered as financial or investment advice.
+              </p>
+            )}
             <p style={{ margin: '5pt 0' }}>
-              This report is for informational purposes only and should not be considered as financial or investment advice.
-            </p>
-            <p style={{ margin: '5pt 0' }}>
-              © {new Date().getFullYear()} NPC Services. All rights reserved.
+              © {new Date().getFullYear()} {contactDetails.company_name || 'NPC Services'}. All rights reserved.
             </p>
           </div>
         </div>
