@@ -104,10 +104,10 @@ export const PDFAttachmentMessage: React.FC<PDFAttachmentMessageProps> = ({
                 variant="default"
                 size="sm"
                 onClick={() => onSendViaEmail(attachment)}
-                className="gap-1.5"
+                className="gap-1.5 bg-primary hover:bg-primary/90"
               >
                 <Mail className="h-3.5 w-3.5" />
-                Send via Email
+                Send via Email Copilot
               </Button>
             </div>
           </div>
