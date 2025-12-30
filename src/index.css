@@ -514,4 +514,55 @@ html {
     ring-offset: 2px;
     ring-color: hsl(var(--ring));
   }
+
+  /* User-controlled reduced motion */
+  .reduce-motion,
+  .reduce-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* User-controlled high contrast */
+  .high-contrast {
+    --border: 30 10% 35%;
+    --muted-foreground: 30 10% 30%;
+  }
+  .dark.high-contrast {
+    --border: 40 6% 65%;
+    --muted-foreground: 40 6% 75%;
+  }
+
+  /* Chat bubble styling for better contrast */
+  .qa-chat-bubble-user {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  
+  .qa-chat-bubble-assistant {
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    border: 1px solid hsl(var(--border));
+  }
+
+  .dark .qa-chat-bubble-assistant {
+    background: hsl(0 0% 12%);
+    border-color: hsl(var(--border));
+  }
+
+  .high-contrast .qa-chat-bubble-user {
+    background: hsl(43 74% 40%);
+    color: hsl(0 0% 100%);
+  }
+
+  .high-contrast .qa-chat-bubble-assistant {
+    background: hsl(var(--card));
+    border-width: 2px;
+  }
+
+  /* Motion-reduced pulse alternative */
+  .motion-reduce\\:animate-none {
+    animation: none !important;
+  }
 }
