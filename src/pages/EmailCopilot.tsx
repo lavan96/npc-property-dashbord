@@ -286,6 +286,13 @@ export default function EmailCopilot() {
   const forwardFileInputRef = useRef<HTMLInputElement>(null);
   const [forwardDragActive, setForwardDragActive] = useState(false);
 
+  // QA PDF attachment state (when coming from Report QA)
+  const [qaPDFAttachment, setQaPDFAttachment] = useState<{
+    url: string;
+    fileName: string;
+    fileSize: number;
+  } | null>(null);
+
   // Mailbox selection state
   const [personalMailbox, setPersonalMailbox] = useState<string | null>(null);
   const [isUserProfileLoaded, setIsUserProfileLoaded] = useState(false);
@@ -295,6 +302,38 @@ export default function EmailCopilot() {
   });
   const [showMailboxSettings, setShowMailboxSettings] = useState(false);
   const hasAdminEmailAccess = hasModuleAccess('admin_email_access');
+
+  // Check for QA PDF attachment on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const attachmentParam = urlParams.get('attachment');
+    
+    if (attachmentParam === 'qa_pdf') {
+      const storedAttachment = localStorage.getItem('qa_pdf_attachment');
+      if (storedAttachment) {
+        try {
+          const attachment = JSON.parse(storedAttachment);
+          setQaPDFAttachment(attachment);
+          // Open compose modal with the attachment info
+          setShowComposeModal(true);
+          setComposeEmail(prev => ({
+            ...prev,
+            subject: `Q&A Conversation Export - ${attachment.fileName}`,
+            body: `Please find attached the Q&A conversation export.\n\nBest regards`
+          }));
+          // Clear from localStorage
+          localStorage.removeItem('qa_pdf_attachment');
+          // Clean URL
+          window.history.replaceState({}, '', '/email-copilot');
+          toast.success('PDF attached from Report Q&A', {
+            description: attachment.fileName
+          });
+        } catch (e) {
+          console.error('Failed to parse QA attachment:', e);
+        }
+      }
+    }
+  }, []);
 
   // Fetch user profile to get personal mailbox
   useEffect(() => {
@@ -2686,6 +2725,31 @@ export default function EmailCopilot() {
                     Max 10MB per file
                   </p>
                 </div>
+                {/* QA PDF Attachment (from Report Q&A) */}
+                {qaPDFAttachment && (
+                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileIcon className="h-8 w-8 text-primary" />
+                        <div>
+                          <p className="font-medium text-sm">{qaPDFAttachment.fileName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(qaPDFAttachment.fileSize / 1024).toFixed(1)} KB • From Report Q&A
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQaPDFAttachment(null)}
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {composeAttachments.length > 0 && (
                   <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
                     {composeAttachments.map((file, index) => (

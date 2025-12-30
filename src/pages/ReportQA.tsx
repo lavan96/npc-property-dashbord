@@ -64,6 +64,15 @@ import { PinConversation, usePinnedConversations } from '@/components/report-qa/
 import { KeyboardShortcutsHelp } from '@/components/report-qa/KeyboardShortcutsHelp';
 import { VoiceMessagePlayer } from '@/components/report-qa/VoiceMessagePlayer';
 import { RecordingIndicator } from '@/components/report-qa/RecordingIndicator';
+import { PDFAttachmentMessage } from '@/components/report-qa/PDFAttachmentMessage';
+
+interface PDFAttachment {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  createdAt: string;
+  conversationId?: string;
+}
 
 interface ChatMessage {
   id: string;
@@ -71,6 +80,7 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   audioUrl?: string; // For voice messages
+  attachments?: PDFAttachment[]; // For PDF attachments
 }
 
 interface UploadedReport {
@@ -116,6 +126,9 @@ export default function ReportQA() {
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showEmailCopilotModal, setShowEmailCopilotModal] = useState(false);
+  const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -710,6 +723,82 @@ export default function ReportQA() {
     }
   };
 
+  // Generate PDF and add to chat as attachment
+  const handleGeneratePDFAttachment = async () => {
+    if (!conversationId || messages.length === 0) {
+      toast({
+        title: 'Cannot generate PDF',
+        description: 'Start a conversation first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('report-qa', {
+        body: {
+          action: 'generate-qa-pdf',
+          conversationId,
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp.toISOString(),
+          })),
+          reportNames: uploadedReports.map(r => r.name.replace('.pdf', '')),
+          title: getCurrentTitle(),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.attachment) {
+        // Add the message with attachment to the chat
+        const attachmentMessage: ChatMessage = {
+          id: data.messageId || `attachment-${Date.now()}`,
+          role: 'assistant',
+          content: `📄 I've generated a PDF summary of our conversation. You can download it or send it via email using the options below.`,
+          timestamp: new Date(),
+          attachments: [data.attachment],
+        };
+        
+        setMessages(prev => [...prev, attachmentMessage]);
+        
+        toast({
+          title: 'PDF Generated',
+          description: 'Your conversation has been exported to PDF',
+        });
+      }
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: 'PDF Generation Failed',
+        description: error instanceof Error ? error.message : 'Could not generate PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Handle sending PDF via Email Copilot
+  const handleSendPDFViaEmail = (attachment: PDFAttachment) => {
+    setPendingPDFAttachment(attachment);
+    setShowEmailCopilotModal(true);
+  };
+
+  // Navigate to Email Copilot with the attachment pre-filled
+  const handleConfirmEmailCopilot = () => {
+    if (pendingPDFAttachment) {
+      // Store the attachment info in localStorage for Email Copilot to pick up
+      localStorage.setItem('qa_pdf_attachment', JSON.stringify(pendingPDFAttachment));
+      // Navigate to Email Copilot
+      window.location.href = '/email-copilot?attachment=qa_pdf';
+    }
+    setShowEmailCopilotModal(false);
+    setPendingPDFAttachment(null);
+  };
+
   // Filter conversations based on search query
   const filteredConversations = savedConversations.filter(conv => {
     if (!historySearchQuery.trim()) return true;
@@ -804,6 +893,21 @@ export default function ReportQA() {
               </Badge>
             )}
           </Button>
+          {messages.length > 0 && conversationId && (
+            <Button 
+              variant="outline" 
+              onClick={handleGeneratePDFAttachment} 
+              className="gap-2"
+              disabled={isGeneratingPDF}
+            >
+              {isGeneratingPDF ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              Export PDF
+            </Button>
+          )}
           {uploadedReports.length > 0 && (
             <Button variant="outline" onClick={clearAll} className="gap-2">
               <X className="h-4 w-4" />
@@ -1089,7 +1193,19 @@ export default function ReportQA() {
                             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                           </div>
                         )}
-                        {message.role === 'assistant' && (
+                        {/* PDF Attachments */}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {message.attachments.map((attachment, idx) => (
+                              <PDFAttachmentMessage
+                                key={idx}
+                                attachment={attachment}
+                                onSendViaEmail={handleSendPDFViaEmail}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {message.role === 'assistant' && !message.attachments?.length && (
                           <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
                             <div className="flex flex-wrap gap-2">
                               <Button
@@ -1512,6 +1628,49 @@ export default function ReportQA() {
                   Send Email
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Copilot Confirmation Modal */}
+      <Dialog open={showEmailCopilotModal} onOpenChange={setShowEmailCopilotModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Send PDF via Email Copilot
+            </DialogTitle>
+            <DialogDescription>
+              You'll be redirected to Email Copilot with this PDF attached as a file attachment.
+            </DialogDescription>
+          </DialogHeader>
+          {pendingPDFAttachment && (
+            <div className="p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <FileText className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="font-medium text-sm">{pendingPDFAttachment.fileName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(pendingPDFAttachment.fileSize / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowEmailCopilotModal(false);
+                setPendingPDFAttachment(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmEmailCopilot}>
+              <Mail className="h-4 w-4 mr-2" />
+              Open Email Copilot
             </Button>
           </DialogFooter>
         </DialogContent>
