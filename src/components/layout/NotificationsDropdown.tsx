@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -29,6 +29,8 @@ export function NotificationsDropdown() {
         return <FileText className="h-4 w-4 text-green-500" />;
       case 'report_failed':
         return <AlertCircle className="h-4 w-4 text-destructive" />;
+      case 'call_completed':
+        return <Phone className="h-4 w-4 text-primary" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }

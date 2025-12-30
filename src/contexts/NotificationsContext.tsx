@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface Notification {
   id: string;
-  type: 'report_generated' | 'report_failed' | 'info';
+  type: 'report_generated' | 'report_failed' | 'info' | 'call_completed';
   title: string;
   message: string;
   reportId?: string;
@@ -158,6 +158,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       navigate('/generated-reports');
     } else if (notification.type === 'report_generated') {
       navigate('/generated-reports');
+    } else if (notification.type === 'call_completed') {
+      navigate('/call-logs');
     }
   };
 

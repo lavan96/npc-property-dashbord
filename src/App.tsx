@@ -15,6 +15,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
 import { ReportGenerationProgress } from "./components/reports/ReportGenerationProgress";
+import { CallNotificationListener } from "./components/CallNotificationListener";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import Overview from "./pages/Overview";
@@ -75,6 +76,7 @@ const App = () => (
                 <NotificationsProvider>
                   <BackgroundJobTracker />
                   <ReportGenerationProgress />
+                  <CallNotificationListener />
                   <ComparisonProvider>
                     <SearchProvider>
                       <Toaster />
