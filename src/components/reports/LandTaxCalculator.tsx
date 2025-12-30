@@ -51,6 +51,11 @@ export function LandTaxCalculator({
   const [landValue, setLandValue] = useState<string>(externalLandValue || '');
   const [isWAMetro, setIsWAMetro] = useState<boolean>(true);
   
+  // Track if we restored from initialLandTax - skip auto-calculation until user changes something
+  const [isRestoredFromInitial, setIsRestoredFromInitial] = useState<boolean>(
+    () => initialLandTax !== undefined && initialLandTax > 0
+  );
+  
   // Calculation state
   const [isCalculating, setIsCalculating] = useState(false);
   const [result, setResult] = useState<LandTaxResult | null>(() => {
@@ -156,7 +161,13 @@ export function LandTaxCalculator({
   }, [selectedState, ownerType, landValue, isWAMetro, onLandTaxCalculated]);
 
   // Auto-calculate when inputs change (debounced)
+  // Skip auto-calculation if we restored from initialLandTax to prevent overwriting
   useEffect(() => {
+    // If restored from initial value, skip auto-calculation until user explicitly changes something
+    if (isRestoredFromInitial) {
+      return;
+    }
+    
     const numericValue = parseFloat(removeCommas(landValue)) || 0;
     if (selectedState && numericValue > 0) {
       const timer = setTimeout(() => {
@@ -164,16 +175,36 @@ export function LandTaxCalculator({
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [selectedState, ownerType, landValue, isWAMetro]);
+  }, [selectedState, ownerType, landValue, isWAMetro, isRestoredFromInitial]);
 
   const handleLandValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = removeCommas(e.target.value);
     if (rawValue === '' || /^\d*\.?\d*$/.test(rawValue)) {
       setLandValue(rawValue);
+      // Clear restored flag when user manually changes land value - allow auto-calculation
+      if (isRestoredFromInitial) {
+        setIsRestoredFromInitial(false);
+      }
     }
   };
 
   const states = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+
+  // Handlers that clear restored flag to allow auto-calculation
+  const handleStateChange = useCallback((value: string) => {
+    setSelectedState(value);
+    if (isRestoredFromInitial) setIsRestoredFromInitial(false);
+  }, [isRestoredFromInitial]);
+
+  const handleOwnerTypeChange = useCallback((value: LandTaxOwnerType) => {
+    setOwnerType(value);
+    if (isRestoredFromInitial) setIsRestoredFromInitial(false);
+  }, [isRestoredFromInitial]);
+
+  const handleWAMetroChange = useCallback((checked: boolean) => {
+    setIsWAMetro(checked);
+    if (isRestoredFromInitial) setIsRestoredFromInitial(false);
+  }, [isRestoredFromInitial]);
 
   if (compact) {
     return (
@@ -192,7 +223,7 @@ export function LandTaxCalculator({
         </div>
         
         <div className="grid grid-cols-2 gap-2">
-          <Select value={selectedState} onValueChange={setSelectedState} disabled={disabled}>
+          <Select value={selectedState} onValueChange={handleStateChange} disabled={disabled}>
             <SelectTrigger className="h-8 text-sm">
               <SelectValue placeholder="State" />
             </SelectTrigger>
@@ -203,7 +234,7 @@ export function LandTaxCalculator({
             </SelectContent>
           </Select>
           
-          <Select value={ownerType} onValueChange={(v) => setOwnerType(v as LandTaxOwnerType)} disabled={disabled}>
+          <Select value={ownerType} onValueChange={(v) => handleOwnerTypeChange(v as LandTaxOwnerType)} disabled={disabled}>
             <SelectTrigger className="h-8 text-sm">
               <SelectValue placeholder="Owner Type" />
             </SelectTrigger>
@@ -236,7 +267,7 @@ export function LandTaxCalculator({
           <div className="flex items-center gap-2">
             <Switch
               checked={isWAMetro}
-              onCheckedChange={setIsWAMetro}
+              onCheckedChange={handleWAMetroChange}
               disabled={disabled}
             />
             <Label className="text-xs text-muted-foreground">Perth Metro (MRIT applies)</Label>
@@ -283,7 +314,7 @@ export function LandTaxCalculator({
                   </TooltipProvider>
                 )}
               </Label>
-              <Select value={selectedState} onValueChange={setSelectedState} disabled={disabled}>
+              <Select value={selectedState} onValueChange={handleStateChange} disabled={disabled}>
                 <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select state" />
                 </SelectTrigger>
@@ -313,7 +344,7 @@ export function LandTaxCalculator({
               </Label>
               <Select 
                 value={ownerType} 
-                onValueChange={(v) => setOwnerType(v as LandTaxOwnerType)} 
+                onValueChange={(v) => handleOwnerTypeChange(v as LandTaxOwnerType)} 
                 disabled={disabled || !selectedState}
               >
                 <SelectTrigger className="h-9">
@@ -375,7 +406,7 @@ export function LandTaxCalculator({
               </div>
               <Switch
                 checked={isWAMetro}
-                onCheckedChange={setIsWAMetro}
+                onCheckedChange={handleWAMetroChange}
                 disabled={disabled}
               />
             </div>
