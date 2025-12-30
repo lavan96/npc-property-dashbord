@@ -787,11 +787,28 @@ export default function ReportQA() {
     setShowEmailCopilotModal(true);
   };
 
-  // Navigate to Email Copilot with the attachment pre-filled
+  // Navigate to Email Copilot with the attachment pre-filled and dynamic draft
   const handleConfirmEmailCopilot = () => {
     if (pendingPDFAttachment) {
-      // Store the attachment info in localStorage for Email Copilot to pick up
-      localStorage.setItem('qa_pdf_attachment', JSON.stringify(pendingPDFAttachment));
+      // Build conversation summary for email draft
+      const reportNames = uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ');
+      const messageCount = messages.length;
+      const userQuestions = messages.filter(m => m.role === 'user').slice(0, 3).map(m => m.content.substring(0, 100));
+      
+      // Create a dynamic email context object
+      const emailContext = {
+        attachment: pendingPDFAttachment,
+        conversationContext: {
+          title: getCurrentTitle(),
+          reportNames,
+          messageCount,
+          sampleQuestions: userQuestions,
+          generatedAt: new Date().toISOString(),
+        }
+      };
+      
+      // Store the enhanced context in localStorage for Email Copilot
+      localStorage.setItem('qa_pdf_attachment', JSON.stringify(emailContext));
       // Navigate to Email Copilot
       window.location.href = '/email-copilot?attachment=qa_pdf';
     }

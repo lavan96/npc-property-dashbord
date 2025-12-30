@@ -309,18 +309,58 @@ export default function EmailCopilot() {
     const attachmentParam = urlParams.get('attachment');
     
     if (attachmentParam === 'qa_pdf') {
-      const storedAttachment = localStorage.getItem('qa_pdf_attachment');
-      if (storedAttachment) {
+      const storedData = localStorage.getItem('qa_pdf_attachment');
+      if (storedData) {
         try {
-          const attachment = JSON.parse(storedAttachment);
+          const parsed = JSON.parse(storedData);
+          
+          // Check if it's the new enhanced format with conversationContext
+          const attachment = parsed.attachment || parsed;
+          const context = parsed.conversationContext;
+          
           setQaPDFAttachment(attachment);
+          
           // Open compose modal with the attachment info
           setShowComposeModal(true);
+          
+          // Compose dynamic email draft based on conversation context
+          let emailSubject = `Q&A Conversation Export - ${attachment.fileName}`;
+          let emailBody = `Please find attached the Q&A conversation export.\n\nBest regards`;
+          
+          if (context) {
+            // Enhanced subject with report names
+            emailSubject = context.reportNames 
+              ? `Property Analysis: ${context.reportNames}`
+              : `Q&A Conversation Export - ${context.title || attachment.fileName}`;
+            
+            // Build dynamic email body
+            const bodyParts: string[] = [];
+            bodyParts.push(`Hi,\n`);
+            bodyParts.push(`Please find attached the Q&A conversation summary regarding ${context.reportNames || 'the property analysis'}.`);
+            
+            if (context.messageCount) {
+              bodyParts.push(`\nThis document contains a comprehensive summary of our ${context.messageCount}-message discussion.`);
+            }
+            
+            if (context.sampleQuestions && context.sampleQuestions.length > 0) {
+              bodyParts.push(`\nKey topics covered include:`);
+              context.sampleQuestions.forEach((q: string) => {
+                bodyParts.push(`  • ${q}${q.length >= 100 ? '...' : ''}`);
+              });
+            }
+            
+            bodyParts.push(`\nPlease review at your earliest convenience and let me know if you have any questions.`);
+            bodyParts.push(`\nBest regards`);
+            
+            emailBody = bodyParts.join('\n');
+          }
+          
           setComposeEmail(prev => ({
             ...prev,
-            subject: `Q&A Conversation Export - ${attachment.fileName}`,
-            body: `Please find attached the Q&A conversation export.\n\nBest regards`
+            subject: emailSubject,
+            body: emailBody
           }));
+          
           // Clear from localStorage
           localStorage.removeItem('qa_pdf_attachment');
           // Clean URL
