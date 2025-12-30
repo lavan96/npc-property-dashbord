@@ -260,6 +260,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     const labels: Record<string, string> = {
       investment: 'Investment',
       comparison: 'Comparison',
+      cash_flow: 'Cash Flow',
       suburb_snapshot: 'Suburb',
     };
     return (
