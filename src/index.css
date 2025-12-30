@@ -469,4 +469,49 @@ html {
     background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 4px;
   }
+
+  /* Reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* High contrast mode adjustments */
+  @media (prefers-contrast: more) {
+    :root {
+      --border: 30 10% 40%;
+    }
+    .dark {
+      --border: 40 6% 60%;
+    }
+  }
+
+  /* Full screen mode for Report QA */
+  .report-qa-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 50 !important;
+    padding: 1rem !important;
+    background: hsl(var(--background)) !important;
+    overflow: auto;
+  }
+
+  .report-qa-fullscreen .lg\\:col-span-2,
+  .report-qa-fullscreen .lg\\:col-span-3 {
+    grid-column: span 1 / span 1 !important;
+  }
+
+  /* Focus visible styles for accessibility */
+  .focus-visible-ring:focus-visible {
+    outline: none;
+    ring: 2px;
+    ring-offset: 2px;
+    ring-color: hsl(var(--ring));
+  }
 }
