@@ -236,6 +236,7 @@ export default function ClientManagement() {
                   client={client}
                   onView={() => handleViewClient(client)}
                   onDelete={() => handleDeleteClient(client)}
+                  onSyncComplete={() => refetch()}
                 />
               ))}
             </div>

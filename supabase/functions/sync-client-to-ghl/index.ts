@@ -1,0 +1,266 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+
+interface ClientData {
+  id: string;
+  primary_first_name: string;
+  primary_surname: string;
+  primary_email: string | null;
+  primary_mobile: string | null;
+  secondary_first_name: string | null;
+  secondary_surname: string | null;
+  current_address: string | null;
+  total_portfolio_value: number;
+  total_debt: number;
+  net_monthly_cash_flow: number;
+  ghl_contact_id: string | null;
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
+    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!apiKey || !locationId) {
+      console.error('GHL credentials not configured');
+      return new Response(JSON.stringify({ 
+        error: 'GoHighLevel credentials not configured',
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase credentials not configured');
+      return new Response(JSON.stringify({ 
+        error: 'Supabase credentials not configured',
+        success: false 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const body = await req.json();
+    const { action, clientId, clientIds } = body;
+
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Version': '2021-04-15',
+      'Content-Type': 'application/json',
+    };
+
+    // Handle batch sync
+    if (action === 'batch' && clientIds && Array.isArray(clientIds)) {
+      console.log(`Batch syncing ${clientIds.length} clients to GHL`);
+      
+      const results = [];
+      for (const id of clientIds) {
+        const result = await syncSingleClient(supabase, id, headers, locationId);
+        results.push(result);
+      }
+
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Synced ${successful} clients, ${failed} failed`,
+        results
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle single client sync
+    if (!clientId) {
+      return new Response(JSON.stringify({
+        error: 'Missing required field: clientId',
+        success: false
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const result = await syncSingleClient(supabase, clientId, headers, locationId);
+
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error in sync-client-to-ghl:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      success: false 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function syncSingleClient(
+  supabase: any, 
+  clientId: string, 
+  headers: Record<string, string>,
+  locationId: string
+) {
+  console.log(`Syncing client ${clientId} to GHL`);
+
+  // Fetch client data from Supabase
+  const { data: client, error: fetchError } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .single();
+
+  if (fetchError || !client) {
+    console.error('Failed to fetch client:', fetchError);
+    return {
+      success: false,
+      clientId,
+      error: `Failed to fetch client: ${fetchError?.message || 'Not found'}`
+    };
+  }
+
+  // Format currency for GHL custom fields
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value || 0);
+  };
+
+  // Prepare contact payload for GHL
+  const contactPayload = {
+    firstName: client.primary_first_name,
+    lastName: client.primary_surname,
+    email: client.primary_email || undefined,
+    phone: client.primary_mobile || undefined,
+    address1: client.current_address || undefined,
+    country: client.country || 'Australia',
+    locationId,
+    customFields: [
+      { key: 'portfolio_value', field_value: formatCurrency(client.total_portfolio_value) },
+      { key: 'total_debt', field_value: formatCurrency(client.total_debt) },
+      { key: 'monthly_cash_flow', field_value: formatCurrency(client.net_monthly_cash_flow) },
+      { key: 'client_source', field_value: 'NPC Portal Import' },
+    ],
+    tags: ['NPC Client', 'Portal Import'],
+  };
+
+  let ghlContactId = client.ghl_contact_id;
+  let isNewContact = false;
+
+  try {
+    if (ghlContactId) {
+      // Update existing contact
+      console.log(`Updating existing GHL contact: ${ghlContactId}`);
+      
+      const updateResponse = await fetch(`${GHL_API_BASE}/contacts/${ghlContactId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(contactPayload),
+      });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error('GHL update error:', errorText);
+        
+        // If contact not found, create new one
+        if (updateResponse.status === 404) {
+          ghlContactId = null;
+        } else {
+          throw new Error(`GHL update failed: ${errorText}`);
+        }
+      }
+    }
+
+    if (!ghlContactId) {
+      // Create new contact
+      console.log('Creating new GHL contact');
+      isNewContact = true;
+      
+      const createResponse = await fetch(`${GHL_API_BASE}/contacts/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(contactPayload),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        console.error('GHL create error:', errorText);
+        throw new Error(`GHL create failed: ${errorText}`);
+      }
+
+      const createData = await createResponse.json();
+      ghlContactId = createData.contact?.id;
+      
+      if (!ghlContactId) {
+        throw new Error('GHL did not return a contact ID');
+      }
+    }
+
+    // Update client record with GHL contact ID and sync status
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update({
+        ghl_contact_id: ghlContactId,
+        ghl_sync_status: 'synced',
+        ghl_last_synced_at: new Date().toISOString()
+      })
+      .eq('id', clientId);
+
+    if (updateError) {
+      console.error('Failed to update client sync status:', updateError);
+    }
+
+    console.log(`Successfully synced client ${clientId} to GHL contact ${ghlContactId}`);
+
+    return {
+      success: true,
+      clientId,
+      ghlContactId,
+      isNewContact
+    };
+
+  } catch (error) {
+    console.error(`Failed to sync client ${clientId}:`, error);
+
+    // Update sync status to error
+    await supabase
+      .from('clients')
+      .update({
+        ghl_sync_status: 'error'
+      })
+      .eq('id', clientId);
+
+    return {
+      success: false,
+      clientId,
+      error: error.message
+    };
+  }
+}

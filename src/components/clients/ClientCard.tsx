@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { 
   Building2, 
@@ -16,8 +18,11 @@ import {
   Eye,
   Trash2,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ClientCardProps {
   client: {
@@ -38,9 +43,11 @@ interface ClientCardProps {
   };
   onView: () => void;
   onDelete: () => void;
+  onSyncComplete?: () => void;
 }
 
-export function ClientCard({ client, onView, onDelete }: ClientCardProps) {
+export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientCardProps) {
+  const [isSyncing, setIsSyncing] = useState(false);
   const propertyCount = client.client_properties?.length || 0;
   const isPositiveCashFlow = Number(client.net_monthly_cash_flow) >= 0;
   
@@ -53,7 +60,36 @@ export function ClientCard({ client, onView, onDelete }: ClientCardProps) {
     }).format(value);
   };
 
+  const handleSyncToGHL = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-client-to-ghl', {
+        body: { clientId: client.id }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(data.isNewContact 
+          ? 'Client created in GoHighLevel' 
+          : 'Client synced to GoHighLevel'
+        );
+        onSyncComplete?.();
+      } else {
+        throw new Error(data?.error || 'Sync failed');
+      }
+    } catch (error: any) {
+      console.error('GHL sync error:', error);
+      toast.error(`Sync failed: ${error.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const getGHLStatusBadge = () => {
+    if (isSyncing) {
+      return <Badge variant="secondary" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" />Syncing...</Badge>;
+    }
     switch (client.ghl_sync_status) {
       case 'synced':
         return <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">Synced</Badge>;
@@ -98,6 +134,11 @@ export function ClientCard({ client, onView, onDelete }: ClientCardProps) {
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSyncToGHL} disabled={isSyncing}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Syncing...' : 'Sync to GHL'}
+              </DropdownMenuItem>
               {client.ghl_contact_id && (
                 <DropdownMenuItem asChild>
                   <a 
@@ -110,6 +151,7 @@ export function ClientCard({ client, onView, onDelete }: ClientCardProps) {
                   </a>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={onDelete}
                 className="text-destructive focus:text-destructive"
