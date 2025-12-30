@@ -23,9 +23,11 @@ import {
   MapPin,
   Phone,
   Mail,
-  Calendar
+  Calendar,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ClientNotes } from './ClientNotes';
 
 interface ClientDetailsModalProps {
   client: {
@@ -158,6 +160,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
               <TabsTrigger value="properties">Properties ({properties.length})</TabsTrigger>
               <TabsTrigger value="employment">Employment</TabsTrigger>
               <TabsTrigger value="financials">Financials</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 mt-4">
@@ -450,6 +453,20 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="notes" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Activity Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ClientNotes clientId={client.id} />
                 </CardContent>
               </Card>
             </TabsContent>

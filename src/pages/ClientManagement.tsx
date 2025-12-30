@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Users, 
   Upload, 
@@ -14,21 +15,14 @@ import {
   DollarSign, 
   TrendingUp,
   RefreshCw,
-  ExternalLink,
-  MoreVertical,
-  Eye,
-  Trash2
+  Loader2
 } from 'lucide-react';
 import { ExcelDropzone } from '@/components/clients/ExcelDropzone';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientDetailsModal } from '@/components/clients/ClientDetailsModal';
+import { ClientFilters, ClientFiltersState, defaultFilters } from '@/components/clients/ClientFilters';
+import { ClientBulkActions } from '@/components/clients/ClientBulkActions';
 import { toast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +56,9 @@ export default function ClientManagement() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [filters, setFilters] = useState<ClientFiltersState>(defaultFilters);
+  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch clients with property count
@@ -100,12 +97,30 @@ export default function ClientManagement() {
     }
   });
 
-  // Filter clients based on search
+  // Apply filters
   const filteredClients = clients.filter(client => {
+    // Search filter
     const searchLower = searchQuery.toLowerCase();
     const fullName = `${client.primary_first_name} ${client.primary_surname}`.toLowerCase();
     const email = client.primary_email?.toLowerCase() || '';
-    return fullName.includes(searchLower) || email.includes(searchLower);
+    const matchesSearch = fullName.includes(searchLower) || email.includes(searchLower);
+    if (!matchesSearch) return false;
+
+    // Portfolio value filter
+    const portfolioValue = Number(client.total_portfolio_value) || 0;
+    if (filters.portfolioMin !== null && portfolioValue < filters.portfolioMin) return false;
+    if (filters.portfolioMax !== null && portfolioValue > filters.portfolioMax) return false;
+
+    // Cash flow status filter
+    const cashFlow = Number(client.net_monthly_cash_flow) || 0;
+    if (filters.cashFlowStatus === 'positive' && cashFlow < 0) return false;
+    if (filters.cashFlowStatus === 'negative' && cashFlow >= 0) return false;
+
+    // Sync status filter
+    const syncStatus = client.ghl_sync_status || 'not_synced';
+    if (filters.syncStatus !== 'all' && syncStatus !== filters.syncStatus) return false;
+
+    return true;
   });
 
   // Calculate summary stats
@@ -123,6 +138,53 @@ export default function ClientManagement() {
     setClientToDelete(client);
   };
 
+  const handleSelectClient = (clientId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedClients(prev => [...prev, clientId]);
+    } else {
+      setSelectedClients(prev => prev.filter(id => id !== clientId));
+    }
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedClients(filteredClients.map(c => c.id));
+    } else {
+      setSelectedClients([]);
+    }
+  };
+
+  const handleSyncAllPending = async () => {
+    const pendingClients = clients.filter(c => c.ghl_sync_status === 'pending' || !c.ghl_sync_status);
+    if (pendingClients.length === 0) {
+      toast.info('No clients to sync');
+      return;
+    }
+
+    setIsSyncingAll(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const client of pendingClients) {
+      try {
+        const { data, error } = await supabase.functions.invoke('sync-client-to-ghl', {
+          body: { clientId: client.id }
+        });
+        if (error || !data?.success) {
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      } catch {
+        errorCount++;
+      }
+    }
+
+    setIsSyncingAll(false);
+    toast.success(`Synced ${successCount} clients${errorCount > 0 ? `, ${errorCount} failed` : ''}`);
+    refetch();
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
@@ -131,6 +193,9 @@ export default function ClientManagement() {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const allSelected = filteredClients.length > 0 && selectedClients.length === filteredClients.length;
+  const someSelected = selectedClients.length > 0 && selectedClients.length < filteredClients.length;
 
   return (
     <div className="space-y-6">
@@ -142,10 +207,27 @@ export default function ClientManagement() {
             Manage clients, properties, and sync with GoHighLevel
           </p>
         </div>
-        <Button onClick={() => refetch()} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {pendingSyncCount > 0 && (
+            <Button 
+              onClick={handleSyncAllPending} 
+              variant="default" 
+              size="sm"
+              disabled={isSyncingAll}
+            >
+              {isSyncingAll ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Sync All ({pendingSyncCount})
+            </Button>
+          )}
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -196,9 +278,17 @@ export default function ClientManagement() {
         </TabsList>
 
         <TabsContent value="clients" className="space-y-4">
-          {/* Search */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
+          {/* Bulk Actions Bar */}
+          <ClientBulkActions
+            selectedClients={selectedClients}
+            clients={filteredClients}
+            onClearSelection={() => setSelectedClients([])}
+            onActionComplete={() => refetch()}
+          />
+
+          {/* Search & Filters */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search clients..."
@@ -207,6 +297,23 @@ export default function ClientManagement() {
                 className="pl-9"
               />
             </div>
+            <ClientFilters filters={filters} onFiltersChange={setFilters} />
+            {filteredClients.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(ref) => {
+                    if (ref) {
+                      (ref as any).indeterminate = someSelected;
+                    }
+                  }}
+                  onCheckedChange={handleSelectAll}
+                />
+                <span className="text-sm text-muted-foreground">
+                  Select all ({filteredClients.length})
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Client List */}
@@ -224,20 +331,27 @@ export default function ClientManagement() {
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold">No clients found</h3>
                 <p className="text-muted-foreground text-center mt-1">
-                  {searchQuery ? 'Try a different search term' : 'Import clients using the Import tab'}
+                  {searchQuery || filters !== defaultFilters ? 'Try adjusting your filters' : 'Import clients using the Import tab'}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredClients.map((client) => (
-                <ClientCard
-                  key={client.id}
-                  client={client}
-                  onView={() => handleViewClient(client)}
-                  onDelete={() => handleDeleteClient(client)}
-                  onSyncComplete={() => refetch()}
-                />
+                <div key={client.id} className="relative">
+                  <div className="absolute top-3 left-3 z-10">
+                    <Checkbox
+                      checked={selectedClients.includes(client.id)}
+                      onCheckedChange={(checked) => handleSelectClient(client.id, !!checked)}
+                    />
+                  </div>
+                  <ClientCard
+                    client={client}
+                    onView={() => handleViewClient(client)}
+                    onDelete={() => handleDeleteClient(client)}
+                    onSyncComplete={() => refetch()}
+                  />
+                </div>
               ))}
             </div>
           )}
