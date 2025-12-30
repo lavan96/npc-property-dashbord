@@ -75,6 +75,8 @@ import { TextToSpeech } from '@/components/report-qa/TextToSpeech';
 import { CopyWithFeedback } from '@/components/report-qa/CopyWithFeedback';
 import { FullScreenToggle, useFullScreen } from '@/components/report-qa/FullScreenToggle';
 import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report-qa/AccessibilityWrapper';
+import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySettings';
+import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 
 interface UploadProgress {
   fileName: string;
@@ -156,6 +158,10 @@ export default function ReportQA() {
   // Phase 2 UX improvements
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [activeReportIndex, setActiveReportIndex] = useState<number | null>(null);
+  
+  // Phase 5 UX improvements
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [showReportsPanel, setShowReportsPanel] = useState(true);
   
@@ -739,24 +745,56 @@ export default function ReportQA() {
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      setLiveTranscript('');
+      setRecordingDuration(0);
       
-      mediaRecorder.ondataavailable = (event) => {
+      // Start duration timer
+      const durationInterval = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+      
+      mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          
+          // Attempt live transcription preview (every 2 seconds of audio)
+          if (audioChunksRef.current.length % 4 === 0) {
+            try {
+              const partialBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+              const reader = new FileReader();
+              reader.onloadend = async () => {
+                const base64 = (reader.result as string).split(',')[1];
+                const { data } = await supabase.functions.invoke('report-qa', {
+                  body: { action: 'transcribe', audio: base64 },
+                });
+                if (data?.success && data?.text) {
+                  setLiveTranscript(data.text);
+                }
+              };
+              reader.readAsDataURL(partialBlob);
+            } catch {
+              // Silent fail for live preview
+            }
+          }
         }
       };
       
       mediaRecorder.onstop = async () => {
+        clearInterval(durationInterval);
         stream.getTracks().forEach(track => track.stop());
         
         if (audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           await transcribeAudio(audioBlob);
         }
+        setLiveTranscript('');
+        setRecordingDuration(0);
       };
       
-      mediaRecorder.start();
+      // Request data every 500ms for live preview
+      mediaRecorder.start(500);
       setIsRecording(true);
+      setLiveAnnouncement('Recording started');
     } catch (error) {
       console.error('Microphone error:', error);
       toast({
@@ -771,6 +809,7 @@ export default function ReportQA() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      setLiveAnnouncement('Recording stopped, transcribing...');
     }
   };
 
@@ -1368,6 +1407,7 @@ export default function ReportQA() {
                   disabled={messages.length < 2}
                 />
                 <KeyboardShortcutsHelp />
+                <AccessibilitySettings />
                 {conversationId && (
                   <Badge variant="outline" className="text-xs ml-2">Auto-saving</Badge>
                 )}
@@ -1425,7 +1465,15 @@ export default function ReportQA() {
                           <Bot className="h-4 w-4 text-primary" />
                         </div>
                       )}
-                      <div className={cn("max-w-[80%] rounded-lg p-3", getMessageBgClass(message.role))}>
+                      <div 
+                        className={cn(
+                          "max-w-[80%] rounded-lg p-3",
+                          message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
+                          getMessageBgClass(message.role)
+                        )}
+                        role="article"
+                        aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} said`}
+                      >
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs opacity-60">
                             {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1558,9 +1606,14 @@ export default function ReportQA() {
               )}
             </ScrollArea>
 
-            {/* Recording indicator */}
+            {/* Recording indicator with live transcription */}
             {isRecording && (
-              <RecordingIndicator isRecording={isRecording} className="mb-2" />
+              <RecordingIndicator 
+                isRecording={isRecording} 
+                liveTranscript={liveTranscript}
+                duration={recordingDuration}
+                className="mb-2" 
+              />
             )}
 
             {/* Pending audio preview */}
