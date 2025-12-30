@@ -49,6 +49,10 @@ export interface PreGenerationData {
   loanTermYears?: number;
   marketValueNow?: number;
   
+  // 10-Year Depreciation Schedule (from calculator)
+  depreciationSchedule?: Record<number, number>; // year (1-10) -> depreciation value
+  depreciationMethod?: 'dv' | 'pc'; // Diminishing Value or Prime Cost
+  
   // Additional Cash Flow Fields
   loanAmount?: number;
   interestOnlyPeriodYears?: number;
@@ -153,6 +157,10 @@ export function PreGenerationOverrides({
   const [loanType, setLoanType] = useState<'interest_only' | 'principal_interest'>('interest_only');
   const [loanTermYears, setLoanTermYears] = useState<string>('30');
   const [marketValueNow, setMarketValueNow] = useState<string>('');
+  
+  // 10-Year Depreciation Schedule (from calculator)
+  const [depreciationSchedule, setDepreciationSchedule] = useState<Record<number, number> | undefined>(undefined);
+  const [depreciationMethod, setDepreciationMethod] = useState<'dv' | 'pc' | undefined>(undefined);
   
   // Additional Cash Flow Fields
   const [loanAmount, setLoanAmount] = useState<string>('');
@@ -394,6 +402,8 @@ export function PreGenerationOverrides({
       loanType: loanType || undefined,
       loanTermYears: loanTermYears ? parseFloat(loanTermYears) : undefined,
       marketValueNow: marketValueNow ? parseFloat(marketValueNow) : undefined,
+      depreciationSchedule: depreciationSchedule || undefined,
+      depreciationMethod: depreciationMethod || undefined,
       loanAmount: loanAmount ? parseFloat(loanAmount) : undefined,
       interestOnlyPeriodYears: interestOnlyPeriodYears ? parseFloat(interestOnlyPeriodYears) : undefined,
       repaymentFrequency: repaymentFrequency || undefined,
@@ -422,6 +432,7 @@ export function PreGenerationOverrides({
     landTax, councilRates, waterRates, solicitorFees, buildingLandlordInsurance, 
     propertyManagementFees, repairsMaintenance, lettingFees, agentFee, propertyType,
     cpiGrowthRate, depreciation, taxRate, occupancyRate, loanType, loanTermYears, marketValueNow,
+    depreciationSchedule, depreciationMethod,
     loanAmount, interestOnlyPeriodYears, repaymentFrequency, extraRepaymentPerMonth, offsetBalance,
     constructionDurationMonths, constructionYear, landSizeSqm, buildSizeSqm,
     isFirstHomeBuyer, stageDepositPercent, stageSlabPercent, stageFramePercent, 
@@ -620,6 +631,15 @@ export function PreGenerationOverrides({
                 customStageMonths={customStageMonths}
                 setCustomStageMonths={setCustomStageMonths}
                 disabled={disabled}
+                onApplyDepreciationSchedule={(schedule, method) => {
+                  setDepreciationSchedule(schedule);
+                  setDepreciationMethod(method);
+                  // Also set Year 1 as the primary depreciation value
+                  if (schedule[1]) {
+                    setDepreciation(schedule[1].toString());
+                  }
+                }}
+                purchasePrice={purchasePrice}
               />
             </TabsContent>
           </ScrollArea>
