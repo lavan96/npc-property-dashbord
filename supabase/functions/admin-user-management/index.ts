@@ -14,7 +14,7 @@ interface RequestBody {
           'assign_role' | 'remove_role' | 'update_permissions' | 'send_invite' |
           'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 'demote_from_superadmin' |
           'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile' |
-          'update_own_mailbox' | 'create_subadmin' | 'update_own_credentials';
+          'update_own_mailbox' | 'update_own_signature' | 'create_subadmin' | 'update_own_credentials';
   new_username?: string;
   current_password?: string;
   new_password?: string;
@@ -38,6 +38,7 @@ interface RequestBody {
   token?: string;
   password?: string;
   personal_mailbox?: string;
+  email_signature?: string;
 }
 
 // Helper to verify session and check if user is superadmin
@@ -281,9 +282,43 @@ serve(async (req: Request) => {
             username: currentUser.username,
             email: currentUser.email,
             personal_mailbox: currentUser.personal_mailbox,
+            email_signature: currentUser.email_signature || '',
             role: currentUser.role,
           }
         }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'update_own_signature') {
+      const { error: sessionError, user: currentUser } = await verifySession(session_token);
+      if (sessionError || !currentUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: sessionError || 'Not authenticated' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { email_signature } = body;
+
+      const { error } = await supabase
+        .from('custom_users')
+        .update({ 
+          email_signature: email_signature || null,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', currentUser.id);
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`User ${currentUser.username} updated their email signature`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Email signature updated' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
