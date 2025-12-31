@@ -101,6 +101,10 @@ serve(async (req) => {
     // Get Outlook signature from secret
     const signature = getOutlookSignature();
     
+    // Detect if the email body is already HTML
+    const isHtmlBody = body.includes('<html') || body.includes('<p>') || body.includes('<div') || 
+                       body.includes('<br') || body.includes('<table') || body.includes('<span');
+    
     // Combine body with signature
     // If signature is HTML, we need to use HTML content type
     const hasSignature = signature && signature.trim().length > 0;
@@ -109,11 +113,30 @@ serve(async (req) => {
     let finalBody: string;
     let contentType: 'Text' | 'HTML';
     
-    if (hasSignature) {
+    // Smart formatting based on content type
+    if (isHtmlBody) {
+      // Body is already HTML, preserve it
+      if (hasSignature) {
+        if (isHtmlSignature) {
+          finalBody = `${body}<br><br>${signature}`;
+        } else {
+          // Convert plain text signature to HTML
+          finalBody = `${body}<br><br>${signature.replace(/\n/g, '<br>')}`;
+        }
+      } else {
+        finalBody = body;
+      }
+      contentType = 'HTML';
+      console.log('[Send Email] Body detected as HTML, preserving formatting');
+    } else if (hasSignature) {
       if (isHtmlSignature) {
         // Convert plain text body to HTML and append HTML signature
-        const htmlBody = body.replace(/\n/g, '<br>');
-        finalBody = `${htmlBody}<br><br>${signature}`;
+        // Preserve paragraphs by converting double newlines to paragraph breaks
+        const htmlBody = body
+          .split(/\n\n+/)
+          .map(para => `<p style="margin: 0 0 1em 0;">${para.replace(/\n/g, '<br>')}</p>`)
+          .join('');
+        finalBody = `${htmlBody}<br>${signature}`;
         contentType = 'HTML';
       } else {
         // Both are plain text

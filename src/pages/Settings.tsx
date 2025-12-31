@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock, Eye, EyeOff, Mail } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { CheckCircle, XCircle, RefreshCw, Database, Shield, Palette, Clock, Eye, EyeOff, Mail, FileSignature } from 'lucide-react';
 import { airtableService } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +39,11 @@ export default function Settings() {
   const [personalMailbox, setPersonalMailbox] = useState('');
   const [loadingMailbox, setLoadingMailbox] = useState(true);
   const [savingMailbox, setSavingMailbox] = useState(false);
+  
+  // Email signature settings
+  const [emailSignature, setEmailSignature] = useState('');
+  const [loadingSignature, setLoadingSignature] = useState(true);
+  const [savingSignature, setSavingSignature] = useState(false);
 
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -62,6 +68,7 @@ export default function Settings() {
   const fetchOwnProfile = async () => {
     if (!sessionToken) {
       setLoadingMailbox(false);
+      setLoadingSignature(false);
       return;
     }
     
@@ -72,11 +79,13 @@ export default function Settings() {
 
       if (data?.success && data.user) {
         setPersonalMailbox(data.user.personal_mailbox || '');
+        setEmailSignature(data.user.email_signature || '');
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err);
     } finally {
       setLoadingMailbox(false);
+      setLoadingSignature(false);
     }
   };
 
@@ -119,6 +128,48 @@ export default function Settings() {
       });
     } finally {
       setSavingMailbox(false);
+    }
+  };
+
+  const handleSaveSignature = async () => {
+    if (!sessionToken) return;
+    
+    setSavingSignature(true);
+    try {
+      const { data } = await supabase.functions.invoke('admin-user-management', {
+        body: { 
+          action: 'update_own_signature', 
+          session_token: sessionToken,
+          email_signature: emailSignature || null
+        }
+      });
+
+      if (data?.success) {
+        toast({
+          title: "Signature Updated",
+          description: "Your email signature has been saved successfully.",
+        });
+        logActivityDirect({
+          actionType: 'settings_updated',
+          entityType: 'user',
+          entityName: 'Email Signature',
+          metadata: { setting: 'email_signature' }
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data?.error || "Failed to update signature.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update signature. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingSignature(false);
     }
   };
 
@@ -383,6 +434,47 @@ export default function Settings() {
           >
             {savingMailbox && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
             Save Mailbox
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Email Signature Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSignature className="h-5 w-5" />
+            Email Signature
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email-signature">Your Email Signature</Label>
+            {loadingSignature ? (
+              <div className="text-sm text-muted-foreground">Loading...</div>
+            ) : (
+              <>
+                <Textarea
+                  id="email-signature"
+                  placeholder="Best regards,&#10;Your Name&#10;Company Name&#10;Phone: +1 234 567 890"
+                  value={emailSignature}
+                  onChange={(e) => setEmailSignature(e.target.value)}
+                  className="min-h-[120px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This signature will be automatically appended to all emails sent from the Email Copilot.
+                  You can use plain text or HTML formatting.
+                </p>
+              </>
+            )}
+          </div>
+          
+          <Button 
+            onClick={handleSaveSignature}
+            disabled={savingSignature || loadingSignature}
+            className="w-full"
+          >
+            {savingSignature && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            Save Signature
           </Button>
         </CardContent>
       </Card>
