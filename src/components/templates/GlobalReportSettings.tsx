@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Building2, Phone, Mail, Globe, MapPin, FileText, Save, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2, Phone, Mail, Globe, MapPin, FileText, Save, Loader2, Type } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,6 +23,7 @@ interface ContactDetails {
 interface ProfessionalDisclaimer {
   text: string;
   is_enabled: boolean;
+  font_size?: 'small' | 'medium' | 'large';
 }
 
 export function GlobalReportSettings() {
@@ -36,7 +38,8 @@ export function GlobalReportSettings() {
   
   const [disclaimer, setDisclaimer] = useState<ProfessionalDisclaimer>({
     text: '',
-    is_enabled: true
+    is_enabled: true,
+    font_size: 'small'
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -237,21 +240,65 @@ export function GlobalReportSettings() {
           </div>
           
           <Separator />
+
+          {/* Font Size Selection */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Type className="h-4 w-4" />
+              Font Size
+            </Label>
+            <Select
+              value={disclaimer.font_size || 'small'}
+              onValueChange={(value: 'small' | 'medium' | 'large') => 
+                setDisclaimer(prev => ({ ...prev, font_size: value }))
+              }
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select font size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="small">Small (8pt)</SelectItem>
+                <SelectItem value="medium">Medium (10pt)</SelectItem>
+                <SelectItem value="large">Large (12pt)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Choose the font size for the disclaimer text in reports
+            </p>
+          </div>
+          
+          <Separator />
           
           <div className="space-y-2">
             <Label htmlFor="disclaimer-text">Disclaimer Text</Label>
             <Textarea
               id="disclaimer-text"
-              placeholder="Enter your professional disclaimer..."
-              className="min-h-[150px] resize-y"
+              placeholder="Enter your professional disclaimer...&#10;&#10;Use blank lines to create paragraph breaks.&#10;&#10;Each paragraph will be properly formatted in the report."
+              className="min-h-[180px] resize-y font-mono text-sm"
               value={disclaimer.text}
               onChange={(e) => setDisclaimer(prev => ({ ...prev, text: e.target.value }))}
             />
             <p className="text-xs text-muted-foreground">
-              This text will appear in the disclaimer section of all reports. You can use this to outline limitations of the analysis, 
-              recommend seeking professional advice, and protect against liability.
+              Use blank lines (press Enter twice) to create paragraph breaks. This text will appear in the disclaimer section of all reports.
             </p>
           </div>
+
+          {/* Live Preview */}
+          {disclaimer.text && (
+            <div className="space-y-2 pt-2">
+              <Label className="text-sm font-medium">Preview</Label>
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <div 
+                  className={`whitespace-pre-wrap ${
+                    disclaimer.font_size === 'large' ? 'text-sm' : 
+                    disclaimer.font_size === 'medium' ? 'text-xs' : 'text-[10px]'
+                  } text-muted-foreground leading-relaxed`}
+                >
+                  {disclaimer.text}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
