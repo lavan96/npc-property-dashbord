@@ -6,9 +6,10 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X, CalendarClock, RefreshCw } from 'lucide-react';
+import { format, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -30,6 +31,7 @@ interface EventDetailsModalProps {
   fetchContact?: (contactId: string) => Promise<ContactDetails | null>;
   onUpdateEvent?: (eventId: string, updates: { title?: string; notes?: string; appointmentStatus?: string }) => Promise<{ success: boolean }>;
   onDeleteEvent?: (eventId: string) => Promise<{ success: boolean }>;
+  onRescheduleEvent?: (eventId: string, newStartTime: string, newEndTime: string, originalStartTime?: string, originalEndTime?: string) => Promise<{ success: boolean; undo?: () => Promise<boolean> }>;
 }
 
 const APPOINTMENT_STATUSES = [
@@ -40,6 +42,15 @@ const APPOINTMENT_STATUSES = [
   { value: 'pending', label: 'Pending' },
 ];
 
+const DURATION_OPTIONS = [
+  { value: 15, label: '15 min' },
+  { value: 30, label: '30 min' },
+  { value: 45, label: '45 min' },
+  { value: 60, label: '1 hour' },
+  { value: 90, label: '1.5 hours' },
+  { value: 120, label: '2 hours' },
+];
+
 export function EventDetailsModal({ 
   event, 
   open, 
@@ -48,14 +59,21 @@ export function EventDetailsModal({
   fetchContact,
   onUpdateEvent,
   onDeleteEvent,
+  onRescheduleEvent,
 }: EventDetailsModalProps) {
   const [contact, setContact] = useState<ContactDetails | null>(null);
   const [loadingContact, setLoadingContact] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editStatus, setEditStatus] = useState('');
+  
+  // Reschedule form state
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleDuration, setRescheduleDuration] = useState(30);
 
   useEffect(() => {
     if (open && event?.contactId && fetchContact) {
@@ -67,6 +85,7 @@ export function EventDetailsModal({
     } else if (!open) {
       setContact(null);
       setIsEditing(false);
+      setIsRescheduling(false);
     }
   }, [open, event?.contactId, fetchContact]);
 
@@ -75,6 +94,13 @@ export function EventDetailsModal({
       setEditTitle(event.title || '');
       setEditNotes(event.notes || '');
       setEditStatus(event.appointmentStatus || event.status || '');
+      
+      // Initialize reschedule form with current event times
+      const startDate = parseISO(event.startTime);
+      const endDate = parseISO(event.endTime);
+      setRescheduleDate(format(startDate, 'yyyy-MM-dd'));
+      setRescheduleTime(format(startDate, 'HH:mm'));
+      setRescheduleDuration(differenceInMinutes(endDate, startDate));
     }
   }, [event]);
 
@@ -104,6 +130,33 @@ export function EventDetailsModal({
     }
   };
 
+  const handleReschedule = async () => {
+    if (!onRescheduleEvent || !rescheduleDate || !rescheduleTime) return;
+    
+    setIsSaving(true);
+    
+    // Build new start time from date and time inputs
+    const [hours, minutes] = rescheduleTime.split(':').map(Number);
+    const newStart = new Date(rescheduleDate);
+    newStart.setHours(hours, minutes, 0, 0);
+    
+    // Calculate new end time based on duration
+    const newEnd = addMinutes(newStart, rescheduleDuration);
+    
+    const result = await onRescheduleEvent(
+      event.id,
+      newStart.toISOString(),
+      newEnd.toISOString(),
+      event.startTime,
+      event.endTime
+    );
+    
+    setIsSaving(false);
+    if (result.success) {
+      setIsRescheduling(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!onDeleteEvent) return;
     const result = await onDeleteEvent(event.id);
@@ -117,6 +170,15 @@ export function EventDetailsModal({
     setEditNotes(event.notes || '');
     setEditStatus(event.appointmentStatus || event.status || '');
     setIsEditing(false);
+  };
+
+  const handleCancelReschedule = () => {
+    const startDate = parseISO(event.startTime);
+    const endDate = parseISO(event.endTime);
+    setRescheduleDate(format(startDate, 'yyyy-MM-dd'));
+    setRescheduleTime(format(startDate, 'HH:mm'));
+    setRescheduleDuration(differenceInMinutes(endDate, startDate));
+    setIsRescheduling(false);
   };
 
   return (
@@ -158,16 +220,100 @@ export function EventDetailsModal({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Date & Time */}
-          <div className="flex items-start gap-3">
-            <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium">{format(startDate, 'EEEE, MMMM d, yyyy')}</p>
-              <p className="text-sm text-muted-foreground">
-                {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')} ({durationMinutes} min)
-              </p>
+          {/* Date & Time - with reschedule form */}
+          {isRescheduling ? (
+            <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <CalendarClock className="h-4 w-4" />
+                Reschedule Appointment
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="reschedule-date" className="text-xs">Date</Label>
+                  <Input
+                    id="reschedule-date"
+                    type="date"
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reschedule-time" className="text-xs">Time</Label>
+                  <Input
+                    id="reschedule-time"
+                    type="time"
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-xs">Duration</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DURATION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setRescheduleDuration(opt.value)}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                        rescheduleDuration === opt.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background border hover:bg-accent'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancelReschedule}
+                  disabled={isSaving}
+                  className="flex-1"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleReschedule}
+                  disabled={isSaving || !rescheduleDate || !rescheduleTime}
+                  className="flex-1"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                  {isSaving ? 'Saving...' : 'Confirm'}
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-start gap-3">
+              <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium">{format(startDate, 'EEEE, MMMM d, yyyy')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')} ({durationMinutes} min)
+                </p>
+              </div>
+              {onRescheduleEvent && !isEditing && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsRescheduling(true)}
+                  className="h-8 px-2"
+                >
+                  <CalendarClock className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Calendar */}
           {event.calendarName && (
@@ -275,7 +421,7 @@ export function EventDetailsModal({
         </div>
 
         {/* Footer with actions */}
-        {(onUpdateEvent || onDeleteEvent) && (
+        {(onUpdateEvent || onDeleteEvent) && !isRescheduling && (
           <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4">
             {onDeleteEvent && (
               <AlertDialog>

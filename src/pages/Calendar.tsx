@@ -544,6 +544,7 @@ export default function Calendar() {
         fetchContact={fetchContact}
         onUpdateEvent={updateEvent}
         onDeleteEvent={deleteEvent}
+        onRescheduleEvent={rescheduleEvent}
       />
 
       {/* Batch Actions Bar */}
@@ -1312,6 +1313,12 @@ function EventCard({
           <Clock className="h-3 w-3" />
           {safeFormatISO(event.startTime, 'MMM d, HH:mm')} - {safeFormatISO(event.endTime, 'HH:mm')}
         </div>
+        {event.contactId && (
+          <div className="flex items-center gap-1 text-primary">
+            <Users className="h-3 w-3" />
+            <span>Contact linked</span>
+          </div>
+        )}
       </div>
       {event.notes && (
         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.notes}</p>
