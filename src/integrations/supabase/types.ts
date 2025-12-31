@@ -1653,6 +1653,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          email_signature: string | null
           id: string
           is_active: boolean
           password_hash: string
@@ -1664,6 +1665,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          email_signature?: string | null
           id?: string
           is_active?: boolean
           password_hash: string
@@ -1675,6 +1677,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          email_signature?: string | null
           id?: string
           is_active?: boolean
           password_hash?: string

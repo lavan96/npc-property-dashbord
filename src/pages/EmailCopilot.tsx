@@ -1307,6 +1307,8 @@ export default function EmailCopilot() {
   const handleOpenEditDraft = () => {
     if (!selectedEmail?.draft_reply) return;
     setEditableDraft(selectedEmail.draft_reply);
+    // Initialize reply fields for sending from edit modal
+    initializeReplyFields();
     setShowEditDraftModal(true);
   };
 
@@ -2477,23 +2479,38 @@ export default function EmailCopilot() {
                     Recording... Click mic to stop
                   </p>
                 )}
-                <Button
-                  onClick={() => handleDraftReply(replyContext)}
-                  disabled={isDrafting}
-                  className="w-full"
-                >
-                  {isDrafting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating Draft...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      {currentDraft ? 'Regenerate Draft' : 'Generate Draft'}
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleDraftReply(replyContext)}
+                    disabled={isDrafting}
+                    className="flex-1"
+                  >
+                    {isDrafting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        {currentDraft ? 'Regenerate' : 'AI Draft'}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Open edit modal with empty draft for manual composition
+                      initializeReplyFields();
+                      setEditableDraft('');
+                      setShowEditDraftModal(true);
+                    }}
+                    className="flex-1"
+                  >
+                    <Reply className="h-4 w-4 mr-2" />
+                    Manual Reply
+                  </Button>
+                </div>
               </div>
               
               <Separator />
@@ -2953,37 +2970,85 @@ export default function EmailCopilot() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Draft Modal */}
+      {/* Edit Draft Modal - Enhanced with Send capability and recipient fields */}
       <Dialog open={showEditDraftModal} onOpenChange={setShowEditDraftModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-purple-600" />
               Edit Draft Reply
             </DialogTitle>
             <DialogDescription>
-              Make changes to your draft reply below
+              Edit your draft and send directly, or save for later
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 min-h-0">
-            <Textarea
-              value={editableDraft}
-              onChange={(e) => setEditableDraft(e.target.value)}
-              className="h-[400px] resize-none font-sans text-sm"
-              placeholder="Edit your draft reply..."
-            />
-          </div>
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
+              {/* Recipient Fields */}
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">To:</Label>
+                  <Input
+                    value={replyTo}
+                    onChange={(e) => setReplyTo(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">Subject:</Label>
+                  <Input
+                    value={replySubject}
+                    onChange={(e) => setReplySubject(e.target.value)}
+                    placeholder="Email subject"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                  <Input
+                    value={replyCc}
+                    onChange={(e) => setReplyCc(e.target.value)}
+                    placeholder="cc@example.com"
+                    className="h-8"
+                  />
+                </div>
+                <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
+                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                  <Input
+                    value={replyBcc}
+                    onChange={(e) => setReplyBcc(e.target.value)}
+                    placeholder="bcc@example.com"
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              
+              {/* Draft Body */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Message Body</Label>
+                <Textarea
+                  value={editableDraft}
+                  onChange={(e) => setEditableDraft(e.target.value)}
+                  className="h-[300px] resize-none font-sans text-sm"
+                  placeholder="Edit your draft reply or compose a new message..."
+                />
+              </div>
+            </div>
+          </ScrollArea>
           
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
-            <p className="text-xs text-muted-foreground">
-              {editableDraft.length} characters
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <span>{editableDraft.length} characters</span>
+              {replyTo && <span className="text-green-600">• Ready to send</span>}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowEditDraftModal(false)}>
                 Cancel
               </Button>
               <Button 
+                variant="secondary"
                 onClick={handleSaveEditedDraft} 
                 disabled={isSavingDraft || !editableDraft.trim()}
               >
@@ -2998,6 +3063,23 @@ export default function EmailCopilot() {
                     Save Draft
                   </>
                 )}
+              </Button>
+              <Button 
+                onClick={async () => {
+                  if (!editableDraft.trim() || !replyTo) {
+                    toast.error('Please fill in recipient and message body');
+                    return;
+                  }
+                  // Save the draft first, then use it to send
+                  setCurrentDraft(editableDraft);
+                  setShowEditDraftModal(false);
+                  setShowSendConfirmModal(true);
+                }}
+                disabled={!editableDraft.trim() || !replyTo || !replyTo.includes('@')}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Send Now
               </Button>
             </div>
           </DialogFooter>
