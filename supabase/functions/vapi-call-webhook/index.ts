@@ -108,12 +108,63 @@ interface AIAnalysis {
   callIntent: string | null;
 }
 
+// Fetch customer name from GoHighLevel using contact ID (primary fallback)
+async function fetchCustomerFromGoHighLevelById(contactId: string): Promise<{ name: string | null; firstName: string | null }> {
+  const ghlApiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
+  if (!ghlApiKey || !contactId) {
+    console.log('[Vapi Webhook] GoHighLevel: Missing API key or contact ID');
+    return { name: null, firstName: null };
+  }
+
+  try {
+    console.log('[Vapi Webhook] GoHighLevel: Fetching contact by ID:', contactId);
+    
+    // GoHighLevel API v2 - Get contact by ID
+    const response = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${ghlApiKey}`,
+        'Content-Type': 'application/json',
+        'Version': '2021-07-28',
+      },
+    });
+
+    if (!response.ok) {
+      console.log('[Vapi Webhook] GoHighLevel: API error fetching by ID:', response.status, await response.text());
+      return { name: null, firstName: null };
+    }
+
+    const data = await response.json();
+    const contact = data.contact || data;
+    
+    if (contact) {
+      const firstName = contact.firstName || null;
+      const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
+      console.log('[Vapi Webhook] GoHighLevel: Found contact by ID:', { 
+        id: contactId, 
+        firstName,
+        fullName,
+      });
+      return { 
+        name: fullName || contact.name || null,
+        firstName,
+      };
+    }
+
+    console.log('[Vapi Webhook] GoHighLevel: No contact data returned for ID:', contactId);
+  } catch (error) {
+    console.error('[Vapi Webhook] GoHighLevel: Error fetching contact by ID:', error);
+  }
+
+  return { name: null, firstName: null };
+}
+
 // Fetch customer name from GoHighLevel using phone number
-async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name: string | null; contactId: string | null }> {
+async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name: string | null; contactId: string | null; firstName: string | null }> {
   const ghlApiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
   if (!ghlApiKey || !phoneNumber) {
     console.log('[Vapi Webhook] GoHighLevel: Missing API key or phone number');
-    return { name: null, contactId: null };
+    return { name: null, contactId: null, firstName: null };
   }
 
   try {
@@ -140,7 +191,7 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
 
     if (!response.ok) {
       console.log('[Vapi Webhook] GoHighLevel: API error:', response.status, await response.text());
-      return { name: null, contactId: null };
+      return { name: null, contactId: null, firstName: null };
     }
 
     const data = await response.json();
@@ -148,6 +199,7 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
 
     if (data.contacts && data.contacts.length > 0) {
       const contact = data.contacts[0];
+      const firstName = contact.firstName || null;
       const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
       console.log('[Vapi Webhook] GoHighLevel: Found contact:', { 
         id: contact.id, 
@@ -157,7 +209,8 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
       });
       return { 
         name: fullName || contact.name || null, 
-        contactId: contact.id || null 
+        contactId: contact.id || null,
+        firstName,
       };
     }
 
@@ -166,7 +219,7 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
     console.error('[Vapi Webhook] GoHighLevel: Error fetching contact:', error);
   }
 
-  return { name: null, contactId: null };
+  return { name: null, contactId: null, firstName: null };
 }
 
 // Fetch agent name from Vapi API
@@ -711,6 +764,7 @@ serve(async (req) => {
     const phoneNumber = call.customer?.number || call.phoneNumber?.number || null;
     let customerName = call.customer?.name || null;
     let ghlContactId: string | null = null;
+    let ghlFirstName: string | null = null;
 
     // Get agent info - for inbound squad calls, always use NPC inbound agent as primary
     const agentId = call.assistant?.id || call.assistantId || (assistantsInvolved[0]?.id) || null;
@@ -718,13 +772,49 @@ serve(async (req) => {
       ? PRIMARY_INBOUND_AGENT 
       : (call.assistant?.name || (assistantsInvolved[0]?.name) || null);
     
-    // Try to fetch customer name from GoHighLevel first (more reliable than AI extraction)
+    // Priority 1: Check if we have an existing GHL contact ID in the database for this phone number
+    // and fetch the contact's first name directly from GHL (most reliable)
     if (phoneNumber) {
+      // First, check if there's an existing call log with a GHL contact ID for this phone number
+      const { data: existingCall } = await supabase
+        .from('vapi_call_logs')
+        .select('ghl_contact_id')
+        .eq('phone_number', phoneNumber)
+        .not('ghl_contact_id', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      
+      if (existingCall?.ghl_contact_id) {
+        console.log('[Vapi Webhook] Found existing GHL contact ID for phone:', existingCall.ghl_contact_id);
+        ghlContactId = existingCall.ghl_contact_id;
+        
+        // Fetch the contact's name directly from GHL using the contact ID
+        const ghlByIdResult = await fetchCustomerFromGoHighLevelById(ghlContactId);
+        if (ghlByIdResult.firstName) {
+          // Use first name as the customer name (per user request)
+          customerName = ghlByIdResult.firstName;
+          ghlFirstName = ghlByIdResult.firstName;
+          console.log('[Vapi Webhook] Using GHL first name from contact ID lookup:', customerName);
+        } else if (ghlByIdResult.name) {
+          customerName = ghlByIdResult.name;
+          console.log('[Vapi Webhook] Using GHL full name from contact ID lookup:', customerName);
+        }
+      }
+    }
+    
+    // Priority 2: If no contact ID was found, search by phone number
+    if (!customerName && phoneNumber) {
       const ghlResult = await fetchCustomerFromGoHighLevel(phoneNumber);
-      if (ghlResult.name) {
+      if (ghlResult.firstName) {
+        // Use first name as the customer name (per user request)
+        customerName = ghlResult.firstName;
+        ghlFirstName = ghlResult.firstName;
+        ghlContactId = ghlResult.contactId;
+        console.log('[Vapi Webhook] Using GHL first name from phone search:', customerName);
+      } else if (ghlResult.name) {
         customerName = ghlResult.name;
         ghlContactId = ghlResult.contactId;
-        console.log('[Vapi Webhook] Using customer name from GoHighLevel:', customerName);
+        console.log('[Vapi Webhook] Using GHL full name from phone search:', customerName);
       }
     }
 
@@ -777,10 +867,10 @@ serve(async (req) => {
       if (transcript) {
         const aiAnalysis = await analyzeTranscriptWithAI(transcript, summary, isSquadCall);
         
-        // Only use AI customer name if not already set from GoHighLevel
+        // Priority 3: Only use AI customer name if not already set from GoHighLevel
         if (!customerName && aiAnalysis.customerName) {
           customerName = aiAnalysis.customerName;
-          console.log('[Vapi Webhook] Using customer name from AI analysis (GHL not available):', customerName);
+          console.log('[Vapi Webhook] Using customer name from AI analysis (GHL fallback not available):', customerName);
         }
         
         sentiment = aiAnalysis.sentiment;
