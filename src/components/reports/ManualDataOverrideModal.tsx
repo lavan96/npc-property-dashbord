@@ -67,7 +67,6 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [estimatingExpenses, setEstimatingExpenses] = useState(false);
   const [expenseCitations, setExpenseCitations] = useState<string[]>([]);
   const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const stampDutyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Active tab state
   const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
@@ -201,64 +200,23 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
               });
             })();
           </script>
+            <div id="stamp-duty-calculator" class="orange-theme">
+              <div id="stamp-duty-anchors"></div>
+            </div>
+          </div>
+          <script id="stamp-src" type="text/javascript" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js" data-state="${detectedState}"></script>
         </body>
       </html>`;
 
     iframe.srcdoc = iframeContent;
   }, [showStampDutyCalculator, detectedState]);
 
-  useEffect(() => {
-    if (!showStampDutyCalculator) return;
-
-    const handleMessage = (event: MessageEvent) => {
-      if (!event.data || event.data.type !== 'STAMP_DUTY_VALUE') return;
-
-      if (stampDutyTimeoutRef.current) {
-        clearTimeout(stampDutyTimeoutRef.current);
-        stampDutyTimeoutRef.current = null;
-      }
-
-      const stampDutyValue = event.data.value;
-      if (typeof stampDutyValue === 'number' && stampDutyValue > 0 && stampDutyValue < 10000000) {
-        setOverrides(prev => ({
-          ...prev,
-          stampDuty: stampDutyValue
-        }));
-        setHasChanges(true);
-        toast({
-          title: "Stamp Duty Applied",
-          description: `$${stampDutyValue.toLocaleString()} has been applied to the Stamp Duty field.`,
-        });
-      } else {
-        toast({
-          title: "Could not capture value",
-          description: "Please calculate stamp duty in the calculator first, then try again. You can also manually enter the value.",
-          variant: "destructive"
-        });
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      if (stampDutyTimeoutRef.current) {
-        clearTimeout(stampDutyTimeoutRef.current);
-        stampDutyTimeoutRef.current = null;
-      }
-    };
-  }, [showStampDutyCalculator, toast]);
-
-  useEffect(() => {
-    if (!showStampDutyCalculator && stampDutyTimeoutRef.current) {
-      clearTimeout(stampDutyTimeoutRef.current);
-      stampDutyTimeoutRef.current = null;
-    }
-  }, [showStampDutyCalculator]);
-
   // Function to capture stamp duty from calculator
   const captureStampDutyFromCalculator = useCallback(() => {
-    const frameWindow = stampDutyIframeRef.current?.contentWindow;
-    if (!frameWindow) {
+    // Try to find the stamp duty result in the calculator's output
+    const iframeDoc = stampDutyIframeRef.current?.contentDocument;
+    const calcContainer = iframeDoc?.getElementById('stamp-duty-calculator');
+    if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
         description: "Please wait for the calculator to load and calculate a value first.",
@@ -1546,7 +1504,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                             title="Stamp Duty Calculator"
                             className="w-full"
                             style={{ minHeight: '620px' }}
-                            sandbox="allow-scripts allow-forms"
+                            sandbox="allow-scripts allow-same-origin allow-forms"
                           />
                           <div className="p-4 border-t bg-muted/40 text-sm text-muted-foreground flex items-center justify-between">
                             <div className="flex items-center gap-2">
