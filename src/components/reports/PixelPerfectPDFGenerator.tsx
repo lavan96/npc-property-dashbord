@@ -1201,8 +1201,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         // Disclaimer section (if enabled)
         if (disclaimer.is_enabled && disclaimer.text) {
-          yPos = Math.min(yPos - 40, 200); // Position disclaimer near bottom
-          
           const disclaimerText = stripEmojis(disclaimer.text);
           const maxWidth = pageWidth - 120;
           
@@ -1215,8 +1213,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           // Split by paragraph breaks (double newlines or single newlines)
           const paragraphs = disclaimerText.split(/\n\s*\n|\n/).filter(p => p.trim());
           
+          // First pass: calculate total height needed for disclaimer
+          let totalDisclaimerHeight = 0;
+          const allWrappedParagraphs: string[][] = [];
+          
           for (const paragraph of paragraphs) {
-            // Word-wrap each paragraph
             const words = paragraph.trim().split(' ');
             let currentLine = '';
             const lines: string[] = [];
@@ -1234,9 +1235,22 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             }
             if (currentLine) lines.push(currentLine);
             
-            // Draw paragraph lines
+            allWrappedParagraphs.push(lines);
+            totalDisclaimerHeight += lines.length * lineHeightDisclaimer + paragraphSpacing;
+          }
+          
+          // Calculate starting position to fit entire disclaimer
+          // Start from current yPos or higher if needed, ensuring we don't go above contact details
+          const bottomMargin = 40;
+          const requiredStartY = bottomMargin + totalDisclaimerHeight + 20; // 20px buffer
+          
+          // Position disclaimer to fit all content, using more page space for larger fonts
+          yPos = Math.max(requiredStartY, Math.min(yPos - 40, 350));
+          
+          // Second pass: draw the disclaimer
+          for (const lines of allWrappedParagraphs) {
             for (const line of lines) {
-              if (yPos < 40) break; // Don't go below page margin
+              if (yPos < bottomMargin) break;
               page.drawText(line, {
                 x: 60,
                 y: yPos,
@@ -1246,8 +1260,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               });
               yPos -= lineHeightDisclaimer;
             }
-            
-            // Add extra spacing after paragraph
             yPos -= paragraphSpacing;
           }
         }
