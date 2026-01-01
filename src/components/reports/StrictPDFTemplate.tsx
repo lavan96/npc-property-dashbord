@@ -503,12 +503,12 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
 
           {/* Disclaimer */}
           <div style={{ 
-            fontSize: '7pt', 
+            fontSize: disclaimer.font_size === 'large' ? '10pt' : disclaimer.font_size === 'medium' ? '8pt' : '7pt', 
             color: 'rgba(255,255,255,0.5)', 
             textAlign: 'center',
             borderTop: '1pt solid rgba(197,165,114,0.3)',
             paddingTop: '15pt',
-            lineHeight: '1.4'
+            lineHeight: disclaimer.font_size === 'large' ? '1.6' : disclaimer.font_size === 'medium' ? '1.5' : '1.4'
           }}>
             {disclaimer.is_enabled && disclaimer.text ? (
               <p style={{ margin: '5pt 0' }}>
