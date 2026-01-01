@@ -1201,8 +1201,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         // Disclaimer section (if enabled)
         if (disclaimer.is_enabled && disclaimer.text) {
-          yPos = Math.min(yPos - 40, 200); // Position disclaimer near bottom
-          
           const disclaimerText = stripEmojis(disclaimer.text);
           const maxWidth = pageWidth - 120;
           
@@ -1210,36 +1208,59 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           const fontSizeMap = { small: 8, medium: 10, large: 12 };
           const fontSize = fontSizeMap[disclaimer.font_size || 'small'] || 8;
           const lineHeightDisclaimer = fontSize * 1.5; // Proportional line height
+          const paragraphSpacing = fontSize * 0.8; // Extra spacing between paragraphs
           
-          // Word-wrap disclaimer text
-          const words = disclaimerText.split(' ');
-          let currentLine = '';
-          const lines: string[] = [];
+          // Split by paragraph breaks (double newlines or single newlines)
+          const paragraphs = disclaimerText.split(/\n\s*\n|\n/).filter(p => p.trim());
           
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
+          // First pass: calculate total height needed for disclaimer
+          let totalDisclaimerHeight = 0;
+          const allWrappedParagraphs: string[][] = [];
+          
+          for (const paragraph of paragraphs) {
+            const words = paragraph.trim().split(' ');
+            let currentLine = '';
+            const lines: string[] = [];
             
-            if (testWidth > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
+            for (const word of words) {
+              const testLine = currentLine ? `${currentLine} ${word}` : word;
+              const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
+              
+              if (testWidth > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+              } else {
+                currentLine = testLine;
+              }
             }
+            if (currentLine) lines.push(currentLine);
+            
+            allWrappedParagraphs.push(lines);
+            totalDisclaimerHeight += lines.length * lineHeightDisclaimer + paragraphSpacing;
           }
-          if (currentLine) lines.push(currentLine);
           
-          // Draw disclaimer lines
-          for (const line of lines) {
-            if (yPos < 40) break; // Don't go below page margin
-            page.drawText(line, {
-              x: 60,
-              y: yPos,
-              size: fontSize,
-              font: helveticaFont,
-              color: grayColor,
-            });
-            yPos -= lineHeightDisclaimer;
+          // Calculate starting position to fit entire disclaimer
+          // Start from current yPos or higher if needed, ensuring we don't go above contact details
+          const bottomMargin = 40;
+          const requiredStartY = bottomMargin + totalDisclaimerHeight + 20; // 20px buffer
+          
+          // Position disclaimer to fit all content, using more page space for larger fonts
+          yPos = Math.max(requiredStartY, Math.min(yPos - 40, 350));
+          
+          // Second pass: draw the disclaimer
+          for (const lines of allWrappedParagraphs) {
+            for (const line of lines) {
+              if (yPos < bottomMargin) break;
+              page.drawText(line, {
+                x: 60,
+                y: yPos,
+                size: fontSize,
+                font: helveticaFont,
+                color: grayColor,
+              });
+              yPos -= lineHeightDisclaimer;
+            }
+            yPos -= paragraphSpacing;
           }
         }
         
