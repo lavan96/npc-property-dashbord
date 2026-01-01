@@ -9,6 +9,7 @@ import {
   Database,
   BarChart3,
   FileText,
+  Users2,
   BookOpen,
   Activity,
   Upload,
@@ -37,6 +38,7 @@ interface MobileSidebarProps {
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
   { title: 'Listings', url: '/listings', icon: Building2, moduleKey: 'listings' },
+  { title: 'Clients', url: '/clients', icon: Users2, moduleKey: 'clients' },
   { title: 'Calendar', url: '/calendar', icon: Calendar, moduleKey: 'calendar' },
   { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
   { title: 'Reports', url: '/reports', icon: BarChart3, moduleKey: 'reports' },
