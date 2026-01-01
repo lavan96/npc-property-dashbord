@@ -146,6 +146,60 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         </head>
         <body>
           <div class="calculator-wrapper">
+            <div id="stamp-duty-calculator" class="orange-theme hidden">
+              <div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div>
+            </div>
+          </div>
+          <script id="stamp-src" type="text/javascript" data-state="${detectedState || 'All'}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"></script>
+          <script>
+            (() => {
+              const extractStampDuty = () => {
+                const calcContainer = document.getElementById('stamp-duty-calculator');
+                if (!calcContainer) return null;
+
+                const resultSelectors = ['.stamp-duty-result','.result-value','#stamp-duty-result','[data-result]','.calc-result','strong','.total','#total'];
+                let stampDutyValue = null;
+
+                for (const selector of resultSelectors) {
+                  const elements = calcContainer.querySelectorAll(selector);
+                  for (const el of elements) {
+                    const text = el.textContent || '';
+                    const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
+                    if (match) {
+                      const value = parseFloat(match[0].replace(/[$,]/g, ''));
+                      if (value > 0 && value < 10000000) {
+                        stampDutyValue = value;
+                        break;
+                      }
+                    }
+                  }
+                  if (stampDutyValue) break;
+                }
+
+                if (!stampDutyValue) {
+                  const allText = calcContainer.textContent || '';
+                  const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
+                  if (matches && matches.length > 0) {
+                    const values = matches
+                      .map(m => parseFloat(m.replace(/[$,]/g, '')))
+                      .filter(v => v > 100 && v < 10000000);
+
+                    if (values.length > 0) {
+                      stampDutyValue = values[values.length - 1];
+                    }
+                  }
+                }
+
+                return stampDutyValue;
+              };
+
+              window.addEventListener('message', (event) => {
+                if (!event.data || event.data.type !== 'REQUEST_STAMP_DUTY_VALUE') return;
+                const value = extractStampDuty();
+                event.source?.postMessage({ type: 'STAMP_DUTY_VALUE', value }, '*');
+              });
+            })();
+          </script>
             <div id="stamp-duty-calculator" class="orange-theme">
               <div id="stamp-duty-anchors"></div>
             </div>
@@ -171,72 +225,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       return;
     }
 
-    // Look for common patterns in calculator output
-    // The calculator typically shows results in elements with specific classes or IDs
-    const resultSelectors = [
-      '.stamp-duty-result',
-      '.result-value',
-      '#stamp-duty-result',
-      '[data-result]',
-      '.calc-result',
-      'strong',
-      '.total',
-      '#total'
-    ];
+    frameWindow.postMessage({ type: 'REQUEST_STAMP_DUTY_VALUE' }, '*');
 
-    let stampDutyValue: number | null = null;
-
-    for (const selector of resultSelectors) {
-      const elements = calcContainer.querySelectorAll(selector);
-      for (const el of elements) {
-        const text = el.textContent || '';
-        // Look for dollar amounts like $12,345 or $12,345.67
-        const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
-        if (match) {
-          const value = parseFloat(match[0].replace(/[$,]/g, ''));
-          if (value > 0 && value < 10000000) { // Reasonable stamp duty range
-            stampDutyValue = value;
-            break;
-          }
-        }
-      }
-      if (stampDutyValue) break;
-    }
-
-    // Also search all text content for dollar amounts if specific selectors didn't work
-    if (!stampDutyValue) {
-      const allText = calcContainer.textContent || '';
-      const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
-      if (matches && matches.length > 0) {
-        // Try to find a reasonable stamp duty value (typically the largest or last value)
-        const values = matches
-          .map(m => parseFloat(m.replace(/[$,]/g, '')))
-          .filter(v => v > 100 && v < 10000000); // Filter reasonable values
-        
-        if (values.length > 0) {
-          // Take the last reasonable value (often the result)
-          stampDutyValue = values[values.length - 1];
-        }
-      }
-    }
-
-    if (stampDutyValue) {
-      setOverrides(prev => ({
-        ...prev,
-        stampDuty: stampDutyValue
-      }));
-      setHasChanges(true);
-      toast({
-        title: "Stamp Duty Applied",
-        description: `$${stampDutyValue.toLocaleString()} has been applied to the Stamp Duty field.`,
-      });
-    } else {
+    if (stampDutyTimeoutRef.current) clearTimeout(stampDutyTimeoutRef.current);
+    stampDutyTimeoutRef.current = setTimeout(() => {
       toast({
         title: "Could not capture value",
         description: "Please calculate stamp duty in the calculator first, then try again. You can also manually enter the value.",
         variant: "destructive"
       });
-    }
+      stampDutyTimeoutRef.current = null;
+    }, 1500);
   }, [toast]);
 
   // AI-powered expense estimation function

@@ -182,64 +182,17 @@ export function FinancialsTab({
       return;
     }
 
-    // Look for common patterns in calculator output
-    const resultSelectors = [
-      '.stamp-duty-result',
-      '.result-value',
-      '#stamp-duty-result',
-      '[data-result]',
-      '.calc-result',
-      'strong',
-      '.total',
-      '#total'
-    ];
+    frameWindow.postMessage({ type: 'REQUEST_STAMP_DUTY_VALUE' }, '*');
 
-    let stampDutyValue: number | null = null;
-
-    for (const selector of resultSelectors) {
-      const elements = calcContainer.querySelectorAll(selector);
-      for (const el of elements) {
-        const text = el.textContent || '';
-        const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
-        if (match) {
-          const value = parseFloat(match[0].replace(/[$,]/g, ''));
-          if (value > 0 && value < 10000000) {
-            stampDutyValue = value;
-            break;
-          }
-        }
-      }
-      if (stampDutyValue) break;
-    }
-
-    // Also search all text content for dollar amounts if specific selectors didn't work
-    if (!stampDutyValue) {
-      const allText = calcContainer.textContent || '';
-      const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
-      if (matches && matches.length > 0) {
-        const values = matches
-          .map(m => parseFloat(m.replace(/[$,]/g, '')))
-          .filter(v => v > 100 && v < 10000000);
-        
-        if (values.length > 0) {
-          stampDutyValue = values[values.length - 1];
-        }
-      }
-    }
-
-    if (stampDutyValue) {
-      setCalculatedStampDuty(Math.round(stampDutyValue).toString());
-      toast({
-        title: "Stamp Duty Captured",
-        description: `$${stampDutyValue.toLocaleString()} captured. Click Apply to use this value.`,
-      });
-    } else {
+    if (stampDutyTimeoutRef.current) clearTimeout(stampDutyTimeoutRef.current);
+    stampDutyTimeoutRef.current = setTimeout(() => {
       toast({
         title: "Could not capture value",
         description: "Please calculate stamp duty in the calculator first, then try again.",
         variant: "destructive"
       });
-    }
+      stampDutyTimeoutRef.current = null;
+    }, 1500);
   }, [toast]);
 
 
@@ -650,6 +603,7 @@ export function FinancialsTab({
                     title="Stamp Duty Calculator"
                     className="w-full"
                     style={{ minHeight: '620px' }}
+                    sandbox="allow-scripts allow-forms"
                     sandbox="allow-scripts allow-same-origin allow-forms"
                   />
                   <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground flex items-center gap-2 justify-between">
