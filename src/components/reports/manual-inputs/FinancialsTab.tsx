@@ -109,7 +109,8 @@ export function FinancialsTab({
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
-  const stampDutyContainerRef = useRef<HTMLDivElement>(null);
+  const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const stampDutyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
 
@@ -140,58 +141,132 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Load stamp duty calculator script when modal is open + cleanup when closed/unmount
+  // Load stamp duty calculator in a sandboxed iframe when modal is open
   useEffect(() => {
-    if (showStampDutyModal) {
-      // Small delay to ensure modal DOM is ready
-      const timer = setTimeout(() => {
-        // Remove existing script to reload with new state
-        const existingScript = document.getElementById('stamp-src-modal');
-        if (existingScript) {
-          existingScript.remove();
-        }
+    if (!showStampDutyModal) return;
 
-        // Create and append new script with detected state
-        const script = document.createElement('script');
-        script.id = 'stamp-src-modal';
-        script.type = 'text/javascript';
-        script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-        script.setAttribute('data-state', detectedState);
-        document.body.appendChild(script);
+    const iframe = stampDutyIframeRef.current;
+    if (!iframe) return;
 
-        // Show the calculator div (must use exact ID the external script expects)
-        const calcDiv = document.getElementById('stamp-duty-calculator');
-        if (calcDiv) {
-          calcDiv.classList.remove('hidden');
-        }
-      }, 100);
+    const iframeContent = `<!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+            .calculator-wrapper { padding: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="calculator-wrapper">
+            <div id="stamp-duty-calculator" class="orange-theme hidden">
+              <div id="stamp-duty-anchors"><p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p></div>
+            </div>
+          </div>
+          <script id="stamp-src" type="text/javascript" data-state="${detectedState || 'All'}" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js"></script>
+          <script>
+            (() => {
+              const extractStampDuty = () => {
+                const calcContainer = document.getElementById('stamp-duty-calculator');
+                if (!calcContainer) return null;
 
-      return () => clearTimeout(timer);
-    } else {
-      // Cleanup when closing the modal
-      const existingScript = document.getElementById('stamp-src-modal');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      const calcDiv = document.getElementById('stamp-duty-calculator');
-      if (calcDiv) {
-        calcDiv.classList.add('hidden');
-      }
-    }
+                const resultSelectors = ['.stamp-duty-result','.result-value','#stamp-duty-result','[data-result]','.calc-result','strong','.total','#total'];
+                let stampDutyValue = null;
 
-    // Cleanup on unmount
-    return () => {
-      const existingScript = document.getElementById('stamp-src-modal');
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
+                for (const selector of resultSelectors) {
+                  const elements = calcContainer.querySelectorAll(selector);
+                  for (const el of elements) {
+                    const text = el.textContent || '';
+                    const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
+                    if (match) {
+                      const value = parseFloat(match[0].replace(/[$,]/g, ''));
+                      if (value > 0 && value < 10000000) {
+                        stampDutyValue = value;
+                        break;
+                      }
+                    }
+                  }
+                  if (stampDutyValue) break;
+                }
+
+                if (!stampDutyValue) {
+                  const allText = calcContainer.textContent || '';
+                  const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
+                  if (matches && matches.length > 0) {
+                    const values = matches
+                      .map(m => parseFloat(m.replace(/[$,]/g, '')))
+                      .filter(v => v > 100 && v < 10000000);
+
+                    if (values.length > 0) {
+                      stampDutyValue = values[values.length - 1];
+                    }
+                  }
+                }
+
+                return stampDutyValue;
+              };
+
+              window.addEventListener('message', (event) => {
+                if (!event.data || event.data.type !== 'REQUEST_STAMP_DUTY_VALUE') return;
+                const value = extractStampDuty();
+                event.source?.postMessage({ type: 'STAMP_DUTY_VALUE', value }, '*');
+              });
+            })();
+          </script>
+        </body>
+      </html>`;
+
+    iframe.srcdoc = iframeContent;
   }, [showStampDutyModal, detectedState]);
 
-  // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
+  useEffect(() => {
+    if (!showStampDutyModal) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || event.data.type !== 'STAMP_DUTY_VALUE') return;
+
+      if (stampDutyTimeoutRef.current) {
+        clearTimeout(stampDutyTimeoutRef.current);
+        stampDutyTimeoutRef.current = null;
+      }
+
+      const stampDutyValue = event.data.value;
+      if (typeof stampDutyValue === 'number' && stampDutyValue > 0 && stampDutyValue < 10000000) {
+        setCalculatedStampDuty(Math.round(stampDutyValue).toString());
+        toast({
+          title: "Stamp Duty Captured",
+          description: `$${stampDutyValue.toLocaleString()} captured. Click Apply to use this value.`,
+        });
+      } else {
+        toast({
+          title: "Could not capture value",
+          description: "Please calculate stamp duty in the calculator first, then try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (stampDutyTimeoutRef.current) {
+        clearTimeout(stampDutyTimeoutRef.current);
+        stampDutyTimeoutRef.current = null;
+      }
+    };
+  }, [showStampDutyModal, toast]);
+
+  useEffect(() => {
+    if (!showStampDutyModal && stampDutyTimeoutRef.current) {
+      clearTimeout(stampDutyTimeoutRef.current);
+      stampDutyTimeoutRef.current = null;
+    }
+  }, [showStampDutyModal]);
+
+  // Function to capture stamp duty from calculator (iframe sandboxed)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const calcContainer = document.getElementById('stamp-duty-calculator');
-    if (!calcContainer) {
+    const frameWindow = stampDutyIframeRef.current?.contentWindow;
+    if (!frameWindow) {
       toast({
         title: "Calculator not loaded",
         description: "Please wait for the calculator to load and calculate a value first.",
@@ -200,64 +275,17 @@ export function FinancialsTab({
       return;
     }
 
-    // Look for common patterns in calculator output
-    const resultSelectors = [
-      '.stamp-duty-result',
-      '.result-value',
-      '#stamp-duty-result',
-      '[data-result]',
-      '.calc-result',
-      'strong',
-      '.total',
-      '#total'
-    ];
+    frameWindow.postMessage({ type: 'REQUEST_STAMP_DUTY_VALUE' }, '*');
 
-    let stampDutyValue: number | null = null;
-
-    for (const selector of resultSelectors) {
-      const elements = calcContainer.querySelectorAll(selector);
-      for (const el of elements) {
-        const text = el.textContent || '';
-        const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
-        if (match) {
-          const value = parseFloat(match[0].replace(/[$,]/g, ''));
-          if (value > 0 && value < 10000000) {
-            stampDutyValue = value;
-            break;
-          }
-        }
-      }
-      if (stampDutyValue) break;
-    }
-
-    // Also search all text content for dollar amounts if specific selectors didn't work
-    if (!stampDutyValue) {
-      const allText = calcContainer.textContent || '';
-      const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
-      if (matches && matches.length > 0) {
-        const values = matches
-          .map(m => parseFloat(m.replace(/[$,]/g, '')))
-          .filter(v => v > 100 && v < 10000000);
-        
-        if (values.length > 0) {
-          stampDutyValue = values[values.length - 1];
-        }
-      }
-    }
-
-    if (stampDutyValue) {
-      setCalculatedStampDuty(Math.round(stampDutyValue).toString());
-      toast({
-        title: "Stamp Duty Captured",
-        description: `$${stampDutyValue.toLocaleString()} captured. Click Apply to use this value.`,
-      });
-    } else {
+    if (stampDutyTimeoutRef.current) clearTimeout(stampDutyTimeoutRef.current);
+    stampDutyTimeoutRef.current = setTimeout(() => {
       toast({
         title: "Could not capture value",
         description: "Please calculate stamp duty in the calculator first, then try again.",
         variant: "destructive"
       });
-    }
+      stampDutyTimeoutRef.current = null;
+    }, 1500);
   }, [toast]);
 
 
@@ -661,16 +689,30 @@ export function FinancialsTab({
 
                 <Separator />
 
-                {/* External Calculator Embed */}
-                {/* External Calculator Embed - IDs must match exactly what the script expects */}
-                <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                  <div id="stamp-duty-calculator" className="orange-theme hidden">
-                    <div id="stamp-duty-anchors">
-                      <p>
-                        Stamp Duty Calculator from{' '}
-                        <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
-                      </p>
+                {/* External Calculator Embed - sandboxed to avoid layout side effects */}
+                <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
+                  <iframe
+                    ref={stampDutyIframeRef}
+                    title="Stamp Duty Calculator"
+                    className="w-full"
+                    style={{ minHeight: '620px' }}
+                    sandbox="allow-scripts allow-forms"
+                  />
+                  <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground flex items-center gap-2 justify-between">
+                    <div className="flex items-center gap-2">
+                      <span>Stamp Duty Calculator from</span>
+                      <a
+                        href="https://calculatorsonline.com.au"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        calculatorsonline.com.au
+                      </a>
                     </div>
+                    <Badge variant="outline" className="text-[10px]">
+                      {detectedState === 'All' ? 'State selectable' : `Pre-selected: ${detectedState}`}
+                    </Badge>
                   </div>
                 </div>
 
