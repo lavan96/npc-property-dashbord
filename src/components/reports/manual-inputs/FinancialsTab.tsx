@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,6 +110,7 @@ export function FinancialsTab({
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
   const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const stampDutyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
 
@@ -140,40 +141,63 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Load stamp duty calculator in a sandboxed iframe when modal is open
+  const stampDutyIframeSrc = useMemo(() => {
+    if (typeof window === 'undefined' || !showStampDutyModal) return '';
+
+    const url = new URL('/stamp-duty-embed.html', window.location.origin);
+    url.searchParams.set('state', detectedState || 'All');
+    url.searchParams.set('t', Date.now().toString());
+    return url.toString();
+  }, [detectedState, showStampDutyModal]);
+
   useEffect(() => {
     if (!showStampDutyModal) return;
 
-    const iframe = stampDutyIframeRef.current;
-    if (!iframe) return;
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || event.data.type !== 'STAMP_DUTY_VALUE') return;
 
-    const iframeContent = `<!DOCTYPE html>
-      <html lang="en">
-        <head>
-          <meta charset="UTF-8" />
-          <style>
-            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-            .calculator-wrapper { padding: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="calculator-wrapper">
-            <div id="stamp-duty-calculator" class="orange-theme">
-              <div id="stamp-duty-anchors"></div>
-            </div>
-          </div>
-          <script id="stamp-src" type="text/javascript" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js" data-state="${detectedState}"></script>
-        </body>
-      </html>`;
+      if (stampDutyTimeoutRef.current) {
+        clearTimeout(stampDutyTimeoutRef.current);
+        stampDutyTimeoutRef.current = null;
+      }
 
-    iframe.srcdoc = iframeContent;
-  }, [showStampDutyModal, detectedState]);
+      const stampDutyValue = event.data.value;
+      if (typeof stampDutyValue === 'number' && stampDutyValue > 0 && stampDutyValue < 10000000) {
+        setCalculatedStampDuty(Math.round(stampDutyValue).toString());
+        toast({
+          title: "Stamp Duty Captured",
+          description: `$${stampDutyValue.toLocaleString()} captured. Click Apply to use this value.`,
+        });
+      } else {
+        toast({
+          title: "Could not capture value",
+          description: "Please calculate stamp duty in the calculator first, then try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (stampDutyTimeoutRef.current) {
+        clearTimeout(stampDutyTimeoutRef.current);
+        stampDutyTimeoutRef.current = null;
+      }
+    };
+  }, [showStampDutyModal, toast]);
+
+  useEffect(() => {
+    if (!showStampDutyModal && stampDutyTimeoutRef.current) {
+      clearTimeout(stampDutyTimeoutRef.current);
+      stampDutyTimeoutRef.current = null;
+    }
+  }, [showStampDutyModal]);
 
   // Function to capture stamp duty from calculator (iframe sandboxed)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const iframeDoc = stampDutyIframeRef.current?.contentDocument;
-    const calcContainer = iframeDoc?.getElementById('stamp-duty-calculator');
-    if (!calcContainer) {
+    const frameWindow = stampDutyIframeRef.current?.contentWindow;
+    if (!frameWindow) {
       toast({
         title: "Calculator not loaded",
         description: "Please wait for the calculator to load and calculate a value first.",
@@ -600,11 +624,11 @@ export function FinancialsTab({
                 <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
                   <iframe
                     ref={stampDutyIframeRef}
+                    src={stampDutyIframeSrc}
                     title="Stamp Duty Calculator"
                     className="w-full"
                     style={{ minHeight: '620px' }}
                     sandbox="allow-scripts allow-forms"
-                    sandbox="allow-scripts allow-same-origin allow-forms"
                   />
                   <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground flex items-center gap-2 justify-between">
                     <div className="flex items-center gap-2">

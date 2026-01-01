@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stamp Duty Calculator</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: #ffffff;
+      }
+      .calculator-wrapper {
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="calculator-wrapper">
+      <div id="stamp-duty-calculator" class="orange-theme hidden">
+        <div id="stamp-duty-anchors">
+          <p>Stamp Duty Calculator from <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a></p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const preselectedState = params.get('state') || 'All';
+        const script = document.createElement('script');
+        script.id = 'stamp-src';
+        script.type = 'text/javascript';
+        script.dataset.state = preselectedState;
+        script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
+        document.body.appendChild(script);
+
+        const extractStampDuty = () => {
+          const calcContainer = document.getElementById('stamp-duty-calculator');
+          if (!calcContainer) return null;
+
+          const resultSelectors = ['.stamp-duty-result', '.result-value', '#stamp-duty-result', '[data-result]', '.calc-result', 'strong', '.total', '#total'];
+          let stampDutyValue = null;
+
+          for (const selector of resultSelectors) {
+            const elements = calcContainer.querySelectorAll(selector);
+            for (const el of elements) {
+              const text = el.textContent || '';
+              const match = text.match(/\$[\d,]+(?:\.\d{2})?/);
+              if (match) {
+                const value = parseFloat(match[0].replace(/[$,]/g, ''));
+                if (value > 0 && value < 10000000) {
+                  stampDutyValue = value;
+                  break;
+                }
+              }
+            }
+            if (stampDutyValue) break;
+          }
+
+          if (!stampDutyValue) {
+            const allText = calcContainer.textContent || '';
+            const matches = allText.match(/\$[\d,]+(?:\.\d{2})?/g);
+            if (matches && matches.length > 0) {
+              const values = matches
+                .map((m) => parseFloat(m.replace(/[$,]/g, '')))
+                .filter((v) => v > 100 && v < 10000000);
+
+              if (values.length > 0) {
+                stampDutyValue = values[values.length - 1];
+              }
+            }
+          }
+
+          return stampDutyValue;
+        };
+
+        window.addEventListener('message', (event) => {
+          if (!event.data || event.data.type !== 'REQUEST_STAMP_DUTY_VALUE') return;
+          const value = extractStampDuty();
+          event.source?.postMessage({ type: 'STAMP_DUTY_VALUE', value }, '*');
+        });
+      })();
+    </script>
+  </body>
+</html>
