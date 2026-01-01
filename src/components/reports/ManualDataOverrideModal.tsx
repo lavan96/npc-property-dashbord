@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const [estimatingExpenses, setEstimatingExpenses] = useState(false);
   const [expenseCitations, setExpenseCitations] = useState<string[]>([]);
+  const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
   
   // Active tab state
   const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
@@ -129,33 +130,38 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   // Load stamp duty calculator script when expanded
   useEffect(() => {
-    if (showStampDutyCalculator) {
-      // Remove existing script to reload with new state
-      const existingScript = document.getElementById('stamp-src');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      
-      // Create and append new script with detected state
-      const script = document.createElement('script');
-      script.id = 'stamp-src';
-      script.type = 'text/javascript';
-      script.src = '//calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-      script.setAttribute('data-state', detectedState);
-      document.body.appendChild(script);
-      
-      // Show the calculator div
-      const calcDiv = document.getElementById('stamp-duty-calculator');
-      if (calcDiv) {
-        calcDiv.classList.remove('hidden');
-      }
-    }
+    if (!showStampDutyCalculator) return;
+
+    const iframe = stampDutyIframeRef.current;
+    if (!iframe) return;
+
+    const iframeContent = `<!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+            .calculator-wrapper { padding: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="calculator-wrapper">
+            <div id="stamp-duty-calculator" class="orange-theme">
+              <div id="stamp-duty-anchors"></div>
+            </div>
+          </div>
+          <script id="stamp-src" type="text/javascript" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js" data-state="${detectedState}"></script>
+        </body>
+      </html>`;
+
+    iframe.srcdoc = iframeContent;
   }, [showStampDutyCalculator, detectedState]);
 
   // Function to capture stamp duty from calculator
   const captureStampDutyFromCalculator = useCallback(() => {
     // Try to find the stamp duty result in the calculator's output
-    const calcContainer = document.getElementById('stamp-duty-calculator');
+    const iframeDoc = stampDutyIframeRef.current?.contentDocument;
+    const calcContainer = iframeDoc?.getElementById('stamp-duty-calculator');
     if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
@@ -1493,21 +1499,32 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         </div>
                         
                         {/* Stamp Duty Calculator Container */}
-                        <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                          <div id="stamp-duty-calculator" className="orange-theme">
-                            <div id="stamp-duty-anchors">
-                              <p className="text-sm text-muted-foreground">
-                                Stamp Duty Calculator from{' '}
-                                <a 
-                                  href="https://calculatorsonline.com.au" 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:underline"
-                                >
-                                  calculatorsonline.com.au
-                                </a>
-                              </p>
+                        <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
+                          <iframe
+                            ref={stampDutyIframeRef}
+                            title="Stamp Duty Calculator"
+                            className="w-full"
+                            style={{ minHeight: '620px' }}
+                            sandbox="allow-scripts allow-same-origin allow-forms"
+                          />
+                          <div className="p-4 border-t bg-muted/40 text-sm text-muted-foreground flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ExternalLink className="h-4 w-4" />
+                              <span>Stamp Duty Calculator from</span>
+                              <a
+                                href="https://calculatorsonline.com.au"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                calculatorsonline.com.au
+                              </a>
                             </div>
+                            {detectedState !== 'All' && (
+                              <Badge variant="outline" className="text-xs">
+                                Pre-selected: {STATE_MAPPING[detectedState] || detectedState}
+                              </Badge>
+                            )}
                           </div>
                         </div>
 
