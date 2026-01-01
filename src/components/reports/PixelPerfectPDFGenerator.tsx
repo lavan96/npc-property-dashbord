@@ -1210,36 +1210,45 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           const fontSizeMap = { small: 8, medium: 10, large: 12 };
           const fontSize = fontSizeMap[disclaimer.font_size || 'small'] || 8;
           const lineHeightDisclaimer = fontSize * 1.5; // Proportional line height
+          const paragraphSpacing = fontSize * 0.8; // Extra spacing between paragraphs
           
-          // Word-wrap disclaimer text
-          const words = disclaimerText.split(' ');
-          let currentLine = '';
-          const lines: string[] = [];
+          // Split by paragraph breaks (double newlines or single newlines)
+          const paragraphs = disclaimerText.split(/\n\s*\n|\n/).filter(p => p.trim());
           
-          for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
+          for (const paragraph of paragraphs) {
+            // Word-wrap each paragraph
+            const words = paragraph.trim().split(' ');
+            let currentLine = '';
+            const lines: string[] = [];
             
-            if (testWidth > maxWidth && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else {
-              currentLine = testLine;
+            for (const word of words) {
+              const testLine = currentLine ? `${currentLine} ${word}` : word;
+              const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
+              
+              if (testWidth > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+              } else {
+                currentLine = testLine;
+              }
             }
-          }
-          if (currentLine) lines.push(currentLine);
-          
-          // Draw disclaimer lines
-          for (const line of lines) {
-            if (yPos < 40) break; // Don't go below page margin
-            page.drawText(line, {
-              x: 60,
-              y: yPos,
-              size: fontSize,
-              font: helveticaFont,
-              color: grayColor,
-            });
-            yPos -= lineHeightDisclaimer;
+            if (currentLine) lines.push(currentLine);
+            
+            // Draw paragraph lines
+            for (const line of lines) {
+              if (yPos < 40) break; // Don't go below page margin
+              page.drawText(line, {
+                x: 60,
+                y: yPos,
+                size: fontSize,
+                font: helveticaFont,
+                color: grayColor,
+              });
+              yPos -= lineHeightDisclaimer;
+            }
+            
+            // Add extra spacing after paragraph
+            yPos -= paragraphSpacing;
           }
         }
         
