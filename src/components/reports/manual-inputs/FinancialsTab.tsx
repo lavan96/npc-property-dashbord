@@ -109,7 +109,7 @@ export function FinancialsTab({
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
-  const stampDutyContainerRef = useRef<HTMLDivElement>(null);
+  const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
 
@@ -140,57 +140,39 @@ export function FinancialsTab({
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
 
-  // Load stamp duty calculator script when modal is open + cleanup when closed/unmount
+  // Load stamp duty calculator in a sandboxed iframe when modal is open
   useEffect(() => {
-    if (showStampDutyModal) {
-      // Small delay to ensure modal DOM is ready
-      const timer = setTimeout(() => {
-        // Remove existing script to reload with new state
-        const existingScript = document.getElementById('stamp-src-modal');
-        if (existingScript) {
-          existingScript.remove();
-        }
+    if (!showStampDutyModal) return;
 
-        // Create and append new script with detected state
-        const script = document.createElement('script');
-        script.id = 'stamp-src-modal';
-        script.type = 'text/javascript';
-        script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
-        script.setAttribute('data-state', detectedState);
-        document.body.appendChild(script);
+    const iframe = stampDutyIframeRef.current;
+    if (!iframe) return;
 
-        // Show the calculator div (must use exact ID the external script expects)
-        const calcDiv = document.getElementById('stamp-duty-calculator');
-        if (calcDiv) {
-          calcDiv.classList.remove('hidden');
-        }
-      }, 100);
+    const iframeContent = `<!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+            .calculator-wrapper { padding: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="calculator-wrapper">
+            <div id="stamp-duty-calculator" class="orange-theme">
+              <div id="stamp-duty-anchors"></div>
+            </div>
+          </div>
+          <script id="stamp-src" type="text/javascript" src="https://calculatorsonline.com.au/external/!main/stamp_duty.min.js" data-state="${detectedState}"></script>
+        </body>
+      </html>`;
 
-      return () => clearTimeout(timer);
-    } else {
-      // Cleanup when closing the modal
-      const existingScript = document.getElementById('stamp-src-modal');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      const calcDiv = document.getElementById('stamp-duty-calculator');
-      if (calcDiv) {
-        calcDiv.classList.add('hidden');
-      }
-    }
-
-    // Cleanup on unmount
-    return () => {
-      const existingScript = document.getElementById('stamp-src-modal');
-      if (existingScript) {
-        existingScript.remove();
-      }
-    };
+    iframe.srcdoc = iframeContent;
   }, [showStampDutyModal, detectedState]);
 
-  // Function to capture stamp duty from calculator (same approach as ManualDataOverrideModal)
+  // Function to capture stamp duty from calculator (iframe sandboxed)
   const captureStampDutyFromCalculator = useCallback(() => {
-    const calcContainer = document.getElementById('stamp-duty-calculator');
+    const iframeDoc = stampDutyIframeRef.current?.contentDocument;
+    const calcContainer = iframeDoc?.getElementById('stamp-duty-calculator');
     if (!calcContainer) {
       toast({
         title: "Calculator not loaded",
@@ -661,16 +643,30 @@ export function FinancialsTab({
 
                 <Separator />
 
-                {/* External Calculator Embed */}
-                {/* External Calculator Embed - IDs must match exactly what the script expects */}
-                <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner p-4">
-                  <div id="stamp-duty-calculator" className="orange-theme hidden">
-                    <div id="stamp-duty-anchors">
-                      <p>
-                        Stamp Duty Calculator from{' '}
-                        <a href="https://calculatorsonline.com.au">calculatorsonline.com.au</a>
-                      </p>
+                {/* External Calculator Embed - sandboxed to avoid layout side effects */}
+                <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
+                  <iframe
+                    ref={stampDutyIframeRef}
+                    title="Stamp Duty Calculator"
+                    className="w-full"
+                    style={{ minHeight: '620px' }}
+                    sandbox="allow-scripts allow-same-origin allow-forms"
+                  />
+                  <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground flex items-center gap-2 justify-between">
+                    <div className="flex items-center gap-2">
+                      <span>Stamp Duty Calculator from</span>
+                      <a
+                        href="https://calculatorsonline.com.au"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        calculatorsonline.com.au
+                      </a>
                     </div>
+                    <Badge variant="outline" className="text-[10px]">
+                      {detectedState === 'All' ? 'State selectable' : `Pre-selected: ${detectedState}`}
+                    </Badge>
                   </div>
                 </div>
 
