@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Building2, BarChart3, FileText, MoreHorizontal } from 'lucide-react';
+import { Home, Building2, BarChart3, FileText, MoreHorizontal, Users2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { MobileSidebar } from './MobileSidebar';
 const mobileNavItems = [
   { title: 'Overview', url: '/', icon: Home },
   { title: 'Listings', url: '/listings', icon: Building2 },
+  { title: 'Clients', url: '/clients', icon: Users2 },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Generated', url: '/generated-reports', icon: FileText },
 ];
