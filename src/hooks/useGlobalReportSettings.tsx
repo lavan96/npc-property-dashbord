@@ -13,6 +13,7 @@ export interface ContactDetails {
 export interface ProfessionalDisclaimer {
   text: string;
   is_enabled: boolean;
+  font_size?: 'small' | 'medium' | 'large';
 }
 
 export interface GlobalReportSettings {
@@ -31,7 +32,8 @@ const defaultContactDetails: ContactDetails = {
 
 const defaultDisclaimer: ProfessionalDisclaimer = {
   text: 'AS A PROFESSIONAL PROPERTY CONSULTANT & BUYERS AGENT, WE PROVIDE INFORMATION AND ADVICE BASED ON OUR EXPERTISE AND EXPERIENCE IN THE REAL ESTATE MARKET. PLEASE BE AWARE THAT THE ADVICE AND INSIGHTS OFFERED ARE FOR GENERAL INFORMATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSIDERED FINANCIAL ADVICE. WHILE WE STRIVE TO ENSURE THE ACCURACY AND RELEVANCE OF THE INFORMATION PROVIDED, REAL ESTATE MARKETS ARE DYNAMIC AND SUBJECT TO CHANGE AND WE CANNOT GUARANTEE THE FUTURE PERFORMANCE OR OUTCOMES OF ANY PROPERTY INVESTMENT.',
-  is_enabled: true
+  is_enabled: true,
+  font_size: 'small'
 };
 
 export function useGlobalReportSettings() {

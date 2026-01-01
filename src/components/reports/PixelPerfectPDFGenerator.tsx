@@ -1205,8 +1205,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           const disclaimerText = stripEmojis(disclaimer.text);
           const maxWidth = pageWidth - 120;
-          const fontSize = 8;
-          const lineHeightDisclaimer = 12;
+          
+          // Map font size setting to actual size (default to small/8pt)
+          const fontSizeMap = { small: 8, medium: 10, large: 12 };
+          const fontSize = fontSizeMap[disclaimer.font_size || 'small'] || 8;
+          const lineHeightDisclaimer = fontSize * 1.5; // Proportional line height
           
           // Word-wrap disclaimer text
           const words = disclaimerText.split(' ');
