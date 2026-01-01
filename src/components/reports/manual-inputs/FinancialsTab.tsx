@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,11 +10,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Home, Banknote, Building, MapPin, Check, Copy, X } from 'lucide-react';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronRight, Home, Banknote, Building, MapPin, Check, Copy } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
 import { useToast } from '@/hooks/use-toast';
-import { LoanType, RepaymentFrequency, get10YearLoanProjection } from '@/utils/mortgageCalculations';
+import { LoanType, RepaymentFrequency } from '@/utils/mortgageCalculations';
 
 export type StampDutyPropertyType = 'primary_residence' | 'investment';
 export type StampDutyPurchaseType = 'established_home' | 'new_home' | 'vacant_land';
@@ -45,12 +45,10 @@ interface FinancialsTabProps {
   detectedState: string;
   propertyAddress: string;
   disabled?: boolean;
-  // Stamp duty calculator props
   stampDutyPropertyType?: StampDutyPropertyType;
   setStampDutyPropertyType?: (value: StampDutyPropertyType) => void;
   stampDutyPurchaseType?: StampDutyPurchaseType;
   setStampDutyPurchaseType?: (value: StampDutyPurchaseType) => void;
-  // Mortgage calculator props
   loanAmount?: string;
   setLoanAmount?: (value: string) => void;
   interestOnlyPeriodYears?: string;
@@ -109,12 +107,11 @@ export function FinancialsTab({
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
-  const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const stampDutyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [manualStampDutyInput, setManualStampDutyInput] = useState<string>('');
+  const stampDutyContainerRef = useRef<HTMLDivElement>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
 
-  // Use props or local state for stamp duty selections
   const stampDutyPropertyType = propStampDutyPropertyType ?? localStampDutyPropertyType;
   const setStampDutyPropertyType = propSetStampDutyPropertyType ?? setLocalStampDutyPropertyType;
   const stampDutyPurchaseType = propStampDutyPurchaseType ?? localStampDutyPurchaseType;
@@ -133,94 +130,12 @@ export function FinancialsTab({
     return formatNumberWithCommas(value);
   }, []);
 
-  // Calculated values
   const price = parseFloat(purchasePrice) || 0;
   const lvr = parseFloat(loanToValueRatio) || 80;
   const loanAmount = Math.round(price * (lvr / 100));
   const rate = parseFloat(interestRate) || 6.5;
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
-
-  const stampDutyIframeSrc = useMemo(() => {
-    if (typeof window === 'undefined' || !showStampDutyModal) return '';
-
-    const url = new URL('/stamp-duty-embed.html', window.location.origin);
-    url.searchParams.set('state', detectedState || 'All');
-    url.searchParams.set('t', Date.now().toString());
-    return url.toString();
-  }, [detectedState, showStampDutyModal]);
-
-  useEffect(() => {
-    if (!showStampDutyModal) return;
-
-    const handleMessage = (event: MessageEvent) => {
-      if (!event.data || event.data.type !== 'STAMP_DUTY_VALUE') return;
-
-      if (stampDutyTimeoutRef.current) {
-        clearTimeout(stampDutyTimeoutRef.current);
-        stampDutyTimeoutRef.current = null;
-      }
-
-      const stampDutyValue = event.data.value;
-      if (typeof stampDutyValue === 'number' && stampDutyValue > 0 && stampDutyValue < 10000000) {
-        setCalculatedStampDuty(Math.round(stampDutyValue).toString());
-        toast({
-          title: "Stamp Duty Captured",
-          description: `$${stampDutyValue.toLocaleString()} captured. Click Apply to use this value.`,
-        });
-      } else {
-        toast({
-          title: "Could not capture value",
-          description: "Please calculate stamp duty in the calculator first, then try again.",
-          variant: "destructive"
-        });
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      if (stampDutyTimeoutRef.current) {
-        clearTimeout(stampDutyTimeoutRef.current);
-        stampDutyTimeoutRef.current = null;
-      }
-    };
-  }, [showStampDutyModal, toast]);
-
-  useEffect(() => {
-    if (!showStampDutyModal && stampDutyTimeoutRef.current) {
-      clearTimeout(stampDutyTimeoutRef.current);
-      stampDutyTimeoutRef.current = null;
-    }
-  }, [showStampDutyModal]);
-
-  // Function to capture stamp duty from calculator (iframe sandboxed)
-  const captureStampDutyFromCalculator = useCallback(() => {
-    const frameWindow = stampDutyIframeRef.current?.contentWindow;
-    if (!frameWindow) {
-      toast({
-        title: "Calculator not loaded",
-        description: "Please wait for the calculator to load and calculate a value first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    frameWindow.postMessage({ type: 'REQUEST_STAMP_DUTY_VALUE' }, '*');
-
-    if (stampDutyTimeoutRef.current) clearTimeout(stampDutyTimeoutRef.current);
-    stampDutyTimeoutRef.current = setTimeout(() => {
-      toast({
-        title: "Could not capture value",
-        description: "Please calculate stamp duty in the calculator first, then try again.",
-        variant: "destructive"
-      });
-      stampDutyTimeoutRef.current = null;
-    }, 1500);
-  }, [toast]);
-
-
-  // Apply calculated stamp duty to the form
   const handleApplyStampDuty = useCallback(() => {
     if (calculatedStampDuty) {
       setStampDuty(calculatedStampDuty);
@@ -231,7 +146,17 @@ export function FinancialsTab({
     }
   }, [calculatedStampDuty, setStampDuty, toast]);
 
-  // Total acquisition costs
+  const handleManualStampDutyApply = useCallback(() => {
+    const value = removeCommas(manualStampDutyInput);
+    if (value && !isNaN(parseFloat(value))) {
+      setCalculatedStampDuty(value);
+      toast({
+        title: "Stamp Duty Captured",
+        description: `$${formatNumberWithCommas(value)} captured. Click Apply to use this value.`,
+      });
+    }
+  }, [manualStampDutyInput, toast]);
+
   const totalAcquisitionCosts = 
     (parseFloat(stampDuty) || 0) +
     (parseFloat(solicitorFees) || 0) +
@@ -239,7 +164,6 @@ export function FinancialsTab({
 
   return (
     <div className="space-y-6 animate-fade-in">
-
       {/* Loan Structure Card */}
       <Card>
         <CardContent className="pt-6">
@@ -248,7 +172,6 @@ export function FinancialsTab({
               <Percent className="h-5 w-5 text-primary" />
               Deposit & Loan
             </h3>
-            {/* Summary Badge */}
             {price > 0 && (
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Loan Amount</p>
@@ -356,7 +279,6 @@ export function FinancialsTab({
             </div>
           </div>
 
-          {/* Loan Type Toggle */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Loan Type</Label>
             <div className="flex gap-2">
@@ -383,7 +305,6 @@ export function FinancialsTab({
             </div>
           </div>
 
-          {/* Monthly Repayment Summary */}
           {loanAmount > 0 && (
             <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
               <div className="flex items-center justify-between">
@@ -459,7 +380,6 @@ export function FinancialsTab({
                 }
               }}
               onApplyLoanProjection={(projection) => {
-                // The projection is available for parent components if needed
                 console.log('Loan projection applied:', projection);
               }}
             />
@@ -482,7 +402,6 @@ export function FinancialsTab({
             )}
           </div>
 
-          {/* Stamp Duty */}
           <div className="space-y-4 mb-4">
             <div className="flex items-center justify-between">
               <Label htmlFor="stampDuty" className="text-sm font-medium">Stamp Duty</Label>
@@ -493,6 +412,7 @@ export function FinancialsTab({
                 onClick={() => {
                   setShowStampDutyModal(true);
                   setCalculatedStampDuty('');
+                  setManualStampDutyInput('');
                 }}
                 disabled={disabled}
               >
@@ -520,7 +440,7 @@ export function FinancialsTab({
             )}
           </div>
 
-          {/* Stamp Duty Calculator Modal */}
+          {/* Stamp Duty Calculator Modal - Using iframe for isolation */}
           <Dialog open={showStampDutyModal} onOpenChange={setShowStampDutyModal}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -534,7 +454,6 @@ export function FinancialsTab({
               </DialogHeader>
               
               <div className="space-y-4">
-                {/* First Home Buyer Toggle */}
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <Home className="h-5 w-5 text-primary" />
@@ -555,7 +474,6 @@ export function FinancialsTab({
                   />
                 </div>
 
-                {/* Property Type Selection */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <Building className="h-4 w-4 text-muted-foreground" />
@@ -576,7 +494,6 @@ export function FinancialsTab({
                   </Select>
                 </div>
 
-                {/* Purchase Type Selection */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -598,7 +515,6 @@ export function FinancialsTab({
                   </Select>
                 </div>
 
-                {/* Property Value (Dynamic from Purchase Price) */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -620,45 +536,38 @@ export function FinancialsTab({
 
                 <Separator />
 
-                {/* External Calculator Embed - sandboxed to avoid layout side effects */}
+                {/* External Calculator Embed - Using iframe for complete isolation */}
                 <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
                   <iframe
-                    ref={stampDutyIframeRef}
-                    src={stampDutyIframeSrc}
+                    src={`/stamp-duty-embed.html?state=${detectedState}`}
+                    className="w-full h-[500px] border-0"
                     title="Stamp Duty Calculator"
-                    className="w-full"
-                    style={{ minHeight: '620px' }}
-                    sandbox="allow-scripts allow-forms"
+                    sandbox="allow-scripts allow-same-origin allow-forms"
                   />
-                  <div className="p-3 border-t bg-muted/50 text-xs text-muted-foreground flex items-center gap-2 justify-between">
-                    <div className="flex items-center gap-2">
-                      <span>Stamp Duty Calculator from</span>
-                      <a
-                        href="https://calculatorsonline.com.au"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        calculatorsonline.com.au
-                      </a>
+                </div>
+
+                {/* Manual input for stamp duty value */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Enter calculated stamp duty value:</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatForDisplay(manualStampDutyInput)}
+                        onChange={(e) => setManualStampDutyInput(removeCommas(e.target.value))}
+                        placeholder="Enter value from calculator"
+                        className="pl-7"
+                      />
                     </div>
-                    <Badge variant="outline" className="text-[10px]">
-                      {detectedState === 'All' ? 'State selectable' : `Pre-selected: ${detectedState}`}
-                    </Badge>
+                    <Button onClick={handleManualStampDutyApply} variant="outline">
+                      <Copy className="h-4 w-4 mr-1" />
+                      Capture
+                    </Button>
                   </div>
                 </div>
 
-                {/* Capture Button */}
-                <Button 
-                  onClick={captureStampDutyFromCalculator}
-                  className="w-full gap-2"
-                  variant="outline"
-                >
-                  <Copy className="h-4 w-4" />
-                  Capture Calculated Stamp Duty Value
-                </Button>
-
-                {/* Apply Calculated Stamp Duty Button */}
                 {calculatedStampDuty && (
                   <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
                     <div className="flex items-center gap-3">
@@ -690,7 +599,7 @@ export function FinancialsTab({
                 )}
 
                 <p className="text-xs text-muted-foreground mt-2">
-                  * Calculate your stamp duty using the widget above, then click "Capture" to use the value.
+                  * Calculate your stamp duty using the widget above, then enter the value and click "Capture".
                 </p>
               </div>
             </DialogContent>
@@ -733,7 +642,6 @@ export function FinancialsTab({
             )}
           </div>
 
-          {/* Total Acquisition Summary */}
           {totalAcquisitionCosts > 0 && (
             <div className="mt-4 p-4 bg-muted/50 rounded-lg border">
               <div className="flex items-center justify-between">
