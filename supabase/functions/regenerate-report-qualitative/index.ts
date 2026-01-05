@@ -32,37 +32,38 @@ interface EnhancedData {
 }
 
 // Report section definitions - mirroring generate-investment-report structure
+// INCREASED maxTokens for longer, more comprehensive content
 const REPORT_SECTIONS = [
   {
     id: 'section1',
     name: 'Location & Market Overview',
     sections: ['Location Overview', 'Current Market Performance', 'Current Economic Context', 'Demographics & Demand Drivers'],
-    maxTokens: 4500,
-    minContentLength: 8000,
+    maxTokens: 8000,  // Increased from 4500
+    minContentLength: 12000, // Increased from 8000
     requiredKeywords: ['location', 'market', 'demographic', 'population', 'growth'],
   },
   {
     id: 'section2', 
     name: 'Amenities & Infrastructure',
     sections: ['Schools & Education', 'Healthcare & Shopping', 'Recreational Amenities', 'Transport & Accessibility', 'Environmental Risks & Climate', 'Crime & Safety'],
-    maxTokens: 5000,
-    minContentLength: 10000,
+    maxTokens: 10000,  // Increased from 5000
+    minContentLength: 15000, // Increased from 10000
     requiredKeywords: ['school', 'transport', 'hospital', 'crime', 'risk', 'flood', 'bushfire'],
   },
   {
     id: 'section3',
     name: 'Property & Financial Analysis',
     sections: ['Property-Level Information', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
-    maxTokens: 4500,
-    minContentLength: 8000,
+    maxTokens: 8000,  // Increased from 4500
+    minContentLength: 12000, // Increased from 8000
     requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent'],
   },
   {
     id: 'section4',
     name: 'Projections & Recommendations',
     sections: ['10-Year Investment Projections', 'SWOT Analysis', 'Top 3 Opportunities', 'Top 3 Risks', 'Data Transparency Statement', 'Investment Recommendations', 'Investment Suitability Screening', 'Final Conclusion', 'Data Sources'],
-    maxTokens: 5500,
-    minContentLength: 7000,
+    maxTokens: 10000,  // Increased from 5500
+    minContentLength: 10000, // Increased from 7000
     requiredKeywords: ['projection', 'swot', 'opportunity', 'risk', 'recommendation', 'score'],
   }
 ];
@@ -92,6 +93,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 }
 
 // Section validation helper - ensures content meets minimum requirements
+// STRICTER validation for better quality control
 function validateSectionContent(
   sectionDef: typeof REPORT_SECTIONS[0],
   content: string
@@ -100,9 +102,15 @@ function validateSectionContent(
   let score = 100;
   
   const contentLength = content?.length || 0;
-  if (contentLength < sectionDef.minContentLength) {
-    issues.push(`Content too short: ${contentLength} chars (min: ${sectionDef.minContentLength})`);
-    score -= 30;
+  
+  // STRICTER length validation - must meet at least 70% of minimum
+  const minThreshold = sectionDef.minContentLength * 0.7;
+  if (contentLength < minThreshold) {
+    issues.push(`Content critically short: ${contentLength} chars (need at least: ${Math.round(minThreshold)})`);
+    score -= 50; // Increased penalty
+  } else if (contentLength < sectionDef.minContentLength) {
+    issues.push(`Content below target: ${contentLength} chars (target: ${sectionDef.minContentLength})`);
+    score -= 20;
   }
   
   const contentLower = (content || '').toLowerCase();
@@ -116,8 +124,8 @@ function validateSectionContent(
   }
   
   const headingCount = (content?.match(/^#{1,3}\s+/gm) || []).length;
-  if (headingCount < 3) {
-    issues.push(`Insufficient structure: only ${headingCount} headings found`);
+  if (headingCount < 4) { // Increased from 3
+    issues.push(`Insufficient structure: only ${headingCount} headings found (need 4+)`);
     score -= 15;
   }
   
@@ -128,8 +136,15 @@ function validateSectionContent(
     score -= 10;
   }
   
+  // Check for inline citations/references
+  const hasCitations = content?.includes('[') && content?.includes(']');
+  if (!hasCitations) {
+    issues.push('No inline citations found');
+    score -= 5;
+  }
+  
   return {
-    isValid: score >= 60,
+    isValid: score >= 70, // Increased threshold from 60 to 70
     issues,
     score: Math.max(0, score)
   };
@@ -846,12 +861,14 @@ ${previousSections.substring(0, 2500)}...
 3. USE THE ENHANCED DATA VALUES ABOVE - do not use placeholder values like "XX" or "N/A" when data is available
 4. Include all required tables with REAL data from the enhanced data context
 5. Use proper horizontal rules (---) between sections
-6. Each section must meet minimum word counts as specified in the template
+6. Each section must be COMPREHENSIVE and DETAILED - aim for 2000+ words per major section
 7. Be thorough and data-driven - this is a premium client-facing report
 8. Start immediately with the first section heading - no preamble
-${sectionDef.id === 'section4' ? '9. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
+9. INCLUDE INLINE CITATIONS using [Source Name] format when referencing data (e.g., [ABS Census 2021], [RBA 2024], [Domain], [CoreLogic])
+10. Be SPECIFIC with numbers, percentages, and comparisons - avoid vague statements
+${sectionDef.id === 'section4' ? '11. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
 
-Generate the ${sectionDef.name} sections now:`;
+Generate the ${sectionDef.name} sections now. Be comprehensive and detailed:`;
 
   const systemMessage = `You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict formatting and data requirements.
 
@@ -863,7 +880,15 @@ Your task is to:
 5. Ensure calculations, tables, and projections use the provided values
 6. Maintain professional, analytical tone throughout
 7. Be data-driven and specific - avoid vague statements
-8. Include proper citations and data sources`;
+8. INCLUDE INLINE CITATIONS using [Source Name] format throughout the content:
+   - Use [ABS Census 2021] for demographic data
+   - Use [RBA] for economic/interest rate data
+   - Use [Domain] or [CoreLogic] for property market data
+   - Use [SEIFA] for socioeconomic indices
+   - Use [State Government] for crime/transport data
+   - Use [Bureau of Meteorology] for climate data
+9. Write COMPREHENSIVE, DETAILED content - each section should be 2000+ words
+10. Include specific numbers, percentages, and year-on-year comparisons where available`;
 
   // Retry loop with exponential backoff - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1155,14 +1180,67 @@ YOUR DEDICATED PROPERTY PARTNER
     console.log(`  Total citations: ${allCitations.length}`);
     console.log(`  Sections with errors: ${generationErrors.length}`);
 
-    // Add sources section if we have citations
+    // Build comprehensive sources section with enhanced data attribution
+    combinedContent += '\n\n---\n\n## DATA SOURCES & REFERENCES\n\n';
+    combinedContent += '### Primary Data Sources\n\n';
+    combinedContent += 'This report utilises data from the following authoritative sources:\n\n';
+    
+    // Add explicit enhanced data source attributions
+    const dataSources: string[] = [];
+    
+    if (enhancedData.demographics) {
+      dataSources.push('**Australian Bureau of Statistics (ABS)** - Census 2021 demographic data including population, income, employment, and housing statistics');
+    }
+    if (enhancedData.economics) {
+      dataSources.push('**Reserve Bank of Australia (RBA)** - Current cash rate, inflation data, GDP growth, and economic indicators');
+    }
+    if (enhancedData.seifaData) {
+      dataSources.push('**SEIFA (Socio-Economic Indexes for Areas)** - ABS socioeconomic advantage/disadvantage indices');
+    }
+    if (enhancedData.crimeStatistics) {
+      dataSources.push('**State Police/Crime Statistics Agency** - Local crime rates, safety scores, and trend analysis');
+    }
+    if (enhancedData.employmentData) {
+      dataSources.push('**ABS Labour Force Survey** - Employment growth, industry composition, and workforce statistics');
+    }
+    if (enhancedData.climateData) {
+      dataSources.push('**Bureau of Meteorology (BOM)** - Climate data, temperature, rainfall, and extreme weather information');
+    }
+    if (enhancedData.locationIntelligence) {
+      dataSources.push('**Location Intelligence APIs** - Walk scores, transport accessibility, commute times, and local amenities');
+    }
+    if (enhancedData.schoolData) {
+      dataSources.push('**ACARA/MySchool** - School performance data, NAPLAN results, and education quality metrics');
+    }
+    if (enhancedData.financials) {
+      dataSources.push('**State Revenue Office** - Stamp duty calculations and land tax thresholds');
+    }
+    if (enhancedData.riskAssessment) {
+      dataSources.push('**State Government Planning Data** - Flood mapping, bushfire risk zones, and environmental overlays');
+    }
+    if (enhancedData.domainData) {
+      dataSources.push('**Domain/CoreLogic** - Property market data, median prices, and rental yields');
+    }
+    
+    dataSources.forEach((source, index) => {
+      combinedContent += `${index + 1}. ${source}\n`;
+    });
+    
+    // Add Perplexity web search citations if available
     if (allCitations.length > 0) {
-      combinedContent += '\n\n## SOURCES & REFERENCES\n\n### Citations:\n';
+      combinedContent += '\n### Additional Research Sources\n\n';
       const uniqueCitations = [...new Set(allCitations.map((c: any) => c.url || c.title || c))];
-      uniqueCitations.forEach((citation: any, index: number) => {
+      uniqueCitations.slice(0, 15).forEach((citation: any, index: number) => { // Limit to 15 most relevant
         combinedContent += `${index + 1}. ${citation}\n`;
       });
     }
+    
+    // Add data disclaimer
+    combinedContent += '\n### Data Disclaimer\n\n';
+    combinedContent += `*Data sources accessed: ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}. `;
+    combinedContent += 'All data is sourced from reputable government and industry databases. Market conditions may change. ';
+    combinedContent += 'This report should be used as a guide only and does not constitute financial advice. ';
+    combinedContent += 'We recommend consulting with qualified professionals before making investment decisions.*\n';
 
     // Update the report in the database with enhanced data
     const updatePayload: any = {
