@@ -73,9 +73,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json().catch(() => ({}));
-    const { clearExisting = false, limit = 100 } = body;
+    const { clearExisting = false } = body;
 
-    console.log(`Starting GHL contact import. Clear existing: ${clearExisting}, Limit: ${limit}`);
+    console.log(`Starting GHL contact import. Clear existing: ${clearExisting}`);
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
@@ -105,12 +105,10 @@ serve(async (req) => {
       console.log('Existing client data cleared');
     }
 
-    // Fetch contacts from GHL
+    // Fetch ALL contacts from GHL with pagination (no limit)
     let allContacts: GHLContact[] = [];
-    let nextPageUrl: string | null = null;
     let startAfterId: string | null = null;
     let pageCount = 0;
-    const maxPages = Math.ceil(limit / 100);
 
     do {
       pageCount++;
@@ -131,26 +129,24 @@ serve(async (req) => {
       }
 
       const data: GHLContactsResponse = await response.json();
-      console.log(`Received ${data.contacts?.length || 0} contacts from GHL`);
+      console.log(`Received ${data.contacts?.length || 0} contacts from GHL (page ${pageCount})`);
 
       if (data.contacts && data.contacts.length > 0) {
         allContacts = [...allContacts, ...data.contacts];
         startAfterId = data.meta?.startAfterId || null;
+        console.log(`Total contacts so far: ${allContacts.length}, Next page ID: ${startAfterId || 'none'}`);
       } else {
+        console.log('No more contacts to fetch');
         break;
       }
 
-      // Check if we've reached the limit or no more pages
-      if (allContacts.length >= limit || !startAfterId) {
+      // Safety: prevent infinite loops (max 1000 pages = 100,000 contacts)
+      if (pageCount >= 1000) {
+        console.log('Reached maximum page limit (1000 pages)');
         break;
       }
 
-    } while (pageCount < maxPages);
-
-    // Trim to limit
-    if (allContacts.length > limit) {
-      allContacts = allContacts.slice(0, limit);
-    }
+    } while (startAfterId)
 
     console.log(`Total contacts fetched from GHL: ${allContacts.length}`);
 
