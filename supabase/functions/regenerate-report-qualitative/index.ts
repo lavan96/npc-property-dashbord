@@ -1170,11 +1170,11 @@ YOUR DEDICATED PROPERTY PARTNER
       updated_at: new Date().toISOString()
     };
 
-    // Store enhanced data in the report
+    // Store enhanced data in the report (using correct column names from schema)
     if (Object.keys(enhancedData).length > 0) {
-      updatePayload.demographic_data = enhancedData.demographics || null;
+      updatePayload.demographics_data = enhancedData.demographics || null;
       updatePayload.economic_data = enhancedData.economics || null;
-      updatePayload.scoring_data = enhancedData.investmentScore || null;
+      updatePayload.investment_score = enhancedData.investmentScore || null;
       
       // Merge enhanced financials with any existing data
       if (enhancedData.financials) {
