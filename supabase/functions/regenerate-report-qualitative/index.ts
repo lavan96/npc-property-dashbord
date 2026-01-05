@@ -832,63 +832,68 @@ ${templateContext.substring(0, 4000)}
 `;
   }
 
+  // IMPORTANT: This is a REGENERATION - we generate COMPLETELY FRESH content
+  // DO NOT reference original content - this ensures truly new analysis each time
   const sectionPrompt = `You are an expert Australian property investment analyst for Naidu Property Consulting Services.
-You are regenerating a section of an investment report for: ${propertyAddress}
+You are creating a FRESH, COMPREHENSIVE section for an investment report for: ${propertyAddress}
 
-**SECTION TO REGENERATE:** ${sectionDef.name}
+**SECTION TO CREATE:** ${sectionDef.name}
 **Subsections to include:** ${sectionDef.sections.join(', ')}
 
 ${templateSection}
 
-**ENHANCED DATA FROM LIVE API SOURCES (USE THIS DATA):**
+**LIVE DATA FROM AUTHORITATIVE SOURCES (USE THIS DATA):**
 ${enhancedDataContext}
 
-**MANUAL OVERRIDES (Use these EXACT values in your analysis):**
+**CLIENT-SPECIFIED VALUES (Use these EXACT values in calculations and analysis):**
 ${overrideSummary}
 
 ${investmentScoreContext}
 
-**ORIGINAL CONTENT FOR REFERENCE:**
-${originalSectionContent?.substring(0, 3000) || 'No original content available - generate fresh content based on the data above.'}
-
-${previousSections ? `**CONTEXT FROM PREVIOUSLY REGENERATED SECTIONS (for consistency, DO NOT repeat):**
-${previousSections.substring(0, 2500)}...
+${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency only - DO NOT repeat this content):**
+${previousSections.substring(0, 1500)}...
 ` : ''}
 
 **CRITICAL INSTRUCTIONS:**
-1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
-2. Follow the exact markdown formatting with proper headings (# for main sections, ## for subsections)
-3. USE THE ENHANCED DATA VALUES ABOVE - do not use placeholder values like "XX" or "N/A" when data is available
-4. Include all required tables with REAL data from the enhanced data context
-5. Use proper horizontal rules (---) between sections
-6. Each section must be COMPREHENSIVE and DETAILED - aim for 2000+ words per major section
-7. Be thorough and data-driven - this is a premium client-facing report
-8. Start immediately with the first section heading - no preamble
-9. INCLUDE INLINE CITATIONS using [Source Name] format when referencing data (e.g., [ABS Census 2021], [RBA 2024], [Domain], [CoreLogic])
-10. Be SPECIFIC with numbers, percentages, and comparisons - avoid vague statements
-${sectionDef.id === 'section4' ? '11. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
+1. Generate COMPLETELY FRESH content - use your own analysis and writing style
+2. DO NOT copy or closely paraphrase any existing content - create original analysis
+3. Follow markdown formatting: # for main sections, ## for subsections, ### for sub-subsections
+4. USE THE LIVE DATA VALUES ABOVE - never use placeholder values when data is available
+5. Include well-formatted data tables with REAL numbers from the data context
+6. Use proper horizontal rules (---) between major sections
+7. Each section must be COMPREHENSIVE and DETAILED - minimum 2000+ words per major section
+8. Be thorough, analytical, and data-driven - this is a premium client-facing investment report
+9. Start immediately with the first section heading - no preamble or introductory text
+10. INCLUDE INLINE CITATIONS: [ABS Census 2021], [RBA], [Domain], [CoreLogic], [SEIFA], [BOM], etc.
+11. Be SPECIFIC with numbers, percentages, year-on-year comparisons, and market context
+12. Provide unique insights and analysis - differentiate from generic property reports
+${sectionDef.id === 'section4' ? '13. MUST include the Investment Score Analysis with the EXACT score values provided above' : ''}
 
-Generate the ${sectionDef.name} sections now. Be comprehensive and detailed:`;
+Generate the ${sectionDef.name} section now with fresh, original, comprehensive analysis:`;
 
-  const systemMessage = `You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict formatting and data requirements.
+  const systemMessage = `You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports that are UNIQUE and ORIGINAL for each property.
+
+CRITICAL: This is a REGENERATION request - you MUST generate COMPLETELY FRESH content that differs from any previous version. Use different phrasing, sentence structures, and analytical perspectives.
 
 Your task is to:
-1. Use the ENHANCED DATA provided from live API sources - these are real, current values
-2. Apply any manual overrides exactly as specified
-3. Preserve the structure and format of professional investment reports
-4. Update ALL narrative commentary to reflect the data provided
-5. Ensure calculations, tables, and projections use the provided values
-6. Maintain professional, analytical tone throughout
-7. Be data-driven and specific - avoid vague statements
-8. INCLUDE INLINE CITATIONS using [Source Name] format throughout the content:
-   - Use [ABS Census 2021] for demographic data
-   - Use [RBA] for economic/interest rate data
-   - Use [Domain] or [CoreLogic] for property market data
-   - Use [SEIFA] for socioeconomic indices
-   - Use [State Government] for crime/transport data
-   - Use [Bureau of Meteorology] for climate data
-9. Write COMPREHENSIVE, DETAILED content - each section should be 2000+ words
-10. Include specific numbers, percentages, and year-on-year comparisons where available`;
+1. Create ORIGINAL, FRESH analysis - never replicate previous content patterns
+2. Use the LIVE DATA provided from authoritative sources - these are real, current values
+3. Apply client-specified values exactly as provided
+4. Follow professional investment report structure and formatting
+5. Write ALL narrative from scratch with unique analytical perspectives
+6. Ensure calculations, tables, and projections use the provided values correctly
+7. Maintain professional, analytical, and authoritative tone throughout
+8. Be data-driven and specific - quantify everything possible
+9. INCLUDE INLINE CITATIONS using [Source Name] format throughout:
+   - [ABS Census 2021] for demographic data
+   - [RBA] for economic/interest rate data  
+   - [Domain] or [CoreLogic] for property market data
+   - [SEIFA] for socioeconomic indices
+   - [State Government] for crime/transport data
+   - [Bureau of Meteorology] for climate data
+10. Write COMPREHENSIVE, DETAILED content - minimum 2000+ words per major section
+11. Include specific numbers, percentages, trend analysis, and year-on-year comparisons
+12. Provide UNIQUE insights that differentiate this report from generic analysis`;
 
   // Retry loop with exponential backoff - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1065,13 +1070,13 @@ YOUR DEDICATED PROPERTY PARTNER
     
     for (let i = 0; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
-      console.log(`\n📄 Regenerating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name}`);
+      console.log(`\n📄 Regenerating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name} [FRESH GENERATION]`);
       
-      // Extract original content for this section
-      const originalSectionContent = extractSectionContent(currentReportContent, sectionDef.sections);
-      console.log(`  Original section content: ${originalSectionContent.length} chars`);
+      // NOTE: We intentionally DO NOT pass original content to ensure fresh generation
+      // The originalSectionContent is no longer used - this ensures truly new content
+      console.log(`  Generating fresh content (not referencing original)`);
       
-      // Pass context from previously regenerated sections for consistency
+      // Pass context from previously regenerated sections for consistency only
       const previousContext = combinedContent.length > 500 ? combinedContent.substring(combinedContent.length - 2000) : '';
       
       // === SECTION GENERATION WITH VALIDATION AND RETRY ===
@@ -1083,9 +1088,10 @@ YOUR DEDICATED PROPERTY PARTNER
       for (let attempt = 1; attempt <= maxSectionAttempts; attempt++) {
         sectionAttempts = attempt;
         
+        // Pass empty string for originalSectionContent to force fresh generation
         const result = await regenerateSection(
           sectionDef,
-          originalSectionContent,
+          '', // IMPORTANT: Empty string to force fresh content generation
           overrideSummary,
           PERPLEXITY_API_KEY,
           previousContext,
@@ -1098,12 +1104,9 @@ YOUR DEDICATED PROPERTY PARTNER
           console.error(`⚠️ Section ${sectionDef.name} attempt ${attempt} failed:`, result.error);
           if (attempt === maxSectionAttempts) {
             generationErrors.push(`${sectionDef.name}: ${result.error}`);
-            // Use original content as fallback
-            if (originalSectionContent && originalSectionContent.length > 500) {
-              console.log(`  Using original content as fallback for ${sectionDef.name}`);
-              bestContent = originalSectionContent;
-              bestScore = 50;
-            }
+            // DO NOT fall back to original content - we want fresh content only
+            // If generation fails, leave bestContent empty and log the error
+            console.log(`  Section ${sectionDef.name} failed after ${maxSectionAttempts} attempts - no fallback used`);
           }
           continue;
         }
