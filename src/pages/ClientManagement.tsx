@@ -64,7 +64,7 @@ export default function ClientManagement() {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [isImportingFromGHL, setIsImportingFromGHL] = useState(false);
-  const [isClearingAll, setIsClearingAll] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ imported: number; hasMore: boolean } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [hasAutoSynced, setHasAutoSynced] = useState(false);
   const queryClient = useQueryClient();
@@ -94,30 +94,56 @@ export default function ClientManagement() {
     }
   }, [isLoading, clients.length, hasAutoSynced, isImportingFromGHL]);
 
-  // Import clients from GHL
-  const handleImportFromGHL = async (clearExisting = false) => {
+  // Import clients from GHL with auto-resume for large datasets
+  const handleImportFromGHL = async (clearExisting = false, resumeFromId: string | null = null) => {
     setIsImportingFromGHL(true);
+    if (!resumeFromId) {
+      setImportProgress({ imported: 0, hasMore: true });
+    }
+    
     try {
-      const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
-        body: { clearExisting, limit: 500 }
-      });
+      let totalImported = importProgress?.imported || 0;
+      let nextResumeId = resumeFromId;
+      let isFirstBatch = !resumeFromId;
 
-      if (error) throw error;
+      // Loop to fetch all batches automatically
+      do {
+        const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
+          body: { 
+            clearExisting: isFirstBatch ? clearExisting : false, 
+            resumeFromId: nextResumeId,
+            batchSize: 50 // 50 pages = 5000 contacts per batch
+          }
+        });
 
-      if (data?.success) {
-        toast.success(data.message);
-        if (data.stats) {
-          console.log('GHL Import stats:', data.stats);
+        if (error) throw error;
+
+        if (data?.success) {
+          totalImported += data.stats?.batchImported || 0;
+          setImportProgress({ imported: totalImported, hasMore: data.hasMore });
+          
+          if (data.hasMore && data.nextResumeId) {
+            nextResumeId = data.nextResumeId;
+            isFirstBatch = false;
+            console.log(`Batch complete. Total imported: ${totalImported}. Continuing...`);
+          } else {
+            nextResumeId = null;
+            toast.success(`Import complete! ${totalImported} clients imported from GHL.`);
+          }
+          
+          // Refresh the client list after each batch
+          refetch();
+        } else {
+          throw new Error(data?.error || 'Import failed');
         }
-        refetch();
-      } else {
-        throw new Error(data?.error || 'Import failed');
-      }
+      } while (nextResumeId);
+
     } catch (err: any) {
       console.error('GHL import error:', err);
       toast.error('Failed to import from GHL: ' + (err.message || 'Unknown error'));
     } finally {
       setIsImportingFromGHL(false);
+      setImportProgress(null);
       setShowClearConfirm(false);
     }
   };
@@ -272,7 +298,9 @@ export default function ClientManagement() {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Import from GHL
+            {isImportingFromGHL && importProgress 
+              ? `Importing... (${importProgress.imported.toLocaleString()} clients)`
+              : 'Import from GHL'}
           </Button>
           <Button 
             onClick={handleClearAndReimport} 
