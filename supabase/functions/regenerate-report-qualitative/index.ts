@@ -1068,6 +1068,15 @@ YOUR DEDICATED PROPERTY PARTNER
     // Track section quality for validation
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
     
+    // Update status to processing with progress tracking
+    await supabase
+      .from('investment_reports')
+      .update({ 
+        status: 'processing',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', reportId);
+    
     for (let i = 0; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
       console.log(`\n📄 Regenerating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name} [FRESH GENERATION]`);
@@ -1153,6 +1162,22 @@ YOUR DEDICATED PROPERTY PARTNER
           score: bestScore,
           attempts: sectionAttempts
         });
+        
+        // === PROGRESSIVE SAVE AFTER EACH SECTION ===
+        console.log(`💾 Progressive save after section ${i + 1}...`);
+        const { error: progressError } = await supabase
+          .from('investment_reports')
+          .update({
+            report_content: combinedContent,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', reportId);
+        
+        if (progressError) {
+          console.error(`⚠️ Progressive save failed:`, progressError.message);
+        } else {
+          console.log(`✓ Progress saved: ${combinedContent.length} chars (section ${i + 1}/${REPORT_SECTIONS.length})`);
+        }
       }
       
       // Small delay between sections to avoid rate limiting
@@ -1245,9 +1270,10 @@ YOUR DEDICATED PROPERTY PARTNER
     combinedContent += 'This report should be used as a guide only and does not constitute financial advice. ';
     combinedContent += 'We recommend consulting with qualified professionals before making investment decisions.*\n';
 
-    // Update the report in the database with enhanced data
+    // Update the report in the database with enhanced data and mark as completed
     const updatePayload: any = {
       report_content: combinedContent,
+      status: 'completed',
       updated_at: new Date().toISOString()
     };
 
@@ -1273,10 +1299,15 @@ YOUR DEDICATED PROPERTY PARTNER
 
     if (updateError) {
       console.error('❌ Database update error:', updateError);
+      // Try to mark as failed if update fails
+      await supabase
+        .from('investment_reports')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', reportId);
       throw updateError;
     }
 
-    console.log('✅ Report content and enhanced data updated successfully');
+    console.log('✅ Report regeneration complete - status set to completed');
 
     return new Response(JSON.stringify({
       success: true,

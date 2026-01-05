@@ -243,7 +243,7 @@ verify_jwt = false
 
 [functions.regenerate-report-qualitative]
 verify_jwt = false
-request_timeout = 120
+request_timeout = 540
 
 [functions.archive-old-reports]
 verify_jwt = false
