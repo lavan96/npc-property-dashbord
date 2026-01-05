@@ -31,46 +31,44 @@ interface EnhancedData {
   validation?: any;
 }
 
-// Report section definitions - mirroring generate-investment-report structure
-// INCREASED maxTokens for longer, more comprehensive content
+// Report section definitions - MUST match generate-investment-report
 const REPORT_SECTIONS = [
   {
     id: 'section1',
     name: 'Location & Market Overview',
     sections: ['Location Overview', 'Current Market Performance', 'Current Economic Context', 'Demographics & Demand Drivers'],
-    maxTokens: 8000,  // Increased from 4500
-    minContentLength: 12000, // Increased from 8000
+    maxTokens: 4500,
+    minContentLength: 8000,
     requiredKeywords: ['location', 'market', 'demographic', 'population', 'growth'],
   },
   {
-    id: 'section2', 
+    id: 'section2',
     name: 'Amenities & Infrastructure',
     sections: ['Schools & Education', 'Healthcare & Shopping', 'Recreational Amenities', 'Transport & Accessibility', 'Environmental Risks & Climate', 'Crime & Safety'],
-    maxTokens: 10000,  // Increased from 5000
-    minContentLength: 15000, // Increased from 10000
+    maxTokens: 5000,
+    minContentLength: 10000,
     requiredKeywords: ['school', 'transport', 'hospital', 'crime', 'risk', 'flood', 'bushfire'],
   },
   {
     id: 'section3',
     name: 'Property & Financial Analysis',
     sections: ['Property-Level Information', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
-    maxTokens: 8000,  // Increased from 4500
-    minContentLength: 12000, // Increased from 8000
+    maxTokens: 4500,
+    minContentLength: 8000,
     requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent'],
   },
   {
     id: 'section4',
     name: 'Projections & Recommendations',
     sections: ['10-Year Investment Projections', 'SWOT Analysis', 'Top 3 Opportunities', 'Top 3 Risks', 'Data Transparency Statement', 'Investment Recommendations', 'Investment Suitability Screening', 'Final Conclusion', 'Data Sources'],
-    maxTokens: 10000,  // Increased from 5500
-    minContentLength: 10000, // Increased from 7000
+    maxTokens: 5500,
+    minContentLength: 7000,
     requiredKeywords: ['projection', 'swot', 'opportunity', 'risk', 'recommendation', 'score'],
-  }
+  },
 ];
 
-// Helper function to fetch with timeout - matches generate-investment-report
-// REDUCED timeout to 60s per call to avoid container shutdown issues
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 60000): Promise<Response> {
+// Helper function to fetch with timeout - MUST match generate-investment-report
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 90000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     console.log(`⏱️ Request timeout after ${timeoutMs}ms, aborting...`);
@@ -116,12 +114,24 @@ function validateSectionContent(
   
   const contentLower = (content || '').toLowerCase();
   const missingKeywords = (sectionDef.requiredKeywords || []).filter(
-    kw => !contentLower.includes(kw.toLowerCase())
+    (kw) => !contentLower.includes(kw.toLowerCase()),
   );
-  
+
   if (missingKeywords.length > 0) {
     issues.push(`Missing content areas: ${missingKeywords.join(', ')}`);
     score -= missingKeywords.length * 10;
+  }
+
+  // STRICT structure compliance: required subsection headings must exist
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const missingHeadings = (sectionDef.sections || []).filter((title) => {
+    const re = new RegExp(`^#{2,3}\\s*${escapeRegExp(title)}\\b`, 'mi');
+    return !re.test(content || '');
+  });
+
+  if (missingHeadings.length > 0) {
+    issues.push(`Missing required headings: ${missingHeadings.join(', ')}`);
+    score -= missingHeadings.length * 15;
   }
   
   const headingCount = (content?.match(/^#{1,3}\s+/gm) || []).length;
@@ -856,48 +866,23 @@ ${previousSections.substring(0, 1500)}...
 ` : ''}
 
 **CRITICAL INSTRUCTIONS:**
-1. Generate COMPLETELY FRESH content - use your own analysis and writing style
-2. DO NOT copy or closely paraphrase any existing content - create original analysis
-3. Follow markdown formatting: # for main sections, ## for subsections, ### for sub-subsections
-4. USE THE LIVE DATA VALUES ABOVE - never use placeholder values when data is available
-5. Include well-formatted data tables with REAL numbers from the data context
-6. Use proper horizontal rules (---) between major sections
-7. Each section must be COMPREHENSIVE and DETAILED - minimum 2000+ words per major section
-8. Be thorough, analytical, and data-driven - this is a premium client-facing investment report
-9. Start immediately with the first section heading - no preamble or introductory text
-10. INCLUDE INLINE CITATIONS: [ABS Census 2021], [RBA], [Domain], [CoreLogic], [SEIFA], [BOM], etc.
-11. Be SPECIFIC with numbers, percentages, year-on-year comparisons, and market context
-12. Provide unique insights and analysis - differentiate from generic property reports
-${sectionDef.id === 'section4' ? '13. MUST include the Investment Score Analysis with the EXACT score values provided above' : ''}
+1. This is a REGENERATION: write FRESH content (new wording), but keep the REQUIRED structure
+2. Follow the provided template section STRICTLY (headings, order, and required subsections) — do not add/remove/reorder headings
+3. Generate ONLY this section; no extra introductions or conclusions beyond the template
+4. Use markdown headings exactly: # for main section, ## for subsections, ### for sub-subsections
+5. Use the LIVE DATA + client values above; do not use placeholders like "XX" or "N/A" when data is available
+6. Include the tables required by the template using real numbers from the data context
+7. Use horizontal rules (---) where the template expects them
+8. Start immediately with the first required heading (no preamble)
+9. Include inline citations in [Source] format (e.g., [ABS Census 2021], [RBA], [Domain], [SEIFA], [BOM])
+${sectionDef.id === 'section4' ? '10. MUST include the Investment Score Analysis with the EXACT score values provided above' : ''}
 
-Generate the ${sectionDef.name} section now with fresh, original, comprehensive analysis:`;
+Generate the ${sectionDef.name} section now:`;
 
-  const systemMessage = `You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports that are UNIQUE and ORIGINAL for each property.
+  // MUST match generate-investment-report, with regeneration note added
+  const systemMessage = 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Maintenance is ALWAYS fixed at $1,500 annually. This is a premium client-facing report - be thorough, professional, and data-driven.\n\nThis is a REGENERATION request: keep the exact required structure, but use fresh wording and analysis.';
 
-CRITICAL: This is a REGENERATION request - you MUST generate COMPLETELY FRESH content that differs from any previous version. Use different phrasing, sentence structures, and analytical perspectives.
-
-Your task is to:
-1. Create ORIGINAL, FRESH analysis - never replicate previous content patterns
-2. Use the LIVE DATA provided from authoritative sources - these are real, current values
-3. Apply client-specified values exactly as provided
-4. Follow professional investment report structure and formatting
-5. Write ALL narrative from scratch with unique analytical perspectives
-6. Ensure calculations, tables, and projections use the provided values correctly
-7. Maintain professional, analytical, and authoritative tone throughout
-8. Be data-driven and specific - quantify everything possible
-9. INCLUDE INLINE CITATIONS using [Source Name] format throughout:
-   - [ABS Census 2021] for demographic data
-   - [RBA] for economic/interest rate data  
-   - [Domain] or [CoreLogic] for property market data
-   - [SEIFA] for socioeconomic indices
-   - [State Government] for crime/transport data
-   - [Bureau of Meteorology] for climate data
-10. Write COMPREHENSIVE, DETAILED content - minimum 2000+ words per major section
-11. Include specific numbers, percentages, trend analysis, and year-on-year comparisons
-12. Provide UNIQUE insights that differentiate this report from generic analysis`;
-
-  // Retry loop with exponential backoff - matches generate-investment-report
-  // REDUCED timeout per section to 90s to avoid container shutdown
+  // Retry loop - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`📝 Regenerating section: ${sectionDef.name}... (attempt ${attempt}/${maxRetries})`);
@@ -917,7 +902,7 @@ Your task is to:
             { role: 'user', content: sectionPrompt }
           ]
         }),
-      }, 90000); // 90 second timeout per section (reduced from 120s to avoid container kill)
+      }, 120000); // 120 second timeout per section (matches generate-investment-report)
 
       if (!response.ok) {
         const errorText = await response.text();
