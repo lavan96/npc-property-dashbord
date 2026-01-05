@@ -73,9 +73,16 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json().catch(() => ({}));
-    const { clearExisting = false, resumeFromId = null, maxPages = 10 } = body;
+    const {
+      clearExisting = false,
+      resumeFromId = null,
+      resumeFrom = null,
+      maxPages = 10,
+    } = body;
 
-    console.log(`Starting GHL contact import. Clear existing: ${clearExisting}, Resume from: ${resumeFromId || 'start'}, Max pages: ${maxPages}`);
+    console.log(
+      `Starting GHL contact import. Clear existing: ${clearExisting}, Resume from: ${resumeFromId || 'start'} (${resumeFrom || 'no-timestamp'}), Max pages: ${maxPages}`,
+    );
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
@@ -106,7 +113,9 @@ serve(async (req) => {
     }
 
     // Process contacts page by page - SAVE IMMEDIATELY after each page
+    // NOTE: GHL pagination requires BOTH startAfter (timestamp cursor) and startAfterId (tie-breaker).
     let startAfterId: string | null = resumeFromId;
+    let startAfter: number | null = typeof resumeFrom === 'number' ? resumeFrom : null;
     let pageCount = 0;
     let totalImported = 0;
     let totalErrors = 0;
@@ -115,16 +124,16 @@ serve(async (req) => {
 
     while (pageCount < maxPages) {
       pageCount++;
+
+      // Build request using both cursors (startAfter + startAfterId)
       let url = `${GHL_API_BASE}/contacts/?locationId=${locationId}&limit=100`;
-      
-      if (startAfterId) {
-        url += `&startAfterId=${startAfterId}`;
-      }
+      if (typeof startAfter === 'number') url += `&startAfter=${startAfter}`;
+      if (startAfterId) url += `&startAfterId=${startAfterId}`;
 
       console.log(`Fetching GHL contacts page ${pageCount}: ${url}`);
 
       const response = await fetch(url, { headers });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`GHL API error: ${response.status} - ${errorText}`);
@@ -133,23 +142,26 @@ serve(async (req) => {
 
       const data: GHLContactsResponse = await response.json();
       const contacts = data.contacts || [];
-      
+
       // Capture total from first page only if starting fresh
       if (pageCount === 1 && !resumeFromId && data.meta?.total) {
         totalFromApi = data.meta.total;
         console.log(`GHL reports total contacts: ${totalFromApi}`);
       }
 
-      console.log(`Received ${contacts.length} contacts from GHL (page ${pageCount})`);
+      console.log(
+        `Received ${contacts.length} contacts from GHL (page ${pageCount}). meta.startAfter=${data.meta?.startAfter ?? 'null'} meta.startAfterId=${data.meta?.startAfterId ?? 'null'}`,
+      );
 
       if (contacts.length === 0) {
         console.log('No more contacts to fetch');
+        startAfter = null;
         startAfterId = null;
         break;
       }
 
       // IMMEDIATELY save this page to DB
-      const clientsToUpsert = contacts.map(contact => ({
+      const clientsToUpsert = contacts.map((contact) => ({
         primary_first_name: contact.firstName || 'Unknown',
         primary_surname: contact.lastName || 'Unknown',
         primary_email: contact.email || null,
@@ -165,9 +177,9 @@ serve(async (req) => {
 
       const { data: upsertedData, error: upsertError } = await supabase
         .from('clients')
-        .upsert(clientsToUpsert, { 
+        .upsert(clientsToUpsert, {
           onConflict: 'ghl_contact_id',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false,
         })
         .select('id');
 
@@ -181,42 +193,58 @@ serve(async (req) => {
         console.log(`Saved page ${pageCount}: ${savedCount} clients (total: ${totalImported})`);
       }
 
-      // FIX: Use the LAST contact ID from this batch for proper pagination
-      // The GHL API meta.startAfterId is unreliable - use the actual last contact ID
-      const lastContact = contacts[contacts.length - 1];
-      startAfterId = lastContact?.id || null;
-      
-      // If we got fewer than 100 contacts, we've reached the end
-      if (contacts.length < 100) {
-        console.log(`Received ${contacts.length} contacts (less than 100), reached end of data`);
+      const nextStartAfter = data.meta?.startAfter ?? null;
+      const nextStartAfterId = data.meta?.startAfterId ?? null;
+
+      // Safety: if API returns the same cursor, stop to prevent infinite loops
+      if (nextStartAfter === startAfter && nextStartAfterId === startAfterId) {
+        console.warn(
+          `Pagination cursor did not advance (startAfter=${startAfter}, startAfterId=${startAfterId}). Stopping to prevent infinite loop.`,
+        );
+        startAfter = null;
         startAfterId = null;
         break;
       }
 
-      console.log(`Next page will start after ID: ${startAfterId}`);
+      startAfter = nextStartAfter;
+      startAfterId = nextStartAfterId;
+
+      // If API doesn't provide a next cursor, we're done
+      if (startAfter === null && !startAfterId) {
+        console.log('Reached end of contacts (no next cursor)');
+        break;
+      }
+
+      console.log(`Next page cursor: startAfter=${startAfter ?? 'null'}, startAfterId=${startAfterId ?? 'null'}`);
     }
 
-    const hasMore = !!startAfterId;
-    
-    console.log(`Batch complete. Imported: ${totalImported}, Errors: ${totalErrors}, Has more: ${hasMore}, Next ID: ${startAfterId || 'none'}`);
+    const hasMore = !!startAfterId || typeof startAfter === 'number';
 
-    return new Response(JSON.stringify({
-      success: true,
-      message: hasMore 
-        ? `Imported ${totalImported} clients. More contacts available...`
-        : `Import complete! Imported ${totalImported} clients.`,
-      stats: {
-        imported: totalImported,
-        errors: totalErrors,
-        totalFromApi,
-        pagesProcessed: pageCount,
+    console.log(
+      `Batch complete. Imported: ${totalImported}, Errors: ${totalErrors}, Has more: ${hasMore}, Next cursor: startAfter=${startAfter ?? 'null'}, startAfterId=${startAfterId ?? 'null'}`,
+    );
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: hasMore
+          ? `Imported ${totalImported} clients. More contacts available...`
+          : `Import complete! Imported ${totalImported} clients.`,
+        stats: {
+          imported: totalImported,
+          errors: totalErrors,
+          totalFromApi,
+          pagesProcessed: pageCount,
+        },
+        hasMore,
+        nextResumeId: startAfterId,
+        nextResume: startAfter,
+        errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
-      hasMore,
-      nextResumeId: startAfterId,
-      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    );
 
   } catch (error) {
     console.error('Error in import-clients-from-ghl:', error);
