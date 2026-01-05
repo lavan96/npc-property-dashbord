@@ -1056,10 +1056,12 @@ YOUR DEDICATED PROPERTY PARTNER
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
     
     // Update status to processing with progress tracking
+    // Note: This single 'processing' status update will trigger the archive trigger ONCE
     await supabase
       .from('investment_reports')
       .update({ 
         status: 'processing',
+        report_content: currentReportContent, // Ensure content included so trigger sees it
         updated_at: new Date().toISOString()
       })
       .eq('id', reportId);
@@ -1151,11 +1153,13 @@ YOUR DEDICATED PROPERTY PARTNER
         });
         
         // === PROGRESSIVE SAVE AFTER EACH SECTION ===
+        // Note: Status is already 'processing', so these updates will NOT re-trigger archiving
         console.log(`💾 Progressive save after section ${i + 1}...`);
         const { error: progressError } = await supabase
           .from('investment_reports')
           .update({
             report_content: combinedContent,
+            // Do NOT update status here - it stays 'processing', preventing additional archive triggers
             updated_at: new Date().toISOString()
           })
           .eq('id', reportId);
