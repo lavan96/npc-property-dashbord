@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,9 @@ import {
   DollarSign, 
   TrendingUp,
   RefreshCw,
-  Loader2
+  Loader2,
+  Download,
+  Trash2
 } from 'lucide-react';
 import { ExcelDropzone } from '@/components/clients/ExcelDropzone';
 import { ClientCard } from '@/components/clients/ClientCard';
@@ -61,6 +63,10 @@ export default function ClientManagement() {
   const [filters, setFilters] = useState<ClientFiltersState>(defaultFilters);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [isImportingFromGHL, setIsImportingFromGHL] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [hasAutoSynced, setHasAutoSynced] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch clients with property count
@@ -79,6 +85,51 @@ export default function ClientManagement() {
       return data as Client[];
     }
   });
+
+  // Auto-sync from GHL on first load if no clients exist
+  useEffect(() => {
+    if (!isLoading && clients.length === 0 && !hasAutoSynced && !isImportingFromGHL) {
+      setHasAutoSynced(true);
+      handleImportFromGHL();
+    }
+  }, [isLoading, clients.length, hasAutoSynced, isImportingFromGHL]);
+
+  // Import clients from GHL
+  const handleImportFromGHL = async (clearExisting = false) => {
+    setIsImportingFromGHL(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
+        body: { clearExisting, limit: 500 }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(data.message);
+        if (data.stats) {
+          console.log('GHL Import stats:', data.stats);
+        }
+        refetch();
+      } else {
+        throw new Error(data?.error || 'Import failed');
+      }
+    } catch (err: any) {
+      console.error('GHL import error:', err);
+      toast.error('Failed to import from GHL: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsImportingFromGHL(false);
+      setShowClearConfirm(false);
+    }
+  };
+
+  // Clear all clients and reimport
+  const handleClearAndReimport = () => {
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearAndReimport = () => {
+    handleImportFromGHL(true);
+  };
 
   // Delete client mutation
   const deleteClientMutation = useMutation({
@@ -209,11 +260,33 @@ export default function ClientManagement() {
             Manage clients, properties, and sync with GoHighLevel
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button 
+            onClick={() => handleImportFromGHL(false)} 
+            variant="default" 
+            size="sm"
+            disabled={isImportingFromGHL}
+          >
+            {isImportingFromGHL ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Import from GHL
+          </Button>
+          <Button 
+            onClick={handleClearAndReimport} 
+            variant="outline" 
+            size="sm"
+            disabled={isImportingFromGHL}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear & Reimport
+          </Button>
           {pendingSyncCount > 0 && (
             <Button 
               onClick={handleSyncAllPending} 
-              variant="default" 
+              variant="secondary" 
               size="sm"
               disabled={isSyncingAll}
             >
@@ -225,7 +298,7 @@ export default function ClientManagement() {
               Sync All ({pendingSyncCount})
             </Button>
           )}
-          <Button onClick={() => refetch()} variant="outline" size="sm">
+          <Button onClick={() => refetch()} variant="ghost" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -413,6 +486,34 @@ export default function ClientManagement() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Clear & Reimport Confirmation Dialog */}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Clients & Reimport</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete ALL existing client data and reimport fresh from GoHighLevel. 
+              This action cannot be undone. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmClearAndReimport}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isImportingFromGHL ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                'Clear & Reimport'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
