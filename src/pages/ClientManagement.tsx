@@ -64,7 +64,7 @@ export default function ClientManagement() {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [isImportingFromGHL, setIsImportingFromGHL] = useState(false);
-  const [importProgress, setImportProgress] = useState<{ imported: number; hasMore: boolean } | null>(null);
+  const [importProgress, setImportProgress] = useState<{ imported: number; hasMore: boolean; totalFromApi?: number } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [hasAutoSynced, setHasAutoSynced] = useState(false);
   const queryClient = useQueryClient();
@@ -95,49 +95,68 @@ export default function ClientManagement() {
   }, [isLoading, clients.length, hasAutoSynced, isImportingFromGHL]);
 
   // Import clients from GHL with auto-resume for large datasets
-  const handleImportFromGHL = async (clearExisting = false, resumeFromId: string | null = null) => {
+  const handleImportFromGHL = async (
+    clearExisting = false,
+    resumeFromId: string | null = null,
+    resumeFrom: number | null = null,
+  ) => {
     setIsImportingFromGHL(true);
-    if (!resumeFromId) {
+
+    if (!resumeFromId && resumeFrom === null) {
       setImportProgress({ imported: 0, hasMore: true });
     }
-    
+
     try {
       let totalImported = importProgress?.imported || 0;
-      let nextResumeId = resumeFromId;
-      let isFirstBatch = !resumeFromId;
+      let nextResumeId: string | null = resumeFromId;
+      let nextResume: number | null = resumeFrom;
+      let isFirstBatch = !resumeFromId && resumeFrom === null;
 
       // Loop to fetch all batches automatically
       do {
         const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
-          body: { 
-            clearExisting: isFirstBatch ? clearExisting : false, 
+          body: {
+            clearExisting: isFirstBatch ? clearExisting : false,
             resumeFromId: nextResumeId,
-            maxPages: 10 // Process 10 pages (1000 contacts) per batch to avoid timeouts
-          }
+            resumeFrom: nextResume,
+            maxPages: 10, // Process 10 pages (1000 contacts) per batch to avoid timeouts
+          },
         });
 
         if (error) throw error;
 
         if (data?.success) {
-          totalImported += data.stats?.imported || 0;
-          setImportProgress({ imported: totalImported, hasMore: data.hasMore });
-          
-          if (data.hasMore && data.nextResumeId) {
-            nextResumeId = data.nextResumeId;
+          const importedThisBatch = data.stats?.imported || 0;
+          totalImported += importedThisBatch;
+
+          setImportProgress((prev) => ({
+            imported: totalImported,
+            hasMore: !!data.hasMore,
+            totalFromApi: prev?.totalFromApi ?? data.stats?.totalFromApi,
+          }));
+
+          if (data.hasMore) {
+            nextResumeId = data.nextResumeId ?? null;
+            nextResume = typeof data.nextResume === 'number' ? data.nextResume : null;
             isFirstBatch = false;
-            console.log(`Batch complete. Total imported: ${totalImported}. Continuing...`);
+
+            // If the API isn't providing a cursor, stop (prevents UI from looping forever)
+            if (!nextResumeId && nextResume === null) {
+              console.warn('Import indicated hasMore=true but no resume cursor was provided; stopping.');
+              break;
+            }
           } else {
             nextResumeId = null;
+            nextResume = null;
             toast.success(`Import complete! ${totalImported} clients imported from GHL.`);
           }
-          
+
           // Refresh the client list after each batch
           refetch();
         } else {
           throw new Error(data?.error || 'Import failed');
         }
-      } while (nextResumeId);
-
+      } while (nextResumeId || nextResume !== null);
     } catch (err: any) {
       console.error('GHL import error:', err);
       toast.error('Failed to import from GHL: ' + (err.message || 'Unknown error'));
@@ -298,8 +317,12 @@ export default function ClientManagement() {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            {isImportingFromGHL && importProgress 
-              ? `Importing... (${importProgress.imported.toLocaleString()} clients)`
+            {isImportingFromGHL && importProgress
+              ? `Importing... (${importProgress.imported.toLocaleString()}${
+                  importProgress.totalFromApi
+                    ? ` / ${importProgress.totalFromApi.toLocaleString()}`
+                    : ''
+                } clients)`
               : 'Import from GHL'}
           </Button>
           <Button 
