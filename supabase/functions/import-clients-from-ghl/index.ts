@@ -73,12 +73,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json().catch(() => ({}));
-    const { clearExisting = false, resumeFromId = null, batchSize = 50 } = body;
-    
-    // Batch size is in pages (100 contacts per page), default 50 pages = 5000 contacts per request
-    const maxPagesPerBatch = batchSize;
+    const { clearExisting = false, resumeFromId = null, maxPages = 10 } = body;
 
-    console.log(`Starting GHL contact import. Clear existing: ${clearExisting}, Resume from: ${resumeFromId || 'start'}, Max pages: ${maxPagesPerBatch}`);
+    console.log(`Starting GHL contact import. Clear existing: ${clearExisting}, Resume from: ${resumeFromId || 'start'}, Max pages: ${maxPages}`);
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
@@ -108,12 +105,15 @@ serve(async (req) => {
       console.log('Existing client data cleared');
     }
 
-    // Fetch contacts from GHL with pagination - LIMITED to batch size per request
-    let batchContacts: GHLContact[] = [];
+    // Process contacts page by page - SAVE IMMEDIATELY after each page
     let startAfterId: string | null = resumeFromId;
     let pageCount = 0;
+    let totalImported = 0;
+    let totalErrors = 0;
+    const errors: string[] = [];
+    let totalFromApi = 0;
 
-    do {
+    while (pageCount < maxPages) {
       pageCount++;
       let url = `${GHL_API_BASE}/contacts/?locationId=${locationId}&limit=100`;
       
@@ -132,39 +132,24 @@ serve(async (req) => {
       }
 
       const data: GHLContactsResponse = await response.json();
-      console.log(`Received ${data.contacts?.length || 0} contacts from GHL (page ${pageCount})`);
+      const contacts = data.contacts || [];
+      
+      // Capture total from first page
+      if (pageCount === 1 && data.meta?.total) {
+        totalFromApi = data.meta.total;
+        console.log(`GHL reports total contacts: ${totalFromApi}`);
+      }
 
-      if (data.contacts && data.contacts.length > 0) {
-        batchContacts = [...batchContacts, ...data.contacts];
-        startAfterId = data.meta?.startAfterId || null;
-        console.log(`Batch contacts so far: ${batchContacts.length}, Next page ID: ${startAfterId || 'none'}`);
-      } else {
+      console.log(`Received ${contacts.length} contacts from GHL (page ${pageCount})`);
+
+      if (contacts.length === 0) {
         console.log('No more contacts to fetch');
         startAfterId = null;
         break;
       }
 
-      // Stop when we've reached our batch limit
-      if (pageCount >= maxPagesPerBatch) {
-        console.log(`Reached batch limit of ${maxPagesPerBatch} pages`);
-        break;
-      }
-
-    } while (startAfterId);
-
-    console.log(`Total contacts fetched in this batch: ${batchContacts.length}`);
-
-    // Insert clients using upsert to handle duplicates
-    let importedCount = 0;
-    let errorCount = 0;
-    const errors: string[] = [];
-
-    // Process in chunks of 100 for database efficiency
-    const dbChunkSize = 100;
-    for (let i = 0; i < batchContacts.length; i += dbChunkSize) {
-      const chunk = batchContacts.slice(i, i + dbChunkSize);
-      
-      const clientsToUpsert = chunk.map(contact => ({
+      // IMMEDIATELY save this page to DB
+      const clientsToUpsert = contacts.map(contact => ({
         primary_first_name: contact.firstName || 'Unknown',
         primary_surname: contact.lastName || 'Unknown',
         primary_email: contact.email || null,
@@ -187,27 +172,38 @@ serve(async (req) => {
         .select('id');
 
       if (upsertError) {
-        console.error(`Error upserting chunk ${Math.floor(i / dbChunkSize) + 1}:`, upsertError);
-        errors.push(`Chunk ${Math.floor(i / dbChunkSize) + 1}: ${upsertError.message}`);
-        errorCount += chunk.length;
+        console.error(`Error upserting page ${pageCount}:`, upsertError);
+        errors.push(`Page ${pageCount}: ${upsertError.message}`);
+        totalErrors += contacts.length;
       } else {
-        importedCount += upsertedData?.length || chunk.length;
-        console.log(`Upserted chunk ${Math.floor(i / dbChunkSize) + 1}: ${upsertedData?.length || chunk.length} clients`);
+        const savedCount = upsertedData?.length || contacts.length;
+        totalImported += savedCount;
+        console.log(`Saved page ${pageCount}: ${savedCount} clients (total: ${totalImported})`);
+      }
+
+      // Update pagination
+      startAfterId = data.meta?.startAfterId || null;
+      
+      if (!startAfterId) {
+        console.log('Reached end of contacts');
+        break;
       }
     }
 
     const hasMore = !!startAfterId;
     
-    console.log(`Batch import complete. Imported: ${importedCount}, Errors: ${errorCount}, Has more: ${hasMore}`);
+    console.log(`Batch complete. Imported: ${totalImported}, Errors: ${totalErrors}, Has more: ${hasMore}, Next ID: ${startAfterId || 'none'}`);
 
     return new Response(JSON.stringify({
       success: true,
       message: hasMore 
-        ? `Imported ${importedCount} clients. More contacts available...`
-        : `Import complete! Imported ${importedCount} clients.`,
+        ? `Imported ${totalImported} clients. More contacts available...`
+        : `Import complete! Imported ${totalImported} clients.`,
       stats: {
-        batchImported: importedCount,
-        errors: errorCount,
+        imported: totalImported,
+        errors: totalErrors,
+        totalFromApi,
+        pagesProcessed: pageCount,
       },
       hasMore,
       nextResumeId: startAfterId,

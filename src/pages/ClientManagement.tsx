@@ -112,14 +112,14 @@ export default function ClientManagement() {
           body: { 
             clearExisting: isFirstBatch ? clearExisting : false, 
             resumeFromId: nextResumeId,
-            batchSize: 50 // 50 pages = 5000 contacts per batch
+            maxPages: 10 // Process 10 pages (1000 contacts) per batch to avoid timeouts
           }
         });
 
         if (error) throw error;
 
         if (data?.success) {
-          totalImported += data.stats?.batchImported || 0;
+          totalImported += data.stats?.imported || 0;
           setImportProgress({ imported: totalImported, hasMore: data.hasMore });
           
           if (data.hasMore && data.nextResumeId) {
