@@ -241,93 +241,94 @@ async function fetchEnhancedData(
   const bedrooms = manualOverrides.bedrooms || 3;
   const bathrooms = manualOverrides.bathrooms || 2;
 
-  // 1. Fetch Domain market data
-  if (suburb && state) {
-    try {
-      console.log('📊 Fetching Domain market data...');
-      const domainResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/domain-data-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ 
-          suburb: suburb,
-          state: state,
-          postcode: postcode,
-          propertyCategory: propertyType === 'unit' ? 'unit' : 'house'
-        })
-      }, 30000);
-      
-      if (domainResponse.ok) {
-        const domainData = await domainResponse.json();
-        if (domainData.success && domainData.data) {
-          enhancedData.domainData = domainData.data;
-          console.log('✓ Domain market data fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ Domain data fetch failed:', error?.message);
-    }
-  }
+  // Fetch enhanced data in parallel to avoid long sequential waits (prevents edge function timeouts)
+  const tasks: Array<Promise<void>> = [];
 
-  // 2. Fetch Risk Assessment
-  if (postcode && state) {
-    try {
-      console.log('🔥 Fetching risk assessment...');
-      const riskResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/risk-assessment-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ 
-          suburb: suburb || 'unknown',
-          state: state,
-          postcode: postcode
-        })
-      }, 30000);
-      
-      if (riskResponse.ok) {
-        const riskData = await riskResponse.json();
-        if (riskData.success && riskData.data) {
-          enhancedData.riskAssessment = riskData.data;
-          console.log('✓ Risk assessment data fetched');
+  const run = (label: string, fn: () => Promise<void>) => {
+    tasks.push(
+      (async () => {
+        const t0 = Date.now();
+        try {
+          await fn();
+          console.log(`✓ ${label} (${Date.now() - t0}ms)`);
+        } catch (error: any) {
+          console.log(`⚠️ ${label} failed:`, error?.message);
         }
-      }
-    } catch (error: any) {
-      console.log('⚠️ Risk assessment fetch failed:', error?.message);
-    }
-  }
+      })()
+    );
+  };
 
-  // 3. Fetch ABS demographic data
-  if (postcode) {
-    try {
-      console.log('👥 Fetching ABS demographics...');
-      const absResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-data-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ postcode, state })
-      }, 30000);
-      
-      if (absResponse.ok) {
-        const absData = await absResponse.json();
-        if (absData.success && absData.data) {
-          enhancedData.demographics = absData.data;
-          console.log('✓ ABS demographics fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ ABS demographics fetch failed:', error?.message);
-    }
-  }
+  // 1. Domain market data
+  run('Domain market data', async () => {
+    if (!suburb || !state) return;
 
-  // 4. Fetch RBA economic data
-  try {
-    console.log('💰 Fetching RBA economic data...');
+    const domainResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/domain-data-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        suburb,
+        state,
+        postcode,
+        propertyCategory: propertyType === 'unit' ? 'unit' : 'house'
+      })
+    }, 30000);
+
+    if (!domainResponse.ok) return;
+    const domainData = await domainResponse.json();
+    if (domainData?.success && domainData?.data) {
+      enhancedData.domainData = domainData.data;
+    }
+  });
+
+  // 2. Risk assessment
+  run('Risk assessment', async () => {
+    if (!postcode || !state) return;
+
+    const riskResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/risk-assessment-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        suburb: suburb || 'unknown',
+        state,
+        postcode
+      })
+    }, 30000);
+
+    if (!riskResponse.ok) return;
+    const riskData = await riskResponse.json();
+    if (riskData?.success && riskData?.data) {
+      enhancedData.riskAssessment = riskData.data;
+    }
+  });
+
+  // 3. ABS demographics
+  run('ABS demographics', async () => {
+    if (!postcode) return;
+
+    const absResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-data-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({ postcode, state })
+    }, 30000);
+
+    if (!absResponse.ok) return;
+    const absData = await absResponse.json();
+    if (absData?.success && absData?.data) {
+      enhancedData.demographics = absData.data;
+    }
+  });
+
+  // 4. RBA economics
+  run('RBA economics', async () => {
     const rbaResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/rba-data-service`, {
       method: 'POST',
       headers: {
@@ -335,259 +336,233 @@ async function fetchEnhancedData(
         'Authorization': `Bearer ${supabaseAnonKey}`
       }
     }, 30000);
-    
-    if (rbaResponse.ok) {
-      const rbaData = await rbaResponse.json();
+
+    if (!rbaResponse.ok) return;
+    const rbaData = await rbaResponse.json();
+    if (rbaData?.data) {
       enhancedData.economics = rbaData.data;
-      console.log('✓ RBA economic data fetched');
     }
-  } catch (error: any) {
-    console.log('⚠️ RBA data fetch failed:', error?.message);
-  }
+  });
 
-  // 5. Fetch SEIFA socioeconomic data
-  if (postcode) {
-    try {
-      console.log('📈 Fetching SEIFA data...');
-      const seifaResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-seifa-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ postcode, state })
-      }, 30000);
-      
-      if (seifaResponse.ok) {
-        const seifaData = await seifaResponse.json();
-        if (seifaData.success && seifaData.data) {
-          enhancedData.seifaData = seifaData.data;
-          console.log('✓ SEIFA data fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ SEIFA data fetch failed:', error?.message);
-    }
-  }
+  // 5. SEIFA
+  run('SEIFA', async () => {
+    if (!postcode) return;
 
-  // 6. Fetch Crime statistics
-  if (suburb && state) {
-    try {
-      console.log('🚔 Fetching crime statistics...');
-      const crimeResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/crime-statistics-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ suburb, state, postcode })
-      }, 30000);
-      
-      if (crimeResponse.ok) {
-        const crimeData = await crimeResponse.json();
-        if (crimeData.success && crimeData.data) {
-          enhancedData.crimeStatistics = crimeData.data;
-          console.log('✓ Crime statistics fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ Crime statistics fetch failed:', error?.message);
-    }
-  }
-
-  // 7. Fetch Employment data
-  if (state) {
-    try {
-      console.log('💼 Fetching employment data...');
-      const employmentResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-employment-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ suburb, state, postcode })
-      }, 30000);
-      
-      if (employmentResponse.ok) {
-        const employmentData = await employmentResponse.json();
-        if (employmentData.success && employmentData.data) {
-          enhancedData.employmentData = employmentData.data;
-          console.log('✓ Employment data fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ Employment data fetch failed:', error?.message);
-    }
-  }
-
-  // 8. Fetch Climate data
-  if (state) {
-    try {
-      console.log('🌡️ Fetching climate data...');
-      const climateResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/climate-data-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ suburb, state, postcode })
-      }, 30000);
-      
-      if (climateResponse.ok) {
-        const climateData = await climateResponse.json();
-        if (climateData.success && climateData.data) {
-          enhancedData.climateData = climateData.data;
-          console.log('✓ Climate data fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ Climate data fetch failed:', error?.message);
-    }
-  }
-
-  // 9. Fetch Location Intelligence
-  try {
-    console.log('📍 Fetching location intelligence...');
-    const locationResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/location-intelligence-service`, {
+    const seifaResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-seifa-service`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseAnonKey}`
       },
-      body: JSON.stringify({
-        address: propertyAddress,
-        postcode: postcode,
-        state: state
-      })
+      body: JSON.stringify({ postcode, state })
     }, 30000);
-    
-    if (locationResponse.ok) {
-      const locationData = await locationResponse.json();
-      if (locationData.success && locationData.data) {
-        enhancedData.locationIntelligence = locationData.data;
-        console.log('✓ Location intelligence fetched');
-      }
-    }
-  } catch (error: any) {
-    console.log('⚠️ Location intelligence fetch failed:', error?.message);
-  }
 
-  // 10. Fetch School data
-  if (suburb && state && postcode) {
-    try {
-      console.log('🎓 Fetching school data...');
-      const latitude = enhancedData.locationIntelligence?.coordinates?.lat;
-      const longitude = enhancedData.locationIntelligence?.coordinates?.lng;
-      
-      const schoolResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/school-data-service`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ 
-          suburb, state, postcode,
-          latitude: latitude || undefined,
-          longitude: longitude || undefined
-        })
-      }, 30000);
-      
-      if (schoolResponse.ok) {
-        const schoolData = await schoolResponse.json();
-        if (schoolData.success && schoolData.data) {
-          enhancedData.schoolData = schoolData.data;
-          console.log('✓ School data fetched');
-        }
-      }
-    } catch (error: any) {
-      console.log('⚠️ School data fetch failed:', error?.message);
+    if (!seifaResponse.ok) return;
+    const seifaData = await seifaResponse.json();
+    if (seifaData?.success && seifaData?.data) {
+      enhancedData.seifaData = seifaData.data;
     }
-  }
+  });
 
-  // 11. Fetch Financial Calculations (if we have price and rent)
-  if (propertyPrice && weeklyRent) {
+  // 6. Crime
+  run('Crime statistics', async () => {
+    if (!suburb || !state) return;
+
+    const crimeResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/crime-statistics-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({ suburb, state, postcode })
+    }, 30000);
+
+    if (!crimeResponse.ok) return;
+    const crimeData = await crimeResponse.json();
+    if (crimeData?.success && crimeData?.data) {
+      enhancedData.crimeStatistics = crimeData.data;
+    }
+  });
+
+  // 7. Employment
+  run('Employment', async () => {
+    if (!state) return;
+
+    const employmentResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-employment-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({ suburb, state, postcode })
+    }, 30000);
+
+    if (!employmentResponse.ok) return;
+    const employmentData = await employmentResponse.json();
+    if (employmentData?.success && employmentData?.data) {
+      enhancedData.employmentData = employmentData.data;
+    }
+  });
+
+  // 8. Climate
+  run('Climate', async () => {
+    if (!state) return;
+
+    const climateResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/climate-data-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({ suburb, state, postcode })
+    }, 30000);
+
+    if (!climateResponse.ok) return;
+    const climateData = await climateResponse.json();
+    if (climateData?.success && climateData?.data) {
+      enhancedData.climateData = climateData.data;
+    }
+  });
+
+  // 9. Location intelligence (needed by school fetch)
+  const locationTask = (async () => {
     try {
-      console.log('🧮 Fetching financial calculations...');
-      const effectiveLvr = manualOverrides.loanToValueRatio || 80;
-      const effectiveDeposit = manualOverrides.depositValue || (propertyPrice * ((100 - effectiveLvr) / 100));
-      const effectiveInterestRate = manualOverrides.interestRate || 6.5;
-      const effectiveLoanTerm = manualOverrides.loanTermYears || 30;
-      
-      const financialResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/financial-calculator-service`, {
+      const locationResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/location-intelligence-service`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseAnonKey}`
         },
         body: JSON.stringify({
-          propertyValue: propertyPrice,
-          deposit: effectiveDeposit,
-          interestRate: effectiveInterestRate,
-          loanTerm: effectiveLoanTerm,
-          weeklyRent: weeklyRent,
-          weeklyRentSource: 'manual_override',
-          state: state,
-          propertyType: propertyType,
-          isFirstHomeBuyer: manualOverrides.isFirstHomeBuyer || false,
-          isNewBuild: manualOverrides.buildType === 'new_build'
+          address: propertyAddress,
+          postcode,
+          state
         })
       }, 30000);
-      
-      if (financialResponse.ok) {
-        const financialData = await financialResponse.json();
-        if (financialData.data) {
-          // Merge manual overrides with fresh financial calculations
-          const mergedFinancials = JSON.parse(JSON.stringify(financialData.data));
-          
-          // Apply overrides to nested structure
-          const overrideMapping: Record<string, string> = {
-            'purchasePrice': 'initialCosts.propertyValue',
-            'stampDuty': 'initialCosts.stampDuty',
-            'depositValue': 'initialCosts.deposit',
-            'loanToValueRatio': 'keyMetrics.lvr',
-            'interestRate': 'loanDetails.interestRate',
-            'weeklyRent': 'income.weeklyRent',
-            'councilRates': 'annualCosts.councilRates',
-            'waterRates': 'annualCosts.waterRates',
-            'bodyCorporateFees': 'annualCosts.strataFees',
-            'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
-            'propertyManagementFees': 'annualCosts.propertyManagementPercent',
-            'repairsMaintenance': 'annualCosts.maintenance',
-            'lettingFees': 'annualCosts.lettingFees',
-            'capitalGrowth': 'assumptions.capitalGrowth',
-            'landTax': 'annualCosts.landTax',
-            'depreciation': 'taxBenefits.depreciation',
-            'taxRate': 'taxBenefits.marginalTaxRate',
-            'occupancyRate': 'assumptions.occupancyWeeks',
-            'loanAmount': 'loanDetails.loanAmount'
-          };
-          
-          for (const [flatKey, overrideValue] of Object.entries(manualOverrides)) {
-            const nestedPath = overrideMapping[flatKey];
-            if (nestedPath && overrideValue !== null && overrideValue !== undefined) {
-              const keys = nestedPath.split('.');
-              let current = mergedFinancials;
-              
-              for (let i = 0; i < keys.length - 1; i++) {
-                if (!current[keys[i]]) {
-                  current[keys[i]] = {};
-                }
-                current = current[keys[i]];
-              }
-              current[keys[keys.length - 1]] = overrideValue;
-            }
-          }
-          
-          enhancedData.financials = mergedFinancials;
-          console.log('✓ Financial calculations fetched and merged');
-        }
+
+      if (!locationResponse.ok) return;
+      const locationData = await locationResponse.json();
+      if (locationData?.success && locationData?.data) {
+        enhancedData.locationIntelligence = locationData.data;
       }
     } catch (error: any) {
-      console.log('⚠️ Financial calculations fetch failed:', error?.message);
+      console.log('⚠️ Location intelligence failed:', error?.message);
     }
-  }
+  })();
 
-  // 12. Calculate Investment Score
+  tasks.push(locationTask);
+
+  // 10. Schools (waits for location coordinates when available)
+  run('School data', async () => {
+    if (!suburb || !state || !postcode) return;
+
+    await locationTask;
+    const latitude = enhancedData.locationIntelligence?.coordinates?.lat;
+    const longitude = enhancedData.locationIntelligence?.coordinates?.lng;
+
+    const schoolResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/school-data-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        suburb,
+        state,
+        postcode,
+        latitude: latitude || undefined,
+        longitude: longitude || undefined
+      })
+    }, 30000);
+
+    if (!schoolResponse.ok) return;
+    const schoolData = await schoolResponse.json();
+    if (schoolData?.success && schoolData?.data) {
+      enhancedData.schoolData = schoolData.data;
+    }
+  });
+
+  // 11. Financial calculations
+  run('Financial calculations', async () => {
+    if (!propertyPrice || !weeklyRent) return;
+
+    const effectiveLvr = manualOverrides.loanToValueRatio || 80;
+    const effectiveDeposit = manualOverrides.depositValue || (propertyPrice * ((100 - effectiveLvr) / 100));
+    const effectiveInterestRate = manualOverrides.interestRate || 6.5;
+    const effectiveLoanTerm = manualOverrides.loanTermYears || 30;
+
+    const financialResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/financial-calculator-service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        propertyValue: propertyPrice,
+        deposit: effectiveDeposit,
+        interestRate: effectiveInterestRate,
+        loanTerm: effectiveLoanTerm,
+        weeklyRent,
+        weeklyRentSource: 'manual_override',
+        state,
+        propertyType,
+        isFirstHomeBuyer: manualOverrides.isFirstHomeBuyer || false,
+        isNewBuild: manualOverrides.buildType === 'new_build'
+      })
+    }, 30000);
+
+    if (!financialResponse.ok) return;
+    const financialData = await financialResponse.json();
+    if (!financialData?.data) return;
+
+    // Merge manual overrides with fresh financial calculations
+    const mergedFinancials = JSON.parse(JSON.stringify(financialData.data));
+
+    // Apply overrides to nested structure
+    const overrideMapping: Record<string, string> = {
+      'purchasePrice': 'initialCosts.propertyValue',
+      'stampDuty': 'initialCosts.stampDuty',
+      'depositValue': 'initialCosts.deposit',
+      'loanToValueRatio': 'keyMetrics.lvr',
+      'interestRate': 'loanDetails.interestRate',
+      'weeklyRent': 'income.weeklyRent',
+      'councilRates': 'annualCosts.councilRates',
+      'waterRates': 'annualCosts.waterRates',
+      'bodyCorporateFees': 'annualCosts.strataFees',
+      'buildingLandlordInsurance': 'annualCosts.landlordInsurance',
+      'propertyManagementFees': 'annualCosts.propertyManagementPercent',
+      'repairsMaintenance': 'annualCosts.maintenance',
+      'lettingFees': 'annualCosts.lettingFees',
+      'capitalGrowth': 'assumptions.capitalGrowth',
+      'landTax': 'annualCosts.landTax',
+      'depreciation': 'taxBenefits.depreciation',
+      'taxRate': 'taxBenefits.marginalTaxRate',
+      'occupancyRate': 'assumptions.occupancyWeeks',
+      'loanAmount': 'loanDetails.loanAmount'
+    };
+
+    for (const [flatKey, overrideValue] of Object.entries(manualOverrides)) {
+      const nestedPath = overrideMapping[flatKey];
+      if (nestedPath && overrideValue !== null && overrideValue !== undefined) {
+        const keys = nestedPath.split('.');
+        let current = mergedFinancials;
+
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) current[keys[i]] = {};
+          current = current[keys[i]];
+        }
+
+        current[keys[keys.length - 1]] = overrideValue;
+      }
+    }
+
+    enhancedData.financials = mergedFinancials;
+  });
+
+  // Wait for all parallel tasks
+  await Promise.allSettled(tasks);
+
+  // 12. Investment score (depends on other data)
   if (propertyPrice) {
     try {
       console.log('⭐ Calculating investment score...');
@@ -601,16 +576,16 @@ async function fetchEnhancedData(
           property: {
             price: propertyPrice,
             weeklyRent: weeklyRent || 0,
-            propertyType: propertyType,
-            bedrooms: bedrooms,
-            bathrooms: bathrooms
+            propertyType,
+            bedrooms,
+            bathrooms
           },
           demographics: enhancedData.demographics,
           locationIntelligence: enhancedData.locationIntelligence,
           financials: enhancedData.financials
         })
       }, 30000);
-      
+
       if (scoreResponse.ok) {
         const scoreData = await scoreResponse.json();
         enhancedData.investmentScore = scoreData.data;
@@ -975,6 +950,14 @@ serve(async (req) => {
     console.log('📊 Manual overrides:', Object.keys(manualOverrides).length, 'fields');
     console.log('📄 Original content length:', currentReportContent?.length || 0, 'chars');
 
+    // IMPORTANT: Mark as processing immediately.
+    // - This triggers version archiving ONCE (DB trigger)
+    // - Prevents timeouts from happening *before* we even archive the old version
+    await supabase
+      .from('investment_reports')
+      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .eq('id', reportId);
+
     // ========== FETCH ENHANCED DATA FROM ALL APIs ==========
     const { enhancedData, suburb, postcode, state } = await fetchEnhancedData(
       propertyAddress,
@@ -1055,15 +1038,8 @@ YOUR DEDICATED PROPERTY PARTNER
     // Track section quality for validation
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
     
-    // Update status to processing - this triggers the database archive trigger ONCE
-    // The trigger will archive the OLD content and bump current_version automatically
-    await supabase
-      .from('investment_reports')
-      .update({ 
-        status: 'processing',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', reportId);
+    // Status is already 'processing' (set immediately after request parsing).
+    // Do not re-update here to avoid unnecessary DB writes.
     
     for (let i = 0; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
@@ -1080,7 +1056,10 @@ YOUR DEDICATED PROPERTY PARTNER
       let bestContent = '';
       let bestScore = 0;
       let sectionAttempts = 0;
-      const maxSectionAttempts = 2;
+
+      // Keep regeneration under the function request_timeout by avoiding multi-pass rewrites.
+      // Perplexity already retries internally on network/timeout errors.
+      const maxSectionAttempts = 1;
       
       for (let attempt = 1; attempt <= maxSectionAttempts; attempt++) {
         sectionAttempts = attempt;
