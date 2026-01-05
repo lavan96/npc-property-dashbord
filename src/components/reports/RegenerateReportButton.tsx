@@ -41,7 +41,7 @@ export function RegenerateReportButton({
       setRegenerating(true);
       setShowConfirm(false);
 
-      toast.info('Regenerating report...', {
+      const toastId = toast.loading('Regenerating report...', {
         description: 'Fetching report data and manual overrides...'
       });
 
@@ -60,22 +60,13 @@ export function RegenerateReportButton({
         throw new Error('Report content not found');
       }
 
-      // Set status to processing - the database trigger will handle version increment
-      // when report_content is updated by the edge function
-      const { error: updateStatusError } = await supabase
-        .from('investment_reports')
-        .update({ status: 'processing' })
-        .eq('id', reportId);
-
-      if (updateStatusError) {
-        throw updateStatusError;
-      }
-
-      toast.info('Processing with Perplexity AI...', {
-        description: 'Updating qualitative analysis with manual overrides...'
+      toast.loading('Processing with Perplexity AI...', {
+        id: toastId,
+        description: 'Generating 4 sections with fresh qualitative analysis (this may take 3-5 minutes)...'
       });
 
       // Call the regenerate-report-qualitative edge function
+      // Note: Status is set to 'processing' inside the edge function
       const { data, error } = await supabase.functions.invoke('regenerate-report-qualitative', {
         body: {
           reportId,
@@ -94,17 +85,17 @@ export function RegenerateReportButton({
         throw new Error(data.error || 'Failed to regenerate report');
       }
 
-      // Update status back to completed and fetch the new version number
+      // Fetch the new version number after successful regeneration
       const { data: updatedReport } = await supabase
         .from('investment_reports')
-        .update({ status: 'completed' })
+        .select('current_version, status')
         .eq('id', reportId)
-        .select('current_version')
         .single();
 
       const newVersion = updatedReport?.current_version || (report.current_version || 1) + 1;
 
       toast.success('Report regenerated successfully', {
+        id: toastId,
         description: `Version ${newVersion} created with updated qualitative analysis.`
       });
 
@@ -131,10 +122,10 @@ export function RegenerateReportButton({
         description: error.message || 'Please try again later'
       });
 
-      // Revert status to completed on error
+      // Revert status to failed on error
       await supabase
         .from('investment_reports')
-        .update({ status: 'completed' })
+        .update({ status: 'failed' })
         .eq('id', reportId);
     } finally {
       setRegenerating(false);
