@@ -60,19 +60,15 @@ export function RegenerateReportButton({
         throw new Error('Report content not found');
       }
 
-      const newVersion = (report.current_version || 1) + 1;
-
-      // Update version and set status to processing
-      const { error: updateVersionError } = await supabase
+      // Set status to processing - the database trigger will handle version increment
+      // when report_content is updated by the edge function
+      const { error: updateStatusError } = await supabase
         .from('investment_reports')
-        .update({ 
-          current_version: newVersion,
-          status: 'processing'
-        })
+        .update({ status: 'processing' })
         .eq('id', reportId);
 
-      if (updateVersionError) {
-        throw updateVersionError;
+      if (updateStatusError) {
+        throw updateStatusError;
       }
 
       toast.info('Processing with Perplexity AI...', {
@@ -98,11 +94,15 @@ export function RegenerateReportButton({
         throw new Error(data.error || 'Failed to regenerate report');
       }
 
-      // Update status back to completed
-      await supabase
+      // Update status back to completed and fetch the new version number
+      const { data: updatedReport } = await supabase
         .from('investment_reports')
         .update({ status: 'completed' })
-        .eq('id', reportId);
+        .eq('id', reportId)
+        .select('current_version')
+        .single();
+
+      const newVersion = updatedReport?.current_version || (report.current_version || 1) + 1;
 
       toast.success('Report regenerated successfully', {
         description: `Version ${newVersion} created with updated qualitative analysis.`
