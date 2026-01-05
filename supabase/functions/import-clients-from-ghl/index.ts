@@ -134,8 +134,8 @@ serve(async (req) => {
       const data: GHLContactsResponse = await response.json();
       const contacts = data.contacts || [];
       
-      // Capture total from first page
-      if (pageCount === 1 && data.meta?.total) {
+      // Capture total from first page only if starting fresh
+      if (pageCount === 1 && !resumeFromId && data.meta?.total) {
         totalFromApi = data.meta.total;
         console.log(`GHL reports total contacts: ${totalFromApi}`);
       }
@@ -181,13 +181,19 @@ serve(async (req) => {
         console.log(`Saved page ${pageCount}: ${savedCount} clients (total: ${totalImported})`);
       }
 
-      // Update pagination
-      startAfterId = data.meta?.startAfterId || null;
+      // FIX: Use the LAST contact ID from this batch for proper pagination
+      // The GHL API meta.startAfterId is unreliable - use the actual last contact ID
+      const lastContact = contacts[contacts.length - 1];
+      startAfterId = lastContact?.id || null;
       
-      if (!startAfterId) {
-        console.log('Reached end of contacts');
+      // If we got fewer than 100 contacts, we've reached the end
+      if (contacts.length < 100) {
+        console.log(`Received ${contacts.length} contacts (less than 100), reached end of data`);
+        startAfterId = null;
         break;
       }
+
+      console.log(`Next page will start after ID: ${startAfterId}`);
     }
 
     const hasMore = !!startAfterId;
