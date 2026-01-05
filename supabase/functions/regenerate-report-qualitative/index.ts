@@ -761,6 +761,179 @@ ${score.weaknesses?.length ? `- Weaknesses: ${score.weaknesses.join(', ')}` : ''
   return context;
 }
 
+// Section-to-template mapping for extracting relevant portions
+const SECTION_TEMPLATE_MARKERS: Record<string, { startPatterns: string[]; endPatterns: string[]; fallbackKeywords: string[] }> = {
+  'section1': {
+    startPatterns: ['# Location', '## Location Overview', '# LOCATION', '## LOCATION OVERVIEW', '# 1.', '## 1.'],
+    endPatterns: ['# Amenities', '## Amenities', '# Schools', '## Schools', '# 2.', '## 2.', '# AMENITIES'],
+    fallbackKeywords: ['location', 'market', 'demographic', 'population', 'economic context', 'demand drivers']
+  },
+  'section2': {
+    startPatterns: ['# Amenities', '## Amenities', '# Schools', '## Schools', '# 2.', '## 2.', '# AMENITIES'],
+    endPatterns: ['# Property', '## Property', '# Financial', '## Financial', '# Purchase', '# 3.', '## 3.'],
+    fallbackKeywords: ['school', 'education', 'healthcare', 'transport', 'crime', 'safety', 'environmental', 'climate', 'recreational']
+  },
+  'section3': {
+    startPatterns: ['# Property', '## Property', '# Financial', '## Financial', '# Purchase', '# 3.', '## 3.'],
+    endPatterns: ['# Projection', '## Projection', '# SWOT', '## SWOT', '# 10-Year', '# 4.', '## 4.', '# Investment Score'],
+    fallbackKeywords: ['property-level', 'purchase', 'stamp duty', 'rental', 'yield', 'loan', 'cashflow', 'repayment']
+  },
+  'section4': {
+    startPatterns: ['# Projection', '## Projection', '# SWOT', '## SWOT', '# 10-Year', '# 4.', '## 4.', '# Investment Score'],
+    endPatterns: ['# DATA SOURCES', '## DATA SOURCES', '# APPENDIX', '# END'],
+    fallbackKeywords: ['projection', 'swot', 'opportunity', 'risk', 'recommendation', 'suitability', 'conclusion', 'score']
+  }
+};
+
+// Extract relevant section from full template
+function extractSectionFromTemplate(fullTemplate: string, sectionId: string): string {
+  if (!fullTemplate || fullTemplate.length < 100) return '';
+  
+  const markers = SECTION_TEMPLATE_MARKERS[sectionId];
+  if (!markers) return '';
+  
+  // Try to find start position using patterns
+  let startPos = -1;
+  for (const pattern of markers.startPatterns) {
+    const idx = fullTemplate.toLowerCase().indexOf(pattern.toLowerCase());
+    if (idx !== -1 && (startPos === -1 || idx < startPos)) {
+      startPos = idx;
+      break;
+    }
+  }
+  
+  // Try to find end position using patterns
+  let endPos = fullTemplate.length;
+  if (startPos !== -1) {
+    for (const pattern of markers.endPatterns) {
+      const idx = fullTemplate.toLowerCase().indexOf(pattern.toLowerCase(), startPos + 50);
+      if (idx !== -1 && idx < endPos) {
+        endPos = idx;
+        break;
+      }
+    }
+  }
+  
+  // Extract the section
+  let sectionContent = '';
+  if (startPos !== -1) {
+    sectionContent = fullTemplate.substring(startPos, endPos).trim();
+  }
+  
+  // If extraction failed or too short, use keyword-based extraction
+  if (sectionContent.length < 200) {
+    console.log(`⚠️ Section ${sectionId} pattern extraction failed, using keyword search`);
+    sectionContent = extractByKeywords(fullTemplate, markers.fallbackKeywords);
+  }
+  
+  return sectionContent;
+}
+
+// Extract content containing specific keywords
+function extractByKeywords(template: string, keywords: string[]): string {
+  const lines = template.split('\n');
+  const relevantLines: string[] = [];
+  let inRelevantSection = false;
+  let headingBuffer = '';
+  
+  for (const line of lines) {
+    const lineLower = line.toLowerCase();
+    const isHeading = line.match(/^#{1,3}\s+/);
+    
+    if (isHeading) {
+      // Check if heading contains any keywords
+      const hasKeyword = keywords.some(kw => lineLower.includes(kw.toLowerCase()));
+      if (hasKeyword) {
+        inRelevantSection = true;
+        if (headingBuffer) relevantLines.push(headingBuffer);
+        relevantLines.push(line);
+        headingBuffer = '';
+      } else {
+        // New heading without keyword - stop if we were in relevant section
+        if (inRelevantSection && relevantLines.length > 10) {
+          inRelevantSection = false;
+        }
+        headingBuffer = line;
+      }
+    } else if (inRelevantSection) {
+      relevantLines.push(line);
+    }
+  }
+  
+  return relevantLines.join('\n').substring(0, 8000);
+}
+
+// Summarize template section into structural requirements
+function summarizeTemplateStructure(sectionContent: string, sectionDef: typeof REPORT_SECTIONS[0]): string {
+  if (!sectionContent || sectionContent.length < 100) {
+    // Fallback: generate requirements from section definition
+    return `
+**REQUIRED STRUCTURE FOR ${sectionDef.name.toUpperCase()}:**
+${sectionDef.sections.map((s, i) => `${i + 1}. ## ${s}`).join('\n')}
+
+**MINIMUM REQUIREMENTS:**
+- Content length: ${sectionDef.minContentLength}+ characters
+- Must include: ${sectionDef.requiredKeywords.join(', ')}
+- Use markdown tables for data presentation
+- Include bullet points with detailed explanations
+`;
+  }
+  
+  // Extract headings from template section
+  const headings: string[] = [];
+  const tablePatterns: string[] = [];
+  const bulletPatterns: string[] = [];
+  
+  const lines = sectionContent.split('\n');
+  for (const line of lines) {
+    // Extract headings
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
+    if (headingMatch) {
+      headings.push(`${headingMatch[1]} ${headingMatch[2].trim()}`);
+    }
+    
+    // Detect table requirements
+    if (line.includes('|') && line.includes('---')) {
+      const tableContext = lines.slice(Math.max(0, lines.indexOf(line) - 3), lines.indexOf(line)).join(' ');
+      if (tableContext.length > 0 && !tablePatterns.includes(tableContext.substring(0, 100))) {
+        tablePatterns.push(tableContext.substring(0, 100));
+      }
+    }
+    
+    // Detect bullet list patterns
+    if (line.match(/^[-*]\s+\*\*[^*]+\*\*/)) {
+      bulletPatterns.push(line.substring(0, 80));
+    }
+  }
+  
+  // Build structured summary
+  let summary = `
+**REQUIRED STRUCTURE FOR ${sectionDef.name.toUpperCase()}:**
+
+**Headings (in this exact order):**
+${headings.slice(0, 15).join('\n')}
+
+**Content Requirements:**
+- Minimum content: ${sectionDef.minContentLength}+ characters
+- Required topics: ${sectionDef.requiredKeywords.join(', ')}
+`;
+
+  if (tablePatterns.length > 0) {
+    summary += `
+**Tables Required:** ${tablePatterns.length} data tables expected
+`;
+  }
+
+  // Add sample structure from template (limited)
+  const sampleContent = sectionContent.substring(0, 3000);
+  summary += `
+**Template Sample (follow this style):**
+${sampleContent}
+`;
+
+  return summary;
+}
+
 // Generate a single section with full context - matches generate-investment-report approach
 async function regenerateSection(
   sectionDef: typeof REPORT_SECTIONS[0],
@@ -807,13 +980,31 @@ ${score.risks?.length ? `- Risks: ${score.risks.join(', ')}` : ''}
 `;
   }
 
-  // Build template reference section
+  // Extract and summarize relevant template section (hybrid approach)
   let templateSection = '';
-  if (templateContext) {
+  if (templateContext && templateContext.length > 100) {
+    const extractedSection = extractSectionFromTemplate(templateContext, sectionDef.id);
+    const structuredSummary = summarizeTemplateStructure(extractedSection, sectionDef);
+    
+    console.log(`📋 Template extraction for ${sectionDef.id}: ${extractedSection.length} chars extracted, summary: ${structuredSummary.length} chars`);
+    
     templateSection = `
 ---
-**REFERENCE TEMPLATE STRUCTURE (Follow this structure closely):**
-${templateContext.substring(0, 4000)}
+${structuredSummary}
+---
+`;
+  } else {
+    // No template - use section definition as fallback
+    templateSection = `
+---
+**REQUIRED STRUCTURE FOR ${sectionDef.name.toUpperCase()}:**
+${sectionDef.sections.map((s, i) => `${i + 1}. ## ${s}`).join('\n')}
+
+**Requirements:**
+- Minimum content: ${sectionDef.minContentLength}+ characters
+- Must include: ${sectionDef.requiredKeywords.join(', ')}
+- Use markdown tables for data
+- Include detailed bullet points
 ---
 `;
   }
