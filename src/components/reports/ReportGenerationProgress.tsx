@@ -119,6 +119,13 @@ export function ReportGenerationProgress() {
 
       if (!report) return;
 
+      // Update local state to show resuming
+      setReports(prev => prev.map(r => 
+        r.id === reportId 
+          ? { ...r, status: 'processing', error_message: null }
+          : r
+      ));
+
       // Reset status to pending to trigger regeneration
       await supabase
         .from('investment_reports')
@@ -129,14 +136,17 @@ export function ReportGenerationProgress() {
         })
         .eq('id', reportId);
 
-      // The edge function will be triggered by realtime or next poll
       // Invoke the edge function to continue generation
-      await supabase.functions.invoke('generate-investment-report', {
+      const { error } = await supabase.functions.invoke('generate-investment-report', {
         body: {
           reportId: reportId,
           continueFrom: true  // Signal to continue from existing content
         }
       });
+      
+      if (error) {
+        console.error('Error invoking generation:', error);
+      }
       
     } catch (error) {
       console.error('Error continuing generation:', error);
