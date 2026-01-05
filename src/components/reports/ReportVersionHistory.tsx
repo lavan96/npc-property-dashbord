@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format } from 'date-fns';
-import { History, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ChevronRight, GitCompare, RotateCcw } from 'lucide-react';
+import { History, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ChevronRight, GitCompare, RotateCcw, Eye, FileStack, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { ReportVersionComparison } from './ReportVersionComparison';
 import {
@@ -21,12 +21,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface VersionHistoryProps {
   reportId: string;
   currentVersion: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onVersionRestored?: () => void;
 }
 
 interface Version {
@@ -35,6 +42,7 @@ interface Version {
   quality_score: number;
   validation_count: number;
   changelog: string;
+  content_preview?: string;
   changes_summary: {
     property_specs_changed: boolean;
     financial_data_changed: boolean;
@@ -44,7 +52,7 @@ interface Version {
   };
 }
 
-export function ReportVersionHistory({ reportId, currentVersion, open, onOpenChange }: VersionHistoryProps) {
+export function ReportVersionHistory({ reportId, currentVersion, open, onOpenChange, onVersionRestored }: VersionHistoryProps) {
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
@@ -54,6 +62,7 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
   const [rollbackVersion, setRollbackVersion] = useState<number | null>(null);
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
   const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [previewVersion, setPreviewVersion] = useState<{ version: number; content: string } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -136,7 +145,8 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
 
       if (fetchError) throw fetchError;
 
-      // Update the main report with the version data - restore to the exact version
+      // Update the main report with the version data
+      // Setting current_version to a lower value triggers the rollback logic in the trigger
       const { error: updateError } = await supabase
         .from('investment_reports')
         .update({
@@ -151,27 +161,53 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
           demographics_data: versionData.demographics_data,
           economic_data: versionData.economic_data,
           calculation_version: versionData.calculation_version,
-          current_version: rollbackVersion, // Set to the rollback version, not a new version
+          current_version: rollbackVersion, // This triggers the trigger to recognize it's a rollback
           updated_at: new Date().toISOString(),
         })
         .eq('id', reportId);
 
       if (updateError) throw updateError;
 
-      toast.success(`Successfully rolled back to version ${rollbackVersion}`);
+      toast.success(`Rolled back to version ${rollbackVersion}`, {
+        description: 'The report has been restored to the selected version.'
+      });
       setShowRollbackDialog(false);
       setRollbackVersion(null);
-      fetchVersionHistory(); // Refresh the version history
+      fetchVersionHistory();
       
-      // Trigger a page reload or state update in parent component
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Callback to refresh parent component
+      if (onVersionRestored) {
+        onVersionRestored();
+      } else {
+        // Fallback: reload after delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
     } catch (error) {
       console.error('Rollback error:', error);
       toast.error('Failed to rollback report version');
     } finally {
       setRollbackLoading(false);
+    }
+  };
+
+  const fetchContentPreview = async (versionNumber: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('report_versions')
+        .select('report_content')
+        .eq('report_id', reportId)
+        .eq('version_number', versionNumber)
+        .single();
+
+      if (error) throw error;
+      
+      // Get first 1000 chars as preview
+      const preview = data?.report_content?.substring(0, 1000) || '';
+      setPreviewVersion({ version: versionNumber, content: preview });
+    } catch (error) {
+      console.error('Error fetching preview:', error);
     }
   };
 
@@ -320,6 +356,23 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                           )}
 
                           <div className="flex gap-2 mt-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => fetchContentPreview(version.version_number)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Preview content</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
                             <Button 
                               variant="outline" 
                               size="sm" 
@@ -330,9 +383,10 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                               <GitCompare className="h-4 w-4 mr-1" />
                               {comparisonVersionA === version.version_number || comparisonVersionB === version.version_number ? 'Selected' : 'Compare'}
                             </Button>
+                            
                             {!isCurrent && (
                               <Button 
-                                variant="outline" 
+                                variant="default" 
                                 size="sm" 
                                 className="flex-1"
                                 onClick={() => {
@@ -341,10 +395,30 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                                 }}
                               >
                                 <RotateCcw className="h-4 w-4 mr-1" />
-                                Rollback
+                                Restore
                               </Button>
                             )}
                           </div>
+                          
+                          {/* Content Preview */}
+                          {previewVersion?.version === version.version_number && (
+                            <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-muted-foreground">Content Preview</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 px-2 text-xs"
+                                  onClick={() => setPreviewVersion(null)}
+                                >
+                                  Close
+                                </Button>
+                              </div>
+                              <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono max-h-32 overflow-y-auto">
+                                {previewVersion.content}...
+                              </pre>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     );
@@ -441,11 +515,29 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
       <AlertDialog open={showRollbackDialog} onOpenChange={setShowRollbackDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Rollback</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to rollback to version {rollbackVersion}? 
-              This will replace the current report content with the selected version. 
-              The current version will be archived automatically.
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5" />
+              Restore Version {rollbackVersion}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                This will restore the report to version {rollbackVersion}. The restoration includes:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>All report content and narrative</li>
+                <li>Financial calculations and metrics</li>
+                <li>Property specifications</li>
+                <li>Investment score data</li>
+              </ul>
+              <div className="p-3 bg-muted rounded-lg mt-3">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <FileStack className="h-4 w-4" />
+                  Your current version will remain in history
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  You can always restore to any previous version later.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -453,9 +545,18 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
             <AlertDialogAction
               onClick={handleRollback}
               disabled={rollbackLoading}
-              className="bg-primary"
             >
-              {rollbackLoading ? 'Rolling back...' : 'Confirm Rollback'}
+              {rollbackLoading ? (
+                <>
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                  Restoring...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Restore Version {rollbackVersion}
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
