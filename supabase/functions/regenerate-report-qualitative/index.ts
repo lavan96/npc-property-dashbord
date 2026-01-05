@@ -69,7 +69,8 @@ const REPORT_SECTIONS = [
 ];
 
 // Helper function to fetch with timeout - matches generate-investment-report
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 90000): Promise<Response> {
+// REDUCED timeout to 60s per call to avoid container shutdown issues
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 60000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     console.log(`⏱️ Request timeout after ${timeoutMs}ms, aborting...`);
@@ -896,6 +897,7 @@ Your task is to:
 12. Provide UNIQUE insights that differentiate this report from generic analysis`;
 
   // Retry loop with exponential backoff - matches generate-investment-report
+  // REDUCED timeout per section to 90s to avoid container shutdown
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`📝 Regenerating section: ${sectionDef.name}... (attempt ${attempt}/${maxRetries})`);
@@ -915,7 +917,7 @@ Your task is to:
             { role: 'user', content: sectionPrompt }
           ]
         }),
-      }, 120000); // 120 second timeout per section
+      }, 90000); // 90 second timeout per section (reduced from 120s to avoid container kill)
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1324,6 +1326,21 @@ YOUR DEDICATED PROPERTY PARTNER
 
   } catch (error) {
     console.error('❌ Regenerate report error:', error);
+    
+    // Try to mark report as failed in the database
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const failureClient = createClient(supabaseUrl, supabaseServiceKey);
+      
+      // Extract reportId from the request if possible
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.log(`⚠️ Attempting to mark report as failed: ${errorMessage}`);
+      
+    } catch (dbError) {
+      console.error('Could not update report status:', dbError);
+    }
+    
     return new Response(JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
