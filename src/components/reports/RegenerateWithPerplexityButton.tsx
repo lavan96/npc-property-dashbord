@@ -60,32 +60,8 @@ export function RegenerateWithPerplexityButton({
         throw new Error('Report content not found');
       }
 
-      // Increment the version number before regeneration
-      const { data: currentReport, error: versionError } = await supabase
-        .from('investment_reports')
-        .select('current_version')
-        .eq('id', reportId)
-        .single();
-
-      if (versionError) {
-        throw versionError;
-      }
-
-      const newVersion = (currentReport?.current_version || 1) + 1;
-
-      // Update version and set parent_report_id for version tracking
-      const { error: updateVersionError } = await supabase
-        .from('investment_reports')
-        .update({ 
-          current_version: newVersion,
-          parent_report_id: reportId,
-          status: 'processing'
-        })
-        .eq('id', reportId);
-
-      if (updateVersionError) {
-        throw updateVersionError;
-      }
+      // Note: The database trigger handles version archiving automatically
+      // when status transitions to 'processing'. No need to manually bump version here.
 
       toast.info('Processing with Perplexity AI...', {
         description: 'Updating qualitative analysis with manual overrides...'
@@ -116,11 +92,20 @@ export function RegenerateWithPerplexityButton({
         .update({ status: 'completed' })
         .eq('id', reportId);
 
+      // Fetch updated version info from database (trigger bumped it)
+      const { data: updatedReport } = await supabase
+        .from('investment_reports')
+        .select('current_version')
+        .eq('id', reportId)
+        .single();
+      
+      const newVersion = updatedReport?.current_version || 'new';
+
       toast.success('Report regenerated successfully', {
         description: `Version ${newVersion} created with updated qualitative analysis reflecting your manual overrides.`
       });
 
-      // Log activity
+      // Log activity - newVersion now declared before this
       logActivity({
         actionType: 'report_regenerated',
         entityType: 'investment_report',

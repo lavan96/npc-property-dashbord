@@ -1055,13 +1055,12 @@ YOUR DEDICATED PROPERTY PARTNER
     // Track section quality for validation
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
     
-    // Update status to processing with progress tracking
-    // Note: This single 'processing' status update will trigger the archive trigger ONCE
+    // Update status to processing - this triggers the database archive trigger ONCE
+    // The trigger will archive the OLD content and bump current_version automatically
     await supabase
       .from('investment_reports')
       .update({ 
         status: 'processing',
-        report_content: currentReportContent, // Ensure content included so trigger sees it
         updated_at: new Date().toISOString()
       })
       .eq('id', reportId);
