@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronRight, Home, Banknote, Building, MapPin, Check, Copy } from 'lucide-react';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronRight, Home, Banknote, Building, MapPin, Check } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
 import { useToast } from '@/hooks/use-toast';
@@ -106,7 +106,6 @@ export function FinancialsTab({
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
   const [localStampDutyPropertyType, setLocalStampDutyPropertyType] = useState<StampDutyPropertyType>('investment');
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
-  const [calculatedStampDuty, setCalculatedStampDuty] = useState<string>('');
   const [manualStampDutyInput, setManualStampDutyInput] = useState<string>('');
   const stampDutyContainerRef = useRef<HTMLDivElement>(null);
   const isNewBuild = buildType === 'new_build';
@@ -136,26 +135,29 @@ export function FinancialsTab({
   const rate = parseFloat(interestRate) || 6.5;
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
-  const handleApplyStampDuty = useCallback(() => {
-    if (calculatedStampDuty) {
-      setStampDuty(calculatedStampDuty);
+  // Auto-apply stamp duty when manual input changes (with debounce)
+  const handleManualStampDutyChange = useCallback((value: string) => {
+    const rawValue = removeCommas(value);
+    setManualStampDutyInput(rawValue);
+    
+    // Auto-apply to the stamp duty field if it's a valid number
+    if (rawValue && !isNaN(parseFloat(rawValue)) && parseFloat(rawValue) > 0) {
+      setStampDuty(rawValue);
+    }
+  }, [setStampDuty]);
+
+  // Show toast and close modal when stamp duty is captured
+  const handleApplyAndClose = useCallback(() => {
+    if (manualStampDutyInput && parseFloat(manualStampDutyInput) > 0) {
+      setStampDuty(manualStampDutyInput);
       toast({
         title: "Stamp Duty Applied",
-        description: `$${formatNumberWithCommas(calculatedStampDuty)} has been applied to the form.`,
+        description: `$${formatNumberWithCommas(manualStampDutyInput)} has been applied.`,
       });
+      setShowStampDutyModal(false);
+      setManualStampDutyInput('');
     }
-  }, [calculatedStampDuty, setStampDuty, toast]);
-
-  const handleManualStampDutyApply = useCallback(() => {
-    const value = removeCommas(manualStampDutyInput);
-    if (value && !isNaN(parseFloat(value))) {
-      setCalculatedStampDuty(value);
-      toast({
-        title: "Stamp Duty Captured",
-        description: `$${formatNumberWithCommas(value)} captured. Click Apply to use this value.`,
-      });
-    }
-  }, [manualStampDutyInput, toast]);
+  }, [manualStampDutyInput, setStampDuty, toast]);
 
   const totalAcquisitionCosts = 
     (parseFloat(stampDuty) || 0) +
@@ -411,8 +413,7 @@ export function FinancialsTab({
                 size="sm"
                 onClick={() => {
                   setShowStampDutyModal(true);
-                  setCalculatedStampDuty('');
-                  setManualStampDutyInput('');
+                  setManualStampDutyInput(stampDuty || '');
                 }}
                 disabled={disabled}
               >
@@ -546,7 +547,7 @@ export function FinancialsTab({
                   />
                 </div>
 
-                {/* Manual input for stamp duty value */}
+                {/* Auto-capture stamp duty input */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Enter calculated stamp duty value:</Label>
                   <div className="flex gap-2">
@@ -556,28 +557,27 @@ export function FinancialsTab({
                         type="text"
                         inputMode="numeric"
                         value={formatForDisplay(manualStampDutyInput)}
-                        onChange={(e) => setManualStampDutyInput(removeCommas(e.target.value))}
+                        onChange={(e) => handleManualStampDutyChange(e.target.value)}
                         placeholder="Enter value from calculator"
                         className="pl-7"
                       />
                     </div>
-                    <Button onClick={handleManualStampDutyApply} variant="outline">
-                      <Copy className="h-4 w-4 mr-1" />
-                      Capture
-                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Value is auto-applied as you type
+                  </p>
                 </div>
 
-                {calculatedStampDuty && (
+                {manualStampDutyInput && parseFloat(manualStampDutyInput) > 0 && (
                   <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
                     <div className="flex items-center gap-3">
                       <Check className="h-5 w-5 text-green-600" />
                       <div>
                         <p className="text-sm font-semibold text-green-700">
-                          Calculated Stamp Duty: ${formatNumberWithCommas(calculatedStampDuty)}
+                          Stamp Duty: ${formatNumberWithCommas(manualStampDutyInput)}
                         </p>
                         <p className="text-xs text-green-600">
-                          Click to apply this amount to your report
+                          This value has been applied to your report
                         </p>
                       </div>
                     </div>
@@ -585,21 +585,18 @@ export function FinancialsTab({
                       type="button"
                       variant="default"
                       size="sm"
-                      onClick={() => {
-                        handleApplyStampDuty();
-                        setShowStampDutyModal(false);
-                      }}
+                      onClick={handleApplyAndClose}
                       disabled={disabled}
                       className="bg-green-600 hover:bg-green-700"
                     >
-                      <Copy className="h-4 w-4 mr-1" />
-                      Apply & Close
+                      <Check className="h-4 w-4 mr-1" />
+                      Done
                     </Button>
                   </div>
                 )}
 
                 <p className="text-xs text-muted-foreground mt-2">
-                  * Calculate your stamp duty using the widget above, then enter the value and click "Capture".
+                  * Calculate your stamp duty using the widget above, then enter the value. It will be automatically applied.
                 </p>
               </div>
             </DialogContent>

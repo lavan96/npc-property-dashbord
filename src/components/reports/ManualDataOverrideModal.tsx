@@ -1501,14 +1501,47 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                           </div>
                         </div>
 
-                        {/* Auto-populate Button */}
+                        {/* Manual input for stamp duty with auto-capture */}
+                        <div className="space-y-2 p-3 rounded-lg bg-muted/50 border">
+                          <Label className="text-sm font-medium">Enter calculated stamp duty value:</Label>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                value={formatNumberWithCommas(overrides.stampDuty?.toString() || '')}
+                                onChange={(e) => {
+                                  const rawValue = removeCommas(e.target.value);
+                                  if (rawValue === '' || /^\d*\.?\d*$/.test(rawValue)) {
+                                    setOverrides(prev => ({ ...prev, stampDuty: rawValue ? parseFloat(rawValue) : undefined }));
+                                    setHasChanges(true);
+                                  }
+                                }}
+                                placeholder="Enter value from calculator above"
+                                className="pl-7"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Value is auto-applied as you type
+                          </p>
+                          {overrides.stampDuty && overrides.stampDuty > 0 && (
+                            <div className="flex items-center gap-2 text-green-600 text-sm mt-2">
+                              <Check className="h-4 w-4" />
+                              <span>Stamp Duty: ${overrides.stampDuty.toLocaleString()} applied</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Legacy capture button (still works for iframe postMessage) */}
                         <Button 
                           onClick={captureStampDutyFromCalculator}
                           className="w-full gap-2"
-                          variant="default"
+                          variant="outline"
                         >
                           <Copy className="h-4 w-4" />
-                          Use Calculated Stamp Duty Value
+                          Try Auto-Capture from Calculator
                         </Button>
 
                         {/* Instructions */}
@@ -1516,9 +1549,9 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                           <p className="text-sm font-medium text-foreground">How to use:</p>
                           <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                             <li>State is auto-detected from property address{detectedState !== 'All' && ` (${detectedState})`}</li>
-                            <li>Enter the property purchase price</li>
+                            <li>Enter the property purchase price in the calculator above</li>
                             <li>Select buyer type (first home buyer, investor, etc.)</li>
-                            <li>Click "Use Calculated Stamp Duty Value" to auto-populate</li>
+                            <li>Enter the calculated value in the input field above (auto-applied)</li>
                           </ol>
                         </div>
                       </div>
