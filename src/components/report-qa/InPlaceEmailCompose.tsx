@@ -6,9 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, FileText, Send, Loader2, X, Paperclip, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, FileText, Send, Loader2, X, Paperclip, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PDFAttachment {
@@ -35,6 +36,13 @@ interface InPlaceEmailComposeProps {
   onSuccess?: () => void;
 }
 
+interface UserMailbox {
+  id: string;
+  username: string;
+  email: string | null;
+  personal_mailbox: string | null;
+}
+
 export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
   open,
   onOpenChange,
@@ -45,14 +53,53 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
   const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
+  const [isLoadingMailboxes, setIsLoadingMailboxes] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  
+  // Mailbox state
+  const [availableMailboxes, setAvailableMailboxes] = useState<UserMailbox[]>([]);
+  const [selectedMailbox, setSelectedMailbox] = useState('');
   
   // Email form state
   const [emailTo, setEmailTo] = useState('');
   const [emailCc, setEmailCc] = useState('');
+  const [emailBcc, setEmailBcc] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
+  const [showCcBcc, setShowCcBcc] = useState(false);
+
+  // Fetch available mailboxes when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchAvailableMailboxes();
+    }
+  }, [open]);
+
+  const fetchAvailableMailboxes = async () => {
+    setIsLoadingMailboxes(true);
+    try {
+      const { data, error } = await supabase
+        .from('custom_users')
+        .select('id, username, email, personal_mailbox')
+        .eq('is_active', true)
+        .not('personal_mailbox', 'is', null);
+
+      if (error) throw error;
+
+      const mailboxes = (data || []).filter(u => u.personal_mailbox);
+      setAvailableMailboxes(mailboxes);
+      
+      // Auto-select the first mailbox if available and none selected
+      if (mailboxes.length > 0 && !selectedMailbox) {
+        setSelectedMailbox(mailboxes[0].personal_mailbox || '');
+      }
+    } catch (error) {
+      console.error('Error fetching mailboxes:', error);
+    } finally {
+      setIsLoadingMailboxes(false);
+    }
+  };
 
   // Generate default email content based on context
   useEffect(() => {
@@ -126,6 +173,15 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
       return;
     }
 
+    if (!selectedMailbox) {
+      toast({
+        title: 'Missing Sender',
+        description: 'Please select a sender mailbox.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!pdfFile) {
       toast({
         title: 'PDF Not Ready',
@@ -150,6 +206,12 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
         .map(e => e.trim())
         .filter(e => e.length > 0);
 
+      // Parse BCC emails
+      const bccEmails = emailBcc
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
       // Call send-email-reply edge function
       const { data, error } = await supabase.functions.invoke('send-email-reply', {
         body: {
@@ -157,6 +219,8 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
           subject: emailSubject,
           body: emailBody,
           cc: ccEmails.length > 0 ? ccEmails : undefined,
+          bcc: bccEmails.length > 0 ? bccEmails : undefined,
+          senderMailbox: selectedMailbox,
           attachments: [
             {
               name: pdfFile.name,
@@ -164,7 +228,6 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
               contentBytes: base64Content,
             }
           ],
-          mailboxSource: 'admin'
         }
       });
 
@@ -195,10 +258,13 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
   const resetForm = () => {
     setEmailTo('');
     setEmailCc('');
+    setEmailBcc('');
     setEmailSubject('');
     setEmailBody('');
+    setSelectedMailbox('');
     setPdfFile(null);
     setPdfError(null);
+    setShowCcBcc(false);
   };
 
   const handleClose = () => {
@@ -279,27 +345,72 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
               </div>
             )}
 
-            {/* Recipients */}
+            {/* Sender and Recipients */}
             <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+              {/* From (Sender Mailbox) */}
+              <div className="grid grid-cols-[50px_1fr] gap-2 items-center">
+                <Label className="text-sm text-muted-foreground">From: *</Label>
+                <Select value={selectedMailbox} onValueChange={setSelectedMailbox} disabled={isLoadingMailboxes}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={isLoadingMailboxes ? "Loading..." : "Select sender mailbox"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableMailboxes.map((mailbox) => (
+                      <SelectItem key={mailbox.id} value={mailbox.personal_mailbox || ''}>
+                        {mailbox.personal_mailbox} ({mailbox.username})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* To */}
               <div className="grid grid-cols-[50px_1fr] gap-2 items-center">
                 <Label className="text-sm text-muted-foreground">To: *</Label>
                 <Input
                   value={emailTo}
                   onChange={(e) => setEmailTo(e.target.value)}
-                  placeholder="recipient@example.com"
+                  placeholder="recipient@example.com (comma-separated for multiple)"
                   type="email"
                   className="h-9"
                 />
               </div>
-              <div className="grid grid-cols-[50px_1fr] gap-2 items-center">
-                <Label className="text-sm text-muted-foreground">CC:</Label>
-                <Input
-                  value={emailCc}
-                  onChange={(e) => setEmailCc(e.target.value)}
-                  placeholder="cc@example.com (comma-separated)"
-                  className="h-9"
-                />
-              </div>
+              
+              {/* CC/BCC Toggle */}
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setShowCcBcc(!showCcBcc)}
+              >
+                {showCcBcc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {showCcBcc ? 'Hide CC/BCC' : 'Add CC/BCC'}
+              </button>
+              
+              {/* CC */}
+              {showCcBcc && (
+                <>
+                  <div className="grid grid-cols-[50px_1fr] gap-2 items-center">
+                    <Label className="text-sm text-muted-foreground">CC:</Label>
+                    <Input
+                      value={emailCc}
+                      onChange={(e) => setEmailCc(e.target.value)}
+                      placeholder="cc@example.com (comma-separated)"
+                      className="h-9"
+                    />
+                  </div>
+                  
+                  {/* BCC */}
+                  <div className="grid grid-cols-[50px_1fr] gap-2 items-center">
+                    <Label className="text-sm text-muted-foreground">BCC:</Label>
+                    <Input
+                      value={emailBcc}
+                      onChange={(e) => setEmailBcc(e.target.value)}
+                      placeholder="bcc@example.com (comma-separated)"
+                      className="h-9"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Subject */}
@@ -336,7 +447,7 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
             </Button>
             <Button 
               onClick={handleSend}
-              disabled={isSending || isLoadingPDF || !emailTo || !emailBody || !pdfFile}
+              disabled={isSending || isLoadingPDF || !emailTo || !emailBody || !pdfFile || !selectedMailbox}
             >
               {isSending ? (
                 <>
