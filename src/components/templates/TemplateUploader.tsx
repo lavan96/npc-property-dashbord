@@ -69,6 +69,26 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
     }
   };
 
+  const getMimeType = (file: File): string => {
+    // Browser may return empty MIME type for some files (like .md)
+    if (file.type) return file.type;
+    
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const mimeMap: Record<string, string> = {
+      'md': 'text/markdown',
+      'txt': 'text/plain',
+      'pdf': 'application/pdf',
+      'json': 'application/json',
+      'html': 'text/html',
+      'css': 'text/css',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'svg': 'image/svg+xml',
+    };
+    return mimeMap[ext || ''] || 'application/octet-stream';
+  };
+
   const handleUpload = async () => {
     if (!file || !name) {
       toast({
@@ -103,7 +123,7 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
         file_name: file.name,
         file_path: filePath,
         file_size: file.size,
-        mime_type: file.type,
+        mime_type: getMimeType(file),
         is_active: false,
         priority: 0,
       };
