@@ -897,6 +897,7 @@ export type Database = {
           file_type: string | null
           id: string
           is_vownet_form: boolean | null
+          report_type: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -911,6 +912,7 @@ export type Database = {
           file_type?: string | null
           id?: string
           is_vownet_form?: boolean | null
+          report_type?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -925,6 +927,7 @@ export type Database = {
           file_type?: string | null
           id?: string
           is_vownet_form?: boolean | null
+          report_type?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
