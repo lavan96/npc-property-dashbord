@@ -262,3 +262,7 @@ verify_jwt = false
 
 [functions.sync-client-to-ghl]
 verify_jwt = false
+
+[functions.generate-portfolio-analysis]
+verify_jwt = false
+request_timeout = 120

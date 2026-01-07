@@ -52,6 +52,8 @@ import { LiabilityManualEntry } from './LiabilityManualEntry';
 import { ExportVownetButton } from './ExportVownetButton';
 import { ClientEmailCompose } from './ClientEmailCompose';
 import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
+import { PortfolioAnalysisPDFGenerator } from './PortfolioAnalysisPDFGenerator';
+import { PropertyReportGenerator } from './PropertyReportGenerator';
 import { toast } from 'sonner';
 
 interface ClientDetailsModalProps {
@@ -188,6 +190,12 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
               {client.primary_first_name} {client.primary_surname}
             </DialogTitle>
             <div className="flex items-center gap-2 mr-6">
+              {properties.length > 0 && (
+                <PortfolioAnalysisPDFGenerator
+                  clientId={client.id}
+                  clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                />
+              )}
               {fullClient && (
                 <VownetPDFGenerator
                   data={{
