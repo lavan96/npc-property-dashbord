@@ -455,6 +455,14 @@ export function InvestmentReportGenerator() {
         console.error('Background generation error:', error);
       });
 
+      // Add "generation started" notification
+      addNotification({
+        type: 'report_generation_started',
+        title: 'Report Generation Started',
+        message: `Generating investment report for ${propertyAddress}...`,
+        entityId: pendingReport.id
+      });
+
       toast({
         title: "Report Generation Started",
         description: `Your investment report is being generated in the background. You'll be notified when it's ready. Scope: ${scopeText}`,
@@ -789,6 +797,14 @@ export function InvestmentReportGenerator() {
         }
       }).catch(error => {
         console.error('Background generation error:', error);
+      });
+
+      // Add "generation started" notification
+      addNotification({
+        type: 'report_generation_started',
+        title: 'Report Generation Started',
+        message: `Generating investment report for ${propertyAddress}...`,
+        entityId: pendingReport.id
       });
 
       toast({
@@ -1212,6 +1228,14 @@ export function InvestmentReportGenerator() {
         }
       }).catch(error => {
         console.error('Background generation error:', error);
+      });
+
+      // Add "generation started" notification
+      addNotification({
+        type: 'report_generation_started',
+        title: 'Report Generation Started',
+        message: `Generating investment report for ${propertyAddress}...`,
+        entityId: pendingReport.id
       });
 
       toast({

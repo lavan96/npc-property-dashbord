@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface RegenerateReportButtonProps {
   reportId: string;
@@ -35,6 +36,7 @@ export function RegenerateReportButton({
   const [showConfirm, setShowConfirm] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const { logActivity } = useActivityLogger();
+  const { addNotification } = useNotifications();
 
   const handleRegenerate = async () => {
     try {
@@ -63,6 +65,14 @@ export function RegenerateReportButton({
       toast.loading('Processing with Perplexity AI...', {
         id: toastId,
         description: 'Generating 4 sections with fresh qualitative analysis (this may take 3-5 minutes)...'
+      });
+
+      // Add "regeneration started" notification
+      addNotification({
+        type: 'report_regeneration_started',
+        title: 'Report Regeneration Started',
+        message: `Regenerating report for ${propertyAddress}...`,
+        entityId: reportId
       });
 
       // Call the regenerate-report-qualitative edge function

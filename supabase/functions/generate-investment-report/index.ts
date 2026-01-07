@@ -3065,6 +3065,24 @@ YOUR DEDICATED PROPERTY PARTNER
       
       console.log('Report successfully updated in database with validation and property specs');
       
+      // Add success notification
+      try {
+        await supabaseClient
+          .from('notifications')
+          .insert({
+            type: 'report_generation_completed',
+            title: 'Report Generated',
+            message: `Investment report for ${propertyAddress} is ready to view`,
+            report_id: reportId,
+            entity_id: reportId,
+            read: false
+          });
+        console.log('✓ Success notification created');
+      } catch (notifError) {
+        console.error('Failed to create notification:', notifError);
+        // Don't throw - notification failure shouldn't block report completion
+      }
+      
       // Log data quality score
       if (enhancedData.validation) {
         console.log('📊 Report Quality Score:', enhancedData.validation.qualityScore, '/100');
@@ -3113,6 +3131,18 @@ YOUR DEDICATED PROPERTY PARTNER
               error_message: error?.message || 'An unexpected error occurred'
             })
             .eq('id', requestBody.reportId);
+          
+          // Add failure notification
+          await supabaseClient
+            .from('notifications')
+            .insert({
+              type: 'report_generation_failed',
+              title: 'Report Generation Failed',
+              message: `Failed to generate report: ${error?.message || 'Unknown error'}`,
+              report_id: requestBody.reportId,
+              entity_id: requestBody.reportId,
+              read: false
+            });
           
           console.log('Updated report status to failed');
         }

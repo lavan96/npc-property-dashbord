@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,9 +26,23 @@ export function NotificationsDropdown() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'report_generated':
-        return <FileText className="h-4 w-4 text-green-500" />;
+      case 'report_generation_completed':
+        return <FileCheck className="h-4 w-4 text-green-500" />;
       case 'report_failed':
-        return <AlertCircle className="h-4 w-4 text-destructive" />;
+      case 'report_generation_failed':
+        return <FileX className="h-4 w-4 text-destructive" />;
+      case 'report_generation_started':
+        return <FileClock className="h-4 w-4 text-primary" />;
+      case 'report_regeneration_started':
+        return <RefreshCw className="h-4 w-4 text-primary animate-spin" />;
+      case 'report_regeneration_completed':
+        return <FileCheck className="h-4 w-4 text-emerald-500" />;
+      case 'report_regeneration_failed':
+        return <FileX className="h-4 w-4 text-destructive" />;
+      case 'report_archived':
+        return <Archive className="h-4 w-4 text-muted-foreground" />;
+      case 'report_restored':
+        return <ArchiveRestore className="h-4 w-4 text-green-500" />;
       case 'call_completed':
         return <Phone className="h-4 w-4 text-primary" />;
       case 'appointment_created':

@@ -1467,6 +1467,23 @@ YOUR DEDICATED PROPERTY PARTNER
       throw updateError;
     }
 
+    // Add success notification for regeneration
+    try {
+      await supabase
+        .from('notifications')
+        .insert({
+          type: 'report_regeneration_completed',
+          title: 'Report Regenerated',
+          message: `Report for ${propertyAddress} has been regenerated with updated analysis`,
+          report_id: reportId,
+          entity_id: reportId,
+          read: false
+        });
+      console.log('✓ Regeneration success notification created');
+    } catch (notifError) {
+      console.error('Failed to create notification:', notifError);
+    }
+
     console.log('✅ Report regeneration complete - status set to completed');
 
     return new Response(JSON.stringify({
@@ -1497,6 +1514,24 @@ YOUR DEDICATED PROPERTY PARTNER
       
     } catch (dbError) {
       console.error('Could not update report status:', dbError);
+    }
+    
+    // Try to add failure notification
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const failureClient = createClient(supabaseUrl, supabaseServiceKey);
+      
+      await failureClient
+        .from('notifications')
+        .insert({
+          type: 'report_regeneration_failed',
+          title: 'Report Regeneration Failed',
+          message: `Failed to regenerate report: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          read: false
+        });
+    } catch (notifError) {
+      console.error('Could not create failure notification:', notifError);
     }
     
     return new Response(JSON.stringify({

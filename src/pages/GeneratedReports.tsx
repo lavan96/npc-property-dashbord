@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 
 // Lazy load heavy modal components
@@ -131,6 +132,7 @@ export default function GeneratedReports() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { selectedReports, addReport, removeReport, isSelected, canAddMore } = useComparison();
+  const { addNotification } = useNotifications();
   const isMobile = useIsMobile(); // Must be called before any early returns
 
   const [activeTab, setActiveTab] = useState<'quantitative' | 'investment' | 'comparisons'>(() => {
@@ -471,6 +473,9 @@ export default function GeneratedReports() {
   // Archive a report
   const archiveReport = async (reportId: string) => {
     try {
+      // Get report address for notification
+      const report = investmentReports.find(r => r.id === reportId);
+      
       const { error } = await supabase
         .from('investment_reports')
         .update({ is_archived: true })
@@ -482,6 +487,14 @@ export default function GeneratedReports() {
       setInvestmentReports(prev => 
         prev.map(r => r.id === reportId ? { ...r, is_archived: true } : r)
       );
+      
+      // Add notification
+      addNotification({
+        type: 'report_archived',
+        title: 'Report Archived',
+        message: `${report?.property_address || 'Report'} has been archived`,
+        entityId: reportId
+      });
       
       toast({
         title: 'Report archived',
@@ -500,6 +513,9 @@ export default function GeneratedReports() {
   // Unarchive a report
   const unarchiveReport = async (reportId: string) => {
     try {
+      // Get report address for notification
+      const report = investmentReports.find(r => r.id === reportId);
+      
       const { error } = await supabase
         .from('investment_reports')
         .update({ is_archived: false })
@@ -511,6 +527,14 @@ export default function GeneratedReports() {
       setInvestmentReports(prev => 
         prev.map(r => r.id === reportId ? { ...r, is_archived: false } : r)
       );
+      
+      // Add notification
+      addNotification({
+        type: 'report_restored',
+        title: 'Report Restored',
+        message: `${report?.property_address || 'Report'} has been restored`,
+        entityId: reportId
+      });
       
       toast({
         title: 'Report restored',
