@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -22,12 +22,27 @@ import {
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Building2, Loader2, DollarSign, Percent, Home } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PropertyManualEntryProps {
   clientId: string;
   onComplete: () => void;
+}
+
+type FrequencyType = 'monthly' | 'quarterly' | 'annually' | 'weekly';
+
+interface ExpenseField {
+  value: number;
+  frequency: FrequencyType;
+  monthlyValue: number;
 }
 
 interface PropertyFormData {
@@ -38,40 +53,71 @@ interface PropertyFormData {
   interest_rate: number;
   ownership_percentage: number;
   monthly_interest_repayment: number;
-  monthly_body_corporate: number;
-  monthly_council_rates: number;
-  monthly_water_rates: number;
-  monthly_repairs_maintenance: number;
-  monthly_property_management: number;
-  monthly_landlord_insurance: number;
-  monthly_building_insurance: number;
-  monthly_rental_income: number;
-  weekly_rental_income: number;
+  autoCalculateInterest: boolean;
+  // Expenses with frequency
+  body_corporate: ExpenseField;
+  council_rates: ExpenseField;
+  water_rates: ExpenseField;
+  repairs_maintenance: ExpenseField;
+  property_management: ExpenseField;
+  landlord_insurance: ExpenseField;
+  building_insurance: ExpenseField;
+  // Rental income with frequency
+  rental_income: ExpenseField;
 }
+
+const createExpenseField = (value = 0, frequency: FrequencyType = 'monthly'): ExpenseField => ({
+  value,
+  frequency,
+  monthlyValue: convertToMonthly(value, frequency),
+});
+
+const convertToMonthly = (value: number, frequency: FrequencyType): number => {
+  switch (frequency) {
+    case 'weekly':
+      return value * 4.33; // Average weeks per month
+    case 'quarterly':
+      return value / 3;
+    case 'annually':
+      return value / 12;
+    case 'monthly':
+    default:
+      return value;
+  }
+};
 
 const defaultFormData: PropertyFormData = {
   property_type: 'investment',
   address: '',
   value: 0,
   loan_remaining: 0,
-  interest_rate: 0,
+  interest_rate: 5.90,
   ownership_percentage: 100,
   monthly_interest_repayment: 0,
-  monthly_body_corporate: 0,
-  monthly_council_rates: 0,
-  monthly_water_rates: 0,
-  monthly_repairs_maintenance: 0,
-  monthly_property_management: 0,
-  monthly_landlord_insurance: 0,
-  monthly_building_insurance: 0,
-  monthly_rental_income: 0,
-  weekly_rental_income: 0,
+  autoCalculateInterest: true,
+  body_corporate: createExpenseField(0, 'quarterly'),
+  council_rates: createExpenseField(0, 'quarterly'),
+  water_rates: createExpenseField(0, 'quarterly'),
+  repairs_maintenance: createExpenseField(0, 'annually'),
+  property_management: createExpenseField(0, 'monthly'),
+  landlord_insurance: createExpenseField(0, 'annually'),
+  building_insurance: createExpenseField(0, 'annually'),
+  rental_income: createExpenseField(0, 'weekly'),
 };
 
 export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntryProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>(defaultFormData);
   const queryClient = useQueryClient();
+
+  // Auto-calculate monthly interest repayment when loan or rate changes
+  useEffect(() => {
+    if (formData.autoCalculateInterest && formData.loan_remaining > 0 && formData.interest_rate > 0) {
+      const annualInterest = formData.loan_remaining * (formData.interest_rate / 100);
+      const monthlyInterest = annualInterest / 12;
+      setFormData(prev => ({ ...prev, monthly_interest_repayment: Math.round(monthlyInterest * 100) / 100 }));
+    }
+  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest]);
 
   const updateField = <K extends keyof PropertyFormData>(field: K, value: PropertyFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -82,25 +128,65 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
     updateField(field, numValue as any);
   };
 
+  const updateExpenseField = (
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'property_management' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
+    key: 'value' | 'frequency',
+    newValue: number | FrequencyType
+  ) => {
+    setFormData(prev => {
+      const expense = prev[field];
+      const updatedExpense = { ...expense };
+      
+      if (key === 'value') {
+        updatedExpense.value = newValue as number;
+        updatedExpense.monthlyValue = convertToMonthly(newValue as number, expense.frequency);
+      } else {
+        updatedExpense.frequency = newValue as FrequencyType;
+        updatedExpense.monthlyValue = convertToMonthly(expense.value, newValue as FrequencyType);
+      }
+      
+      return { ...prev, [field]: updatedExpense };
+    });
+  };
+
   // Calculate total monthly expenditure
   const totalMonthlyExpenditure = 
     formData.monthly_interest_repayment +
-    formData.monthly_body_corporate +
-    formData.monthly_council_rates +
-    formData.monthly_water_rates +
-    formData.monthly_repairs_maintenance +
-    formData.monthly_property_management +
-    formData.monthly_landlord_insurance +
-    formData.monthly_building_insurance;
+    formData.body_corporate.monthlyValue +
+    formData.council_rates.monthlyValue +
+    formData.water_rates.monthlyValue +
+    formData.repairs_maintenance.monthlyValue +
+    formData.property_management.monthlyValue +
+    formData.landlord_insurance.monthlyValue +
+    formData.building_insurance.monthlyValue;
 
   // Calculate net monthly cashflow
-  const netMonthlyCashflow = formData.monthly_rental_income - totalMonthlyExpenditure;
+  const monthlyRentalIncome = formData.rental_income.monthlyValue;
+  const netMonthlyCashflow = monthlyRentalIncome - totalMonthlyExpenditure;
+  
+  // Net Monthly Rental Position (rental income minus expenses excluding interest)
+  const netMonthlyRentalPosition = monthlyRentalIncome - (totalMonthlyExpenditure - formData.monthly_interest_repayment);
 
   const createPropertyMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('client_properties').insert({
         client_id: clientId,
-        ...formData,
+        property_type: formData.property_type,
+        address: formData.address,
+        value: formData.value,
+        loan_remaining: formData.loan_remaining,
+        interest_rate: formData.interest_rate,
+        ownership_percentage: formData.ownership_percentage,
+        monthly_interest_repayment: formData.monthly_interest_repayment,
+        monthly_body_corporate: formData.body_corporate.monthlyValue,
+        monthly_council_rates: formData.council_rates.monthlyValue,
+        monthly_water_rates: formData.water_rates.monthlyValue,
+        monthly_repairs_maintenance: formData.repairs_maintenance.monthlyValue,
+        monthly_property_management: formData.property_management.monthlyValue,
+        monthly_landlord_insurance: formData.landlord_insurance.monthlyValue,
+        monthly_building_insurance: formData.building_insurance.monthlyValue,
+        monthly_rental_income: monthlyRentalIncome,
+        weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : formData.rental_income.monthlyValue / 4.33,
         total_monthly_expenditure: totalMonthlyExpenditure,
         net_monthly_cashflow: netMonthlyCashflow,
       });
@@ -130,9 +216,63 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
     return new Intl.NumberFormat('en-AU', {
       style: 'currency',
       currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
+  };
+
+  const FrequencySelect = ({ value, onChange }: { value: FrequencyType; onChange: (v: FrequencyType) => void }) => (
+    <Select value={value} onValueChange={(v) => onChange(v as FrequencyType)}>
+      <SelectTrigger className="w-[100px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="weekly">Weekly</SelectItem>
+        <SelectItem value="monthly">Monthly</SelectItem>
+        <SelectItem value="quarterly">Quarterly</SelectItem>
+        <SelectItem value="annually">Annually</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const ExpenseInput = ({
+    label,
+    field,
+    defaultFrequency = 'monthly',
+    showMonthlyEquivalent = true,
+  }: {
+    label: string;
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'property_management' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>;
+    defaultFrequency?: FrequencyType;
+    showMonthlyEquivalent?: boolean;
+  }) => {
+    const expense = formData[field];
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs">{label}</Label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <DollarSign className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="number"
+              value={expense.value || ''}
+              onChange={(e) => updateExpenseField(field, 'value', parseFloat(e.target.value) || 0)}
+              className="pl-7 h-9 text-sm"
+              placeholder="0"
+            />
+          </div>
+          <FrequencySelect 
+            value={expense.frequency} 
+            onChange={(v) => updateExpenseField(field, 'frequency', v)} 
+          />
+        </div>
+        {showMonthlyEquivalent && expense.frequency !== 'monthly' && expense.value > 0 && (
+          <p className="text-xs text-muted-foreground">
+            = {formatCurrency(expense.monthlyValue)}/month
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -143,59 +283,75 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
           Add Property
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
+      <SheetContent className="w-full sm:max-w-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Add Property
           </SheetTitle>
           <SheetDescription>
-            Manually add a property to the client's portfolio
+            Add a property matching Vownet template format
           </SheetDescription>
         </SheetHeader>
 
         <ScrollArea className="h-[calc(100vh-180px)] pr-4">
           <div className="space-y-6 py-4">
-            {/* Basic Info */}
+            {/* Property Type Selection */}
+            <Card className="border-primary/20">
+              <CardContent className="pt-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Property Type</Label>
+                    <Select
+                      value={formData.property_type}
+                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owner_occupied">
+                          <div className="flex items-center gap-2">
+                            <Home className="h-4 w-4" />
+                            Owner Occupied
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="investment">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            Investment Property
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address *</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => updateField('address', e.target.value)}
+                      placeholder="123 Main Street, Sydney NSW 2000"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Financial Details */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center gap-2">
-                <Home className="h-4 w-4" />
-                Property Details
+                <DollarSign className="h-4 w-4" />
+                Financial Details
               </h4>
               
-              <div className="space-y-2">
-                <Label htmlFor="property_type">Property Type</Label>
-                <Select
-                  value={formData.property_type}
-                  onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment')}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owner_occupied">Owner Occupied</SelectItem>
-                    <SelectItem value="investment">Investment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Address *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => updateField('address', e.target.value)}
-                  placeholder="123 Main Street, Sydney NSW 2000"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="value">Property Value</Label>
+                  <Label>Value</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="value"
                       type="number"
                       value={formData.value || ''}
                       onChange={(e) => updateNumberField('value', e.target.value)}
@@ -205,11 +361,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="loan_remaining">Loan Remaining</Label>
+                  <Label>Loan Remaining ($)</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="loan_remaining"
                       type="number"
                       value={formData.loan_remaining || ''}
                       onChange={(e) => updateNumberField('loan_remaining', e.target.value)}
@@ -222,11 +377,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="interest_rate">Interest Rate</Label>
+                  <Label>Interest Rate (%)</Label>
                   <div className="relative">
                     <Percent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="interest_rate"
                       type="number"
                       step="0.01"
                       value={formData.interest_rate || ''}
@@ -237,11 +391,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ownership_percentage">Ownership %</Label>
+                  <Label>Ownership (%)</Label>
                   <div className="relative">
                     <Percent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="ownership_percentage"
                       type="number"
                       value={formData.ownership_percentage || ''}
                       onChange={(e) => updateNumberField('ownership_percentage', e.target.value)}
@@ -251,170 +404,186 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                   </div>
                 </div>
               </div>
-            </div>
 
-            <Separator />
-
-            {/* Monthly Expenses */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Monthly Expenses
-              </h4>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_interest_repayment">Interest Repayment</Label>
+              {/* Monthly Interest Repayment */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    Monthly Interest Repayment ($)
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Auto-calculated from Loan × Interest Rate ÷ 12</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() => updateField('autoCalculateInterest', !formData.autoCalculateInterest)}
+                  >
+                    <Calculator className="h-3 w-3 mr-1" />
+                    {formData.autoCalculateInterest ? 'Manual' : 'Auto'}
+                  </Button>
+                </div>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="monthly_interest_repayment"
                     type="number"
                     value={formData.monthly_interest_repayment || ''}
-                    onChange={(e) => updateNumberField('monthly_interest_repayment', e.target.value)}
+                    onChange={(e) => {
+                      updateField('autoCalculateInterest', false);
+                      updateNumberField('monthly_interest_repayment', e.target.value);
+                    }}
+                    className="pl-9"
                     placeholder="0"
+                    disabled={formData.autoCalculateInterest}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_body_corporate">Body Corporate</Label>
-                  <Input
-                    id="monthly_body_corporate"
-                    type="number"
-                    value={formData.monthly_body_corporate || ''}
-                    onChange={(e) => updateNumberField('monthly_body_corporate', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_council_rates">Council Rates</Label>
-                  <Input
-                    id="monthly_council_rates"
-                    type="number"
-                    value={formData.monthly_council_rates || ''}
-                    onChange={(e) => updateNumberField('monthly_council_rates', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_water_rates">Water Rates</Label>
-                  <Input
-                    id="monthly_water_rates"
-                    type="number"
-                    value={formData.monthly_water_rates || ''}
-                    onChange={(e) => updateNumberField('monthly_water_rates', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_repairs_maintenance">Repairs & Maintenance</Label>
-                  <Input
-                    id="monthly_repairs_maintenance"
-                    type="number"
-                    value={formData.monthly_repairs_maintenance || ''}
-                    onChange={(e) => updateNumberField('monthly_repairs_maintenance', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_property_management">Property Management</Label>
-                  <Input
-                    id="monthly_property_management"
-                    type="number"
-                    value={formData.monthly_property_management || ''}
-                    onChange={(e) => updateNumberField('monthly_property_management', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_landlord_insurance">Landlord Insurance</Label>
-                  <Input
-                    id="monthly_landlord_insurance"
-                    type="number"
-                    value={formData.monthly_landlord_insurance || ''}
-                    onChange={(e) => updateNumberField('monthly_landlord_insurance', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monthly_building_insurance">Building Insurance</Label>
-                  <Input
-                    id="monthly_building_insurance"
-                    type="number"
-                    value={formData.monthly_building_insurance || ''}
-                    onChange={(e) => updateNumberField('monthly_building_insurance', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
+                {formData.autoCalculateInterest && formData.loan_remaining > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Calculated: {formatCurrency(formData.loan_remaining)} × {formData.interest_rate}% ÷ 12
+                  </p>
+                )}
               </div>
             </div>
 
-            <Separator />
-
-            {/* Income (for investment properties) */}
+            {/* Monthly Expenses - Only for Investment Properties */}
             {formData.property_type === 'investment' && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Rental Income</h4>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="monthly_rental_income">Monthly Rental</Label>
-                    <Input
-                      id="monthly_rental_income"
-                      type="number"
-                      value={formData.monthly_rental_income || ''}
-                      onChange={(e) => updateNumberField('monthly_rental_income', e.target.value)}
-                      placeholder="0"
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium">Monthly Expenses (with frequency conversion)</h4>
+                  
+                  <div className="grid gap-4">
+                    <ExpenseInput 
+                      label="Body Corporate/Strata Fees" 
+                      field="body_corporate" 
+                      defaultFrequency="quarterly" 
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="weekly_rental_income">Weekly Rental</Label>
-                    <Input
-                      id="weekly_rental_income"
-                      type="number"
-                      value={formData.weekly_rental_income || ''}
-                      onChange={(e) => updateNumberField('weekly_rental_income', e.target.value)}
-                      placeholder="0"
+                    <ExpenseInput 
+                      label="Council Rate Charges" 
+                      field="council_rates" 
+                      defaultFrequency="quarterly" 
+                    />
+                    <ExpenseInput 
+                      label="Water Rate Charges" 
+                      field="water_rates" 
+                      defaultFrequency="quarterly" 
+                    />
+                    <ExpenseInput 
+                      label="Repairs & Maintenance" 
+                      field="repairs_maintenance" 
+                      defaultFrequency="annually" 
+                    />
+                    <ExpenseInput 
+                      label="Property Management Fees" 
+                      field="property_management" 
+                      defaultFrequency="monthly" 
+                    />
+                    <ExpenseInput 
+                      label="Landlord Insurance" 
+                      field="landlord_insurance" 
+                      defaultFrequency="annually" 
+                    />
+                    <ExpenseInput 
+                      label="Building Insurance" 
+                      field="building_insurance" 
+                      defaultFrequency="annually" 
                     />
                   </div>
                 </div>
-              </div>
+
+                <Separator />
+
+                {/* Rental Income */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium">Rental Income</h4>
+                  <ExpenseInput 
+                    label="Rental Income" 
+                    field="rental_income" 
+                    defaultFrequency="weekly" 
+                  />
+                </div>
+              </>
             )}
 
             <Separator />
 
-            {/* Summary */}
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Monthly Expenses</span>
-                <span className="font-medium text-red-600">
-                  {formatCurrency(totalMonthlyExpenditure)}
-                </span>
-              </div>
-              {formData.property_type === 'investment' && (
-                <>
+            {/* Summary Card */}
+            <Card className="bg-muted/50 border-0">
+              <CardContent className="pt-4 space-y-3">
+                <h4 className="font-medium text-sm">Cashflow Summary</h4>
+                
+                {formData.property_type === 'investment' && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Monthly Rental Income</span>
+                      <span className="font-medium text-green-600">
+                        {formatCurrency(monthlyRentalIncome)}
+                      </span>
+                    </div>
+                  </>
+                )}
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Monthly Interest Repayment</span>
+                  <span className="font-medium text-red-600">
+                    -{formatCurrency(formData.monthly_interest_repayment)}
+                  </span>
+                </div>
+                
+                {formData.property_type === 'investment' && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Monthly Rental Income</span>
-                    <span className="font-medium text-green-600">
-                      {formatCurrency(formData.monthly_rental_income)}
+                    <span className="text-muted-foreground">Other Monthly Expenses</span>
+                    <span className="font-medium text-red-600">
+                      -{formatCurrency(totalMonthlyExpenditure - formData.monthly_interest_repayment)}
                     </span>
                   </div>
-                  <Separator />
+                )}
+                
+                <Separator />
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Expenditure</span>
+                  <span className="font-medium text-red-600">
+                    {formatCurrency(formData.property_type === 'owner_occupied' ? formData.monthly_interest_repayment : totalMonthlyExpenditure)}
+                  </span>
+                </div>
+                
+                {formData.property_type === 'investment' && (
+                  <>
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>Net Monthly Cashflow</span>
+                      <span className={netMonthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {formatCurrency(netMonthlyCashflow)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Net Monthly Rental Position</span>
+                      <span className={netMonthlyRentalPosition >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {formatCurrency(netMonthlyRentalPosition)}
+                      </span>
+                    </div>
+                  </>
+                )}
+                
+                {formData.property_type === 'owner_occupied' && (
                   <div className="flex justify-between text-sm font-medium">
-                    <span>Net Monthly Cash Flow</span>
-                    <span className={netMonthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {formatCurrency(netMonthlyCashflow)}
+                    <span>Net Monthly Cashflow</span>
+                    <span className="text-red-600">
+                      -{formatCurrency(formData.monthly_interest_repayment)}
                     </span>
                   </div>
-                </>
-              )}
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </ScrollArea>
 

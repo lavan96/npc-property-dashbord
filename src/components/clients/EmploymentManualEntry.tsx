@@ -1,0 +1,353 @@
+import { useState } from 'react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Plus, Briefcase, Loader2, Trash2, Edit } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface EmploymentManualEntryProps {
+  clientId: string;
+  onComplete: () => void;
+}
+
+interface EmploymentFormData {
+  id?: string;
+  contact_type: 'primary' | 'secondary';
+  is_current: boolean;
+  employment_type: string;
+  occupation_role: string;
+  employer_name: string;
+  start_date: string;
+}
+
+const employmentTypeOptions = [
+  { value: 'permanent', label: 'Permanent' },
+  { value: 'part_time', label: 'Part Time' },
+  { value: 'casual', label: 'Casual' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'self_employed', label: 'Self Employed' },
+];
+
+const defaultFormData: EmploymentFormData = {
+  contact_type: 'primary',
+  is_current: true,
+  employment_type: 'permanent',
+  occupation_role: '',
+  employer_name: '',
+  start_date: '',
+};
+
+export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManualEntryProps) {
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'primary' | 'secondary'>('primary');
+  const [formData, setFormData] = useState<EmploymentFormData>(defaultFormData);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Fetch existing employment records
+  const { data: existingEmployment = [] } = useQuery({
+    queryKey: ['client-employment', clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_employment')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at');
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
+  const primaryEmployment = existingEmployment.filter(e => e.contact_type === 'primary');
+  const secondaryEmployment = existingEmployment.filter(e => e.contact_type === 'secondary');
+
+  const updateField = (field: keyof EmploymentFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setFormData({ ...defaultFormData, contact_type: activeTab });
+    setEditingId(null);
+  };
+
+  const startEdit = (employment: any) => {
+    setFormData({
+      id: employment.id,
+      contact_type: employment.contact_type,
+      is_current: employment.is_current ?? true,
+      employment_type: employment.employment_type || 'permanent',
+      occupation_role: employment.occupation_role || '',
+      employer_name: employment.employer_name || '',
+      start_date: employment.start_date || '',
+    });
+    setEditingId(employment.id);
+    setActiveTab(employment.contact_type);
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (editingId) {
+        const { error } = await supabase
+          .from('client_employment')
+          .update({
+            contact_type: formData.contact_type,
+            is_current: formData.is_current,
+            employment_type: formData.employment_type,
+            occupation_role: formData.occupation_role,
+            employer_name: formData.employer_name,
+            start_date: formData.start_date || null,
+          })
+          .eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('client_employment').insert({
+          client_id: clientId,
+          contact_type: formData.contact_type,
+          is_current: formData.is_current,
+          employment_type: formData.employment_type,
+          occupation_role: formData.occupation_role,
+          employer_name: formData.employer_name,
+          start_date: formData.start_date || null,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
+      toast.success(editingId ? 'Employment updated' : 'Employment added');
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast.error('Failed to save employment: ' + error.message);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('client_employment').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
+      toast.success('Employment deleted');
+      if (editingId) resetForm();
+    },
+    onError: (error: any) => {
+      toast.error('Failed to delete: ' + error.message);
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!formData.employer_name.trim()) {
+      toast.error('Employer name is required');
+      return;
+    }
+    saveMutation.mutate();
+  };
+
+  const EmploymentCard = ({ employment }: { employment: any }) => (
+    <Card className="mb-2">
+      <CardContent className="pt-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-medium">{employment.employer_name || 'Unknown Employer'}</span>
+              {employment.is_current && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{employment.occupation_role}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {employment.employment_type} • Started: {employment.start_date || 'N/A'}
+            </p>
+          </div>
+          <div className="flex gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => startEdit(employment)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-destructive"
+              onClick={() => deleteMutation.mutate(employment.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const EmploymentForm = () => (
+    <Card className="border-primary/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium">
+          {editingId ? 'Edit Employment' : 'Add New Employment'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm">Current Employer</Label>
+          <Switch
+            checked={formData.is_current}
+            onCheckedChange={(v) => updateField('is_current', v)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Employment Type</Label>
+          <Select
+            value={formData.employment_type}
+            onValueChange={(v) => updateField('employment_type', v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {employmentTypeOptions.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Occupation/Role</Label>
+          <Input
+            value={formData.occupation_role}
+            onChange={(e) => updateField('occupation_role', e.target.value)}
+            placeholder="Software Engineer"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Employer Name *</Label>
+          <Input
+            value={formData.employer_name}
+            onChange={(e) => updateField('employer_name', e.target.value)}
+            placeholder="Company Pty Ltd"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Start Date</Label>
+          <Input
+            type="date"
+            value={formData.start_date}
+            onChange={(e) => updateField('start_date', e.target.value)}
+          />
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          {editingId && (
+            <Button variant="outline" onClick={resetForm} className="flex-1">
+              Cancel
+            </Button>
+          )}
+          <Button 
+            onClick={handleSubmit} 
+            disabled={saveMutation.isPending}
+            className="flex-1"
+          >
+            {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {editingId ? 'Update' : 'Add'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Add Employment
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Employment Details
+          </SheetTitle>
+          <SheetDescription>
+            Manage employment records for primary and secondary contacts
+          </SheetDescription>
+        </SheetHeader>
+
+        <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
+          <Tabs value={activeTab} onValueChange={(v) => {
+            setActiveTab(v as 'primary' | 'secondary');
+            setFormData(prev => ({ ...prev, contact_type: v as 'primary' | 'secondary' }));
+            setEditingId(null);
+          }}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="primary">Primary Contact</TabsTrigger>
+              <TabsTrigger value="secondary">Secondary Contact</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="primary" className="space-y-4 mt-4">
+              {primaryEmployment.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Existing Records</Label>
+                  {primaryEmployment.map(emp => (
+                    <EmploymentCard key={emp.id} employment={emp} />
+                  ))}
+                </div>
+              )}
+              <EmploymentForm />
+            </TabsContent>
+
+            <TabsContent value="secondary" className="space-y-4 mt-4">
+              {secondaryEmployment.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Existing Records</Label>
+                  {secondaryEmployment.map(emp => (
+                    <EmploymentCard key={emp.id} employment={emp} />
+                  ))}
+                </div>
+              )}
+              <EmploymentForm />
+            </TabsContent>
+          </Tabs>
+        </ScrollArea>
+
+        <SheetFooter className="pt-4">
+          <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
+            Done
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
