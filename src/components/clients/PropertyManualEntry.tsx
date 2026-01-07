@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import {
   Tooltip,
   TooltipContent,
@@ -109,6 +110,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<PropertyFormData>(defaultFormData);
   const queryClient = useQueryClient();
+  const { addNotification } = useNotifications();
 
   // Auto-calculate monthly interest repayment when loan or rate changes
   useEffect(() => {
@@ -195,6 +197,14 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
       toast.success('Property added successfully');
+      
+      addNotification({
+        type: 'portfolio_updated',
+        title: 'Portfolio Updated',
+        message: `New ${formData.property_type === 'investment' ? 'investment' : 'owner-occupied'} property added: ${formData.address}`,
+        entityId: clientId
+      });
+      
       setFormData(defaultFormData);
       setOpen(false);
       onComplete();

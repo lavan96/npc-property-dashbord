@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Edit, User, Users, MapPin, IdCard, Heart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface PersonalDetailsManualEntryProps {
   clientId: string;
@@ -117,6 +118,7 @@ const maritalStatusOptions = [
 export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }: PersonalDetailsManualEntryProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { addNotification } = useNotifications();
   
   const [formData, setFormData] = useState<FormData>({
     primary_first_name: '',
@@ -206,6 +208,14 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
       toast.success('Personal details updated successfully');
+      
+      addNotification({
+        type: 'client_updated',
+        title: 'Client Updated',
+        message: `Personal details updated for ${formData.primary_first_name} ${formData.primary_surname}`,
+        entityId: clientId
+      });
+      
       setOpen(false);
       onComplete();
     },

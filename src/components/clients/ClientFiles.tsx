@@ -27,6 +27,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface ClientFilesProps {
   clientId: string;
@@ -58,6 +59,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [description, setDescription] = useState('');
   const queryClient = useQueryClient();
+  const { addNotification } = useNotifications();
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['client-files', clientId],
@@ -296,18 +298,26 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
                       <p className="text-xs text-muted-foreground mt-1">{file.description}</p>
                     )}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {onSendEmail && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => onSendEmail(file)}
-                        title="Send via Email"
-                      >
-                        <Send className="h-4 w-4 text-primary" />
-                      </Button>
-                    )}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {onSendEmail && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => {
+                            onSendEmail(file);
+                            addNotification({
+                              type: 'client_file_shared',
+                              title: 'File Shared',
+                              message: `${file.file_name} shared via email`,
+                              entityId: clientId
+                            });
+                          }}
+                          title="Send via Email"
+                        >
+                          <Send className="h-4 w-4 text-primary" />
+                        </Button>
+                      )}
                     <Button 
                       variant="ghost" 
                       size="icon" 
