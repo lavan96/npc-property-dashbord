@@ -225,7 +225,7 @@ serve(async (req) => {
       size: Math.ceil((att.contentBytes.length * 3) / 4) // Estimate size from base64
     })) || [];
 
-    const { error: dbError } = await supabase
+    const { data: sentReply, error: dbError } = await supabase
       .from('email_copilot_sent_replies')
       .insert({
         original_email_id: originalEmailId || null,
@@ -237,11 +237,27 @@ serve(async (req) => {
         attachments: attachmentMetadata,
         sent_at: new Date().toISOString(),
         mailbox_source: mailboxSource || 'admin'
-      });
+      })
+      .select('id')
+      .single();
 
     if (dbError) {
       console.error('[Send Email] Failed to store sent reply:', dbError);
       // Don't throw - email was still sent successfully
+    }
+
+    // Add notification for email sent
+    if (!dbError) {
+      const recipientName = to.split('@')[0];
+      await supabase
+        .from('notifications')
+        .insert({
+          type: 'email_reply_sent',
+          title: 'Email Sent',
+          message: `Reply sent to ${recipientName}: ${subject}`,
+          entity_id: sentReply?.id || null,
+          read: false
+        });
     }
 
     return new Response(
