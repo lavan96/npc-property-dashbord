@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
@@ -130,9 +131,15 @@ export default function ReportQA() {
   const [showHistory, setShowHistory] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailTo, setEmailTo] = useState('');
+  const [emailCc, setEmailCc] = useState('');
+  const [emailBcc, setEmailBcc] = useState('');
   const [emailSubject, setEmailSubject] = useState('Investment Report Summary');
   const [emailContent, setEmailContent] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [selectedSenderMailbox, setSelectedSenderMailbox] = useState('');
+  const [availableMailboxes, setAvailableMailboxes] = useState<{id: string; username: string; personal_mailbox: string | null}[]>([]);
+  const [isLoadingMailboxes, setIsLoadingMailboxes] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
@@ -698,35 +705,95 @@ export default function ReportQA() {
     });
   };
 
+  const fetchMailboxesForEmail = async () => {
+    setIsLoadingMailboxes(true);
+    try {
+      const { data, error } = await supabase
+        .from('custom_users')
+        .select('id, username, personal_mailbox')
+        .eq('is_active', true)
+        .not('personal_mailbox', 'is', null);
+
+      if (error) throw error;
+
+      const mailboxes = (data || []).filter(u => u.personal_mailbox);
+      setAvailableMailboxes(mailboxes);
+      
+      if (mailboxes.length > 0 && !selectedSenderMailbox) {
+        setSelectedSenderMailbox(mailboxes[0].personal_mailbox || '');
+      }
+    } catch (error) {
+      console.error('Error fetching mailboxes:', error);
+    } finally {
+      setIsLoadingMailboxes(false);
+    }
+  };
+
   const handleOpenEmailModal = (content: string) => {
     setEmailContent(content);
     setEmailSubject(`Investment Report Summary - ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ')}`);
     setShowEmailModal(true);
+    fetchMailboxesForEmail();
   };
 
   const handleSendEmail = async () => {
-    if (!emailTo || !emailContent) return;
+    if (!emailTo || !emailContent) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please enter recipient email and message content.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedSenderMailbox) {
+      toast({
+        title: 'Missing Sender',
+        description: 'Please select a sender mailbox.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsSendingEmail(true);
     try {
-      const { data, error } = await supabase.functions.invoke('report-qa', {
+      // Parse CC emails
+      const ccEmails = emailCc
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
+      // Parse BCC emails
+      const bccEmails = emailBcc
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
+      const { data, error } = await supabase.functions.invoke('send-email-reply', {
         body: {
-          action: 'send-email',
-          to: emailTo,
+          to: emailTo.trim(),
           subject: emailSubject,
-          content: emailContent,
-          reportNames: uploadedReports.map(r => r.name),
+          body: emailContent,
+          cc: ccEmails.length > 0 ? ccEmails : undefined,
+          bcc: bccEmails.length > 0 ? bccEmails : undefined,
+          senderMailbox: selectedSenderMailbox,
         },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: 'Email sent',
         description: `Summary sent to ${emailTo}`,
       });
       setShowEmailModal(false);
+      // Reset form
       setEmailTo('');
+      setEmailCc('');
+      setEmailBcc('');
+      setSelectedSenderMailbox('');
+      setShowCcBcc(false);
     } catch (error) {
       console.error('Email error:', error);
       toast({
@@ -1955,25 +2022,88 @@ export default function ReportQA() {
       </Dialog>
 
       {/* Email Dialog */}
-      <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-        <DialogContent>
+      <Dialog open={showEmailModal} onOpenChange={(open) => {
+        setShowEmailModal(open);
+        if (!open) {
+          setShowCcBcc(false);
+        }
+      }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Send Summary via Email</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              Send Summary via Email
+            </DialogTitle>
             <DialogDescription>
               Send this summary directly to a prospect
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Sender Mailbox */}
             <div className="space-y-2">
-              <Label htmlFor="email-to">Recipient Email</Label>
+              <Label>From *</Label>
+              <Select value={selectedSenderMailbox} onValueChange={setSelectedSenderMailbox} disabled={isLoadingMailboxes}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingMailboxes ? "Loading mailboxes..." : "Select sender mailbox"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableMailboxes.map((mailbox) => (
+                    <SelectItem key={mailbox.id} value={mailbox.personal_mailbox || ''}>
+                      {mailbox.personal_mailbox} ({mailbox.username})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Recipient */}
+            <div className="space-y-2">
+              <Label htmlFor="email-to">To *</Label>
               <Input
                 id="email-to"
                 type="email"
-                placeholder="prospect@example.com"
+                placeholder="recipient@example.com"
                 value={emailTo}
                 onChange={(e) => setEmailTo(e.target.value)}
               />
             </div>
+            
+            {/* CC/BCC Toggle */}
+            <button
+              type="button"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setShowCcBcc(!showCcBcc)}
+            >
+              {showCcBcc ? '− Hide CC/BCC' : '+ Add CC/BCC'}
+            </button>
+            
+            {/* CC/BCC Fields */}
+            {showCcBcc && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="email-cc">CC</Label>
+                  <Input
+                    id="email-cc"
+                    type="text"
+                    placeholder="cc@example.com (comma-separated)"
+                    value={emailCc}
+                    onChange={(e) => setEmailCc(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email-bcc">BCC</Label>
+                  <Input
+                    id="email-bcc"
+                    type="text"
+                    placeholder="bcc@example.com (comma-separated)"
+                    value={emailBcc}
+                    onChange={(e) => setEmailBcc(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+            
+            {/* Subject */}
             <div className="space-y-2">
               <Label htmlFor="email-subject">Subject</Label>
               <Input
@@ -1982,8 +2112,10 @@ export default function ReportQA() {
                 onChange={(e) => setEmailSubject(e.target.value)}
               />
             </div>
+            
+            {/* Content */}
             <div className="space-y-2">
-              <Label htmlFor="email-content">Content</Label>
+              <Label htmlFor="email-content">Message *</Label>
               <Textarea
                 id="email-content"
                 rows={8}
@@ -1996,7 +2128,10 @@ export default function ReportQA() {
             <Button variant="outline" onClick={() => setShowEmailModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSendEmail} disabled={!emailTo || isSendingEmail}>
+            <Button 
+              onClick={handleSendEmail} 
+              disabled={!emailTo || !emailContent || !selectedSenderMailbox || isSendingEmail}
+            >
               {isSendingEmail ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -2004,7 +2139,7 @@ export default function ReportQA() {
                 </>
               ) : (
                 <>
-                  <Mail className="h-4 w-4 mr-2" />
+                  <Send className="h-4 w-4 mr-2" />
                   Send Email
                 </>
               )}
