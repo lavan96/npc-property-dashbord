@@ -55,41 +55,56 @@
 
     // Function to find and extract stamp duty value from the calculator
     function findStampDutyValue() {
-      // Try various selectors that might contain the stamp duty result
-      const selectors = [
-        // Common patterns for calculator results
-        '[class*="result"]',
-        '[class*="total"]',
-        '[class*="stamp"]',
-        '[id*="result"]',
-        '[id*="total"]',
-        '[id*="stamp"]',
-        '.calculator-result',
-        '.stamp-duty-result',
-        'strong',
-        'b',
-        '.value',
-        '.amount'
-      ];
-
-      for (const selector of selectors) {
-        const elements = document.querySelectorAll(selector);
-        for (const el of elements) {
-          const text = el.textContent || el.innerText || '';
-          // Look for dollar amounts (Australian format)
-          const match = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
+      // First, look specifically for "Total" or "Stamp Duty" labeled values
+      // These calculators typically show the total prominently
+      const allElements = document.querySelectorAll('*');
+      
+      for (const el of allElements) {
+        const text = (el.textContent || el.innerText || '').toLowerCase();
+        
+        // Look for elements containing "total" or "stamp duty" with a dollar value
+        if (text.includes('total') || text.includes('stamp duty')) {
+          // Check if this element or its parent contains a dollar amount
+          const fullText = el.textContent || el.innerText || '';
+          const match = fullText.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
           if (match) {
             const value = match[1].replace(/,/g, '');
             const numValue = parseFloat(value);
-            // Only return reasonable stamp duty values (between $0 and $500,000)
-            if (numValue > 0 && numValue < 500000) {
+            // Stamp duty can be quite high for expensive properties
+            if (numValue > 0 && numValue < 1000000) {
               return numValue;
             }
           }
         }
       }
 
-      // Fallback: scan all text nodes for dollar amounts
+      // Try specific selectors for calculator results
+      const selectors = [
+        '[class*="total"]',
+        '[class*="result"]',
+        '[id*="total"]',
+        '[id*="result"]',
+        '.stamp-duty-result',
+        '.calculator-result'
+      ];
+
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const el of elements) {
+          const text = el.textContent || el.innerText || '';
+          const match = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
+          if (match) {
+            const value = match[1].replace(/,/g, '');
+            const numValue = parseFloat(value);
+            if (numValue > 0 && numValue < 1000000) {
+              return numValue;
+            }
+          }
+        }
+      }
+
+      // Fallback: scan all text nodes for dollar amounts and find the largest
+      // that appears after "total" or is the last significant value shown
       const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_TEXT,
@@ -98,26 +113,34 @@
       );
 
       const dollarAmounts = [];
+      let foundTotal = false;
+      
       while (walker.nextNode()) {
-        const text = walker.currentNode.textContent;
+        const text = walker.currentNode.textContent || '';
+        
+        if (text.toLowerCase().includes('total')) {
+          foundTotal = true;
+        }
+        
         const matches = text.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g);
         for (const match of matches) {
           const value = match[1].replace(/,/g, '');
           const numValue = parseFloat(value);
-          if (numValue > 0 && numValue < 500000) {
-            dollarAmounts.push(numValue);
+          if (numValue > 0 && numValue < 1000000) {
+            dollarAmounts.push({ value: numValue, afterTotal: foundTotal });
           }
         }
       }
 
-      // Return the largest reasonable value (likely the stamp duty total)
+      // Prefer values that appeared after "total" text
+      const afterTotalValues = dollarAmounts.filter(v => v.afterTotal);
+      if (afterTotalValues.length > 0) {
+        return Math.max(...afterTotalValues.map(v => v.value));
+      }
+
+      // Otherwise return the largest value (likely the total stamp duty)
       if (dollarAmounts.length > 0) {
-        // Filter out values that are likely the property price (too large)
-        const stampDutyLikeValues = dollarAmounts.filter(v => v < 100000);
-        if (stampDutyLikeValues.length > 0) {
-          return Math.max(...stampDutyLikeValues);
-        }
-        return Math.max(...dollarAmounts);
+        return Math.max(...dollarAmounts.map(v => v.value));
       }
 
       return null;
