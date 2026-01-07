@@ -48,6 +48,8 @@ interface ClientEmailComposeProps {
     is_vownet_form?: boolean;
   }>;
   preSelectedAttachmentId?: string;
+  defaultSubject?: string;
+  defaultBody?: string;
 }
 
 export function ClientEmailCompose({
@@ -57,7 +59,9 @@ export function ClientEmailCompose({
   clientName,
   clientEmail,
   attachments = [],
-  preSelectedAttachmentId
+  preSelectedAttachmentId,
+  defaultSubject,
+  defaultBody
 }: ClientEmailComposeProps) {
   const [to, setTo] = useState(clientEmail || '');
   const [cc, setCc] = useState('');
@@ -89,8 +93,9 @@ export function ClientEmailCompose({
   useEffect(() => {
     if (open) {
       setTo(clientEmail || '');
-      setSubject(`Portfolio Update - ${clientName}`);
-      setBody(`Dear ${clientName.split(' ')[0]},\n\nPlease find attached your updated portfolio documentation.\n\nKind regards`);
+      // Use provided defaults or fallback to generic template
+      setSubject(defaultSubject || `Portfolio Update - ${clientName}`);
+      setBody(defaultBody || `Dear ${clientName.split(' ')[0]},\n\nPlease find attached your updated portfolio documentation.\n\nKind regards`);
       
       // Pre-select attachment if specified
       if (preSelectedAttachmentId) {
@@ -103,7 +108,7 @@ export function ClientEmailCompose({
         setSelectedMailbox(userMailbox?.personal_mailbox || mailboxes[0]?.personal_mailbox || '');
       }
     }
-  }, [open, clientEmail, clientName, preSelectedAttachmentId, mailboxes, user?.id]);
+  }, [open, clientEmail, clientName, preSelectedAttachmentId, mailboxes, user?.id, defaultSubject, defaultBody]);
 
   const toggleAttachment = (attachmentId: string) => {
     setSelectedAttachments(prev => 

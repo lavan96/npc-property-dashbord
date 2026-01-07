@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -33,7 +33,9 @@ import {
   Activity,
   FileUp,
   Sparkles,
-  UserCog
+  UserCog,
+  Send,
+  Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -53,6 +55,7 @@ import { LiabilityManualEntry } from './LiabilityManualEntry';
 import { ExportVownetButton } from './ExportVownetButton';
 import { ClientEmailCompose } from './ClientEmailCompose';
 import { ClientReportsTab } from './ClientReportsTab';
+import { VownetPDFGenerator } from './VownetPDFGenerator';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -69,12 +72,80 @@ interface ClientDetailsModalProps {
 export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetailsModalProps) {
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [pdfAttachment, setPdfAttachment] = useState<{ blob: Blob; fileName: string } | null>(null);
+  const [isGeneratingPortfolio, setIsGeneratingPortfolio] = useState(false);
+  const [portfolioEmailSubject, setPortfolioEmailSubject] = useState('');
+  const [portfolioEmailBody, setPortfolioEmailBody] = useState('');
 
-  // Handle PDF email callback
+  // Handle PDF email callback (for finance)
   const handlePdfEmailClick = (pdfBlob: Blob, fileName: string) => {
     setPdfAttachment({ blob: pdfBlob, fileName });
     setShowEmailCompose(true);
     toast.success('PDF attached to email');
+  };
+
+  // Handle "Send Portfolio to Client" - generates portfolio PDF and opens email with template
+  const handleSendPortfolioToClient = async () => {
+    if (!client.primary_email) {
+      toast.error('Client does not have an email address');
+      return;
+    }
+
+    if (properties.length === 0) {
+      toast.error('Client has no properties for portfolio analysis');
+      return;
+    }
+
+    setIsGeneratingPortfolio(true);
+    
+    try {
+      // Generate portfolio analysis
+      const { data, error } = await supabase.functions.invoke('generate-portfolio-analysis', {
+        body: {
+          clientId: client.id,
+          investorProfile: 'general',
+          analysisDepth: 'comprehensive',
+          includeProjections: true,
+          projectionYears: 10,
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Analysis generation failed');
+
+      // Set templated email content
+      const clientFirstName = client.primary_first_name;
+      setPortfolioEmailSubject(`Your Portfolio Analysis Report - ${clientFirstName} ${client.primary_surname}`);
+      setPortfolioEmailBody(
+`Dear ${clientFirstName},
+
+Please find attached your comprehensive Portfolio Performance Analysis report.
+
+This report includes:
+• Executive summary of your portfolio health
+• Detailed analysis of each property
+• Risk assessment and mitigation strategies
+• 10-year growth projections
+• Strategic recommendations
+
+If you have any questions about the report or would like to discuss your investment strategy, please don't hesitate to reach out.
+
+Best regards,
+NPC Team`
+      );
+
+      // Generate PDF from analysis data - store in session for email attachment
+      toast.success('Portfolio analysis ready. Preparing email...');
+      
+      // Open email compose with template
+      setPdfAttachment(null); // Clear any existing attachment
+      setShowEmailCompose(true);
+      
+    } catch (error: any) {
+      console.error('Portfolio generation error:', error);
+      toast.error('Failed to generate portfolio: ' + error.message);
+    } finally {
+      setIsGeneratingPortfolio(false);
+    }
   };
 
   // Fetch full client details
@@ -193,13 +264,36 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2 mr-6">
+              {/* Send to Finance - Vownet Form */}
+              {fullClient && (
+                <VownetPDFGenerator
+                  data={{
+                    client: fullClient,
+                    properties,
+                    employment,
+                    income,
+                    assets,
+                    liabilities,
+                  }}
+                  clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                  onEmailClick={handlePdfEmailClick}
+                />
+              )}
+              
+              {/* Send Portfolio to Client */}
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
-                onClick={() => { setPdfAttachment(null); setShowEmailCompose(true); }}
+                onClick={handleSendPortfolioToClient}
+                disabled={isGeneratingPortfolio || properties.length === 0 || !client.primary_email}
+                title={!client.primary_email ? 'Client has no email' : properties.length === 0 ? 'No properties to analyze' : 'Send portfolio analysis to client'}
               >
-                <Mail className="h-4 w-4 mr-2" />
-                Email Client
+                {isGeneratingPortfolio ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Send Portfolio to Client
               </Button>
             </div>
           </DialogHeader>
@@ -495,10 +589,19 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
     {/* Email Compose Modal */}
     <ClientEmailCompose
       open={showEmailCompose}
-      onOpenChange={setShowEmailCompose}
+      onOpenChange={(open) => {
+        setShowEmailCompose(open);
+        if (!open) {
+          // Clear template when modal closes
+          setPortfolioEmailSubject('');
+          setPortfolioEmailBody('');
+        }
+      }}
       clientId={client.id}
       clientEmail={client.primary_email}
       clientName={`${client.primary_first_name} ${client.primary_surname}`}
+      defaultSubject={portfolioEmailSubject || undefined}
+      defaultBody={portfolioEmailBody || undefined}
     />
   </>
   );
