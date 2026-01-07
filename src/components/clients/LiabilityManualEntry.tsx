@@ -413,7 +413,7 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
                       <SelectContent>
                         {repaymentTypeOptions.map(opt => (
                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        )))}
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
