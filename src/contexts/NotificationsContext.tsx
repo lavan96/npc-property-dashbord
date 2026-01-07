@@ -86,6 +86,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const notificationsWithDates = data.map((n: any) => ({
           ...n,
           reportId: n.report_id,
+          entityId: n.entity_id,
           timestamp: new Date(n.timestamp)
         }));
         setNotifications(notificationsWithDates);
@@ -104,6 +105,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           title: notification.title,
           message: notification.message,
           report_id: notification.reportId || null,
+          entity_id: notification.entityId || null,
           read: false
         });
 
@@ -155,10 +157,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const clearAll = async () => {
     try {
+      // Delete all notifications where created_at is not null (i.e., all notifications)
       const { error } = await supabase
         .from('notifications')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+        .gte('created_at', '1970-01-01');
 
       if (error) throw error;
     } catch (error) {

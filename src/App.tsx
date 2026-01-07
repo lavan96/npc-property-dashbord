@@ -16,6 +16,7 @@ import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
 import { ReportGenerationProgress } from "./components/reports/ReportGenerationProgress";
 import { CallNotificationListener } from "./components/CallNotificationListener";
+import { Phase1NotificationListeners } from "./components/Phase1NotificationListeners";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import Overview from "./pages/Overview";
@@ -79,6 +80,7 @@ const App = () => (
                   <BackgroundJobTracker />
                   <ReportGenerationProgress />
                   <CallNotificationListener />
+                  <Phase1NotificationListeners />
                   <ComparisonProvider>
                     <SearchProvider>
                       <Toaster />
