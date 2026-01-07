@@ -30,6 +30,7 @@ import {
   ShieldOff
 } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface User {
   id: string;
@@ -60,6 +61,7 @@ interface PermissionSetting {
 export default function UserManagement() {
   const { user } = useAuth();
   const { isSuperadmin, loading: permLoading } = usePermissions();
+  const { addNotification } = useNotifications();
   
   const [users, setUsers] = useState<User[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -204,6 +206,11 @@ export default function UserManagement() {
         if (data.temporary_password) {
           toast.info(`Temporary password: ${data.temporary_password}`, { duration: 10000 });
         }
+        addNotification({
+          type: 'new_user_invited',
+          title: 'User Invite Sent',
+          message: `Invitation sent to ${inviteEmail}`,
+        });
         setInviteDialogOpen(false);
         setInviteEmail('');
         setInviteUsername('');
@@ -240,6 +247,12 @@ export default function UserManagement() {
           entityId: editingUserId,
           entityName: targetUser?.username,
           metadata: { permissions_count: editPermissions.filter(p => p.can_view).length },
+        });
+        addNotification({
+          type: 'user_role_updated',
+          title: 'User Permissions Updated',
+          message: `Permissions for ${targetUser?.username || 'user'} have been updated`,
+          entityId: editingUserId,
         });
         setEditPermDialogOpen(false);
         fetchUsers();
@@ -294,6 +307,12 @@ export default function UserManagement() {
           entityId: userId,
           entityName: targetUser?.username,
           metadata: { action: 'promoted_to_superadmin' },
+        });
+        addNotification({
+          type: 'user_role_updated',
+          title: 'User Promoted to Superadmin',
+          message: `${targetUser?.username || 'User'} has been promoted to superadmin`,
+          entityId: userId,
         });
         fetchUsers();
       } else {
@@ -424,6 +443,12 @@ export default function UserManagement() {
           entityId: data.user_id,
           entityName: createUsername,
           metadata: { action: 'created_subadmin', has_email: !!createEmail },
+        });
+        addNotification({
+          type: 'new_user_invited',
+          title: 'New Sub-Admin Created',
+          message: `${createUsername} has been added as a sub-admin`,
+          entityId: data.user_id,
         });
         setCreateDialogOpen(false);
         setCreateUsername('');
