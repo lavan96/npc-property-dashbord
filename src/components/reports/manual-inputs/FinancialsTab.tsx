@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronRight, Home, Banknote, Building, MapPin, Check } from 'lucide-react';
+import { Calculator, Info, Percent, DollarSign, TrendingUp, ChevronDown, ChevronRight, Home, Banknote, Building, MapPin, Check, Download } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
 import { useToast } from '@/hooks/use-toast';
@@ -108,7 +108,9 @@ export function FinancialsTab({
   const [localStampDutyPurchaseType, setLocalStampDutyPurchaseType] = useState<StampDutyPurchaseType>('established_home');
   const [manualStampDutyInput, setManualStampDutyInput] = useState<string>('');
   const [capturedStampDuty, setCapturedStampDuty] = useState<string>('');
+  const [isCapturing, setIsCapturing] = useState(false);
   const stampDutyContainerRef = useRef<HTMLDivElement>(null);
+  const stampDutyIframeRef = useRef<HTMLIFrameElement>(null);
   const isNewBuild = buildType === 'new_build';
   const { toast } = useToast();
 
@@ -116,6 +118,39 @@ export function FinancialsTab({
   const setStampDutyPropertyType = propSetStampDutyPropertyType ?? setLocalStampDutyPropertyType;
   const stampDutyPurchaseType = propStampDutyPurchaseType ?? localStampDutyPurchaseType;
   const setStampDutyPurchaseType = propSetStampDutyPurchaseType ?? setLocalStampDutyPurchaseType;
+
+  // Listen for messages from the stamp duty calculator iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'STAMP_DUTY_VALUE') {
+        setIsCapturing(false);
+        if (event.data.success && event.data.value) {
+          const value = Math.round(event.data.value).toString();
+          setManualStampDutyInput(value);
+          setCapturedStampDuty(value);
+          toast({
+            title: "Value Captured",
+            description: `$${formatNumberWithCommas(value)} has been captured from the calculator.`,
+          });
+        } else {
+          toast({
+            title: "Could not capture value",
+            description: "Please calculate stamp duty first, then try again or enter manually.",
+            variant: "destructive",
+          });
+        }
+      } else if (event.data?.type === 'STAMP_DUTY_VALUE_AVAILABLE') {
+        // Auto-update when calculator shows a new result
+        if (event.data.value) {
+          const value = Math.round(event.data.value).toString();
+          setManualStampDutyInput(value);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [toast]);
 
   const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,36 +171,49 @@ export function FinancialsTab({
   const rate = parseFloat(interestRate) || 6.5;
   const monthlyInterest = Math.round((loanAmount * (rate / 100)) / 12);
 
-  // Handle input change for stamp duty (just update input, don't apply yet)
+  // Handle input change for stamp duty (editable field for review/adjustment)
   const handleManualStampDutyInputChange = useCallback((value: string) => {
     const rawValue = removeCommas(value);
     setManualStampDutyInput(rawValue);
+    // Also update captured value when manually edited
+    if (rawValue && !isNaN(parseFloat(rawValue)) && parseFloat(rawValue) > 0) {
+      setCapturedStampDuty(rawValue);
+    }
   }, []);
 
-  // Step 1: Capture the calculated value
+  // Step 1: Capture the calculated value from iframe
   const handleCaptureValue = useCallback(() => {
-    if (manualStampDutyInput && !isNaN(parseFloat(manualStampDutyInput)) && parseFloat(manualStampDutyInput) > 0) {
-      setCapturedStampDuty(manualStampDutyInput);
+    if (stampDutyIframeRef.current?.contentWindow) {
+      setIsCapturing(true);
+      stampDutyIframeRef.current.contentWindow.postMessage({ type: 'CAPTURE_STAMP_DUTY' }, '*');
+      
+      // Timeout fallback if no response
+      setTimeout(() => {
+        setIsCapturing(false);
+      }, 3000);
+    } else {
       toast({
-        title: "Value Captured",
-        description: `$${formatNumberWithCommas(manualStampDutyInput)} has been captured.`,
+        title: "Calculator not ready",
+        description: "Please wait for the calculator to load.",
+        variant: "destructive",
       });
     }
-  }, [manualStampDutyInput, toast]);
+  }, [toast]);
 
   // Step 2: Use the captured value in the analysis
   const handleUseValue = useCallback(() => {
-    if (capturedStampDuty && parseFloat(capturedStampDuty) > 0) {
-      setStampDuty(capturedStampDuty);
+    const valueToUse = capturedStampDuty || manualStampDutyInput;
+    if (valueToUse && parseFloat(valueToUse) > 0) {
+      setStampDuty(valueToUse);
       toast({
         title: "Stamp Duty Applied",
-        description: `$${formatNumberWithCommas(capturedStampDuty)} has been applied to your analysis.`,
+        description: `$${formatNumberWithCommas(valueToUse)} has been applied to your analysis.`,
       });
       setShowStampDutyModal(false);
       setManualStampDutyInput('');
       setCapturedStampDuty('');
     }
-  }, [capturedStampDuty, setStampDuty, toast]);
+  }, [capturedStampDuty, manualStampDutyInput, setStampDuty, toast]);
 
   const totalAcquisitionCosts = 
     (parseFloat(stampDuty) || 0) +
@@ -548,6 +596,7 @@ export function FinancialsTab({
                 {/* External Calculator Embed - Using iframe for complete isolation */}
                 <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
                   <iframe
+                    ref={stampDutyIframeRef}
                     src={`/stamp-duty-embed.html?state=${detectedState}`}
                     className="w-full h-[500px] border-0"
                     title="Stamp Duty Calculator"
@@ -557,39 +606,43 @@ export function FinancialsTab({
 
                 {/* Two-step stamp duty capture */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Enter calculated stamp duty value:</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={formatForDisplay(manualStampDutyInput)}
-                        onChange={(e) => handleManualStampDutyInputChange(e.target.value)}
-                        placeholder="Enter value from calculator"
-                        className="pl-7"
-                      />
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Stamp Duty Value:</Label>
                     <Button
                       type="button"
                       variant="outline"
+                      size="sm"
                       onClick={handleCaptureValue}
-                      disabled={disabled || !manualStampDutyInput || parseFloat(manualStampDutyInput) <= 0}
+                      disabled={disabled || isCapturing}
                     >
-                      <Calculator className="h-4 w-4 mr-1" />
-                      Capture Value
+                      <Download className="h-4 w-4 mr-1" />
+                      {isCapturing ? 'Capturing...' : 'Capture Calculated Value'}
                     </Button>
                   </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(manualStampDutyInput)}
+                      onChange={(e) => handleManualStampDutyInputChange(e.target.value)}
+                      placeholder="Value will appear here after capture"
+                      className="pl-7"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use the calculator above, then click "Capture Calculated Value". You can also manually adjust if needed.
+                  </p>
                 </div>
 
                 {/* Show captured value and Use button */}
-                {capturedStampDuty && parseFloat(capturedStampDuty) > 0 && (
+                {(capturedStampDuty || manualStampDutyInput) && parseFloat(capturedStampDuty || manualStampDutyInput) > 0 && (
                   <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
                     <div className="flex items-center gap-3">
                       <Check className="h-5 w-5 text-green-600" />
                       <div>
                         <p className="text-sm font-semibold text-green-700">
-                          Captured: ${formatNumberWithCommas(capturedStampDuty)}
+                          Stamp Duty: ${formatNumberWithCommas(capturedStampDuty || manualStampDutyInput)}
                         </p>
                         <p className="text-xs text-green-600">
                           Ready to apply to your analysis
@@ -611,7 +664,7 @@ export function FinancialsTab({
                 )}
 
                 <p className="text-xs text-muted-foreground mt-2">
-                  * Calculate stamp duty using the widget above, enter the value, click "Capture Value", then "Use Value" to apply.
+                  * Calculate stamp duty using the widget above, click "Capture Calculated Value" to extract it, then click "Use Value" to apply.
                 </p>
               </div>
             </DialogContent>
