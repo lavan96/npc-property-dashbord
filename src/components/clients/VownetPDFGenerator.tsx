@@ -120,7 +120,6 @@ export interface VownetPDFData {
 interface VownetPDFGeneratorProps {
   data: VownetPDFData;
   clientName: string;
-  clientEmail?: string | null;
   onEmailClick?: (pdfBlob: Blob, fileName: string) => void;
   onQuickSendComplete?: () => void;
   variant?: 'default' | 'outline' | 'ghost';
@@ -150,7 +149,6 @@ const formatDate = (dateStr: string | null | undefined): string => {
 export function VownetPDFGenerator({ 
   data, 
   clientName,
-  clientEmail,
   onEmailClick,
   onQuickSendComplete,
   variant = 'outline',
@@ -298,7 +296,6 @@ export function VownetPDFGenerator({
       const { error } = await supabase.functions.invoke('send-email-reply', {
         body: {
           to: targetContact.email,
-          cc: clientEmail ? [clientEmail] : [],
           subject: `Vownet Form - ${clientName}`,
           body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the Vownet form for ${clientName}.\n\nKind regards`,
           senderMailbox: userData.personal_mailbox,
