@@ -51,6 +51,8 @@ import { AssetManualEntry } from './AssetManualEntry';
 import { LiabilityManualEntry } from './LiabilityManualEntry';
 import { ExportVownetButton } from './ExportVownetButton';
 import { ClientEmailCompose } from './ClientEmailCompose';
+import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
+import { toast } from 'sonner';
 
 interface ClientDetailsModalProps {
   client: {
@@ -66,6 +68,14 @@ interface ClientDetailsModalProps {
 
 export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetailsModalProps) {
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [pdfAttachment, setPdfAttachment] = useState<{ blob: Blob; fileName: string } | null>(null);
+
+  // Handle PDF email callback
+  const handlePdfEmailClick = (pdfBlob: Blob, fileName: string) => {
+    setPdfAttachment({ blob: pdfBlob, fileName });
+    setShowEmailCompose(true);
+    toast.success('PDF attached to email');
+  };
 
   // Fetch full client details
   const { data: fullClient, refetch: refetchClient } = useQuery({
@@ -177,15 +187,30 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
               <User className="h-5 w-5" />
               {client.primary_first_name} {client.primary_surname}
             </DialogTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEmailCompose(true)}
-              className="mr-6"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Email Client
-            </Button>
+            <div className="flex items-center gap-2 mr-6">
+              {fullClient && (
+                <VownetPDFGenerator
+                  data={{
+                    client: fullClient,
+                    properties,
+                    employment,
+                    income,
+                    assets,
+                    liabilities,
+                  }}
+                  clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                  onEmailClick={handlePdfEmailClick}
+                />
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setPdfAttachment(null); setShowEmailCompose(true); }}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email Client
+              </Button>
+            </div>
           </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-120px)]">
