@@ -88,21 +88,8 @@ export function ClientReportsTab({
     },
   });
 
-  // Fetch portfolio analyses for this client
-  const { data: portfolioAnalyses = [] } = useQuery({
-    queryKey: ['client-portfolio-analyses', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cash_flow_analyses')
-        .select('*')
-        .eq('created_by', clientId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      // This might not be the right query - but we'll use the file-based approach
-      if (error) return [];
-      return data || [];
-    },
-  });
+  // Note: Portfolio analyses are stored as files in client_files with report_type='portfolio'
+  // The cash_flow_analyses table is for comparison analyses, not client-specific reports
 
   // Combine all reports into a unified list
   const allReports: GeneratedReport[] = [
@@ -276,29 +263,31 @@ export function ClientReportsTab({
           </div>
 
           {/* Selected Property Report Generator */}
-          {selectedProperty && (
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  {properties.find(p => p.id === selectedProperty)?.address}
-                </span>
+          {selectedProperty && (() => {
+            const selectedProp = properties.find(p => p.id === selectedProperty);
+            if (!selectedProp) return null;
+            return (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{selectedProp.address}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <PropertyReportGenerator
+                    property={selectedProp}
+                    clientName={clientName}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedProperty(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <PropertyReportGenerator
-                  property={properties.find(p => p.id === selectedProperty)!}
-                  clientName={clientName}
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedProperty(null)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </CardContent>
       </Card>
 
