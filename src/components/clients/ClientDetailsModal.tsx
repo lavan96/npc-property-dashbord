@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -185,10 +186,15 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              {client.primary_first_name} {client.primary_surname}
-            </DialogTitle>
+            <div>
+              <DialogTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                {client.primary_first_name} {client.primary_surname}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                View and manage client details, properties, and reports
+              </DialogDescription>
+            </div>
             <div className="flex items-center gap-2 mr-6">
               {properties.length > 0 && (
                 <PortfolioAnalysisPDFGenerator

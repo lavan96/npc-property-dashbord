@@ -8,6 +8,7 @@ import { jsPDF } from 'jspdf';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -338,6 +339,9 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                 Download PDF
               </Button>
             </DialogTitle>
+            <DialogDescription>
+              Investment analysis for {property.address}
+            </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="max-h-[calc(90vh-120px)]">

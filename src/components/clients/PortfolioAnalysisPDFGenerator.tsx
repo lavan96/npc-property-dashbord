@@ -8,6 +8,7 @@ import { jsPDF } from 'jspdf';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -257,6 +258,9 @@ export function PortfolioAnalysisPDFGenerator({
                 Download PDF
               </Button>
             </DialogTitle>
+            <DialogDescription>
+              Comprehensive analysis of {clientName}'s investment property portfolio
+            </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="max-h-[calc(90vh-120px)]">
