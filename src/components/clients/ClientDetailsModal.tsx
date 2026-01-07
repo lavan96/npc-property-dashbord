@@ -265,20 +265,25 @@ NPC Team`
             </div>
             <div className="flex items-center gap-2 mr-6">
               {/* Send to Finance - Vownet Form */}
-              {fullClient && (
-                <VownetPDFGenerator
-                  data={{
-                    client: fullClient,
-                    properties,
-                    employment,
-                    income,
-                    assets,
-                    liabilities,
-                  }}
-                  clientName={`${client.primary_first_name} ${client.primary_surname}`}
-                  onEmailClick={handlePdfEmailClick}
-                />
-              )}
+              <VownetPDFGenerator
+                data={{
+                  client: fullClient || {
+                    id: client.id,
+                    primary_first_name: client.primary_first_name,
+                    primary_surname: client.primary_surname,
+                    primary_email: client.primary_email,
+                    primary_mobile: client.primary_mobile,
+                  },
+                  properties,
+                  employment,
+                  income,
+                  assets,
+                  liabilities,
+                }}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                onEmailClick={handlePdfEmailClick}
+                buttonLabel="Send to Finance"
+              />
               
               {/* Send Portfolio to Client */}
               <Button
