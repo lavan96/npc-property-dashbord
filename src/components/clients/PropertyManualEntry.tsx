@@ -47,7 +47,7 @@ interface ExpenseField {
 }
 
 interface PropertyFormData {
-  property_type: 'owner_occupied' | 'investment';
+  property_type: 'owner_occupied' | 'investment' | 'smsf';
   address: string;
   value: number;
   loan_remaining: number;
@@ -201,7 +201,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       addNotification({
         type: 'portfolio_updated',
         title: 'Portfolio Updated',
-        message: `New ${formData.property_type === 'investment' ? 'investment' : 'owner-occupied'} property added: ${formData.address}`,
+        message: `New ${formData.property_type === 'investment' ? 'investment' : formData.property_type === 'smsf' ? 'SMSF' : 'owner-occupied'} property added: ${formData.address}`,
         entityId: clientId
       });
       
@@ -314,7 +314,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                     <Label>Property Type</Label>
                     <Select
                       value={formData.property_type}
-                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment')}
+                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment' | 'smsf')}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -330,6 +330,12 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
                             Investment Property
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="smsf">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            SMSF (Self-Managed Super Fund)
                           </div>
                         </SelectItem>
                       </SelectContent>
