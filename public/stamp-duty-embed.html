@@ -49,6 +49,113 @@
     script.src = 'https://calculatorsonline.com.au/external/!main/stamp_duty.min.js';
     script.setAttribute('data-state', state);
     document.body.appendChild(script);
+
+    // Store the last captured value
+    let lastCapturedValue = null;
+
+    // Function to find and extract stamp duty value from the calculator
+    function findStampDutyValue() {
+      // Try various selectors that might contain the stamp duty result
+      const selectors = [
+        // Common patterns for calculator results
+        '[class*="result"]',
+        '[class*="total"]',
+        '[class*="stamp"]',
+        '[id*="result"]',
+        '[id*="total"]',
+        '[id*="stamp"]',
+        '.calculator-result',
+        '.stamp-duty-result',
+        'strong',
+        'b',
+        '.value',
+        '.amount'
+      ];
+
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const el of elements) {
+          const text = el.textContent || el.innerText || '';
+          // Look for dollar amounts (Australian format)
+          const match = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
+          if (match) {
+            const value = match[1].replace(/,/g, '');
+            const numValue = parseFloat(value);
+            // Only return reasonable stamp duty values (between $0 and $500,000)
+            if (numValue > 0 && numValue < 500000) {
+              return numValue;
+            }
+          }
+        }
+      }
+
+      // Fallback: scan all text nodes for dollar amounts
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      const dollarAmounts = [];
+      while (walker.nextNode()) {
+        const text = walker.currentNode.textContent;
+        const matches = text.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g);
+        for (const match of matches) {
+          const value = match[1].replace(/,/g, '');
+          const numValue = parseFloat(value);
+          if (numValue > 0 && numValue < 500000) {
+            dollarAmounts.push(numValue);
+          }
+        }
+      }
+
+      // Return the largest reasonable value (likely the stamp duty total)
+      if (dollarAmounts.length > 0) {
+        // Filter out values that are likely the property price (too large)
+        const stampDutyLikeValues = dollarAmounts.filter(v => v < 100000);
+        if (stampDutyLikeValues.length > 0) {
+          return Math.max(...stampDutyLikeValues);
+        }
+        return Math.max(...dollarAmounts);
+      }
+
+      return null;
+    }
+
+    // Listen for capture requests from parent window
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'CAPTURE_STAMP_DUTY') {
+        const value = findStampDutyValue();
+        window.parent.postMessage({
+          type: 'STAMP_DUTY_VALUE',
+          value: value,
+          success: value !== null
+        }, '*');
+      }
+    });
+
+    // Watch for DOM changes and automatically detect when results appear
+    const observer = new MutationObserver(function(mutations) {
+      const value = findStampDutyValue();
+      if (value !== null && value !== lastCapturedValue) {
+        lastCapturedValue = value;
+        // Notify parent that a new value is available
+        window.parent.postMessage({
+          type: 'STAMP_DUTY_VALUE_AVAILABLE',
+          value: value
+        }, '*');
+      }
+    });
+
+    // Start observing after a short delay to let calculator load
+    setTimeout(() => {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }, 1000);
   </script>
 </body>
 </html>
