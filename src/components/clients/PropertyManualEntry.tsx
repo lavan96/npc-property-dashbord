@@ -240,6 +240,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       toast.error('Please enter an address');
       return;
     }
+    if (formData.property_type === 'smsf' && !formData.smsf_fund_name.trim()) {
+      toast.error('Please enter the SMSF fund name');
+      return;
+    }
     createPropertyMutation.mutate();
   };
 
@@ -388,12 +392,16 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                     
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
-                        <Label>Fund Name *</Label>
+                        <Label>Fund Name <span className="text-destructive">*</span></Label>
                         <Input
                           value={formData.smsf_fund_name}
                           onChange={(e) => updateField('smsf_fund_name', e.target.value)}
                           placeholder="Smith Family Super Fund"
+                          className={!formData.smsf_fund_name.trim() ? 'border-destructive/50' : ''}
                         />
+                        {!formData.smsf_fund_name.trim() && (
+                          <p className="text-xs text-destructive">Required for SMSF properties</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label>ABN</Label>

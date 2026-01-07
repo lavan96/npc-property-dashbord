@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, Landmark, Shield, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import html2canvas from 'html2canvas';
@@ -24,6 +24,7 @@ interface PortfolioAnalysisData {
     totalProperties: number;
     investmentCount: number;
     ownerOccupiedCount: number;
+    smsfCount: number;
     totalValue: number;
     totalDebt: number;
     totalEquity: number;
@@ -32,6 +33,11 @@ interface PortfolioAnalysisData {
     totalMonthlyExpenses: number;
     netMonthlyCashflow: number;
     averageYield: number;
+    smsfTotalValue: number;
+    smsfTotalEquity: number;
+    smsfCompliantCount: number;
+    smsfPendingAuditCount: number;
+    smsfNonCompliantCount: number;
   };
   propertyAnalyses: Array<{
     propertyNumber: number;
@@ -364,6 +370,66 @@ export function PortfolioAnalysisPDFGenerator({
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* SMSF Properties Summary - Only show if there are SMSF properties */}
+                {(analysisData.portfolioMetrics.smsfCount > 0) && (
+                  <Card className="border-amber-500/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Landmark className="h-5 w-5 text-amber-600" />
+                        SMSF Properties Summary
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">SMSF Properties</p>
+                          <p className="text-xl font-bold">{analysisData.portfolioMetrics.smsfCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">SMSF Total Value</p>
+                          <p className="text-xl font-bold">{formatCurrency(analysisData.portfolioMetrics.smsfTotalValue || 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">SMSF Equity</p>
+                          <p className="text-xl font-bold text-green-600">{formatCurrency(analysisData.portfolioMetrics.smsfTotalEquity || 0)}</p>
+                        </div>
+                      </div>
+                      
+                      <Separator className="my-3" />
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-amber-600" />
+                          Compliance Overview
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 border border-green-200">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Compliant</p>
+                              <p className="font-semibold text-green-700">{analysisData.portfolioMetrics.smsfCompliantCount || 0}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Pending Audit</p>
+                              <p className="font-semibold text-amber-700">{analysisData.portfolioMetrics.smsfPendingAuditCount || 0}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
+                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Non-Compliant</p>
+                              <p className="font-semibold text-red-700">{analysisData.portfolioMetrics.smsfNonCompliantCount || 0}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Property Rankings */}
                 <Card>
