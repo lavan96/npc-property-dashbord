@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -39,6 +40,10 @@ import { ClientActivityTimeline } from './ClientActivityTimeline';
 import { ClientFiles } from './ClientFiles';
 import { ClientScoreCard } from './ClientScoreCard';
 import { ClientAIInsights } from './ClientAIInsights';
+import { ClientVownetUpload } from './ClientVownetUpload';
+import { PropertyManualEntry } from './PropertyManualEntry';
+import { ExportVownetButton } from './ExportVownetButton';
+import { ClientEmailCompose } from './ClientEmailCompose';
 
 interface ClientDetailsModalProps {
   client: {
@@ -53,8 +58,10 @@ interface ClientDetailsModalProps {
 }
 
 export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetailsModalProps) {
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
+
   // Fetch full client details
-  const { data: fullClient } = useQuery({
+  const { data: fullClient, refetch: refetchClient } = useQuery({
     queryKey: ['client-details', client.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -266,6 +273,37 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
             </TabsContent>
 
             <TabsContent value="properties" className="space-y-4 mt-4">
+              {/* Property Actions Bar */}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <PropertyManualEntry 
+                    clientId={client.id} 
+                    onComplete={() => {
+                      refetchClient();
+                    }} 
+                  />
+                  <ExportVownetButton 
+                    clientId={client.id} 
+                    clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                  />
+                </div>
+              </div>
+
+              {/* Vownet Upload Section */}
+              <ClientVownetUpload
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                existingProperties={properties.map(p => ({
+                  id: p.id,
+                  address: p.address,
+                  property_type: p.property_type,
+                  value: p.value ? Number(p.value) : null
+                }))}
+                onComplete={() => {
+                  refetchClient();
+                }}
+              />
+
               {properties.length === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center text-muted-foreground">

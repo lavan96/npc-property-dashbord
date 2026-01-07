@@ -890,11 +890,13 @@ export type Database = {
           category: string
           client_id: string
           description: string | null
+          document_type: string | null
           file_name: string
           file_path: string
           file_size: number | null
           file_type: string | null
           id: string
+          is_vownet_form: boolean | null
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -902,11 +904,13 @@ export type Database = {
           category?: string
           client_id: string
           description?: string | null
+          document_type?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
           file_type?: string | null
           id?: string
+          is_vownet_form?: boolean | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -914,11 +918,13 @@ export type Database = {
           category?: string
           client_id?: string
           description?: string | null
+          document_type?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
+          is_vownet_form?: boolean | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
