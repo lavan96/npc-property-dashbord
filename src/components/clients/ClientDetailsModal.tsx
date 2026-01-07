@@ -31,7 +31,8 @@ import {
   Bell,
   Activity,
   FileUp,
-  Sparkles
+  Sparkles,
+  UserCog
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -43,6 +44,11 @@ import { ClientScoreCard } from './ClientScoreCard';
 import { ClientAIInsights } from './ClientAIInsights';
 import { ClientVownetUpload } from './ClientVownetUpload';
 import { PropertyManualEntry } from './PropertyManualEntry';
+import { PersonalDetailsManualEntry } from './PersonalDetailsManualEntry';
+import { EmploymentManualEntry } from './EmploymentManualEntry';
+import { IncomeManualEntry } from './IncomeManualEntry';
+import { AssetManualEntry } from './AssetManualEntry';
+import { LiabilityManualEntry } from './LiabilityManualEntry';
 import { ExportVownetButton } from './ExportVownetButton';
 import { ClientEmailCompose } from './ClientEmailCompose';
 
@@ -186,6 +192,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="personal">Personal Details</TabsTrigger>
               <TabsTrigger value="properties">Properties ({properties.length})</TabsTrigger>
               <TabsTrigger value="employment">Employment</TabsTrigger>
               <TabsTrigger value="financials">Financials</TabsTrigger>
@@ -281,6 +288,14 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Personal Details Tab - Vownet Mirror */}
+            <TabsContent value="personal" className="mt-4">
+              <PersonalDetailsManualEntry 
+                clientId={client.id} 
+                onComplete={() => refetchClient()} 
+              />
             </TabsContent>
 
             <TabsContent value="properties" className="space-y-4 mt-4">
@@ -385,140 +400,22 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
             </TabsContent>
 
             <TabsContent value="employment" className="space-y-4 mt-4">
-              {employment.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No employment records
-                  </CardContent>
-                </Card>
-              ) : (
-                employment.map((emp) => (
-                  <Card key={emp.id}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <Badge variant="outline" className="mb-2">
-                            {emp.contact_type === 'primary' ? 'Primary' : 'Secondary'} Contact
-                          </Badge>
-                          <h4 className="font-medium">{emp.employer_name || 'Unknown Employer'}</h4>
-                          <p className="text-sm text-muted-foreground">{emp.occupation_role}</p>
-                        </div>
-                        <Badge>{emp.employment_type}</Badge>
-                      </div>
-                      {emp.start_date && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Started: {formatDate(emp.start_date)}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+              <EmploymentManualEntry clientId={client.id} onComplete={() => refetchClient()} />
             </TabsContent>
 
-            <TabsContent value="financials" className="space-y-4 mt-4">
-              {/* Income */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Income
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {income.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No income records</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {income.map((inc) => (
-                        <div key={inc.id} className="border-b pb-3 last:border-0">
-                          <Badge variant="outline" className="mb-2">
-                            {inc.contact_type === 'primary' ? 'Primary' : 'Secondary'} Contact
-                          </Badge>
-                          <div className="grid gap-2 md:grid-cols-4 text-sm">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Gross Salary</p>
-                              <p className="font-medium">{formatCurrency(Number(inc.gross_salary))}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Bonus</p>
-                              <p className="font-medium">{formatCurrency(Number(inc.bonus))}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Commission</p>
-                              <p className="font-medium">{formatCurrency(Number(inc.commission))}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Other Income</p>
-                              <p className="font-medium">{formatCurrency(Number(inc.other_taxable_income))}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Assets */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <PiggyBank className="h-4 w-4" />
-                    Assets
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {assets.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No assets recorded</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {assets.map((asset) => (
-                        <div key={asset.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <Badge variant="secondary" className="mb-1">{asset.asset_type}</Badge>
-                            <p className="text-sm">{asset.description || asset.make_model || asset.institution_name || '-'}</p>
-                          </div>
-                          <p className="font-medium">{formatCurrency(Number(asset.value))}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Liabilities */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Liabilities
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {liabilities.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No liabilities recorded</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {liabilities.map((liability) => (
-                        <div key={liability.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <Badge variant="destructive" className="mb-1">{liability.liability_type}</Badge>
-                            <p className="text-sm">{liability.provider_name || '-'}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-red-600">{formatCurrency(Number(liability.current_balance))}</p>
-                            {liability.monthly_repayment && (
-                              <p className="text-xs text-muted-foreground">{formatCurrency(Number(liability.monthly_repayment))}/mo</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            <TabsContent value="financials" className="space-y-6 mt-4">
+              {/* Income Section */}
+              <IncomeManualEntry clientId={client.id} onComplete={() => refetchClient()} />
+              
+              <Separator />
+              
+              {/* Assets Section */}
+              <AssetManualEntry clientId={client.id} onComplete={() => refetchClient()} />
+              
+              <Separator />
+              
+              {/* Liabilities Section */}
+              <LiabilityManualEntry clientId={client.id} onComplete={() => refetchClient()} />
             </TabsContent>
 
             <TabsContent value="notes" className="mt-4">
