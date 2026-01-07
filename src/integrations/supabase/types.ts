@@ -2179,6 +2179,56 @@ export type Database = {
           },
         ]
       }
+      finance_agent_contacts: {
+        Row: {
+          company: string | null
+          contact_type: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          contact_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          contact_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_agent_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_reports: {
         Row: {
           analytics: Json

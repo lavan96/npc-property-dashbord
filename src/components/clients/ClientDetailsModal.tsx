@@ -199,6 +199,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
                     liabilities,
                   }}
                   clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                  clientEmail={client.primary_email}
                   onEmailClick={handlePdfEmailClick}
                 />
               )}
