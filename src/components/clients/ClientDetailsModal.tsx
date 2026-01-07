@@ -36,6 +36,8 @@ import {
   UserCog,
   Send,
   Loader2,
+  Edit,
+  Landmark,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -56,6 +58,7 @@ import { ExportVownetButton } from './ExportVownetButton';
 import { ClientEmailCompose } from './ClientEmailCompose';
 import { ClientReportsTab } from './ClientReportsTab';
 import { VownetPDFGenerator } from './VownetPDFGenerator';
+import { PropertyEditSheet } from './PropertyEditSheet';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -75,6 +78,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [isGeneratingPortfolio, setIsGeneratingPortfolio] = useState(false);
   const [portfolioEmailSubject, setPortfolioEmailSubject] = useState('');
   const [portfolioEmailBody, setPortfolioEmailBody] = useState('');
+  const [editingProperty, setEditingProperty] = useState<any>(null);
 
   // Handle PDF email callback (for finance)
   const handlePdfEmailClick = (pdfBlob: Blob, fileName: string) => {
@@ -459,14 +463,36 @@ NPC Team`
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
                         <div>
-                          <Badge variant={property.property_type === 'owner_occupied' ? 'default' : 'secondary'}>
-                            {property.property_type === 'owner_occupied' ? 'Owner Occupied' : 'Investment'}
+                          <Badge 
+                            variant={property.property_type === 'owner_occupied' ? 'default' : property.property_type === 'smsf' ? 'outline' : 'secondary'}
+                            className={property.property_type === 'smsf' ? 'border-amber-500 text-amber-700 bg-amber-50' : ''}
+                          >
+                            {property.property_type === 'owner_occupied' ? (
+                              <>Owner Occupied</>
+                            ) : property.property_type === 'smsf' ? (
+                              <span className="flex items-center gap-1">
+                                <Landmark className="h-3 w-3" />
+                                SMSF
+                              </span>
+                            ) : (
+                              'Investment'
+                            )}
                           </Badge>
                           <CardTitle className="text-base font-medium mt-2 flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
                             {property.address}
                           </CardTitle>
+                          {property.property_type === 'smsf' && property.smsf_fund_name && (
+                            <p className="text-xs text-muted-foreground mt-1">{property.smsf_fund_name}</p>
+                          )}
                         </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setEditingProperty(property)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -488,7 +514,7 @@ NPC Team`
                           <p className="font-medium">{property.ownership_percentage}%</p>
                         </div>
                       </div>
-                      {property.property_type === 'investment' && (
+                      {(property.property_type === 'investment' || property.property_type === 'smsf') && (
                         <>
                           <Separator className="my-4" />
                           <div className="grid gap-4 md:grid-cols-3 text-sm">
@@ -512,6 +538,19 @@ NPC Team`
                     </CardContent>
                   </Card>
                 ))
+              )}
+
+              {/* Property Edit Sheet */}
+              {editingProperty && (
+                <PropertyEditSheet
+                  property={editingProperty}
+                  open={!!editingProperty}
+                  onOpenChange={(open) => !open && setEditingProperty(null)}
+                  onComplete={() => {
+                    setEditingProperty(null);
+                    refetchClient();
+                  }}
+                />
               )}
             </TabsContent>
 
