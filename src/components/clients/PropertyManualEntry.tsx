@@ -23,7 +23,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info } from 'lucide-react';
+import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import {
@@ -65,6 +65,13 @@ interface PropertyFormData {
   building_insurance: ExpenseField;
   // Rental income with frequency
   rental_income: ExpenseField;
+  // SMSF-specific fields
+  smsf_fund_name: string;
+  smsf_trustee_name: string;
+  smsf_trustee_type: 'individual' | 'corporate';
+  smsf_abn: string;
+  smsf_compliance_status: 'compliant' | 'non_compliant' | 'pending_audit';
+  smsf_auditor_name: string;
 }
 
 const createExpenseField = (value = 0, frequency: FrequencyType = 'monthly'): ExpenseField => ({
@@ -104,6 +111,13 @@ const defaultFormData: PropertyFormData = {
   landlord_insurance: createExpenseField(0, 'annually'),
   building_insurance: createExpenseField(0, 'annually'),
   rental_income: createExpenseField(0, 'weekly'),
+  // SMSF defaults
+  smsf_fund_name: '',
+  smsf_trustee_name: '',
+  smsf_trustee_type: 'individual',
+  smsf_abn: '',
+  smsf_compliance_status: 'compliant',
+  smsf_auditor_name: '',
 };
 
 export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntryProps) {
@@ -334,7 +348,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                         </SelectItem>
                         <SelectItem value="smsf">
                           <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
+                            <Landmark className="h-4 w-4" />
                             SMSF (Self-Managed Super Fund)
                           </div>
                         </SelectItem>
@@ -354,6 +368,109 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                 </div>
               </CardContent>
             </Card>
+
+            {/* SMSF Details - Only shown when SMSF is selected */}
+            {formData.property_type === 'smsf' && (
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-amber-600">
+                      <Shield className="h-4 w-4" />
+                      SMSF Details & Compliance
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Fund Name *</Label>
+                        <Input
+                          value={formData.smsf_fund_name}
+                          onChange={(e) => updateField('smsf_fund_name', e.target.value)}
+                          placeholder="Smith Family Super Fund"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>ABN</Label>
+                        <Input
+                          value={formData.smsf_abn}
+                          onChange={(e) => updateField('smsf_abn', e.target.value)}
+                          placeholder="12 345 678 901"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Trustee Name</Label>
+                        <Input
+                          value={formData.smsf_trustee_name}
+                          onChange={(e) => updateField('smsf_trustee_name', e.target.value)}
+                          placeholder="John Smith"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Trustee Type</Label>
+                        <Select
+                          value={formData.smsf_trustee_type}
+                          onValueChange={(v) => updateField('smsf_trustee_type', v as 'individual' | 'corporate')}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="individual">Individual Trustee</SelectItem>
+                            <SelectItem value="corporate">Corporate Trustee</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Compliance Status</Label>
+                        <Select
+                          value={formData.smsf_compliance_status}
+                          onValueChange={(v) => updateField('smsf_compliance_status', v as 'compliant' | 'non_compliant' | 'pending_audit')}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="compliant">
+                              <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-green-500" />
+                                Compliant
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="pending_audit">
+                              <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                                Pending Audit
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="non_compliant">
+                              <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-red-500" />
+                                Non-Compliant
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Auditor Name</Label>
+                        <Input
+                          value={formData.smsf_auditor_name}
+                          onChange={(e) => updateField('smsf_auditor_name', e.target.value)}
+                          placeholder="SMSF Auditor Pty Ltd"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Financial Details */}
             <div className="space-y-4">
