@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   User,
@@ -162,14 +163,24 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {client.primary_first_name} {client.primary_surname}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              {client.primary_first_name} {client.primary_surname}
+            </DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEmailCompose(true)}
+              className="mr-6"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email Client
+            </Button>
+          </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-120px)]">
           <Tabs defaultValue="overview" className="w-full">
@@ -529,7 +540,12 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
             </TabsContent>
 
             <TabsContent value="files" className="mt-4">
-              <ClientFiles clientId={client.id} />
+              <ClientFiles 
+                clientId={client.id} 
+                onSendEmail={(attachment) => {
+                  setShowEmailCompose(true);
+                }}
+              />
             </TabsContent>
 
             <TabsContent value="activity" className="mt-4">
@@ -545,5 +561,15 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    {/* Email Compose Modal */}
+    <ClientEmailCompose
+      open={showEmailCompose}
+      onOpenChange={setShowEmailCompose}
+      clientId={client.id}
+      clientEmail={client.primary_email}
+      clientName={`${client.primary_first_name} ${client.primary_surname}`}
+    />
+  </>
   );
 }
