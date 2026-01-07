@@ -54,8 +54,8 @@ import { ClientEmailCompose } from './ClientEmailCompose';
 import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
 import { PortfolioAnalysisPDFGenerator } from './PortfolioAnalysisPDFGenerator';
 import { PropertyReportGenerator } from './PropertyReportGenerator';
+import { ClientReportsTab } from './ClientReportsTab';
 import { toast } from 'sonner';
-
 interface ClientDetailsModalProps {
   client: {
     id: string;
@@ -229,6 +229,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
               <TabsTrigger value="properties">Properties ({properties.length})</TabsTrigger>
               <TabsTrigger value="employment">Employment</TabsTrigger>
               <TabsTrigger value="financials">Financials</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="reminders">Reminders</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
@@ -449,6 +450,22 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
               
               {/* Liabilities Section */}
               <LiabilityManualEntry clientId={client.id} onComplete={() => refetchClient()} />
+            </TabsContent>
+
+            <TabsContent value="reports" className="mt-4">
+              <ClientReportsTab
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                clientEmail={client.primary_email}
+                fullClient={fullClient}
+                properties={properties}
+                employment={employment}
+                income={income}
+                assets={assets}
+                liabilities={liabilities}
+                onEmailClick={handlePdfEmailClick}
+                onOpenEmailCompose={() => { setPdfAttachment(null); setShowEmailCompose(true); }}
+              />
             </TabsContent>
 
             <TabsContent value="notes" className="mt-4">
