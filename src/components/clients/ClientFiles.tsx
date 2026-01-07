@@ -21,7 +21,8 @@ import {
   Download,
   Trash2,
   Loader2,
-  Upload
+  Upload,
+  Send
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
@@ -29,6 +30,7 @@ import { toast } from 'sonner';
 
 interface ClientFilesProps {
   clientId: string;
+  onSendEmail?: (file: { id: string; file_name: string; file_path: string }) => void;
 }
 
 const fileCategories = [
@@ -51,7 +53,7 @@ const categoryColors: Record<string, string> = {
   other: 'bg-slate-500/10 text-slate-600',
 };
 
-export function ClientFiles({ clientId }: ClientFilesProps) {
+export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [description, setDescription] = useState('');
@@ -295,6 +297,17 @@ export function ClientFiles({ clientId }: ClientFilesProps) {
                     )}
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onSendEmail && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => onSendEmail(file)}
+                        title="Send via Email"
+                      >
+                        <Send className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="icon" 
