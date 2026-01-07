@@ -17,8 +17,12 @@ import {
   RefreshCw,
   Loader2,
   Download,
-  Trash2
+  Trash2,
+  Clock,
+  Zap
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ExcelDropzone } from '@/components/clients/ExcelDropzone';
 import { ClientCard } from '@/components/clients/ClientCard';
 import { ClientDetailsModal } from '@/components/clients/ClientDetailsModal';
@@ -55,6 +59,8 @@ interface Client {
   client_properties?: { id: string }[];
 }
 
+const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 export default function ClientManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -67,6 +73,9 @@ export default function ClientManagement() {
   const [importProgress, setImportProgress] = useState<{ imported: number; hasMore: boolean; totalFromApi?: number } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [hasAutoSynced, setHasAutoSynced] = useState(false);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch clients with property count
@@ -93,6 +102,45 @@ export default function ClientManagement() {
       handleImportFromGHL();
     }
   }, [isLoading, clients.length, hasAutoSynced, isImportingFromGHL]);
+
+  // Periodic auto-sync from GHL
+  useEffect(() => {
+    if (!autoSyncEnabled) return;
+
+    const performAutoSync = async () => {
+      if (isImportingFromGHL || isAutoSyncing) return;
+      
+      setIsAutoSyncing(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
+          body: {
+            clearExisting: false,
+            maxPages: 5, // Lighter sync for background updates
+          },
+        });
+
+        if (!error && data?.success) {
+          setLastSyncTime(new Date());
+          refetch();
+          if (data.stats?.imported > 0) {
+            toast.success(`Auto-sync: ${data.stats.imported} clients updated`, { duration: 3000 });
+          }
+        }
+      } catch (err) {
+        console.error('Auto-sync error:', err);
+      } finally {
+        setIsAutoSyncing(false);
+      }
+    };
+
+    // Initial sync on mount
+    performAutoSync();
+
+    // Set up interval
+    const intervalId = setInterval(performAutoSync, AUTO_SYNC_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [autoSyncEnabled, isImportingFromGHL]);
 
   // Import clients from GHL with auto-resume for large datasets
   const handleImportFromGHL = async (
@@ -292,6 +340,17 @@ export default function ClientManagement() {
     }).format(value);
   };
 
+  const formatLastSync = (date: Date | null) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    return `${diffHours}h ago`;
+  };
+
   const allSelected = filteredClients.length > 0 && selectedClients.length === filteredClients.length;
   const someSelected = selectedClients.length > 0 && selectedClients.length < filteredClients.length;
 
@@ -305,7 +364,37 @@ export default function ClientManagement() {
             Manage clients, properties, and sync with GoHighLevel
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Auto-sync toggle */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                  {isAutoSyncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <Zap className={`h-4 w-4 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                  )}
+                  <span className="text-sm font-medium">Auto-sync</span>
+                  <Switch
+                    checked={autoSyncEnabled}
+                    onCheckedChange={setAutoSyncEnabled}
+                    className="scale-90"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Auto-sync every 5 minutes from GHL</p>
+                {lastSyncTime && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Clock className="h-3 w-3" />
+                    Last sync: {formatLastSync(lastSyncTime)}
+                  </p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <Button 
             onClick={() => handleImportFromGHL(false)} 
             variant="default" 
