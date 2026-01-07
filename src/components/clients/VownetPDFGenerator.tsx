@@ -68,6 +68,13 @@ interface PropertyData {
   weekly_rental_income?: number | null;
   total_monthly_expenditure?: number | null;
   net_monthly_cashflow?: number | null;
+  // SMSF-specific fields
+  smsf_fund_name?: string | null;
+  smsf_trustee_name?: string | null;
+  smsf_trustee_type?: string | null;
+  smsf_abn?: string | null;
+  smsf_compliance_status?: string | null;
+  smsf_auditor_name?: string | null;
 }
 
 interface EmploymentData {
@@ -407,7 +414,25 @@ function generateHTMLContent(data: VownetPDFData): string {
   // Find owner occupied property
   const ownerOccupied = properties.find(p => p.property_type === 'owner_occupied');
   const investmentProperties = properties.filter(p => p.property_type === 'investment');
+  const smsfProperties = properties.filter(p => p.property_type === 'smsf');
   
+  // Helper to format SMSF compliance status
+  const formatComplianceStatus = (status: string | null | undefined): string => {
+    if (!status) return '-';
+    switch (status) {
+      case 'compliant': return '✓ Compliant';
+      case 'non_compliant': return '✗ Non-Compliant';
+      case 'pending_audit': return '⏳ Pending Audit';
+      default: return status;
+    }
+  };
+
+  // Helper to format trustee type
+  const formatTrusteeType = (type: string | null | undefined): string => {
+    if (!type) return '-';
+    return type === 'corporate' ? 'Corporate Trustee' : 'Individual Trustee';
+  };
+
   // Generate investment properties HTML
   const investmentPropertiesHTML = investmentProperties.map((prop, index) => `
     <div class="section">
@@ -432,6 +457,45 @@ function generateHTMLContent(data: VownetPDFData): string {
         <tr><td class="label font-bold">Net Monthly Cashflow</td><td class="value currency font-bold ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td></tr>
       </table>
     </div>
+  `).join('');
+
+  // Generate SMSF properties HTML
+  const smsfPropertiesHTML = smsfProperties.map((prop, index) => `
+    <div class="section">
+      <div class="section-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">SMSF Property ${index + 1}</div>
+      
+      <!-- SMSF Fund Details -->
+      <div class="subsection-header" style="background: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b;">Fund Details & Compliance</div>
+      <table class="data-table">
+        <tr><td class="label">Fund Name</td><td class="value">${prop.smsf_fund_name || '-'}</td></tr>
+        <tr><td class="label">ABN</td><td class="value">${prop.smsf_abn || '-'}</td></tr>
+        <tr><td class="label">Trustee Name</td><td class="value">${prop.smsf_trustee_name || '-'}</td></tr>
+        <tr><td class="label">Trustee Type</td><td class="value">${formatTrusteeType(prop.smsf_trustee_type)}</td></tr>
+        <tr><td class="label">Compliance Status</td><td class="value" style="font-weight: 600; color: ${prop.smsf_compliance_status === 'compliant' ? '#16a34a' : prop.smsf_compliance_status === 'non_compliant' ? '#dc2626' : '#ca8a04'};">${formatComplianceStatus(prop.smsf_compliance_status)}</td></tr>
+        <tr><td class="label">Auditor</td><td class="value">${prop.smsf_auditor_name || '-'}</td></tr>
+      </table>
+
+      <!-- Property Details -->
+      <div class="subsection-header">Property Details</div>
+      <table class="data-table">
+        <tr><td class="label">Address</td><td class="value">${prop.address || '-'}</td></tr>
+        <tr><td class="label">Value</td><td class="value currency">${formatCurrency(prop.value)}</td></tr>
+        <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
+        <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
+        <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
+        <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(prop.monthly_interest_repayment)}</td></tr>
+        <tr><td class="label">Monthly Body Corporate</td><td class="value currency">${formatCurrency(prop.monthly_body_corporate)}</td></tr>
+        <tr><td class="label">Monthly Council Rates</td><td class="value currency">${formatCurrency(prop.monthly_council_rates)}</td></tr>
+        <tr><td class="label">Monthly Water Rates</td><td class="value currency">${formatCurrency(prop.monthly_water_rates)}</td></tr>
+        <tr><td class="label">Monthly Repairs & Maintenance</td><td class="value currency">${formatCurrency(prop.monthly_repairs_maintenance)}</td></tr>
+        <tr><td class="label">Monthly Property Management</td><td class="value currency">${formatCurrency(prop.monthly_property_management)}</td></tr>
+        <tr><td class="label">Monthly Landlord Insurance</td><td class="value currency">${formatCurrency(prop.monthly_landlord_insurance)}</td></tr>
+        <tr><td class="label">Monthly Building Insurance</td><td class="value currency">${formatCurrency(prop.monthly_building_insurance)}</td></tr>
+        <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(prop.total_monthly_expenditure)}</td></tr>
+        <tr><td class="label">Weekly Rental Income</td><td class="value currency">${formatCurrency(prop.weekly_rental_income)}</td></tr>
+        <tr><td class="label">Monthly Rental Income</td><td class="value currency">${formatCurrency(prop.monthly_rental_income)}</td></tr>
+        <tr><td class="label font-bold">Net Monthly Cashflow</td><td class="value currency font-bold ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td></tr>
+      </table>
   `).join('');
 
   // Employment tables
@@ -655,6 +719,7 @@ function generateHTMLContent(data: VownetPDFData): string {
               </table>
             </div>
             ${investmentPropertiesHTML}
+            ${smsfPropertiesHTML}
           </div>
         </div>
       </div>

@@ -205,6 +205,13 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : formData.rental_income.monthlyValue / 4.33,
         total_monthly_expenditure: totalMonthlyExpenditure,
         net_monthly_cashflow: netMonthlyCashflow,
+        // SMSF-specific fields
+        smsf_fund_name: formData.property_type === 'smsf' ? formData.smsf_fund_name : null,
+        smsf_trustee_name: formData.property_type === 'smsf' ? formData.smsf_trustee_name : null,
+        smsf_trustee_type: formData.property_type === 'smsf' ? formData.smsf_trustee_type : null,
+        smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
+        smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
+        smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
       });
       if (error) throw error;
     },

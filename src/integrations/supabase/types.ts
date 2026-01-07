@@ -1163,6 +1163,12 @@ export type Database = {
           net_monthly_cashflow: number | null
           ownership_percentage: number | null
           property_type: string
+          smsf_abn: string | null
+          smsf_auditor_name: string | null
+          smsf_compliance_status: string | null
+          smsf_fund_name: string | null
+          smsf_trustee_name: string | null
+          smsf_trustee_type: string | null
           total_monthly_expenditure: number | null
           updated_at: string
           value: number | null
@@ -1187,6 +1193,12 @@ export type Database = {
           net_monthly_cashflow?: number | null
           ownership_percentage?: number | null
           property_type?: string
+          smsf_abn?: string | null
+          smsf_auditor_name?: string | null
+          smsf_compliance_status?: string | null
+          smsf_fund_name?: string | null
+          smsf_trustee_name?: string | null
+          smsf_trustee_type?: string | null
           total_monthly_expenditure?: number | null
           updated_at?: string
           value?: number | null
@@ -1211,6 +1223,12 @@ export type Database = {
           net_monthly_cashflow?: number | null
           ownership_percentage?: number | null
           property_type?: string
+          smsf_abn?: string | null
+          smsf_auditor_name?: string | null
+          smsf_compliance_status?: string | null
+          smsf_fund_name?: string | null
+          smsf_trustee_name?: string | null
+          smsf_trustee_type?: string | null
           total_monthly_expenditure?: number | null
           updated_at?: string
           value?: number | null
