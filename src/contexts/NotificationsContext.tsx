@@ -16,7 +16,16 @@ export type NotificationType =
   | 'call_alert_triggered'
   | 'missed_call'
   | 'email_received'
-  | 'email_reply_sent';
+  | 'email_reply_sent'
+  // Phase 2 additions - Report Lifecycle
+  | 'report_generation_started'
+  | 'report_generation_completed'
+  | 'report_generation_failed'
+  | 'report_regeneration_started'
+  | 'report_regeneration_completed'
+  | 'report_regeneration_failed'
+  | 'report_archived'
+  | 'report_restored';
 
 export interface Notification {
   id: string;
@@ -174,13 +183,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     
     switch (notification.type) {
       case 'report_generated':
-        if (notification.reportId) {
-          localStorage.setItem('openReportId', notification.reportId);
+      case 'report_generation_completed':
+      case 'report_regeneration_completed':
+        if (notification.reportId || notification.entityId) {
+          localStorage.setItem('openReportId', notification.reportId || notification.entityId || '');
         }
-        navigate('/generated-reports');
+        navigate('/generated-reports?tab=investment');
         break;
       case 'report_failed':
-        navigate('/generated-reports');
+      case 'report_generation_failed':
+      case 'report_regeneration_failed':
+      case 'report_generation_started':
+      case 'report_regeneration_started':
+      case 'report_archived':
+      case 'report_restored':
+        navigate('/generated-reports?tab=investment');
         break;
       case 'call_completed':
       case 'missed_call':
