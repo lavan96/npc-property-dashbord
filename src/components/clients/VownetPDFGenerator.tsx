@@ -125,6 +125,7 @@ interface VownetPDFGeneratorProps {
   onQuickSendComplete?: () => void;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg';
+  buttonLabel?: string;
 }
 
 // Helper functions
@@ -153,7 +154,8 @@ export function VownetPDFGenerator({
   onEmailClick,
   onQuickSendComplete,
   variant = 'outline',
-  size = 'sm'
+  size = 'sm',
+  buttonLabel = 'Send to Finance'
 }: VownetPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -341,7 +343,7 @@ export function VownetPDFGenerator({
           ) : (
             <FileText className="h-4 w-4 mr-2" />
           )}
-          {isSending ? 'Sending...' : 'Export PDF'}
+          {isSending ? 'Sending...' : buttonLabel}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
