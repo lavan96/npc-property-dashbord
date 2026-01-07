@@ -2,12 +2,29 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
+export type NotificationType = 
+  | 'report_generated' 
+  | 'report_failed' 
+  | 'info' 
+  | 'call_completed' 
+  | 'appointment_created' 
+  | 'appointment_rescheduled' 
+  | 'appointment_cancelled'
+  // Phase 1 additions
+  | 'client_reminder_due'
+  | 'client_reminder_overdue'
+  | 'call_alert_triggered'
+  | 'missed_call'
+  | 'email_received'
+  | 'email_reply_sent';
+
 export interface Notification {
   id: string;
-  type: 'report_generated' | 'report_failed' | 'info' | 'call_completed' | 'appointment_created' | 'appointment_rescheduled' | 'appointment_cancelled';
+  type: NotificationType;
   title: string;
   message: string;
   reportId?: string;
+  entityId?: string; // Generic ID for linking to entities (client, reminder, etc.)
   timestamp: Date;
   read: boolean;
 }
@@ -152,16 +169,42 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
     
-    if (notification.type === 'report_generated' && notification.reportId) {
-      // Store reportId in localStorage for GeneratedReports page to open
-      localStorage.setItem('openReportId', notification.reportId);
-      navigate('/generated-reports');
-    } else if (notification.type === 'report_generated') {
-      navigate('/generated-reports');
-    } else if (notification.type === 'call_completed') {
-      navigate('/call-logs');
-    } else if (notification.type === 'appointment_created' || notification.type === 'appointment_rescheduled' || notification.type === 'appointment_cancelled') {
-      navigate('/calendar');
+    switch (notification.type) {
+      case 'report_generated':
+        if (notification.reportId) {
+          localStorage.setItem('openReportId', notification.reportId);
+        }
+        navigate('/generated-reports');
+        break;
+      case 'report_failed':
+        navigate('/generated-reports');
+        break;
+      case 'call_completed':
+      case 'missed_call':
+        navigate('/call-logs');
+        break;
+      case 'call_alert_triggered':
+        navigate('/call-logs');
+        break;
+      case 'appointment_created':
+      case 'appointment_rescheduled':
+      case 'appointment_cancelled':
+        navigate('/calendar');
+        break;
+      case 'client_reminder_due':
+      case 'client_reminder_overdue':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/clients');
+        }
+        break;
+      case 'email_received':
+      case 'email_reply_sent':
+        navigate('/email-copilot');
+        break;
+      default:
+        break;
     }
   };
 
