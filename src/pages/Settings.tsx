@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
 import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
+import { FinanceAgentContacts } from '@/components/settings/FinanceAgentContacts';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
@@ -309,6 +310,9 @@ export default function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Finance Agent Contacts */}
+      <FinanceAgentContacts />
 
       {/* Comparison Score Migration */}
       <ComparisonScoreMigration />

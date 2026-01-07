@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2, Mail, Send } from 'lucide-react';
+import { Download, FileText, Loader2, Mail, Send, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import html2canvas from 'html2canvas';
@@ -11,7 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
+import { useFinanceContacts } from '@/hooks/useFinanceContacts';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientData {
   id: string;
@@ -115,7 +120,9 @@ export interface VownetPDFData {
 interface VownetPDFGeneratorProps {
   data: VownetPDFData;
   clientName: string;
+  clientEmail?: string | null;
   onEmailClick?: (pdfBlob: Blob, fileName: string) => void;
+  onQuickSendComplete?: () => void;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg';
 }
@@ -143,11 +150,16 @@ const formatDate = (dateStr: string | null | undefined): string => {
 export function VownetPDFGenerator({ 
   data, 
   clientName,
+  clientEmail,
   onEmailClick,
+  onQuickSendComplete,
   variant = 'outline',
   size = 'sm'
 }: VownetPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const { contacts, defaultContact, hasContacts } = useFinanceContacts();
+  const { user } = useAuth();
 
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
@@ -233,39 +245,144 @@ export function VownetPDFGenerator({
     }
   };
 
-  const handleQuickSend = async () => {
-    toast.info('Quick send to finance - Coming soon');
-    // TODO: Implement quick send with pre-configured recipient
+  const handleQuickSend = async (contactId?: string) => {
+    if (!hasContacts) {
+      toast.error('No finance contacts configured. Add contacts in Settings → Finance Agent Contacts.');
+      return;
+    }
+
+    const targetContact = contactId 
+      ? contacts.find(c => c.id === contactId) 
+      : defaultContact;
+
+    if (!targetContact) {
+      toast.error('No finance contact selected');
+      return;
+    }
+
+    setIsSending(true);
+    
+    try {
+      const pdfBlob = await generatePDF(true);
+      if (!pdfBlob) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(pdfBlob);
+      const base64Data = await base64Promise;
+
+      // Get user's mailbox for sending
+      const { data: userData } = await supabase
+        .from('custom_users')
+        .select('personal_mailbox')
+        .eq('id', user?.id)
+        .single();
+
+      if (!userData?.personal_mailbox) {
+        toast.error('Please configure your personal mailbox in Settings first');
+        return;
+      }
+
+      // Send email via edge function
+      const { error } = await supabase.functions.invoke('send-email-reply', {
+        body: {
+          to: targetContact.email,
+          cc: clientEmail ? [clientEmail] : [],
+          subject: `Vownet Form - ${clientName}`,
+          body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the Vownet form for ${clientName}.\n\nKind regards`,
+          senderMailbox: userData.personal_mailbox,
+          attachments: [{
+            name: fileName,
+            content: base64Data,
+            contentType: 'application/pdf',
+          }],
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Vownet form sent to ${targetContact.name}`);
+      onQuickSendComplete?.();
+      
+    } catch (error: any) {
+      console.error('Quick send error:', error);
+      toast.error('Failed to send: ' + error.message);
+    } finally {
+      setIsSending(false);
+    }
   };
+
+  const isDisabled = isGenerating || isSending;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant={variant} size={size} disabled={isGenerating}>
-          {isGenerating ? (
+        <Button variant={variant} size={size} disabled={isDisabled}>
+          {isDisabled ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <FileText className="h-4 w-4 mr-2" />
           )}
-          Export PDF
+          {isSending ? 'Sending...' : 'Export PDF'}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleDownload} disabled={isGenerating}>
+        <DropdownMenuItem onClick={handleDownload} disabled={isDisabled}>
           <Download className="h-4 w-4 mr-2" />
           Download PDF
         </DropdownMenuItem>
         {onEmailClick && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleEmailSend} disabled={isGenerating}>
+            <DropdownMenuItem onClick={handleEmailSend} disabled={isDisabled}>
               <Mail className="h-4 w-4 mr-2" />
               Compose Email with PDF
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleQuickSend} disabled={isGenerating}>
-              <Send className="h-4 w-4 mr-2" />
-              Quick Send to Finance
-            </DropdownMenuItem>
+            {hasContacts ? (
+              contacts.length === 1 ? (
+                <DropdownMenuItem onClick={() => handleQuickSend()} disabled={isDisabled}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Quick Send to {defaultContact?.name}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger disabled={isDisabled}>
+                    <Send className="h-4 w-4 mr-2" />
+                    Quick Send to Finance
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {contacts.map((contact) => (
+                      <DropdownMenuItem 
+                        key={contact.id}
+                        onClick={() => handleQuickSend(contact.id)}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        {contact.name}
+                        {contact.is_default && (
+                          <span className="ml-2 text-xs text-muted-foreground">(default)</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )
+            ) : (
+              <DropdownMenuItem disabled className="text-muted-foreground">
+                <Send className="h-4 w-4 mr-2" />
+                No finance contacts configured
+              </DropdownMenuItem>
+            )}
           </>
         )}
       </DropdownMenuContent>
