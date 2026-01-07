@@ -68,6 +68,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const [expenseCitations, setExpenseCitations] = useState<string[]>([]);
   const stampDutyIframeRef = useRef<HTMLIFrameElement | null>(null);
   const stampDutyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [capturedStampDutyValue, setCapturedStampDutyValue] = useState<string>('');
+  const [isCapturingStampDuty, setIsCapturingStampDuty] = useState(false);
   
   // Active tab state
   const [activeTab, setActiveTab] = useState<'investment' | 'cashflow'>('investment');
@@ -142,30 +144,34 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     if (!showStampDutyCalculator) return;
 
     const handleMessage = (event: MessageEvent) => {
-      if (!event.data || event.data.type !== 'STAMP_DUTY_VALUE') return;
+      if (event.data?.type === 'STAMP_DUTY_VALUE') {
+        setIsCapturingStampDuty(false);
+        
+        if (stampDutyTimeoutRef.current) {
+          clearTimeout(stampDutyTimeoutRef.current);
+          stampDutyTimeoutRef.current = null;
+        }
 
-      if (stampDutyTimeoutRef.current) {
-        clearTimeout(stampDutyTimeoutRef.current);
-        stampDutyTimeoutRef.current = null;
-      }
-
-      const stampDutyValue = event.data.value;
-      if (typeof stampDutyValue === 'number' && stampDutyValue > 0 && stampDutyValue < 10000000) {
-        setOverrides(prev => ({
-          ...prev,
-          stampDuty: stampDutyValue
-        }));
-        setHasChanges(true);
-        toast({
-          title: "Stamp Duty Applied",
-          description: `$${stampDutyValue.toLocaleString()} has been applied to the Stamp Duty field.`,
-        });
-      } else {
-        toast({
-          title: "Could not capture value",
-          description: "Please calculate stamp duty in the calculator first, then try again. You can also manually enter the value.",
-          variant: "destructive"
-        });
+        if (event.data.success && event.data.value) {
+          const value = Math.round(event.data.value).toString();
+          setCapturedStampDutyValue(value);
+          toast({
+            title: "Value Captured",
+            description: `$${formatNumberWithCommas(value)} has been captured from the calculator.`,
+          });
+        } else {
+          toast({
+            title: "Could not capture value",
+            description: "Please calculate stamp duty first, then try again or enter manually.",
+            variant: "destructive"
+          });
+        }
+      } else if (event.data?.type === 'STAMP_DUTY_VALUE_AVAILABLE') {
+        // Auto-update the display when calculator shows a new result
+        if (event.data.value) {
+          const value = Math.round(event.data.value).toString();
+          setCapturedStampDutyValue(value);
+        }
       }
     };
 
@@ -186,30 +192,54 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     }
   }, [showStampDutyCalculator]);
 
-  // Function to capture stamp duty from calculator
+  // Function to capture stamp duty from calculator (Step 1)
   const captureStampDutyFromCalculator = useCallback(() => {
     const frameWindow = stampDutyIframeRef.current?.contentWindow;
     if (!frameWindow) {
       toast({
         title: "Calculator not loaded",
-        description: "Please wait for the calculator to load and calculate a value first.",
+        description: "Please wait for the calculator to load first.",
         variant: "destructive"
       });
       return;
     }
 
-    frameWindow.postMessage({ type: 'REQUEST_STAMP_DUTY_VALUE' }, '*');
+    setIsCapturingStampDuty(true);
+    frameWindow.postMessage({ type: 'CAPTURE_STAMP_DUTY' }, '*');
 
     if (stampDutyTimeoutRef.current) clearTimeout(stampDutyTimeoutRef.current);
     stampDutyTimeoutRef.current = setTimeout(() => {
+      setIsCapturingStampDuty(false);
       toast({
         title: "Could not capture value",
-        description: "Please calculate stamp duty in the calculator first, then try again. You can also manually enter the value.",
+        description: "Please calculate stamp duty first, then try again or enter manually.",
         variant: "destructive"
       });
       stampDutyTimeoutRef.current = null;
-    }, 1500);
+    }, 3000);
   }, [toast]);
+
+  // Function to use the captured stamp duty value (Step 2)
+  const useStampDutyValue = useCallback(() => {
+    const valueToUse = parseFloat(capturedStampDutyValue);
+    if (valueToUse && valueToUse > 0) {
+      setOverrides(prev => ({
+        ...prev,
+        stampDuty: valueToUse
+      }));
+      setHasChanges(true);
+      toast({
+        title: "Stamp Duty Applied",
+        description: `$${formatNumberWithCommas(capturedStampDutyValue)} has been applied to your analysis.`,
+      });
+    } else {
+      toast({
+        title: "No value to apply",
+        description: "Please capture or enter a stamp duty value first.",
+        variant: "destructive"
+      });
+    }
+  }, [capturedStampDutyValue, toast]);
 
   // AI-powered expense estimation function
   const handleEstimateExpenses = useCallback(async () => {
@@ -1501,57 +1531,77 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                           </div>
                         </div>
 
-                        {/* Manual input for stamp duty with auto-capture */}
-                        <div className="space-y-2 p-3 rounded-lg bg-muted/50 border">
-                          <Label className="text-sm font-medium">Enter calculated stamp duty value:</Label>
-                          <div className="flex gap-2">
-                            <div className="relative flex-1">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                              <Input
-                                type="text"
-                                inputMode="numeric"
-                                value={formatNumberWithCommas(overrides.stampDuty?.toString() || '')}
-                                onChange={(e) => {
-                                  const rawValue = removeCommas(e.target.value);
-                                  if (rawValue === '' || /^\d*\.?\d*$/.test(rawValue)) {
-                                    setOverrides(prev => ({ ...prev, stampDuty: rawValue ? parseFloat(rawValue) : undefined }));
-                                    setHasChanges(true);
-                                  }
-                                }}
-                                placeholder="Enter value from calculator above"
-                                className="pl-7"
-                              />
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Value is auto-applied as you type
-                          </p>
-                          {overrides.stampDuty && overrides.stampDuty > 0 && (
-                            <div className="flex items-center gap-2 text-green-600 text-sm mt-2">
-                              <Check className="h-4 w-4" />
-                              <span>Stamp Duty: ${overrides.stampDuty.toLocaleString()} applied</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Legacy capture button (still works for iframe postMessage) */}
+                        {/* Step 1: Capture Calculated Value Button */}
                         <Button 
                           onClick={captureStampDutyFromCalculator}
+                          disabled={isCapturingStampDuty}
                           className="w-full gap-2"
                           variant="outline"
                         >
-                          <Copy className="h-4 w-4" />
-                          Try Auto-Capture from Calculator
+                          {isCapturingStampDuty ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Capturing...
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4" />
+                              Capture Calculated Value
+                            </>
+                          )}
                         </Button>
+
+                        {/* Captured/Manual input for review */}
+                        <div className="space-y-2 p-3 rounded-lg bg-muted/50 border">
+                          <Label className="text-sm font-medium">Captured Value (editable for review):</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatNumberWithCommas(capturedStampDutyValue)}
+                              onChange={(e) => {
+                                const rawValue = removeCommas(e.target.value);
+                                if (rawValue === '' || /^\d*\.?\d*$/.test(rawValue)) {
+                                  setCapturedStampDutyValue(rawValue);
+                                }
+                              }}
+                              placeholder="Capture value or enter manually"
+                              className="pl-7"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Review or adjust the value before applying
+                          </p>
+                        </div>
+
+                        {/* Step 2: Use Value Button */}
+                        <Button 
+                          onClick={useStampDutyValue}
+                          disabled={!capturedStampDutyValue || parseFloat(capturedStampDutyValue) <= 0}
+                          className="w-full gap-2"
+                        >
+                          <Check className="h-4 w-4" />
+                          Use Value
+                        </Button>
+
+                        {/* Show currently applied value */}
+                        {overrides.stampDuty && overrides.stampDuty > 0 && (
+                          <div className="flex items-center gap-2 text-green-600 text-sm p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                            <Check className="h-4 w-4" />
+                            <span>Stamp Duty: ${overrides.stampDuty.toLocaleString()} applied to analysis</span>
+                          </div>
+                        )}
 
                         {/* Instructions */}
                         <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
                           <p className="text-sm font-medium text-foreground">How to use:</p>
                           <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
                             <li>State is auto-detected from property address{detectedState !== 'All' && ` (${detectedState})`}</li>
-                            <li>Enter the property purchase price in the calculator above</li>
-                            <li>Select buyer type (first home buyer, investor, etc.)</li>
-                            <li>Enter the calculated value in the input field above (auto-applied)</li>
+                            <li>Enter property details and click "Calculate" in the calculator above</li>
+                            <li>Click "Capture Calculated Value" to extract the total</li>
+                            <li>Review the captured value (edit if needed)</li>
+                            <li>Click "Use Value" to apply it to your analysis</li>
                           </ol>
                         </div>
                       </div>
