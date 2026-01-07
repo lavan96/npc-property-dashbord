@@ -33,7 +33,13 @@ export type NotificationType =
   | 'vownet_form_uploaded'
   | 'vownet_form_exported'
   | 'finance_agent_notified'
-  | 'client_file_shared';
+  | 'client_file_shared'
+  // Phase 4 additions - System & User
+  | 'user_role_updated'
+  | 'new_user_invited'
+  | 'system_maintenance'
+  | 'data_import_complete'
+  | 'report_comment_added';
 
 export interface Notification {
   id: string;
@@ -243,6 +249,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         } else {
           navigate('/clients');
         }
+        break;
+      // Phase 4 - System & User
+      case 'user_role_updated':
+      case 'new_user_invited':
+        navigate('/admin/users');
+        break;
+      case 'system_maintenance':
+        // Just mark as read, no navigation
+        break;
+      case 'data_import_complete':
+        navigate('/data-import');
+        break;
+      case 'report_comment_added':
+        if (notification.reportId || notification.entityId) {
+          localStorage.setItem('openReportId', notification.reportId || notification.entityId || '');
+        }
+        navigate('/generated-reports?tab=investment');
         break;
       default:
         break;

@@ -9,6 +9,7 @@ import { Upload, FileText, Database, CheckCircle2, XCircle, AlertCircle, Loader2
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 const DATA_TYPES = [
   { value: 'suburb_directory', label: 'Suburb Directory', table: 'suburb_directory', requiresState: false },
@@ -40,6 +41,7 @@ export default function DataImport() {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   const selectedDataType = DATA_TYPES.find(t => t.value === selectedType);
   const requiresState = selectedDataType?.requiresState ?? false;
@@ -128,6 +130,12 @@ export default function DataImport() {
         toast({
           title: "Upload Successful",
           description: `Imported ${data.summary.imported} schools, updated ${data.summary.updated}, skipped ${data.summary.skipped}`,
+        });
+        
+        addNotification({
+          type: 'data_import_complete',
+          title: 'Schools Data Import Complete',
+          message: `Imported ${data.summary.imported} schools for ${selectedState}`,
         });
       } else {
         // Direct database insert for cache tables
@@ -242,6 +250,12 @@ export default function DataImport() {
           description: `Imported ${records.length} records into ${dataType.label}`,
         });
         
+        addNotification({
+          type: 'data_import_complete',
+          title: `${dataType.label} Import Complete`,
+          message: `Successfully imported ${records.length} records`,
+        });
+        
         // Log data import
         logActivityDirect({
           actionType: 'data_exported',
@@ -286,6 +300,12 @@ export default function DataImport() {
         toast({
           title: "Suburb Directory Imported",
           description: `Imported ${data.summary.inserted} suburbs from ${data.summary.source}`,
+        });
+        
+        addNotification({
+          type: 'data_import_complete',
+          title: 'Suburb Directory Import Complete',
+          message: `Imported ${data.summary.inserted} suburbs`,
         });
       } else {
         throw new Error(data?.error || 'Import failed');
