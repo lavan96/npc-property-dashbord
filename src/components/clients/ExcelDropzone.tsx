@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { parseExcelToClients, type ParsedClient } from '@/utils/excelClientParser';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface ExcelDropzoneProps {
   onImportComplete: () => void;
@@ -36,6 +37,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
   const [parsedClients, setParsedClients] = useState<ParsedClient[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const processFile = useCallback(async (file: File) => {
     setFileName(file.name);
@@ -234,6 +236,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       if (result.clientsCreated > 0) {
         toast.success(`Successfully imported ${result.clientsCreated} client(s) with ${result.propertiesCreated} properties`);
         
+        // Add notification for client import
+        addNotification({
+          type: 'client_created',
+          title: 'Clients Imported',
+          message: `${result.clientsCreated} client(s) imported with ${result.propertiesCreated} properties`
+        });
         // Auto-sync imported clients to GHL
         try {
           const { data: newClients } = await supabase

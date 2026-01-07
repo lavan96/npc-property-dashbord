@@ -25,7 +25,15 @@ export type NotificationType =
   | 'report_regeneration_completed'
   | 'report_regeneration_failed'
   | 'report_archived'
-  | 'report_restored';
+  | 'report_restored'
+  // Phase 3 additions - Client & Portfolio
+  | 'client_created'
+  | 'client_updated'
+  | 'portfolio_updated'
+  | 'vownet_form_uploaded'
+  | 'vownet_form_exported'
+  | 'finance_agent_notified'
+  | 'client_file_shared';
 
 export interface Notification {
   id: string;
@@ -222,6 +230,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       case 'email_received':
       case 'email_reply_sent':
         navigate('/email-copilot');
+        break;
+      case 'client_created':
+      case 'client_updated':
+      case 'portfolio_updated':
+      case 'vownet_form_uploaded':
+      case 'vownet_form_exported':
+      case 'finance_agent_notified':
+      case 'client_file_shared':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/clients');
+        }
         break;
       default:
         break;

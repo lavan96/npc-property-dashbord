@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useFinanceContacts } from '@/hooks/useFinanceContacts';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface ClientData {
   id: string;
@@ -158,6 +159,7 @@ export function VownetPDFGenerator({
   const [isSending, setIsSending] = useState(false);
   const { contacts, defaultContact, hasContacts } = useFinanceContacts();
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
@@ -310,6 +312,14 @@ export function VownetPDFGenerator({
       if (error) throw error;
 
       toast.success(`Vownet form sent to ${targetContact.name}`);
+      
+      addNotification({
+        type: 'finance_agent_notified',
+        title: 'Finance Agent Notified',
+        message: `Vownet form for ${clientName} sent to ${targetContact.name}`,
+        entityId: data.client.id
+      });
+      
       onQuickSendComplete?.();
       
     } catch (error: any) {

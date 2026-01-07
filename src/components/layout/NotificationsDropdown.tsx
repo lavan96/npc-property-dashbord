@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2 } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2, UserPlus, UserCheck, Wallet, FileSpreadsheet, Download, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -64,6 +64,21 @@ export function NotificationsDropdown() {
         return <Mail className="h-4 w-4 text-primary" />;
       case 'email_reply_sent':
         return <Send className="h-4 w-4 text-green-500" />;
+      // Phase 3 - Client & Portfolio
+      case 'client_created':
+        return <UserPlus className="h-4 w-4 text-green-500" />;
+      case 'client_updated':
+        return <UserCheck className="h-4 w-4 text-blue-500" />;
+      case 'portfolio_updated':
+        return <Wallet className="h-4 w-4 text-purple-500" />;
+      case 'vownet_form_uploaded':
+        return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
+      case 'vownet_form_exported':
+        return <Download className="h-4 w-4 text-blue-500" />;
+      case 'finance_agent_notified':
+        return <Send className="h-4 w-4 text-primary" />;
+      case 'client_file_shared':
+        return <Share2 className="h-4 w-4 text-cyan-500" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }

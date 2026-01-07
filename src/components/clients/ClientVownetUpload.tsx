@@ -24,6 +24,7 @@ import {
 import { toast } from 'sonner';
 import { parseExcelToClients, type ParsedClient, type ParsedProperty } from '@/utils/excelClientParser';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface ClientVownetUploadProps {
   clientId: string;
@@ -65,6 +66,7 @@ export function ClientVownetUpload({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   const formatCurrency = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '-';
@@ -264,6 +266,24 @@ export function ClientVownetUpload({
 
       toast.success(`Portfolio updated: ${added} added, ${updated} updated`);
       setStatus('complete');
+      
+      // Send notifications
+      addNotification({
+        type: 'vownet_form_uploaded',
+        title: 'Vownet Form Uploaded',
+        message: `Vownet form uploaded for ${clientName}`,
+        entityId: clientId
+      });
+      
+      if (added > 0 || updated > 0) {
+        addNotification({
+          type: 'portfolio_updated',
+          title: 'Portfolio Updated',
+          message: `${clientName}'s portfolio: ${added} properties added, ${updated} updated`,
+          entityId: clientId
+        });
+      }
+      
       onComplete();
 
     } catch (error: any) {

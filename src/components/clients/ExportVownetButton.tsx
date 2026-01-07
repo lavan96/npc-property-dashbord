@@ -12,6 +12,7 @@ import {
 import { Download, FileSpreadsheet, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadVownetTemplate, downloadBlankVownetTemplate, type VownetExportData } from '@/utils/vownetTemplateGenerator';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface ExportVownetButtonProps {
   clientId: string;
@@ -27,6 +28,7 @@ export function ExportVownetButton({
   size = 'sm'
 }: ExportVownetButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const { addNotification } = useNotifications();
 
   // Fetch all client data for export
   const { data: clientData, refetch: refetchClient } = useQuery({
@@ -82,6 +84,13 @@ export function ExportVownetButton({
 
       downloadVownetTemplate(exportData);
       toast.success('Vownet form exported successfully');
+      
+      addNotification({
+        type: 'vownet_form_exported',
+        title: 'Vownet Form Exported',
+        message: `Vownet form exported for ${clientName}`,
+        entityId: clientId
+      });
     } catch (error: any) {
       console.error('Export error:', error);
       toast.error('Failed to export: ' + error.message);
