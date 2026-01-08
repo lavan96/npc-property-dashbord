@@ -56,6 +56,7 @@ interface Client {
   total_debt: number;
   net_monthly_cash_flow: number;
   created_at: string;
+  is_favorite?: boolean;
   client_properties?: { id: string }[];
 }
 

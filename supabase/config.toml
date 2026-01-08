@@ -266,3 +266,6 @@ verify_jwt = false
 [functions.generate-portfolio-analysis]
 verify_jwt = false
 request_timeout = 120
+
+[functions.clean-note-transcript]
+verify_jwt = false

@@ -1443,6 +1443,7 @@ export type Database = {
           ghl_last_synced_at: string | null
           ghl_sync_status: string | null
           id: string
+          is_favorite: boolean
           living_situation: string | null
           marital_status: string | null
           net_monthly_cash_flow: number | null
@@ -1479,6 +1480,7 @@ export type Database = {
           ghl_last_synced_at?: string | null
           ghl_sync_status?: string | null
           id?: string
+          is_favorite?: boolean
           living_situation?: string | null
           marital_status?: string | null
           net_monthly_cash_flow?: number | null
@@ -1515,6 +1517,7 @@ export type Database = {
           ghl_last_synced_at?: string | null
           ghl_sync_status?: string | null
           id?: string
+          is_favorite?: boolean
           living_situation?: string | null
           marital_status?: string | null
           net_monthly_cash_flow?: number | null
