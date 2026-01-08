@@ -15,6 +15,7 @@ import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2 } from
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 
 interface ClientNotesProps {
   clientId: string;
@@ -106,7 +107,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       {/* Add Note Form */}
       {isAdding ? (
         <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Select value={noteType} onValueChange={(v: NoteType) => setNoteType(v)}>
               <SelectTrigger className="w-32 h-8">
                 <SelectValue />
@@ -122,6 +123,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                 ))}
               </SelectContent>
             </Select>
+            <VoiceNoteRecorder 
+              noteType={noteType} 
+              onTranscriptReady={(text) => setNewNote(prev => prev ? `${prev}\n\n${text}` : text)}
+              disabled={addNoteMutation.isPending}
+            />
           </div>
           <Textarea
             placeholder="Enter your note..."

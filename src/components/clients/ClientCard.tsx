@@ -19,10 +19,12 @@ import {
   Trash2,
   ExternalLink,
   RefreshCw,
-  Loader2
+  Loader2,
+  Star
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface ClientCardProps {
   client: {
@@ -39,6 +41,7 @@ interface ClientCardProps {
     total_debt: number;
     net_monthly_cash_flow: number;
     created_at: string;
+    is_favorite?: boolean;
     client_properties?: { id: string }[];
   };
   onView: () => void;
@@ -48,6 +51,7 @@ interface ClientCardProps {
 
 export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const queryClient = useQueryClient();
   const propertyCount = client.client_properties?.length || 0;
   const isPositiveCashFlow = Number(client.net_monthly_cash_flow) >= 0;
   
@@ -59,6 +63,23 @@ export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientC
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_favorite: !client.is_favorite })
+        .eq('id', client.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success(client.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update favorite: ' + error.message);
+    }
+  });
 
   const handleSyncToGHL = async () => {
     setIsSyncing(true);
@@ -109,19 +130,36 @@ export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientC
     : null;
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={`hover:shadow-md transition-shadow ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h3 className="font-semibold text-foreground leading-tight">{fullName}</h3>
-            {secondaryName && (
-              <p className="text-sm text-muted-foreground">& {secondaryName}</p>
-            )}
-            {client.primary_email && (
-              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {client.primary_email}
-              </p>
-            )}
+          <div className="flex items-start gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => toggleFavoriteMutation.mutate()}
+              disabled={toggleFavoriteMutation.isPending}
+            >
+              <Star 
+                className={`h-4 w-4 transition-colors ${
+                  client.is_favorite 
+                    ? 'fill-yellow-400 text-yellow-400' 
+                    : 'text-muted-foreground hover:text-yellow-400'
+                }`} 
+              />
+            </Button>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-foreground leading-tight">{fullName}</h3>
+              {secondaryName && (
+                <p className="text-sm text-muted-foreground">& {secondaryName}</p>
+              )}
+              {client.primary_email && (
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {client.primary_email}
+                </p>
+              )}
+            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
