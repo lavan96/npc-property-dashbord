@@ -55,56 +55,49 @@
 
     // Function to find and extract stamp duty value from the calculator
     function findStampDutyValue() {
-      // First, look specifically for "Total" or "Stamp Duty" labeled values
-      // These calculators typically show the total prominently
+      // Strategy 1: Look for table rows or divs where the label is "Stamp Duty" (exact match)
+      // and extract the value from a sibling/adjacent element
       const allElements = document.querySelectorAll('*');
       
       for (const el of allElements) {
-        const text = (el.textContent || el.innerText || '').toLowerCase();
+        const text = (el.textContent || el.innerText || '').trim();
         
-        // Look for elements containing "total" or "stamp duty" with a dollar value
-        if (text.includes('total') || text.includes('stamp duty')) {
-          // Check if this element or its parent contains a dollar amount
-          const fullText = el.textContent || el.innerText || '';
-          const match = fullText.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
-          if (match) {
-            const value = match[1].replace(/,/g, '');
-            const numValue = parseFloat(value);
-            // Stamp duty can be quite high for expensive properties
-            if (numValue > 0 && numValue < 1000000) {
-              return numValue;
+        // Look for elements that are specifically "Stamp Duty:" or "Stamp Duty" labels
+        if (text === 'Stamp Duty:' || text === 'Stamp Duty') {
+          // Check siblings for the value
+          let sibling = el.nextElementSibling;
+          while (sibling) {
+            const siblingText = sibling.textContent || sibling.innerText || '';
+            const match = siblingText.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
+            if (match) {
+              const value = match[1].replace(/,/g, '');
+              const numValue = parseFloat(value);
+              if (numValue > 0) {
+                return numValue;
+              }
+            }
+            sibling = sibling.nextElementSibling;
+          }
+          
+          // Check parent's other children (table row scenario)
+          const parent = el.parentElement;
+          if (parent) {
+            const parentText = parent.textContent || parent.innerText || '';
+            // Extract all dollar amounts from the parent
+            const matches = [...parentText.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g)];
+            for (const match of matches) {
+              const value = match[1].replace(/,/g, '');
+              const numValue = parseFloat(value);
+              // The stamp duty value should be significant (> $100 typically)
+              if (numValue > 100) {
+                return numValue;
+              }
             }
           }
         }
       }
 
-      // Try specific selectors for calculator results
-      const selectors = [
-        '[class*="total"]',
-        '[class*="result"]',
-        '[id*="total"]',
-        '[id*="result"]',
-        '.stamp-duty-result',
-        '.calculator-result'
-      ];
-
-      for (const selector of selectors) {
-        const elements = document.querySelectorAll(selector);
-        for (const el of elements) {
-          const text = el.textContent || el.innerText || '';
-          const match = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
-          if (match) {
-            const value = match[1].replace(/,/g, '');
-            const numValue = parseFloat(value);
-            if (numValue > 0 && numValue < 1000000) {
-              return numValue;
-            }
-          }
-        }
-      }
-
-      // Fallback: scan all text nodes for dollar amounts and find the largest
-      // that appears after "total" or is the last significant value shown
+      // Strategy 2: Look for "Stamp Duty" text followed by a dollar amount on the same line
       const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_TEXT,
@@ -112,35 +105,49 @@
         false
       );
 
-      const dollarAmounts = [];
-      let foundTotal = false;
-      
       while (walker.nextNode()) {
         const text = walker.currentNode.textContent || '';
-        
-        if (text.toLowerCase().includes('total')) {
-          foundTotal = true;
-        }
-        
-        const matches = text.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g);
-        for (const match of matches) {
-          const value = match[1].replace(/,/g, '');
+        // Match "Stamp Duty" followed by a dollar amount (possibly with other text between)
+        const stampDutyMatch = text.match(/Stamp\s*Duty[:\s]*\$?\s*([\d,]+(?:\.\d{2})?)/i);
+        if (stampDutyMatch) {
+          const value = stampDutyMatch[1].replace(/,/g, '');
           const numValue = parseFloat(value);
-          if (numValue > 0 && numValue < 1000000) {
-            dollarAmounts.push({ value: numValue, afterTotal: foundTotal });
+          if (numValue > 100) {
+            return numValue;
           }
         }
       }
 
-      // Prefer values that appeared after "total" text
-      const afterTotalValues = dollarAmounts.filter(v => v.afterTotal);
-      if (afterTotalValues.length > 0) {
-        return Math.max(...afterTotalValues.map(v => v.value));
+      // Strategy 3: Scan all rows/containers looking for "Stamp Duty" label pattern
+      const rows = document.querySelectorAll('tr, div, p, span');
+      for (const row of rows) {
+        const rowText = row.textContent || row.innerText || '';
+        
+        // Check if this row contains "Stamp Duty" but NOT "Total" (to avoid the totals row)
+        if (/stamp\s*duty/i.test(rowText) && !/total/i.test(rowText)) {
+          const matches = [...rowText.matchAll(/\$\s*([\d,]+(?:\.\d{2})?)/g)];
+          // Find the largest value in this row (should be the stamp duty amount)
+          let maxValue = 0;
+          for (const match of matches) {
+            const value = parseFloat(match[1].replace(/,/g, ''));
+            if (value > maxValue && value > 100) {
+              maxValue = value;
+            }
+          }
+          if (maxValue > 0) {
+            return maxValue;
+          }
+        }
       }
 
-      // Otherwise return the largest value (likely the total stamp duty)
-      if (dollarAmounts.length > 0) {
-        return Math.max(...dollarAmounts.map(v => v.value));
+      // Strategy 4: Last resort - find the Fees section and get the Stamp Duty row value
+      const feesSection = document.body.innerHTML;
+      const stampDutyRowMatch = feesSection.match(/Stamp\s*Duty[^$]*\$\s*([\d,]+(?:\.\d{2})?)/i);
+      if (stampDutyRowMatch) {
+        const value = parseFloat(stampDutyRowMatch[1].replace(/,/g, ''));
+        if (value > 100) {
+          return value;
+        }
       }
 
       return null;
