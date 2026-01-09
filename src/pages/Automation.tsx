@@ -120,30 +120,24 @@ const Automation = () => {
   const clearQueue = async () => {
     setClearing(true);
     try {
-      // Clear processed listings
-      const { error: processedError } = await supabase
-        .from('auto_report_processed_listings')
+      // Delete reports that are stuck in processing, pending, or failed status
+      const { data, error } = await supabase
+        .from('investment_reports')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        .in('status', ['processing', 'pending', 'failed'])
+        .select('id');
 
-      if (processedError) throw processedError;
+      if (error) throw error;
 
-      // Clear generation log
-      const { error: logError } = await supabase
-        .from('auto_report_generation_log')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
-
-      if (logError) throw logError;
-
-      toast.success('Queue cleared successfully');
+      const count = data?.length || 0;
+      toast.success(`Cleared ${count} report(s) from queue`);
       fetchSyncStats();
       
       logActivityDirect({
-        actionType: 'automation_switch_deleted',
-        entityType: 'automation_switch',
-        entityName: 'Auto-Generation Queue Cleared',
-        metadata: { clearedAt: new Date().toISOString() }
+        actionType: 'report_deleted',
+        entityType: 'investment_report',
+        entityName: `Cleared ${count} stuck reports`,
+        metadata: { statuses: ['processing', 'pending', 'failed'], count }
       });
     } catch (error) {
       toast.error(`Failed to clear queue: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -346,10 +340,10 @@ const Automation = () => {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Clear Auto-Generation Queue?</AlertDialogTitle>
+                      <AlertDialogTitle>Clear Stuck Reports?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will clear all {syncStats?.total || 0} processed listings and generation logs. 
-                        Previously generated reports will NOT be deleted. This action cannot be undone.
+                        This will delete all reports with "processing", "pending", or "failed" status. 
+                        Completed reports will NOT be affected. This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
