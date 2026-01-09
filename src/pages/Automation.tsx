@@ -3,7 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Settings2, Trash2, Play, Pause, AlertTriangle, Zap, History, RefreshCw, Eye } from 'lucide-react';
+import { Plus, Settings2, Trash2, Play, Pause, AlertTriangle, Zap, History, RefreshCw, Eye, XCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SwitchConfigModal } from '@/components/automation/SwitchConfigModal';
@@ -53,6 +64,7 @@ const Automation = () => {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [editingSwitch, setEditingSwitch] = useState<AutoReportSwitch | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [syncStats, setSyncStats] = useState<{ total: number; generated: number; lastSync?: string } | null>(null);
 
   useEffect(() => {
@@ -102,6 +114,41 @@ const Automation = () => {
       toast.error(`Sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const clearQueue = async () => {
+    setClearing(true);
+    try {
+      // Clear processed listings
+      const { error: processedError } = await supabase
+        .from('auto_report_processed_listings')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (processedError) throw processedError;
+
+      // Clear generation log
+      const { error: logError } = await supabase
+        .from('auto_report_generation_log')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (logError) throw logError;
+
+      toast.success('Queue cleared successfully');
+      fetchSyncStats();
+      
+      logActivityDirect({
+        actionType: 'automation_switch_deleted',
+        entityType: 'automation_switch',
+        entityName: 'Auto-Generation Queue Cleared',
+        metadata: { clearedAt: new Date().toISOString() }
+      });
+    } catch (error) {
+      toast.error(`Failed to clear queue: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -285,6 +332,34 @@ const Automation = () => {
                 </div>
               </div>
               <div className="flex gap-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={clearing || !syncStats?.total}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <XCircle className={`h-4 w-4 mr-1 ${clearing ? 'animate-spin' : ''}`} />
+                      {clearing ? 'Clearing...' : 'Clear Queue'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear Auto-Generation Queue?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will clear all {syncStats?.total || 0} processed listings and generation logs. 
+                        Previously generated reports will NOT be deleted. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={clearQueue} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Clear Queue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button 
                   variant="outline" 
                   size="sm"
