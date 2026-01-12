@@ -5,6 +5,7 @@ interface RecordingIndicatorProps {
   className?: string;
   liveTranscript?: string;
   duration?: number;
+  maxDuration?: number;
 }
 
 function formatDuration(seconds: number): string {
@@ -17,9 +18,13 @@ export function RecordingIndicator({
   isRecording, 
   className,
   liveTranscript,
-  duration = 0
+  duration = 0,
+  maxDuration = 480
 }: RecordingIndicatorProps) {
   if (!isRecording) return null;
+
+  const progressPercent = Math.min((duration / maxDuration) * 100, 100);
+  const isNearLimit = duration >= maxDuration - 60; // Last minute warning
 
   return (
     <div 
@@ -59,11 +64,32 @@ export function RecordingIndicator({
         </span>
         
         {duration > 0 && (
-          <span className="text-xs text-red-500/70 font-mono ml-auto">
-            {formatDuration(duration)}
+          <span className={cn(
+            "text-xs font-mono ml-auto",
+            isNearLimit ? "text-orange-500 font-semibold" : "text-red-500/70"
+          )}>
+            {formatDuration(duration)} / {formatDuration(maxDuration)}
           </span>
         )}
       </div>
+      
+      {/* Progress bar */}
+      <div className="h-1 w-full bg-red-500/20 rounded-full overflow-hidden">
+        <div 
+          className={cn(
+            "h-full rounded-full transition-all duration-1000",
+            isNearLimit ? "bg-orange-500" : "bg-red-500/60"
+          )}
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+      
+      {/* Near limit warning */}
+      {isNearLimit && (
+        <p className="text-xs text-orange-500 font-medium">
+          ⚠️ Recording will stop in {formatDuration(maxDuration - duration)}
+        </p>
+      )}
       
       {/* Live transcription preview */}
       {liveTranscript && (

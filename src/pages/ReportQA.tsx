@@ -806,6 +806,11 @@ export default function ReportQA() {
     }
   };
 
+  // Maximum recording duration: 8 minutes (480 seconds)
+  const MAX_RECORDING_DURATION = 480;
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const liveTranscriptTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -826,53 +831,83 @@ export default function ReportQA() {
       setLiveTranscript('');
       setRecordingDuration(0);
       
-      // Start duration timer
-      const durationInterval = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
+      // Start duration timer with auto-stop at max duration
+      durationIntervalRef.current = setInterval(() => {
+        setRecordingDuration(prev => {
+          const newDuration = prev + 1;
+          // Auto-stop at max duration
+          if (newDuration >= MAX_RECORDING_DURATION) {
+            stopRecording();
+            toast({
+              title: 'Maximum recording reached',
+              description: 'Recording stopped after 8 minutes. Transcribing...',
+            });
+          }
+          return newDuration;
+        });
       }, 1000);
       
       mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
           
-          // Attempt live transcription preview (every 2 seconds of audio)
-          if (audioChunksRef.current.length % 4 === 0) {
-            try {
-              const partialBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-              const reader = new FileReader();
-              reader.onloadend = async () => {
-                const base64 = (reader.result as string).split(',')[1];
-                const { data } = await supabase.functions.invoke('report-qa', {
-                  body: { action: 'transcribe', audio: base64 },
-                });
-                if (data?.success && data?.text) {
-                  setLiveTranscript(data.text);
-                }
-              };
-              reader.readAsDataURL(partialBlob);
-            } catch {
-              // Silent fail for live preview
+          // Live transcription preview every 10 seconds (20 chunks × 500ms) to reduce API spam
+          // Only do live preview for recordings under 2 minutes to save resources
+          if (audioChunksRef.current.length % 20 === 0 && audioChunksRef.current.length <= 240) {
+            // Debounce live transcription to prevent overlapping calls
+            if (liveTranscriptTimeoutRef.current) {
+              clearTimeout(liveTranscriptTimeoutRef.current);
             }
+            liveTranscriptTimeoutRef.current = setTimeout(async () => {
+              try {
+                // Only transcribe last 30 seconds for preview (60 chunks)
+                const recentChunks = audioChunksRef.current.slice(-60);
+                const partialBlob = new Blob(recentChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                  const base64 = (reader.result as string).split(',')[1];
+                  const { data } = await supabase.functions.invoke('report-qa', {
+                    body: { action: 'transcribe', audio: base64 },
+                  });
+                  if (data?.success && data?.text) {
+                    setLiveTranscript(data.text);
+                  }
+                };
+                reader.readAsDataURL(partialBlob);
+              } catch {
+                // Silent fail for live preview
+              }
+            }, 500);
           }
         }
       };
       
       mediaRecorder.onstop = async () => {
-        clearInterval(durationInterval);
+        // Clean up timers
+        if (durationIntervalRef.current) {
+          clearInterval(durationIntervalRef.current);
+          durationIntervalRef.current = null;
+        }
+        if (liveTranscriptTimeoutRef.current) {
+          clearTimeout(liveTranscriptTimeoutRef.current);
+          liveTranscriptTimeoutRef.current = null;
+        }
+        
         stream.getTracks().forEach(track => track.stop());
         
         if (audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          console.log(`[Recording] Final audio size: ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB, chunks: ${audioChunksRef.current.length}`);
           await transcribeAudio(audioBlob);
         }
         setLiveTranscript('');
         setRecordingDuration(0);
       };
       
-      // Request data every 500ms for live preview
+      // Request data every 500ms for chunking
       mediaRecorder.start(500);
       setIsRecording(true);
-      setLiveAnnouncement('Recording started');
+      setLiveAnnouncement('Recording started - up to 8 minutes');
     } catch (error) {
       console.error('Microphone error:', error);
       toast({
@@ -1706,6 +1741,7 @@ export default function ReportQA() {
                 isRecording={isRecording} 
                 liveTranscript={liveTranscript}
                 duration={recordingDuration}
+                maxDuration={MAX_RECORDING_DURATION}
                 className="mb-2" 
               />
             )}
