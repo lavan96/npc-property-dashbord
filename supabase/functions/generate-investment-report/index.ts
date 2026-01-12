@@ -530,6 +530,30 @@ serve(async (req) => {
     if (hasOverrides) {
       console.log('🔀 Merged overrides total:', Object.keys(mergedOverrides).length, 'fields');
     }
+    
+    // ============================================================================
+    // CRITICAL: Define effective values ONCE at the top and use consistently
+    // These values respect the override hierarchy and are used throughout
+    // ============================================================================
+    const effectivePurchasePrice = mergedOverrides.purchasePrice || propertyDetails?.price || 0;
+    const effectiveWeeklyRent = mergedOverrides.weeklyRent || propertyDetails?.weeklyRent || 0;
+    const effectiveLvr = mergedOverrides.loanToValueRatio || 80;
+    const effectiveDepositValue = mergedOverrides.depositValue || (effectivePurchasePrice * ((100 - effectiveLvr) / 100));
+    const effectiveInterestRate = mergedOverrides.interestRate || 6.5;
+    const effectiveLoanTerm = mergedOverrides.loanTermYears || 30;
+    const effectiveIsFirstHomeBuyer = mergedOverrides.isFirstHomeBuyer || false;
+    const effectiveIsNewBuild = mergedOverrides.buildType === 'new_build' || propertyDetails?.isNewBuild || false;
+    const effectiveLandSizeSqm = mergedOverrides.landSizeSqm || propertyDetails?.landSizeSqm || null;
+    const effectiveBuildSizeSqm = mergedOverrides.buildSizeSqm || propertyDetails?.buildSizeSqm || null;
+    const effectiveBeds = mergedOverrides.bedrooms || propertyDetails?.beds || 3;
+    const effectiveBaths = mergedOverrides.bathrooms || propertyDetails?.baths || 2;
+    
+    console.log('📊 EFFECTIVE VALUES (after merging overrides):');
+    console.log(`  Purchase Price: $${effectivePurchasePrice?.toLocaleString()} ${mergedOverrides.purchasePrice ? '(OVERRIDE)' : '(from property)'}`);
+    console.log(`  Weekly Rent: $${effectiveWeeklyRent} ${mergedOverrides.weeklyRent ? '(OVERRIDE)' : '(from property)'}`);
+    console.log(`  LVR: ${effectiveLvr}% ${mergedOverrides.loanToValueRatio ? '(OVERRIDE)' : '(default)'}`);
+    console.log(`  Interest Rate: ${effectiveInterestRate}% ${mergedOverrides.interestRate ? '(OVERRIDE)' : '(default)'}`);
+    console.log(`  Is New Build: ${effectiveIsNewBuild}`);
 
     // Check for Perplexity API key
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
@@ -825,24 +849,18 @@ serve(async (req) => {
       }
       
       // Calculate financial projections if property details available
-      if (propertyDetails?.price && weeklyRent) {
+      // Use effective values defined at the top (which already include overrides)
+      if (effectivePurchasePrice > 0) {
         try {
-          // Use override values if available, otherwise use defaults
-          const effectivePropertyValue = mergedOverrides.purchasePrice || propertyDetails.price;
-          const effectiveLvr = mergedOverrides.loanToValueRatio || 80;
-          const effectiveDeposit = mergedOverrides.depositValue || (effectivePropertyValue * ((100 - effectiveLvr) / 100));
-          const effectiveInterestRate = mergedOverrides.interestRate || 6.5;
-          const effectiveLoanTerm = mergedOverrides.loanTermYears || 30;
-          const effectiveWeeklyRent = mergedOverrides.weeklyRent || weeklyRent;
-          const effectiveIsFirstHomeBuyer = mergedOverrides.isFirstHomeBuyer || false;
-          const effectiveIsNewBuild = mergedOverrides.buildType === 'new_build';
+          // Use effective values that were defined at the top (already include overrides)
+          const calcWeeklyRent = effectiveWeeklyRent || weeklyRent || 0;
           
-          console.log('📊 Financial calculator inputs (with overrides applied):');
-          console.log(`  Property Value: $${effectivePropertyValue.toLocaleString()}`);
-          console.log(`  Deposit: $${effectiveDeposit.toLocaleString()} (LVR: ${effectiveLvr}%)`);
+          console.log('📊 Financial calculator inputs (using top-level effective values):');
+          console.log(`  Property Value: $${effectivePurchasePrice.toLocaleString()}`);
+          console.log(`  Deposit: $${effectiveDepositValue.toLocaleString()} (LVR: ${effectiveLvr}%)`);
           console.log(`  Interest Rate: ${effectiveInterestRate}%`);
           console.log(`  Loan Term: ${effectiveLoanTerm} years`);
-          console.log(`  Weekly Rent: $${effectiveWeeklyRent}`);
+          console.log(`  Weekly Rent: $${calcWeeklyRent}`);
           console.log(`  First Home Buyer: ${effectiveIsFirstHomeBuyer}`);
           console.log(`  New Build: ${effectiveIsNewBuild}`);
           
@@ -853,14 +871,14 @@ serve(async (req) => {
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
             },
             body: JSON.stringify({
-              propertyValue: effectivePropertyValue,
-              deposit: effectiveDeposit,
+              propertyValue: effectivePurchasePrice,
+              deposit: effectiveDepositValue,
               interestRate: effectiveInterestRate,
               loanTerm: effectiveLoanTerm,
-              weeklyRent: effectiveWeeklyRent,
+              weeklyRent: calcWeeklyRent,
               weeklyRentSource: rentSource,
               state: state,
-              propertyType: propertyDetails.propertyType || 'house',
+              propertyType: propertyDetails?.propertyType || 'house',
               isFirstHomeBuyer: effectiveIsFirstHomeBuyer,
               isNewBuild: effectiveIsNewBuild
             })
@@ -939,7 +957,7 @@ serve(async (req) => {
             
             console.log('Financial calculations completed successfully');
             
-            // Run validation on financial calculations
+            // Run validation on financial calculations - USE EFFECTIVE VALUES
             try {
               const validationResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/financial-validation-service`, {
                 method: 'POST',
@@ -948,13 +966,13 @@ serve(async (req) => {
                   'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
                 },
                 body: JSON.stringify({
-                  propertyValue: propertyDetails.price,
-                  weeklyRent: propertyDetails.weeklyRent,
+                  propertyValue: effectivePurchasePrice,
+                  weeklyRent: effectiveWeeklyRent || weeklyRent,
                   stampDuty: financialData.data.initialCosts.stampDuty,
                   councilRates: financialData.data.annualCosts.councilRates,
                   annualCosts: financialData.data.annualCosts,
                   state: state,
-                  propertyType: propertyDetails.propertyType || 'house'
+                  propertyType: propertyDetails?.propertyType || 'house'
                 })
               });
               
@@ -1018,9 +1036,13 @@ serve(async (req) => {
         console.error('❌ Location intelligence fetch failed:', error?.message || 'Unknown error');
       }
 
-      // Calculate investment score
-      if (propertyDetails?.price) {
+      // Calculate investment score - USE EFFECTIVE VALUES
+      if (effectivePurchasePrice > 0) {
         try {
+          console.log('📊 Investment scoring inputs (using effective values):');
+          console.log(`  Price: $${effectivePurchasePrice.toLocaleString()}`);
+          console.log(`  Weekly Rent: $${effectiveWeeklyRent}`);
+          
           const scoreResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/investment-scoring-service`, {
             method: 'POST',
             headers: {
@@ -1029,11 +1051,11 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               property: {
-                price: propertyDetails.price,
-                weeklyRent: propertyDetails.weeklyRent || 0,
-                propertyType: propertyDetails.propertyType || 'house',
-                bedrooms: propertyDetails.beds || 3,
-                bathrooms: propertyDetails.baths || 2
+                price: effectivePurchasePrice,
+                weeklyRent: effectiveWeeklyRent || 0,
+                propertyType: propertyDetails?.propertyType || 'house',
+                bedrooms: effectiveBeds,
+                bathrooms: effectiveBaths
               },
               demographics: enhancedData.demographics,
               locationIntelligence: enhancedData.locationIntelligence,
@@ -1044,7 +1066,7 @@ serve(async (req) => {
           if (scoreResponse.ok) {
             const scoreData = await scoreResponse.json();
             enhancedData = { ...enhancedData, investmentScore: scoreData.data };
-            console.log('Investment score calculated successfully');
+            console.log('✓ Investment score calculated successfully using effective values');
           }
         } catch (error: any) {
           console.log('Investment score calculation failed:', error?.message || 'Unknown error');
@@ -1760,14 +1782,14 @@ Based on ${documentContent ? 'the provided property listing data' : 'location in
 | Property Characteristic | ${documentContent ? 'Value' : 'Estimated Value'} |
 |------------------------|-------|
 | Property Type | ${propertyDetails?.propertyType || 'Single-family house'} |
-| Land Size | ${propertyDetails?.landSizeSqm ? propertyDetails.landSizeSqm + ' m²' : 'Estimated XXX-XXX m² (typical for suburb)'} |
-| Bedrooms | ${propertyDetails?.beds || 'X (typical family home)'} |
-| Bathrooms | ${propertyDetails?.baths || 'X-X (typical modern standard)'} |
+| Land Size | ${effectiveLandSizeSqm ? effectiveLandSizeSqm + ' m²' : 'Estimated XXX-XXX m² (typical for suburb)'} |
+| Bedrooms | ${effectiveBeds || 'X (typical family home)'} |
+| Bathrooms | ${effectiveBaths || 'X-X (typical modern standard)'} |
 | Parking | ${propertyDetails?.carSpaces || 'X-X spaces (garaging and driveway)'} |
 | Year Built | ${propertyDetails?.yearBuilt || 'Estimated XXXX-XXXX (modern suburban standard)'} |
 | Condition | ${propertyDetails?.condition || 'Good to excellent (typical for maintained homes)'} |
 
-**${documentContent ? 'Property Price' : 'Estimated Property Value'}:** $${propertyDetails?.price?.toLocaleString() || 'X,XXX,XXX'} AUD
+**${documentContent ? 'Property Price' : 'Estimated Property Value'}:** $${effectivePurchasePrice?.toLocaleString() || 'X,XXX,XXX'} AUD
 
 This valuation reflects typical [Suburb] [property type] prices for [configuration description] on [land description]. The ${documentContent ? 'price' : 'estimate'} is based on the suburb's positioning as [suburb characteristics], and [infrastructure/transport factors].
 
@@ -1780,17 +1802,17 @@ This valuation reflects typical [Suburb] [property type] prices for [configurati
 # Purchase & Ongoing Costs (Annual)
 
 **Assumptions:**
-- Property Price: $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} AUD
-- Deposit: 20% = $${enhancedData.financials?.initialCosts?.deposit?.toLocaleString() || 'XXX,XXX'}
+- Property Price: $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} AUD
+- Deposit: ${100 - effectiveLvr}% = $${effectiveDepositValue?.toLocaleString() || enhancedData.financials?.initialCosts?.deposit?.toLocaleString() || 'XXX,XXX'}
 - Loan Amount: $${enhancedData.financials?.initialCosts?.loanAmount?.toLocaleString() || 'X,XXX,XXX'}
-- Loan Term: 30 years
-- Interest Rate: ${enhancedData.financials?.loanDetails?.interestRate || 6.5}%
+- Loan Term: ${effectiveLoanTerm} years
+- Interest Rate: ${effectiveInterestRate}%
 
 **Purchase Costs:**
 
 | Cost Category | Amount (AUD) | Calculation Method |
 |---------------|--------------|-------------------|
-| Property Price | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | Reference value |
+| Property Price | $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | Reference value |
 | Stamp Duty | $${enhancedData.financials?.initialCosts?.stampDuty?.toLocaleString() || 'XX,XXX'} | [State]: [X.XX]% on $[X.XXm] (approximate marginal rate) |
 | Legal Fees | $${enhancedData.financials?.initialCosts?.legalFees?.toLocaleString() || '1,200'} | Typical conveyancing costs |
 | Building Inspection | $600 | Standard pre-purchase inspection |
@@ -1822,25 +1844,25 @@ Note: Land tax is highly property-specific and depends on aggregated landholding
 
 | Property Type | Estimated Weekly Rent | Annual Rental Income |
 |--------------|----------------------|---------------------|
-| ${propertyDetails?.beds || 'X'}-Bed ${propertyDetails?.propertyType || 'Family Home'} | $${propertyDetails?.weeklyRent || (enhancedData.financials?.income?.weeklyRent) || 'XXX'} - $${(propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50 || 'XXX'} | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} - $${(((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50) * 52).toLocaleString() || 'XX,XXX'} |
+| ${effectiveBeds || 'X'}-Bed ${propertyDetails?.propertyType || 'Family Home'} | $${effectiveWeeklyRent || (enhancedData.financials?.income?.weeklyRent) || 'XXX'} - $${(effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50 || 'XXX'} | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} - $${(((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50) * 52).toLocaleString() || 'XX,XXX'} |
 
-**Selected Rental Assumption:** $${propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'}/week = $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} annually (${documentContent ? 'based on listing data' : 'conservative estimate'})
+**Selected Rental Assumption:** $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'}/week = $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} annually (${documentContent ? 'based on listing data' : mergedOverrides.weeklyRent ? 'user override' : 'conservative estimate'})
 
 **Gross Rental Yield Calculation:**
 
 | Metric | Calculation | Value |
 |--------|-------------|-------|
-| Annual Rental Income | $${propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
-| Property Price | Reference value | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
-| Gross Rental Yield | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} ÷ $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} × 100 | ${enhancedData.financials?.keyMetrics?.grossRentalYield || 'X.XX'}% |
+| Annual Rental Income | $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Property Price | Reference value | $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
+| Gross Rental Yield | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} ÷ $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} × 100 | ${enhancedData.financials?.keyMetrics?.grossRentalYield || 'X.XX'}% |
 
 **Net Rental Yield Calculation:**
 
 | Metric | Calculation | Value |
 |--------|-------------|-------|
-| Annual Income | $${propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Annual Income | $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
 | Annual Expenses | Property Mgmt + Maintenance + Rates + Insurance | $${enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax?.toLocaleString() || 'X,XXX'} |
-| Net Annual Return | Income - Expenses | $${(((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52) - (enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax || 0)).toLocaleString() || 'XX,XXX'} |
+| Net Annual Return | Income - Expenses | $${(((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52) - (enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax || 0)).toLocaleString() || 'XX,XXX'} |
 | Net Rental Yield | Net Return ÷ Property Price × 100 | ${enhancedData.financials?.keyMetrics?.netRentalYield || 'X.XX'}% |
 
 **Yield Commentary:**
@@ -1888,7 +1910,7 @@ Note: Blended calculation for annual presentation; actual P&I repayments decline
 
 | Item | Amount (AUD) |
 |------|--------------|
-| Gross Rental Income | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Gross Rental Income | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
 | Less: P&I Loan Repayment | ($${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
 | Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
 | Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
@@ -1901,7 +1923,7 @@ Note: Blended calculation for annual presentation; actual P&I repayments decline
 
 | Item | Amount (AUD) |
 |------|--------------|
-| Gross Rental Income | $${((propertyDetails?.weeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Gross Rental Income | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
 | Less: Interest-Only Repayment | ($${(enhancedData.financials?.loanDetails?.interestOnlyPayment ? enhancedData.financials.loanDetails.interestOnlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
 | Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
 | Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
@@ -1947,7 +1969,7 @@ This sensitivity analysis demonstrates that the property's cashflow profile is i
 
 | Year | Conservative (2%) | Base Case (4%) | Optimistic (6%) |
 |------|-------------------|----------------|-----------------|
-| 0 | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | $${propertyDetails?.price?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
+| 0 | $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} | $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
 ${enhancedData.financials?.projections?.conservative ? enhancedData.financials.projections.conservative.slice(0, 10).map((p: any, i: number) => 
 `| ${i + 1} | $${p.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.moderate?.[i]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} | $${enhancedData.financials?.projections?.optimistic?.[i]?.propertyValue?.toLocaleString() || 'X,XXX,XXX'} |`
 ).join('\n') : '| 1-10 | [Calculate based on growth rates] | [Calculate based on growth rates] | [Calculate based on growth rates] |'}
@@ -2092,7 +2114,7 @@ Best suited to investors who (1) have secure employment supporting annual $[XX]k
 
 # Top 3 Investment Opportunities
 
-**1. Capital Appreciation Potential - $${Math.round((enhancedData.financials?.projections?.moderate?.[9]?.propertyValue || 0) - (propertyDetails?.price || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'XXX,XXX'} to $${Math.round((enhancedData.financials?.projections?.optimistic?.[9]?.propertyValue || 0) - (propertyDetails?.price || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'X,XXX,XXX'} (10-Year Projection)**
+**1. Capital Appreciation Potential - $${Math.round((enhancedData.financials?.projections?.moderate?.[9]?.propertyValue || 0) - (effectivePurchasePrice || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'XXX,XXX'} to $${Math.round((enhancedData.financials?.projections?.optimistic?.[9]?.propertyValue || 0) - (effectivePurchasePrice || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'X,XXX,XXX'} (10-Year Projection)**
 
 Base case scenario projects Property Value of $[X,XXX,XXX] at Year 10, representing capital gains of $[XXX,XXX] ([XX.X]% total return). Optimistic scenario delivers $[X,XXX,XXX] value with gains of $[X,XXX,XXX] ([XX.X]% return). These projections assume [X-X]% annual appreciation, consistent with historical [City] metropolitan trends and supported by [Suburb]'s improving infrastructure, employment growth, and population inflows. Leverage amplifies returns: $[XXX,XXX] equity deployed generates $[XXX,XXX]+ appreciation, producing [X.X]x to [X.X]x return on equity invested. This capital appreciation fundamentally underwrites the investment case and offsets negative cashflow across projection period.
 
