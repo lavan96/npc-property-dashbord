@@ -78,6 +78,16 @@ export interface PreGenerationData {
   // Construction Schedule Preset Mode (new build only)
   schedulePreset?: 'rapid' | 'even' | 'custom';
   customStageMonths?: { [stageIndex: number]: number };
+  
+  // Zoning Information
+  zoningCode?: string;
+  zoningDescription?: string;
+  permittedUses?: string;
+  developmentPotential?: string;
+  zoningOverlays?: string;
+  minimumLotSize?: number;
+  maximumHeight?: number;
+  floorSpaceRatio?: number;
 }
 
 interface PreGenerationOverridesProps {
@@ -213,6 +223,16 @@ export function PreGenerationOverrides({
   const [customStageMonths, setCustomStageMonths] = useState<{ [stageIndex: number]: number }>({
     0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7
   });
+  
+  // Zoning Information
+  const [zoningCode, setZoningCode] = useState<string>('');
+  const [zoningDescription, setZoningDescription] = useState<string>('');
+  const [permittedUses, setPermittedUses] = useState<string>('');
+  const [developmentPotential, setDevelopmentPotential] = useState<string>('');
+  const [zoningOverlays, setZoningOverlays] = useState<string>('');
+  const [minimumLotSize, setMinimumLotSize] = useState<string>('');
+  const [maximumHeight, setMaximumHeight] = useState<string>('');
+  const [floorSpaceRatio, setFloorSpaceRatio] = useState<string>('');
   
   // State detection
   const [detectedState, setDetectedState] = useState<string>('All');
@@ -587,6 +607,15 @@ export function PreGenerationOverrides({
       stageCompletionPercent: buildType === 'new_build' && stageCompletionPercent ? parseFloat(stageCompletionPercent) : undefined,
       schedulePreset: buildType === 'new_build' ? schedulePreset : undefined,
       customStageMonths: buildType === 'new_build' && schedulePreset === 'custom' ? customStageMonths : undefined,
+      // Zoning Information
+      zoningCode: zoningCode || undefined,
+      zoningDescription: zoningDescription || undefined,
+      permittedUses: permittedUses || undefined,
+      developmentPotential: developmentPotential || undefined,
+      zoningOverlays: zoningOverlays || undefined,
+      minimumLotSize: minimumLotSize ? parseFloat(minimumLotSize) : undefined,
+      maximumHeight: maximumHeight ? parseFloat(maximumHeight) : undefined,
+      floorSpaceRatio: floorSpaceRatio ? parseFloat(floorSpaceRatio) : undefined,
     };
     
     onDataChange(data);
@@ -603,6 +632,8 @@ export function PreGenerationOverrides({
     isFirstHomeBuyer, stageDepositPercent, stageSlabPercent, stageFramePercent, 
     stageLockupPercent, stageFixingPercent, stageCompletionPercent,
     schedulePreset, customStageMonths,
+    zoningCode, zoningDescription, permittedUses, developmentPotential,
+    zoningOverlays, minimumLotSize, maximumHeight, floorSpaceRatio,
     onDataChange
   ]);
 
