@@ -35,6 +35,7 @@ export interface OverrideFieldConfig {
  */
 export type OverrideCategory = 
   | 'property'
+  | 'zoning'
   | 'loan'
   | 'rental'
   | 'expenses_rates'
@@ -121,6 +122,16 @@ export interface UnifiedOverrideData {
   stageCompletionPercent?: number;
   schedulePreset?: 'rapid' | 'even' | 'custom';
   customStageMonths?: { [stageIndex: number]: number };
+  
+  // Zoning Information
+  zoningCode?: string;
+  zoningDescription?: string;
+  permittedUses?: string;
+  developmentPotential?: string;
+  zoningOverlays?: string;
+  minimumLotSize?: number;
+  maximumHeight?: number;
+  floorSpaceRatio?: number;
 }
 
 /**
@@ -232,6 +243,164 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'number',
     suffix: 'sqm',
     placeholder: '180',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  
+  // ===== ZONING & PLANNING =====
+  {
+    key: 'zoningCode',
+    label: 'Zoning Code',
+    category: 'zoning',
+    type: 'select',
+    options: [
+      { value: 'R1', label: 'R1 - General Residential' },
+      { value: 'R2', label: 'R2 - Low Density Residential' },
+      { value: 'R3', label: 'R3 - Medium Density Residential' },
+      { value: 'R4', label: 'R4 - High Density Residential' },
+      { value: 'R5', label: 'R5 - Large Lot Residential' },
+      { value: 'RU1', label: 'RU1 - Primary Production' },
+      { value: 'RU2', label: 'RU2 - Rural Landscape' },
+      { value: 'RU5', label: 'RU5 - Village' },
+      { value: 'B1', label: 'B1 - Neighbourhood Centre' },
+      { value: 'B2', label: 'B2 - Local Centre' },
+      { value: 'B4', label: 'B4 - Mixed Use' },
+      { value: 'IN1', label: 'IN1 - General Industrial' },
+      { value: 'IN2', label: 'IN2 - Light Industrial' },
+      { value: 'SP1', label: 'SP1 - Special Activities' },
+      { value: 'SP2', label: 'SP2 - Infrastructure' },
+      { value: 'RE1', label: 'RE1 - Public Recreation' },
+      { value: 'E1', label: 'E1 - National Parks' },
+      { value: 'E2', label: 'E2 - Environmental Conservation' },
+      { value: 'E3', label: 'E3 - Environmental Management' },
+      { value: 'E4', label: 'E4 - Environmental Living' },
+      { value: 'other', label: 'Other (Specify in Description)' }
+    ],
+    placeholder: 'Select zoning code',
+    tooltip: 'Primary zoning classification for the property',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'zoningDescription',
+    label: 'Zoning Description',
+    category: 'zoning',
+    type: 'select',
+    options: [
+      { value: 'residential', label: 'Residential' },
+      { value: 'rural_residential', label: 'Rural Residential' },
+      { value: 'commercial', label: 'Commercial' },
+      { value: 'mixed_use', label: 'Mixed Use' },
+      { value: 'industrial', label: 'Industrial' },
+      { value: 'rural', label: 'Rural/Agricultural' },
+      { value: 'environmental', label: 'Environmental' }
+    ],
+    placeholder: 'Select description',
+    tooltip: 'General zoning category',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'permittedUses',
+    label: 'Permitted Uses',
+    category: 'zoning',
+    type: 'select',
+    options: [
+      { value: 'dwelling_only', label: 'Dwelling House Only' },
+      { value: 'dual_occupancy', label: 'Dual Occupancy Permitted' },
+      { value: 'multi_dwelling', label: 'Multi-Dwelling Housing' },
+      { value: 'attached_dwelling', label: 'Attached Dwelling' },
+      { value: 'secondary_dwelling', label: 'Secondary Dwelling (Granny Flat)' },
+      { value: 'home_business', label: 'Home Business' },
+      { value: 'boarding_house', label: 'Boarding House' },
+      { value: 'group_home', label: 'Group Home' },
+      { value: 'childcare', label: 'Childcare Centre' },
+      { value: 'mixed', label: 'Mixed Residential/Commercial' }
+    ],
+    placeholder: 'Select permitted uses',
+    tooltip: 'Primary permitted land uses',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'developmentPotential',
+    label: 'Development Potential',
+    category: 'zoning',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'No Development Potential' },
+      { value: 'subdivision', label: 'Subdivision Possible' },
+      { value: 'dual_occ', label: 'Dual Occupancy Potential' },
+      { value: 'townhouses', label: 'Townhouse Development' },
+      { value: 'apartments', label: 'Apartment Development' },
+      { value: 'granny_flat', label: 'Granny Flat Addition' },
+      { value: 'mixed_use', label: 'Mixed Use Development' },
+      { value: 'stca', label: 'STCA (Subject to Council Approval)' }
+    ],
+    placeholder: 'Select development potential',
+    tooltip: 'Potential for future development',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'zoningOverlays',
+    label: 'Planning Overlays',
+    category: 'zoning',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'No Significant Overlays' },
+      { value: 'heritage', label: 'Heritage Conservation' },
+      { value: 'flood', label: 'Flood Planning Area' },
+      { value: 'bushfire', label: 'Bushfire Prone Land' },
+      { value: 'environmental', label: 'Environmental Protection' },
+      { value: 'airport', label: 'Airport/Flight Path' },
+      { value: 'acid_sulfate', label: 'Acid Sulfate Soils' },
+      { value: 'coastal', label: 'Coastal Zone' },
+      { value: 'contaminated', label: 'Contaminated Land' },
+      { value: 'multiple', label: 'Multiple Overlays Apply' }
+    ],
+    placeholder: 'Select overlays',
+    tooltip: 'Planning overlays that may restrict development',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'minimumLotSize',
+    label: 'Minimum Lot Size',
+    category: 'zoning',
+    type: 'number',
+    suffix: 'sqm',
+    placeholder: '450',
+    tooltip: 'Minimum lot size for subdivision',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'maximumHeight',
+    label: 'Max Building Height',
+    category: 'zoning',
+    type: 'number',
+    suffix: 'm',
+    placeholder: '8.5',
+    tooltip: 'Maximum building height allowed',
+    showForBuildType: 'both',
+    showInPreGen: true,
+    showInManualOverride: true
+  },
+  {
+    key: 'floorSpaceRatio',
+    label: 'Floor Space Ratio (FSR)',
+    category: 'zoning',
+    type: 'number',
+    placeholder: '0.5',
+    tooltip: 'Maximum floor space ratio (e.g., 0.5 = 50% of land area)',
     showForBuildType: 'both',
     showInPreGen: true,
     showInManualOverride: true
@@ -795,6 +964,7 @@ export function getFieldConfig(key: string): OverrideFieldConfig | undefined {
  */
 export const CATEGORY_INFO: Record<OverrideCategory, { label: string; icon: string }> = {
   property: { label: 'Property Details', icon: 'Building2' },
+  zoning: { label: 'Zoning & Planning', icon: 'Map' },
   loan: { label: 'Loan & Deposit', icon: 'Percent' },
   rental: { label: 'Rental Income', icon: 'TrendingUp' },
   expenses_rates: { label: 'Rates & Taxes', icon: 'DollarSign' },

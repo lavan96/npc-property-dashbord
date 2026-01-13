@@ -7,6 +7,7 @@ import { Building2, Info, Car, Ruler } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { useCallback } from 'react';
 import { BuildTypeSelector } from '../shared/BuildTypeSelector';
+import { ZoningSection } from './ZoningSection';
 
 interface PropertyTabProps {
   buildType: 'new_build' | 'existing_property';
@@ -28,6 +29,23 @@ interface PropertyTabProps {
   setLandSizeSqm?: (value: string) => void;
   buildSizeSqm?: string;
   setBuildSizeSqm?: (value: string) => void;
+  // Zoning fields
+  zoningCode?: string;
+  setZoningCode?: (value: string) => void;
+  zoningDescription?: string;
+  setZoningDescription?: (value: string) => void;
+  permittedUses?: string;
+  setPermittedUses?: (value: string) => void;
+  developmentPotential?: string;
+  setDevelopmentPotential?: (value: string) => void;
+  zoningOverlays?: string;
+  setZoningOverlays?: (value: string) => void;
+  minimumLotSize?: string;
+  setMinimumLotSize?: (value: string) => void;
+  maximumHeight?: string;
+  setMaximumHeight?: (value: string) => void;
+  floorSpaceRatio?: string;
+  setFloorSpaceRatio?: (value: string) => void;
   disabled?: boolean;
 }
 
@@ -50,6 +68,22 @@ export function PropertyTab({
   setLandSizeSqm,
   buildSizeSqm,
   setBuildSizeSqm,
+  zoningCode,
+  setZoningCode,
+  zoningDescription,
+  setZoningDescription,
+  permittedUses,
+  setPermittedUses,
+  developmentPotential,
+  setDevelopmentPotential,
+  zoningOverlays,
+  setZoningOverlays,
+  minimumLotSize,
+  setMinimumLotSize,
+  maximumHeight,
+  setMaximumHeight,
+  floorSpaceRatio,
+  setFloorSpaceRatio,
   disabled = false
 }: PropertyTabProps) {
   const isNewBuild = buildType === 'new_build';
@@ -274,6 +308,29 @@ export function PropertyTab({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Zoning Section */}
+      {setZoningCode && setZoningDescription && (
+        <ZoningSection
+          zoningCode={zoningCode || ''}
+          setZoningCode={setZoningCode}
+          zoningDescription={zoningDescription || ''}
+          setZoningDescription={setZoningDescription}
+          permittedUses={permittedUses || ''}
+          setPermittedUses={setPermittedUses || (() => {})}
+          developmentPotential={developmentPotential || ''}
+          setDevelopmentPotential={setDevelopmentPotential || (() => {})}
+          zoningOverlays={zoningOverlays || ''}
+          setZoningOverlays={setZoningOverlays || (() => {})}
+          minimumLotSize={minimumLotSize || ''}
+          setMinimumLotSize={setMinimumLotSize || (() => {})}
+          maximumHeight={maximumHeight || ''}
+          setMaximumHeight={setMaximumHeight || (() => {})}
+          floorSpaceRatio={floorSpaceRatio || ''}
+          setFloorSpaceRatio={setFloorSpaceRatio || (() => {})}
+          disabled={disabled}
+        />
       )}
     </div>
   );
