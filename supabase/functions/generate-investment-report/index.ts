@@ -548,6 +548,17 @@ serve(async (req) => {
     const effectiveBeds = mergedOverrides.bedrooms || propertyDetails?.beds || 3;
     const effectiveBaths = mergedOverrides.bathrooms || propertyDetails?.baths || 2;
     
+    // Zoning effective values
+    const effectiveZoningCode = mergedOverrides.zoningCode || null;
+    const effectiveZoningDescription = mergedOverrides.zoningDescription || null;
+    const effectivePermittedUses = mergedOverrides.permittedUses || null;
+    const effectiveDevelopmentPotential = mergedOverrides.developmentPotential || null;
+    const effectiveZoningOverlays = mergedOverrides.zoningOverlays || null;
+    const effectiveMinimumLotSize = mergedOverrides.minimumLotSize || null;
+    const effectiveMaximumHeight = mergedOverrides.maximumHeight || null;
+    const effectiveFloorSpaceRatio = mergedOverrides.floorSpaceRatio || null;
+    const hasZoningData = effectiveZoningCode || effectiveZoningDescription || effectivePermittedUses || effectiveDevelopmentPotential;
+    
     console.log('📊 EFFECTIVE VALUES (after merging overrides):');
     console.log(`  Purchase Price: $${effectivePurchasePrice?.toLocaleString()} ${mergedOverrides.purchasePrice ? '(OVERRIDE)' : '(from property)'}`);
     console.log(`  Weekly Rent: $${effectiveWeeklyRent} ${mergedOverrides.weeklyRent ? '(OVERRIDE)' : '(from property)'}`);
@@ -1796,6 +1807,45 @@ This valuation reflects typical [Suburb] [property type] prices for [configurati
 **Property Position Relative to Market:**
 
 [Suburb] [property type] at this specification typically command [premium/discount] pricing relative to [comparison suburbs] due to [factors]. Properties on [Street] benefit from [specific advantages].
+
+---
+
+# Zoning & Planning Analysis
+
+${hasZoningData ? `**Zoning Classification:**
+
+| Zoning Attribute | Value |
+|-----------------|-------|
+| Zoning Code | ${effectiveZoningCode || 'Not specified'} |
+| Category | ${effectiveZoningDescription || 'Not specified'} |
+| Permitted Uses | ${effectivePermittedUses ? effectivePermittedUses.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Standard residential uses'} |
+| Development Potential | ${effectiveDevelopmentPotential ? effectiveDevelopmentPotential.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Subject to council approval'} |
+| Planning Overlays | ${effectiveZoningOverlays ? effectiveZoningOverlays.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No significant overlays identified'} |
+
+**Development Controls:**
+
+| Control | Value |
+|---------|-------|
+| Minimum Lot Size | ${effectiveMinimumLotSize ? effectiveMinimumLotSize + ' m²' : 'Refer to LEP'} |
+| Maximum Building Height | ${effectiveMaximumHeight ? effectiveMaximumHeight + ' m' : 'Refer to LEP'} |
+| Floor Space Ratio (FSR) | ${effectiveFloorSpaceRatio ? effectiveFloorSpaceRatio + ':1' : 'Refer to LEP'} |
+
+**Zoning Investment Implications:**
+
+The ${effectiveZoningCode || 'residential'} zoning ${effectiveDevelopmentPotential && effectiveDevelopmentPotential !== 'none' ? 'provides potential for ' + effectiveDevelopmentPotential.replace(/_/g, ' ') + ', which could enhance long-term investment value' : 'is typical for the area and supports standard residential use'}. ${effectiveZoningOverlays && effectiveZoningOverlays !== 'none' ? 'The ' + effectiveZoningOverlays.replace(/_/g, ' ') + ' overlay may impact development options and should be factored into renovation or development plans.' : 'No significant planning overlays were identified that would restrict development.'}
+
+${effectivePermittedUses && (effectivePermittedUses.includes('dual') || effectivePermittedUses.includes('secondary') || effectivePermittedUses.includes('multi')) ? '**Value-Add Opportunity:** The permitted uses include options for additional dwelling(s), which could provide future income diversification or development upside.' : ''}
+
+**Recommendation:** Verify all zoning information with the local council planning portal before proceeding with any development applications.` : `**Zoning Information:**
+
+Specific zoning data was not provided for this property. For investment analysis purposes, please verify the following with the local council:
+
+- Current zoning classification and permitted uses
+- Any planning overlays (heritage, flood, bushfire zones)
+- Development controls including minimum lot size, height limits, and FSR
+- Future rezoning potential in the area's strategic planning documents
+
+**Note:** Zoning can significantly impact development potential and long-term investment value. We recommend obtaining a Section 10.7 (formerly Section 149) Planning Certificate from the local council for comprehensive zoning information.`}
 
 ---
 

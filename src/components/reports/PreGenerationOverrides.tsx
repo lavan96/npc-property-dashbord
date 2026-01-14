@@ -704,6 +704,22 @@ export function PreGenerationOverrides({
                 setLandSizeSqm={setLandSizeSqm}
                 buildSizeSqm={buildSizeSqm}
                 setBuildSizeSqm={setBuildSizeSqm}
+                zoningCode={zoningCode}
+                setZoningCode={setZoningCode}
+                zoningDescription={zoningDescription}
+                setZoningDescription={setZoningDescription}
+                permittedUses={permittedUses}
+                setPermittedUses={setPermittedUses}
+                developmentPotential={developmentPotential}
+                setDevelopmentPotential={setDevelopmentPotential}
+                zoningOverlays={zoningOverlays}
+                setZoningOverlays={setZoningOverlays}
+                minimumLotSize={minimumLotSize}
+                setMinimumLotSize={setMinimumLotSize}
+                maximumHeight={maximumHeight}
+                setMaximumHeight={setMaximumHeight}
+                floorSpaceRatio={floorSpaceRatio}
+                setFloorSpaceRatio={setFloorSpaceRatio}
                 disabled={disabled}
               />
             </TabsContent>
