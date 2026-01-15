@@ -1521,21 +1521,66 @@ Produce a comprehensive suburb investment snapshot following the structure above
 
     // STRICT REFERENCE TEMPLATE - Based on the Naidu Property Consulting Services Investment Report format
     // This template enforces the exact structure, length, content, and sources matching the reference PDF
+    
+    // ============================================================================
+    // STANDARDIZED PROPERTY TYPE - Consistent terminology throughout report
+    // ============================================================================
+    const rawPropertyType = propertyDetails?.propertyType?.toLowerCase() || '';
+    const isStrataProperty = rawPropertyType.includes('unit') || rawPropertyType.includes('apartment') || 
+                            rawPropertyType.includes('flat') || rawPropertyType.includes('townhouse') ||
+                            rawPropertyType.includes('villa') || rawPropertyType.includes('studio');
+    const standardizedPropertyType = isStrataProperty 
+      ? (rawPropertyType.includes('apartment') ? 'Apartment' : 
+         rawPropertyType.includes('townhouse') ? 'Townhouse' :
+         rawPropertyType.includes('villa') ? 'Villa' :
+         rawPropertyType.includes('studio') ? 'Studio Apartment' : 'Unit')
+      : (rawPropertyType.includes('house') ? 'House' :
+         rawPropertyType.includes('duplex') ? 'Duplex' :
+         rawPropertyType || 'Residential Property');
+    
+    console.log(`🏠 Property Type Standardization: "${rawPropertyType}" → "${standardizedPropertyType}" (isStrata: ${isStrataProperty})`);
+    
+    // ============================================================================
+    // PRE-CALCULATED YIELD VALUES - Single source of truth from financial service
+    // These values MUST be used exactly in the report, not recalculated by AI
+    // ============================================================================
+    const effectiveOccupancyRate = mergedOverrides.occupancyRate || 52; // weeks per year
+    const annualRentIncome = effectiveWeeklyRent * effectiveOccupancyRate;
+    const preCalculatedGrossYield = effectivePurchasePrice > 0 
+      ? ((annualRentIncome / effectivePurchasePrice) * 100).toFixed(2)
+      : enhancedData.financials?.keyMetrics?.grossRentalYield || '0.00';
+    const preCalculatedNetYield = enhancedData.financials?.keyMetrics?.netRentalYield || '0.00';
+    
+    console.log(`📊 Pre-calculated Yields: Gross=${preCalculatedGrossYield}%, Net=${preCalculatedNetYield}%`);
+    console.log(`📅 Occupancy: ${effectiveOccupancyRate} weeks/year (${((effectiveOccupancyRate/52)*100).toFixed(0)}%)`);
+    
     const propertyPrompt = `You are an expert Australian property investment analyst for Naidu Property Consulting Services.
 Your role is to produce comprehensive, professional-grade investment reports following the EXACT structure, length, and format of our reference template.
+
+**CRITICAL CALCULATION RULES:**
+1. OCCUPANCY ASSUMPTION: Use 100% occupancy rate (52 weeks per year) for ALL rental income calculations unless explicitly overridden. This is industry standard for investment analysis.
+2. YIELD VALUES: Use the pre-calculated yield values provided below EXACTLY - do NOT recalculate or estimate yields.
+3. PROPERTY TYPE: Use the standardized property type "${standardizedPropertyType}" consistently throughout the report - never switch terminology.
+
+**PRE-CALCULATED FINANCIAL VALUES (USE THESE EXACTLY - DO NOT RECALCULATE):**
+- Gross Rental Yield: ${preCalculatedGrossYield}%
+- Net Rental Yield: ${preCalculatedNetYield}%
+- Annual Rental Income: $${annualRentIncome.toLocaleString()} (based on ${effectiveOccupancyRate} weeks @ $${effectiveWeeklyRent}/week)
+- Occupancy Rate: ${effectiveOccupancyRate} weeks per year (${((effectiveOccupancyRate/52)*100).toFixed(0)}% occupancy)
 
 **PROPERTY ADDRESS TO ANALYZE: ${formattedInput}**
 
 ${propertyDetails ? `**Property Details Provided:**
 - Price: $${propertyDetails.price?.toLocaleString() || 'Not specified'}
 - Weekly Rent: $${propertyDetails.weeklyRent || 'Not specified'}
-- Property Type: ${propertyDetails.propertyType || 'Not specified'}
+- Property Type: ${standardizedPropertyType}
 - Bedrooms: ${propertyDetails.beds || 'Not specified'}
 - Bathrooms: ${propertyDetails.baths || 'Not specified'}
 ${propertyDetails.landSizeSqm ? `- Land Size: ${propertyDetails.landSizeSqm}m²` : ''}
 ${propertyDetails.buildSizeSqm ? `- Building Size: ${propertyDetails.buildSizeSqm}m²` : ''}
 ${propertyDetails.carSpaces ? `- Car Spaces: ${propertyDetails.carSpaces}` : ''}
-${propertyDetails.isNewBuild ? `- New Build: Yes` : ''}` : ''}
+${propertyDetails.isNewBuild ? `- New Build: Yes` : ''}
+${isStrataProperty ? `- Strata Property: Yes (body corporate/strata fees apply)` : ''}` : ''}
 
 ---
 
@@ -1863,13 +1908,14 @@ Based on ${documentContent ? 'the provided property listing data' : 'location in
 
 | Property Characteristic | ${documentContent ? 'Value' : 'Estimated Value'} |
 |------------------------|-------|
-| Property Type | ${propertyDetails?.propertyType || 'Single-family house'} |
+| Property Type | ${standardizedPropertyType} |
 | Land Size | ${effectiveLandSizeSqm ? effectiveLandSizeSqm + ' m²' : 'Estimated XXX-XXX m² (typical for suburb)'} |
-| Bedrooms | ${effectiveBeds || 'X (typical family home)'} |
+| Bedrooms | ${effectiveBeds || 'X (typical for property type)'} |
 | Bathrooms | ${effectiveBaths || 'X-X (typical modern standard)'} |
-| Parking | ${propertyDetails?.carSpaces || 'X-X spaces (garaging and driveway)'} |
-| Year Built | ${propertyDetails?.yearBuilt || 'Estimated XXXX-XXXX (modern suburban standard)'} |
-| Condition | ${propertyDetails?.condition || 'Good to excellent (typical for maintained homes)'} |
+| Parking | ${propertyDetails?.carSpaces || 'X-X spaces'} |
+| Year Built | ${propertyDetails?.yearBuilt || 'Estimated XXXX-XXXX'} |
+| Condition | ${propertyDetails?.condition || 'Good to excellent'} |
+${isStrataProperty ? `| Strata Type | ${standardizedPropertyType} within strata scheme |` : ''}
 
 **${documentContent ? 'Property Price' : 'Estimated Property Value'}:** $${effectivePurchasePrice?.toLocaleString() || 'X,XXX,XXX'} AUD
 
@@ -1965,26 +2011,28 @@ Note: Land tax is highly property-specific and depends on aggregated landholding
 
 | Property Type | Estimated Weekly Rent | Annual Rental Income |
 |--------------|----------------------|---------------------|
-| ${effectiveBeds || 'X'}-Bed ${propertyDetails?.propertyType || 'Family Home'} | $${effectiveWeeklyRent || (enhancedData.financials?.income?.weeklyRent) || 'XXX'} - $${(effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50 || 'XXX'} | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} - $${(((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50) * 52).toLocaleString() || 'XX,XXX'} |
+| ${effectiveBeds || 'X'}-Bed ${standardizedPropertyType} | $${effectiveWeeklyRent || (enhancedData.financials?.income?.weeklyRent) || 'XXX'} - $${(effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) + 50 || 'XXX'} | $${annualRentIncome.toLocaleString() || 'XX,XXX'} - $${(annualRentIncome + (50 * effectiveOccupancyRate)).toLocaleString() || 'XX,XXX'} |
 
-**Selected Rental Assumption:** $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'}/week = $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} annually (${documentContent ? 'based on listing data' : mergedOverrides.weeklyRent ? 'user override' : 'conservative estimate'})
+**Selected Rental Assumption:** $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'}/week × ${effectiveOccupancyRate} weeks = $${annualRentIncome.toLocaleString() || 'XX,XXX'} annually (${effectiveOccupancyRate === 52 ? '100% occupancy' : `${((effectiveOccupancyRate/52)*100).toFixed(0)}% occupancy`})
 
-**Gross Rental Yield Calculation:**
+**IMPORTANT: All calculations use ${effectiveOccupancyRate} weeks/year occupancy (${((effectiveOccupancyRate/52)*100).toFixed(0)}%). Do NOT interpret this as ${effectiveOccupancyRate}% occupancy - it is ${effectiveOccupancyRate} WEEKS per year.**
+
+**Gross Rental Yield Calculation (USE THESE EXACT VALUES):**
 
 | Metric | Calculation | Value |
 |--------|-------------|-------|
-| Annual Rental Income | $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Annual Rental Income | $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × ${effectiveOccupancyRate} weeks | $${annualRentIncome.toLocaleString() || 'XX,XXX'} |
 | Property Price | Reference value | $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} |
-| Gross Rental Yield | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} ÷ $${effectivePurchasePrice?.toLocaleString() || (enhancedData.financials?.initialCosts?.propertyValue?.toLocaleString()) || 'X,XXX,XXX'} × 100 | ${enhancedData.financials?.keyMetrics?.grossRentalYield || 'X.XX'}% |
+| **Gross Rental Yield** | **Pre-calculated (DO NOT recalculate)** | **${preCalculatedGrossYield}%** |
 
-**Net Rental Yield Calculation:**
+**Net Rental Yield Calculation (USE THESE EXACT VALUES):**
 
 | Metric | Calculation | Value |
 |--------|-------------|-------|
-| Annual Income | $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × 52 weeks | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Annual Income | $${effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 'XXX'} × ${effectiveOccupancyRate} weeks | $${annualRentIncome.toLocaleString() || 'XX,XXX'} |
 | Annual Expenses | Property Mgmt + Maintenance + Rates + Insurance | $${enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax?.toLocaleString() || 'X,XXX'} |
-| Net Annual Return | Income - Expenses | $${(((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52) - (enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax || 0)).toLocaleString() || 'XX,XXX'} |
-| Net Rental Yield | Net Return ÷ Property Price × 100 | ${enhancedData.financials?.keyMetrics?.netRentalYield || 'X.XX'}% |
+| Net Annual Return | Income - Expenses | $${(annualRentIncome - (enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax || 0)).toLocaleString() || 'XX,XXX'} |
+| **Net Rental Yield** | **Pre-calculated (DO NOT recalculate)** | **${preCalculatedNetYield}%** |
 
 **Yield Commentary:**
 
@@ -2031,27 +2079,31 @@ Note: Blended calculation for annual presentation; actual P&I repayments decline
 
 | Item | Amount (AUD) |
 |------|--------------|
-| Gross Rental Income | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Gross Rental Income (${effectiveOccupancyRate} weeks @ $${effectiveWeeklyRent}/wk) | $${annualRentIncome.toLocaleString() || 'XX,XXX'} |
 | Less: P&I Loan Repayment | ($${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
 | Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
 | Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
 | Less: Property Management (7%) | ($${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
 | Less: Insurance | ($${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
 | Less: Maintenance | ($1,500) |
+${isStrataProperty ? `| Less: Body Corporate/Strata | ($${enhancedData.financials?.annualCosts?.bodyCorporate?.toLocaleString() || mergedOverrides.bodyCorporateFees?.toLocaleString() || '3,000'}) |` : ''}
 | **Net Cashflow Before Tax** | **($${Math.abs(enhancedData.financials?.keyMetrics?.annualNet || 0).toLocaleString() || 'XX,XXX'})** |
 
 **Cashflow Analysis - Interest-Only Scenario (Year 1):**
 
 | Item | Amount (AUD) |
 |------|--------------|
-| Gross Rental Income | $${((effectiveWeeklyRent || enhancedData.financials?.income?.weeklyRent || 0) * 52).toLocaleString() || 'XX,XXX'} |
+| Gross Rental Income (${effectiveOccupancyRate} weeks @ $${effectiveWeeklyRent}/wk) | $${annualRentIncome.toLocaleString() || 'XX,XXX'} |
 | Less: Interest-Only Repayment | ($${(enhancedData.financials?.loanDetails?.interestOnlyPayment ? enhancedData.financials.loanDetails.interestOnlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
 | Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
 | Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
 | Less: Property Management (7%) | ($${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
 | Less: Insurance | ($${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
 | Less: Maintenance | ($1,500) |
+${isStrataProperty ? `| Less: Body Corporate/Strata | ($${enhancedData.financials?.annualCosts?.bodyCorporate?.toLocaleString() || mergedOverrides.bodyCorporateFees?.toLocaleString() || '3,000'}) |` : ''}
 | **Net Cashflow Before Tax** | **($${Math.abs((enhancedData.financials?.keyMetrics?.annualNet || 0) - ((enhancedData.financials?.loanDetails?.monthlyPayment || 0) - (enhancedData.financials?.loanDetails?.interestOnlyPayment || 0)) * 12).toLocaleString() || 'XX,XXX'})** |
+
+**IMPORTANT NOTE:** Gross Rental Income assumes ${effectiveOccupancyRate} weeks per year occupancy (${((effectiveOccupancyRate/52)*100).toFixed(0)}%), which is industry standard for investment analysis.
 
 **Cashflow Commentary (150+ words required):**
 
@@ -2559,7 +2611,8 @@ ${sourceSpecificInstructions}
       // Cash Flow Analysis
       if (manualOverrides.depreciation) overrideLines.push(`Depreciation: $${manualOverrides.depreciation.toLocaleString()} p.a.`);
       if (manualOverrides.taxRate) overrideLines.push(`Marginal Tax Rate: ${manualOverrides.taxRate}%`);
-      if (manualOverrides.occupancyRate) overrideLines.push(`Occupancy Rate: ${manualOverrides.occupancyRate} weeks/year`);
+      // CLARIFIED: Occupancy rate is in WEEKS per year, NOT percentage
+      if (manualOverrides.occupancyRate) overrideLines.push(`Occupancy Rate: ${manualOverrides.occupancyRate} WEEKS per year (equals ${((manualOverrides.occupancyRate/52)*100).toFixed(0)}% annual occupancy - DO NOT confuse with ${manualOverrides.occupancyRate}%)`);
       if (manualOverrides.marketValueNow) overrideLines.push(`Current Market Value: $${manualOverrides.marketValueNow.toLocaleString()}`);
       
       // Property Specs
@@ -3120,7 +3173,7 @@ YOUR DEDICATED PROPERTY PARTNER
         bathrooms: propertyDetails?.baths || null,
         parking: propertyDetails?.parking || null,
         year_built: propertyDetails?.yearBuilt || null,
-        property_type: propertyDetails?.propertyType || 'house',
+        property_type: standardizedPropertyType || propertyDetails?.propertyType || 'Residential Property',
         zoning: propertyDetails?.zoning || null,
         council_area: propertyDetails?.councilArea || null
       };
