@@ -602,11 +602,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       },
       // Total Annual Costs table row - handle malformed format where amount is in Cost Category column
       // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
+      // Note: Include \.?\d* to match decimal amounts like $11,848.99 to prevent duplicate decimals
       {
-        pattern: /\|\s*\$[\d,]+\s*\|\s*Sum of ALL ongoing costs[^\n]*/gi,
+        pattern: /\|\s*\$[\d,]+\.?\d*\s*\|\s*Sum of ALL ongoing costs[^\n]*/gi,
         getValue: () => totalAnnualCostsWithLandTax,
         format: (v) => {
-          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const rounded = Math.round(v || 0);
+          const str = String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           return '| **Total Annual Costs** | **$' + str + '** | **Sum of ALL ongoing costs** |';
         },
         isFullLineReplacement: true
@@ -615,20 +617,21 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         pattern: /\|\s*\*?\*?Total Annual Costs\*?\*?\s*\|[^\n]*/gi,
         getValue: () => totalAnnualCostsWithLandTax,
         format: (v) => {
-          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          const rounded = Math.round(v || 0);
+          const str = String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           return '| **Total Annual Costs** | **$' + str + '** | **Sum of ALL ongoing costs** |';
         },
         isFullLineReplacement: true
       },
       {
-        pattern: /\*\*Total Annual Costs\*\*.*?\$[\d,]+/gi,
+        pattern: /\*\*Total Annual Costs\*\*.*?\$[\d,]+\.?\d*/gi,
         getValue: () => totalAnnualCostsWithLandTax,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        format: (v) => `$${Math.round(v || 0).toLocaleString()}`
       },
       {
-        pattern: /Total Annual Costs.*?\$[\d,]+/gi,
+        pattern: /Total Annual Costs.*?\$[\d,]+\.?\d*/gi,
         getValue: () => totalAnnualCostsWithLandTax,
-        format: (v) => `$${v?.toLocaleString() || '0'}`
+        format: (v) => `$${Math.round(v || 0).toLocaleString()}`
       },
       // Annual Expenses row in Gross & Net Yield table - handle table rows starting with |
       {
@@ -1374,7 +1377,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             // Check if this is a total row (contains "Total" and has amount in the text)
             const lineText = line.toLowerCase();
-            const isTotalRow = lineText.includes('total') && /\$[\d,]+/.test(line);
+            const isTotalRow = lineText.includes('total') && /\$[\d,]+\.?\d*/.test(line);
             
             // FIX: Handle malformed Total row where amount is in first cell and description in second
             // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
@@ -1395,8 +1398,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             if (cells.length >= 2 && firstCellIsDollarAmount && secondCellIsOngoingCosts) {
               console.log('✅ Fixing malformed Total row:', cells);
+              // Extract the numeric value, parse it, round it, and reformat to prevent duplicate decimals
+              const numericValue = parseFloat(firstCellClean.replace(/[$,]/g, '')) || 0;
+              const formattedValue = Math.round(numericValue).toLocaleString();
               // Restructure to: [Label, Amount, Description]
-              return ['**Total Annual Costs**', '**$' + firstCellClean.replace('$', '') + '**', '**Sum of ALL ongoing costs**'];
+              return ['**Total Annual Costs**', '**$' + formattedValue + '**', '**Sum of ALL ongoing costs**'];
             }
             
             // For total rows, preserve all cells including amounts
@@ -1683,7 +1689,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             const secondCellClean = (row[1] || '').replace(/\*+/g, '').toLowerCase();
             if (/^\$[\d,\.]+$/.test(firstCellClean) && (secondCellClean.includes('sum of') || secondCellClean.includes('ongoing costs'))) {
               console.log('🔧 BACKUP FIX: Restructuring malformed Total row at draw time:', row);
-              row = ['**Total Annual Costs**', '**$' + firstCellClean.replace('$', '') + '**', '**Sum of ALL ongoing costs**'];
+              // Extract the numeric value, parse it, round it, and reformat to prevent duplicate decimals
+              const numericValue = parseFloat(firstCellClean.replace(/[$,]/g, '')) || 0;
+              const formattedValue = Math.round(numericValue).toLocaleString();
+              row = ['**Total Annual Costs**', '**$' + formattedValue + '**', '**Sum of ALL ongoing costs**'];
             }
           }
           
