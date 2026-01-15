@@ -28,10 +28,10 @@ const REPORT_SECTIONS = [
   {
     id: 'section3',
     name: 'Property & Financial Analysis',
-    sections: ['Property-Level Information', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
-    maxTokens: 4500,
-    minContentLength: 8000,
-    requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent'],
+    sections: ['Property-Level Information', 'Zoning & Planning Analysis', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
+    maxTokens: 5000,
+    minContentLength: 9000,
+    requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent', 'zoning'],
   },
   {
     id: 'section4',
@@ -447,7 +447,7 @@ serve(async (req) => {
             },
             { 
               index: 2, 
-              startPatterns: [/##?\s*(Property-Level|Purchase\s*&\s*Ongoing)/i],
+              startPatterns: [/##?\s*(Property-Level|Zoning\s*&\s*Planning|Purchase\s*&\s*Ongoing)/i],
               endPatterns: [/##?\s*(Cashflow\s*Analysis|Cash\s*Flow\s*Analysis)/i],
               name: 'Property & Financial Analysis'
             },
