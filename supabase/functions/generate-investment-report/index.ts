@@ -90,8 +90,65 @@ function validateSectionContent(
   };
 }
 
-// Helper function to fetch with timeout
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 90000): Promise<Response> {
+// ============================================================================
+// ROBUSTNESS INFRASTRUCTURE - Circuit Breaker, Retry with Jitter, Timeouts
+// ============================================================================
+
+// Circuit breaker state for tracking failed services
+const circuitBreaker = new Map<string, { failures: number; lastFailure: number; isOpen: boolean }>();
+const CIRCUIT_BREAKER_THRESHOLD = 2; // Open after 2 failures
+const CIRCUIT_BREAKER_RESET_MS = 30000; // Reset after 30 seconds
+
+function isCircuitOpen(serviceName: string): boolean {
+  const state = circuitBreaker.get(serviceName);
+  if (!state) return false;
+  
+  // Check if circuit should reset
+  if (state.isOpen && Date.now() - state.lastFailure > CIRCUIT_BREAKER_RESET_MS) {
+    state.isOpen = false;
+    state.failures = 0;
+    return false;
+  }
+  
+  return state.isOpen;
+}
+
+function recordServiceFailure(serviceName: string): void {
+  const state = circuitBreaker.get(serviceName) || { failures: 0, lastFailure: 0, isOpen: false };
+  state.failures++;
+  state.lastFailure = Date.now();
+  
+  if (state.failures >= CIRCUIT_BREAKER_THRESHOLD) {
+    state.isOpen = true;
+    console.log(`🔴 Circuit breaker OPEN for ${serviceName} after ${state.failures} failures`);
+  }
+  
+  circuitBreaker.set(serviceName, state);
+}
+
+function recordServiceSuccess(serviceName: string): void {
+  circuitBreaker.delete(serviceName);
+}
+
+// Helper function to add jitter to prevent thundering herd
+function getRetryDelayWithJitter(attempt: number, baseDelayMs: number = 2000): number {
+  const exponentialDelay = baseDelayMs * Math.pow(2, attempt - 1);
+  const jitter = Math.random() * 1000; // 0-1000ms random jitter
+  return Math.min(exponentialDelay + jitter, 15000); // Cap at 15 seconds
+}
+
+// Helper function to fetch with timeout and circuit breaker
+async function fetchWithTimeout(
+  url: string, 
+  options: RequestInit, 
+  timeoutMs: number = 90000,
+  serviceName?: string
+): Promise<Response> {
+  // Check circuit breaker
+  if (serviceName && isCircuitOpen(serviceName)) {
+    throw new Error(`Circuit breaker open for ${serviceName}, skipping request`);
+  }
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     console.log(`⏱️ Request timeout after ${timeoutMs}ms, aborting...`);
@@ -104,13 +161,61 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
+    
+    if (serviceName && response.ok) {
+      recordServiceSuccess(serviceName);
+    }
+    
     return response;
   } catch (error: any) {
     clearTimeout(timeoutId);
+    
+    if (serviceName) {
+      recordServiceFailure(serviceName);
+    }
+    
     if (error.name === 'AbortError') {
       throw new Error(`Request timed out after ${timeoutMs / 1000} seconds`);
     }
     throw error;
+  }
+}
+
+// Wrapper for parallel API calls with graceful degradation
+interface ServiceResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  serviceName: string;
+}
+
+async function fetchServiceWithFallback<T>(
+  serviceName: string,
+  fetchFn: () => Promise<T | null>,
+  fallbackValue: T | null = null
+): Promise<ServiceResult<T>> {
+  if (isCircuitOpen(serviceName)) {
+    console.log(`⏭️ Skipping ${serviceName} (circuit breaker open)`);
+    return { success: false, error: 'Circuit breaker open', serviceName, data: fallbackValue || undefined };
+  }
+  
+  try {
+    const startTime = Date.now();
+    const result = await fetchFn();
+    const duration = Date.now() - startTime;
+    
+    if (result) {
+      console.log(`✓ ${serviceName} completed in ${duration}ms`);
+      recordServiceSuccess(serviceName);
+      return { success: true, data: result, serviceName };
+    } else {
+      console.log(`⚠️ ${serviceName} returned no data (${duration}ms)`);
+      return { success: false, error: 'No data returned', serviceName, data: fallbackValue || undefined };
+    }
+  } catch (error: any) {
+    console.log(`❌ ${serviceName} failed:`, error?.message || 'Unknown error');
+    recordServiceFailure(serviceName);
+    return { success: false, error: error?.message, serviceName, data: fallbackValue || undefined };
   }
 }
 
@@ -178,7 +283,7 @@ ${sectionDef.id === 'section4' ? '8. MUST include the Investment Score Analysis 
 
 Generate the ${sectionDef.name} sections now:`;
 
-  // Retry loop
+  // Retry loop with improved backoff and jitter
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`📝 Generating section: ${sectionDef.name}... (attempt ${attempt}/${maxRetries})`);
@@ -198,16 +303,16 @@ Generate the ${sectionDef.name} sections now:`;
             { role: 'user', content: sectionPrompt }
           ]
         }),
-      }, 120000); // 120 second timeout per section
+      }, 150000, 'perplexity-api'); // 150 second timeout per section, with circuit breaker tracking
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`❌ Section ${sectionDef.id} API error (attempt ${attempt}):`, response.status, errorText);
         
-        // If rate limited or server error, wait and retry
+        // If rate limited or server error, wait and retry with jitter
         if ((response.status === 429 || response.status >= 500) && attempt < maxRetries) {
-          const waitTime = attempt * 5000; // 5s, 10s
-          console.log(`⏳ Waiting ${waitTime/1000}s before retry...`);
+          const waitTime = getRetryDelayWithJitter(attempt, response.status === 429 ? 5000 : 3000);
+          console.log(`⏳ Waiting ${(waitTime/1000).toFixed(1)}s before retry (with jitter)...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
@@ -225,10 +330,10 @@ Generate the ${sectionDef.name} sections now:`;
     } catch (error: any) {
       console.error(`❌ Error generating section ${sectionDef.id} (attempt ${attempt}):`, error?.message);
       
-      // Retry on timeout or network errors
+      // Retry on timeout or network errors with jitter
       if (attempt < maxRetries) {
-        const waitTime = attempt * 3000; // 3s, 6s
-        console.log(`⏳ Waiting ${waitTime/1000}s before retry...`);
+        const waitTime = getRetryDelayWithJitter(attempt, 2000);
+        console.log(`⏳ Waiting ${(waitTime/1000).toFixed(1)}s before retry (with jitter)...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
@@ -700,127 +805,183 @@ serve(async (req) => {
       
       console.log('Using for API calls:', { suburb, postcode, state });
 
-      // Fetch Domain market data
-      if (suburb && state) {
-        try {
-          console.log('Fetching Domain market data for:', suburb, state);
-          const domainResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/domain-data-service`, {
+      // ============================================================================
+      // PHASE 1: PARALLEL INDEPENDENT DATA FETCHING
+      // These services don't depend on each other, so fetch them all simultaneously
+      // ============================================================================
+      console.log('🚀 Starting PARALLEL data fetch (Phase 1)...');
+      const phase1StartTime = Date.now();
+      
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      };
+
+      // Define all Phase 1 fetch promises
+      const phase1Promises = [
+        // 1. Domain market data
+        (suburb && state) ? fetchServiceWithFallback('domain-data-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/domain-data-service`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-            },
+            headers,
             body: JSON.stringify({ 
-              suburb: suburb,
-              state: state,
-              postcode: postcode,
+              suburb, state, postcode,
               propertyCategory: propertyDetails?.propertyType?.toLowerCase() === 'unit' ? 'unit' : 'house'
             })
-          });
-          
-          if (domainResponse.ok) {
-            const domainData = await domainResponse.json();
-            if (domainData.success && domainData.data) {
-              enhancedData = { ...enhancedData, domainData: domainData.data };
-              console.log('✓ Domain market data fetched successfully');
-            } else {
-              console.log('⚠️ Domain data unavailable, will use estimates');
-            }
+          }, 30000, 'domain-data-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.data : null;
           }
-        } catch (error: any) {
-          console.log('Domain data fetch failed:', error?.message || 'Unknown error');
-        }
-      }
+          return null;
+        }) : Promise.resolve({ success: false, serviceName: 'domain-data-service', error: 'Missing suburb/state' }),
 
-      // Fetch risk assessment data
+        // 2. ABS demographic data
+        postcode ? fetchServiceWithFallback('abs-data-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-data-service`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ postcode, state })
+          }, 30000, 'abs-data-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.data : null;
+          }
+          return null;
+        }) : Promise.resolve({ success: false, serviceName: 'abs-data-service', error: 'Missing postcode' }),
+
+        // 3. RBA economic data
+        fetchServiceWithFallback('rba-data-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/rba-data-service`, {
+            method: 'POST',
+            headers
+          }, 20000, 'rba-data-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.data || null;
+          }
+          return null;
+        }),
+
+        // 4. SEIFA socioeconomic data
+        postcode ? fetchServiceWithFallback('abs-seifa-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-seifa-service`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ postcode, state })
+          }, 25000, 'abs-seifa-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.data : null;
+          }
+          return null;
+        }) : Promise.resolve({ success: false, serviceName: 'abs-seifa-service', error: 'Missing postcode' }),
+
+        // 5. Crime statistics
+        (suburb && state) ? fetchServiceWithFallback('crime-statistics-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/crime-statistics-service`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ suburb, state, postcode })
+          }, 30000, 'crime-statistics-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.data : null;
+          }
+          return null;
+        }) : Promise.resolve({ success: false, serviceName: 'crime-statistics-service', error: 'Missing suburb/state' }),
+
+        // 6. Employment data
+        state ? fetchServiceWithFallback('abs-employment-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/abs-employment-service`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ suburb, state, postcode })
+          }, 25000, 'abs-employment-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.data : null;
+          }
+          return null;
+        }) : Promise.resolve({ success: false, serviceName: 'abs-employment-service', error: 'Missing state' }),
+
+        // 7. Climate data
+        state ? fetchServiceWithFallback('climate-data-service', async () => {
+          const response = await fetchWithTimeout(`${supabaseUrl}/functions/v1/climate-data-service`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ suburb, state, postcode })
+          }, 25000, 'climate-data-service');
+          if (response.ok) {
+            const data = await response.json();
+            return data.success ? data.data : null;
+          }
+          return null;
+        }) : Promise.resolve({ success: false, serviceName: 'climate-data-service', error: 'Missing state' }),
+      ];
+
+      // Execute all Phase 1 fetches in parallel
+      const phase1Results = await Promise.allSettled(phase1Promises);
+      const phase1Duration = Date.now() - phase1StartTime;
+      
+      // Process Phase 1 results
+      let successCount = 0;
+      let failCount = 0;
+      
+      phase1Results.forEach((result, index) => {
+        const serviceNames = ['domain', 'demographics', 'economics', 'seifaData', 'crimeStatistics', 'employmentData', 'climateData'];
+        const serviceName = serviceNames[index];
+        
+        if (result.status === 'fulfilled' && result.value.success && result.value.data) {
+          enhancedData = { ...enhancedData, [serviceName === 'domain' ? 'domainData' : serviceName]: result.value.data };
+          successCount++;
+        } else {
+          failCount++;
+          const reason = result.status === 'rejected' 
+            ? result.reason?.message 
+            : (result.value as ServiceResult<any>).error;
+          if (reason && !reason.includes('Missing')) {
+            console.log(`  ⚠️ ${serviceName}: ${reason}`);
+          }
+        }
+      });
+      
+      console.log(`✓ Phase 1 complete in ${phase1Duration}ms: ${successCount} succeeded, ${failCount} skipped/failed`);
+
+      // ============================================================================
+      // PHASE 2: SEQUENTIAL DEPENDENT DATA FETCHING
+      // These services depend on Phase 1 results or each other
+      // ============================================================================
+      console.log('🔄 Starting Phase 2 (dependent services)...');
+
+      // Fetch risk assessment data (can use coordinates from location intelligence)
       if (postcode && state) {
         try {
-          console.log('Fetching risk assessment for:', suburb, state, postcode);
-          
-          // Extract coordinates from location intelligence if available
-          const latitude = enhancedData.locationIntelligence?.coordinates?.lat;
-          const longitude = enhancedData.locationIntelligence?.coordinates?.lng;
-          
-          const riskResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/risk-assessment-service`, {
+          const riskResponse = await fetchWithTimeout(`${supabaseUrl}/functions/v1/risk-assessment-service`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-            },
+            headers,
             body: JSON.stringify({ 
               suburb: suburb || 'unknown',
               state: state,
-              postcode: postcode,
-              latitude: latitude || undefined,
-              longitude: longitude || undefined
+              postcode: postcode
             })
-          });
+          }, 25000, 'risk-assessment-service');
           
           if (riskResponse.ok) {
             const riskData = await riskResponse.json();
             if (riskData.success && riskData.data) {
               enhancedData = { ...enhancedData, riskAssessment: riskData.data };
-              console.log('✓ Risk assessment data fetched successfully');
-              if (latitude && longitude) {
-                console.log('  Using precise coordinates for flood/bushfire assessment');
-              } else {
-                console.log('  Using postcode-based estimates (coordinates unavailable)');
-              }
+              console.log('✓ Risk assessment data fetched');
             }
           }
         } catch (error: any) {
-          console.log('Risk assessment fetch failed:', error?.message || 'Unknown error');
+          console.log('⚠️ Risk assessment skipped:', error?.message?.substring(0, 50));
         }
       }
 
-      // Fetch ABS demographic data
-      try {
-        console.log('Fetching ABS data for postcode:', postcode, 'state:', state);
-        const absResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-data-service`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-          },
-          body: JSON.stringify({ postcode, state })
-        });
-        
-        if (absResponse.ok) {
-          const absData = await absResponse.json();
-          console.log('✓ ABS response received:', { success: absData.success, hasData: !!absData.data });
-          if (absData.success && absData.data) {
-            enhancedData = { ...enhancedData, demographics: absData.data };
-            console.log('✓ ABS demographics data integrated successfully');
-          } else {
-            console.warn('⚠️ ABS response missing expected data structure');
-          }
-        } else {
-          const errorText = await absResponse.text();
-          console.error('❌ ABS service returned non-OK status:', absResponse.status, errorText);
-        }
-      } catch (error: any) {
-        console.error('❌ ABS data fetch failed:', error?.message || 'Unknown error');
-        console.error('Stack trace:', error?.stack);
-      }
-
-      // Fetch RBA economic data
-      try {
-        const rbaResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rba-data-service`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-          }
-        });
-        
-        if (rbaResponse.ok) {
-          const rbaData = await rbaResponse.json();
-          enhancedData = { ...enhancedData, economics: rbaData.data };
-          console.log('RBA data fetched successfully');
-        }
-      } catch (error: any) {
-        console.log('RBA data fetch failed, using estimates:', error?.message || 'Unknown error');
-      }
+      // NOTE: ABS demographics and RBA economics are now fetched in Phase 1 parallel block above
 
       // Fetch rent from cache if not provided
       let weeklyRent = propertyDetails?.weeklyRent;
@@ -1084,129 +1245,7 @@ serve(async (req) => {
         }
       }
 
-      // Fetch ABS SEIFA socioeconomic data
-      if (postcode) {
-        try {
-          console.log('Fetching SEIFA socioeconomic data for postcode:', postcode);
-          const seifaResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-seifa-service`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-            },
-            body: JSON.stringify({ 
-              postcode: postcode,
-              state: state
-            })
-          });
-          
-          if (seifaResponse.ok) {
-            const seifaData = await seifaResponse.json();
-            if (seifaData.success && seifaData.data) {
-              enhancedData = { ...enhancedData, seifaData: seifaData.data };
-              console.log('✓ SEIFA socioeconomic data fetched successfully');
-            }
-          }
-        } catch (error: any) {
-          console.log('SEIFA data fetch failed:', error?.message || 'Unknown error');
-        }
-      }
-
-      // Fetch crime statistics
-      if (suburb && state) {
-        try {
-          console.log('Fetching crime statistics for suburb:', suburb, 'state:', state, 'postcode:', postcode);
-          const crimeResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/crime-statistics-service`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-            },
-            body: JSON.stringify({ 
-              suburb: suburb,
-              state: state,
-              postcode: postcode
-            })
-          });
-          
-          if (crimeResponse.ok) {
-            const crimeData = await crimeResponse.json();
-            console.log('✓ Crime response received:', { success: crimeData.success, hasData: !!crimeData.data });
-            if (crimeData.success && crimeData.data) {
-              enhancedData = { ...enhancedData, crimeStatistics: crimeData.data };
-              console.log('✓ Crime statistics integrated successfully');
-            } else {
-              console.warn('⚠️ Crime response missing expected data structure');
-            }
-          } else {
-            const errorText = await crimeResponse.text();
-            console.error('❌ Crime service returned non-OK status:', crimeResponse.status, errorText);
-          }
-        } catch (error: any) {
-          console.error('❌ Crime statistics fetch failed:', error?.message || 'Unknown error');
-          console.error('Stack trace:', error?.stack);
-        }
-      } else {
-        console.warn('⚠️ Skipping crime statistics - missing suburb or state');
-      }
-
-      // Fetch employment & job growth data
-      if (state) {
-        try {
-          console.log('Fetching employment data for:', state);
-          const employmentResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/abs-employment-service`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-            },
-            body: JSON.stringify({ 
-              suburb: suburb,
-              state: state,
-              postcode: postcode
-            })
-          });
-          
-          if (employmentResponse.ok) {
-            const employmentData = await employmentResponse.json();
-            if (employmentData.success && employmentData.data) {
-              enhancedData = { ...enhancedData, employmentData: employmentData.data };
-              console.log('✓ Employment data fetched successfully');
-            }
-          }
-        } catch (error: any) {
-          console.log('Employment data fetch failed:', error?.message || 'Unknown error');
-        }
-      }
-
-      // Fetch climate data
-      if (state) {
-        try {
-          console.log('Fetching climate data for:', state);
-          const climateResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/climate-data-service`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-            },
-            body: JSON.stringify({ 
-              suburb: suburb,
-              state: state,
-              postcode: postcode
-            })
-          });
-          
-          if (climateResponse.ok) {
-            const climateData = await climateResponse.json();
-            if (climateData.success && climateData.data) {
-              enhancedData = { ...enhancedData, climateData: climateData.data };
-              console.log('✓ Climate data fetched successfully');
-            }
-          }
-        } catch (error: any) {
-          console.log('Climate data fetch failed:', error?.message || 'Unknown error');
-        }
-      }
+      // NOTE: SEIFA, Crime, Employment, and Climate data are now fetched in Phase 1 parallel block above
 
       // Fetch school data
       if (suburb && state && postcode) {
@@ -1249,6 +1288,38 @@ serve(async (req) => {
     } catch (error: any) {
       console.log('Enhanced data fetch failed, proceeding with basic analysis:', error?.message || 'Unknown error');
     }
+
+    // ============================================================================
+    // DATA AVAILABILITY SUMMARY - Graceful Degradation Report
+    // ============================================================================
+    const dataAvailability = {
+      demographics: !!enhancedData.demographics,
+      economics: !!enhancedData.economics,
+      financials: !!enhancedData.financials,
+      locationIntelligence: !!enhancedData.locationIntelligence,
+      investmentScore: !!enhancedData.investmentScore,
+      domainData: !!enhancedData.domainData,
+      riskAssessment: !!enhancedData.riskAssessment,
+      seifaData: !!enhancedData.seifaData,
+      crimeStatistics: !!enhancedData.crimeStatistics,
+      employmentData: !!enhancedData.employmentData,
+      climateData: !!enhancedData.climateData,
+      schoolData: !!enhancedData.schoolData
+    };
+    
+    const availableServices = Object.entries(dataAvailability).filter(([_, v]) => v).map(([k]) => k);
+    const unavailableServices = Object.entries(dataAvailability).filter(([_, v]) => !v).map(([k]) => k);
+    
+    console.log('\n📊 === DATA AVAILABILITY SUMMARY ===');
+    console.log(`✅ Available (${availableServices.length}): ${availableServices.join(', ') || 'None'}`);
+    console.log(`⚠️ Unavailable (${unavailableServices.length}): ${unavailableServices.join(', ') || 'None'}`);
+    console.log(`📈 Data completeness: ${Math.round((availableServices.length / 12) * 100)}%`);
+    
+    // Circuit breaker status
+    if (circuitBreaker.size > 0) {
+      console.log('🔴 Circuit breakers active:', Array.from(circuitBreaker.keys()).join(', '));
+    }
+    console.log('=================================\n');
 
     // Build year context string for suburb analysis
     let yearContextString = '';
@@ -2799,7 +2870,7 @@ YOUR DEDICATED PROPERTY PARTNER
         }
         // === END PROGRESSIVE SAVE ===
       } else {
-        // No content generated for this section at all
+        // No content generated for this section at all - still save progress
         sectionResults.push({
           id: sectionDef.id,
           name: sectionDef.name,
@@ -2808,11 +2879,33 @@ YOUR DEDICATED PROPERTY PARTNER
           score: 0,
           attempts: sectionAttempts
         });
+        
+        // === PROGRESSIVE SAVE ON FAILURE: Save current state even if section failed ===
+        // This allows continuation from last successful section
+        if (reportId && supabaseClient && combinedContent.length > 0) {
+          try {
+            console.log(`💾 Progressive save after section ${i + 1} failure (preserving progress)...`);
+            await supabaseClient
+              .from('investment_reports')
+              .update({
+                report_content: combinedContent,
+                updated_at: new Date().toISOString(),
+                error_message: `Section ${sectionDef.name} failed to generate after ${sectionAttempts} attempts`
+              })
+              .eq('id', reportId);
+            console.log(`✓ Progress preserved: ${combinedContent.length} chars before failed section`);
+          } catch (saveError: any) {
+            console.warn(`⚠️ Failed section save error (non-blocking):`, saveError?.message);
+          }
+        }
       }
       
-      // Small delay between sections to avoid rate limiting
+      // Adaptive delay between sections to avoid rate limiting
+      // Use jitter to prevent thundering herd
       if (i < REPORT_SECTIONS.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const baseDelay = 500;
+        const jitter = Math.random() * 500; // 0-500ms jitter
+        await new Promise(resolve => setTimeout(resolve, baseDelay + jitter));
       }
     }
     
