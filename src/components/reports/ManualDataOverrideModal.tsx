@@ -835,32 +835,55 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   // Update schedule when year 1 value or method changes
   const handleYear1DepreciationChange = (value: number) => {
     setYear1Depreciation(value);
-    if (depreciationMethod === 'prime_cost') {
-      setDepreciationSchedule(calculatePrimeCostSchedule(value));
-    } else {
-      setDepreciationSchedule(calculateDiminishingValueSchedule(value));
-    }
+    const newSchedule = depreciationMethod === 'prime_cost'
+      ? calculatePrimeCostSchedule(value)
+      : calculateDiminishingValueSchedule(value);
+    setDepreciationSchedule(newSchedule);
+    
+    // Persist to overrides immediately
+    setOverrides(prev => ({
+      ...prev,
+      depreciation: value,
+      depreciationSchedule: newSchedule,
+      depreciationMethod
+    }));
     setHasChanges(true);
   };
 
   // Update schedule when method changes
   const handleDepreciationMethodChange = (method: 'prime_cost' | 'diminishing_value') => {
     setDepreciationMethod(method);
+    let newSchedule = depreciationSchedule;
     if (year1Depreciation > 0) {
-      if (method === 'prime_cost') {
-        setDepreciationSchedule(calculatePrimeCostSchedule(year1Depreciation));
-      } else {
-        setDepreciationSchedule(calculateDiminishingValueSchedule(year1Depreciation));
-      }
+      newSchedule = method === 'prime_cost'
+        ? calculatePrimeCostSchedule(year1Depreciation)
+        : calculateDiminishingValueSchedule(year1Depreciation);
+      setDepreciationSchedule(newSchedule);
     }
+    
+    // Persist to overrides immediately
+    setOverrides(prev => ({
+      ...prev,
+      depreciationSchedule: newSchedule,
+      depreciationMethod: method
+    }));
     setHasChanges(true);
   };
 
   // Update individual year in schedule (for manual adjustments)
   const handleScheduleYearChange = (year: number, value: number) => {
-    setDepreciationSchedule(prev => ({
-      ...prev,
+    const newSchedule = {
+      ...depreciationSchedule,
       [year]: value
+    };
+    setDepreciationSchedule(newSchedule);
+    
+    // Persist to overrides immediately
+    setOverrides(prev => ({
+      ...prev,
+      depreciationSchedule: newSchedule,
+      // Update Year 1 depreciation if that's what changed
+      ...(year === 1 && { depreciation: value })
     }));
     setHasChanges(true);
   };
@@ -2076,24 +2099,45 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         <Separator />
                         <DepreciationValueCalculator
                           onApplyYear1={(value) => {
+                            // Update local state
+                            setYear1Depreciation(value);
+                            const newSchedule = depreciationMethod === 'prime_cost' 
+                              ? calculatePrimeCostSchedule(value)
+                              : calculateDiminishingValueSchedule(value);
+                            setDepreciationSchedule(newSchedule);
+                            
+                            // Persist to overrides immediately so it gets saved
                             setOverrides(prev => ({
                               ...prev,
-                              depreciation: value
+                              depreciation: value,
+                              depreciationSchedule: newSchedule,
+                              depreciationMethod
                             }));
-                            setYear1Depreciation(value);
                             setHasChanges(true);
                             toast({
                               title: "Year 1 Depreciation Applied",
-                              description: `$${value.toLocaleString()} has been applied to the depreciation field.`,
+                              description: `$${value.toLocaleString()} has been applied and schedule generated.`,
                             });
                           }}
                           onApplySchedule={(schedule, method) => {
+                            const mappedMethod = method === 'dv' ? 'diminishing_value' : 'prime_cost';
+                            
+                            // Update local state
                             setDepreciationSchedule(schedule);
-                            setDepreciationMethod(method === 'dv' ? 'diminishing_value' : 'prime_cost');
+                            setDepreciationMethod(mappedMethod);
                             setYear1Depreciation(schedule[1] || 0);
+                            
+                            // Persist to overrides immediately so it gets saved
+                            setOverrides(prev => ({
+                              ...prev,
+                              depreciation: schedule[1] || 0,
+                              depreciationSchedule: schedule,
+                              depreciationMethod: mappedMethod
+                            }));
+                            setHasChanges(true);
                             toast({
-                              title: "Depreciation Schedule Loaded",
-                              description: "10-year schedule has been loaded. Use the Schedule Builder below to apply it to cash flow.",
+                              title: "Depreciation Schedule Applied",
+                              description: `10-year ${method === 'dv' ? 'Diminishing Value' : 'Prime Cost'} schedule has been saved.`,
                             });
                           }}
                           defaultPurchasePrice={
