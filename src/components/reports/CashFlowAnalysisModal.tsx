@@ -2386,12 +2386,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       const year10 = projections[10];
+      const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
       const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
       
       pdf.text('10-Year Summary:', margin, yPos);
       yPos += 5;
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Year 10 Property Value: ${formatCurrency(year10.propertyMarketValue)}  |  Year 10 Equity: ${formatCurrency(year10.equityInProperty)}  |  Capital Gain: ${formatCurrency(capitalGain)}`, margin, yPos);
+      pdf.text(`Year 10 Property Value: ${formatCurrency(year10.propertyMarketValue)}  |  Year 10 Equity: ${formatCurrency(year10.equityInProperty)}  |  Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}  |  Capital Gain: ${formatCurrency(capitalGain)}`, margin, yPos);
 
       // Add charts on a new page
       if (cashFlowChartImage) {
@@ -2781,6 +2782,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <div class="summary-item">
               <div class="summary-label">Year 10 Equity</div>
               <div class="summary-value text-green">${formatCurrency(projections[10]?.equityInProperty || 0)}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Total After-Tax Cash Flow</div>
+              <div class="summary-value ${projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0) < 0 ? 'text-red' : 'text-green'}">${formatCurrency(projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0))}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Capital Gain</div>
