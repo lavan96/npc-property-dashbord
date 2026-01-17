@@ -48,7 +48,6 @@ import { ClientFiles } from './ClientFiles';
 import { ClientScoreCard } from './ClientScoreCard';
 import { ClientAIInsights } from './ClientAIInsights';
 import { ClientVownetUpload } from './ClientVownetUpload';
-import { ClientVownetForms } from './ClientVownetForms';
 import { PropertyManualEntry } from './PropertyManualEntry';
 import { PersonalDetailsManualEntry } from './PersonalDetailsManualEntry';
 import { EmploymentManualEntry } from './EmploymentManualEntry';
@@ -319,7 +318,6 @@ NPC Team`
               <TabsTrigger value="reports">Reports</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="reminders">Reminders</TabsTrigger>
-              <TabsTrigger value="vownet-forms">VowNet Forms</TabsTrigger>
               <TabsTrigger value="files">Files</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="insights">AI Insights</TabsTrigger>
@@ -607,13 +605,6 @@ NPC Team`
 
             <TabsContent value="reminders" className="mt-4">
               <ClientReminders clientId={client.id} />
-            </TabsContent>
-
-            <TabsContent value="vownet-forms" className="mt-4">
-              <ClientVownetForms 
-                clientId={client.id}
-                clientName={`${client.primary_first_name} ${client.primary_surname}`}
-              />
             </TabsContent>
 
             <TabsContent value="files" className="mt-4">
