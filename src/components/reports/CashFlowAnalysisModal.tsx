@@ -2141,6 +2141,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
+      const footerHeight = 28; // Reserved space for footer - increased from 22
       let yPos = 0;
 
       // Brand colors (gold primary)
@@ -2148,9 +2149,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const darkText = { r: 30, g: 30, b: 30 };
       const grayText = { r: 100, g: 100, b: 100 };
       const lightGray = { r: 248, g: 248, b: 248 };
-      const mediumGray = { r: 235, g: 235, b: 235 };
+      const mediumGray = { r: 220, g: 220, b: 220 }; // Slightly darker for better contrast
       const tableHeaderBg = { r: 45, g: 55, b: 72 }; // Slate gray
-      const sectionBg = { r: 250, g: 240, b: 220 }; // Warm cream
+      const sectionBg = { r: 254, g: 249, b: 235 }; // Warmer cream #fef9eb
+      const negativeRed = { r: 185, g: 28, b: 28 }; // Darker red for negatives #B91C1C
 
       // Capture charts first (only if toggles are enabled)
       let cashFlowChartImage: string | null = null;
@@ -2467,25 +2469,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       yPos += 8;
 
       // Table configuration - compact for portrait orientation
-      const colWidths = [32, ...Array(11).fill((pageWidth - margin * 2 - 32) / 11)];
-      const rowHeight = 4.5;
+      const colWidths = [34, ...Array(11).fill((pageWidth - margin * 2 - 34) / 11)]; // Slightly wider first column
+      const rowHeight = 5; // Increased from 4.5 for better readability
+      const sectionRowHeight = 6; // Taller section headers
       let tableRowCount = 0;
       
       // Helper to draw a row with enhanced styling - NO page breaks for full table on one page
       const drawRow = (cells: string[], isHeader = false, isSection = false, highlightValue = false) => {
+        const currentRowHeight = isSection ? sectionRowHeight : rowHeight;
+        
         if (isSection) {
           // Section header row - remove slash from section names
           const sectionName = cells[0].replace(/[\/\\|]/g, '').trim();
+          yPos += 1; // Extra padding before section
           pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
-          pdf.rect(margin, yPos - 3, pageWidth - margin * 2, rowHeight, 'F');
+          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, sectionRowHeight, 'F');
           pdf.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
-          pdf.setLineWidth(0.3);
-          pdf.line(margin, yPos - 3, margin + 2, yPos - 3 + rowHeight);
+          pdf.setLineWidth(0.5);
+          pdf.line(margin, yPos - 3.5, margin + 2.5, yPos - 3.5 + sectionRowHeight);
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(6);
+          pdf.setFontSize(6.5);
           pdf.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-          pdf.text(sectionName, margin + 4, yPos);
+          pdf.text(sectionName, margin + 5, yPos + 0.5);
           tableRowCount = 0;
+          yPos += sectionRowHeight;
+          return; // Don't add more to yPos
         } else if (isHeader) {
           // Table header row - Remove "Metric" from first column
           pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
@@ -2523,12 +2531,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             if (idx === 0) {
               pdf.text(cell, xPos + 2, yPos);
             } else {
-              // Highlight negative values in red
+              // Highlight negative values in bold red
               if (highlightValue && cell.startsWith('-')) {
-                pdf.setTextColor(180, 50, 50);
+                pdf.setTextColor(negativeRed.r, negativeRed.g, negativeRed.b);
+                pdf.setFont('helvetica', 'bold');
               }
               pdf.text(cell, xPos + cellWidth - 1, yPos, { align: 'right' });
               pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+              pdf.setFont('helvetica', 'normal');
             }
             xPos += cellWidth;
           });
@@ -2550,7 +2560,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Purchase Price $', formatCurrency(baseFinancialData.purchasePrice), ...Array(10).fill('')]);
       drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
       
-      yPos += 1;
+      
       drawRow(['STATISTICS'], false, true);
       drawRow(['Equity $', formatCurrency(projections[0].equityInProperty), ...projections.slice(1).map(p => formatCurrency(p.equityInProperty))]);
       drawRow(['LVR %', projections[0].loanToValueRatio.toFixed(1), ...projections.slice(1).map(p => p.loanToValueRatio.toFixed(1))]);
@@ -2558,7 +2568,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Gross Yield %', '', ...projections.slice(1).map(p => p.grossYield.toFixed(2))]);
       drawRow(['Net Yield %', '', ...projections.slice(1).map(p => p.netYield.toFixed(2))]);
       
-      yPos += 1;
       drawRow(['CASH DEDUCTIONS'], false, true);
       drawRow(['Property Expenses $', '$0', ...projections.slice(1).map(p => formatCurrency(p.propertyExpenses))]);
       drawRow(['Land Tax $', '', ...projections.slice(1).map(p => formatCurrency(p.landTax))]);
@@ -2568,11 +2577,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Pre-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPA))], false, false, true);
       drawRow(['Pre-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPW))], false, false, true);
       
-      yPos += 1;
       drawRow(['NON-CASH DEDUCTIONS'], false, true);
       drawRow(['Depreciation $', '', ...projections.slice(1).map(p => formatCurrency(p.depreciation))]);
       
-      yPos += 1;
       drawRow(['SUMMARY'], false, true);
       drawRow(['Total Deductions $', '', ...projections.slice(1).map(p => formatCurrency(p.totalDeductions))]);
       drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))], false, false, true);
@@ -2581,21 +2588,30 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))], false, false, true);
 
       // ========== 10-YEAR SUMMARY SECTION ==========
-      yPos += 6;
+      yPos += 4; // More space before summary
       const year10 = projections[10];
       const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
       const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
 
-      // Summary box
+      // Check if summary box will fit above footer
+      const summaryBoxHeight = 14;
+      const availableSpace = pageHeight - footerHeight - yPos;
+      
+      if (availableSpace < summaryBoxHeight) {
+        pdf.addPage();
+        yPos = margin + 10;
+      }
+
+      // Summary box with rounded corners
       pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
-      pdf.roundedRect(margin, yPos - 2, pageWidth - margin * 2, 12, 2, 2, 'F');
+      pdf.roundedRect(margin, yPos, pageWidth - margin * 2, summaryBoxHeight, 2, 2, 'F');
       
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 255, 255);
-      pdf.text('10-Year Investment Summary', margin + 5, yPos + 3);
+      pdf.text('10-Year Investment Summary', margin + 5, yPos + 5);
       
-      pdf.setFontSize(8);
+      pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'normal');
       const summaryText = [
         `Property Value: ${formatCurrency(year10.propertyMarketValue)}`,
@@ -2603,7 +2619,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         `Capital Gain: ${formatCurrency(capitalGain)}`,
         `Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}`
       ].join('     •     ');
-      pdf.text(summaryText, margin + 5, yPos + 8);
+      pdf.text(summaryText, margin + 5, yPos + 10.5);
 
       // ========== CHARTS PAGE ==========
       const hasAnyChart = cashFlowChartImage || yieldChartImage || comparisonChartImage;
@@ -2683,28 +2699,29 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
         
-        // Footer separator line
+        // Footer separator line - positioned higher to avoid overlap
+        const footerLineY = pageHeight - footerHeight;
         pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, pageHeight - 22, pageWidth - margin, pageHeight - 22);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, footerLineY, pageWidth - margin, footerLineY);
         
-        // Disclaimer - CENTERED on the page
-        pdf.setFontSize(6);
+        // Disclaimer - CENTERED, with more space from content
+        pdf.setFontSize(6.5);
         pdf.setFont('helvetica', 'italic');
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 4);
-        pdf.text(disclaimerLines, pageWidth / 2, pageHeight - 18, { align: 'center' });
+        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 3);
+        pdf.text(disclaimerLines, pageWidth / 2, footerLineY + 5, { align: 'center' });
         
         // Contact info - Remove mobile number, only email and website
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-        pdf.text(`${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+        pdf.text(`${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
         
         // Page number
         pdf.setFontSize(7);
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
       }
 
       // Save PDF
