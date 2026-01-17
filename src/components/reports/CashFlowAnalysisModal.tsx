@@ -2146,71 +2146,37 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let yPos = 0;
 
       // ========== COVER PAGE ==========
-      // Dark background
-      pdf.setFillColor(26, 26, 26);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-      // Gold accent bar at top
+      // Use the NPC template cover image as background
       const goldColor = { r: 201, g: 165, b: 90 }; // #c9a55a
-      pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
-      pdf.rect(0, 0, pageWidth, 8, 'F');
-
-      // Try to add centered logo
+      
       try {
-        const logoUrl = '/images/npc-signature-logo.png';
-        const logoWidth = 80;
-        const logoHeight = 24;
-        const logoX = (pageWidth - logoWidth) / 2;
-        pdf.addImage(logoUrl, 'PNG', logoX, 40, logoWidth, logoHeight);
+        // Add cover template image as full page background
+        const coverImageUrl = '/templates/npc-cashflow-cover.jpg';
+        pdf.addImage(coverImageUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
       } catch (e) {
-        // Fallback to text if logo fails
+        // Fallback: draw simple dark background if image fails
+        pdf.setFillColor(26, 26, 26);
+        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+        
+        // Gold accent bar at top
+        pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
+        pdf.rect(0, 0, pageWidth, 8, 'F');
+        
+        // Company name fallback
         pdf.setFontSize(28);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
-        pdf.text(templateConfig.companyName, pageWidth / 2, 55, { align: 'center' });
-        pdf.setFontSize(14);
+        pdf.text('NAIDU PROPERTY', pageWidth / 2, 100, { align: 'center' });
+        pdf.text('CONSULTING SERVICES', pageWidth / 2, 115, { align: 'center' });
+        
+        pdf.setFontSize(12);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(templateConfig.companyNameLine2, pageWidth / 2, 65, { align: 'center' });
+        pdf.text('YOUR DEDICATED PROPERTY PARTNER', pageWidth / 2, 135, { align: 'center' });
+        
+        // Bottom gold bar
+        pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
+        pdf.rect(0, pageHeight - 8, pageWidth, 8, 'F');
       }
-
-      // Tagline
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
-      pdf.text(templateConfig.tagline, pageWidth / 2, 75, { align: 'center' });
-
-      // Decorative line
-      pdf.setDrawColor(goldColor.r, goldColor.g, goldColor.b);
-      pdf.setLineWidth(0.5);
-      pdf.line(pageWidth / 2 - 40, 85, pageWidth / 2 + 40, 85);
-
-      // Document title
-      pdf.setFontSize(32);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text('10-YEAR', pageWidth / 2, 120, { align: 'center' });
-      pdf.text('CASH FLOW ANALYSIS', pageWidth / 2, 135, { align: 'center' });
-
-      // Property address - cleaned
-      const cleanedAddressCover = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
-      const addressLines = pdf.splitTextToSize(cleanedAddressCover, pageWidth - 60);
-      let addressY = 165;
-      addressLines.forEach((line: string) => {
-        pdf.text(line, pageWidth / 2, addressY, { align: 'center' });
-        addressY += 8;
-      });
-
-      // Generation date
-      pdf.setFontSize(11);
-      pdf.setTextColor(150, 150, 150);
-      pdf.text(`Prepared: ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`, pageWidth / 2, pageHeight - 40, { align: 'center' });
-
-      // Bottom gold bar
-      pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
-      pdf.rect(0, pageHeight - 8, pageWidth, 8, 'F');
 
       // Add new page for content
       pdf.addPage();
