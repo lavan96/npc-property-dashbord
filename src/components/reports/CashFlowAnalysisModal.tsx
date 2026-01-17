@@ -18,6 +18,7 @@ import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, Rota
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   get10YearLoanProjection, 
   type MortgageInput, 
@@ -228,6 +229,38 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // Construction Progress Schedule state
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
   const [includeConstructionScheduleInExport, setIncludeConstructionScheduleInExport] = useState(true);
+  
+  // Chart export toggles - individual and global
+  const [includeAllChartsInExport, setIncludeAllChartsInExport] = useState(true);
+  const [chartExportToggles, setChartExportToggles] = useState({
+    cashFlowTrends: true,
+    yieldChart: true,
+    comparisonChart: true,
+  });
+  
+  // Handler for global charts toggle
+  const handleGlobalChartsToggle = (checked: boolean) => {
+    setIncludeAllChartsInExport(checked);
+    setChartExportToggles({
+      cashFlowTrends: checked,
+      yieldChart: checked,
+      comparisonChart: checked,
+    });
+  };
+  
+  // Handler for individual chart toggle
+  const handleChartToggle = (chartKey: keyof typeof chartExportToggles, checked: boolean) => {
+    const newToggles = { ...chartExportToggles, [chartKey]: checked };
+    setChartExportToggles(newToggles);
+    // Update global toggle based on individual states
+    const allChecked = Object.values(newToggles).every(v => v);
+    const noneChecked = Object.values(newToggles).every(v => !v);
+    if (allChecked) {
+      setIncludeAllChartsInExport(true);
+    } else if (noneChecked) {
+      setIncludeAllChartsInExport(false);
+    }
+  };
   
   // Construction Schedule Preset Mode: 'rapid' | 'even' | 'custom'
   type SchedulePreset = 'rapid' | 'even' | 'custom';
@@ -2119,9 +2152,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const tableHeaderBg = { r: 45, g: 55, b: 72 }; // Slate gray
       const sectionBg = { r: 250, g: 240, b: 220 }; // Warm cream
 
-      // Capture charts first
+      // Capture charts first (only if toggles are enabled)
       let cashFlowChartImage: string | null = null;
-      if (cashFlowChartRef.current) {
+      let yieldChartImage: string | null = null;
+      let comparisonChartImage: string | null = null;
+      
+      if (chartExportToggles.cashFlowTrends && cashFlowChartRef.current) {
         try {
           const canvas = await html2canvas(cashFlowChartRef.current, {
             backgroundColor: '#ffffff',
@@ -2129,7 +2165,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           });
           cashFlowChartImage = canvas.toDataURL('image/png');
         } catch (e) {
-          console.warn('Failed to capture chart:', e);
+          console.warn('Failed to capture cash flow chart:', e);
+        }
+      }
+      
+      if (chartExportToggles.yieldChart && yieldChartRef.current) {
+        try {
+          const canvas = await html2canvas(yieldChartRef.current, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+          });
+          yieldChartImage = canvas.toDataURL('image/png');
+        } catch (e) {
+          console.warn('Failed to capture yield chart:', e);
+        }
+      }
+      
+      if (chartExportToggles.comparisonChart && comparisonChartRef.current) {
+        try {
+          const canvas = await html2canvas(comparisonChartRef.current, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+          });
+          comparisonChartImage = canvas.toDataURL('image/png');
+        } catch (e) {
+          console.warn('Failed to capture comparison chart:', e);
         }
       }
 
@@ -2546,7 +2606,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.text(summaryText, margin + 5, yPos + 8);
 
       // ========== CHARTS PAGE ==========
-      if (cashFlowChartImage) {
+      const hasAnyChart = cashFlowChartImage || yieldChartImage || comparisonChartImage;
+      
+      if (hasAnyChart) {
         pdf.addPage();
         yPos = 0;
         
@@ -2556,24 +2618,64 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
-        pdf.text('Cash Flow & Property Value Trends', margin, 8);
+        pdf.text('Charts & Visual Analysis', margin, 8);
         
-        yPos = 20;
-        
-        // Chart container with border
+        yPos = 18;
         const chartWidth = pageWidth - margin * 2;
-        const chartHeight = 90;
-        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-        pdf.setLineWidth(0.5);
-        pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
-        pdf.addImage(cashFlowChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
-        yPos += chartHeight + 8;
         
-        // Chart legend
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        pdf.text('Chart displays Property Value, Equity, Rental Income, and After-Tax Cash Flow trends over the 10-year projection period.', margin, yPos);
+        // Cash Flow Trends Chart
+        if (cashFlowChartImage) {
+          const chartHeight = 70;
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text('10-Year Cash Flow Trends', margin, yPos);
+          yPos += 4;
+          
+          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+          pdf.setLineWidth(0.5);
+          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+          pdf.addImage(cashFlowChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          yPos += chartHeight + 8;
+        }
+        
+        // Yield Chart
+        if (yieldChartImage) {
+          const chartHeight = 60;
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text('Yield Percentages', margin, yPos);
+          yPos += 4;
+          
+          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+          pdf.setLineWidth(0.5);
+          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+          pdf.addImage(yieldChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          yPos += chartHeight + 8;
+        }
+        
+        // Comparison Chart
+        if (comparisonChartImage) {
+          // Check if we need a new page
+          if (yPos > pageHeight - 80) {
+            pdf.addPage();
+            yPos = 18;
+          }
+          
+          const chartHeight = 60;
+          pdf.setFontSize(9);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text('Property Comparison', margin, yPos);
+          yPos += 4;
+          
+          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+          pdf.setLineWidth(0.5);
+          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+          pdf.addImage(comparisonChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          yPos += chartHeight + 8;
+        }
       }
 
       // ========== FOOTER (on every page) ==========
@@ -2621,7 +2723,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, toast]);
 
   // Print-friendly view in new window
   const openPrintView = useCallback(() => {
@@ -3037,10 +3139,56 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <Download className="h-4 w-4 mr-2" />
                   Export Excel
                 </Button>
-                <Button variant="outline" size="sm" onClick={exportSingleReportPDF}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export PDF
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export PDF
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 bg-background border">
+                    <div className="p-3 space-y-3">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Chart Export Options</div>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={includeAllChartsInExport}
+                            onCheckedChange={(checked) => handleGlobalChartsToggle(checked === true)}
+                          />
+                          <span className="text-sm font-medium">Include All Charts</span>
+                        </label>
+                        <Separator className="my-2" />
+                        <label className="flex items-center gap-2 cursor-pointer pl-4">
+                          <Checkbox
+                            checked={chartExportToggles.cashFlowTrends}
+                            onCheckedChange={(checked) => handleChartToggle('cashFlowTrends', checked === true)}
+                          />
+                          <span className="text-sm">Cash Flow Trends</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer pl-4">
+                          <Checkbox
+                            checked={chartExportToggles.yieldChart}
+                            onCheckedChange={(checked) => handleChartToggle('yieldChart', checked === true)}
+                          />
+                          <span className="text-sm">Yield Percentages</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer pl-4">
+                          <Checkbox
+                            checked={chartExportToggles.comparisonChart}
+                            onCheckedChange={(checked) => handleChartToggle('comparisonChart', checked === true)}
+                          />
+                          <span className="text-sm">Property Comparison</span>
+                        </label>
+                      </div>
+                      <Separator className="my-2" />
+                      <Button size="sm" className="w-full" onClick={exportSingleReportPDF}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate PDF
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" size="sm" onClick={openPrintView}>
                   <Printer className="h-4 w-4 mr-2" />
                   Print View
