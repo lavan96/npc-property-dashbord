@@ -2107,8 +2107,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape for wide table
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 15;
-      let yPos = margin;
+      const margin = 12;
+      let yPos = 0;
+
+      // Brand colors (gold primary)
+      const primaryColor = { r: 202, g: 138, b: 4 }; // Gold #ca8a04
+      const darkText = { r: 30, g: 30, b: 30 };
+      const grayText = { r: 100, g: 100, b: 100 };
+      const lightGray = { r: 248, g: 248, b: 248 };
+      const mediumGray = { r: 235, g: 235, b: 235 };
+      const tableHeaderBg = { r: 45, g: 55, b: 72 }; // Slate gray
+      const sectionBg = { r: 250, g: 240, b: 220 }; // Warm cream
 
       // Capture charts first
       let cashFlowChartImage: string | null = null;
@@ -2124,119 +2133,198 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
       }
 
-      // Company branding header (from template)
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(150);
-      pdf.text(`${templateConfig.companyName} ${templateConfig.companyNameLine2}`, pageWidth - margin, yPos, { align: 'right' });
-      pdf.setTextColor(0);
+      // ========== HEADER SECTION ==========
+      // Top colored bar
+      pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      pdf.rect(0, 0, pageWidth, 18, 'F');
 
-      // Header
-      pdf.setFontSize(18);
+      // Company branding in header bar
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(templateConfig.companyName, margin, 8);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(templateConfig.companyNameLine2, margin, 13);
+
+      // Tagline on right side
+      pdf.setFontSize(8);
+      pdf.text(templateConfig.tagline, pageWidth - margin, 10, { align: 'right' });
+
+      yPos = 26;
+
+      // Document title section
+      pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+      pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
       pdf.text('10-Year Cash Flow Analysis', margin, yPos);
       yPos += 8;
 
-      pdf.setFontSize(12);
+      // Property address with subtle underline
+      pdf.setFontSize(13);
       pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(grayText.r, grayText.g, grayText.b);
       pdf.text(report.property_address, margin, yPos);
+      yPos += 5;
+
+      // Decorative line under address
+      pdf.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, yPos, margin + 120, yPos);
       yPos += 6;
 
-      pdf.setFontSize(9);
-      pdf.setTextColor(100);
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, yPos);
-      pdf.setTextColor(0);
-      yPos += 12;
+      // Generation date
+      pdf.setFontSize(8);
+      pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+      pdf.text(`Generated: ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, yPos);
+      pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+      yPos += 10;
 
-      // Key metrics row
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'bold');
-      const keyMetrics = [
-        `Purchase Price: ${formatCurrency(baseFinancialData.purchasePrice)}`,
-        `Weekly Rent: ${formatCurrency(baseFinancialData.weeklyRent)}`,
-        `Interest Rate: ${baseFinancialData.interestRate}%`,
-        `Capital Growth: ${baseFinancialData.capitalGrowth}%`,
+      // ========== KEY METRICS CARDS ==========
+      const cardWidth = (pageWidth - margin * 2 - 15) / 4;
+      const cardHeight = 14;
+      const cardY = yPos;
+
+      const keyMetricsData = [
+        { label: 'Purchase Price', value: formatCurrency(baseFinancialData.purchasePrice) },
+        { label: 'Weekly Rent', value: formatCurrency(baseFinancialData.weeklyRent) },
+        { label: 'Interest Rate', value: `${baseFinancialData.interestRate}%` },
+        { label: 'Capital Growth', value: `${baseFinancialData.capitalGrowth}%` },
       ];
-      pdf.text(keyMetrics.join('   |   '), margin, yPos);
-      yPos += 12;
 
-      // Inputs Summary Section (conditional)
-      if (includeInputsSummaryInExport) {
+      keyMetricsData.forEach((metric, idx) => {
+        const cardX = margin + idx * (cardWidth + 5);
+        
+        // Card background
+        pdf.setFillColor(lightGray.r, lightGray.g, lightGray.b);
+        pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 2, 2, 'F');
+        
+        // Card border
+        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 2, 2, 'S');
+        
+        // Metric label
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+        pdf.text(metric.label, cardX + 4, cardY + 5);
+        
+        // Metric value
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Summary', margin, yPos);
-        yPos += 6;
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+        pdf.text(metric.value, cardX + 4, cardY + 11);
+      });
 
-        // Helper for drawing input summary rows
-        const inputsColWidth = (pageWidth - margin * 2) / 2;
+      yPos = cardY + cardHeight + 8;
+
+      // ========== INPUTS SUMMARY SECTION ==========
+      if (includeInputsSummaryInExport) {
+        // Section header with accent line
+        pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        pdf.rect(margin, yPos, 3, 5, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+        pdf.text('Input Summary', margin + 6, yPos + 4);
+        yPos += 8;
+
+        // Summary table with two columns
+        const inputsColWidth = (pageWidth - margin * 2) / 2 - 5;
+        const inputRowHeight = 4.2;
+        let rowCount = 0;
+
         const drawInputRow = (label: string, value: string, label2?: string, value2?: string) => {
-          if (yPos > pageHeight - 20) {
+          if (yPos > pageHeight - 25) {
             pdf.addPage();
             yPos = margin;
           }
-          pdf.setFontSize(8);
+          
+          // Alternating row background
+          if (rowCount % 2 === 0) {
+            pdf.setFillColor(lightGray.r, lightGray.g, lightGray.b);
+            pdf.rect(margin, yPos - 3, pageWidth - margin * 2, inputRowHeight, 'F');
+          }
+
+          pdf.setFontSize(7);
           pdf.setFont('helvetica', 'normal');
-          pdf.text(label, margin, yPos);
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          pdf.text(label, margin + 2, yPos);
           pdf.setFont('helvetica', 'bold');
-          pdf.text(value, margin + 55, yPos);
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text(value, margin + 52, yPos);
+          
           if (label2 && value2) {
             pdf.setFont('helvetica', 'normal');
-            pdf.text(label2, margin + inputsColWidth, yPos);
+            pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+            pdf.text(label2, margin + inputsColWidth + 10, yPos);
             pdf.setFont('helvetica', 'bold');
-            pdf.text(value2, margin + inputsColWidth + 55, yPos);
+            pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+            pdf.text(value2, margin + inputsColWidth + 62, yPos);
           }
-          pdf.setFont('helvetica', 'normal');
-          yPos += 4.5;
+          yPos += inputRowHeight;
+          rowCount++;
         };
 
         // Draw inputs in two columns
         drawInputRow('Purchase Price:', formatCurrency(baseFinancialData.purchasePrice), 'Weekly Rent:', formatCurrency(baseFinancialData.weeklyRent));
         drawInputRow('Land Price:', formatCurrency(baseFinancialData.landPrice), 'Gross Rental Yield:', projections.length > 1 ? `${projections[1].grossYield.toFixed(2)}%` : '-');
-        drawInputRow('Build Price (Depreciable):', formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice)), 'Council Rates (p.a.):', formatCurrency(baseFinancialData.councilRates));
+        drawInputRow('Build Price:', formatCurrency(baseFinancialData.buildPrice || (baseFinancialData.purchasePrice - baseFinancialData.landPrice)), 'Council Rates (p.a.):', formatCurrency(baseFinancialData.councilRates));
         drawInputRow('Deposit Amount:', formatCurrency(baseFinancialData.depositValue), 'Water Rates (p.a.):', formatCurrency(baseFinancialData.waterRates));
         drawInputRow('Loan Amount:', formatCurrency(baseFinancialData.loanAmount || (baseFinancialData.purchasePrice * (baseFinancialData.loanToValueRatio / 100))), 'Property Management:', `${baseFinancialData.propertyManagementFees}%`);
-        drawInputRow('Interest Rate:', `${baseFinancialData.interestRate.toFixed(2)}%`, 'Landlord Insurance (p.a.):', formatCurrency(baseFinancialData.buildingLandlordInsurance));
+        drawInputRow('Interest Rate:', `${baseFinancialData.interestRate.toFixed(2)}%`, 'Landlord Insurance:', formatCurrency(baseFinancialData.buildingLandlordInsurance));
         drawInputRow('Capital Growth Rate:', `${baseFinancialData.capitalGrowth}%`, 'Letting Fees:', formatCurrency(baseFinancialData.lettingFees));
         drawInputRow('CPI Growth Rate:', `${baseFinancialData.cpiGrowthRate}%`, 'Repairs & Maintenance:', formatCurrency(baseFinancialData.repairsMaintenance));
-        drawInputRow('Tax Rate (MTR):', `${baseFinancialData.taxRate}%`, 'Body Corporate (p.a.):', formatCurrency(baseFinancialData.bodyCorporateFees));
-        drawInputRow('Depreciation (Year 1):', formatCurrency(baseFinancialData.depreciation), 'Stamp Duty:', formatCurrency(baseFinancialData.stampDuty));
+        drawInputRow('Tax Rate (MTR):', `${baseFinancialData.taxRate}%`, 'Body Corporate:', formatCurrency(baseFinancialData.bodyCorporateFees));
+        drawInputRow('Depreciation (Yr 1):', formatCurrency(baseFinancialData.depreciation), 'Stamp Duty:', formatCurrency(baseFinancialData.stampDuty));
         drawInputRow('', '', 'Conveyancing:', formatCurrency(baseFinancialData.solicitorFees));
 
-        // Total Expenditure box
-        yPos += 3;
-        pdf.setFillColor(240, 240, 240);
-        pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 6, 'F');
+        // Total Expenditure highlight box
+        yPos += 2;
+        pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
+        pdf.roundedRect(margin, yPos - 3, pageWidth - margin * 2, 7, 1, 1, 'F');
+        pdf.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(margin, yPos - 3, pageWidth - margin * 2, 7, 1, 1, 'S');
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
         const totalExpenditure = baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees;
-        pdf.text('Total Overall Expenditure to Completion:', margin + 2, yPos);
-        pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos);
+        pdf.text('Total Overall Expenditure to Completion:', margin + 4, yPos + 1);
+        pdf.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos + 1);
         yPos += 10;
       }
 
-      // Construction Progress Schedule Section (conditional - only for new builds)
+      // ========== CONSTRUCTION PROGRESS SCHEDULE ==========
       if (isNewBuild && includeConstructionScheduleInExport && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0) {
-        if (yPos > pageHeight - 80) {
+        if (yPos > pageHeight - 85) {
           pdf.addPage();
-          yPos = margin;
+          yPos = margin + 10;
         }
 
-        pdf.setFontSize(11);
+        // Section header with accent line
+        pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        pdf.rect(margin, yPos, 3, 5, 'F');
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Construction Progress Payment Schedule', margin, yPos);
-        yPos += 6;
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+        pdf.text('Construction Progress Payment Schedule', margin + 6, yPos + 4);
+        yPos += 8;
 
-        // Project Summary
-        pdf.setFontSize(8);
+        // Project Summary cards
+        pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`Land Cost: ${formatCurrency(constructionProgressSchedule.landPrice)}   |   Build Contract: ${formatCurrency(constructionProgressSchedule.buildPrice)}   |   Total Project: ${formatCurrency(constructionProgressSchedule.totalProject)}`, margin, yPos);
+        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+        pdf.text(`Land Cost: ${formatCurrency(constructionProgressSchedule.landPrice)}   •   Build Contract: ${formatCurrency(constructionProgressSchedule.buildPrice)}   •   Total Project: ${formatCurrency(constructionProgressSchedule.totalProject)}`, margin, yPos);
         yPos += 6;
 
-        // Build stages table header
+        // Table header
         pdf.setFontSize(6);
-        pdf.setFillColor(59, 130, 246);
+        pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
         pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 5, 'F');
-        pdf.setTextColor(255);
+        pdf.setTextColor(255, 255, 255);
         pdf.setFont('helvetica', 'bold');
         const scheduleHeaders = ['Stage', 'Description', '%', 'Stage Pricing', 'Land Int.', 'Build Int.', 'Combined', 'Mo'];
         const scheduleColWidths = [28, 55, 12, 22, 18, 18, 22, 10];
@@ -2245,20 +2333,23 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.text(header, xPos + 1, yPos);
           xPos += scheduleColWidths[idx];
         });
-        pdf.setTextColor(0);
         yPos += 5;
 
-        // Build stages rows
+        // Build stages rows with zebra striping
         pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
         constructionProgressSchedule.stages.forEach((stage, idx) => {
-          if (yPos > pageHeight - 15) {
+          if (yPos > pageHeight - 20) {
             pdf.addPage();
             yPos = margin;
           }
-          if (idx === 0) {
-            pdf.setFillColor(245, 245, 245);
+          
+          // Zebra striping
+          if (idx % 2 === 0) {
+            pdf.setFillColor(lightGray.r, lightGray.g, lightGray.b);
             pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 4, 'F');
           }
+          
           xPos = margin;
           const rowData = [
             stage.stage,
@@ -2278,7 +2369,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         });
 
         // Totals row
-        pdf.setFillColor(240, 240, 240);
+        pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
         pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 5, 'F');
         pdf.setFont('helvetica', 'bold');
         xPos = margin;
@@ -2299,59 +2390,115 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos += 10;
       }
 
+      // ========== 10-YEAR PROJECTIONS TABLE ==========
+      // Section header with accent line
+      pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+      pdf.rect(margin, yPos, 3, 5, 'F');
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+      pdf.text('10-Year Projections', margin + 6, yPos + 4);
+      yPos += 8;
+
       // Table configuration
-      const colWidths = [45, ...Array(11).fill((pageWidth - margin * 2 - 45) / 11)];
-      const rowHeight = 5.5;
+      const colWidths = [42, ...Array(11).fill((pageWidth - margin * 2 - 42) / 11)];
+      const rowHeight = 5.2;
+      let tableRowCount = 0;
       
-      // Helper to draw a row
-      const drawRow = (cells: string[], isHeader = false, isSection = false) => {
-        if (yPos > pageHeight - 20) {
+      // Helper to draw a row with enhanced styling
+      const drawRow = (cells: string[], isHeader = false, isSection = false, highlightValue = false) => {
+        if (yPos > pageHeight - 25) {
           pdf.addPage();
-          yPos = margin;
+          yPos = margin + 10;
+          
+          // Redraw header on new page
+          if (!isHeader) {
+            const headers = ['Metric', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
+            pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
+            pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(7);
+            let hxPos = margin;
+            headers.forEach((header, idx) => {
+              const cellWidth = colWidths[idx];
+              if (idx === 0) {
+                pdf.text(header, hxPos + 2, yPos);
+              } else {
+                pdf.text(header, hxPos + cellWidth - 2, yPos, { align: 'right' });
+              }
+              hxPos += cellWidth;
+            });
+            pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+            yPos += rowHeight;
+          }
         }
 
         if (isSection) {
-          pdf.setFillColor(240, 240, 240);
+          // Section header row
+          pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
           pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(8);
-        } else if (isHeader) {
-          pdf.setFillColor(59, 130, 246);
-          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
-          pdf.setTextColor(255);
+          pdf.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
+          pdf.setLineWidth(0.3);
+          pdf.line(margin, yPos - 3.5, margin + 2, yPos - 3.5 + rowHeight);
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(7);
+          pdf.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+          tableRowCount = 0;
+        } else if (isHeader) {
+          // Table header row
+          pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
+          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(7);
+        } else {
+          // Data row with zebra striping
+          if (tableRowCount % 2 === 1) {
+            pdf.setFillColor(lightGray.r, lightGray.g, lightGray.b);
+            pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+          }
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(7);
+          tableRowCount++;
         }
 
         let xPos = margin;
         cells.forEach((cell, idx) => {
           const cellWidth = colWidths[idx];
           if (idx === 0) {
-            pdf.text(cell, xPos + 1, yPos);
+            pdf.text(cell, xPos + 2, yPos);
           } else {
-            pdf.text(cell, xPos + cellWidth - 1, yPos, { align: 'right' });
+            // Highlight negative values in red
+            if (highlightValue && cell.startsWith('-')) {
+              pdf.setTextColor(180, 50, 50);
+            }
+            pdf.text(cell, xPos + cellWidth - 2, yPos, { align: 'right' });
+            pdf.setTextColor(darkText.r, darkText.g, darkText.b);
           }
           xPos += cellWidth;
         });
 
-        if (isHeader) pdf.setTextColor(0);
+        if (isHeader) {
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+        }
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(7);
         yPos += rowHeight;
       };
 
-      // Header row
+      // Draw table
       const headers = ['Metric', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
       drawRow(headers, true);
 
-      // Data rows
       drawRow(['Capital Growth %', '', ...projections.slice(1).map(p => p.capitalGrowthRate.toFixed(1))]);
       drawRow(['CPI Growth %', '', ...projections.slice(1).map(p => p.cpiGrowthRate.toFixed(1))]);
       drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...projections.slice(1).map(p => formatCurrency(p.propertyMarketValue))]);
       drawRow(['Purchase Price $', formatCurrency(baseFinancialData.purchasePrice), ...Array(10).fill('')]);
       drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
       
-      yPos += 2;
+      yPos += 1;
       drawRow(['STATISTICS'], false, true);
       drawRow(['Equity $', formatCurrency(projections[0].equityInProperty), ...projections.slice(1).map(p => formatCurrency(p.equityInProperty))]);
       drawRow(['LVR %', projections[0].loanToValueRatio.toFixed(1), ...projections.slice(1).map(p => p.loanToValueRatio.toFixed(1))]);
@@ -2359,73 +2506,112 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Gross Yield %', '', ...projections.slice(1).map(p => p.grossYield.toFixed(2))]);
       drawRow(['Net Yield %', '', ...projections.slice(1).map(p => p.netYield.toFixed(2))]);
       
-      yPos += 2;
+      yPos += 1;
       drawRow(['CASH DEDUCTIONS'], false, true);
       drawRow(['Property Expenses $', '$0', ...projections.slice(1).map(p => formatCurrency(p.propertyExpenses))]);
       drawRow(['Land Tax $', '', ...projections.slice(1).map(p => formatCurrency(p.landTax))]);
       drawRow(['Interest Rate %', '', ...projections.slice(1).map(p => p.interestRate.toFixed(2))]);
       drawRow(['Interest Payments $', '$0', ...projections.slice(1).map(p => formatCurrency(p.interestPayments))]);
       drawRow(['Principal Payments $', formatCurrency(projections[0].principalPayments), ...projections.slice(1).map(p => formatCurrency(p.principalPayments))]);
-      drawRow(['Pre-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPA))]);
-      drawRow(['Pre-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPW))]);
+      drawRow(['Pre-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPA))], false, false, true);
+      drawRow(['Pre-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPW))], false, false, true);
       
-      yPos += 2;
+      yPos += 1;
       drawRow(['NON-CASH DEDUCTIONS'], false, true);
       drawRow(['Depreciation $', '', ...projections.slice(1).map(p => formatCurrency(p.depreciation))]);
       
-      yPos += 2;
+      yPos += 1;
       drawRow(['SUMMARY'], false, true);
       drawRow(['Total Deductions $', '', ...projections.slice(1).map(p => formatCurrency(p.totalDeductions))]);
-      drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))]);
+      drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))], false, false, true);
       drawRow(['Tax Refund $', '', ...projections.slice(1).map(p => formatCurrency(p.taxRefund))]);
-      drawRow(['After-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPA))]);
-      drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))]);
+      drawRow(['After-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPA))], false, false, true);
+      drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))], false, false, true);
 
-      // Footer with key summary metrics
-      yPos += 8;
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
+      // ========== 10-YEAR SUMMARY SECTION ==========
+      yPos += 6;
       const year10 = projections[10];
       const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
       const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
-      
-      pdf.text('10-Year Summary:', margin, yPos);
-      yPos += 5;
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Year 10 Property Value: ${formatCurrency(year10.propertyMarketValue)}  |  Year 10 Equity: ${formatCurrency(year10.equityInProperty)}  |  Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}  |  Capital Gain: ${formatCurrency(capitalGain)}`, margin, yPos);
 
-      // Add charts on a new page
+      // Summary box
+      pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
+      pdf.roundedRect(margin, yPos - 2, pageWidth - margin * 2, 12, 2, 2, 'F');
+      
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('10-Year Investment Summary', margin + 5, yPos + 3);
+      
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      const summaryText = [
+        `Property Value: ${formatCurrency(year10.propertyMarketValue)}`,
+        `Total Equity: ${formatCurrency(year10.equityInProperty)}`,
+        `Capital Gain: ${formatCurrency(capitalGain)}`,
+        `Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}`
+      ].join('     •     ');
+      pdf.text(summaryText, margin + 5, yPos + 8);
+
+      // ========== CHARTS PAGE ==========
       if (cashFlowChartImage) {
         pdf.addPage();
-        yPos = margin;
+        yPos = 0;
         
-        pdf.setFontSize(14);
+        // Header bar on chart page
+        pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        pdf.rect(0, 0, pageWidth, 12, 'F');
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Cash Flow & Property Value Trends', margin, yPos);
-        yPos += 10;
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('Cash Flow & Property Value Trends', margin, 8);
         
-        // Add chart image
+        yPos = 20;
+        
+        // Chart container with border
         const chartWidth = pageWidth - margin * 2;
-        const chartHeight = 80;
-        pdf.addImage(cashFlowChartImage, 'PNG', margin, yPos, chartWidth, chartHeight);
-        yPos += chartHeight + 10;
+        const chartHeight = 90;
+        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+        pdf.setLineWidth(0.5);
+        pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+        pdf.addImage(cashFlowChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+        yPos += chartHeight + 8;
         
-        // Add chart legend
+        // Chart legend
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
-        pdf.text('Chart shows Property Value, Equity, Rental Income, and After-Tax Cash Flow trends over 10 years.', margin, yPos);
+        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+        pdf.text('Chart displays Property Value, Equity, Rental Income, and After-Tax Cash Flow trends over the 10-year projection period.', margin, yPos);
       }
 
-      // Footer disclaimer on last page (from template)
-      yPos = pageHeight - 15;
-      pdf.setFontSize(7);
-      pdf.setTextColor(120);
-      pdf.text(templateConfig.disclaimer, margin, yPos);
-      
-      // Contact info footer
-      yPos = pageHeight - 8;
-      pdf.setFontSize(6);
-      pdf.text(`${templateConfig.contactPhone} | ${templateConfig.contactEmail} | ${templateConfig.website}`, pageWidth / 2, yPos, { align: 'center' });
+      // ========== FOOTER (on every page) ==========
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        
+        // Footer separator line
+        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+        
+        // Disclaimer
+        pdf.setFontSize(6);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2);
+        pdf.text(disclaimerLines, margin, pageHeight - 14);
+        
+        // Contact info
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+        pdf.text(`${templateConfig.contactPhone}  •  ${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+        
+        // Page number
+        pdf.setFontSize(7);
+        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+      }
 
       // Save PDF
       const fileName = `Cash_Flow_10Year_${report.property_address.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -2433,7 +2619,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
       toast({
         title: "PDF Exported",
-        description: "10-year cash flow analysis PDF with charts has been downloaded.",
+        description: "10-year cash flow analysis PDF has been downloaded.",
       });
     } catch (error) {
       console.error('Error exporting PDF:', error);
