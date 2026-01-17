@@ -2509,13 +2509,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           yPos += 1; // Extra padding before section
           pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
           pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, sectionRowHeight, 'F');
-          pdf.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
-          pdf.setLineWidth(0.5);
-          pdf.line(margin, yPos - 3.5, margin + 2.5, yPos - 3.5 + sectionRowHeight);
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(6.5);
           pdf.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
-          pdf.text(sectionName, margin + 5, yPos + 0.5);
+          pdf.text(sectionName, margin + 3, yPos + 0.5);
           tableRowCount = 0;
           yPos += sectionRowHeight;
           return; // Don't add more to yPos
