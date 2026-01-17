@@ -537,7 +537,11 @@ export default function Listings() {
                     <div>
                       <div className="font-medium">{listing.address || 'Unknown Address'}</div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{listing.suburb || 'Unknown Suburb'}</span>
+                        <span>
+                          {listing.suburb || 'Unknown Suburb'}
+                          {listing.state && `, ${listing.state}`}
+                          {listing.zipCode && ` ${listing.zipCode}`}
+                        </span>
                         {listing.propertyType && (
                           <Badge variant="outline" className="text-xs">
                             {listing.propertyType}
