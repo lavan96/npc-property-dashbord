@@ -2267,30 +2267,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
 
       // ========== HEADER SECTION ==========
-      // Top colored bar
-      pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-      pdf.rect(0, 0, pageWidth, 22, 'F');
-
-      // Company branding centered in header bar with logo
-      // Try to add logo centered at top
-      try {
-        const logoUrl = '/images/npc-signature-logo.png';
-        const logoWidth = 40;
-        const logoHeight = 12;
-        const logoX = (pageWidth - logoWidth) / 2;
-        pdf.addImage(logoUrl, 'PNG', logoX, 3, logoWidth, logoHeight);
-      } catch (e) {
-        // Fallback to text if logo fails
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(templateConfig.companyName, pageWidth / 2, 10, { align: 'center' });
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(templateConfig.companyNameLine2, pageWidth / 2, 16, { align: 'center' });
-      }
-
-      yPos = 28;
+      // Start content directly without the top banner
+      yPos = margin;
 
       // Document title section
       pdf.setTextColor(darkText.r, darkText.g, darkText.b);
