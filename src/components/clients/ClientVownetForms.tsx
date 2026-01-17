@@ -135,6 +135,9 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.ms-excel.sheet.macroEnabled.12': ['.xlsm'],
+      'application/vnd.ms-excel.sheet.binary.macroEnabled.12': ['.xlsb'],
+      'application/octet-stream': ['.xlsx', '.xls', '.xlsm', '.xlsb'],
       'text/csv': ['.csv']
     },
     disabled: uploading
@@ -203,7 +206,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
                   Drag & drop VowNet form or click to upload
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Supports .xlsx, .xls, .csv files (Max 10MB)
+                  Supports Excel (.xlsx, .xls, .xlsm) and CSV files (Max 10MB)
                 </p>
               </div>
             )}
