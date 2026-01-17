@@ -2656,34 +2656,61 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['After-Tax Cash Flow p/a $', '', ...years1to10.map(p => formatCurrency(p.afterTaxCashFlowPA))], false, false, true);
       drawRow(['After-Tax Cash Flow p/w $', '', ...years1to10.map(p => formatCurrency(p.afterTaxCashFlowPW))], false, false, true);
 
-      // ========== 10-YEAR SUMMARY BOX ==========
-      yPos += summarySpacing;
+      // ========== 10-YEAR SUMMARY CARDS ==========
+      yPos += summarySpacing + 4;
       
-      // Final check - if summary box would overflow, add page (shouldn't happen now)
-      if (yPos + summaryBoxHeight > contentMaxY) {
+      // Increased height for card layout with label + value
+      const summaryCardHeight = 22;
+      
+      // Final check - if summary cards would overflow, add page
+      if (yPos + summaryCardHeight + 8 > contentMaxY) {
         pdf.addPage();
         yPos = margin + 10;
       }
 
-      // Summary box with dark blue background (matching reference style)
-      const darkBlue = { r: 45, g: 55, b: 72 }; // #2d3748 - dark slate blue
-      pdf.setFillColor(darkBlue.r, darkBlue.g, darkBlue.b);
-      pdf.roundedRect(margin, yPos, pageWidth - margin * 2, summaryBoxHeight, 2, 2, 'F');
-      
+      // Section title
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text('10-Year Investment Summary', margin + 5, yPos + 6);
+      pdf.setTextColor(45, 55, 72); // Dark slate text
+      pdf.text('10-Year Investment Summary', margin, yPos);
+      yPos += 6;
+
+      // Card styling - dark blue background with white text
+      const darkBlue = { r: 45, g: 55, b: 72 }; // #2d3748 - dark slate blue
+      const summaryContentWidth = pageWidth - margin * 2;
+      const summaryCardGap = 3;
+      const summaryCardWidth = (summaryContentWidth - (summaryCardGap * 3)) / 4;
+
+      // Summary data for 4 cards
+      const summaryCards = [
+        { label: 'Property Value', value: formatCurrency(year10.propertyMarketValue) },
+        { label: 'Total Equity', value: formatCurrency(year10.equityInProperty) },
+        { label: 'Capital Gain', value: formatCurrency(capitalGain) },
+        { label: 'Total After-Tax Cash Flow', value: formatCurrency(totalCashFlow) }
+      ];
+
+      // Draw each card
+      summaryCards.forEach((card, index) => {
+        const cardX = margin + (index * (summaryCardWidth + summaryCardGap));
+        
+        // Card background - dark blue with rounded corners
+        pdf.setFillColor(darkBlue.r, darkBlue.g, darkBlue.b);
+        pdf.roundedRect(cardX, yPos, summaryCardWidth, summaryCardHeight, 2, 2, 'F');
+        
+        // Label - small white text at top
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(200, 200, 210); // Light gray for label
+        pdf.text(card.label, cardX + 4, yPos + 7);
+        
+        // Value - larger white bold text below
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255); // White for value
+        pdf.text(card.value, cardX + 4, yPos + 16);
+      });
       
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      const summaryText = [
-        `Property Value: ${formatCurrency(year10.propertyMarketValue)}`,
-        `Total Equity: ${formatCurrency(year10.equityInProperty)}`,
-        `Capital Gain: ${formatCurrency(capitalGain)}`,
-        `Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}`
-      ].join('     •     ');
-      pdf.text(summaryText, margin + 5, yPos + 13);
+      yPos += summaryCardHeight;
 
       // ========== CHARTS PAGE ==========
       const hasAnyChart = cashFlowChartImage || yieldChartImage || comparisonChartImage;
