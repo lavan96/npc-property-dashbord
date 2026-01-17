@@ -2819,6 +2819,21 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.text('(02) 8609 3299', margin + 45, contactYPos);
       contactYPos += 10;
       
+      // Address
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
+      pdf.text('ADDRESS:', margin + 10, contactYPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Level 5 Nexus Norwest, 4 Columbia Ct, Norwest NSW 2153', margin + 45, contactYPos);
+      contactYPos += 10;
+      
+      // ABN
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('ABN:', margin + 10, contactYPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('50 684 555 771', margin + 45, contactYPos);
+      contactYPos += 10;
+      
       // Disclaimer section
       contactYPos = pageHeight - 100;
       
