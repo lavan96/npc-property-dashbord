@@ -3,10 +3,26 @@
  * Uses PDF.js to render PDF pages as PNG images for GPT-4o Vision analysis
  */
 
-import * as pdfjsLib from 'pdfjs-dist';
+// NOTE: We intentionally load PDF.js from a CDN at runtime.
+// Reason: pdfjs-dist includes an optional native dependency (canvas) that can
+// cause bun installs in CI to timeout, preventing preview/publish.
 
-// Set up the worker - using CDN for compatibility
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
+const PDFJS_VERSION = '4.4.168';
+const PDFJS_CDN_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
+let pdfjsPromise: Promise<any> | null = null;
+
+async function getPdfJs() {
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const mod = await import(/* @vite-ignore */ `${PDFJS_CDN_BASE}/pdf.min.mjs`);
+      // Set up the worker from the same CDN
+      mod.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN_BASE}/pdf.worker.min.mjs`;
+      return mod;
+    })();
+  }
+  return pdfjsPromise;
+}
 
 export interface PdfPageImage {
   pageNumber: number;
@@ -39,8 +55,11 @@ export async function convertPdfToImages(
     // Read the file as ArrayBuffer
     const arrayBuffer = await pdfFile.arrayBuffer();
     
+    // Load PDF.js (from CDN)
+    const pdfjs = await getPdfJs();
+
     // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({
+    const loadingTask = pdfjs.getDocument({
       data: arrayBuffer,
       useSystemFonts: true,
     });
