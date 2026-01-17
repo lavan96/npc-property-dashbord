@@ -2145,6 +2145,76 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const contentMaxY = pageHeight - footerHeight; // Maximum Y position for content
       let yPos = 0;
 
+      // ========== COVER PAGE ==========
+      // Dark background
+      pdf.setFillColor(26, 26, 26);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      // Gold accent bar at top
+      const goldColor = { r: 201, g: 165, b: 90 }; // #c9a55a
+      pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
+      pdf.rect(0, 0, pageWidth, 8, 'F');
+
+      // Try to add centered logo
+      try {
+        const logoUrl = '/images/npc-signature-logo.png';
+        const logoWidth = 80;
+        const logoHeight = 24;
+        const logoX = (pageWidth - logoWidth) / 2;
+        pdf.addImage(logoUrl, 'PNG', logoX, 40, logoWidth, logoHeight);
+      } catch (e) {
+        // Fallback to text if logo fails
+        pdf.setFontSize(28);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
+        pdf.text(templateConfig.companyName, pageWidth / 2, 55, { align: 'center' });
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(templateConfig.companyNameLine2, pageWidth / 2, 65, { align: 'center' });
+      }
+
+      // Tagline
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
+      pdf.text(templateConfig.tagline, pageWidth / 2, 75, { align: 'center' });
+
+      // Decorative line
+      pdf.setDrawColor(goldColor.r, goldColor.g, goldColor.b);
+      pdf.setLineWidth(0.5);
+      pdf.line(pageWidth / 2 - 40, 85, pageWidth / 2 + 40, 85);
+
+      // Document title
+      pdf.setFontSize(32);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('10-YEAR', pageWidth / 2, 120, { align: 'center' });
+      pdf.text('CASH FLOW ANALYSIS', pageWidth / 2, 135, { align: 'center' });
+
+      // Property address - cleaned
+      const cleanedAddressCover = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
+      const addressLines = pdf.splitTextToSize(cleanedAddressCover, pageWidth - 60);
+      let addressY = 165;
+      addressLines.forEach((line: string) => {
+        pdf.text(line, pageWidth / 2, addressY, { align: 'center' });
+        addressY += 8;
+      });
+
+      // Generation date
+      pdf.setFontSize(11);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text(`Prepared: ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`, pageWidth / 2, pageHeight - 40, { align: 'center' });
+
+      // Bottom gold bar
+      pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
+      pdf.rect(0, pageHeight - 8, pageWidth, 8, 'F');
+
+      // Add new page for content
+      pdf.addPage();
+
       // Brand colors (gold primary)
       const primaryColor = { r: 202, g: 138, b: 4 }; // Gold #ca8a04
       const darkText = { r: 30, g: 30, b: 30 };
@@ -2743,10 +2813,100 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
       }
 
-      // ========== FOOTER (on every page) ==========
+      // ========== CONTACT / DISCLAIMER PAGE (Last Page) ==========
+      pdf.addPage();
+      
+      // Dark background
+      pdf.setFillColor(26, 26, 26);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      // Gold color for text
+      const contactGoldColor = { r: 201, g: 165, b: 90 }; // #c9a55a
+      const contactGrayColor = { r: 150, g: 150, b: 150 };
+      
+      let contactYPos = 60;
+      
+      // Company Name / Header
+      pdf.setFontSize(28);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
+      pdf.text(templateConfig.companyName.toUpperCase(), margin + 10, contactYPos);
+      
+      if (templateConfig.companyNameLine2) {
+        contactYPos += 12;
+        pdf.setFontSize(18);
+        pdf.text(templateConfig.companyNameLine2, margin + 10, contactYPos);
+      }
+      
+      contactYPos += 25;
+      
+      // "CONTACT US" heading
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('CONTACT US', margin + 10, contactYPos);
+      
+      contactYPos += 15;
+      
+      // Contact details
+      pdf.setFontSize(11);
+      
+      if (templateConfig.website) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
+        pdf.text('WEBSITE:', margin + 10, contactYPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(templateConfig.website, margin + 45, contactYPos);
+        contactYPos += 10;
+      }
+      
+      if (templateConfig.contactEmail) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('EMAIL:', margin + 10, contactYPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(templateConfig.contactEmail, margin + 45, contactYPos);
+        contactYPos += 10;
+      }
+      
+      if (templateConfig.contactPhone) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('PHONE:', margin + 10, contactYPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(templateConfig.contactPhone, margin + 45, contactYPos);
+        contactYPos += 10;
+      }
+      
+      // Disclaimer section
+      contactYPos = pageHeight - 100;
+      
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(contactGrayColor.r, contactGrayColor.g, contactGrayColor.b);
+      
+      // Full professional disclaimer
+      const fullDisclaimer = "AS A PROFESSIONAL PROPERTY CONSULTANT & BUYERS AGENT, WE PROVIDE INFORMATION AND ADVICE BASED ON OUR EXPERTISE AND EXPERIENCE IN THE REAL ESTATE MARKET. PLEASE BE AWARE THAT THE ADVICE AND INSIGHTS OFFERED ARE FOR GENERAL INFORMATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSIDERED FINANCIAL ADVICE. WHILE WE STRIVE TO ENSURE THE ACCURACY AND RELEVANCE OF THE INFORMATION PROVIDED, REAL ESTATE MARKETS ARE DYNAMIC AND SUBJECT TO CHANGE AND WE CANNOT GUARANTEE THE FUTURE PERFORMANCE OR OUTCOMES OF ANY PROPERTY INVESTMENT.";
+      
+      const disclaimerLinesFull = pdf.splitTextToSize(fullDisclaimer, pageWidth - margin * 4);
+      disclaimerLinesFull.forEach((line: string) => {
+        pdf.text(line, margin + 10, contactYPos);
+        contactYPos += 5;
+      });
+      
+      // Bottom gold bar
+      pdf.setFillColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
+      pdf.rect(0, pageHeight - 8, pageWidth, 8, 'F');
+
+      // ========== FOOTER (on content pages only, skip cover and contact pages) ==========
       const totalPages = pdf.getNumberOfPages();
+      const coverPageIndex = 1;
+      const contactPageIndex = totalPages;
+      
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
+        
+        // Skip cover page (first) and contact page (last)
+        if (i === coverPageIndex || i === contactPageIndex) {
+          continue;
+        }
         
         // Footer separator line - at contentMaxY boundary
         pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
@@ -2757,8 +2917,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFontSize(6.5);
         pdf.setFont('helvetica', 'italic');
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2.5);
-        pdf.text(disclaimerLines, pageWidth / 2, contentMaxY + 8, { align: 'center' });
+        const disclaimerLinesFooter = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2.5);
+        pdf.text(disclaimerLinesFooter, pageWidth / 2, contentMaxY + 8, { align: 'center' });
         
         // Contact info and page number at very bottom
         pdf.setFontSize(7);
@@ -2766,10 +2926,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
         pdf.text(`${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
         
-        // Page number
+        // Page number (content pages start from 1, excluding cover)
+        const contentPageNum = i - 1; // Exclude cover page from count
+        const totalContentPages = totalPages - 2; // Exclude cover and contact pages
         pdf.setFontSize(7);
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+        pdf.text(`Page ${contentPageNum} of ${totalContentPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
       }
 
       // Save PDF - use cleaned address for filename
