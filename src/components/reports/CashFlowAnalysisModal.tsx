@@ -2593,30 +2593,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const headers = ['', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
       drawRow(headers, true);
 
-      drawRow(['Capital Growth %', '', ...projections.slice(1).map(p => p.capitalGrowthRate.toFixed(1))]);
-      drawRow(['CPI Growth %', '', ...projections.slice(1).map(p => p.cpiGrowthRate.toFixed(1))]);
-      drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...projections.slice(1).map(p => formatCurrency(p.propertyMarketValue))]);
+      // Helper to safely get projection data - ensures all 10 years have values
+      const getYearData = (yearIndex: number) => projections[yearIndex] || projections[projections.length - 1];
+      const years1to10 = Array.from({ length: 10 }, (_, i) => getYearData(i + 1));
+
+      drawRow(['Capital Growth %', '', ...years1to10.map(p => p.capitalGrowthRate.toFixed(1))]);
+      drawRow(['CPI Growth %', '', ...years1to10.map(p => p.cpiGrowthRate.toFixed(1))]);
+      drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...years1to10.map(p => formatCurrency(p.propertyMarketValue))]);
       drawRow(['Purchase Price $', formatCurrency(baseFinancialData.purchasePrice), ...Array(10).fill('')]);
-      drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
+      drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...years1to10.map(p => formatCurrency(p.loanAmount))]);
       
       drawRow(['STATISTICS'], false, true);
-      drawRow(['Equity $', formatCurrency(projections[0].equityInProperty), ...projections.slice(1).map(p => formatCurrency(p.equityInProperty))]);
-      drawRow(['LVR %', projections[0].loanToValueRatio.toFixed(1), ...projections.slice(1).map(p => p.loanToValueRatio.toFixed(1))]);
-      drawRow(['Rental Income $', `${formatCurrency(baseFinancialData.weeklyRent)}pw`, ...projections.slice(1).map(p => formatCurrency(p.rentalIncome))]);
-      drawRow(['Gross Yield %', '', ...projections.slice(1).map(p => p.grossYield.toFixed(2))]);
-      drawRow(['Net Yield %', '', ...projections.slice(1).map(p => p.netYield.toFixed(2))]);
+      drawRow(['Equity $', formatCurrency(projections[0].equityInProperty), ...years1to10.map(p => formatCurrency(p.equityInProperty))]);
+      drawRow(['LVR %', projections[0].loanToValueRatio.toFixed(1), ...years1to10.map(p => p.loanToValueRatio.toFixed(1))]);
+      drawRow(['Rental Income $', `${formatCurrency(baseFinancialData.weeklyRent)}pw`, ...years1to10.map(p => formatCurrency(p.rentalIncome))]);
+      drawRow(['Gross Yield %', '', ...years1to10.map(p => p.grossYield.toFixed(2))]);
+      drawRow(['Net Yield %', '', ...years1to10.map(p => p.netYield.toFixed(2))]);
       
       drawRow(['CASH DEDUCTIONS'], false, true);
-      drawRow(['Property Expenses $', '$0', ...projections.slice(1).map(p => formatCurrency(p.propertyExpenses))]);
-      drawRow(['Land Tax $', '', ...projections.slice(1).map(p => formatCurrency(p.landTax))]);
-      drawRow(['Interest Rate %', '', ...projections.slice(1).map(p => p.interestRate.toFixed(2))]);
-      drawRow(['Interest Payments $', '$0', ...projections.slice(1).map(p => formatCurrency(p.interestPayments))]);
-      drawRow(['Principal Payments $', formatCurrency(projections[0].principalPayments), ...projections.slice(1).map(p => formatCurrency(p.principalPayments))]);
-      drawRow(['Pre-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPA))], false, false, true);
-      drawRow(['Pre-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.preTaxCashFlowPW))], false, false, true);
+      drawRow(['Property Expenses $', '$0', ...years1to10.map(p => formatCurrency(p.propertyExpenses))]);
+      drawRow(['Land Tax $', '', ...years1to10.map(p => formatCurrency(p.landTax))]);
+      drawRow(['Interest Rate %', '', ...years1to10.map(p => p.interestRate.toFixed(2))]);
+      drawRow(['Interest Payments $', '$0', ...years1to10.map(p => formatCurrency(p.interestPayments))]);
+      drawRow(['Principal Payments $', formatCurrency(projections[0].principalPayments), ...years1to10.map(p => formatCurrency(p.principalPayments))]);
+      drawRow(['Pre-Tax Cash Flow p/a $', '', ...years1to10.map(p => formatCurrency(p.preTaxCashFlowPA))], false, false, true);
+      drawRow(['Pre-Tax Cash Flow p/w $', '', ...years1to10.map(p => formatCurrency(p.preTaxCashFlowPW))], false, false, true);
       
       drawRow(['NON-CASH DEDUCTIONS'], false, true);
-      drawRow(['Depreciation $', '', ...projections.slice(1).map(p => formatCurrency(p.depreciation))]);
+      drawRow(['Depreciation $', '', ...years1to10.map(p => formatCurrency(p.depreciation))]);
       
       // ========== CHECK IF SUMMARY WILL FIT BEFORE DRAWING LAST SECTION ==========
       // Calculate space needed for remaining rows + summary box
@@ -2632,11 +2636,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
       
       drawRow(['SUMMARY'], false, true);
-      drawRow(['Total Deductions $', '', ...projections.slice(1).map(p => formatCurrency(p.totalDeductions))]);
-      drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))], false, false, true);
-      drawRow(['Tax Refund $', '', ...projections.slice(1).map(p => formatCurrency(p.taxRefund))]);
-      drawRow(['After-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPA))], false, false, true);
-      drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))], false, false, true);
+      drawRow(['Total Deductions $', '', ...years1to10.map(p => formatCurrency(p.totalDeductions))]);
+      drawRow(['Net Profit/Loss $', '', ...years1to10.map(p => formatCurrency(p.netProfitLoss))], false, false, true);
+      drawRow(['Tax Refund $', '', ...years1to10.map(p => formatCurrency(p.taxRefund))]);
+      drawRow(['After-Tax Cash Flow p/a $', '', ...years1to10.map(p => formatCurrency(p.afterTaxCashFlowPA))], false, false, true);
+      drawRow(['After-Tax Cash Flow p/w $', '', ...years1to10.map(p => formatCurrency(p.afterTaxCashFlowPW))], false, false, true);
 
       // ========== 10-YEAR SUMMARY BOX ==========
       yPos += summarySpacing;
