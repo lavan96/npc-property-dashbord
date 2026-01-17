@@ -2104,7 +2104,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const templateConfig = await loadActiveCashFlowTemplate();
       console.log(`📋 Using Cash Flow template: ${templateConfig.name}`);
 
-      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape for wide table
+      const pdf = new jsPDF('p', 'mm', 'a4'); // Portrait orientation for better fit
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
@@ -2136,22 +2136,28 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       // ========== HEADER SECTION ==========
       // Top colored bar
       pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-      pdf.rect(0, 0, pageWidth, 18, 'F');
+      pdf.rect(0, 0, pageWidth, 22, 'F');
 
-      // Company branding in header bar
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text(templateConfig.companyName, margin, 8);
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(templateConfig.companyNameLine2, margin, 13);
+      // Company branding centered in header bar with logo
+      // Try to add logo centered at top
+      try {
+        const logoUrl = '/images/npc-signature-logo.png';
+        const logoWidth = 40;
+        const logoHeight = 12;
+        const logoX = (pageWidth - logoWidth) / 2;
+        pdf.addImage(logoUrl, 'PNG', logoX, 3, logoWidth, logoHeight);
+      } catch (e) {
+        // Fallback to text if logo fails
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(templateConfig.companyName, pageWidth / 2, 10, { align: 'center' });
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(templateConfig.companyNameLine2, pageWidth / 2, 16, { align: 'center' });
+      }
 
-      // Tagline on right side
-      pdf.setFontSize(8);
-      pdf.text(templateConfig.tagline, pageWidth - margin, 10, { align: 'right' });
-
-      yPos = 26;
+      yPos = 28;
 
       // Document title section
       pdf.setTextColor(darkText.r, darkText.g, darkText.b);
@@ -2400,96 +2406,82 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.text('10-Year Projections', margin + 6, yPos + 4);
       yPos += 8;
 
-      // Table configuration
-      const colWidths = [42, ...Array(11).fill((pageWidth - margin * 2 - 42) / 11)];
-      const rowHeight = 5.2;
+      // Table configuration - compact for portrait orientation
+      const colWidths = [32, ...Array(11).fill((pageWidth - margin * 2 - 32) / 11)];
+      const rowHeight = 4.5;
       let tableRowCount = 0;
       
-      // Helper to draw a row with enhanced styling
+      // Helper to draw a row with enhanced styling - NO page breaks for full table on one page
       const drawRow = (cells: string[], isHeader = false, isSection = false, highlightValue = false) => {
-        if (yPos > pageHeight - 25) {
-          pdf.addPage();
-          yPos = margin + 10;
-          
-          // Redraw header on new page
-          if (!isHeader) {
-            const headers = ['Metric', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
-            pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
-            pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(7);
-            let hxPos = margin;
-            headers.forEach((header, idx) => {
-              const cellWidth = colWidths[idx];
-              if (idx === 0) {
-                pdf.text(header, hxPos + 2, yPos);
-              } else {
-                pdf.text(header, hxPos + cellWidth - 2, yPos, { align: 'right' });
-              }
-              hxPos += cellWidth;
-            });
-            pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-            yPos += rowHeight;
-          }
-        }
-
         if (isSection) {
-          // Section header row
+          // Section header row - remove slash from section names
+          const sectionName = cells[0].replace(/[\/\\|]/g, '').trim();
           pdf.setFillColor(sectionBg.r, sectionBg.g, sectionBg.b);
-          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+          pdf.rect(margin, yPos - 3, pageWidth - margin * 2, rowHeight, 'F');
           pdf.setDrawColor(primaryColor.r, primaryColor.g, primaryColor.b);
           pdf.setLineWidth(0.3);
-          pdf.line(margin, yPos - 3.5, margin + 2, yPos - 3.5 + rowHeight);
+          pdf.line(margin, yPos - 3, margin + 2, yPos - 3 + rowHeight);
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(7);
+          pdf.setFontSize(6);
           pdf.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
+          pdf.text(sectionName, margin + 4, yPos);
           tableRowCount = 0;
         } else if (isHeader) {
-          // Table header row
+          // Table header row - Remove "Metric" from first column
           pdf.setFillColor(tableHeaderBg.r, tableHeaderBg.g, tableHeaderBg.b);
-          pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+          pdf.rect(margin, yPos - 3, pageWidth - margin * 2, rowHeight, 'F');
           pdf.setTextColor(255, 255, 255);
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(7);
+          pdf.setFontSize(6);
+          
+          let xPos = margin;
+          cells.forEach((cell, idx) => {
+            const cellWidth = colWidths[idx];
+            // Skip "Metric" in first column header
+            const displayCell = idx === 0 ? '' : cell;
+            if (idx === 0) {
+              pdf.text(displayCell, xPos + 2, yPos);
+            } else {
+              pdf.text(displayCell, xPos + cellWidth - 1, yPos, { align: 'right' });
+            }
+            xPos += cellWidth;
+          });
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
         } else {
           // Data row with zebra striping
           if (tableRowCount % 2 === 1) {
             pdf.setFillColor(lightGray.r, lightGray.g, lightGray.b);
-            pdf.rect(margin, yPos - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+            pdf.rect(margin, yPos - 3, pageWidth - margin * 2, rowHeight, 'F');
           }
           pdf.setTextColor(darkText.r, darkText.g, darkText.b);
           pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(7);
+          pdf.setFontSize(6);
+          
+          let xPos = margin;
+          cells.forEach((cell, idx) => {
+            const cellWidth = colWidths[idx];
+            if (idx === 0) {
+              pdf.text(cell, xPos + 2, yPos);
+            } else {
+              // Highlight negative values in red
+              if (highlightValue && cell.startsWith('-')) {
+                pdf.setTextColor(180, 50, 50);
+              }
+              pdf.text(cell, xPos + cellWidth - 1, yPos, { align: 'right' });
+              pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+            }
+            xPos += cellWidth;
+          });
           tableRowCount++;
         }
 
-        let xPos = margin;
-        cells.forEach((cell, idx) => {
-          const cellWidth = colWidths[idx];
-          if (idx === 0) {
-            pdf.text(cell, xPos + 2, yPos);
-          } else {
-            // Highlight negative values in red
-            if (highlightValue && cell.startsWith('-')) {
-              pdf.setTextColor(180, 50, 50);
-            }
-            pdf.text(cell, xPos + cellWidth - 2, yPos, { align: 'right' });
-            pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-          }
-          xPos += cellWidth;
-        });
-
-        if (isHeader) {
-          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-        }
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(7);
+        pdf.setFontSize(6);
         yPos += rowHeight;
       };
 
-      // Draw table
-      const headers = ['Metric', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
+      // Draw table - headers without "Metric"
+      const headers = ['', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
       drawRow(headers, true);
 
       drawRow(['Capital Growth %', '', ...projections.slice(1).map(p => p.capitalGrowthRate.toFixed(1))]);
@@ -2592,20 +2584,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         // Footer separator line
         pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
         pdf.setLineWidth(0.3);
-        pdf.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+        pdf.line(margin, pageHeight - 22, pageWidth - margin, pageHeight - 22);
         
-        // Disclaimer
+        // Disclaimer - CENTERED on the page
         pdf.setFontSize(6);
         pdf.setFont('helvetica', 'italic');
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2);
-        pdf.text(disclaimerLines, margin, pageHeight - 14);
+        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 4);
+        pdf.text(disclaimerLines, pageWidth / 2, pageHeight - 18, { align: 'center' });
         
-        // Contact info
+        // Contact info - Remove mobile number, only email and website
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-        pdf.text(`${templateConfig.contactPhone}  •  ${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+        pdf.text(`${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
         
         // Page number
         pdf.setFontSize(7);
