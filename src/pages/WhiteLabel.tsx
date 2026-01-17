@@ -240,22 +240,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor={`bg-remove-${title}`} className="text-sm font-medium">
-              Remove Background
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Automatically remove image background
-            </p>
-          </div>
-          <Switch
-            id={`bg-remove-${title}`}
-            checked={removeBackgroundEnabled}
-            onCheckedChange={setRemoveBackgroundEnabled}
-            disabled={isProcessing}
-          />
-        </div>
+        {/* Background removal feature temporarily disabled */}
 
         <input
           ref={fileInputRef}
