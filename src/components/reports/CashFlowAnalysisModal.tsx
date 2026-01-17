@@ -2233,7 +2233,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setFontSize(13);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-      pdf.text(report.property_address, margin, yPos);
+      // Clean the address - remove "Copy" suffix and trailing underscores/numbers
+      const cleanedAddress = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
+      pdf.text(cleanedAddress, margin, yPos);
       yPos += 5;
 
       // Decorative line under address
@@ -2559,6 +2561,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos += rowHeight;
       };
 
+      // ========== SMART PAGE BREAK LOGIC ==========
+      // Pre-calculate total height needed for projections table + summary box
+      // This helps us decide if we need to start the table on a new page
+      const summaryBoxHeight = 16;
+      const summarySpacing = 4;
+      
+      // Calculate approximate table height:
+      // - 1 header row + 5 data rows + 4 section rows + remaining data rows
+      // Total rows: header(1) + data(5) + section(STATISTICS) + data(5) + section(CASH) + data(7) + section(NON-CASH) + data(1) + section(SUMMARY) + data(5) = ~24 rows + 4 sections
+      const totalDataRows = 23; // Regular data rows
+      const totalSectionRows = 4; // Section header rows
+      const headerRowHeight = rowHeight;
+      const estimatedTableHeight = headerRowHeight + (totalDataRows * rowHeight) + (totalSectionRows * (sectionRowHeight + 1));
+      const estimatedTotalHeight = estimatedTableHeight + summarySpacing + summaryBoxHeight;
+      
+      // Calculate year 10 values early for summary
+      const year10 = projections[10];
+      const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
+      const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
+      
+      // If everything won't fit on remaining space of page 1, check if it fits at all on a fresh page
+      const remainingSpaceOnPage = contentMaxY - yPos;
+      const freshPageSpace = contentMaxY - margin - 5;
+      
+      // If table + summary won't fit in remaining space but will fit on a fresh page, continue
+      // The drawRow function will handle individual row page breaks
+      // Key: We just need to ensure summary box can stay with at least some of the table
+      
       // Draw table - headers without "Metric"
       const headers = ['', 'Today', 'Yr 1', 'Yr 2', 'Yr 3', 'Yr 4', 'Yr 5', 'Yr 6', 'Yr 7', 'Yr 8', 'Yr 9', 'Yr 10'];
       drawRow(headers, true);
@@ -2568,7 +2598,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['Property Value $', formatCurrency(projections[0].propertyMarketValue), ...projections.slice(1).map(p => formatCurrency(p.propertyMarketValue))]);
       drawRow(['Purchase Price $', formatCurrency(baseFinancialData.purchasePrice), ...Array(10).fill('')]);
       drawRow(['Loan Amount $', formatCurrency(projections[0].loanAmount), ...projections.slice(1).map(p => formatCurrency(p.loanAmount))]);
-      
       
       drawRow(['STATISTICS'], false, true);
       drawRow(['Equity $', formatCurrency(projections[0].equityInProperty), ...projections.slice(1).map(p => formatCurrency(p.equityInProperty))]);
@@ -2589,6 +2618,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['NON-CASH DEDUCTIONS'], false, true);
       drawRow(['Depreciation $', '', ...projections.slice(1).map(p => formatCurrency(p.depreciation))]);
       
+      // ========== CHECK IF SUMMARY WILL FIT BEFORE DRAWING LAST SECTION ==========
+      // Calculate space needed for remaining rows + summary box
+      const remainingRows = 6; // SUMMARY section + 5 data rows
+      const remainingSectionRows = 1;
+      const spaceNeededForSummarySection = (remainingRows * rowHeight) + (remainingSectionRows * (sectionRowHeight + 1)) + summarySpacing + summaryBoxHeight;
+      
+      // If summary section + summary box won't fit, force page break now
+      if (yPos + spaceNeededForSummarySection > contentMaxY) {
+        pdf.addPage();
+        yPos = margin + 5;
+        tableRowCount = 0;
+      }
+      
       drawRow(['SUMMARY'], false, true);
       drawRow(['Total Deductions $', '', ...projections.slice(1).map(p => formatCurrency(p.totalDeductions))]);
       drawRow(['Net Profit/Loss $', '', ...projections.slice(1).map(p => formatCurrency(p.netProfitLoss))], false, false, true);
@@ -2596,15 +2638,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       drawRow(['After-Tax Cash Flow p/a $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPA))], false, false, true);
       drawRow(['After-Tax Cash Flow p/w $', '', ...projections.slice(1).map(p => formatCurrency(p.afterTaxCashFlowPW))], false, false, true);
 
-      // ========== 10-YEAR SUMMARY SECTION ==========
-      yPos += 4; // More space before summary
-      const year10 = projections[10];
-      const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
-      const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
-
-      // Check if summary box will fit above footer using contentMaxY
-      const summaryBoxHeight = 16;
+      // ========== 10-YEAR SUMMARY BOX ==========
+      yPos += summarySpacing;
       
+      // Final check - if summary box would overflow, add page (shouldn't happen now)
       if (yPos + summaryBoxHeight > contentMaxY) {
         pdf.addPage();
         yPos = margin + 10;
@@ -2731,8 +2768,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
       }
 
-      // Save PDF
-      const fileName = `Cash_Flow_10Year_${report.property_address.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      // Save PDF - use cleaned address for filename
+      const cleanedAddressForFile = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
+      const fileName = `Cash_Flow_10Year_${cleanedAddressForFile.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       pdf.save(fileName);
 
       toast({
