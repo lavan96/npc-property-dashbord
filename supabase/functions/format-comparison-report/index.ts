@@ -75,6 +75,12 @@ serve(async (req) => {
 - **Key Concerns:** [Concern 1], [Concern 2]`
     ).join('\n\n---\n\n');
 
+    // Create property reference table for clear identification
+    const propertyReferenceTable = propertyAddresses.map((addr: string, idx: number) => {
+      const state = propertyStates[idx] || 'N/A';
+      return `| Property ${idx + 1} | ${addr} | ${state} |`;
+    }).join('\n');
+
     // Create a comprehensive prompt for Perplexity to format the comparison data
     const prompt = `You are a professional real estate analyst report formatter. Convert the following property comparison analysis data into a beautifully formatted markdown report.
 
@@ -97,18 +103,43 @@ ${numberedProperties}
 
 # ${reportTitle}
 
-**Properties Analyzed:** ${propertyAddresses.join(' | ')}
-**States:** ${propertyStates.join(', ')}
 **Analysis Date:** ${new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' })}
 
 ---
 
 ## MANDATORY STRUCTURE - ALL 10 SECTIONS REQUIRED:
 
-### 1. EXECUTIVE SUMMARY
-Write 2-3 paragraphs covering: overview of all ${propertyCount} properties, key findings, critical differentiators, and top recommendation.
+### 1. PROPERTY REFERENCE GUIDE
+Start with this table to clearly identify each property:
 
-### 2. OVERALL RANKINGS
+| Reference | Full Address | State |
+|-----------|--------------|-------|
+${propertyReferenceTable}
+
+This reference guide ensures you always know which property is being discussed throughout the report.
+
+### 2. INVESTOR PROFILE MATCHING
+**IMPORTANT: This section comes EARLY to help readers identify which properties suit their investment profile.**
+
+For EACH of the ${propertyCount} properties, format as follows:
+
+**Property X: [Full Address]** as a bold header on its own line, then:
+- **Best For:** [list 2-3 investor types]
+- **Investment Style:** [Growth/Income/Balanced/Value]
+- **Risk Tolerance:** [Conservative/Moderate/Aggressive]
+- **Reasoning:** [detailed explanation of why this property suits these investor types]
+
+Example format:
+**Property 1: 512/23 Adelaide Street, Fremantle, WA 6160**
+- **Best For:** Lifestyle-Oriented Capital Growth Investor, Balanced Portfolio Investor
+- **Investment Style:** Balanced
+- **Risk Tolerance:** Moderate
+- **Reasoning:** Strong lifestyle attributes and walkability suit investors prioritising quality-of-life factors alongside capital appreciation.
+
+### 3. EXECUTIVE SUMMARY
+Write 2-3 paragraphs covering: overview of all ${propertyCount} properties, key findings, critical differentiators, and top recommendation. Reference properties by their number AND address.
+
+### 4. OVERALL RANKINGS
 Format each property ranking as a paragraph (NOT a table). You MUST use the EXACT property addresses shown below.
 
 **IMPORTANT**: The ranking order should be based on the investment scores from the comparison data (highest score = Rank 1). Each property MUST include its FULL ADDRESS in the header.
@@ -117,100 +148,88 @@ ${rankingExamples}
 
 **CRITICAL**: 
 - Include ALL ${propertyCount} properties with complete details
-- Each property header MUST include the FULL property address (e.g., "21/11 Rowlands Street, Kewdale, WA 6105" NOT just "Property 2")
+- Each property header MUST include the FULL property address (e.g., "Rank 1: 21/11 Rowlands Street, Kewdale, WA 6105" NOT just "Rank 1: Property 2")
 - Do NOT use tables for rankings
 - Rankings should be ordered by investment score (highest first)
 
-### 3. FINANCIAL PERFORMANCE COMPARISON
+### 5. FINANCIAL PERFORMANCE COMPARISON
 Include subsections:
-- **Best Yield**: Property X - X.XX% Gross / X.XX% Net (with explanation)
-- **Best Cash Flow**: Property X - $X,XXX Annual (with explanation)
-- **Best ROI**: Property X - (with LVR projections and explanation)
-- **Best Value**: Property X - (with explanation)
+- **Best Yield**: Property X - [Full Address] - X.XX% Gross / X.XX% Net (with explanation)
+- **Best Cash Flow**: Property X - [Full Address] - $X,XXX Annual (with explanation)
+- **Best ROI**: Property X - [Full Address] - (with LVR projections and explanation)
+- **Best Value**: Property X - [Full Address] - (with explanation)
 
-### 4. LOCATION INTELLIGENCE COMPARISON
+### 6. LOCATION INTELLIGENCE COMPARISON
 Include subsections:
-- **Best Infrastructure**: Property X (with explanation)
-- **Best Growth Corridor**: Property X (with explanation)
-- **Best Schools**: Property X (with explanation)
-- **Best Lifestyle**: Property X (with explanation)
+- **Best Infrastructure**: Property X - [Full Address] (with explanation)
+- **Best Growth Corridor**: Property X - [Full Address] (with explanation)
+- **Best Schools**: Property X - [Full Address] (with explanation)
+- **Best Lifestyle**: Property X - [Full Address] (with explanation)
 
-### 5. RISK-ADJUSTED RECOMMENDATIONS
+### 7. RISK-ADJUSTED RECOMMENDATIONS
 Include:
 - **Risk Levels** for each property (use bullet points):
-  - Property 1: [Risk Level] - [specific risks listed]
-  - Property 2: [Risk Level] - [specific risks listed]
+  - Property 1 ([Address]): [Risk Level] - [specific risks listed]
+  - Property 2 ([Address]): [Risk Level] - [specific risks listed]
   ... for all ${propertyCount} properties
-- **Safest Option**: Property X (with explanation)
-- **Best Risk/Reward**: Property X (with explanation)
-- **Highest Risk**: Property X (with explanation)
+- **Safest Option**: Property X - [Full Address] (with explanation)
+- **Best Risk/Reward**: Property X - [Full Address] (with explanation)
+- **Highest Risk**: Property X - [Full Address] (with explanation)
 
-### 6. INVESTOR PROFILE MATCHING
-For EACH of the ${propertyCount} properties, format as follows:
-
-**Property X (Full Address)** as a bold header on its own line, then:
-- Investor Types: [list suitable investor types]
-- Reasoning: [detailed explanation]
-
-Example format:
-**Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
-- Investor Types: Lifestyle-Oriented Capital Growth Investor, Balanced Portfolio Investor
-- Reasoning: Strong lifestyle attributes and walkability suit investors prioritising quality-of-life.
-
-### 7. MARKET TIMING & STRATEGY
+### 8. MARKET TIMING & STRATEGY
 Format with clear subsections and property headers:
 
 **Buy Order Priority:**
-1. Property X - Full Address (reason)
-2. Property Y - Full Address (reason)
+1. Property X - [Full Address] (reason)
+2. Property Y - [Full Address] (reason)
 
 **Recommended Holding Periods:**
 For each property, use bold header format:
-**Property 1 - Full Address:** X-Y years - [reasoning]
+**Property 1 - [Full Address]:** X-Y years - [reasoning]
 
 **Exit Strategies:**
 For each property, use bold header format:
-**Property 1 - Full Address:** [specific exit strategy recommendations]
+**Property 1 - [Full Address]:** [specific exit strategy recommendations]
 
-### 8. COMPETITIVE ADVANTAGES
+### 9. COMPETITIVE ADVANTAGES & RED FLAGS
+
 For EACH of the ${propertyCount} properties, format as follows:
-**Property X - Full Address** as a bold header on its own line, followed by 3-5 unique selling points as bullet points.
 
-Example format:
-**Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
-- Unique selling point 1
-- Unique selling point 2
-- Unique selling point 3
+**Property X: [Full Address]**
 
-### 9. RED FLAGS & CONCERNS
-For EACH of the ${propertyCount} properties, format as follows:
-**Property X - Full Address** as a bold header on its own line, followed by concerns as bullet points with severity ratings.
+**✓ Key Strengths:**
+- Strength 1
+- Strength 2
+- Strength 3
 
-Example format:
-**Property 1 - 512/23 Adelaide Street, Fremantle, WA 6160**
-- Lower yield compared to other options (MEDIUM)
-- Unit market susceptible to oversupply (MEDIUM)
+**⚠ Concerns:**
+- Concern 1 (SEVERITY: LOW/MEDIUM/HIGH)
+- Concern 2 (SEVERITY: LOW/MEDIUM/HIGH)
 
 ### 10. FINAL RECOMMENDATION
 Format with clear subsections:
 
-**Best Overall Property:**
-Property X - Full Address: [clear reasoning paragraph]
+**🏆 Best Overall Property:**
+**Property X: [Full Address]**
+[Clear reasoning paragraph explaining why this is the top pick]
 
 **Runner-ups:**
-- Property Y - Full Address: [brief explanation]
-- Property Z - Full Address: [brief explanation]
+- **Property Y: [Full Address]** - [brief explanation]
+- **Property Z: [Full Address]** - [brief explanation]
 
-**Properties to Avoid/Reconsider:**
-- Property W - Full Address: [reasoning if applicable]
+**Properties to Reconsider:**
+- **Property W: [Full Address]** - [reasoning if applicable]
 
 **Alternative Scenarios:**
-- Income-first investor: Prioritise Property X then Property Y
-- Growth-first investor: Prioritise Property Z then Property W
+| Investor Priority | First Choice | Second Choice |
+|-------------------|--------------|---------------|
+| Income-first | Property X - [Address] | Property Y - [Address] |
+| Growth-first | Property Z - [Address] | Property W - [Address] |
+| Balanced | Property X - [Address] | Property Z - [Address] |
 
 ---
 
-## MANDATORY CLOSING SECTIONS:
+## MANDATORY CLOSING SECTION:
 
 ### Contact Information
 **NPC Services**
@@ -220,35 +239,20 @@ Property X - Full Address: [clear reasoning paragraph]
 
 ---
 
-### Professional Disclaimer
-
-As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice.
-
-While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment.
-
-It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses.
-
-Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process.
-
-Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors.
-
-By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions.
-
-Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.
-
----
-
 **FORMATTING REQUIREMENTS CHECKLIST:**
 1. ✅ Use proper markdown headers (##, ###)
 2. ✅ Use actual "&" characters, NOT HTML entities
-3. ✅ Rankings table has ALL ${propertyCount} properties
+3. ✅ Rankings section has ALL ${propertyCount} properties with FULL ADDRESSES
 4. ✅ Use " • " as bullet separator in table cells
 5. ✅ Format currency as $XXX,XXX (Australian format)
 6. ✅ Format percentages as X.XX%
 7. ✅ All scores on 0-100 scale
 8. ✅ Severity ratings: LOW, MEDIUM, HIGH, CRITICAL
-9. ✅ Property numbers match addresses consistently
+9. ✅ Property numbers AND addresses used consistently throughout
 10. ✅ Each section has clear headers
+11. ✅ Property Reference Guide is section 1
+12. ✅ Investor Profile Matching is section 2
+13. ✅ DO NOT include a Professional Disclaimer section (it will be added by the PDF generator)
 
 **COMPARISON DATA TO FORMAT:**
 
