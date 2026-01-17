@@ -2141,7 +2141,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
-      const footerHeight = 28; // Reserved space for footer - increased from 22
+      const footerHeight = 32; // Reserved space for footer - increased to prevent overlap
+      const contentMaxY = pageHeight - footerHeight; // Maximum Y position for content
       let yPos = 0;
 
       // Brand colors (gold primary)
@@ -2474,9 +2475,17 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const sectionRowHeight = 6; // Taller section headers
       let tableRowCount = 0;
       
-      // Helper to draw a row with enhanced styling - NO page breaks for full table on one page
+      // Helper to draw a row with enhanced styling and page boundary checking
       const drawRow = (cells: string[], isHeader = false, isSection = false, highlightValue = false) => {
         const currentRowHeight = isSection ? sectionRowHeight : rowHeight;
+        
+        // Check if this row would overflow into footer area - if so, add page break
+        const neededSpace = isSection ? currentRowHeight + 1 : currentRowHeight; // Section has extra padding
+        if (yPos + neededSpace > contentMaxY) {
+          pdf.addPage();
+          yPos = margin + 5;
+          tableRowCount = 0; // Reset zebra striping for new page
+        }
         
         if (isSection) {
           // Section header row - remove slash from section names
@@ -2593,11 +2602,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const totalCashFlow = projections.slice(1).reduce((sum, p) => sum + p.afterTaxCashFlowPA, 0);
       const capitalGain = year10.propertyMarketValue - baseFinancialData.purchasePrice;
 
-      // Check if summary box will fit above footer
-      const summaryBoxHeight = 14;
-      const availableSpace = pageHeight - footerHeight - yPos;
+      // Check if summary box will fit above footer using contentMaxY
+      const summaryBoxHeight = 16;
       
-      if (availableSpace < summaryBoxHeight) {
+      if (yPos + summaryBoxHeight > contentMaxY) {
         pdf.addPage();
         yPos = margin + 10;
       }
@@ -2609,7 +2617,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(255, 255, 255);
-      pdf.text('10-Year Investment Summary', margin + 5, yPos + 5);
+      pdf.text('10-Year Investment Summary', margin + 5, yPos + 6);
       
       pdf.setFontSize(7.5);
       pdf.setFont('helvetica', 'normal');
@@ -2619,7 +2627,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         `Capital Gain: ${formatCurrency(capitalGain)}`,
         `Total After-Tax Cash Flow: ${formatCurrency(totalCashFlow)}`
       ].join('     •     ');
-      pdf.text(summaryText, margin + 5, yPos + 10.5);
+      pdf.text(summaryText, margin + 5, yPos + 12);
 
       // ========== CHARTS PAGE ==========
       const hasAnyChart = cashFlowChartImage || yieldChartImage || comparisonChartImage;
@@ -2699,29 +2707,28 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
         
-        // Footer separator line - positioned higher to avoid overlap
-        const footerLineY = pageHeight - footerHeight;
+        // Footer separator line - at contentMaxY boundary
         pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
         pdf.setLineWidth(0.5);
-        pdf.line(margin, footerLineY, pageWidth - margin, footerLineY);
+        pdf.line(margin, contentMaxY + 2, pageWidth - margin, contentMaxY + 2);
         
-        // Disclaimer - CENTERED, with more space from content
+        // Disclaimer - positioned in footer zone with adequate spacing
         pdf.setFontSize(6.5);
         pdf.setFont('helvetica', 'italic');
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 3);
-        pdf.text(disclaimerLines, pageWidth / 2, footerLineY + 5, { align: 'center' });
+        const disclaimerLines = pdf.splitTextToSize(templateConfig.disclaimer, pageWidth - margin * 2.5);
+        pdf.text(disclaimerLines, pageWidth / 2, contentMaxY + 8, { align: 'center' });
         
-        // Contact info - Remove mobile number, only email and website
+        // Contact info and page number at very bottom
         pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-        pdf.text(`${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+        pdf.text(`${templateConfig.contactEmail}  •  ${templateConfig.website}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
         
         // Page number
         pdf.setFontSize(7);
         pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
       }
 
       // Save PDF
