@@ -791,6 +791,10 @@ function generateHTMLContent(data: VownetPDFData): string {
           background-position: center; 
           background-repeat: no-repeat;
           position: relative;
+          transform: rotate(180deg);
+        }
+        .cover-page-image .cover-overlay {
+          transform: rotate(180deg);
         }
         .cover-overlay {
           position: absolute;
@@ -841,9 +845,8 @@ function generateHTMLContent(data: VownetPDFData): string {
         .cover-date { color: ${NPC_COLORS.goldLight}; font-size: 11pt; letter-spacing: 2px; }
         
         /* Page Header */
-        .page-header { position: absolute; top: 0; left: 0; right: 0; height: 70px; background: ${NPC_COLORS.darkBlue}; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; }
+        .page-header { position: absolute; top: 0; left: 0; right: 0; height: 70px; background: ${NPC_COLORS.darkBlue}; display: flex; justify-content: flex-end; align-items: center; padding: 0 40px; }
         .page-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: ${NPC_COLORS.gold}; }
-        .header-logo { color: ${NPC_COLORS.gold}; font-family: 'Playfair Display', Georgia, serif; font-size: 24pt; font-weight: 700; }
         .header-title-group { text-align: right; }
         .header-title { color: ${NPC_COLORS.white}; font-size: 12pt; font-weight: 600; }
         .header-subtitle { color: ${NPC_COLORS.goldLight}; font-size: 8pt; letter-spacing: 1px; }
@@ -854,18 +857,19 @@ function generateHTMLContent(data: VownetPDFData): string {
         .footer-item { display: flex; align-items: center; gap: 4px; }
         
         /* Section Headers - NPC Gold Theme */
-        .section { margin-bottom: 14px; }
+        .section { margin-bottom: 16px; }
         .section-header { 
           background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
-          padding: 10px 14px; 
+          padding: 12px 16px; 
           font-size: 9pt; 
           font-weight: 600;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
+          gap: 10px;
           border-left: 4px solid ${NPC_COLORS.gold};
+          border-radius: 0;
         }
         .section-header-text { display: flex; align-items: center; gap: 8px; }
         .section-header-text::before { content: '◆'; color: ${NPC_COLORS.gold}; font-size: 7pt; }
@@ -879,12 +883,12 @@ function generateHTMLContent(data: VownetPDFData): string {
         .subsection-header { 
           background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%); 
           color: ${NPC_COLORS.darkGray}; 
-          padding: 7px 12px; 
+          padding: 8px 14px; 
           font-size: 8pt; 
           font-weight: 600;
           border-left: 3px solid ${NPC_COLORS.gold};
-          margin-top: 8px;
-          margin-bottom: 4px;
+          margin-top: 10px;
+          margin-bottom: 6px;
         }
         
         /* Property Cards */
@@ -900,14 +904,14 @@ function generateHTMLContent(data: VownetPDFData): string {
         
         .property-address-bar {
           background: ${NPC_COLORS.lightGray};
-          padding: 8px 12px;
+          padding: 10px 14px;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
         }
-        .property-address-icon { font-size: 12pt; }
-        .property-address-text { font-weight: 500; color: ${NPC_COLORS.darkGray}; font-size: 8pt; }
+        .property-address-icon { font-size: 14pt; line-height: 1; }
+        .property-address-text { font-weight: 500; color: ${NPC_COLORS.darkGray}; font-size: 8.5pt; }
         
         /* Property Badges */
         .prop-badge {
@@ -923,7 +927,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         .prop-badge-smsf { background: #fae8ff; color: #7e22ce; }
         
         /* Equity Progress Bar */
-        .equity-display { padding: 8px 12px; background: ${NPC_COLORS.lightGray}; }
+        .equity-display { padding: 10px 14px; background: ${NPC_COLORS.lightGray}; }
         .equity-bar-container {
           width: 100%;
           height: 18px;
@@ -949,7 +953,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         }
         
         /* Cashflow Indicators */
-        .cf-indicator { font-size: 10pt; margin-right: 4px; }
+        .cf-indicator { font-size: 11pt; margin-right: 6px; vertical-align: middle; }
         .cf-positive { color: ${NPC_COLORS.success}; }
         .cf-negative { color: ${NPC_COLORS.danger}; }
         .cf-neutral { color: ${NPC_COLORS.warning}; }
@@ -977,14 +981,14 @@ function generateHTMLContent(data: VownetPDFData): string {
           background: linear-gradient(180deg, ${NPC_COLORS.darkGray} 0%, #1a202c 100%); 
           color: ${NPC_COLORS.white};
           border: 1px solid ${NPC_COLORS.mediumGray}; 
-          padding: 7px 10px; 
+          padding: 8px 12px; 
           text-align: left; 
           font-weight: 600;
           font-size: 7pt;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
-        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 6px 10px; }
+        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 8px 12px; vertical-align: middle; }
         .data-table .label { 
           background: linear-gradient(90deg, ${NPC_COLORS.lightGray} 0%, #edf2f7 100%); 
           font-weight: 500; 
@@ -1000,7 +1004,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         .data-table.alt-rows tr:nth-child(even) td.value { background: ${NPC_COLORS.lightGray}; }
         
         /* Compact Tables */
-        .data-table.compact td { padding: 4px 8px; font-size: 7.5pt; }
+        .data-table.compact td { padding: 6px 10px; font-size: 7.5pt; }
         
         /* Financial Mini Tables */
         .financial-mini { font-size: 7.5pt; }
@@ -1045,7 +1049,7 @@ function generateHTMLContent(data: VownetPDFData): string {
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
           border-left: 3px solid ${NPC_COLORS.gold};
         }
-        .employer-icon { font-size: 14pt; }
+        .employer-icon { font-size: 16pt; line-height: 1; }
         .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 9pt; }
         
         .emp-type-badge, .freq-badge {
@@ -1170,8 +1174,8 @@ function generateHTMLContent(data: VownetPDFData): string {
           border-radius: 6px;
           box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
-        .kpi-icon { font-size: 20pt; margin-bottom: 6px; display: block; }
-        .kpi-label { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .kpi-icon { font-size: 22pt; margin-bottom: 8px; display: block; line-height: 1; }
+        .kpi-label { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
         .kpi-value { font-size: 16pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .kpi-value.positive { color: ${NPC_COLORS.success}; }
         .kpi-value.negative { color: ${NPC_COLORS.danger}; }
@@ -1211,7 +1215,6 @@ function generateHTMLContent(data: VownetPDFData): string {
       <!-- PAGE 1: Personal Details & Properties -->
       <div class="page">
         <div class="page-header">
-          <div class="header-logo">N</div>
           <div class="header-title-group">
             <div class="header-title">Personal Details</div>
             <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
@@ -1287,7 +1290,6 @@ function generateHTMLContent(data: VownetPDFData): string {
       <!-- PAGE 2: Employment & Income -->
       <div class="page">
         <div class="page-header">
-          <div class="header-logo">N</div>
           <div class="header-title-group">
             <div class="header-title">Employment & Income</div>
             <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
@@ -1330,7 +1332,6 @@ function generateHTMLContent(data: VownetPDFData): string {
       <!-- PAGE 3: Assets & Liabilities -->
       <div class="page">
         <div class="page-header">
-          <div class="header-logo">N</div>
           <div class="header-title-group">
             <div class="header-title">Assets & Liabilities</div>
             <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
@@ -1365,7 +1366,6 @@ function generateHTMLContent(data: VownetPDFData): string {
       <!-- PAGE 4: Portfolio Summary -->
       <div class="page">
         <div class="page-header">
-          <div class="header-logo">N</div>
           <div class="header-title-group">
             <div class="header-title">Portfolio Summary</div>
             <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
