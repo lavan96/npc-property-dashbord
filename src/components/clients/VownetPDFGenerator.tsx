@@ -143,7 +143,8 @@ const formatCurrency = (value: number | null | undefined): string => {
 
 const formatPercent = (value: number | null | undefined): string => {
   if (value === null || value === undefined) return '-';
-  return value + '%';
+  // Format interest rates properly (e.g., 5.9 -> 5.9%, not 250%)
+  return value.toFixed(1) + '%';
 };
 
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -153,6 +154,14 @@ const formatDate = (dateStr: string | null | undefined): string => {
   } catch {
     return dateStr;
   }
+};
+
+// Helper to properly capitalize names
+const properCase = (str: string | null | undefined): string => {
+  if (!str) return '';
+  return str.split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(' ');
 };
 
 export function VownetPDFGenerator({ 
@@ -487,15 +496,15 @@ function generateHTMLContent(data: VownetPDFData): string {
     `;
   };
 
-  // Generate investment properties HTML - with NPC branding
-  const investmentPropertiesHTML = investmentProperties.map((prop, index) => `
+  // Generate investment property HTML for a single property
+  const generateInvestmentPropertyHTML = (prop: PropertyData, index: number) => `
     <div class="property-card">
       <div class="section-header">
-        <span class="section-header-text">Investment Property ${index + 1}</span>
-        ${getPropertyTypeBadge('investment')}
+        <span class="section-header-text">◆ Investment Property ${index + 1}</span>
+        <span class="prop-badge prop-badge-invest">INVESTMENT</span>
       </div>
       <div class="property-address-bar">
-        <span class="property-address-icon">📍</span>
+        <span class="property-address-icon">◆</span>
         <span class="property-address-text">${prop.address || '-'}</span>
       </div>
       <div class="equity-display">
@@ -532,23 +541,31 @@ function generateHTMLContent(data: VownetPDFData): string {
         </tr>
       </table>
     </div>
-  `).join('');
+  `;
 
-  // Generate SMSF properties HTML - with NPC branding
-  const smsfPropertiesHTML = smsfProperties.map((prop, index) => `
+  // Only show first investment property on page 1 (if any)
+  const firstInvestmentPropertyHTML = investmentProperties.length > 0 
+    ? generateInvestmentPropertyHTML(investmentProperties[0], 1) 
+    : '';
+  
+  // Additional investment properties for overflow pages
+  const additionalInvestmentProperties = investmentProperties.slice(1);
+
+  // Generate SMSF property HTML for a single property
+  const generateSmsfPropertyHTML = (prop: PropertyData, index: number) => `
     <div class="property-card smsf-card">
       <div class="section-header gold">
-        <span class="section-header-text">SMSF Property ${index + 1}</span>
-        ${getPropertyTypeBadge('smsf')}
+        <span class="section-header-text">◆ SMSF Property ${index + 1}</span>
+        <span class="prop-badge prop-badge-smsf">SMSF</span>
       </div>
       
       <div class="property-address-bar">
-        <span class="property-address-icon">📍</span>
+        <span class="property-address-icon">◆</span>
         <span class="property-address-text">${prop.address || '-'}</span>
       </div>
       
       <!-- SMSF Fund Details -->
-      <div class="subsection-header">🏛️ Fund Details & Compliance</div>
+      <div class="subsection-header">Fund Details & Compliance</div>
       <table class="data-table alt-rows">
         <tr><td class="label">Fund Name</td><td class="value">${prop.smsf_fund_name || '-'}</td></tr>
         <tr><td class="label">ABN</td><td class="value"><code class="abn-code">${prop.smsf_abn || '-'}</code></td></tr>
@@ -563,7 +580,7 @@ function generateHTMLContent(data: VownetPDFData): string {
       </div>
       
       <!-- Property Details -->
-      <div class="subsection-header">📊 Property Financials</div>
+      <div class="subsection-header">Property Financials</div>
       <table class="data-table compact alt-rows">
         <tr><td class="label">Value</td><td class="value currency">${formatCurrency(prop.value)}</td></tr>
         <tr><td class="label">Loan Remaining</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
@@ -597,7 +614,23 @@ function generateHTMLContent(data: VownetPDFData): string {
         </tr>
       </table>
     </div>
-  `).join('');
+  `;
+
+  // Calculate total pages dynamically
+  const hasAdditionalProperties = additionalInvestmentProperties.length > 0 || smsfProperties.length > 0;
+  // Group properties into pages (max 2 per page for overflow)
+  const overflowProperties: Array<{type: 'investment' | 'smsf', prop: PropertyData, index: number}> = [
+    ...additionalInvestmentProperties.map((prop, idx) => ({ type: 'investment' as const, prop, index: idx + 2 })),
+    ...smsfProperties.map((prop, idx) => ({ type: 'smsf' as const, prop, index: idx + 1 }))
+  ];
+  const propertyOverflowPages: Array<Array<{type: 'investment' | 'smsf', prop: PropertyData, index: number}>> = [];
+  for (let i = 0; i < overflowProperties.length; i += 2) {
+    propertyOverflowPages.push(overflowProperties.slice(i, i + 2));
+  }
+  
+  // Total pages: Cover + Page 1 + Overflow Pages + Employment + Assets + Summary + Final
+  const basePages = 5; // Cover, Page 1, Employment, Assets, Summary
+  const totalPages = basePages + propertyOverflowPages.length + 1; // +1 for Final page
 
   // Employment tables
   const primaryEmployment = employment.filter(e => e.contact_type === 'primary');
@@ -768,15 +801,56 @@ function generateHTMLContent(data: VownetPDFData): string {
   const totalRental = properties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = properties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
-  const clientFullName = `${client.primary_first_name} ${client.primary_surname}${client.secondary_first_name ? ` & ${client.secondary_first_name} ${client.secondary_surname || client.primary_surname}` : ''}`;
+  // Properly capitalize client names
+  const primaryName = `${properCase(client.primary_first_name)} ${properCase(client.primary_surname)}`;
+  const secondaryName = client.secondary_first_name 
+    ? `${properCase(client.secondary_first_name)} ${properCase(client.secondary_surname || client.primary_surname)}`
+    : '';
+  const clientFullName = secondaryName ? `${primaryName} & ${secondaryName}` : primaryName;
   const equity = (client.total_portfolio_value || 0) - (client.total_debt || 0);
+
+  // Generate overflow property pages HTML
+  const overflowPagesHTML = propertyOverflowPages.map((pageProps, pageIndex) => `
+    <!-- OVERFLOW PAGE ${pageIndex + 1}: Additional Properties -->
+    <div class="page">
+      <div class="page-header">
+        <div class="header-title-group">
+          <div class="header-title">Investment Properties (Continued)</div>
+          <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="properties-grid">
+          ${pageProps.map(item => 
+            item.type === 'investment' 
+              ? generateInvestmentPropertyHTML(item.prop, item.index)
+              : generateSmsfPropertyHTML(item.prop, item.index)
+          ).join('')}
+        </div>
+      </div>
+      <div class="page-footer">
+        <div class="footer-contact">
+          <span class="footer-item">📞 (02) 8609 3299</span>
+          <span class="footer-item">✉ admin@npcservices.com.au</span>
+          <span class="footer-item">🌐 npcservices.com.au</span>
+        </div>
+        <div>Page ${pageIndex + 2} of ${totalPages}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Calculate page numbers for static pages
+  const page1Number = 1;
+  const employmentPageNumber = 2 + propertyOverflowPages.length;
+  const assetsPageNumber = 3 + propertyOverflowPages.length;
+  const summaryPageNumber = 4 + propertyOverflowPages.length;
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; line-height: 1.4; color: ${NPC_COLORS.black}; background: ${NPC_COLORS.white}; }
@@ -824,8 +898,10 @@ function generateHTMLContent(data: VownetPDFData): string {
         }
         .cover-client-name-positioned {
           color: ${NPC_COLORS.gold};
-          font-size: 20pt;
-          font-weight: 500;
+          font-family: 'Cinzel', Georgia, serif;
+          font-size: 18pt;
+          font-weight: 600;
+          letter-spacing: 1px;
           margin-bottom: 40px;
           text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
@@ -852,9 +928,9 @@ function generateHTMLContent(data: VownetPDFData): string {
         .header-subtitle { color: ${NPC_COLORS.goldLight}; font-size: 8pt; letter-spacing: 1px; }
         
         /* Page Footer */
-        .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 45px; background: ${NPC_COLORS.lightGray}; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 7pt; color: #718096; }
-        .footer-contact { display: flex; gap: 20px; }
-        .footer-item { display: flex; align-items: center; gap: 4px; }
+        .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 50px; background: ${NPC_COLORS.lightGray}; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 7.5pt; color: #4a5568; }
+        .footer-contact { display: flex; gap: 24px; }
+        .footer-item { display: flex; align-items: center; gap: 6px; }
         
         /* Section Headers - NPC Gold Theme */
         .section { margin-bottom: 16px; }
@@ -883,44 +959,55 @@ function generateHTMLContent(data: VownetPDFData): string {
         .subsection-header { 
           background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%); 
           color: ${NPC_COLORS.darkGray}; 
-          padding: 8px 14px; 
+          padding: 10px 16px; 
           font-size: 8pt; 
           font-weight: 600;
           border-left: 3px solid ${NPC_COLORS.gold};
-          margin-top: 10px;
-          margin-bottom: 6px;
+          margin-top: 12px;
+          margin-bottom: 8px;
         }
         
         /* Property Cards */
         .property-card {
           border: 1px solid ${NPC_COLORS.borderGray};
           border-radius: 6px;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
           overflow: hidden;
           box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
         .property-card .section-header { border-radius: 0; }
         .smsf-card { border: 2px solid ${NPC_COLORS.gold}; }
         
+        /* Properties grid for overflow pages */
+        .properties-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        
         .property-address-bar {
           background: ${NPC_COLORS.lightGray};
-          padding: 10px 14px;
+          padding: 12px 16px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
         }
-        .property-address-icon { font-size: 14pt; line-height: 1; }
+        .property-address-icon { 
+          color: ${NPC_COLORS.gold}; 
+          font-size: 10pt; 
+          line-height: 1; 
+        }
         .property-address-text { font-weight: 500; color: ${NPC_COLORS.darkGray}; font-size: 8.5pt; }
         
         /* Property Badges */
         .prop-badge {
-          padding: 3px 8px;
+          padding: 4px 10px;
           border-radius: 12px;
-          font-size: 7pt;
-          font-weight: 600;
+          font-size: 6.5pt;
+          font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.5px;
         }
         .prop-badge-owner { background: ${NPC_COLORS.goldLight}; color: ${NPC_COLORS.goldDark}; }
         .prop-badge-invest { background: #dbeafe; color: #1e40af; }
@@ -981,22 +1068,23 @@ function generateHTMLContent(data: VownetPDFData): string {
           background: linear-gradient(180deg, ${NPC_COLORS.darkGray} 0%, #1a202c 100%); 
           color: ${NPC_COLORS.white};
           border: 1px solid ${NPC_COLORS.mediumGray}; 
-          padding: 8px 12px; 
+          padding: 10px 14px; 
           text-align: left; 
           font-weight: 600;
           font-size: 7pt;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
-        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 8px 12px; vertical-align: middle; }
+        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 10px 14px; vertical-align: middle; }
         .data-table .label { 
           background: linear-gradient(90deg, ${NPC_COLORS.lightGray} 0%, #edf2f7 100%); 
           font-weight: 500; 
           width: 48%; 
-          color: ${NPC_COLORS.mediumGray}; 
+          color: ${NPC_COLORS.darkGray}; 
+          font-size: 7.5pt;
         }
-        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; }
-        .data-table .currency { text-align: right; font-family: 'Inter', monospace; font-weight: 500; }
+        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; font-weight: 500; }
+        .data-table .currency { text-align: right; font-family: 'Inter', monospace; font-weight: 600; }
         .data-table .percent { text-align: right; }
         
         /* Alternating Rows */
@@ -1004,7 +1092,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         .data-table.alt-rows tr:nth-child(even) td.value { background: ${NPC_COLORS.lightGray}; }
         
         /* Compact Tables */
-        .data-table.compact td { padding: 6px 10px; font-size: 7.5pt; }
+        .data-table.compact td { padding: 8px 12px; font-size: 7.5pt; }
         
         /* Financial Mini Tables */
         .financial-mini { font-size: 7.5pt; }
@@ -1272,8 +1360,7 @@ function generateHTMLContent(data: VownetPDFData): string {
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
               </div>
-              ${investmentPropertiesHTML}
-              ${smsfPropertiesHTML}
+              ${firstInvestmentPropertyHTML}
             </div>
           </div>
         </div>
@@ -1283,9 +1370,11 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 1 of 5</div>
+          <div>Page ${page1Number} of ${totalPages}</div>
         </div>
       </div>
+      
+      ${overflowPagesHTML}
       
       <!-- PAGE 2: Employment & Income -->
       <div class="page">
@@ -1325,7 +1414,7 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 2 of 5</div>
+          <div>Page ${employmentPageNumber} of ${totalPages}</div>
         </div>
       </div>
       
@@ -1359,7 +1448,7 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 3 of 5</div>
+          <div>Page ${assetsPageNumber} of ${totalPages}</div>
         </div>
       </div>
       
@@ -1442,7 +1531,7 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 4 of 5</div>
+          <div>Page ${summaryPageNumber} of ${totalPages}</div>
         </div>
       </div>
       
