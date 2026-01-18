@@ -406,6 +406,20 @@ export function VownetPDFGenerator({
   );
 }
 
+// NPC Brand Colors
+const NPC_COLORS = {
+  gold: '#c9a227',
+  goldLight: '#e8d59d',
+  goldDark: '#a88520',
+  darkBlue: '#113361',
+  black: '#0a0a0a',
+  darkGray: '#2d3748',
+  lightGray: '#f7fafc',
+  white: '#ffffff',
+  success: '#16a34a',
+  danger: '#dc2626',
+};
+
 // Generate the full HTML content for the PDF
 function generateHTMLContent(data: VownetPDFData): string {
   const { client, properties, employment = [], income = [], assets = [], liabilities = [] } = data;
@@ -433,10 +447,10 @@ function generateHTMLContent(data: VownetPDFData): string {
     return type === 'corporate' ? 'Corporate Trustee' : 'Individual Trustee';
   };
 
-  // Generate investment properties HTML
+  // Generate investment properties HTML - with NPC branding
   const investmentPropertiesHTML = investmentProperties.map((prop, index) => `
     <div class="section">
-      <div class="section-header blue">Investment Property ${index + 1}</div>
+      <div class="section-header">Investment Property ${index + 1}</div>
       <table class="data-table">
         <tr><td class="label">Address</td><td class="value">${prop.address || '-'}</td></tr>
         <tr><td class="label">Value</td><td class="value currency">${formatCurrency(prop.value)}</td></tr>
@@ -459,19 +473,19 @@ function generateHTMLContent(data: VownetPDFData): string {
     </div>
   `).join('');
 
-  // Generate SMSF properties HTML
+  // Generate SMSF properties HTML - with NPC branding
   const smsfPropertiesHTML = smsfProperties.map((prop, index) => `
     <div class="section">
-      <div class="section-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">SMSF Property ${index + 1}</div>
+      <div class="section-header gold">SMSF Property ${index + 1}</div>
       
       <!-- SMSF Fund Details -->
-      <div class="subsection-header" style="background: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b;">Fund Details & Compliance</div>
+      <div class="subsection-header">Fund Details & Compliance</div>
       <table class="data-table">
         <tr><td class="label">Fund Name</td><td class="value">${prop.smsf_fund_name || '-'}</td></tr>
         <tr><td class="label">ABN</td><td class="value">${prop.smsf_abn || '-'}</td></tr>
         <tr><td class="label">Trustee Name</td><td class="value">${prop.smsf_trustee_name || '-'}</td></tr>
         <tr><td class="label">Trustee Type</td><td class="value">${formatTrusteeType(prop.smsf_trustee_type)}</td></tr>
-        <tr><td class="label">Compliance Status</td><td class="value" style="font-weight: 600; color: ${prop.smsf_compliance_status === 'compliant' ? '#16a34a' : prop.smsf_compliance_status === 'non_compliant' ? '#dc2626' : '#ca8a04'};">${formatComplianceStatus(prop.smsf_compliance_status)}</td></tr>
+        <tr><td class="label">Compliance Status</td><td class="value" style="font-weight: 600; color: ${prop.smsf_compliance_status === 'compliant' ? NPC_COLORS.success : prop.smsf_compliance_status === 'non_compliant' ? NPC_COLORS.danger : NPC_COLORS.gold};">${formatComplianceStatus(prop.smsf_compliance_status)}</td></tr>
         <tr><td class="label">Auditor</td><td class="value">${prop.smsf_auditor_name || '-'}</td></tr>
       </table>
 
@@ -496,6 +510,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         <tr><td class="label">Monthly Rental Income</td><td class="value currency">${formatCurrency(prop.monthly_rental_income)}</td></tr>
         <tr><td class="label font-bold">Net Monthly Cashflow</td><td class="value currency font-bold ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td></tr>
       </table>
+    </div>
   `).join('');
 
   // Employment tables
@@ -605,219 +620,411 @@ function generateHTMLContent(data: VownetPDFData): string {
   const totalRental = properties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = properties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
+  const clientFullName = `${client.primary_first_name} ${client.primary_surname}${client.secondary_first_name ? ` & ${client.secondary_first_name} ${client.secondary_surname || client.primary_surname}` : ''}`;
+  const equity = (client.total_portfolio_value || 0) - (client.total_debt || 0);
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 9pt; line-height: 1.3; color: #000; background: #fff; }
-        .page { width: 794px; height: 1123px; padding: 30px; background: #fff; position: relative; overflow: hidden; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ddd; }
-        .header-title { font-size: 14pt; font-weight: bold; color: #1a365d; }
-        .header-date { font-size: 9pt; color: #666; }
-        .two-columns { display: flex; gap: 20px; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 9pt; line-height: 1.4; color: ${NPC_COLORS.black}; background: ${NPC_COLORS.white}; }
+        
+        /* Page Layout */
+        .page { width: 794px; height: 1123px; background: ${NPC_COLORS.white}; position: relative; overflow: hidden; }
+        .page-content { padding: 30px 40px; padding-top: 90px; }
+        
+        /* Cover Page */
+        .cover-page { background: linear-gradient(135deg, ${NPC_COLORS.black} 0%, ${NPC_COLORS.darkBlue} 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .cover-corner { position: absolute; width: 100px; height: 100px; }
+        .cover-corner-tl { top: 0; left: 0; border-top: 3px solid ${NPC_COLORS.gold}; border-left: 3px solid ${NPC_COLORS.gold}; }
+        .cover-corner-tr { top: 0; right: 0; border-top: 3px solid ${NPC_COLORS.gold}; border-right: 3px solid ${NPC_COLORS.gold}; }
+        .cover-corner-bl { bottom: 0; left: 0; border-bottom: 3px solid ${NPC_COLORS.gold}; border-left: 3px solid ${NPC_COLORS.gold}; }
+        .cover-corner-br { bottom: 0; right: 0; border-bottom: 3px solid ${NPC_COLORS.gold}; border-right: 3px solid ${NPC_COLORS.gold}; }
+        
+        .cover-logo { margin-bottom: 60px; }
+        .logo-n { font-family: 'Playfair Display', Georgia, serif; font-size: 72pt; font-weight: 700; color: ${NPC_COLORS.gold}; letter-spacing: 8px; }
+        .cover-company { color: ${NPC_COLORS.white}; font-size: 16pt; font-weight: 600; letter-spacing: 6px; margin-bottom: 8px; }
+        .cover-tagline { color: ${NPC_COLORS.goldLight}; font-size: 10pt; letter-spacing: 3px; margin-bottom: 80px; }
+        .cover-divider { width: 150px; height: 2px; background: ${NPC_COLORS.gold}; margin: 0 auto 40px; }
+        .cover-doc-title { color: ${NPC_COLORS.white}; font-family: 'Playfair Display', Georgia, serif; font-size: 28pt; font-weight: 600; margin-bottom: 20px; }
+        .cover-client-name { color: ${NPC_COLORS.gold}; font-size: 18pt; font-weight: 500; margin-bottom: 60px; }
+        .cover-date { color: ${NPC_COLORS.goldLight}; font-size: 11pt; letter-spacing: 2px; }
+        
+        /* Page Header */
+        .page-header { position: absolute; top: 0; left: 0; right: 0; height: 70px; background: ${NPC_COLORS.darkBlue}; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; }
+        .page-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: ${NPC_COLORS.gold}; }
+        .header-logo { color: ${NPC_COLORS.gold}; font-family: 'Playfair Display', Georgia, serif; font-size: 24pt; font-weight: 700; }
+        .header-title-group { text-align: right; }
+        .header-title { color: ${NPC_COLORS.white}; font-size: 12pt; font-weight: 600; }
+        .header-subtitle { color: ${NPC_COLORS.goldLight}; font-size: 8pt; letter-spacing: 1px; }
+        
+        /* Page Footer */
+        .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 45px; background: ${NPC_COLORS.lightGray}; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 7pt; color: #718096; }
+        .footer-contact { display: flex; gap: 20px; }
+        .footer-item { display: flex; align-items: center; gap: 4px; }
+        
+        /* Section Headers - NPC Gold Theme */
+        .section { margin-bottom: 14px; }
+        .section-header { 
+          background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.darkGray} 100%); 
+          color: ${NPC_COLORS.white}; 
+          padding: 8px 12px; 
+          font-size: 9pt; 
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .section-header::before { content: ''; width: 4px; height: 16px; background: ${NPC_COLORS.gold}; border-radius: 2px; }
+        .section-header.gold { background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%); color: ${NPC_COLORS.black}; }
+        .section-header.gold::before { background: ${NPC_COLORS.white}; }
+        
+        .subsection-header { 
+          background: linear-gradient(90deg, ${NPC_COLORS.goldLight} 0%, #f5ecd5 100%); 
+          color: ${NPC_COLORS.darkGray}; 
+          padding: 6px 12px; 
+          font-size: 8pt; 
+          font-weight: 600;
+          border-left: 3px solid ${NPC_COLORS.gold};
+        }
+        
+        /* Two Column Layout */
+        .two-columns { display: flex; gap: 24px; }
         .column { flex: 1; }
-        .column-left { flex: 0.9; }
-        .column-right { flex: 1.1; }
-        .section { margin-bottom: 15px; }
-        .section-header { background: #2d3748; color: #fff; padding: 6px 10px; font-size: 9pt; font-weight: bold; }
-        .section-header.blue { background: #3182ce; }
-        .section-header.green { background: #38a169; }
-        .section-header.purple { background: #805ad5; }
-        .section-header.orange { background: #dd6b20; }
-        .section-header.teal { background: #319795; }
-        .subsection-header { background: #e2e8f0; color: #2d3748; padding: 4px 10px; font-size: 8pt; font-weight: bold; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-        .data-table th { background: #f7fafc; border: 0.5px solid #cbd5e0; padding: 4px 6px; text-align: left; font-weight: 600; color: #4a5568; }
-        .data-table td { border: 0.5px solid #cbd5e0; padding: 4px 6px; }
-        .data-table .label { background: #f7fafc; font-weight: 500; width: 45%; color: #4a5568; }
-        .data-table .value { background: #fff; color: #1a202c; }
-        .data-table .currency { text-align: right; }
+        .column-left { flex: 0.95; }
+        .column-right { flex: 1.05; }
+        
+        /* Data Tables - Refined */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid #e2e8f0; }
+        .data-table th { 
+          background: linear-gradient(180deg, ${NPC_COLORS.darkGray} 0%, #1a202c 100%); 
+          color: ${NPC_COLORS.white};
+          border: 1px solid #4a5568; 
+          padding: 6px 8px; 
+          text-align: left; 
+          font-weight: 600; 
+        }
+        .data-table td { border: 1px solid #e2e8f0; padding: 5px 8px; }
+        .data-table .label { 
+          background: linear-gradient(90deg, ${NPC_COLORS.lightGray} 0%, #edf2f7 100%); 
+          font-weight: 500; 
+          width: 45%; 
+          color: #4a5568; 
+        }
+        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; }
+        .data-table .currency { text-align: right; font-family: 'Inter', monospace; }
         .data-table .percent { text-align: right; }
-        .summary-box { border: 2px solid #3182ce; background: #ebf8ff; padding: 12px; margin-top: 15px; }
-        .summary-title { font-weight: bold; color: #2b6cb0; margin-bottom: 8px; font-size: 10pt; }
-        .financial-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-        .financial-table th { background: #2d3748; color: #fff; padding: 6px; text-align: left; }
-        .financial-table td { border: 0.5px solid #cbd5e0; padding: 4px 6px; }
-        .financial-table .total-row { background: #edf2f7; font-weight: bold; }
-        .financial-table .total-row td { border-top: 2px solid #2d3748; }
+        
+        /* Summary Box - Gold Accent */
+        .summary-box { 
+          border: 2px solid ${NPC_COLORS.gold}; 
+          background: linear-gradient(135deg, #fffef7 0%, #fefcf3 100%);
+          padding: 16px; 
+          margin-top: 16px;
+          border-radius: 4px;
+          box-shadow: 0 2px 8px rgba(201, 162, 39, 0.15);
+        }
+        .summary-title { 
+          font-weight: 700; 
+          color: ${NPC_COLORS.darkBlue}; 
+          margin-bottom: 12px; 
+          font-size: 11pt; 
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .summary-title::before { content: '◆'; color: ${NPC_COLORS.gold}; font-size: 8pt; }
+        
+        /* Financial Table */
+        .financial-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid #e2e8f0; }
+        .financial-table th { 
+          background: linear-gradient(180deg, ${NPC_COLORS.darkBlue} 0%, #0d264d 100%); 
+          color: ${NPC_COLORS.white}; 
+          padding: 8px; 
+          text-align: left;
+          font-weight: 600;
+        }
+        .financial-table td { border: 1px solid #e2e8f0; padding: 6px 8px; }
+        .financial-table tbody tr:nth-child(even) { background: ${NPC_COLORS.lightGray}; }
+        .financial-table .total-row { 
+          background: linear-gradient(90deg, ${NPC_COLORS.goldLight} 0%, #f5ecd5 100%) !important; 
+          font-weight: 700; 
+        }
+        .financial-table .total-row td { border-top: 2px solid ${NPC_COLORS.gold}; }
+        
+        /* KPI Cards */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .kpi-card { 
+          background: linear-gradient(135deg, ${NPC_COLORS.white} 0%, ${NPC_COLORS.lightGray} 100%);
+          border: 1px solid #e2e8f0;
+          border-left: 4px solid ${NPC_COLORS.gold};
+          padding: 12px;
+          border-radius: 4px;
+        }
+        .kpi-label { font-size: 7pt; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .kpi-value { font-size: 14pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .kpi-value.positive { color: ${NPC_COLORS.success}; }
+        .kpi-value.negative { color: ${NPC_COLORS.danger}; }
+        
+        /* Utility Classes */
         .text-right { text-align: right; }
         .text-center { text-align: center; }
-        .font-bold { font-weight: bold; }
-        .text-green { color: #38a169; }
-        .text-red { color: #e53e3e; }
-        .mt-2 { margin-top: 8px; }
+        .font-bold { font-weight: 700; }
+        .text-green { color: ${NPC_COLORS.success}; }
+        .text-red { color: ${NPC_COLORS.danger}; }
+        .mt-2 { margin-top: 12px; }
       </style>
     </head>
     <body>
-      <!-- Page 1: Personal Details & Properties -->
-      <div class="page">
-        <div class="header">
-          <div><div class="header-title">Personal Details (All Applicants)</div></div>
-          <div class="header-date">${reportDate}</div>
+      <!-- COVER PAGE -->
+      <div class="page cover-page">
+        <div class="cover-corner cover-corner-tl"></div>
+        <div class="cover-corner cover-corner-tr"></div>
+        <div class="cover-corner cover-corner-bl"></div>
+        <div class="cover-corner cover-corner-br"></div>
+        
+        <div class="cover-logo">
+          <div class="logo-n">N</div>
         </div>
-        <div class="two-columns">
-          <div class="column column-left">
-            <div class="section">
-              <div class="section-header">Primary Contact</div>
-              <table class="data-table">
-                <tr><td class="label">First name</td><td class="value">${client.primary_first_name || '-'}</td></tr>
-                <tr><td class="label">Middle name</td><td class="value">${client.primary_middle_name || '-'}</td></tr>
-                <tr><td class="label">Surname</td><td class="value">${client.primary_surname || '-'}</td></tr>
-                <tr><td class="label">Mobile</td><td class="value">${client.primary_mobile || '-'}</td></tr>
-                <tr><td class="label">Email</td><td class="value">${client.primary_email || '-'}</td></tr>
-                <tr><td class="label">Gender</td><td class="value">${client.primary_gender || '-'}</td></tr>
-                <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.primary_dob)}</td></tr>
-              </table>
+        <div class="cover-company">NAIDU PROPERTY CONSULTING</div>
+        <div class="cover-tagline">YOUR DEDICATED PROPERTY PARTNER</div>
+        
+        <div class="cover-divider"></div>
+        
+        <div class="cover-doc-title">Client Portfolio Form</div>
+        <div class="cover-client-name">${clientFullName}</div>
+        
+        <div class="cover-date">${reportDate}</div>
+      </div>
+      
+      <!-- PAGE 1: Personal Details & Properties -->
+      <div class="page">
+        <div class="page-header">
+          <div class="header-logo">N</div>
+          <div class="header-title-group">
+            <div class="header-title">Personal Details</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="two-columns">
+            <div class="column column-left">
+              <div class="section">
+                <div class="section-header gold">Primary Contact</div>
+                <table class="data-table">
+                  <tr><td class="label">First name</td><td class="value">${client.primary_first_name || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${client.primary_middle_name || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${client.primary_surname || '-'}</td></tr>
+                  <tr><td class="label">Mobile</td><td class="value">${client.primary_mobile || '-'}</td></tr>
+                  <tr><td class="label">Email</td><td class="value">${client.primary_email || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${client.primary_gender || '-'}</td></tr>
+                  <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.primary_dob)}</td></tr>
+                </table>
+              </div>
+              <div class="section">
+                <div class="section-header">Secondary Contact</div>
+                <table class="data-table">
+                  <tr><td class="label">First name</td><td class="value">${client.secondary_first_name || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${client.secondary_middle_name || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${client.secondary_surname || '-'}</td></tr>
+                  <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
+                  <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
+                  <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
+                </table>
+              </div>
+              <div class="section">
+                <div class="section-header">Address & Status</div>
+                <table class="data-table">
+                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
+                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
+                  <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
+                </table>
+              </div>
             </div>
-            <div class="section">
-              <div class="section-header blue">Secondary Contact</div>
-              <table class="data-table">
-                <tr><td class="label">First name</td><td class="value">${client.secondary_first_name || '-'}</td></tr>
-                <tr><td class="label">Middle name</td><td class="value">${client.secondary_middle_name || '-'}</td></tr>
-                <tr><td class="label">Surname</td><td class="value">${client.secondary_surname || '-'}</td></tr>
-                <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
-                <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
-                <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
-                <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
-              </table>
-            </div>
-            <div class="section">
-              <div class="section-header green">Address</div>
-              <table class="data-table">
-                <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
-                <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
-                <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
-              </table>
-            </div>
-            <div class="section">
-              <div class="section-header purple">ID</div>
-              <table class="data-table">
-                <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
-              </table>
-            </div>
-            <div class="section">
-              <div class="section-header orange">Family Relations</div>
-              <table class="data-table">
-                <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
-                <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
-              </table>
+            <div class="column column-right">
+              <div class="section">
+                <div class="section-header gold">Property (Owner Occupied)</div>
+                <table class="data-table">
+                  <tr><td class="label">Address</td><td class="value">${ownerOccupied?.address || '-'}</td></tr>
+                  <tr><td class="label">Value</td><td class="value currency">${formatCurrency(ownerOccupied?.value)}</td></tr>
+                  <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(ownerOccupied?.loan_remaining)}</td></tr>
+                  <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(ownerOccupied?.interest_rate)}</td></tr>
+                  <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(ownerOccupied?.ownership_percentage)}</td></tr>
+                  <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
+                  <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
+                </table>
+              </div>
+              ${investmentPropertiesHTML}
+              ${smsfPropertiesHTML}
             </div>
           </div>
-          <div class="column column-right">
-            <div class="section">
-              <div class="section-header teal">Property (Owner Occupied)</div>
-              <table class="data-table">
-                <tr><td class="label">Address</td><td class="value">${ownerOccupied?.address || '-'}</td></tr>
-                <tr><td class="label">Value</td><td class="value currency">${formatCurrency(ownerOccupied?.value)}</td></tr>
-                <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(ownerOccupied?.loan_remaining)}</td></tr>
-                <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(ownerOccupied?.interest_rate)}</td></tr>
-                <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(ownerOccupied?.ownership_percentage)}</td></tr>
-                <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
-                <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
-              </table>
-            </div>
-            ${investmentPropertiesHTML}
-            ${smsfPropertiesHTML}
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div>Page 1 of 4</div>
         </div>
       </div>
       
-      <!-- Page 2: Employment & Income -->
+      <!-- PAGE 2: Employment & Income -->
       <div class="page">
-        <div class="header">
-          <div><div class="header-title">Employment & Income Details</div></div>
-          <div class="header-date">${reportDate}</div>
+        <div class="page-header">
+          <div class="header-logo">N</div>
+          <div class="header-title-group">
+            <div class="header-title">Employment & Income</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
         </div>
-        <div class="two-columns">
-          <div class="column">
-            <div class="section">
-              <div class="section-header">Primary Contact - Employment</div>
-              ${generateEmploymentTable(primaryEmployment)}
+        <div class="page-content">
+          <div class="two-columns">
+            <div class="column">
+              <div class="section">
+                <div class="section-header gold">Primary Contact - Employment</div>
+                ${generateEmploymentTable(primaryEmployment)}
+              </div>
+              <div class="section">
+                <div class="section-header">Secondary Contact - Employment</div>
+                ${generateEmploymentTable(secondaryEmployment)}
+              </div>
             </div>
-            <div class="section">
-              <div class="section-header blue">Secondary Contact - Employment</div>
-              ${generateEmploymentTable(secondaryEmployment)}
+            <div class="column">
+              <div class="section">
+                <div class="section-header gold">Primary Contact - Income</div>
+                ${generateIncomeTable(primaryIncome)}
+              </div>
+              <div class="section">
+                <div class="section-header">Secondary Contact - Income</div>
+                ${generateIncomeTable(secondaryIncome)}
+              </div>
             </div>
           </div>
-          <div class="column">
-            <div class="section">
-              <div class="section-header green">Primary Contact - Income</div>
-              ${generateIncomeTable(primaryIncome)}
-            </div>
-            <div class="section">
-              <div class="section-header purple">Secondary Contact - Income</div>
-              ${generateIncomeTable(secondaryIncome)}
-            </div>
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div>Page 2 of 4</div>
         </div>
       </div>
       
-      <!-- Page 3: Assets & Liabilities -->
+      <!-- PAGE 3: Assets & Liabilities -->
       <div class="page">
-        <div class="header">
-          <div><div class="header-title">Assets & Liabilities</div></div>
-          <div class="header-date">${reportDate}</div>
+        <div class="page-header">
+          <div class="header-logo">N</div>
+          <div class="header-title-group">
+            <div class="header-title">Assets & Liabilities</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
         </div>
-        <div class="two-columns">
-          <div class="column">
-            <div class="section">
-              <div class="section-header">Assets</div>
-              ${generateAssetsTable()}
+        <div class="page-content">
+          <div class="two-columns">
+            <div class="column">
+              <div class="section">
+                <div class="section-header gold">Assets</div>
+                ${generateAssetsTable()}
+              </div>
+            </div>
+            <div class="column">
+              <div class="section">
+                <div class="section-header">Liabilities</div>
+                ${generateLiabilitiesTable()}
+              </div>
             </div>
           </div>
-          <div class="column">
-            <div class="section">
-              <div class="section-header orange">Liabilities</div>
-              ${generateLiabilitiesTable()}
-            </div>
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div>Page 3 of 4</div>
         </div>
       </div>
       
-      <!-- Page 4: Portfolio Summary -->
+      <!-- PAGE 4: Portfolio Summary -->
       <div class="page">
-        <div class="header">
-          <div><div class="header-title">Portfolio Cashflow Analysis</div></div>
-          <div class="header-date">${reportDate}</div>
+        <div class="page-header">
+          <div class="header-logo">N</div>
+          <div class="header-title-group">
+            <div class="header-title">Portfolio Summary</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
         </div>
-        <div class="summary-box">
-          <div class="summary-title">Portfolio Summary</div>
-          <table class="data-table">
-            <tr><td class="label">Total Portfolio Value</td><td class="value currency">${formatCurrency(client.total_portfolio_value)}</td></tr>
-            <tr><td class="label">Total Debt</td><td class="value currency">${formatCurrency(client.total_debt)}</td></tr>
-            <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure)}</td></tr>
-            <tr><td class="label">Total Monthly Income</td><td class="value currency">${formatCurrency(client.total_monthly_income)}</td></tr>
-            <tr><td class="label">Total Monthly Rental Income</td><td class="value currency">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
-            <tr><td class="label font-bold">Net Monthly Cash Flow</td><td class="value currency font-bold ${(client.net_monthly_cash_flow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(client.net_monthly_cash_flow)}</td></tr>
-          </table>
+        <div class="page-content">
+          <!-- KPI Cards -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-label">Total Portfolio Value</div>
+              <div class="kpi-value">${formatCurrency(client.total_portfolio_value)}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Total Debt</div>
+              <div class="kpi-value">${formatCurrency(client.total_debt)}</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Portfolio Equity</div>
+              <div class="kpi-value ${equity >= 0 ? 'positive' : 'negative'}">${formatCurrency(equity)}</div>
+            </div>
+          </div>
+          
+          <div class="summary-box">
+            <div class="summary-title">Monthly Cashflow Analysis</div>
+            <table class="data-table">
+              <tr><td class="label">Total Monthly Income</td><td class="value currency">${formatCurrency(client.total_monthly_income)}</td></tr>
+              <tr><td class="label">Total Monthly Rental Income</td><td class="value currency">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
+              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure)}</td></tr>
+              <tr><td class="label font-bold">Net Monthly Cash Flow</td><td class="value currency font-bold ${(client.net_monthly_cash_flow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(client.net_monthly_cash_flow)}</td></tr>
+            </table>
+          </div>
+          
+          <div class="section mt-2">
+            <div class="section-header gold">Properties Overview</div>
+            <table class="financial-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th class="text-right">Value</th>
+                  <th class="text-right">Loan</th>
+                  <th class="text-right">Rental</th>
+                  <th class="text-right">Net CF</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${propertiesSummaryRows}
+              </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td><strong>TOTAL</strong></td>
+                  <td class="text-right">${formatCurrency(totalValue)}</td>
+                  <td class="text-right">${formatCurrency(totalLoans)}</td>
+                  <td class="text-right">${formatCurrency(totalRental)}</td>
+                  <td class="text-right ${totalNetCF >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(totalNetCF)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
-        <div class="section mt-2">
-          <div class="section-header teal">Properties Overview</div>
-          <table class="financial-table">
-            <thead>
-              <tr>
-                <th>Property</th>
-                <th class="text-right">Value</th>
-                <th class="text-right">Loan</th>
-                <th class="text-right">Rental</th>
-                <th class="text-right">Net CF</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${propertiesSummaryRows}
-            </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td>TOTAL</td>
-                <td class="text-right">${formatCurrency(totalValue)}</td>
-                <td class="text-right">${formatCurrency(totalLoans)}</td>
-                <td class="text-right">${formatCurrency(totalRental)}</td>
-                <td class="text-right ${totalNetCF >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(totalNetCF)}</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
+          </div>
+          <div>Page 4 of 4</div>
         </div>
       </div>
     </body>
