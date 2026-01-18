@@ -543,14 +543,8 @@ function generateHTMLContent(data: VownetPDFData): string {
     </div>
   `;
 
-  // Only show first investment property on page 1 (if any)
-  // Pass index 1 so it displays as "Investment Property 1"
-  const firstInvestmentPropertyHTML = investmentProperties.length > 0 
-    ? generateInvestmentPropertyHTML(investmentProperties[0], 1) 
-    : '';
-  
-  // Additional investment properties for overflow pages
-  const additionalInvestmentProperties = investmentProperties.slice(1);
+  // ALL investment properties go to their own individual pages now
+  // Each investment property gets a dedicated page for better readability
 
   // Generate SMSF property HTML for a single property
   const generateSmsfPropertyHTML = (prop: PropertyData, index: number) => `
@@ -618,21 +612,21 @@ function generateHTMLContent(data: VownetPDFData): string {
   `;
 
   // Calculate total pages dynamically
-  const hasAdditionalProperties = additionalInvestmentProperties.length > 0 || smsfProperties.length > 0;
-  // Group properties into pages (max 2 per page for overflow)
-  // Additional investment properties start from index 2 (since first is index 1 on page 1)
-  const overflowProperties: Array<{type: 'investment' | 'smsf', prop: PropertyData, index: number}> = [
-    ...additionalInvestmentProperties.map((prop, idx) => ({ type: 'investment' as const, prop, index: idx + 2 })),
-    ...smsfProperties.map((prop, idx) => ({ type: 'smsf' as const, prop, index: idx + 1 }))
-  ];
-  const propertyOverflowPages: Array<Array<{type: 'investment' | 'smsf', prop: PropertyData, index: number}>> = [];
-  for (let i = 0; i < overflowProperties.length; i += 2) {
-    propertyOverflowPages.push(overflowProperties.slice(i, i + 2));
-  }
+  // ALL investment properties now get their own individual page (one property per page)
+  const investmentPropertyPages: Array<{prop: PropertyData, index: number}> = investmentProperties.map((prop, idx) => ({
+    prop,
+    index: idx + 1 // Start from 1
+  }));
   
-  // Total pages: Cover + Page 1 + Overflow Pages + Employment + Assets + Summary + Final
+  // SMSF properties also get their own pages
+  const smsfPropertyPages: Array<{prop: PropertyData, index: number}> = smsfProperties.map((prop, idx) => ({
+    prop,
+    index: idx + 1
+  }));
+  
+  // Total pages: Cover + Page 1 (Personal Details) + Investment Property Pages + SMSF Pages + Employment + Assets + Summary + Final
   const basePages = 5; // Cover, Page 1, Employment, Assets, Summary
-  const totalPages = basePages + propertyOverflowPages.length + 1; // +1 for Final page
+  const totalPages = basePages + investmentPropertyPages.length + smsfPropertyPages.length + 1; // +1 for Final page
 
   // Employment tables
   const primaryEmployment = employment.filter(e => e.contact_type === 'primary');
@@ -842,23 +836,19 @@ function generateHTMLContent(data: VownetPDFData): string {
   const clientFullName = secondaryName ? `${primaryName} & ${secondaryName}` : primaryName;
   const equity = (client.total_portfolio_value || 0) - (client.total_debt || 0);
 
-  // Generate overflow property pages HTML
-  const overflowPagesHTML = propertyOverflowPages.map((pageProps, pageIndex) => `
-    <!-- OVERFLOW PAGE ${pageIndex + 1}: Additional Properties -->
+  // Generate individual investment property pages HTML (one per page)
+  const investmentPropertyPagesHTML = investmentPropertyPages.map((item, pageIndex) => `
+    <!-- INVESTMENT PROPERTY PAGE ${pageIndex + 1} -->
     <div class="page">
       <div class="page-header">
         <div class="header-title-group">
-          <div class="header-title">Investment Properties (Continued)</div>
+          <div class="header-title">Investment Property ${item.index}</div>
           <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
         </div>
       </div>
       <div class="page-content">
-        <div class="properties-grid">
-          ${pageProps.map(item => 
-            item.type === 'investment' 
-              ? generateInvestmentPropertyHTML(item.prop, item.index)
-              : generateSmsfPropertyHTML(item.prop, item.index)
-          ).join('')}
+        <div class="property-page-content">
+          ${generateInvestmentPropertyHTML(item.prop, item.index)}
         </div>
       </div>
       <div class="page-footer">
@@ -871,12 +861,42 @@ function generateHTMLContent(data: VownetPDFData): string {
       </div>
     </div>
   `).join('');
+  
+  // Generate individual SMSF property pages HTML (one per page)
+  const smsfPropertyPagesHTML = smsfPropertyPages.map((item, pageIndex) => `
+    <!-- SMSF PROPERTY PAGE ${pageIndex + 1} -->
+    <div class="page">
+      <div class="page-header">
+        <div class="header-title-group">
+          <div class="header-title">SMSF Property ${item.index}</div>
+          <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="property-page-content">
+          ${generateSmsfPropertyHTML(item.prop, item.index)}
+        </div>
+      </div>
+      <div class="page-footer">
+        <div class="footer-contact">
+          <span class="footer-item">📞 (02) 8609 3299</span>
+          <span class="footer-item">✉ admin@npcservices.com.au</span>
+          <span class="footer-item">🌐 npcservices.com.au</span>
+        </div>
+        <div>Page ${pageIndex + 2 + investmentPropertyPages.length} of ${totalPages}</div>
+      </div>
+    </div>
+  `).join('');
+  
+  // Combined property pages HTML
+  const allPropertyPagesHTML = investmentPropertyPagesHTML + smsfPropertyPagesHTML;
 
   // Calculate page numbers for static pages
   const page1Number = 1;
-  const employmentPageNumber = 2 + propertyOverflowPages.length;
-  const assetsPageNumber = 3 + propertyOverflowPages.length;
-  const summaryPageNumber = 4 + propertyOverflowPages.length;
+  const propertyPagesCount = investmentPropertyPages.length + smsfPropertyPages.length;
+  const employmentPageNumber = 2 + propertyPagesCount;
+  const assetsPageNumber = 3 + propertyPagesCount;
+  const summaryPageNumber = 4 + propertyPagesCount;
 
   return `
     <!DOCTYPE html>
@@ -998,6 +1018,15 @@ function generateHTMLContent(data: VownetPDFData): string {
           border-left: 3px solid ${NPC_COLORS.gold};
           margin-top: 14px;
           margin-bottom: 10px;
+        }
+        
+        /* Property Page Content - for individual property pages */
+        .property-page-content {
+          max-width: 680px;
+          margin: 0 auto;
+        }
+        .property-page-content .property-card {
+          margin-bottom: 0;
         }
         
         /* Property Cards */
@@ -1403,7 +1432,7 @@ function generateHTMLContent(data: VownetPDFData): string {
           </div>
         </div>
         <div class="page-content">
-          <div class="two-columns">
+          <div class="two-columns" style="align-items: flex-start;">
             <div class="column column-left">
               <div class="section">
                 <div class="section-header gold">Primary Contact</div>
@@ -1429,17 +1458,6 @@ function generateHTMLContent(data: VownetPDFData): string {
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
                 </table>
               </div>
-              <div class="section">
-                <div class="section-header">Address & Status</div>
-                <table class="data-table">
-                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
-                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
-                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
-                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
-                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
-                  <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
-                </table>
-              </div>
             </div>
             <div class="column column-right">
               <div class="section">
@@ -1454,7 +1472,17 @@ function generateHTMLContent(data: VownetPDFData): string {
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
               </div>
-              ${firstInvestmentPropertyHTML}
+              <div class="section">
+                <div class="section-header">Address & Status</div>
+                <table class="data-table">
+                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
+                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
+                  <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -1468,7 +1496,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         </div>
       </div>
       
-      ${overflowPagesHTML}
+      ${allPropertyPagesHTML}
       
       <!-- PAGE 2: Employment & Income -->
       <div class="page">
