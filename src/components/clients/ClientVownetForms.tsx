@@ -70,7 +70,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
           file_path: filePath,
           file_size: file.size,
           file_type: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          category: 'vownet_form',
+          category: 'vownet',
           document_type: 'vownet_form',
           is_vownet_form: true,
           uploaded_by: user?.id

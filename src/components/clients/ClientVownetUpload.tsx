@@ -241,7 +241,7 @@ export function ClientVownetUpload({
             file_path: filePath,
             file_size: uploadedFile.size,
             file_type: uploadedFile.type,
-            category: 'vownet_form',
+            category: 'vownet',
             document_type: 'vownet_form',
             is_vownet_form: true,
             uploaded_by: user?.id
