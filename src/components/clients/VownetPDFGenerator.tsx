@@ -636,12 +636,19 @@ function generateHTMLContent(data: VownetPDFData): string {
   const primaryEmployment = employment.filter(e => e.contact_type === 'primary');
   const secondaryEmployment = employment.filter(e => e.contact_type === 'secondary');
   
-  const generateEmploymentTable = (empList: EmploymentData[]) => {
-    if (empList.length === 0) return '<div class="empty-state"><span class="empty-icon">📋</span><p>No employment records</p></div>';
+  const generateEmploymentTable = (empList: EmploymentData[], isPrimary: boolean = false) => {
+    if (empList.length === 0) {
+      return `
+        <div class="empty-state-compact ${isPrimary ? 'primary' : ''}">
+          <div class="empty-state-icon">◆</div>
+          <p class="empty-state-text">No employment records</p>
+        </div>
+      `;
+    }
     return empList.map((emp, idx) => `
       <div class="info-card ${idx > 0 ? 'mt-2' : ''}">
         <div class="info-card-header">
-          <span class="employer-icon">🏢</span>
+          <span class="employer-icon">◆</span>
           <span class="employer-name">${emp.employer_name || 'Unknown Employer'}</span>
         </div>
         <table class="data-table compact alt-rows">
@@ -658,16 +665,23 @@ function generateHTMLContent(data: VownetPDFData): string {
   const secondaryIncome = income.find(i => i.contact_type === 'secondary');
   
   const generateIncomeTable = (inc: IncomeData | undefined) => {
-    if (!inc) return '<div class="empty-state"><span class="empty-icon">💰</span><p>No income records</p></div>';
+    if (!inc) {
+      return `
+        <div class="empty-state-compact">
+          <div class="empty-state-icon">◆</div>
+          <p class="empty-state-text">No income records</p>
+        </div>
+      `;
+    }
     const totalIncome = (inc.gross_salary || 0) + (inc.bonus || 0) + (inc.allowance || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) + (inc.overtime_non_essential || 0) + (inc.other_taxable_income || 0);
     return `
       <div class="income-highlight">
-        <span class="income-highlight-label">Total Annual Income</span>
+        <span class="income-highlight-label">TOTAL ANNUAL INCOME</span>
         <span class="income-highlight-value">${formatCurrency(totalIncome)}</span>
       </div>
-      <table class="data-table alt-rows">
+      <table class="data-table alt-rows compact">
         <tr><td class="label">Gross Salary</td><td class="value currency income-value">${formatCurrency(inc.gross_salary)}</td></tr>
-        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${inc.salary_frequency || '-'}</span></td></tr>
+        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${(inc.salary_frequency || '-').toUpperCase()}</span></td></tr>
         <tr><td class="label">Bonus</td><td class="value currency">${formatCurrency(inc.bonus)}</td></tr>
         <tr><td class="label">Allowance</td><td class="value currency">${formatCurrency(inc.allowance)}</td></tr>
         <tr><td class="label">Commission</td><td class="value currency">${formatCurrency(inc.commission)}</td></tr>
@@ -680,7 +694,14 @@ function generateHTMLContent(data: VownetPDFData): string {
 
   // Assets table
   const generateAssetsTable = () => {
-    if (assets.length === 0) return '<div class="empty-state"><span class="empty-icon">📦</span><p>No assets recorded</p></div>';
+    if (assets.length === 0) {
+      return `
+        <div class="empty-state-compact">
+          <div class="empty-state-icon">◆</div>
+          <p class="empty-state-text">No assets recorded</p>
+        </div>
+      `;
+    }
     
     const totalAssets = assets.reduce((sum, a) => sum + (a.value || 0), 0);
     const assetsByType: Record<string, AssetData[]> = {};
@@ -692,16 +713,19 @@ function generateHTMLContent(data: VownetPDFData): string {
     
     return `
       <div class="assets-summary">
-        <span class="assets-summary-label">Total Assets Value</span>
+        <span class="assets-summary-label">TOTAL ASSETS VALUE</span>
         <span class="assets-summary-value">${formatCurrency(totalAssets)}</span>
       </div>
       ${Object.entries(assetsByType).map(([type, assetList]) => `
         <div class="asset-category">
-          <div class="subsection-header">${getAssetIcon(type)} ${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-          <table class="data-table compact alt-rows">
+          <div class="asset-category-header">
+            <span class="category-icon">◆</span>
+            <span class="category-title">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+          </div>
+          <table class="data-table compact alt-rows asset-table">
             ${assetList.map(asset => `
               <tr>
-                <td class="label">${asset.description || asset.make_model || asset.institution_name || type}</td>
+                <td class="label">${asset.description || asset.make_model || asset.institution_name || '-'}</td>
                 <td class="value currency">${formatCurrency(asset.value)}</td>
               </tr>
             `).join('')}
@@ -710,21 +734,17 @@ function generateHTMLContent(data: VownetPDFData): string {
       `).join('')}
     `;
   };
-  
-  // Helper for asset icons
-  const getAssetIcon = (type: string): string => {
-    switch (type.toLowerCase()) {
-      case 'vehicle': return '🚗';
-      case 'savings': case 'bank_account': return '🏦';
-      case 'shares': case 'investments': return '📈';
-      case 'superannuation': return '💼';
-      case 'other': default: return '📦';
-    }
-  };
 
   // Liabilities table
   const generateLiabilitiesTable = () => {
-    if (liabilities.length === 0) return '<div class="empty-state"><span class="empty-icon">📋</span><p>No liabilities recorded</p></div>';
+    if (liabilities.length === 0) {
+      return `
+        <div class="empty-state-compact">
+          <div class="empty-state-icon">◆</div>
+          <p class="empty-state-text">No liabilities recorded</p>
+        </div>
+      `;
+    }
     
     const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.current_balance || 0), 0);
     const totalRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
@@ -738,23 +758,26 @@ function generateHTMLContent(data: VownetPDFData): string {
     return `
       <div class="liabilities-summary">
         <div class="liab-summary-item">
-          <span class="liab-label">Total Owed</span>
+          <span class="liab-label">TOTAL OWED</span>
           <span class="liab-value negative">${formatCurrency(totalLiabilities)}</span>
         </div>
         <div class="liab-summary-item">
-          <span class="liab-label">Monthly Repayments</span>
+          <span class="liab-label">MONTHLY REPAYMENTS</span>
           <span class="liab-value">${formatCurrency(totalRepayments)}</span>
         </div>
       </div>
       ${Object.entries(liabsByType).map(([type, liabList]) => `
         <div class="liability-category">
-          <div class="subsection-header">${getLiabilityIcon(type)} ${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+          <div class="liability-category-header">
+            <span class="category-icon">◆</span>
+            <span class="category-title">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+          </div>
           <table class="data-table financial-mini alt-rows">
             <thead>
               <tr>
-                <th>Provider</th>
-                <th class="text-right">Balance</th>
-                <th class="text-right">Repayment</th>
+                <th>PROVIDER</th>
+                <th class="text-right">BALANCE</th>
+                <th class="text-right">REPAYMENT</th>
               </tr>
             </thead>
             <tbody>
@@ -770,18 +793,6 @@ function generateHTMLContent(data: VownetPDFData): string {
         </div>
       `).join('')}
     `;
-  };
-  
-  // Helper for liability icons
-  const getLiabilityIcon = (type: string): string => {
-    switch (type.toLowerCase()) {
-      case 'credit_card': case 'credit card': return '💳';
-      case 'personal_loan': case 'personal loan': return '📝';
-      case 'car_loan': case 'car loan': return '🚗';
-      case 'hecs': case 'help': return '🎓';
-      case 'mortgage': return '🏠';
-      case 'other': default: return '📋';
-    }
   };
 
   // Properties summary rows
@@ -1126,27 +1137,58 @@ function generateHTMLContent(data: VownetPDFData): string {
           border: 1px solid ${NPC_COLORS.borderGray};
           border-radius: 6px;
           overflow: hidden;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
         .info-card-header {
           background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, ${NPC_COLORS.white} 100%);
-          padding: 8px 12px;
+          padding: 10px 14px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
-          border-left: 3px solid ${NPC_COLORS.gold};
+          border-left: 4px solid ${NPC_COLORS.gold};
         }
-        .employer-icon { font-size: 16pt; line-height: 1; }
+        .employer-icon { 
+          font-size: 12pt; 
+          line-height: 1; 
+          color: ${NPC_COLORS.gold};
+          font-weight: bold;
+        }
         .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 9pt; }
         
         .emp-type-badge, .freq-badge {
           background: ${NPC_COLORS.goldLight};
           color: ${NPC_COLORS.goldDark};
-          padding: 2px 8px;
+          padding: 3px 10px;
           border-radius: 10px;
-          font-size: 7pt;
-          font-weight: 600;
+          font-size: 6.5pt;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        
+        /* Empty State - Compact */
+        .empty-state-compact {
+          padding: 24px 16px;
+          text-align: center;
+          background: ${NPC_COLORS.lightGray};
+          border-radius: 6px;
+          border: 1px dashed ${NPC_COLORS.borderGray};
+        }
+        .empty-state-compact.primary {
+          border-color: ${NPC_COLORS.gold};
+          background: ${NPC_COLORS.goldTint};
+        }
+        .empty-state-icon {
+          font-size: 18pt;
+          color: ${NPC_COLORS.gold};
+          margin-bottom: 8px;
+          font-weight: bold;
+        }
+        .empty-state-text {
+          font-size: 8pt;
+          color: ${NPC_COLORS.mediumGray};
+          margin: 0;
         }
         
         /* Income Highlight */
@@ -1166,33 +1208,64 @@ function generateHTMLContent(data: VownetPDFData): string {
         .assets-summary {
           background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%);
           border: 2px solid ${NPC_COLORS.gold};
-          padding: 12px 16px;
+          padding: 14px 18px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
           border-radius: 6px;
         }
-        .assets-summary-label { color: ${NPC_COLORS.darkGray}; font-size: 8pt; font-weight: 600; text-transform: uppercase; }
+        .assets-summary-label { color: ${NPC_COLORS.darkGray}; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .assets-summary-value { color: ${NPC_COLORS.success}; font-size: 18pt; font-weight: 700; }
         
-        .asset-category, .liability-category { margin-bottom: 10px; }
+        .asset-category, .liability-category { margin-bottom: 12px; }
+        
+        /* Category Headers - Consistent styling */
+        .asset-category-header, .liability-category-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: ${NPC_COLORS.lightGray};
+          border-left: 3px solid ${NPC_COLORS.gold};
+          margin-bottom: 4px;
+          border-radius: 0 4px 4px 0;
+        }
+        .category-icon {
+          color: ${NPC_COLORS.gold};
+          font-size: 10pt;
+          font-weight: bold;
+        }
+        .category-title {
+          font-size: 8pt;
+          font-weight: 600;
+          color: ${NPC_COLORS.darkGray};
+          text-transform: capitalize;
+        }
+        
+        /* Asset Table specific styling */
+        .asset-table td.label {
+          width: 70%;
+        }
+        .asset-table td.value {
+          width: 30%;
+        }
         
         /* Liabilities Summary */
         .liabilities-summary {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 12px;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
         .liab-summary-item {
           background: ${NPC_COLORS.lightGray};
-          padding: 10px 14px;
+          padding: 12px 14px;
           border-radius: 6px;
           border-left: 4px solid ${NPC_COLORS.darkBlue};
         }
-        .liab-label { display: block; font-size: 7pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; margin-bottom: 4px; }
-        .liab-value { display: block; font-size: 14pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .liab-label { display: block; font-size: 6.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .liab-value { display: block; font-size: 16pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .liab-value.negative { color: ${NPC_COLORS.danger}; }
         
         /* Empty States */
@@ -1385,19 +1458,19 @@ function generateHTMLContent(data: VownetPDFData): string {
           </div>
         </div>
         <div class="page-content">
-          <div class="two-columns">
+          <div class="two-columns" style="align-items: flex-start;">
             <div class="column">
-              <div class="section">
+              <div class="section" style="margin-bottom: 16px;">
                 <div class="section-header gold">Primary Contact - Employment</div>
-                ${generateEmploymentTable(primaryEmployment)}
+                ${generateEmploymentTable(primaryEmployment, true)}
               </div>
               <div class="section">
                 <div class="section-header">Secondary Contact - Employment</div>
-                ${generateEmploymentTable(secondaryEmployment)}
+                ${generateEmploymentTable(secondaryEmployment, false)}
               </div>
             </div>
             <div class="column">
-              <div class="section">
+              <div class="section" style="margin-bottom: 16px;">
                 <div class="section-header gold">Primary Contact - Income</div>
                 ${generateIncomeTable(primaryIncome)}
               </div>
