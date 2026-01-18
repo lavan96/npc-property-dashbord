@@ -785,21 +785,59 @@ function generateHTMLContent(data: VownetPDFData): string {
         .page { width: 794px; height: 1123px; background: ${NPC_COLORS.white}; position: relative; overflow: hidden; }
         .page-content { padding: 30px 40px; padding-top: 90px; }
         
-        /* Cover Page */
-        .cover-page { background: linear-gradient(135deg, ${NPC_COLORS.black} 0%, ${NPC_COLORS.darkBlue} 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .cover-corner { position: absolute; width: 100px; height: 100px; }
-        .cover-corner-tl { top: 0; left: 0; border-top: 3px solid ${NPC_COLORS.gold}; border-left: 3px solid ${NPC_COLORS.gold}; }
-        .cover-corner-tr { top: 0; right: 0; border-top: 3px solid ${NPC_COLORS.gold}; border-right: 3px solid ${NPC_COLORS.gold}; }
-        .cover-corner-bl { bottom: 0; left: 0; border-bottom: 3px solid ${NPC_COLORS.gold}; border-left: 3px solid ${NPC_COLORS.gold}; }
-        .cover-corner-br { bottom: 0; right: 0; border-bottom: 3px solid ${NPC_COLORS.gold}; border-right: 3px solid ${NPC_COLORS.gold}; }
+        /* Cover Page - Image Based */
+        .cover-page-image { 
+          background-size: cover; 
+          background-position: center; 
+          background-repeat: no-repeat;
+          position: relative;
+        }
+        .cover-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+        .cover-content-positioned {
+          position: absolute;
+          bottom: 180px;
+          left: 0;
+          right: 0;
+          text-align: center;
+        }
+        .cover-doc-title-positioned {
+          color: ${NPC_COLORS.white};
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 28pt;
+          font-weight: 600;
+          margin-bottom: 20px;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .cover-client-name-positioned {
+          color: ${NPC_COLORS.gold};
+          font-size: 20pt;
+          font-weight: 500;
+          margin-bottom: 40px;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .cover-date-positioned {
+          color: ${NPC_COLORS.goldLight};
+          font-size: 11pt;
+          letter-spacing: 2px;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
         
-        .cover-logo { margin-bottom: 60px; }
-        .logo-n { font-family: 'Playfair Display', Georgia, serif; font-size: 72pt; font-weight: 700; color: ${NPC_COLORS.gold}; letter-spacing: 8px; }
-        .cover-company { color: ${NPC_COLORS.white}; font-size: 16pt; font-weight: 600; letter-spacing: 6px; margin-bottom: 8px; }
-        .cover-tagline { color: ${NPC_COLORS.goldLight}; font-size: 10pt; letter-spacing: 3px; margin-bottom: 80px; }
-        .cover-divider { width: 150px; height: 2px; background: ${NPC_COLORS.gold}; margin: 0 auto 40px; }
-        .cover-doc-title { color: ${NPC_COLORS.white}; font-family: 'Playfair Display', Georgia, serif; font-size: 28pt; font-weight: 600; margin-bottom: 20px; }
-        .cover-client-name { color: ${NPC_COLORS.gold}; font-size: 18pt; font-weight: 500; margin-bottom: 60px; }
+        /* Final Page - Image Based */
+        .final-page {
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
         .cover-date { color: ${NPC_COLORS.goldLight}; font-size: 11pt; letter-spacing: 2px; }
         
         /* Page Header */
@@ -1158,25 +1196,16 @@ function generateHTMLContent(data: VownetPDFData): string {
       </style>
     </head>
     <body>
-      <!-- COVER PAGE -->
-      <div class="page cover-page">
-        <div class="cover-corner cover-corner-tl"></div>
-        <div class="cover-corner cover-corner-tr"></div>
-        <div class="cover-corner cover-corner-bl"></div>
-        <div class="cover-corner cover-corner-br"></div>
-        
-        <div class="cover-logo">
-          <div class="logo-n">N</div>
+      <!-- COVER PAGE - Using exact template image -->
+      <div class="page cover-page-image" style="background-image: url('/templates/npc-vownet-cover.jpg'); background-size: cover; background-position: center;">
+        <!-- Overlay content positioned on the template -->
+        <div class="cover-overlay">
+          <div class="cover-content-positioned">
+            <div class="cover-doc-title-positioned">Client Portfolio Form</div>
+            <div class="cover-client-name-positioned">${clientFullName}</div>
+            <div class="cover-date-positioned">${reportDate}</div>
+          </div>
         </div>
-        <div class="cover-company">NAIDU PROPERTY CONSULTING</div>
-        <div class="cover-tagline">YOUR DEDICATED PROPERTY PARTNER</div>
-        
-        <div class="cover-divider"></div>
-        
-        <div class="cover-doc-title">Client Portfolio Form</div>
-        <div class="cover-client-name">${clientFullName}</div>
-        
-        <div class="cover-date">${reportDate}</div>
       </div>
       
       <!-- PAGE 1: Personal Details & Properties -->
@@ -1251,7 +1280,7 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 1 of 4</div>
+          <div>Page 1 of 5</div>
         </div>
       </div>
       
@@ -1294,7 +1323,7 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 2 of 4</div>
+          <div>Page 2 of 5</div>
         </div>
       </div>
       
@@ -1329,7 +1358,7 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 3 of 4</div>
+          <div>Page 3 of 5</div>
         </div>
       </div>
       
@@ -1413,8 +1442,13 @@ function generateHTMLContent(data: VownetPDFData): string {
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
-          <div>Page 4 of 4</div>
+          <div>Page 4 of 5</div>
         </div>
+      </div>
+      
+      <!-- FINAL PAGE - Contact & Disclaimer -->
+      <div class="page final-page" style="background-image: url('/templates/npc-vownet-final.jpg'); background-size: cover; background-position: center;">
+        <!-- Using the exact template image as background -->
       </div>
     </body>
     </html>
