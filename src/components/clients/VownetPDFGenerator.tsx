@@ -411,13 +411,21 @@ const NPC_COLORS = {
   gold: '#c9a227',
   goldLight: '#e8d59d',
   goldDark: '#a88520',
+  goldTint: '#fdf9ed',
   darkBlue: '#113361',
+  navy: '#0d264d',
   black: '#0a0a0a',
   darkGray: '#2d3748',
+  mediumGray: '#4a5568',
   lightGray: '#f7fafc',
+  borderGray: '#e2e8f0',
   white: '#ffffff',
   success: '#16a34a',
+  successLight: '#dcfce7',
+  warning: '#d97706',
+  warningLight: '#fef3c7',
   danger: '#dc2626',
+  dangerLight: '#fef2f2',
 };
 
 // Generate the full HTML content for the PDF
@@ -447,68 +455,146 @@ function generateHTMLContent(data: VownetPDFData): string {
     return type === 'corporate' ? 'Corporate Trustee' : 'Individual Trustee';
   };
 
+  // Helper for cashflow indicator
+  const getCashflowIndicator = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '';
+    if (value > 0) return `<span class="cf-indicator cf-positive">▲</span>`;
+    if (value < 0) return `<span class="cf-indicator cf-negative">▼</span>`;
+    return `<span class="cf-indicator cf-neutral">●</span>`;
+  };
+
+  // Helper for property type badge
+  const getPropertyTypeBadge = (type: string): string => {
+    switch (type) {
+      case 'owner_occupied': return `<span class="prop-badge prop-badge-owner">🏠 Owner Occupied</span>`;
+      case 'investment': return `<span class="prop-badge prop-badge-invest">📈 Investment</span>`;
+      case 'smsf': return `<span class="prop-badge prop-badge-smsf">🏛️ SMSF</span>`;
+      default: return `<span class="prop-badge">${type}</span>`;
+    }
+  };
+
+  // Helper for equity progress bar
+  const getEquityProgressBar = (value: number | null | undefined, loan: number | null | undefined): string => {
+    const v = value || 0;
+    const l = loan || 0;
+    if (v === 0) return '<div class="equity-bar-container"><div class="equity-bar" style="width: 0%"></div></div>';
+    const equityPercent = Math.max(0, Math.min(100, ((v - l) / v) * 100));
+    return `
+      <div class="equity-bar-container">
+        <div class="equity-bar" style="width: ${equityPercent}%"></div>
+        <span class="equity-label">${equityPercent.toFixed(0)}% equity</span>
+      </div>
+    `;
+  };
+
   // Generate investment properties HTML - with NPC branding
   const investmentPropertiesHTML = investmentProperties.map((prop, index) => `
-    <div class="section">
-      <div class="section-header">Investment Property ${index + 1}</div>
-      <table class="data-table">
-        <tr><td class="label">Address</td><td class="value">${prop.address || '-'}</td></tr>
+    <div class="property-card">
+      <div class="section-header">
+        <span class="section-header-text">Investment Property ${index + 1}</span>
+        ${getPropertyTypeBadge('investment')}
+      </div>
+      <div class="property-address-bar">
+        <span class="property-address-icon">📍</span>
+        <span class="property-address-text">${prop.address || '-'}</span>
+      </div>
+      <div class="equity-display">
+        ${getEquityProgressBar(prop.value, prop.loan_remaining)}
+      </div>
+      <table class="data-table alt-rows">
         <tr><td class="label">Value</td><td class="value currency">${formatCurrency(prop.value)}</td></tr>
-        <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
-        <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
-        <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
-        <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(prop.monthly_interest_repayment)}</td></tr>
-        <tr><td class="label">Monthly Body Corporate</td><td class="value currency">${formatCurrency(prop.monthly_body_corporate)}</td></tr>
-        <tr><td class="label">Monthly Council Rates</td><td class="value currency">${formatCurrency(prop.monthly_council_rates)}</td></tr>
-        <tr><td class="label">Monthly Water Rates</td><td class="value currency">${formatCurrency(prop.monthly_water_rates)}</td></tr>
-        <tr><td class="label">Monthly Repairs & Maintenance</td><td class="value currency">${formatCurrency(prop.monthly_repairs_maintenance)}</td></tr>
-        <tr><td class="label">Monthly Property Management</td><td class="value currency">${formatCurrency(prop.monthly_property_management)}</td></tr>
-        <tr><td class="label">Monthly Landlord Insurance</td><td class="value currency">${formatCurrency(prop.monthly_landlord_insurance)}</td></tr>
-        <tr><td class="label">Monthly Building Insurance</td><td class="value currency">${formatCurrency(prop.monthly_building_insurance)}</td></tr>
-        <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(prop.total_monthly_expenditure)}</td></tr>
-        <tr><td class="label">Weekly Rental Income</td><td class="value currency">${formatCurrency(prop.weekly_rental_income)}</td></tr>
-        <tr><td class="label">Monthly Rental Income</td><td class="value currency">${formatCurrency(prop.monthly_rental_income)}</td></tr>
-        <tr><td class="label font-bold">Net Monthly Cashflow</td><td class="value currency font-bold ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td></tr>
+        <tr><td class="label">Loan Remaining</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
+        <tr><td class="label">Interest Rate</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
+        <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
+      </table>
+      <div class="subsection-header">Monthly Expenses</div>
+      <table class="data-table compact alt-rows">
+        <tr><td class="label">Interest Repayment</td><td class="value currency">${formatCurrency(prop.monthly_interest_repayment)}</td></tr>
+        <tr><td class="label">Body Corporate</td><td class="value currency">${formatCurrency(prop.monthly_body_corporate)}</td></tr>
+        <tr><td class="label">Council Rates</td><td class="value currency">${formatCurrency(prop.monthly_council_rates)}</td></tr>
+        <tr><td class="label">Water Rates</td><td class="value currency">${formatCurrency(prop.monthly_water_rates)}</td></tr>
+        <tr><td class="label">Repairs & Maintenance</td><td class="value currency">${formatCurrency(prop.monthly_repairs_maintenance)}</td></tr>
+        <tr><td class="label">Property Management</td><td class="value currency">${formatCurrency(prop.monthly_property_management)}</td></tr>
+        <tr><td class="label">Landlord Insurance</td><td class="value currency">${formatCurrency(prop.monthly_landlord_insurance)}</td></tr>
+        <tr><td class="label">Building Insurance</td><td class="value currency">${formatCurrency(prop.monthly_building_insurance)}</td></tr>
+        <tr class="expense-total"><td class="label">Total Expenditure</td><td class="value currency">${formatCurrency(prop.total_monthly_expenditure)}</td></tr>
+      </table>
+      <div class="subsection-header">Income & Cashflow</div>
+      <table class="data-table compact">
+        <tr><td class="label">Weekly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.weekly_rental_income)}</td></tr>
+        <tr><td class="label">Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.monthly_rental_income)}</td></tr>
+        <tr class="cashflow-row ${(prop.net_monthly_cashflow || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+          <td class="label"><strong>Net Monthly Cashflow</strong></td>
+          <td class="value currency">
+            ${getCashflowIndicator(prop.net_monthly_cashflow)}
+            <strong>${formatCurrency(prop.net_monthly_cashflow)}</strong>
+          </td>
+        </tr>
       </table>
     </div>
   `).join('');
 
   // Generate SMSF properties HTML - with NPC branding
   const smsfPropertiesHTML = smsfProperties.map((prop, index) => `
-    <div class="section">
-      <div class="section-header gold">SMSF Property ${index + 1}</div>
+    <div class="property-card smsf-card">
+      <div class="section-header gold">
+        <span class="section-header-text">SMSF Property ${index + 1}</span>
+        ${getPropertyTypeBadge('smsf')}
+      </div>
+      
+      <div class="property-address-bar">
+        <span class="property-address-icon">📍</span>
+        <span class="property-address-text">${prop.address || '-'}</span>
+      </div>
       
       <!-- SMSF Fund Details -->
-      <div class="subsection-header">Fund Details & Compliance</div>
-      <table class="data-table">
+      <div class="subsection-header">🏛️ Fund Details & Compliance</div>
+      <table class="data-table alt-rows">
         <tr><td class="label">Fund Name</td><td class="value">${prop.smsf_fund_name || '-'}</td></tr>
-        <tr><td class="label">ABN</td><td class="value">${prop.smsf_abn || '-'}</td></tr>
+        <tr><td class="label">ABN</td><td class="value"><code class="abn-code">${prop.smsf_abn || '-'}</code></td></tr>
         <tr><td class="label">Trustee Name</td><td class="value">${prop.smsf_trustee_name || '-'}</td></tr>
         <tr><td class="label">Trustee Type</td><td class="value">${formatTrusteeType(prop.smsf_trustee_type)}</td></tr>
-        <tr><td class="label">Compliance Status</td><td class="value" style="font-weight: 600; color: ${prop.smsf_compliance_status === 'compliant' ? NPC_COLORS.success : prop.smsf_compliance_status === 'non_compliant' ? NPC_COLORS.danger : NPC_COLORS.gold};">${formatComplianceStatus(prop.smsf_compliance_status)}</td></tr>
+        <tr><td class="label">Compliance Status</td><td class="value"><span class="compliance-badge ${prop.smsf_compliance_status === 'compliant' ? 'compliant' : prop.smsf_compliance_status === 'non_compliant' ? 'non-compliant' : 'pending'}">${formatComplianceStatus(prop.smsf_compliance_status)}</span></td></tr>
         <tr><td class="label">Auditor</td><td class="value">${prop.smsf_auditor_name || '-'}</td></tr>
       </table>
 
+      <div class="equity-display">
+        ${getEquityProgressBar(prop.value, prop.loan_remaining)}
+      </div>
+      
       <!-- Property Details -->
-      <div class="subsection-header">Property Details</div>
-      <table class="data-table">
-        <tr><td class="label">Address</td><td class="value">${prop.address || '-'}</td></tr>
+      <div class="subsection-header">📊 Property Financials</div>
+      <table class="data-table compact alt-rows">
         <tr><td class="label">Value</td><td class="value currency">${formatCurrency(prop.value)}</td></tr>
-        <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
-        <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
-        <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
-        <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(prop.monthly_interest_repayment)}</td></tr>
-        <tr><td class="label">Monthly Body Corporate</td><td class="value currency">${formatCurrency(prop.monthly_body_corporate)}</td></tr>
-        <tr><td class="label">Monthly Council Rates</td><td class="value currency">${formatCurrency(prop.monthly_council_rates)}</td></tr>
-        <tr><td class="label">Monthly Water Rates</td><td class="value currency">${formatCurrency(prop.monthly_water_rates)}</td></tr>
-        <tr><td class="label">Monthly Repairs & Maintenance</td><td class="value currency">${formatCurrency(prop.monthly_repairs_maintenance)}</td></tr>
-        <tr><td class="label">Monthly Property Management</td><td class="value currency">${formatCurrency(prop.monthly_property_management)}</td></tr>
-        <tr><td class="label">Monthly Landlord Insurance</td><td class="value currency">${formatCurrency(prop.monthly_landlord_insurance)}</td></tr>
-        <tr><td class="label">Monthly Building Insurance</td><td class="value currency">${formatCurrency(prop.monthly_building_insurance)}</td></tr>
-        <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(prop.total_monthly_expenditure)}</td></tr>
-        <tr><td class="label">Weekly Rental Income</td><td class="value currency">${formatCurrency(prop.weekly_rental_income)}</td></tr>
-        <tr><td class="label">Monthly Rental Income</td><td class="value currency">${formatCurrency(prop.monthly_rental_income)}</td></tr>
-        <tr><td class="label font-bold">Net Monthly Cashflow</td><td class="value currency font-bold ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td></tr>
+        <tr><td class="label">Loan Remaining</td><td class="value currency">${formatCurrency(prop.loan_remaining)}</td></tr>
+        <tr><td class="label">Interest Rate</td><td class="value percent">${formatPercent(prop.interest_rate)}</td></tr>
+        <tr><td class="label">Ownership</td><td class="value percent">${formatPercent(prop.ownership_percentage)}</td></tr>
+      </table>
+      
+      <div class="subsection-header">Monthly Expenses</div>
+      <table class="data-table compact alt-rows">
+        <tr><td class="label">Interest Repayment</td><td class="value currency">${formatCurrency(prop.monthly_interest_repayment)}</td></tr>
+        <tr><td class="label">Body Corporate</td><td class="value currency">${formatCurrency(prop.monthly_body_corporate)}</td></tr>
+        <tr><td class="label">Council Rates</td><td class="value currency">${formatCurrency(prop.monthly_council_rates)}</td></tr>
+        <tr><td class="label">Water Rates</td><td class="value currency">${formatCurrency(prop.monthly_water_rates)}</td></tr>
+        <tr><td class="label">Repairs & Maintenance</td><td class="value currency">${formatCurrency(prop.monthly_repairs_maintenance)}</td></tr>
+        <tr><td class="label">Property Management</td><td class="value currency">${formatCurrency(prop.monthly_property_management)}</td></tr>
+        <tr><td class="label">Landlord Insurance</td><td class="value currency">${formatCurrency(prop.monthly_landlord_insurance)}</td></tr>
+        <tr><td class="label">Building Insurance</td><td class="value currency">${formatCurrency(prop.monthly_building_insurance)}</td></tr>
+        <tr class="expense-total"><td class="label">Total Expenditure</td><td class="value currency">${formatCurrency(prop.total_monthly_expenditure)}</td></tr>
+      </table>
+      
+      <div class="subsection-header">Income & Cashflow</div>
+      <table class="data-table compact">
+        <tr><td class="label">Weekly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.weekly_rental_income)}</td></tr>
+        <tr><td class="label">Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.monthly_rental_income)}</td></tr>
+        <tr class="cashflow-row ${(prop.net_monthly_cashflow || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+          <td class="label"><strong>Net Monthly Cashflow</strong></td>
+          <td class="value currency">
+            ${getCashflowIndicator(prop.net_monthly_cashflow)}
+            <strong>${formatCurrency(prop.net_monthly_cashflow)}</strong>
+          </td>
+        </tr>
       </table>
     </div>
   `).join('');
@@ -518,14 +604,19 @@ function generateHTMLContent(data: VownetPDFData): string {
   const secondaryEmployment = employment.filter(e => e.contact_type === 'secondary');
   
   const generateEmploymentTable = (empList: EmploymentData[]) => {
-    if (empList.length === 0) return '<p style="padding: 2mm; color: #666;">No employment records</p>';
-    return empList.map(emp => `
-      <table class="data-table" style="margin-bottom: 2mm;">
-        <tr><td class="label">Employer</td><td class="value">${emp.employer_name || '-'}</td></tr>
-        <tr><td class="label">Employment Type</td><td class="value">${emp.employment_type || '-'}</td></tr>
-        <tr><td class="label">Role</td><td class="value">${emp.occupation_role || '-'}</td></tr>
-        <tr><td class="label">Start Date</td><td class="value">${formatDate(emp.start_date)}</td></tr>
-      </table>
+    if (empList.length === 0) return '<div class="empty-state"><span class="empty-icon">📋</span><p>No employment records</p></div>';
+    return empList.map((emp, idx) => `
+      <div class="info-card ${idx > 0 ? 'mt-2' : ''}">
+        <div class="info-card-header">
+          <span class="employer-icon">🏢</span>
+          <span class="employer-name">${emp.employer_name || 'Unknown Employer'}</span>
+        </div>
+        <table class="data-table compact alt-rows">
+          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${emp.employment_type || '-'}</span></td></tr>
+          <tr><td class="label">Role</td><td class="value">${emp.occupation_role || '-'}</td></tr>
+          <tr><td class="label">Start Date</td><td class="value">${formatDate(emp.start_date)}</td></tr>
+        </table>
+      </div>
     `).join('');
   };
 
@@ -534,11 +625,16 @@ function generateHTMLContent(data: VownetPDFData): string {
   const secondaryIncome = income.find(i => i.contact_type === 'secondary');
   
   const generateIncomeTable = (inc: IncomeData | undefined) => {
-    if (!inc) return '<p style="padding: 2mm; color: #666;">No income records</p>';
+    if (!inc) return '<div class="empty-state"><span class="empty-icon">💰</span><p>No income records</p></div>';
+    const totalIncome = (inc.gross_salary || 0) + (inc.bonus || 0) + (inc.allowance || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) + (inc.overtime_non_essential || 0) + (inc.other_taxable_income || 0);
     return `
-      <table class="data-table">
-        <tr><td class="label">Gross Salary</td><td class="value currency">${formatCurrency(inc.gross_salary)}</td></tr>
-        <tr><td class="label">Salary Frequency</td><td class="value">${inc.salary_frequency || '-'}</td></tr>
+      <div class="income-highlight">
+        <span class="income-highlight-label">Total Annual Income</span>
+        <span class="income-highlight-value">${formatCurrency(totalIncome)}</span>
+      </div>
+      <table class="data-table alt-rows">
+        <tr><td class="label">Gross Salary</td><td class="value currency income-value">${formatCurrency(inc.gross_salary)}</td></tr>
+        <tr><td class="label">Salary Frequency</td><td class="value"><span class="freq-badge">${inc.salary_frequency || '-'}</span></td></tr>
         <tr><td class="label">Bonus</td><td class="value currency">${formatCurrency(inc.bonus)}</td></tr>
         <tr><td class="label">Allowance</td><td class="value currency">${formatCurrency(inc.allowance)}</td></tr>
         <tr><td class="label">Commission</td><td class="value currency">${formatCurrency(inc.commission)}</td></tr>
@@ -551,8 +647,9 @@ function generateHTMLContent(data: VownetPDFData): string {
 
   // Assets table
   const generateAssetsTable = () => {
-    if (assets.length === 0) return '<p style="padding: 2mm; color: #666;">No assets recorded</p>';
+    if (assets.length === 0) return '<div class="empty-state"><span class="empty-icon">📦</span><p>No assets recorded</p></div>';
     
+    const totalAssets = assets.reduce((sum, a) => sum + (a.value || 0), 0);
     const assetsByType: Record<string, AssetData[]> = {};
     assets.forEach(asset => {
       const type = asset.asset_type || 'Other';
@@ -560,23 +657,44 @@ function generateHTMLContent(data: VownetPDFData): string {
       assetsByType[type].push(asset);
     });
     
-    return Object.entries(assetsByType).map(([type, assetList]) => `
-      <div class="subsection-header">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-      <table class="data-table">
-        ${assetList.map(asset => `
-          <tr>
-            <td class="label">${asset.description || asset.make_model || asset.institution_name || type}</td>
-            <td class="value currency">${formatCurrency(asset.value)}</td>
-          </tr>
-        `).join('')}
-      </table>
-    `).join('');
+    return `
+      <div class="assets-summary">
+        <span class="assets-summary-label">Total Assets Value</span>
+        <span class="assets-summary-value">${formatCurrency(totalAssets)}</span>
+      </div>
+      ${Object.entries(assetsByType).map(([type, assetList]) => `
+        <div class="asset-category">
+          <div class="subsection-header">${getAssetIcon(type)} ${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+          <table class="data-table compact alt-rows">
+            ${assetList.map(asset => `
+              <tr>
+                <td class="label">${asset.description || asset.make_model || asset.institution_name || type}</td>
+                <td class="value currency">${formatCurrency(asset.value)}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+      `).join('')}
+    `;
+  };
+  
+  // Helper for asset icons
+  const getAssetIcon = (type: string): string => {
+    switch (type.toLowerCase()) {
+      case 'vehicle': return '🚗';
+      case 'savings': case 'bank_account': return '🏦';
+      case 'shares': case 'investments': return '📈';
+      case 'superannuation': return '💼';
+      case 'other': default: return '📦';
+    }
   };
 
   // Liabilities table
   const generateLiabilitiesTable = () => {
-    if (liabilities.length === 0) return '<p style="padding: 2mm; color: #666;">No liabilities recorded</p>';
+    if (liabilities.length === 0) return '<div class="empty-state"><span class="empty-icon">📋</span><p>No liabilities recorded</p></div>';
     
+    const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.current_balance || 0), 0);
+    const totalRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
     const liabsByType: Record<string, LiabilityData[]> = {};
     liabilities.forEach(liab => {
       const type = liab.liability_type || 'Other';
@@ -584,23 +702,53 @@ function generateHTMLContent(data: VownetPDFData): string {
       liabsByType[type].push(liab);
     });
     
-    return Object.entries(liabsByType).map(([type, liabList]) => `
-      <div class="subsection-header">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
-      <table class="data-table">
-        <tr>
-          <th>Provider</th>
-          <th>Balance</th>
-          <th>Repayment</th>
-        </tr>
-        ${liabList.map(liab => `
-          <tr>
-            <td class="value">${liab.provider_name || '-'}</td>
-            <td class="value currency">${formatCurrency(liab.current_balance)}</td>
-            <td class="value currency">${formatCurrency(liab.monthly_repayment)}/mo</td>
-          </tr>
-        `).join('')}
-      </table>
-    `).join('');
+    return `
+      <div class="liabilities-summary">
+        <div class="liab-summary-item">
+          <span class="liab-label">Total Owed</span>
+          <span class="liab-value negative">${formatCurrency(totalLiabilities)}</span>
+        </div>
+        <div class="liab-summary-item">
+          <span class="liab-label">Monthly Repayments</span>
+          <span class="liab-value">${formatCurrency(totalRepayments)}</span>
+        </div>
+      </div>
+      ${Object.entries(liabsByType).map(([type, liabList]) => `
+        <div class="liability-category">
+          <div class="subsection-header">${getLiabilityIcon(type)} ${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+          <table class="data-table financial-mini alt-rows">
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th class="text-right">Balance</th>
+                <th class="text-right">Repayment</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${liabList.map(liab => `
+                <tr>
+                  <td class="value">${liab.provider_name || '-'}</td>
+                  <td class="value currency">${formatCurrency(liab.current_balance)}</td>
+                  <td class="value currency">${formatCurrency(liab.monthly_repayment)}/mo</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('')}
+    `;
+  };
+  
+  // Helper for liability icons
+  const getLiabilityIcon = (type: string): string => {
+    switch (type.toLowerCase()) {
+      case 'credit_card': case 'credit card': return '💳';
+      case 'personal_loan': case 'personal loan': return '📝';
+      case 'car_loan': case 'car loan': return '🚗';
+      case 'hecs': case 'help': return '🎓';
+      case 'mortgage': return '🏠';
+      case 'other': default: return '📋';
+    }
   };
 
   // Properties summary rows
@@ -670,27 +818,114 @@ function generateHTMLContent(data: VownetPDFData): string {
         /* Section Headers - NPC Gold Theme */
         .section { margin-bottom: 14px; }
         .section-header { 
-          background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.darkGray} 100%); 
+          background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
-          padding: 8px 12px; 
+          padding: 10px 14px; 
           font-size: 9pt; 
           font-weight: 600;
           display: flex;
           align-items: center;
+          justify-content: space-between;
           gap: 8px;
+          border-left: 4px solid ${NPC_COLORS.gold};
         }
-        .section-header::before { content: ''; width: 4px; height: 16px; background: ${NPC_COLORS.gold}; border-radius: 2px; }
-        .section-header.gold { background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%); color: ${NPC_COLORS.black}; }
-        .section-header.gold::before { background: ${NPC_COLORS.white}; }
+        .section-header-text { display: flex; align-items: center; gap: 8px; }
+        .section-header-text::before { content: '◆'; color: ${NPC_COLORS.gold}; font-size: 7pt; }
+        .section-header.gold { 
+          background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%); 
+          color: ${NPC_COLORS.black}; 
+          border-left: 4px solid ${NPC_COLORS.darkBlue};
+        }
+        .section-header.gold .section-header-text::before { color: ${NPC_COLORS.darkBlue}; }
         
         .subsection-header { 
-          background: linear-gradient(90deg, ${NPC_COLORS.goldLight} 0%, #f5ecd5 100%); 
+          background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%); 
           color: ${NPC_COLORS.darkGray}; 
-          padding: 6px 12px; 
+          padding: 7px 12px; 
           font-size: 8pt; 
           font-weight: 600;
           border-left: 3px solid ${NPC_COLORS.gold};
+          margin-top: 8px;
+          margin-bottom: 4px;
         }
+        
+        /* Property Cards */
+        .property-card {
+          border: 1px solid ${NPC_COLORS.borderGray};
+          border-radius: 6px;
+          margin-bottom: 12px;
+          overflow: hidden;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .property-card .section-header { border-radius: 0; }
+        .smsf-card { border: 2px solid ${NPC_COLORS.gold}; }
+        
+        .property-address-bar {
+          background: ${NPC_COLORS.lightGray};
+          padding: 8px 12px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          border-bottom: 1px solid ${NPC_COLORS.borderGray};
+        }
+        .property-address-icon { font-size: 12pt; }
+        .property-address-text { font-weight: 500; color: ${NPC_COLORS.darkGray}; font-size: 8pt; }
+        
+        /* Property Badges */
+        .prop-badge {
+          padding: 3px 8px;
+          border-radius: 12px;
+          font-size: 7pt;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .prop-badge-owner { background: ${NPC_COLORS.goldLight}; color: ${NPC_COLORS.goldDark}; }
+        .prop-badge-invest { background: #dbeafe; color: #1e40af; }
+        .prop-badge-smsf { background: #fae8ff; color: #7e22ce; }
+        
+        /* Equity Progress Bar */
+        .equity-display { padding: 8px 12px; background: ${NPC_COLORS.lightGray}; }
+        .equity-bar-container {
+          width: 100%;
+          height: 18px;
+          background: #e5e7eb;
+          border-radius: 9px;
+          position: relative;
+          overflow: hidden;
+        }
+        .equity-bar {
+          height: 100%;
+          background: linear-gradient(90deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%);
+          border-radius: 9px;
+          transition: width 0.3s ease;
+        }
+        .equity-label {
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 7pt;
+          font-weight: 600;
+          color: ${NPC_COLORS.darkGray};
+        }
+        
+        /* Cashflow Indicators */
+        .cf-indicator { font-size: 10pt; margin-right: 4px; }
+        .cf-positive { color: ${NPC_COLORS.success}; }
+        .cf-negative { color: ${NPC_COLORS.danger}; }
+        .cf-neutral { color: ${NPC_COLORS.warning}; }
+        
+        .cashflow-row { font-weight: 600; }
+        .cf-positive-row { background: ${NPC_COLORS.successLight} !important; }
+        .cf-positive-row td { border-color: #86efac !important; }
+        .cf-negative-row { background: ${NPC_COLORS.dangerLight} !important; }
+        .cf-negative-row td { border-color: #fecaca !important; }
+        
+        /* Income Values Highlight */
+        .income-value { color: ${NPC_COLORS.success}; font-weight: 500; }
+        .expense-total { background: #fff7ed !important; }
+        .expense-total td { border-top: 1px solid ${NPC_COLORS.warning}; font-weight: 600; }
         
         /* Two Column Layout */
         .two-columns { display: flex; gap: 24px; }
@@ -698,77 +933,220 @@ function generateHTMLContent(data: VownetPDFData): string {
         .column-left { flex: 0.95; }
         .column-right { flex: 1.05; }
         
-        /* Data Tables - Refined */
-        .data-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid #e2e8f0; }
+        /* Data Tables - Enhanced */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid ${NPC_COLORS.borderGray}; }
         .data-table th { 
           background: linear-gradient(180deg, ${NPC_COLORS.darkGray} 0%, #1a202c 100%); 
           color: ${NPC_COLORS.white};
-          border: 1px solid #4a5568; 
-          padding: 6px 8px; 
+          border: 1px solid ${NPC_COLORS.mediumGray}; 
+          padding: 7px 10px; 
           text-align: left; 
-          font-weight: 600; 
+          font-weight: 600;
+          font-size: 7pt;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
-        .data-table td { border: 1px solid #e2e8f0; padding: 5px 8px; }
+        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 6px 10px; }
         .data-table .label { 
           background: linear-gradient(90deg, ${NPC_COLORS.lightGray} 0%, #edf2f7 100%); 
           font-weight: 500; 
-          width: 45%; 
-          color: #4a5568; 
+          width: 48%; 
+          color: ${NPC_COLORS.mediumGray}; 
         }
         .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; }
-        .data-table .currency { text-align: right; font-family: 'Inter', monospace; }
+        .data-table .currency { text-align: right; font-family: 'Inter', monospace; font-weight: 500; }
         .data-table .percent { text-align: right; }
+        
+        /* Alternating Rows */
+        .data-table.alt-rows tr:nth-child(even) td.label { background: #edf2f7; }
+        .data-table.alt-rows tr:nth-child(even) td.value { background: ${NPC_COLORS.lightGray}; }
+        
+        /* Compact Tables */
+        .data-table.compact td { padding: 4px 8px; font-size: 7.5pt; }
+        
+        /* Financial Mini Tables */
+        .financial-mini { font-size: 7.5pt; }
+        .financial-mini th { 
+          background: linear-gradient(180deg, ${NPC_COLORS.navy} 0%, ${NPC_COLORS.darkBlue} 100%); 
+          padding: 5px 8px;
+          font-size: 6.5pt;
+        }
+        
+        /* Compliance Badges */
+        .compliance-badge {
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-size: 7pt;
+          font-weight: 600;
+        }
+        .compliance-badge.compliant { background: ${NPC_COLORS.successLight}; color: ${NPC_COLORS.success}; }
+        .compliance-badge.non-compliant { background: ${NPC_COLORS.dangerLight}; color: ${NPC_COLORS.danger}; }
+        .compliance-badge.pending { background: ${NPC_COLORS.warningLight}; color: ${NPC_COLORS.warning}; }
+        
+        .abn-code { 
+          font-family: 'Courier New', monospace; 
+          background: ${NPC_COLORS.lightGray}; 
+          padding: 2px 6px; 
+          border-radius: 3px;
+          font-size: 8pt;
+        }
+        
+        /* Info Cards */
+        .info-card {
+          border: 1px solid ${NPC_COLORS.borderGray};
+          border-radius: 6px;
+          overflow: hidden;
+          margin-bottom: 8px;
+        }
+        .info-card-header {
+          background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, ${NPC_COLORS.white} 100%);
+          padding: 8px 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          border-bottom: 1px solid ${NPC_COLORS.borderGray};
+          border-left: 3px solid ${NPC_COLORS.gold};
+        }
+        .employer-icon { font-size: 14pt; }
+        .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 9pt; }
+        
+        .emp-type-badge, .freq-badge {
+          background: ${NPC_COLORS.goldLight};
+          color: ${NPC_COLORS.goldDark};
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-size: 7pt;
+          font-weight: 600;
+        }
+        
+        /* Income Highlight */
+        .income-highlight {
+          background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%);
+          padding: 12px 16px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+          border-radius: 4px;
+        }
+        .income-highlight-label { color: ${NPC_COLORS.white}; font-size: 8pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .income-highlight-value { color: ${NPC_COLORS.white}; font-size: 16pt; font-weight: 700; }
+        
+        /* Assets Summary */
+        .assets-summary {
+          background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%);
+          border: 2px solid ${NPC_COLORS.gold};
+          padding: 12px 16px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          border-radius: 6px;
+        }
+        .assets-summary-label { color: ${NPC_COLORS.darkGray}; font-size: 8pt; font-weight: 600; text-transform: uppercase; }
+        .assets-summary-value { color: ${NPC_COLORS.success}; font-size: 18pt; font-weight: 700; }
+        
+        .asset-category, .liability-category { margin-bottom: 10px; }
+        
+        /* Liabilities Summary */
+        .liabilities-summary {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        .liab-summary-item {
+          background: ${NPC_COLORS.lightGray};
+          padding: 10px 14px;
+          border-radius: 6px;
+          border-left: 4px solid ${NPC_COLORS.darkBlue};
+        }
+        .liab-label { display: block; font-size: 7pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; margin-bottom: 4px; }
+        .liab-value { display: block; font-size: 14pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .liab-value.negative { color: ${NPC_COLORS.danger}; }
+        
+        /* Empty States */
+        .empty-state {
+          padding: 20px;
+          text-align: center;
+          background: ${NPC_COLORS.lightGray};
+          border-radius: 6px;
+          color: ${NPC_COLORS.mediumGray};
+        }
+        .empty-icon { font-size: 24pt; display: block; margin-bottom: 8px; opacity: 0.5; }
+        .empty-state p { font-size: 8pt; }
         
         /* Summary Box - Gold Accent */
         .summary-box { 
           border: 2px solid ${NPC_COLORS.gold}; 
-          background: linear-gradient(135deg, #fffef7 0%, #fefcf3 100%);
-          padding: 16px; 
+          background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%);
+          padding: 18px; 
           margin-top: 16px;
-          border-radius: 4px;
-          box-shadow: 0 2px 8px rgba(201, 162, 39, 0.15);
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(201, 162, 39, 0.15);
         }
         .summary-title { 
           font-weight: 700; 
           color: ${NPC_COLORS.darkBlue}; 
-          margin-bottom: 12px; 
+          margin-bottom: 14px; 
           font-size: 11pt; 
           display: flex;
           align-items: center;
           gap: 8px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid ${NPC_COLORS.goldLight};
         }
-        .summary-title::before { content: '◆'; color: ${NPC_COLORS.gold}; font-size: 8pt; }
+        .summary-title::before { content: '📊'; font-size: 14pt; }
         
         /* Financial Table */
-        .financial-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid #e2e8f0; }
+        .financial-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid ${NPC_COLORS.borderGray}; border-radius: 4px; overflow: hidden; }
         .financial-table th { 
-          background: linear-gradient(180deg, ${NPC_COLORS.darkBlue} 0%, #0d264d 100%); 
+          background: linear-gradient(180deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
-          padding: 8px; 
+          padding: 10px 12px; 
           text-align: left;
           font-weight: 600;
+          font-size: 7pt;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
-        .financial-table td { border: 1px solid #e2e8f0; padding: 6px 8px; }
+        .financial-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 8px 10px; }
+        .financial-table tbody tr:nth-child(odd) { background: ${NPC_COLORS.white}; }
         .financial-table tbody tr:nth-child(even) { background: ${NPC_COLORS.lightGray}; }
         .financial-table .total-row { 
-          background: linear-gradient(90deg, ${NPC_COLORS.goldLight} 0%, #f5ecd5 100%) !important; 
+          background: linear-gradient(90deg, ${NPC_COLORS.goldLight} 0%, ${NPC_COLORS.goldTint} 100%) !important; 
           font-weight: 700; 
         }
-        .financial-table .total-row td { border-top: 2px solid ${NPC_COLORS.gold}; }
+        .financial-table .total-row td { 
+          border-top: 2px solid ${NPC_COLORS.gold}; 
+          font-size: 9pt;
+        }
         
-        /* KPI Cards */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        /* KPI Cards - Enhanced */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
         .kpi-card { 
           background: linear-gradient(135deg, ${NPC_COLORS.white} 0%, ${NPC_COLORS.lightGray} 100%);
-          border: 1px solid #e2e8f0;
-          border-left: 4px solid ${NPC_COLORS.gold};
-          padding: 12px;
-          border-radius: 4px;
+          border: 1px solid ${NPC_COLORS.borderGray};
+          border-left: 5px solid ${NPC_COLORS.gold};
+          padding: 14px 16px;
+          border-radius: 6px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
-        .kpi-label { font-size: 7pt; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .kpi-value { font-size: 14pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .kpi-icon { font-size: 20pt; margin-bottom: 6px; display: block; }
+        .kpi-label { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .kpi-value { font-size: 16pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .kpi-value.positive { color: ${NPC_COLORS.success}; }
         .kpi-value.negative { color: ${NPC_COLORS.danger}; }
+        .kpi-trend { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; margin-top: 4px; }
+        .kpi-trend.up { color: ${NPC_COLORS.success}; }
+        .kpi-trend.down { color: ${NPC_COLORS.danger}; }
+        
+        /* Gold Divider */
+        .gold-divider {
+          height: 2px;
+          background: linear-gradient(90deg, transparent 0%, ${NPC_COLORS.gold} 50%, transparent 100%);
+          margin: 16px 0;
+        }
         
         /* Utility Classes */
         .text-right { text-align: right; }
@@ -968,26 +1346,37 @@ function generateHTMLContent(data: VownetPDFData): string {
           <!-- KPI Cards -->
           <div class="kpi-grid">
             <div class="kpi-card">
+              <span class="kpi-icon">🏠</span>
               <div class="kpi-label">Total Portfolio Value</div>
               <div class="kpi-value">${formatCurrency(client.total_portfolio_value)}</div>
             </div>
             <div class="kpi-card">
+              <span class="kpi-icon">💳</span>
               <div class="kpi-label">Total Debt</div>
               <div class="kpi-value">${formatCurrency(client.total_debt)}</div>
             </div>
             <div class="kpi-card">
+              <span class="kpi-icon">📈</span>
               <div class="kpi-label">Portfolio Equity</div>
               <div class="kpi-value ${equity >= 0 ? 'positive' : 'negative'}">${formatCurrency(equity)}</div>
             </div>
           </div>
           
+          <div class="gold-divider"></div>
+          
           <div class="summary-box">
             <div class="summary-title">Monthly Cashflow Analysis</div>
-            <table class="data-table">
-              <tr><td class="label">Total Monthly Income</td><td class="value currency">${formatCurrency(client.total_monthly_income)}</td></tr>
-              <tr><td class="label">Total Monthly Rental Income</td><td class="value currency">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
+            <table class="data-table alt-rows">
+              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income)}</td></tr>
+              <tr><td class="label">Total Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
               <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure)}</td></tr>
-              <tr><td class="label font-bold">Net Monthly Cash Flow</td><td class="value currency font-bold ${(client.net_monthly_cash_flow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(client.net_monthly_cash_flow)}</td></tr>
+              <tr class="cashflow-row ${(client.net_monthly_cash_flow || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+                <td class="label"><strong>Net Monthly Cash Flow</strong></td>
+                <td class="value currency">
+                  ${getCashflowIndicator(client.net_monthly_cash_flow)}
+                  <strong>${formatCurrency(client.net_monthly_cash_flow)}</strong>
+                </td>
+              </tr>
             </table>
           </div>
           
