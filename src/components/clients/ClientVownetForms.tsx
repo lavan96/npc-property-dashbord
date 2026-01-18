@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { 
   FileSpreadsheet, 
   Download,
@@ -14,21 +15,46 @@ import {
   Upload,
   Calendar,
   CheckCircle2,
-  FileUp
+  FileUp,
+  AlertTriangle,
+  User,
+  Briefcase,
+  DollarSign,
+  Building2,
+  CreditCard,
+  PiggyBank
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import * as XLSX from 'xlsx';
+import { parseVownetForm } from '@/utils/vownetParser';
+import type { ParsedClient } from '@/utils/excelClientParser';
 
 interface ClientVownetFormsProps {
   clientId: string;
   clientName: string;
 }
 
+type UploadStatus = 'idle' | 'parsing' | 'importing' | 'complete' | 'error';
+
+interface ImportSummary {
+  personalDetailsUpdated: boolean;
+  employmentRecords: number;
+  incomeRecords: number;
+  assetRecords: number;
+  liabilityRecords: number;
+  propertyRecords: number;
+  portfolioUpdated: boolean;
+}
+
 export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsProps) {
-  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+  const [progress, setProgress] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -48,23 +74,219 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
     }
   });
 
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setUploading(true);
+  const processAndImportVownetForm = async (file: File) => {
+    setUploadStatus('parsing');
+    setProgress(10);
+    setErrorMessage(null);
+    setImportSummary(null);
+
+    try {
+      // Parse the Excel file
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      setProgress(30);
+
+      const parsedData = parseVownetForm(workbook);
       
+      if (!parsedData) {
+        throw new Error('Could not parse VowNet form. Please check the file format.');
+      }
+
+      setUploadStatus('importing');
+      setProgress(40);
+
+      const summary: ImportSummary = {
+        personalDetailsUpdated: false,
+        employmentRecords: 0,
+        incomeRecords: 0,
+        assetRecords: 0,
+        liabilityRecords: 0,
+        propertyRecords: 0,
+        portfolioUpdated: false
+      };
+
+      // 1. Update personal details
+      const clientUpdate: Record<string, any> = {};
+      
+      if (parsedData.primaryContact.firstName) clientUpdate.primary_first_name = parsedData.primaryContact.firstName;
+      if (parsedData.primaryContact.middleName) clientUpdate.primary_middle_name = parsedData.primaryContact.middleName;
+      if (parsedData.primaryContact.surname) clientUpdate.primary_surname = parsedData.primaryContact.surname;
+      if (parsedData.primaryContact.mobile) clientUpdate.primary_mobile = parsedData.primaryContact.mobile;
+      if (parsedData.primaryContact.email) clientUpdate.primary_email = parsedData.primaryContact.email;
+      if (parsedData.primaryContact.gender) clientUpdate.primary_gender = parsedData.primaryContact.gender;
+      if (parsedData.primaryContact.dob) clientUpdate.primary_dob = parsedData.primaryContact.dob;
+      
+      if (parsedData.secondaryContact) {
+        if (parsedData.secondaryContact.firstName) clientUpdate.secondary_first_name = parsedData.secondaryContact.firstName;
+        if (parsedData.secondaryContact.middleName) clientUpdate.secondary_middle_name = parsedData.secondaryContact.middleName;
+        if (parsedData.secondaryContact.surname) clientUpdate.secondary_surname = parsedData.secondaryContact.surname;
+        if (parsedData.secondaryContact.mobile) clientUpdate.secondary_mobile = parsedData.secondaryContact.mobile;
+        if (parsedData.secondaryContact.email) clientUpdate.secondary_email = parsedData.secondaryContact.email;
+        if (parsedData.secondaryContact.gender) clientUpdate.secondary_gender = parsedData.secondaryContact.gender;
+        if (parsedData.secondaryContact.dob) clientUpdate.secondary_dob = parsedData.secondaryContact.dob;
+      }
+
+      if (parsedData.address) {
+        if (parsedData.address.currentAddress) clientUpdate.current_address = parsedData.address.currentAddress;
+        if (parsedData.address.country) clientUpdate.country = parsedData.address.country;
+        if (parsedData.address.livingSituation) clientUpdate.living_situation = parsedData.address.livingSituation;
+      }
+
+      if (parsedData.familyRelations) {
+        if (parsedData.familyRelations.maritalStatus) clientUpdate.marital_status = parsedData.familyRelations.maritalStatus;
+        if (parsedData.familyRelations.dependentsCount !== undefined) clientUpdate.dependents_count = parsedData.familyRelations.dependentsCount;
+      }
+
+      if (parsedData.residentialStatus) clientUpdate.residential_status = parsedData.residentialStatus;
+
+      if (Object.keys(clientUpdate).length > 0) {
+        const { error } = await supabase
+          .from('clients')
+          .update(clientUpdate)
+          .eq('id', clientId);
+        if (error) console.error('Error updating client details:', error);
+        else summary.personalDetailsUpdated = true;
+      }
+      setProgress(50);
+
+      // 2. Import employment records (delete existing first to avoid duplicates)
+      if (parsedData.employment && parsedData.employment.length > 0) {
+        // Delete existing employment records for this client
+        await supabase.from('client_employment').delete().eq('client_id', clientId);
+        
+        for (const emp of parsedData.employment) {
+          const { error } = await supabase.from('client_employment').insert({
+            client_id: clientId,
+            contact_type: emp.contactType,
+            employer_name: emp.employerName,
+            employment_type: emp.employmentType,
+            occupation_role: emp.occupationRole,
+            start_date: emp.startDate,
+            is_current: true
+          });
+          if (!error) summary.employmentRecords++;
+        }
+      }
+      setProgress(60);
+
+      // 3. Import income records
+      if (parsedData.income && parsedData.income.length > 0) {
+        await supabase.from('client_income').delete().eq('client_id', clientId);
+        
+        for (const inc of parsedData.income) {
+          const { error } = await supabase.from('client_income').insert({
+            client_id: clientId,
+            contact_type: inc.contactType,
+            gross_salary: inc.grossSalary || 0,
+            salary_frequency: inc.salaryFrequency || 'annual',
+            bonus: inc.bonus || 0,
+            allowance: inc.allowance || 0,
+            commission: inc.commission || 0,
+            overtime_essential: inc.overtimeEssential || 0,
+            overtime_non_essential: inc.overtimeNonEssential || 0,
+            other_taxable_income: inc.otherTaxableIncome || 0
+          });
+          if (!error) summary.incomeRecords++;
+        }
+      }
+      setProgress(70);
+
+      // 4. Import assets
+      if (parsedData.assets && parsedData.assets.length > 0) {
+        await supabase.from('client_assets').delete().eq('client_id', clientId);
+        
+        for (const asset of parsedData.assets) {
+          const { error } = await supabase.from('client_assets').insert({
+            client_id: clientId,
+            asset_type: asset.assetType,
+            vehicle_type: asset.vehicleType,
+            make_model: asset.makeModel,
+            institution_name: asset.institutionName,
+            description: asset.description,
+            value: asset.value || 0
+          });
+          if (!error) summary.assetRecords++;
+        }
+      }
+      setProgress(80);
+
+      // 5. Import liabilities
+      if (parsedData.liabilities && parsedData.liabilities.length > 0) {
+        await supabase.from('client_liabilities').delete().eq('client_id', clientId);
+        
+        for (const liability of parsedData.liabilities) {
+          const { error } = await supabase.from('client_liabilities').insert({
+            client_id: clientId,
+            liability_type: liability.liabilityType,
+            provider_name: liability.providerName,
+            current_balance: liability.currentBalance || 0,
+            credit_limit: liability.creditLimit,
+            interest_rate: liability.interestRate,
+            monthly_repayment: liability.monthlyRepayment || 0,
+            repayment_type: liability.repaymentType
+          });
+          if (!error) summary.liabilityRecords++;
+        }
+      }
+      setProgress(85);
+
+      // 6. Import properties
+      if (parsedData.properties && parsedData.properties.length > 0) {
+        // Delete existing properties to avoid duplicates
+        await supabase.from('client_properties').delete().eq('client_id', clientId);
+        
+        for (const prop of parsedData.properties) {
+          const { error } = await supabase.from('client_properties').insert({
+            client_id: clientId,
+            property_type: prop.propertyType,
+            address: prop.address || 'Unknown Address',
+            value: prop.value || 0,
+            loan_remaining: prop.loanRemaining || 0,
+            interest_rate: prop.interestRate || 0,
+            ownership_percentage: prop.ownershipPercentage || 100,
+            monthly_interest_repayment: prop.monthlyInterestRepayment || 0,
+            monthly_body_corporate: prop.monthlyBodyCorporate || 0,
+            monthly_council_rates: prop.monthlyCouncilRates || 0,
+            monthly_water_rates: prop.monthlyWaterRates || 0,
+            monthly_repairs_maintenance: prop.monthlyRepairsMaintenance || 0,
+            monthly_property_management: prop.monthlyPropertyManagement || 0,
+            monthly_landlord_insurance: prop.monthlyLandlordInsurance || 0,
+            monthly_building_insurance: prop.monthlyBuildingInsurance || 0,
+            monthly_rental_income: prop.monthlyRentalIncome || 0,
+            weekly_rental_income: prop.weeklyRentalIncome || 0,
+            total_monthly_expenditure: prop.totalMonthlyExpenditure || 0,
+            net_monthly_cashflow: prop.netMonthlyCashflow || 0
+          });
+          if (!error) summary.propertyRecords++;
+        }
+      }
+      setProgress(90);
+
+      // 7. Update portfolio summary
+      if (parsedData.portfolioSummary) {
+        const { error } = await supabase
+          .from('clients')
+          .update({
+            total_portfolio_value: parsedData.portfolioSummary.totalPortfolioValue,
+            total_debt: parsedData.portfolioSummary.totalDebt,
+            total_monthly_expenditure: parsedData.portfolioSummary.totalMonthlyExpenditure,
+            total_monthly_income: parsedData.portfolioSummary.totalMonthlyIncome,
+            total_monthly_rental_income: parsedData.portfolioSummary.totalMonthlyRentalIncome,
+            net_monthly_cash_flow: parsedData.portfolioSummary.netMonthlyCashFlow
+          })
+          .eq('id', clientId);
+        if (!error) summary.portfolioUpdated = true;
+      }
+      setProgress(95);
+
+      // 8. Store the file in storage
       const filePath = `${clientId}/${Date.now()}_${file.name}`;
-      
-      // Upload to vownet-forms bucket
       const { error: uploadError } = await supabase.storage
         .from('vownet-forms')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
-
-      // Record in client_files table
-      const { error: dbError } = await supabase
-        .from('client_files')
-        .insert({
+      if (!uploadError) {
+        await supabase.from('client_files').insert({
           client_id: clientId,
           file_name: file.name,
           file_path: filePath,
@@ -75,37 +297,46 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
           is_vownet_form: true,
           uploaded_by: user?.id
         });
+      }
 
-      if (dbError) throw dbError;
-    },
-    onSuccess: () => {
+      setProgress(100);
+      setImportSummary(summary);
+      setUploadStatus('complete');
+
+      // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ['client-vownet-forms', clientId] });
-      toast.success('VowNet form uploaded successfully');
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-income', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-assets', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-liabilities', clientId] });
+
+      toast.success('VowNet form imported successfully');
+      
       addNotification({
         type: 'vownet_form_uploaded',
-        title: 'VowNet Form Uploaded',
-        message: `New VowNet form uploaded for ${clientName}`,
+        title: 'VowNet Form Imported',
+        message: `Client data imported for ${clientName}`,
         entityId: clientId
       });
-    },
-    onError: (error: any) => {
-      toast.error('Failed to upload VowNet form: ' + error.message);
-    },
-    onSettled: () => {
-      setUploading(false);
+
+    } catch (error: any) {
+      console.error('VowNet import error:', error);
+      setErrorMessage(error.message);
+      setUploadStatus('error');
+      toast.error('Failed to import VowNet form: ' + error.message);
     }
-  });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (file: { id: string; file_path: string }) => {
-      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('vownet-forms')
         .remove([file.file_path]);
 
       if (storageError) console.warn('Storage delete failed:', storageError);
 
-      // Delete record
       const { error: dbError } = await supabase
         .from('client_files')
         .delete()
@@ -124,14 +355,14 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      uploadMutation.mutate(acceptedFiles[0]);
+      processAndImportVownetForm(acceptedFiles[0]);
     }
-  }, [uploadMutation]);
+  }, [clientId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'application/vnd.ms-excel': ['.xls'],
@@ -140,7 +371,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       'application/octet-stream': ['.xlsx', '.xls', '.xlsm', '.xlsb'],
       'text/csv': ['.csv']
     },
-    disabled: uploading
+    disabled: uploadStatus === 'parsing' || uploadStatus === 'importing'
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
@@ -168,6 +399,13 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const resetUpload = () => {
+    setUploadStatus('idle');
+    setProgress(0);
+    setErrorMessage(null);
+    setImportSummary(null);
+  };
+
   return (
     <div className="space-y-4">
       {/* Upload Section */}
@@ -175,42 +413,127 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <FileUp className="h-4 w-4" />
-            Upload VowNet Form
+            Upload & Import VowNet Form
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div
-            {...getRootProps()}
-            className={`
-              border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
-              transition-colors
-              ${isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}
-              ${uploading ? 'pointer-events-none opacity-50' : ''}
-            `}
-          >
-            <input {...getInputProps()} />
-            {uploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Uploading VowNet form...</p>
+          {uploadStatus === 'idle' && (
+            <div
+              {...getRootProps()}
+              className={`
+                border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
+                transition-colors
+                ${isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}
+              `}
+            >
+              <input {...getInputProps()} />
+              {isDragActive ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="h-8 w-8 text-primary" />
+                  <p className="text-sm text-primary">Drop VowNet form here</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">
+                    Drag & drop VowNet form to import all client data
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically populates personal details, employment, income, assets, liabilities & properties
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(uploadStatus === 'parsing' || uploadStatus === 'importing') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div>
+                  <p className="font-medium text-sm">
+                    {uploadStatus === 'parsing' ? 'Parsing VowNet form...' : 'Importing data...'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Please wait</p>
+                </div>
               </div>
-            ) : isDragActive ? (
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="h-8 w-8 text-primary" />
-                <p className="text-sm text-primary">Drop VowNet form here</p>
+              <Progress value={progress} className="h-2" />
+            </div>
+          )}
+
+          {uploadStatus === 'complete' && importSummary && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-green-600">
+                <CheckCircle2 className="h-5 w-5" />
+                <p className="font-medium text-sm">Import Complete!</p>
               </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">
-                  Drag & drop VowNet form or click to upload
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Supports Excel (.xlsx, .xls, .xlsm) and CSV files (Max 10MB)
-                </p>
+              
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {importSummary.personalDetailsUpdated && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span>Personal details updated</span>
+                  </div>
+                )}
+                {importSummary.employmentRecords > 0 && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                    <Briefcase className="h-3 w-3 text-muted-foreground" />
+                    <span>{importSummary.employmentRecords} employment record(s)</span>
+                  </div>
+                )}
+                {importSummary.incomeRecords > 0 && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                    <DollarSign className="h-3 w-3 text-muted-foreground" />
+                    <span>{importSummary.incomeRecords} income record(s)</span>
+                  </div>
+                )}
+                {importSummary.assetRecords > 0 && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                    <PiggyBank className="h-3 w-3 text-muted-foreground" />
+                    <span>{importSummary.assetRecords} asset(s)</span>
+                  </div>
+                )}
+                {importSummary.liabilityRecords > 0 && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                    <CreditCard className="h-3 w-3 text-muted-foreground" />
+                    <span>{importSummary.liabilityRecords} liability(s)</span>
+                  </div>
+                )}
+                {importSummary.propertyRecords > 0 && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                    <Building2 className="h-3 w-3 text-muted-foreground" />
+                    <span>{importSummary.propertyRecords} property(s)</span>
+                  </div>
+                )}
+                {importSummary.portfolioUpdated && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded col-span-2">
+                    <CheckCircle2 className="h-3 w-3 text-green-600" />
+                    <span>Portfolio summary updated</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              <Button variant="outline" size="sm" onClick={resetUpload} className="w-full mt-2">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Another Form
+              </Button>
+            </div>
+          )}
+
+          {uploadStatus === 'error' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                <div>
+                  <p className="font-medium text-sm">Import Failed</p>
+                  <p className="text-xs">{errorMessage}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={resetUpload} className="w-full">
+                Try Again
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -220,7 +543,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       <div>
         <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4" />
-          Uploaded VowNet Forms ({vownetForms.length})
+          Imported VowNet Forms ({vownetForms.length})
         </h4>
 
         {isLoading ? (
@@ -231,8 +554,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               <FileSpreadsheet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No VowNet forms uploaded yet</p>
-              <p className="text-xs mt-1">Upload a VowNet form to get started</p>
+              <p>No VowNet forms imported yet</p>
+              <p className="text-xs mt-1">Upload a VowNet form to import client data</p>
             </CardContent>
           </Card>
         ) : (
@@ -249,7 +572,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
                       <div className="flex items-center gap-2 mt-0.5">
                         <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
-                          VowNet Form
+                          Imported
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {formatFileSize(file.file_size)}
