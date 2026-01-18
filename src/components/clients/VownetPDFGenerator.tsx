@@ -472,7 +472,7 @@ function generateHTMLContent(data: VownetPDFData): string {
     return `<span class="cf-indicator cf-neutral">●</span>`;
   };
 
-  // Helper for property type badge
+  // Helper for property type badge (with emoji icons for character)
   const getPropertyTypeBadge = (type: string): string => {
     switch (type) {
       case 'owner_occupied': return `<span class="prop-badge prop-badge-owner">🏠 Owner Occupied</span>`;
@@ -500,11 +500,11 @@ function generateHTMLContent(data: VownetPDFData): string {
   const generateInvestmentPropertyHTML = (prop: PropertyData, index: number) => `
     <div class="property-card">
       <div class="section-header">
-        <span class="section-header-text">◆ Investment Property ${index + 1}</span>
+        <span class="section-header-text">📈 Investment Property ${index}</span>
         <span class="prop-badge prop-badge-invest">INVESTMENT</span>
       </div>
       <div class="property-address-bar">
-        <span class="property-address-icon">◆</span>
+        <span class="property-address-icon">📍</span>
         <span class="property-address-text">${prop.address || '-'}</span>
       </div>
       <div class="equity-display">
@@ -544,6 +544,7 @@ function generateHTMLContent(data: VownetPDFData): string {
   `;
 
   // Only show first investment property on page 1 (if any)
+  // Pass index 1 so it displays as "Investment Property 1"
   const firstInvestmentPropertyHTML = investmentProperties.length > 0 
     ? generateInvestmentPropertyHTML(investmentProperties[0], 1) 
     : '';
@@ -555,12 +556,12 @@ function generateHTMLContent(data: VownetPDFData): string {
   const generateSmsfPropertyHTML = (prop: PropertyData, index: number) => `
     <div class="property-card smsf-card">
       <div class="section-header gold">
-        <span class="section-header-text">◆ SMSF Property ${index + 1}</span>
+        <span class="section-header-text">🏛️ SMSF Property ${index}</span>
         <span class="prop-badge prop-badge-smsf">SMSF</span>
       </div>
       
       <div class="property-address-bar">
-        <span class="property-address-icon">◆</span>
+        <span class="property-address-icon">📍</span>
         <span class="property-address-text">${prop.address || '-'}</span>
       </div>
       
@@ -619,6 +620,7 @@ function generateHTMLContent(data: VownetPDFData): string {
   // Calculate total pages dynamically
   const hasAdditionalProperties = additionalInvestmentProperties.length > 0 || smsfProperties.length > 0;
   // Group properties into pages (max 2 per page for overflow)
+  // Additional investment properties start from index 2 (since first is index 1 on page 1)
   const overflowProperties: Array<{type: 'investment' | 'smsf', prop: PropertyData, index: number}> = [
     ...additionalInvestmentProperties.map((prop, idx) => ({ type: 'investment' as const, prop, index: idx + 2 })),
     ...smsfProperties.map((prop, idx) => ({ type: 'smsf' as const, prop, index: idx + 1 }))
@@ -640,7 +642,7 @@ function generateHTMLContent(data: VownetPDFData): string {
     if (empList.length === 0) {
       return `
         <div class="empty-state-compact ${isPrimary ? 'primary' : ''}">
-          <div class="empty-state-icon">◆</div>
+          <div class="empty-state-icon">💼</div>
           <p class="empty-state-text">No employment records</p>
         </div>
       `;
@@ -648,7 +650,7 @@ function generateHTMLContent(data: VownetPDFData): string {
     return empList.map((emp, idx) => `
       <div class="info-card ${idx > 0 ? 'mt-2' : ''}">
         <div class="info-card-header">
-          <span class="employer-icon">◆</span>
+          <span class="employer-icon">🏢</span>
           <span class="employer-name">${emp.employer_name || 'Unknown Employer'}</span>
         </div>
         <table class="data-table compact alt-rows">
@@ -668,7 +670,7 @@ function generateHTMLContent(data: VownetPDFData): string {
     if (!inc) {
       return `
         <div class="empty-state-compact">
-          <div class="empty-state-icon">◆</div>
+          <div class="empty-state-icon">💰</div>
           <p class="empty-state-text">No income records</p>
         </div>
       `;
@@ -692,12 +694,22 @@ function generateHTMLContent(data: VownetPDFData): string {
     `;
   };
 
-  // Assets table
+  // Assets table - with emoji icons for character
+  const getAssetEmoji = (type: string): string => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('vehicle') || lowerType.includes('car')) return '🚗';
+    if (lowerType.includes('savings') || lowerType.includes('bank')) return '🏦';
+    if (lowerType.includes('super') || lowerType.includes('retirement')) return '💎';
+    if (lowerType.includes('shares') || lowerType.includes('stock')) return '📈';
+    if (lowerType.includes('property') || lowerType.includes('real')) return '🏠';
+    return '💰';
+  };
+
   const generateAssetsTable = () => {
     if (assets.length === 0) {
       return `
         <div class="empty-state-compact">
-          <div class="empty-state-icon">◆</div>
+          <div class="empty-state-icon">💎</div>
           <p class="empty-state-text">No assets recorded</p>
         </div>
       `;
@@ -719,7 +731,7 @@ function generateHTMLContent(data: VownetPDFData): string {
       ${Object.entries(assetsByType).map(([type, assetList]) => `
         <div class="asset-category">
           <div class="asset-category-header">
-            <span class="category-icon">◆</span>
+            <span class="category-icon">${getAssetEmoji(type)}</span>
             <span class="category-title">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
           </div>
           <table class="data-table compact alt-rows asset-table">
@@ -735,12 +747,22 @@ function generateHTMLContent(data: VownetPDFData): string {
     `;
   };
 
-  // Liabilities table
+  // Liabilities table - with emoji icons for character
+  const getLiabilityEmoji = (type: string): string => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('credit') || lowerType.includes('card')) return '💳';
+    if (lowerType.includes('mortgage') || lowerType.includes('home')) return '🏠';
+    if (lowerType.includes('car') || lowerType.includes('vehicle')) return '🚗';
+    if (lowerType.includes('personal') || lowerType.includes('loan')) return '📝';
+    if (lowerType.includes('student') || lowerType.includes('education')) return '🎓';
+    return '📋';
+  };
+
   const generateLiabilitiesTable = () => {
     if (liabilities.length === 0) {
       return `
         <div class="empty-state-compact">
-          <div class="empty-state-icon">◆</div>
+          <div class="empty-state-icon">📋</div>
           <p class="empty-state-text">No liabilities recorded</p>
         </div>
       `;
@@ -769,7 +791,7 @@ function generateHTMLContent(data: VownetPDFData): string {
       ${Object.entries(liabsByType).map(([type, liabList]) => `
         <div class="liability-category">
           <div class="liability-category-header">
-            <span class="category-icon">◆</span>
+            <span class="category-icon">${getLiabilityEmoji(type)}</span>
             <span class="category-title">${type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
           </div>
           <table class="data-table financial-mini alt-rows">
@@ -943,13 +965,13 @@ function generateHTMLContent(data: VownetPDFData): string {
         .footer-contact { display: flex; gap: 24px; }
         .footer-item { display: flex; align-items: center; gap: 6px; }
         
-        /* Section Headers - NPC Gold Theme */
+        /* Section Headers - Enhanced readability */
         .section { margin-bottom: 16px; }
         .section-header { 
           background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
-          padding: 12px 16px; 
-          font-size: 9pt; 
+          padding: 14px 18px; 
+          font-size: 10pt; 
           font-weight: 600;
           display: flex;
           align-items: center;
@@ -958,24 +980,24 @@ function generateHTMLContent(data: VownetPDFData): string {
           border-left: 4px solid ${NPC_COLORS.gold};
           border-radius: 0;
         }
-        .section-header-text { display: flex; align-items: center; gap: 8px; }
-        .section-header-text::before { content: '◆'; color: ${NPC_COLORS.gold}; font-size: 7pt; }
+        .section-header-text { display: flex; align-items: center; gap: 10px; }
+        .section-header-text::before { content: ''; }
         .section-header.gold { 
           background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%); 
           color: ${NPC_COLORS.black}; 
           border-left: 4px solid ${NPC_COLORS.darkBlue};
         }
-        .section-header.gold .section-header-text::before { color: ${NPC_COLORS.darkBlue}; }
+        .section-header.gold .section-header-text::before { content: ''; }
         
         .subsection-header { 
           background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%); 
           color: ${NPC_COLORS.darkGray}; 
-          padding: 10px 16px; 
-          font-size: 8pt; 
+          padding: 12px 18px; 
+          font-size: 9pt; 
           font-weight: 600;
           border-left: 3px solid ${NPC_COLORS.gold};
-          margin-top: 12px;
-          margin-bottom: 8px;
+          margin-top: 14px;
+          margin-bottom: 10px;
         }
         
         /* Property Cards */
@@ -1073,28 +1095,28 @@ function generateHTMLContent(data: VownetPDFData): string {
         .column-left { flex: 0.95; }
         .column-right { flex: 1.05; }
         
-        /* Data Tables - Enhanced */
-        .data-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid ${NPC_COLORS.borderGray}; }
+        /* Data Tables - Enhanced for better readability */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid ${NPC_COLORS.borderGray}; line-height: 1.5; }
         .data-table th { 
           background: linear-gradient(180deg, ${NPC_COLORS.darkGray} 0%, #1a202c 100%); 
           color: ${NPC_COLORS.white};
           border: 1px solid ${NPC_COLORS.mediumGray}; 
-          padding: 10px 14px; 
+          padding: 12px 16px; 
           text-align: left; 
           font-weight: 600;
-          font-size: 7pt;
+          font-size: 8pt;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
-        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 10px 14px; vertical-align: middle; }
+        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 12px 16px; vertical-align: middle; line-height: 1.4; }
         .data-table .label { 
           background: linear-gradient(90deg, ${NPC_COLORS.lightGray} 0%, #edf2f7 100%); 
           font-weight: 500; 
           width: 48%; 
           color: ${NPC_COLORS.darkGray}; 
-          font-size: 7.5pt;
+          font-size: 8.5pt;
         }
-        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; font-weight: 500; }
+        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; font-weight: 500; font-size: 9pt; }
         .data-table .currency { text-align: right; font-family: 'Inter', monospace; font-weight: 600; }
         .data-table .percent { text-align: right; }
         
@@ -1102,8 +1124,8 @@ function generateHTMLContent(data: VownetPDFData): string {
         .data-table.alt-rows tr:nth-child(even) td.label { background: #edf2f7; }
         .data-table.alt-rows tr:nth-child(even) td.value { background: ${NPC_COLORS.lightGray}; }
         
-        /* Compact Tables */
-        .data-table.compact td { padding: 8px 12px; font-size: 7.5pt; }
+        /* Compact Tables - still readable */
+        .data-table.compact td { padding: 10px 14px; font-size: 8.5pt; }
         
         /* Financial Mini Tables */
         .financial-mini { font-size: 7.5pt; }
@@ -1132,36 +1154,34 @@ function generateHTMLContent(data: VownetPDFData): string {
           font-size: 8pt;
         }
         
-        /* Info Cards */
+        /* Info Cards - Enhanced readability */
         .info-card {
           border: 1px solid ${NPC_COLORS.borderGray};
           border-radius: 6px;
           overflow: hidden;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
         .info-card-header {
           background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, ${NPC_COLORS.white} 100%);
-          padding: 10px 14px;
+          padding: 14px 16px;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           border-bottom: 1px solid ${NPC_COLORS.borderGray};
           border-left: 4px solid ${NPC_COLORS.gold};
         }
         .employer-icon { 
-          font-size: 12pt; 
+          font-size: 16pt; 
           line-height: 1; 
-          color: ${NPC_COLORS.gold};
-          font-weight: bold;
         }
-        .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 9pt; }
+        .employer-name { font-weight: 600; color: ${NPC_COLORS.darkBlue}; font-size: 10pt; }
         
         .emp-type-badge, .freq-badge {
           background: ${NPC_COLORS.goldLight};
           color: ${NPC_COLORS.goldDark};
-          padding: 3px 10px;
+          padding: 4px 12px;
           border-radius: 10px;
-          font-size: 6.5pt;
+          font-size: 7.5pt;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.3px;
@@ -1169,7 +1189,7 @@ function generateHTMLContent(data: VownetPDFData): string {
         
         /* Empty State - Compact */
         .empty-state-compact {
-          padding: 24px 16px;
+          padding: 28px 16px;
           text-align: center;
           background: ${NPC_COLORS.lightGray};
           border-radius: 6px;
@@ -1180,29 +1200,27 @@ function generateHTMLContent(data: VownetPDFData): string {
           background: ${NPC_COLORS.goldTint};
         }
         .empty-state-icon {
-          font-size: 18pt;
-          color: ${NPC_COLORS.gold};
-          margin-bottom: 8px;
-          font-weight: bold;
+          font-size: 24pt;
+          margin-bottom: 10px;
         }
         .empty-state-text {
-          font-size: 8pt;
+          font-size: 9pt;
           color: ${NPC_COLORS.mediumGray};
           margin: 0;
         }
         
-        /* Income Highlight */
+        /* Income Highlight - Better readability */
         .income-highlight {
           background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%);
-          padding: 12px 16px;
+          padding: 16px 20px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 8px;
-          border-radius: 4px;
+          margin-bottom: 10px;
+          border-radius: 6px;
         }
-        .income-highlight-label { color: ${NPC_COLORS.white}; font-size: 8pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        .income-highlight-value { color: ${NPC_COLORS.white}; font-size: 16pt; font-weight: 700; }
+        .income-highlight-label { color: ${NPC_COLORS.white}; font-size: 9pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .income-highlight-value { color: ${NPC_COLORS.white}; font-size: 18pt; font-weight: 700; }
         
         /* Assets Summary */
         .assets-summary {
@@ -1220,24 +1238,22 @@ function generateHTMLContent(data: VownetPDFData): string {
         
         .asset-category, .liability-category { margin-bottom: 12px; }
         
-        /* Category Headers - Consistent styling */
+        /* Category Headers - Consistent styling with better readability */
         .asset-category-header, .liability-category-header {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
+          gap: 10px;
+          padding: 10px 14px;
           background: ${NPC_COLORS.lightGray};
           border-left: 3px solid ${NPC_COLORS.gold};
-          margin-bottom: 4px;
+          margin-bottom: 6px;
           border-radius: 0 4px 4px 0;
         }
         .category-icon {
-          color: ${NPC_COLORS.gold};
-          font-size: 10pt;
-          font-weight: bold;
+          font-size: 14pt;
         }
         .category-title {
-          font-size: 8pt;
+          font-size: 9pt;
           font-weight: 600;
           color: ${NPC_COLORS.darkGray};
           text-transform: capitalize;
@@ -1260,12 +1276,12 @@ function generateHTMLContent(data: VownetPDFData): string {
         }
         .liab-summary-item {
           background: ${NPC_COLORS.lightGray};
-          padding: 12px 14px;
+          padding: 14px 16px;
           border-radius: 6px;
           border-left: 4px solid ${NPC_COLORS.darkBlue};
         }
-        .liab-label { display: block; font-size: 6.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .liab-value { display: block; font-size: 16pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .liab-label { display: block; font-size: 7.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .liab-value { display: block; font-size: 18pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .liab-value.negative { color: ${NPC_COLORS.danger}; }
         
         /* Empty States */
@@ -1299,21 +1315,21 @@ function generateHTMLContent(data: VownetPDFData): string {
           padding-bottom: 10px;
           border-bottom: 1px solid ${NPC_COLORS.goldLight};
         }
-        .summary-title::before { content: '◆'; font-size: 12pt; color: ${NPC_COLORS.gold}; }
+        .summary-title::before { content: ''; }
         
-        /* Financial Table */
-        .financial-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid ${NPC_COLORS.borderGray}; border-radius: 4px; overflow: hidden; }
+        /* Financial Table - Better readability */
+        .financial-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid ${NPC_COLORS.borderGray}; border-radius: 4px; overflow: hidden; line-height: 1.4; }
         .financial-table th { 
           background: linear-gradient(180deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
-          padding: 10px 12px; 
+          padding: 12px 14px; 
           text-align: left;
           font-weight: 600;
-          font-size: 7pt;
+          font-size: 8pt;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
-        .financial-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 8px 10px; }
+        .financial-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 10px 12px; font-size: 9pt; }
         .financial-table tbody tr:nth-child(odd) { background: ${NPC_COLORS.white}; }
         .financial-table tbody tr:nth-child(even) { background: ${NPC_COLORS.lightGray}; }
         .financial-table .total-row { 
@@ -1322,32 +1338,30 @@ function generateHTMLContent(data: VownetPDFData): string {
         }
         .financial-table .total-row td { 
           border-top: 2px solid ${NPC_COLORS.gold}; 
-          font-size: 9pt;
+          font-size: 10pt;
         }
         
-        /* KPI Cards - Enhanced with Gold Diamonds */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        /* KPI Cards - Enhanced with emoji icons for character */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
         .kpi-card { 
           background: linear-gradient(135deg, ${NPC_COLORS.white} 0%, ${NPC_COLORS.lightGray} 100%);
           border: 1px solid ${NPC_COLORS.borderGray};
           border-left: 5px solid ${NPC_COLORS.gold};
-          padding: 16px 18px;
+          padding: 18px 20px;
           border-radius: 6px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         .kpi-icon { 
-          font-size: 18pt; 
-          margin-bottom: 10px; 
+          font-size: 24pt; 
+          margin-bottom: 12px; 
           display: block; 
           line-height: 1; 
-          color: ${NPC_COLORS.gold};
-          font-weight: bold;
         }
-        .kpi-label { font-size: 6.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
-        .kpi-value { font-size: 18pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .kpi-label { font-size: 7.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600; }
+        .kpi-value { font-size: 20pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .kpi-value.positive { color: ${NPC_COLORS.success}; }
         .kpi-value.negative { color: ${NPC_COLORS.danger}; }
-        .kpi-trend { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; margin-top: 4px; }
+        .kpi-trend { font-size: 8pt; color: ${NPC_COLORS.mediumGray}; margin-top: 6px; }
         .kpi-trend.up { color: ${NPC_COLORS.success}; }
         .kpi-trend.down { color: ${NPC_COLORS.danger}; }
         
@@ -1544,24 +1558,24 @@ function generateHTMLContent(data: VownetPDFData): string {
           <!-- KPI Cards -->
           <div class="kpi-grid">
             <div class="kpi-card">
-              <span class="kpi-icon">◆</span>
+              <span class="kpi-icon">🏠</span>
               <div class="kpi-label">TOTAL PORTFOLIO VALUE</div>
               <div class="kpi-value">${formatCurrency(client.total_portfolio_value)}</div>
             </div>
             <div class="kpi-card">
-              <span class="kpi-icon">◆</span>
+              <span class="kpi-icon">💳</span>
               <div class="kpi-label">TOTAL DEBT</div>
               <div class="kpi-value">${formatCurrency(client.total_debt)}</div>
             </div>
             <div class="kpi-card">
-              <span class="kpi-icon">◆</span>
+              <span class="kpi-icon">📈</span>
               <div class="kpi-label">PORTFOLIO EQUITY</div>
               <div class="kpi-value ${equity >= 0 ? 'positive' : 'negative'}">${formatCurrency(equity)}</div>
             </div>
           </div>
           
           <div class="summary-box">
-            <div class="summary-title">Monthly Cashflow Analysis</div>
+            <div class="summary-title">📊 Monthly Cashflow Analysis</div>
             <table class="data-table alt-rows compact">
               <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income)}</td></tr>
               <tr><td class="label">Total Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
