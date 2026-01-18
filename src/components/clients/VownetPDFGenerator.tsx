@@ -1299,7 +1299,7 @@ function generateHTMLContent(data: VownetPDFData): string {
           padding-bottom: 10px;
           border-bottom: 1px solid ${NPC_COLORS.goldLight};
         }
-        .summary-title::before { content: '📊'; font-size: 14pt; }
+        .summary-title::before { content: '◆'; font-size: 12pt; color: ${NPC_COLORS.gold}; }
         
         /* Financial Table */
         .financial-table { width: 100%; border-collapse: collapse; font-size: 8pt; border: 1px solid ${NPC_COLORS.borderGray}; border-radius: 4px; overflow: hidden; }
@@ -1325,19 +1325,26 @@ function generateHTMLContent(data: VownetPDFData): string {
           font-size: 9pt;
         }
         
-        /* KPI Cards - Enhanced */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+        /* KPI Cards - Enhanced with Gold Diamonds */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
         .kpi-card { 
           background: linear-gradient(135deg, ${NPC_COLORS.white} 0%, ${NPC_COLORS.lightGray} 100%);
           border: 1px solid ${NPC_COLORS.borderGray};
           border-left: 5px solid ${NPC_COLORS.gold};
-          padding: 14px 16px;
+          padding: 16px 18px;
           border-radius: 6px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        .kpi-icon { font-size: 22pt; margin-bottom: 8px; display: block; line-height: 1; }
-        .kpi-label { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-        .kpi-value { font-size: 16pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .kpi-icon { 
+          font-size: 18pt; 
+          margin-bottom: 10px; 
+          display: block; 
+          line-height: 1; 
+          color: ${NPC_COLORS.gold};
+          font-weight: bold;
+        }
+        .kpi-label { font-size: 6.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
+        .kpi-value { font-size: 18pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .kpi-value.positive { color: ${NPC_COLORS.success}; }
         .kpi-value.negative { color: ${NPC_COLORS.danger}; }
         .kpi-trend { font-size: 7pt; color: ${NPC_COLORS.mediumGray}; margin-top: 4px; }
@@ -1537,27 +1544,25 @@ function generateHTMLContent(data: VownetPDFData): string {
           <!-- KPI Cards -->
           <div class="kpi-grid">
             <div class="kpi-card">
-              <span class="kpi-icon">🏠</span>
-              <div class="kpi-label">Total Portfolio Value</div>
+              <span class="kpi-icon">◆</span>
+              <div class="kpi-label">TOTAL PORTFOLIO VALUE</div>
               <div class="kpi-value">${formatCurrency(client.total_portfolio_value)}</div>
             </div>
             <div class="kpi-card">
-              <span class="kpi-icon">💳</span>
-              <div class="kpi-label">Total Debt</div>
+              <span class="kpi-icon">◆</span>
+              <div class="kpi-label">TOTAL DEBT</div>
               <div class="kpi-value">${formatCurrency(client.total_debt)}</div>
             </div>
             <div class="kpi-card">
-              <span class="kpi-icon">📈</span>
-              <div class="kpi-label">Portfolio Equity</div>
+              <span class="kpi-icon">◆</span>
+              <div class="kpi-label">PORTFOLIO EQUITY</div>
               <div class="kpi-value ${equity >= 0 ? 'positive' : 'negative'}">${formatCurrency(equity)}</div>
             </div>
           </div>
           
-          <div class="gold-divider"></div>
-          
           <div class="summary-box">
             <div class="summary-title">Monthly Cashflow Analysis</div>
-            <table class="data-table alt-rows">
+            <table class="data-table alt-rows compact">
               <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income)}</td></tr>
               <tr><td class="label">Total Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
               <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure)}</td></tr>
@@ -1571,16 +1576,16 @@ function generateHTMLContent(data: VownetPDFData): string {
             </table>
           </div>
           
-          <div class="section mt-2">
+          <div class="section" style="margin-top: 16px;">
             <div class="section-header gold">Properties Overview</div>
             <table class="financial-table">
               <thead>
                 <tr>
-                  <th>Property</th>
-                  <th class="text-right">Value</th>
-                  <th class="text-right">Loan</th>
-                  <th class="text-right">Rental</th>
-                  <th class="text-right">Net CF</th>
+                  <th>PROPERTY</th>
+                  <th class="text-right">VALUE</th>
+                  <th class="text-right">LOAN</th>
+                  <th class="text-right">RENTAL</th>
+                  <th class="text-right">NET CF</th>
                 </tr>
               </thead>
               <tbody>
