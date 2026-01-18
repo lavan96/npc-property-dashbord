@@ -356,7 +356,7 @@ export function VownetPDFGenerator({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleDownload} disabled={isDisabled}>
           <Download className="h-4 w-4 mr-2" />
-          Download PDF
+          Export VowNet as PDF
         </DropdownMenuItem>
         {onEmailClick && (
           <>
