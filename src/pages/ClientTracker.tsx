@@ -28,10 +28,13 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  RefreshCw,
+  Loader2,
+  Download
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Pipeline status definitions matching the spreadsheet
 const PIPELINE_STAGES = [
@@ -74,12 +77,13 @@ interface TrackedClient {
 }
 
 export default function ClientTracker() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingClient, setEditingClient] = useState<TrackedClient | null>(null);
   const [activeTab, setActiveTab] = useState('pipeline');
+  const [isSyncingPipelines, setIsSyncingPipelines] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
   // Fetch clients with pipeline data
   const { data: clients = [], isLoading } = useQuery({
@@ -116,10 +120,10 @@ export default function ClientTracker() {
       queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setEditingClient(null);
-      toast({ title: 'Client updated', description: 'Pipeline data saved successfully.' });
+      toast.success('Pipeline data saved successfully');
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
     },
   });
 
@@ -162,6 +166,41 @@ export default function ClientTracker() {
     return PIPELINE_STAGES.find(s => s.value === status) || { value: 'New Lead', label: 'New Lead', color: 'bg-gray-500' };
   };
 
+  // Sync pipelines from GHL
+  const handleSyncPipelines = async () => {
+    setIsSyncingPipelines(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-ghl-pipelines');
+
+      if (error) throw error;
+
+      if (data?.success) {
+        setLastSyncTime(new Date());
+        queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+        queryClient.invalidateQueries({ queryKey: ['clients'] });
+        toast.success(`Synced ${data.stats?.clientsUpdated || 0} clients from ${data.stats?.opportunitiesFound || 0} GHL opportunities`);
+      } else {
+        throw new Error(data?.error || 'Sync failed');
+      }
+    } catch (err: any) {
+      console.error('Pipeline sync error:', err);
+      toast.error(`Sync failed: ${err.message}`);
+    } finally {
+      setIsSyncingPipelines(false);
+    }
+  };
+
+  const formatLastSync = (date: Date | null) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    return `${diffHours}h ago`;
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -169,6 +208,35 @@ export default function ClientTracker() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Client Tracker</h1>
           <p className="text-muted-foreground">Track clients through your sales pipeline</p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          {lastSyncTime && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Last sync: {formatLastSync(lastSyncTime)}
+            </span>
+          )}
+          <Button
+            onClick={handleSyncPipelines}
+            disabled={isSyncingPipelines}
+            variant="default"
+            size="sm"
+          >
+            {isSyncingPipelines ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {isSyncingPipelines ? 'Syncing...' : 'Sync from GHL'}
+          </Button>
+          <Button 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['client-tracker'] })} 
+            variant="outline" 
+            size="sm"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
       </div>
 
