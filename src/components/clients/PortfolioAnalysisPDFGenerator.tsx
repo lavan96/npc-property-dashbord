@@ -127,10 +127,11 @@ const MARGIN_BOTTOM = 72;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
 // Section spacing constants for consistent layout
-const SECTION_SPACING = 30;        // Space after major sections
-const SUBSECTION_SPACING = 20;     // Space after subsections
-const PARAGRAPH_SPACING = 14;      // Space between paragraphs
-const LIST_ITEM_SPACING = 4;       // Extra space between list items
+const SECTION_SPACING = 35;        // Space after major sections
+const SUBSECTION_SPACING = 24;     // Space after subsections
+const PARAGRAPH_SPACING = 18;      // Space between paragraphs
+const LIST_ITEM_SPACING = 8;       // Extra space between list items
+const BOX_PADDING = 10;            // Padding inside boxes
 
 // NPC Brand Colors
 const NPC_GOLD = rgb(0.79, 0.64, 0.15);        // #c9a227 - Primary brand gold
@@ -593,13 +594,15 @@ export function PortfolioAnalysisPDFGenerator({
             });
           }
           
-          // Cell text
+          // Cell text - dynamic truncation based on column width
           cellX = x;
           for (let i = 0; i < row.length; i++) {
             const cellText = stripEmojis(row[i] || '');
-            const truncatedText = cellText.length > 30 ? cellText.substring(0, 27) + '...' : cellText;
+            // Calculate max characters based on column width (approx 5pt per char at size 8)
+            const maxChars = Math.floor((columnWidths[i] - 10) / 4.5);
+            const truncatedText = cellText.length > maxChars ? cellText.substring(0, maxChars - 3) + '...' : cellText;
             page.drawText(truncatedText, {
-              x: cellX + 5,
+              x: cellX + 6,
               y: currentY - 15,
               size: 8,
               font: helveticaFont,
@@ -675,7 +678,7 @@ export function PortfolioAnalysisPDFGenerator({
         return y - SUBSECTION_SPACING;
       };
       
-      // Draw KPI box
+      // Draw KPI box with improved padding
       const drawKPIBox = (
         page: PDFPage,
         label: string,
@@ -685,28 +688,29 @@ export function PortfolioAnalysisPDFGenerator({
         width: number,
         valueColor = SECONDARY_COLOR
       ): void => {
+        const boxHeight = 55;
         // KPI box with gold-tinted background and gold border
         page.drawRectangle({
           x,
-          y: y - 45,
+          y: y - boxHeight,
           width,
-          height: 50,
+          height: boxHeight,
           color: rgb(0.99, 0.98, 0.93), // Gold tint #fdf9ed
           borderColor: NPC_GOLD_LIGHT,
           borderWidth: 1,
         });
         
         page.drawText(stripEmojis(label), {
-          x: x + 8,
-          y: y - 15,
+          x: x + BOX_PADDING,
+          y: y - 18,
           size: 8,
           font: helveticaFont,
           color: MUTED_COLOR,
         });
         
         page.drawText(stripEmojis(value), {
-          x: x + 8,
-          y: y - 35,
+          x: x + BOX_PADDING,
+          y: y - 40,
           size: 14,
           font: helveticaBold,
           color: valueColor,
@@ -1916,53 +1920,55 @@ export function PortfolioAnalysisPDFGenerator({
         { label: 'LVR Risk', value: safeString(financialHealth?.lvrRisk, 'N/A') },
       ];
       
-      const statusBoxWidth = (CONTENT_WIDTH - 30) / 4;
+      const statusBoxWidth = (CONTENT_WIDTH - 36) / 4;
+      const statusBoxHeight = 58;
       let statusX = MARGIN_LEFT;
       
       for (const item of statusItems) {
         const itemVal = item.value.toLowerCase();
-        const statusColor = itemVal.includes('strong') || itemVal.includes('healthy') || itemVal === 'low'
+        const statusColor = itemVal.includes('strong') || itemVal.includes('healthy') || itemVal === 'low' || itemVal.includes('positive')
           ? SUCCESS_COLOR
-          : itemVal.includes('moderate') || itemVal === 'medium'
+          : itemVal.includes('moderate') || itemVal === 'medium' || itemVal.includes('comfortable')
           ? WARNING_COLOR
           : DANGER_COLOR;
         
         page.drawRectangle({
           x: statusX,
-          y: yPos - 45,
+          y: yPos - statusBoxHeight,
           width: statusBoxWidth,
-          height: 50,
+          height: statusBoxHeight,
           color: rgb(0.97, 0.97, 0.97),
           borderColor: statusColor,
           borderWidth: 2,
         });
         
         page.drawText(stripEmojis(item.label), {
-          x: statusX + 5,
-          y: yPos - 15,
+          x: statusX + BOX_PADDING,
+          y: yPos - 18,
           size: 7,
           font: helveticaFont,
           color: MUTED_COLOR,
         });
         
-        const truncatedValue = item.value.length > 12 ? item.value.substring(0, 10) + '..' : item.value;
+        // Allow longer values with better truncation
+        const truncatedValue = item.value.length > 14 ? item.value.substring(0, 12) + '..' : item.value;
         page.drawText(stripEmojis(truncatedValue), {
-          x: statusX + 5,
-          y: yPos - 35,
+          x: statusX + BOX_PADDING,
+          y: yPos - 42,
           size: 10,
           font: helveticaBold,
           color: statusColor,
         });
         
-        statusX += statusBoxWidth + 10;
+        statusX += statusBoxWidth + 12;
       }
       
-      yPos -= 70;
+      yPos -= 80;
       
       // Detailed analysis
       yPos = drawSubsectionHeader(page, 'Detailed Analysis', yPos);
-      yPos = drawFormattedText(page, safeString(financialHealth?.analysis, 'No detailed analysis available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
-      yPos -= SECTION_SPACING;
+      yPos = drawFormattedText(page, safeString(financialHealth?.analysis, 'No detailed analysis available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 16);
+      yPos -= SECTION_SPACING + 5;
       
       console.log('✓ Financial health page complete');
       
@@ -2009,9 +2015,9 @@ export function PortfolioAnalysisPDFGenerator({
         color: rgb(1, 1, 1),
       });
       
-      yPos -= 35;
+      yPos -= 40;
       
-      // Risk categories table
+      // Risk categories table - wider Assessment column to prevent truncation
       const riskCategories = [
         ['Risk Category', 'Assessment'],
         ['Concentration Risk', safeString(risk?.concentrationRisk, 'N/A')],
@@ -2019,15 +2025,15 @@ export function PortfolioAnalysisPDFGenerator({
         ['Vacancy Risk', safeString(risk?.vacancyRisk, 'N/A')],
       ];
       
-      const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.4, CONTENT_WIDTH * 0.6]);
-      yPos = riskTableLastY - 20;
+      const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.65]);
+      yPos = riskTableLastY - SUBSECTION_SPACING;
       
       // Market risks
       const marketRisks = safeArray(risk?.marketRisks);
       if (marketRisks.length > 0) {
         yPos = drawSubsectionHeader(page, 'Market Risks', yPos, DANGER_COLOR);
         yPos = drawBulletList(page, marketRisks, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= PARAGRAPH_SPACING;
+        yPos -= SUBSECTION_SPACING;
       }
       
       // Mitigation strategies
@@ -2035,7 +2041,7 @@ export function PortfolioAnalysisPDFGenerator({
       if (mitigationStrategies.length > 0) {
         yPos = drawSubsectionHeader(page, 'Mitigation Strategies', yPos, SUCCESS_COLOR);
         yPos = drawBulletList(page, mitigationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= PARAGRAPH_SPACING;
+        yPos -= SUBSECTION_SPACING;
       }
       
       console.log('✓ Risk assessment page complete');
@@ -2103,14 +2109,14 @@ export function PortfolioAnalysisPDFGenerator({
       drawKPIBox(page, 'PROJECTED EQUITY', formatCurrency(projections?.projectedEquity), MARGIN_LEFT + projKpiWidth + 10, yPos, projKpiWidth, SUCCESS_COLOR);
       drawKPIBox(page, 'PROJECTED CASHFLOW', formatCurrency(projections?.projectedMonthlyCashflow) + '/mo', MARGIN_LEFT + (projKpiWidth + 10) * 2, yPos, projKpiWidth);
       
-      yPos -= 80;
+      yPos -= 85;
       
       // Assumptions
       const assumptions = safeArray(projections?.assumptions);
       if (assumptions.length > 0) {
         yPos = drawSubsectionHeader(page, 'Key Assumptions', yPos);
-        yPos = drawBulletList(page, assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 8);
-        yPos -= PARAGRAPH_SPACING;
+        yPos = drawBulletList(page, assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= SUBSECTION_SPACING;
       }
       
       console.log('✓ Projections page complete');
@@ -2124,40 +2130,45 @@ export function PortfolioAnalysisPDFGenerator({
       
       const recommendations = analysisData.analysis?.strategicRecommendations;
       
-      // Priority Actions (highlighted)
+      // Priority Actions (highlighted) - improved spacing
       const priorityActions = safeArray(recommendations?.priorityActions);
       if (priorityActions.length > 0) {
+        const actionItemHeight = 22;
+        const boxPadding = 15;
+        const headerHeight = 28;
+        const boxHeight = priorityActions.length * actionItemHeight + headerHeight + boxPadding * 2;
+        
         page.drawRectangle({
           x: MARGIN_LEFT,
-          y: yPos - (priorityActions.length * 18 + 35),
+          y: yPos - boxHeight,
           width: CONTENT_WIDTH,
-          height: priorityActions.length * 18 + 35,
+          height: boxHeight,
           color: rgb(0.95, 0.97, 0.95),
           borderColor: SUCCESS_COLOR,
           borderWidth: 1,
         });
         
         page.drawText('PRIORITY ACTIONS', {
-          x: MARGIN_LEFT + 10,
-          y: yPos - 18,
+          x: MARGIN_LEFT + boxPadding,
+          y: yPos - headerHeight,
           size: 11,
           font: helveticaBold,
           color: SUCCESS_COLOR,
         });
         
-        yPos -= 35;
+        yPos -= headerHeight + boxPadding;
         for (let i = 0; i < priorityActions.length; i++) {
           page.drawText(`${i + 1}.`, {
-            x: MARGIN_LEFT + 15,
+            x: MARGIN_LEFT + boxPadding + 5,
             y: yPos,
             size: 9,
             font: helveticaBold,
             color: PRIMARY_COLOR,
           });
-          yPos = drawWrappedText(page, safeString(priorityActions[i], 'N/A'), MARGIN_LEFT + 30, yPos, CONTENT_WIDTH - 50, helveticaFont, 9, SECONDARY_COLOR);
-          yPos -= 3;
+          yPos = drawWrappedText(page, safeString(priorityActions[i], 'N/A'), MARGIN_LEFT + boxPadding + 22, yPos, CONTENT_WIDTH - boxPadding * 2 - 30, helveticaFont, 9, SECONDARY_COLOR);
+          yPos -= LIST_ITEM_SPACING;
         }
-        yPos -= 20;
+        yPos -= SUBSECTION_SPACING;
       }
       
       // Short-Term (0-12 months)
@@ -2165,31 +2176,31 @@ export function PortfolioAnalysisPDFGenerator({
       if (shortTerm.length > 0) {
         yPos = drawSubsectionHeader(page, 'Short-Term (0-12 months)', yPos);
         yPos = drawBulletList(page, shortTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= PARAGRAPH_SPACING;
+        yPos -= SUBSECTION_SPACING;
       }
       
       // Medium-Term (1-3 years)
       const mediumTerm = safeArray(recommendations?.mediumTerm);
       if (mediumTerm.length > 0) {
-        if (needsNewPage(yPos, 80)) {
+        if (needsNewPage(yPos, 100)) {
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
         yPos = drawSubsectionHeader(page, 'Medium-Term (1-3 years)', yPos);
         yPos = drawBulletList(page, mediumTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= PARAGRAPH_SPACING;
+        yPos -= SUBSECTION_SPACING;
       }
       
       // Long-Term (3+ years)
       const longTerm = safeArray(recommendations?.longTerm);
       if (longTerm.length > 0) {
-        if (needsNewPage(yPos, 80)) {
+        if (needsNewPage(yPos, 100)) {
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
         yPos = drawSubsectionHeader(page, 'Long-Term (3+ years)', yPos);
         yPos = drawBulletList(page, longTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= PARAGRAPH_SPACING;
+        yPos -= SUBSECTION_SPACING;
       }
       
       console.log('✓ Strategic recommendations page complete');
