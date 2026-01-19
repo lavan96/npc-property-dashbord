@@ -705,8 +705,8 @@ export function PortfolioAnalysisPDFGenerator({
         return newPage;
       };
       
-      // ============= NPC BRANDED COVER PAGE (Matching Cash Flow PDF) =============
-      console.log('📝 Creating NPC branded cover page (Cash Flow style)...');
+      // ============= NPC BRANDED COVER PAGE (Matching Vownet Form Style) =============
+      console.log('📝 Creating NPC branded cover page (Vownet Form style)...');
       const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
       // Full black background
@@ -727,161 +727,69 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // NPC Business Card / Logo area (simulated with text block)
-      const cardY = PAGE_HEIGHT - 180;
-      const cardWidth = 300;
-      const cardHeight = 100;
-      const cardX = (PAGE_WIDTH - cardWidth) / 2;
-      
-      // Card background
-      coverPage.drawRectangle({
-        x: cardX,
-        y: cardY - cardHeight,
-        width: cardWidth,
-        height: cardHeight,
-        color: NPC_BLACK,
-        borderColor: NPC_GOLD,
-        borderWidth: 1,
-      });
-      
-      // Left side of card - Contact info
-      const contactInfoX = cardX + 15;
-      coverPage.drawText('Rugesh Naidu', {
-        x: contactInfoX,
-        y: cardY - 20,
-        size: 11,
+      // "NAIDU PROPERTY CONSULTING SERVICES" - centered at top
+      const companyLine1 = 'NAIDU PROPERTY CONSULTING SERVICES';
+      const companyLine1Width = helveticaBold.widthOfTextAtSize(companyLine1, 24);
+      coverPage.drawText(companyLine1, {
+        x: (PAGE_WIDTH - companyLine1Width) / 2,
+        y: PAGE_HEIGHT - 180,
+        size: 24,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      coverPage.drawText('Director', {
-        x: contactInfoX,
-        y: cardY - 35,
-        size: 8,
-        font: helveticaFont,
-        color: NPC_WHITE,
-      });
-      
-      coverPage.drawText('Property Consultant & Buyers Agent', {
-        x: contactInfoX,
-        y: cardY - 47,
-        size: 7,
-        font: helveticaFont,
-        color: NPC_WHITE,
-      });
-      
-      coverPage.drawText('Mobile: 0433 005 110', {
-        x: contactInfoX,
-        y: cardY - 62,
-        size: 7,
-        font: helveticaFont,
-        color: NPC_GOLD,
-      });
-      
-      coverPage.drawText('Email: Rugesh@npcservices.com.au', {
-        x: contactInfoX,
-        y: cardY - 74,
-        size: 7,
-        font: helveticaFont,
-        color: NPC_GOLD,
-      });
-      
-      coverPage.drawText('Website: www.npcservices.com.au', {
-        x: contactInfoX,
-        y: cardY - 86,
-        size: 7,
-        font: helveticaFont,
-        color: NPC_GOLD,
-      });
-      
-      // Right side of card - Company name
-      const rightSideX = cardX + cardWidth / 2 + 10;
-      coverPage.drawRectangle({
-        x: cardX + cardWidth / 2,
-        y: cardY - cardHeight,
-        width: cardWidth / 2,
-        height: cardHeight,
-        color: rgb(0.08, 0.08, 0.08), // Slightly lighter black
-      });
-      
-      coverPage.drawText('Naidu Property Consulting', {
-        x: rightSideX,
-        y: cardY - 25,
-        size: 9,
-        font: helveticaBold,
-        color: NPC_GOLD,
-      });
-      
-      coverPage.drawText('Services', {
-        x: rightSideX,
-        y: cardY - 38,
-        size: 9,
-        font: helveticaBold,
-        color: NPC_GOLD,
-      });
-      
-      // "YOUR DEDICATED PROPERTY PARTNER" tagline
+      // "YOUR DEDICATED PROPERTY PARTNER" tagline - centered below company name
       const taglineText = 'YOUR DEDICATED PROPERTY PARTNER';
-      const taglineWidth = helveticaBold.widthOfTextAtSize(taglineText, 11);
+      const taglineWidth = helveticaBold.widthOfTextAtSize(taglineText, 14);
       coverPage.drawText(taglineText, {
         x: (PAGE_WIDTH - taglineWidth) / 2,
-        y: cardY - cardHeight - 35,
-        size: 11,
+        y: PAGE_HEIGHT - 220,
+        size: 14,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
       // Gold separator line
       coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2 - 120, y: cardY - cardHeight - 55 },
-        end: { x: PAGE_WIDTH / 2 + 120, y: cardY - cardHeight - 55 },
+        start: { x: PAGE_WIDTH / 2 - 150, y: PAGE_HEIGHT - 260 },
+        end: { x: PAGE_WIDTH / 2 + 150, y: PAGE_HEIGHT - 260 },
         thickness: 1,
         color: NPC_GOLD,
       });
       
-      // Main title - "PORTFOLIO PERFORMANCE" 
-      const title1 = 'PORTFOLIO';
-      const title1Width = helveticaBold.widthOfTextAtSize(title1, 42);
-      coverPage.drawText(title1, {
-        x: (PAGE_WIDTH - title1Width) / 2,
-        y: PAGE_HEIGHT - 400,
-        size: 42,
+      // Main title - "Portfolio Performance Report" (matching "Client Portfolio Form" style)
+      const mainTitle = 'Portfolio Performance Report';
+      const mainTitleWidth = helveticaBold.widthOfTextAtSize(mainTitle, 32);
+      coverPage.drawText(mainTitle, {
+        x: (PAGE_WIDTH - mainTitleWidth) / 2,
+        y: PAGE_HEIGHT - 380,
+        size: 32,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      const title2 = 'PERFORMANCE ANALYSIS';
-      const title2Width = helveticaBold.widthOfTextAtSize(title2, 42);
-      coverPage.drawText(title2, {
-        x: (PAGE_WIDTH - title2Width) / 2,
-        y: PAGE_HEIGHT - 455,
-        size: 42,
-        font: helveticaBold,
-        color: NPC_GOLD,
-      });
-      
-      // Client name (property/client identifier)
-      const clientText = stripEmojis(analysisData.clientName);
-      const clientWidth = helveticaFont.widthOfTextAtSize(clientText, 16);
+      // Client name in uppercase - centered below main title
+      const clientText = stripEmojis(analysisData.clientName).toUpperCase();
+      const clientWidth = helveticaBold.widthOfTextAtSize(clientText, 20);
       coverPage.drawText(clientText, {
         x: (PAGE_WIDTH - clientWidth) / 2,
-        y: PAGE_HEIGHT - 520,
-        size: 16,
-        font: helveticaFont,
+        y: PAGE_HEIGHT - 480,
+        size: 20,
+        font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      // Prepared date at bottom
-      const dateText = `Prepared: ${new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
+      // Date at bottom - formatted as "19 January 2026"
+      const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
-      })}`;
-      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 12);
+      });
+      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 14);
       coverPage.drawText(dateText, {
         x: (PAGE_WIDTH - dateWidth) / 2,
-        y: 100,
-        size: 12,
+        y: PAGE_HEIGHT - 540,
+        size: 14,
         font: helveticaFont,
         color: NPC_GOLD,
       });
@@ -2035,8 +1943,8 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Property details page complete');
       
-      // ============= NPC BRANDED DISCLAIMER & CONTACT PAGE (Matching Cash Flow PDF) =============
-      console.log('📝 Creating NPC branded disclaimer page...');
+      // ============= NPC BRANDED DISCLAIMER & CONTACT PAGE (Matching Vownet Form Style) =============
+      console.log('📝 Creating NPC branded disclaimer page (Vownet Form style)...');
       const disclaimerPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
       // Full black background
@@ -2057,10 +1965,8 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // "NAIDU PROPERTY" - large gold text
-      const naiduText = 'NAIDU PROPERTY';
-      const naiduWidth = helveticaBold.widthOfTextAtSize(naiduText, 36);
-      disclaimerPage.drawText(naiduText, {
+      // "NAIDU PROPERTY" - large gold text (matching Vownet form exactly)
+      disclaimerPage.drawText('NAIDU PROPERTY', {
         x: MARGIN_LEFT,
         y: PAGE_HEIGHT - 100,
         size: 36,
@@ -2068,9 +1974,8 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // "CONSULTING SERVICES" - gold text below
-      const servicesText = 'CONSULTING SERVICES';
-      disclaimerPage.drawText(servicesText, {
+      // "CONSULTING SERVICES" - gold text below (matching Vownet form exactly)
+      disclaimerPage.drawText('CONSULTING SERVICES', {
         x: MARGIN_LEFT,
         y: PAGE_HEIGHT - 140,
         size: 24,
@@ -2078,7 +1983,7 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // "CONTACT US" section
+      // "CONTACT US" section header
       disclaimerPage.drawText('CONTACT US', {
         x: MARGIN_LEFT,
         y: PAGE_HEIGHT - 200,
@@ -2087,10 +1992,10 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Contact details with labels
+      // Contact details with labels (matching Vownet form exactly)
       const labelX = MARGIN_LEFT;
-      const valueX = MARGIN_LEFT + 90;
-      let contactY = PAGE_HEIGHT - 250;
+      const valueX = MARGIN_LEFT + 100;
+      let contactY = PAGE_HEIGHT - 260;
       
       // Website
       disclaimerPage.drawText('WEBSITE:', {
@@ -2128,7 +2033,7 @@ export function PortfolioAnalysisPDFGenerator({
       
       contactY -= 30;
       
-      // Phone
+      // Phone (matching Vownet form - (02) 8609 3299)
       disclaimerPage.drawText('PHONE:', {
         x: labelX,
         y: contactY,
@@ -2136,7 +2041,7 @@ export function PortfolioAnalysisPDFGenerator({
         font: helveticaBold,
         color: NPC_GOLD,
       });
-      disclaimerPage.drawText('0433 005 110', {
+      disclaimerPage.drawText('(02) 8609 3299', {
         x: valueX,
         y: contactY,
         size: 11,
@@ -2144,8 +2049,44 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Disclaimer text at bottom
-      const disclaimerFullText = 'AS A PROFESSIONAL PROPERTY CONSULTANT & BUYERS AGENT, WE PROVIDE INFORMATION AND ADVICE BASED ON OUR EXPERTISE AND EXPERIENCE IN THE REAL ESTATE MARKET. PLEASE BE AWARE THAT THE ADVICE AND INSIGHTS OFFERED ARE FOR GENERAL INFORMATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSIDERED FINANCIAL ADVICE. WHILE WE STRIVE TO ENSURE THE ACCURACY AND RELEVANCE OF THE INFORMATION PROVIDED, REAL ESTATE MARKETS ARE DYNAMIC AND SUBJECT TO CHANGE AND WE CANNOT GUARANTEE THE FUTURE PERFORMANCE OR OUTCOMES OF ANY PROPERTY INVESTMENT.';
+      contactY -= 30;
+      
+      // Address (matching Vownet form exactly)
+      disclaimerPage.drawText('ADDRESS:', {
+        x: labelX,
+        y: contactY,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      disclaimerPage.drawText('Level 5 Nexus Norwest, 4 Columbia Ct, Norwest NSW 2153', {
+        x: valueX,
+        y: contactY,
+        size: 11,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      contactY -= 30;
+      
+      // ABN (matching Vownet form exactly)
+      disclaimerPage.drawText('ABN:', {
+        x: labelX,
+        y: contactY,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      disclaimerPage.drawText('50 684 555 771', {
+        x: valueX,
+        y: contactY,
+        size: 11,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      // Disclaimer text at bottom (matching Vownet form exactly - full text)
+      const disclaimerFullText = 'As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice. While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment. It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses. Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process. Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors. By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions. Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.';
       
       // Draw wrapped disclaimer text
       const disclaimerWords = disclaimerFullText.split(' ');
@@ -2155,17 +2096,17 @@ export function PortfolioAnalysisPDFGenerator({
       
       for (const word of disclaimerWords) {
         const testLine = disclaimerLine ? `${disclaimerLine} ${word}` : word;
-        const testWidth = helveticaFont.widthOfTextAtSize(testLine, 9);
+        const testWidth = helveticaFont.widthOfTextAtSize(testLine, 8);
         
         if (testWidth > maxDisclaimerWidth && disclaimerLine) {
           disclaimerPage.drawText(disclaimerLine, {
             x: MARGIN_LEFT,
             y: disclaimerY,
-            size: 9,
+            size: 8,
             font: helveticaFont,
             color: NPC_GOLD,
           });
-          disclaimerY -= 14;
+          disclaimerY -= 12;
           disclaimerLine = word;
         } else {
           disclaimerLine = testLine;
@@ -2176,7 +2117,7 @@ export function PortfolioAnalysisPDFGenerator({
         disclaimerPage.drawText(disclaimerLine, {
           x: MARGIN_LEFT,
           y: disclaimerY,
-          size: 9,
+          size: 8,
           font: helveticaFont,
           color: NPC_GOLD,
         });
