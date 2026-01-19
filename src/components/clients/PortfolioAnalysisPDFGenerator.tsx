@@ -2334,38 +2334,7 @@ export function PortfolioAnalysisPDFGenerator({
           continue;
         }
         
-        // Header bar on content pages (not cover or TOC)
-        if (i > 1) {
-          currentPage.drawRectangle({
-            x: 0,
-            y: PAGE_HEIGHT - 35,
-            width: PAGE_WIDTH,
-            height: 35,
-            color: PRIMARY_COLOR,
-          });
-          
-          // Company name in header
-          if (footerCompanyName) {
-            currentPage.drawText(stripEmojis(footerCompanyName.toUpperCase()), {
-              x: MARGIN_LEFT,
-              y: PAGE_HEIGHT - 23,
-              size: 9,
-              font: helveticaBold,
-              color: rgb(1, 1, 1),
-            });
-          }
-          
-          // Page number in header right
-          const headerPageText = `Page ${pageNum}`;
-          const headerPageWidth = helveticaFont.widthOfTextAtSize(headerPageText, 9);
-          currentPage.drawText(headerPageText, {
-            x: PAGE_WIDTH - MARGIN_RIGHT - headerPageWidth,
-            y: PAGE_HEIGHT - 23,
-            size: 9,
-            font: helveticaFont,
-            color: rgb(0.9, 0.9, 0.9),
-          });
-        }
+        // Header bar removed per user request
         
         // Footer
         currentPage.drawLine({
