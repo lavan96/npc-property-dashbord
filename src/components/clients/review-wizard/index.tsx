@@ -76,8 +76,8 @@ export function ReviewWizard({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] h-[90vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-0 flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle>Portfolio Review: {clientName}</DialogTitle>
             <Button variant="ghost" size="icon" onClick={onClose}>
@@ -86,19 +86,23 @@ export function ReviewWizard({
           </div>
         </DialogHeader>
 
-        <ReviewWizardSteps
-          steps={wizard.steps}
-          currentStep={wizard.currentStep}
-          currentStepIndex={wizard.currentStepIndex}
-          onStepClick={wizard.goToStep}
-        />
+        <div className="flex-shrink-0">
+          <ReviewWizardSteps
+            steps={wizard.steps}
+            currentStep={wizard.currentStep}
+            currentStepIndex={wizard.currentStepIndex}
+            onStepClick={wizard.goToStep}
+          />
+        </div>
 
-        <ScrollArea className="flex-1 px-6 py-4">
-          {renderStep()}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="px-6 py-4">
+            {renderStep()}
+          </div>
         </ScrollArea>
 
         {wizard.currentStep !== 'generate_report' && (
-          <div className="flex items-center justify-between px-6 py-4 border-t">
+          <div className="flex items-center justify-between px-6 py-4 border-t flex-shrink-0">
             <Button
               variant="outline"
               onClick={wizard.goPrev}
