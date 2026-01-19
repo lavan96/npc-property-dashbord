@@ -119,11 +119,18 @@ interface PortfolioAnalysisPDFGeneratorProps {
 // ============= PDF CONSTANTS =============
 const PAGE_WIDTH = 595.28; // A4 width in points
 const PAGE_HEIGHT = 841.89; // A4 height in points
-const MARGIN_LEFT = 50;
-const MARGIN_RIGHT = 50;
-const MARGIN_TOP = 50;
-const MARGIN_BOTTOM = 60;
+// Standard A4 margins: 1 inch (72pt) on all sides for professional documents
+const MARGIN_LEFT = 72;
+const MARGIN_RIGHT = 72;
+const MARGIN_TOP = 72;
+const MARGIN_BOTTOM = 72;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+
+// Section spacing constants for consistent layout
+const SECTION_SPACING = 30;        // Space after major sections
+const SUBSECTION_SPACING = 20;     // Space after subsections
+const PARAGRAPH_SPACING = 14;      // Space between paragraphs
+const LIST_ITEM_SPACING = 4;       // Extra space between list items
 
 // NPC Brand Colors
 const NPC_GOLD = rgb(0.79, 0.64, 0.15);        // #c9a227 - Primary brand gold
@@ -148,7 +155,10 @@ const ACCENT_COLOR = NPC_GOLD_LIGHT;
 // ============= PHASE 6: SAFE FORMATTING UTILITIES =============
 const formatCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) return '$0';
-  return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const absValue = Math.abs(value);
+  const formatted = absValue.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  // Format negative values as -$X,XXX instead of $-X,XXX
+  return value < 0 ? `-$${formatted}` : `$${formatted}`;
 };
 
 const formatPercentage = (value: number | null | undefined, decimals: number = 1): string => {
@@ -192,6 +202,15 @@ const getRiskBadgeVariant = (risk: string | null | undefined): 'default' | 'seco
 const stripEmojis = (text: string): string => {
   if (!text) return '';
   return text
+    // Decode HTML entities first
+    .replace(/&#x26;/g, '&')
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     // Remove control characters (newlines, tabs, etc.) - replace with space
     .replace(/[\x00-\x1F\x7F]/g, ' ')
     // Remove emojis
@@ -211,6 +230,23 @@ const stripEmojis = (text: string): string => {
     // Clean up multiple spaces
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+// Format property type for display (owner_occupied -> Owner Occupied)
+const formatPropertyType = (type: string | null | undefined): string => {
+  if (!type) return 'Property';
+  return type
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+};
+
+// Ensure percentage values include % symbol
+const ensurePercentage = (value: string | null | undefined): string => {
+  if (!value) return '0%';
+  const cleaned = value.replace('%', '').trim();
+  const num = parseFloat(cleaned);
+  if (isNaN(num)) return '0%';
+  return `${num.toFixed(1)}%`;
 };
 
 export function PortfolioAnalysisPDFGenerator({ 
@@ -598,7 +634,7 @@ export function PortfolioAnalysisPDFGenerator({
         return { lastY: currentY - 15, needsNewPage: false };
       };
       
-      // Draw section header
+      // Draw section header with improved spacing
       const drawSectionHeader = (
         page: PDFPage,
         title: string,
@@ -613,16 +649,16 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         page.drawLine({
-          start: { x: MARGIN_LEFT, y: y - 5 },
-          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: y - 5 },
-          thickness: 1,
-          color: rgb(0.8, 0.8, 0.8),
+          start: { x: MARGIN_LEFT, y: y - 8 },
+          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: y - 8 },
+          thickness: 1.5,
+          color: NPC_GOLD_LIGHT,
         });
         
-        return y - 25;
+        return y - SECTION_SPACING;
       };
       
-      // Draw subsection header (smaller)
+      // Draw subsection header (smaller) with improved spacing
       const drawSubsectionHeader = (
         page: PDFPage,
         title: string,
@@ -636,7 +672,7 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaBold,
           color,
         });
-        return y - 18;
+        return y - SUBSECTION_SPACING;
       };
       
       // Draw KPI box
@@ -677,19 +713,81 @@ export function PortfolioAnalysisPDFGenerator({
         });
       };
       
-      // Draw bullet list
+      // Draw bullet list with improved formatting
       const drawBulletList = (
         page: PDFPage,
         items: string[],
         x: number,
         y: number,
         maxWidth: number,
-        size: number = 9
+        size: number = 9,
+        bulletIndent: number = 12
       ): number => {
         let currentY = y;
+        const bulletChar = '•';
+        
         for (const item of items) {
-          currentY = drawWrappedText(page, `• ${item}`, x, currentY, maxWidth, helveticaFont, size, SECONDARY_COLOR);
-          currentY -= 2;
+          // Draw bullet point
+          page.drawText(bulletChar, {
+            x,
+            y: currentY,
+            size,
+            font: helveticaBold,
+            color: PRIMARY_COLOR,
+          });
+          
+          // Draw wrapped text after bullet with proper indent
+          currentY = drawWrappedText(
+            page, 
+            stripEmojis(item), 
+            x + bulletIndent, 
+            currentY, 
+            maxWidth - bulletIndent, 
+            helveticaFont, 
+            size, 
+            SECONDARY_COLOR
+          );
+          currentY -= LIST_ITEM_SPACING;
+        }
+        return currentY;
+      };
+      
+      // Draw numbered list with improved formatting
+      const drawNumberedList = (
+        page: PDFPage,
+        items: string[],
+        x: number,
+        y: number,
+        maxWidth: number,
+        size: number = 9,
+        numberIndent: number = 18
+      ): number => {
+        let currentY = y;
+        
+        for (let i = 0; i < items.length; i++) {
+          const numberText = `${i + 1}.`;
+          
+          // Draw number
+          page.drawText(numberText, {
+            x,
+            y: currentY,
+            size,
+            font: helveticaBold,
+            color: PRIMARY_COLOR,
+          });
+          
+          // Draw wrapped text after number with proper indent
+          currentY = drawWrappedText(
+            page, 
+            stripEmojis(items[i]), 
+            x + numberIndent, 
+            currentY, 
+            maxWidth - numberIndent, 
+            helveticaFont, 
+            size, 
+            SECONDARY_COLOR
+          );
+          currentY -= LIST_ITEM_SPACING;
         }
         return currentY;
       };
@@ -1186,9 +1284,9 @@ export function PortfolioAnalysisPDFGenerator({
         SECONDARY_COLOR
       );
       
-      yPos -= 20;
+      yPos -= SUBSECTION_SPACING;
       
-      // Key Strengths
+      // Key Strengths - use improved bullet list
       const keyStrengths = safeArray(analysisData.analysis?.executiveSummary?.keyStrengths);
       if (keyStrengths.length > 0) {
         page.drawText('Key Strengths:', {
@@ -1198,16 +1296,13 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaBold,
           color: SUCCESS_COLOR,
         });
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
         
-        for (const strength of keyStrengths) {
-          yPos = drawWrappedText(page, `• ${safeString(strength, 'N/A')}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
-        }
-        
-        yPos -= 15;
+        yPos = drawBulletList(page, keyStrengths, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, 9);
+        yPos -= PARAGRAPH_SPACING;
       }
       
-      // Key Concerns
+      // Key Concerns - use improved bullet list
       const keyConcerns = safeArray(analysisData.analysis?.executiveSummary?.keyConcerns);
       if (keyConcerns.length > 0) {
         page.drawText('Key Concerns:', {
@@ -1217,14 +1312,13 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaBold,
           color: WARNING_COLOR,
         });
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
         
-        for (const concern of keyConcerns) {
-          yPos = drawWrappedText(page, `• ${safeString(concern, 'N/A')}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
-        }
+        yPos = drawBulletList(page, keyConcerns, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, 9);
+        yPos -= PARAGRAPH_SPACING;
       }
       
-      yPos -= 30;
+      yPos -= SECTION_SPACING;
       
       // ============= PORTFOLIO OVERVIEW SECTION =============
       yPos = drawSectionHeader(page, 'Portfolio Overview', yPos);
@@ -1352,23 +1446,20 @@ export function PortfolioAnalysisPDFGenerator({
       const diversificationScore = safeNumber(composition?.diversificationScore);
       yPos = drawScoreBar(page, 'Diversification Score', diversificationScore, 100, MARGIN_LEFT, yPos, CONTENT_WIDTH - 80);
       
-      yPos -= 10;
+      yPos -= PARAGRAPH_SPACING;
       
       // Asset Allocation
       yPos = drawSubsectionHeader(page, 'Asset Allocation', yPos);
-      yPos -= 5;
       yPos = drawFormattedText(page, safeString(composition?.assetAllocation, 'No asset allocation data available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
-      yPos -= 15;
+      yPos -= PARAGRAPH_SPACING;
       
       // Property Mix Assessment
       yPos = drawSubsectionHeader(page, 'Property Mix Assessment', yPos);
-      yPos -= 5;
       yPos = drawFormattedText(page, safeString(composition?.propertyMixAssessment, 'No property mix data available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
-      yPos -= 15;
+      yPos -= PARAGRAPH_SPACING;
       
       // Property Type Breakdown Visual
       yPos = drawSubsectionHeader(page, 'Portfolio Breakdown by Type', yPos);
-      yPos -= 10;
       
       const totalProps = safeNumber(metrics.totalProperties);
       const investmentPercent = totalProps > 0 
@@ -1484,8 +1575,8 @@ export function PortfolioAnalysisPDFGenerator({
       const compositionRecs = safeArray(composition?.recommendations);
       if (compositionRecs.length > 0) {
         yPos = drawSubsectionHeader(page, 'Composition Recommendations', yPos, PRIMARY_COLOR);
-        yPos -= 5;
         yPos = drawBulletList(page, compositionRecs, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= PARAGRAPH_SPACING;
       }
       
       console.log('✓ Composition analysis page complete');
@@ -1545,9 +1636,11 @@ export function PortfolioAnalysisPDFGenerator({
           color: SECONDARY_COLOR,
         });
         
-        // Property type badge
-        page.drawText(stripEmojis(safeString(prop.propertyType, 'Property')), {
-          x: PAGE_WIDTH - MARGIN_RIGHT - 60,
+        // Property type badge - format properly (owner_occupied -> Owner Occupied)
+        const formattedType = formatPropertyType(prop.propertyType);
+        const typeWidth = helveticaFont.widthOfTextAtSize(formattedType, 8);
+        page.drawText(stripEmojis(formattedType), {
+          x: PAGE_WIDTH - MARGIN_RIGHT - typeWidth - 10,
           y: yPos - 15,
           size: 8,
           font: helveticaFont,
@@ -1598,9 +1691,9 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaFont,
           color: MUTED_COLOR,
         });
-        const lvrValue = parseFloat(safeString(prop.lvr, '0')) || 0;
+        const lvrValue = parseFloat(safeString(prop.lvr, '0').replace('%', '')) || 0;
         const lvrColor = lvrValue <= 60 ? SUCCESS_COLOR : lvrValue <= 80 ? WARNING_COLOR : DANGER_COLOR;
-        page.drawText(safeString(prop.lvr, '0%'), {
+        page.drawText(ensurePercentage(prop.lvr), {
           x: MARGIN_LEFT + 10 + metricWidth * 2,
           y: metricsY - 3,
           size: 9,
@@ -1616,7 +1709,7 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaFont,
           color: MUTED_COLOR,
         });
-        page.drawText(safeString(prop.grossYield, '0%'), {
+        page.drawText(ensurePercentage(prop.grossYield), {
           x: MARGIN_LEFT + 10 + metricWidth * 3,
           y: metricsY - 3,
           size: 9,
@@ -1868,8 +1961,8 @@ export function PortfolioAnalysisPDFGenerator({
       
       // Detailed analysis
       yPos = drawSubsectionHeader(page, 'Detailed Analysis', yPos);
-      yPos -= 5;
       yPos = drawFormattedText(page, safeString(financialHealth?.analysis, 'No detailed analysis available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      yPos -= SECTION_SPACING;
       
       console.log('✓ Financial health page complete');
       
@@ -1880,7 +1973,7 @@ export function PortfolioAnalysisPDFGenerator({
         page = addContentPage();
         yPos = PAGE_HEIGHT - MARGIN_TOP;
       } else {
-        yPos -= 25;
+        yPos -= SECTION_SPACING;
       }
       
       yPos = drawSectionHeader(page, 'Risk Assessment', yPos);
@@ -1933,17 +2026,16 @@ export function PortfolioAnalysisPDFGenerator({
       const marketRisks = safeArray(risk?.marketRisks);
       if (marketRisks.length > 0) {
         yPos = drawSubsectionHeader(page, 'Market Risks', yPos, DANGER_COLOR);
-        yPos -= 5;
         yPos = drawBulletList(page, marketRisks, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= 10;
+        yPos -= PARAGRAPH_SPACING;
       }
       
       // Mitigation strategies
       const mitigationStrategies = safeArray(risk?.mitigationStrategies);
       if (mitigationStrategies.length > 0) {
         yPos = drawSubsectionHeader(page, 'Mitigation Strategies', yPos, SUCCESS_COLOR);
-        yPos -= 5;
         yPos = drawBulletList(page, mitigationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= PARAGRAPH_SPACING;
       }
       
       console.log('✓ Risk assessment page complete');
@@ -1961,35 +2053,32 @@ export function PortfolioAnalysisPDFGenerator({
       const equityReleaseOptions = safeArray(growth?.equityReleaseOptions);
       if (equityReleaseOptions.length > 0) {
         yPos = drawSubsectionHeader(page, 'Equity Release Options', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, equityReleaseOptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
       }
       
       // Refinancing Opportunities
       const refinancingOpportunities = safeArray(growth?.refinancingOpportunities);
       if (refinancingOpportunities.length > 0) {
         yPos = drawSubsectionHeader(page, 'Refinancing Opportunities', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, refinancingOpportunities, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
       }
       
       // Next Purchase Recommendations
       const nextPurchaseRecs = safeArray(growth?.nextPurchaseRecommendations);
       if (nextPurchaseRecs.length > 0) {
         yPos = drawSubsectionHeader(page, 'Next Purchase Recommendations', yPos, PRIMARY_COLOR);
-        yPos -= 5;
         yPos = drawBulletList(page, nextPurchaseRecs, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
       }
       
       // Optimization Strategies
       const optimizationStrategies = safeArray(growth?.optimizationStrategies);
       if (optimizationStrategies.length > 0) {
         yPos = drawSubsectionHeader(page, 'Portfolio Optimization Strategies', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, optimizationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= PARAGRAPH_SPACING;
       }
       
       console.log('✓ Growth opportunities page complete');
@@ -2020,8 +2109,8 @@ export function PortfolioAnalysisPDFGenerator({
       const assumptions = safeArray(projections?.assumptions);
       if (assumptions.length > 0) {
         yPos = drawSubsectionHeader(page, 'Key Assumptions', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 8);
+        yPos -= PARAGRAPH_SPACING;
       }
       
       console.log('✓ Projections page complete');
@@ -2075,9 +2164,8 @@ export function PortfolioAnalysisPDFGenerator({
       const shortTerm = safeArray(recommendations?.shortTerm);
       if (shortTerm.length > 0) {
         yPos = drawSubsectionHeader(page, 'Short-Term (0-12 months)', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, shortTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
       }
       
       // Medium-Term (1-3 years)
@@ -2088,9 +2176,8 @@ export function PortfolioAnalysisPDFGenerator({
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
         yPos = drawSubsectionHeader(page, 'Medium-Term (1-3 years)', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, mediumTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
-        yPos -= 15;
+        yPos -= PARAGRAPH_SPACING;
       }
       
       // Long-Term (3+ years)
@@ -2101,8 +2188,8 @@ export function PortfolioAnalysisPDFGenerator({
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
         yPos = drawSubsectionHeader(page, 'Long-Term (3+ years)', yPos);
-        yPos -= 5;
         yPos = drawBulletList(page, longTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= PARAGRAPH_SPACING;
       }
       
       console.log('✓ Strategic recommendations page complete');
@@ -2114,21 +2201,21 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos = drawSectionHeader(page, 'Property Portfolio Details', yPos);
       
-      // Build property table
+      // Build property table - adjusted column widths for new margins
       const propHeaders = ['#', 'Address', 'Type', 'Value', 'Equity', 'LVR', 'Yield'];
-      const propColumnWidths = [25, 170, 60, 70, 70, 40, 50];
+      const propColumnWidths = [22, 140, 55, 65, 65, 45, 50];
       
       const propRows = analysisData.propertyAnalyses.map(prop => [
         prop.propertyNumber.toString(),
-        prop.address.substring(0, 35),
-        prop.propertyType,
+        prop.address.substring(0, 30),
+        formatPropertyType(prop.propertyType),
         formatCurrency(prop.value),
         formatCurrency(prop.equity),
-        prop.lvr,
-        prop.grossYield,
+        ensurePercentage(prop.lvr),
+        ensurePercentage(prop.grossYield),
       ]);
       
-      let tableResult = drawTable(page, propHeaders, propRows, MARGIN_LEFT, yPos, propColumnWidths, 20);
+      let tableResult = drawTable(page, propHeaders, propRows, MARGIN_LEFT, yPos, propColumnWidths, 22);
       yPos = tableResult.lastY;
       
       // Handle table overflow to new page
