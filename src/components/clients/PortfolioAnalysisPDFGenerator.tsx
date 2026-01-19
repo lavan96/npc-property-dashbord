@@ -705,8 +705,8 @@ export function PortfolioAnalysisPDFGenerator({
         return newPage;
       };
       
-      // ============= NPC BRANDED COVER PAGE (Matching Vownet Form Style) =============
-      console.log('📝 Creating NPC branded cover page (Vownet Form style)...');
+      // ============= NPC BRANDED COVER PAGE (Exact Template Match) =============
+      console.log('📝 Creating NPC branded cover page (exact template match)...');
       const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
       // Full black background
@@ -718,92 +718,216 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_BLACK,
       });
       
-      // Top gold accent bar
-      coverPage.drawRectangle({
-        x: 0,
-        y: PAGE_HEIGHT - 12,
-        width: PAGE_WIDTH,
-        height: 12,
+      // ============= TOP-LEFT CORNER DESIGN =============
+      // Gold diagonal line (from top-left corner going down-right)
+      const cornerSize = 140;
+      
+      // Top-left gold diagonal line
+      coverPage.drawLine({
+        start: { x: 0, y: PAGE_HEIGHT },
+        end: { x: cornerSize, y: PAGE_HEIGHT - cornerSize },
+        thickness: 3,
         color: NPC_GOLD,
       });
       
-      // "NAIDU PROPERTY CONSULTING SERVICES" - centered at top
-      const companyLine1 = 'NAIDU PROPERTY CONSULTING SERVICES';
-      const companyLine1Width = helveticaBold.widthOfTextAtSize(companyLine1, 24);
+      // Dark gray triangle shape (top-left)
+      // Draw as a filled polygon using multiple rectangles/lines
+      // First dark shape - closer to corner
+      const darkGray = rgb(0.25, 0.25, 0.25);
+      
+      // Top-left dark geometric shapes (triangular area)
+      for (let i = 0; i < 60; i++) {
+        const yPos = PAGE_HEIGHT - 40 - i * 2;
+        const xEnd = 40 + i * 1.5;
+        coverPage.drawLine({
+          start: { x: 0, y: yPos },
+          end: { x: xEnd, y: yPos },
+          thickness: 2,
+          color: darkGray,
+        });
+      }
+      
+      // Second gold line (inner, parallel to first)
+      coverPage.drawLine({
+        start: { x: 50, y: PAGE_HEIGHT - 50 },
+        end: { x: cornerSize + 10, y: PAGE_HEIGHT - cornerSize - 10 },
+        thickness: 2,
+        color: NPC_GOLD,
+      });
+      
+      // ============= BOTTOM-RIGHT CORNER DESIGN =============
+      // Bottom-right gold diagonal line
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH - cornerSize, y: cornerSize },
+        end: { x: PAGE_WIDTH, y: 0 },
+        thickness: 3,
+        color: NPC_GOLD,
+      });
+      
+      // Bottom-right dark geometric shapes
+      for (let i = 0; i < 60; i++) {
+        const yPos = 40 + i * 2;
+        const xStart = PAGE_WIDTH - 40 - i * 1.5;
+        coverPage.drawLine({
+          start: { x: xStart, y: yPos },
+          end: { x: PAGE_WIDTH, y: yPos },
+          thickness: 2,
+          color: darkGray,
+        });
+      }
+      
+      // Second gold line (inner, parallel to first) - bottom right
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH - cornerSize - 10, y: cornerSize + 10 },
+        end: { x: PAGE_WIDTH - 50, y: 50 },
+        thickness: 2,
+        color: NPC_GOLD,
+      });
+      
+      // ============= CENTER LOGO - Stylized "N" =============
+      // Draw the NPC "N" logo in the center
+      const logoY = PAGE_HEIGHT / 2 + 100;
+      const logoX = PAGE_WIDTH / 2;
+      const logoHeight = 180;
+      const logoWidth = 120;
+      
+      // The N logo is a stylized N with flowing lines
+      // Draw it using lines with gradient effect (gold shading)
+      const logoLeft = logoX - logoWidth / 2;
+      const logoRight = logoX + logoWidth / 2;
+      const logoTop = logoY + logoHeight / 2;
+      const logoBottom = logoY - logoHeight / 2;
+      
+      // Left vertical stroke of N (with slight curve)
+      const leftStrokeLines = 12;
+      for (let i = 0; i < leftStrokeLines; i++) {
+        const offset = i * 2;
+        const shade = 0.65 + (i / leftStrokeLines) * 0.25; // Gold gradient
+        coverPage.drawLine({
+          start: { x: logoLeft + offset, y: logoTop - 20 },
+          end: { x: logoLeft + offset + 5, y: logoBottom + 20 },
+          thickness: 2,
+          color: rgb(shade, shade * 0.75, shade * 0.15),
+        });
+      }
+      
+      // Diagonal stroke of N (from top-left to bottom-right with curve)
+      const diagLines = 15;
+      for (let i = 0; i < diagLines; i++) {
+        const progress = i / diagLines;
+        const shade = 0.55 + progress * 0.35;
+        // Curved diagonal using bezier-like points
+        const startX = logoLeft + 15 + i * 1.5;
+        const startY = logoTop - 10 - i * 3;
+        const endX = logoRight - 25 + i * 1.5;
+        const endY = logoBottom + 30 + i * 2;
+        coverPage.drawLine({
+          start: { x: startX, y: startY },
+          end: { x: endX, y: endY },
+          thickness: 2.5,
+          color: rgb(shade, shade * 0.72, shade * 0.12),
+        });
+      }
+      
+      // Right vertical stroke of N (with flowing wave effect)
+      const rightStrokeLines = 14;
+      for (let i = 0; i < rightStrokeLines; i++) {
+        const offset = i * 2.5;
+        const shade = 0.5 + (i / rightStrokeLines) * 0.4;
+        // Create wave effect
+        const waveOffset = Math.sin(i * 0.5) * 8;
+        coverPage.drawLine({
+          start: { x: logoRight - 30 + offset + waveOffset, y: logoTop - 40 },
+          end: { x: logoRight - 25 + offset, y: logoBottom + 10 },
+          thickness: 2,
+          color: rgb(shade, shade * 0.7, shade * 0.1),
+        });
+      }
+      
+      // ============= COMPANY NAME =============
+      const companyLine1 = 'NAIDU PROPERTY';
+      const companyLine1Width = helveticaBold.widthOfTextAtSize(companyLine1, 32);
       coverPage.drawText(companyLine1, {
         x: (PAGE_WIDTH - companyLine1Width) / 2,
-        y: PAGE_HEIGHT - 180,
-        size: 24,
-        font: helveticaBold,
-        color: NPC_GOLD,
-      });
-      
-      // "YOUR DEDICATED PROPERTY PARTNER" tagline - centered below company name
-      const taglineText = 'YOUR DEDICATED PROPERTY PARTNER';
-      const taglineWidth = helveticaBold.widthOfTextAtSize(taglineText, 14);
-      coverPage.drawText(taglineText, {
-        x: (PAGE_WIDTH - taglineWidth) / 2,
-        y: PAGE_HEIGHT - 220,
-        size: 14,
-        font: helveticaBold,
-        color: NPC_GOLD,
-      });
-      
-      // Gold separator line
-      coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2 - 150, y: PAGE_HEIGHT - 260 },
-        end: { x: PAGE_WIDTH / 2 + 150, y: PAGE_HEIGHT - 260 },
-        thickness: 1,
-        color: NPC_GOLD,
-      });
-      
-      // Main title - "Portfolio Performance Report" (matching "Client Portfolio Form" style)
-      const mainTitle = 'Portfolio Performance Report';
-      const mainTitleWidth = helveticaBold.widthOfTextAtSize(mainTitle, 32);
-      coverPage.drawText(mainTitle, {
-        x: (PAGE_WIDTH - mainTitleWidth) / 2,
-        y: PAGE_HEIGHT - 380,
+        y: PAGE_HEIGHT / 2 - 60,
         size: 32,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      // Client name in uppercase - centered below main title
-      const clientText = stripEmojis(analysisData.clientName).toUpperCase();
-      const clientWidth = helveticaBold.widthOfTextAtSize(clientText, 20);
-      coverPage.drawText(clientText, {
-        x: (PAGE_WIDTH - clientWidth) / 2,
-        y: PAGE_HEIGHT - 480,
-        size: 20,
+      const companyLine2 = 'CONSULTING SERVICES';
+      const companyLine2Width = helveticaBold.widthOfTextAtSize(companyLine2, 32);
+      coverPage.drawText(companyLine2, {
+        x: (PAGE_WIDTH - companyLine2Width) / 2,
+        y: PAGE_HEIGHT / 2 - 100,
+        size: 32,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      // Date at bottom - formatted as "19 January 2026"
-      const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
+      // ============= TAGLINE WITH DECORATIVE LINES =============
+      const taglineY = PAGE_HEIGHT / 2 - 160;
+      const taglineText = 'YOUR DEDICATED PROPERTY PARTNER';
+      const taglineWidth = helveticaFont.widthOfTextAtSize(taglineText, 14);
+      const taglineX = (PAGE_WIDTH - taglineWidth) / 2;
+      
+      // Left decorative line
+      const lineLength = 80;
+      const lineGap = 15;
+      coverPage.drawLine({
+        start: { x: taglineX - lineGap - lineLength, y: taglineY + 5 },
+        end: { x: taglineX - lineGap, y: taglineY + 5 },
+        thickness: 1,
+        color: NPC_GOLD,
       });
-      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 14);
-      coverPage.drawText(dateText, {
-        x: (PAGE_WIDTH - dateWidth) / 2,
-        y: PAGE_HEIGHT - 540,
+      
+      // Tagline text
+      coverPage.drawText(taglineText, {
+        x: taglineX,
+        y: taglineY,
         size: 14,
         font: helveticaFont,
         color: NPC_GOLD,
       });
       
-      // Bottom gold accent bar
-      coverPage.drawRectangle({
-        x: 0,
-        y: 0,
-        width: PAGE_WIDTH,
-        height: 12,
+      // Right decorative line
+      coverPage.drawLine({
+        start: { x: taglineX + taglineWidth + lineGap, y: taglineY + 5 },
+        end: { x: taglineX + taglineWidth + lineGap + lineLength, y: taglineY + 5 },
+        thickness: 1,
         color: NPC_GOLD,
       });
       
-      console.log('✓ NPC branded cover page complete');
+      // Center diamond shape
+      const diamondY = taglineY - 25;
+      const diamondSize = 6;
+      // Draw diamond as 4 lines
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH / 2, y: diamondY + diamondSize },
+        end: { x: PAGE_WIDTH / 2 + diamondSize, y: diamondY },
+        thickness: 1.5,
+        color: NPC_GOLD,
+      });
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH / 2 + diamondSize, y: diamondY },
+        end: { x: PAGE_WIDTH / 2, y: diamondY - diamondSize },
+        thickness: 1.5,
+        color: NPC_GOLD,
+      });
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH / 2, y: diamondY - diamondSize },
+        end: { x: PAGE_WIDTH / 2 - diamondSize, y: diamondY },
+        thickness: 1.5,
+        color: NPC_GOLD,
+      });
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH / 2 - diamondSize, y: diamondY },
+        end: { x: PAGE_WIDTH / 2, y: diamondY + diamondSize },
+        thickness: 1.5,
+        color: NPC_GOLD,
+      });
+      
+      console.log('✓ NPC branded cover page complete (exact template match)');
       
       // Define metrics and health score early for TOC page numbers and later use
       const metrics = analysisData.portfolioMetrics;
