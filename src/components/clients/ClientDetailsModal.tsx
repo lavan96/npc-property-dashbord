@@ -61,6 +61,7 @@ import { ClientReportsTab } from './ClientReportsTab';
 import { VownetPDFGenerator } from './VownetPDFGenerator';
 import { PropertyEditSheet } from './PropertyEditSheet';
 import { ClientPropertyInvestmentReport } from './ClientPropertyInvestmentReport';
+import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -451,6 +452,18 @@ NPC Team`
                 onComplete={() => {
                   refetchClient();
                 }}
+              />
+
+              {/* Portfolio Actions - Analysis & Comparison */}
+              <ClientPortfolioActions
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                properties={properties.map(p => ({
+                  id: p.id,
+                  address: p.address,
+                  property_type: p.property_type,
+                  value: p.value ? Number(p.value) : null
+                }))}
               />
 
               {properties.length === 0 ? (
