@@ -22,7 +22,8 @@ import {
   Users,
   History,
   Plug,
-  UserCircle
+  UserCircle,
+  Target
 } from 'lucide-react';
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const navigationItems = [
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles, moduleKey: 'email_copilot' },
   { title: 'Call Logs', url: '/call-logs', icon: Phone, moduleKey: 'call_logs' },
   { title: 'Clients', url: '/clients', icon: UserCircle, moduleKey: 'clients' },
+  { title: 'Client Tracker', url: '/client-tracker', icon: Target, moduleKey: 'client_tracker' },
   { title: 'Portfolio Reports', url: '/portfolio-reports', icon: FileText, moduleKey: 'portfolio_reports' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },

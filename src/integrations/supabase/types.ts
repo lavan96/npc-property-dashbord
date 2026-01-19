@@ -1434,11 +1434,14 @@ export type Database = {
       }
       clients: {
         Row: {
+          borrowing_capacity: number | null
           country: string | null
           created_at: string
           created_by: string | null
           current_address: string | null
           dependents_count: number | null
+          equity_release: number | null
+          follow_up_date: string | null
           ghl_contact_id: string | null
           ghl_last_synced_at: string | null
           ghl_sync_status: string | null
@@ -1450,6 +1453,9 @@ export type Database = {
           net_monthly_cash_flow: number | null
           next_review_due: string | null
           notes: string | null
+          pipeline_notes: string | null
+          pipeline_status: string | null
+          pipeline_updated_at: string | null
           primary_dob: string | null
           primary_email: string | null
           primary_first_name: string
@@ -1457,6 +1463,7 @@ export type Database = {
           primary_middle_name: string | null
           primary_mobile: string | null
           primary_surname: string
+          proposed_rental_income: number | null
           residential_status: string | null
           review_frequency: string | null
           secondary_dob: string | null
@@ -1474,11 +1481,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          borrowing_capacity?: number | null
           country?: string | null
           created_at?: string
           created_by?: string | null
           current_address?: string | null
           dependents_count?: number | null
+          equity_release?: number | null
+          follow_up_date?: string | null
           ghl_contact_id?: string | null
           ghl_last_synced_at?: string | null
           ghl_sync_status?: string | null
@@ -1490,6 +1500,9 @@ export type Database = {
           net_monthly_cash_flow?: number | null
           next_review_due?: string | null
           notes?: string | null
+          pipeline_notes?: string | null
+          pipeline_status?: string | null
+          pipeline_updated_at?: string | null
           primary_dob?: string | null
           primary_email?: string | null
           primary_first_name: string
@@ -1497,6 +1510,7 @@ export type Database = {
           primary_middle_name?: string | null
           primary_mobile?: string | null
           primary_surname: string
+          proposed_rental_income?: number | null
           residential_status?: string | null
           review_frequency?: string | null
           secondary_dob?: string | null
@@ -1514,11 +1528,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          borrowing_capacity?: number | null
           country?: string | null
           created_at?: string
           created_by?: string | null
           current_address?: string | null
           dependents_count?: number | null
+          equity_release?: number | null
+          follow_up_date?: string | null
           ghl_contact_id?: string | null
           ghl_last_synced_at?: string | null
           ghl_sync_status?: string | null
@@ -1530,6 +1547,9 @@ export type Database = {
           net_monthly_cash_flow?: number | null
           next_review_due?: string | null
           notes?: string | null
+          pipeline_notes?: string | null
+          pipeline_status?: string | null
+          pipeline_updated_at?: string | null
           primary_dob?: string | null
           primary_email?: string | null
           primary_first_name?: string
@@ -1537,6 +1557,7 @@ export type Database = {
           primary_middle_name?: string | null
           primary_mobile?: string | null
           primary_surname?: string
+          proposed_rental_income?: number | null
           residential_status?: string | null
           review_frequency?: string | null
           secondary_dob?: string | null

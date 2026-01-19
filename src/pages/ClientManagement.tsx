@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,8 @@ import {
   Clock,
   Zap,
   Star,
-  ExternalLink
+  ExternalLink,
+  Target
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -61,6 +63,8 @@ interface Client {
   created_at: string;
   is_favorite?: boolean;
   client_properties?: { id: string }[];
+  pipeline_status?: string | null;
+  follow_up_date?: string | null;
 }
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -491,6 +495,12 @@ export default function ClientManagement() {
           <Button onClick={() => refetch()} variant="ghost" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/client-tracker">
+              <Target className="h-4 w-4 mr-2" />
+              Client Tracker
+            </Link>
           </Button>
         </div>
       </div>
