@@ -320,7 +320,27 @@ export function ClientReportsTab({
       </Card>
 
       {/* Portfolio Analysis Reports History */}
-      <PortfolioAnalysisReportsList clientId={clientId} showHeader={false} />
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              Portfolio Performance Reports
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = `/portfolio-reports?clientId=${clientId}`}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View All Reports
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <PortfolioAnalysisReportsList clientId={clientId} showHeader={false} />
+        </CardContent>
+      </Card>
 
       {/* Report History */}
       <Card>
