@@ -31,6 +31,7 @@ import { ClientFilters, ClientFiltersState, defaultFilters } from '@/components/
 import { ClientBulkActions } from '@/components/clients/ClientBulkActions';
 import { ClientAnalyticsDashboard } from '@/components/clients/ClientAnalyticsDashboard';
 import { ClientComparison } from '@/components/clients/ClientComparison';
+import { PortfolioAnalysisReportsList } from '@/components/clients/PortfolioAnalysisReportsList';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -537,6 +538,7 @@ export default function ClientManagement() {
       <Tabs defaultValue="clients" className="space-y-4">
         <TabsList>
           <TabsTrigger value="clients">Clients</TabsTrigger>
+          <TabsTrigger value="portfolio-reports">Portfolio Reports</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="compare">Compare</TabsTrigger>
           <TabsTrigger value="import">Import</TabsTrigger>
@@ -642,6 +644,10 @@ export default function ClientManagement() {
 
         <TabsContent value="compare" className="space-y-4">
           <ClientComparison clients={clients} />
+        </TabsContent>
+
+        <TabsContent value="portfolio-reports" className="space-y-4">
+          <PortfolioAnalysisReportsList showHeader={true} />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4">

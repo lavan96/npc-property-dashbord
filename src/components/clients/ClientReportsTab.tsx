@@ -31,6 +31,7 @@ import {
 import { format } from 'date-fns';
 import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
 import { PortfolioAnalysisPDFGenerator } from './PortfolioAnalysisPDFGenerator';
+import { PortfolioAnalysisReportsList } from './PortfolioAnalysisReportsList';
 import { PropertyReportGenerator } from './PropertyReportGenerator';
 import { toast } from 'sonner';
 
@@ -317,6 +318,9 @@ export function ClientReportsTab({
           })()}
         </CardContent>
       </Card>
+
+      {/* Portfolio Analysis Reports History */}
+      <PortfolioAnalysisReportsList clientId={clientId} showHeader={false} />
 
       {/* Report History */}
       <Card>

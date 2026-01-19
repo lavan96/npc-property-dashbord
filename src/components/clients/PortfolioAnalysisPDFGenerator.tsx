@@ -2181,14 +2181,47 @@ The information in this report is current as of the generation date and may chan
       const pdfBytes = await pdfDoc.save();
       
       const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
+      const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Download the PDF
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      // Save report metadata to database
+      console.log('📊 Saving report to database...');
+      try {
+        // Use any cast since table was just created and types.ts is read-only
+        const { error: insertError } = await (supabase as any)
+          .from('portfolio_analysis_reports')
+          .insert({
+            client_id: clientId,
+            client_name: analysisData.clientName,
+            health_score: analysisData.analysis?.executiveSummary?.healthScore || null,
+            overall_health: analysisData.analysis?.executiveSummary?.overallHealth || null,
+            portfolio_value: analysisData.portfolioMetrics?.totalValue || null,
+            total_equity: analysisData.portfolioMetrics?.totalEquity || null,
+            net_monthly_cashflow: analysisData.portfolioMetrics?.netMonthlyCashflow || null,
+            total_properties: analysisData.portfolioMetrics?.totalProperties || null,
+            average_lvr: analysisData.portfolioMetrics?.averageLVR || null,
+            average_yield: analysisData.portfolioMetrics?.averageYield || null,
+            report_data: analysisData as any,
+            status: 'completed',
+          });
+        
+        if (insertError) {
+          console.error('Failed to save report metadata:', insertError);
+        } else {
+          console.log('✓ Report saved to database');
+        }
+      } catch (dbError) {
+        console.error('Database save error:', dbError);
+      }
       
       console.log('✅ PDF generation complete!');
       toast.success('PDF downloaded successfully');
