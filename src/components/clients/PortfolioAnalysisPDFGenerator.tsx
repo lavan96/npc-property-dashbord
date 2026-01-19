@@ -705,190 +705,201 @@ export function PortfolioAnalysisPDFGenerator({
         return newPage;
       };
       
-      // ============= PHASE 5: ENHANCED COVER PAGE =============
-      console.log('📝 Creating NPC branded cover page...');
+      // ============= NPC BRANDED COVER PAGE (Matching Cash Flow PDF) =============
+      console.log('📝 Creating NPC branded cover page (Cash Flow style)...');
       const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
-      // Top header bar with NPC Navy
-      coverPage.drawRectangle({
-        x: 0,
-        y: PAGE_HEIGHT - 80,
-        width: PAGE_WIDTH,
-        height: 80,
-        color: NPC_NAVY,
-      });
-      
-      // Company name in header bar (from global settings)
-      const companyName = globalSettings?.contactDetails?.company_name || 'Portfolio Analysis';
-      const companyNameWidth = helveticaBold.widthOfTextAtSize(companyName, 14);
-      coverPage.drawText(stripEmojis(companyName.toUpperCase()), {
-        x: (PAGE_WIDTH - companyNameWidth) / 2,
-        y: PAGE_HEIGHT - 50,
-        size: 14,
-        font: helveticaBold,
-        color: rgb(1, 1, 1),
-      });
-      
-      // Gold accent line below header
-      coverPage.drawRectangle({
-        x: PAGE_WIDTH / 2 - 60,
-        y: PAGE_HEIGHT - 90,
-        width: 120,
-        height: 3,
-        color: NPC_GOLD,
-      });
-      
-      // Main title block
-      const title = 'PORTFOLIO PERFORMANCE';
-      const titleWidth = helveticaBold.widthOfTextAtSize(title, 28);
-      coverPage.drawText(title, {
-        x: (PAGE_WIDTH - titleWidth) / 2,
-        y: PAGE_HEIGHT - 280,
-        size: 28,
-        font: helveticaBold,
-        color: PRIMARY_COLOR,
-      });
-      
-      const subtitle = 'ANALYSIS';
-      const subtitleWidth = helveticaBold.widthOfTextAtSize(subtitle, 28);
-      coverPage.drawText(subtitle, {
-        x: (PAGE_WIDTH - subtitleWidth) / 2,
-        y: PAGE_HEIGHT - 315,
-        size: 28,
-        font: helveticaBold,
-        color: PRIMARY_COLOR,
-      });
-      
-      // Gold decorative line under title
-      coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2 - 80, y: PAGE_HEIGHT - 335 },
-        end: { x: PAGE_WIDTH / 2 + 80, y: PAGE_HEIGHT - 335 },
-        thickness: 2,
-        color: NPC_GOLD,
-      });
-      
-      // "Prepared for" label
-      coverPage.drawText('Prepared for', {
-        x: (PAGE_WIDTH - helveticaFont.widthOfTextAtSize('Prepared for', 11)) / 2,
-        y: PAGE_HEIGHT - 365,
-        size: 11,
-        font: helveticaFont,
-        color: MUTED_COLOR,
-      });
-      
-      // Client name
-      const clientText = stripEmojis(analysisData.clientName);
-      const clientWidth = helveticaBold.widthOfTextAtSize(clientText, 20);
-      coverPage.drawText(clientText, {
-        x: (PAGE_WIDTH - clientWidth) / 2,
-        y: PAGE_HEIGHT - 395,
-        size: 20,
-        font: helveticaBold,
-        color: SECONDARY_COLOR,
-      });
-      
-      // Date
-      const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 12);
-      coverPage.drawText(dateText, {
-        x: (PAGE_WIDTH - dateWidth) / 2,
-        y: PAGE_HEIGHT - 425,
-        size: 12,
-        font: helveticaFont,
-        color: MUTED_COLOR,
-      });
-      
-      // Health score badge - centered, larger
-      const healthScore = analysisData.analysis.executiveSummary.healthScore;
-      const healthLabel = 'PORTFOLIO HEALTH SCORE';
-      const healthLabelWidth = helveticaFont.widthOfTextAtSize(healthLabel, 10);
-      
-      coverPage.drawText(healthLabel, {
-        x: (PAGE_WIDTH - healthLabelWidth) / 2,
-        y: PAGE_HEIGHT - 490,
-        size: 10,
-        font: helveticaFont,
-        color: MUTED_COLOR,
-      });
-      
-      // Score circle background
-      const circleX = PAGE_WIDTH / 2;
-      const circleY = PAGE_HEIGHT - 560;
-      const circleRadius = 45;
-      
-      // Draw score badge with NPC Gold background
-      coverPage.drawRectangle({
-        x: circleX - circleRadius,
-        y: circleY - circleRadius,
-        width: circleRadius * 2,
-        height: circleRadius * 2,
-        color: NPC_GOLD,
-        borderColor: NPC_GOLD_DARK,
-        borderWidth: 3,
-      });
-      
-      // Score text (navy for better contrast on gold)
-      const scoreText = healthScore.toString();
-      const scoreWidth = helveticaBold.widthOfTextAtSize(scoreText, 32);
-      coverPage.drawText(scoreText, {
-        x: circleX - scoreWidth / 2,
-        y: circleY + 5,
-        size: 32,
-        font: helveticaBold,
-        color: NPC_NAVY,
-      });
-      
-      coverPage.drawText('/100', {
-        x: circleX - helveticaFont.widthOfTextAtSize('/100', 12) / 2,
-        y: circleY - 18,
-        size: 12,
-        font: helveticaFont,
-        color: NPC_DARK_BLUE,
-      });
-      
-      // Health status text below score
-      const coverHealthStatus = analysisData.analysis.executiveSummary.overallHealth;
-      const coverStatusText = stripEmojis(coverHealthStatus.toUpperCase());
-      const coverStatusWidth = helveticaBold.widthOfTextAtSize(coverStatusText, 14);
-      coverPage.drawText(coverStatusText, {
-        x: (PAGE_WIDTH - coverStatusWidth) / 2,
-        y: PAGE_HEIGHT - 630,
-        size: 14,
-        font: helveticaBold,
-        color: PRIMARY_COLOR,
-      });
-      
-      // Bottom footer bar with NPC Navy
+      // Full black background
       coverPage.drawRectangle({
         x: 0,
         y: 0,
         width: PAGE_WIDTH,
-        height: 60,
-        color: NPC_NAVY,
+        height: PAGE_HEIGHT,
+        color: NPC_BLACK,
       });
       
-      // Contact info in footer (white text on navy)
-      const contactInfo = globalSettings?.contactDetails;
-      if (contactInfo) {
-        const footerText = [contactInfo.phone, contactInfo.email, contactInfo.website].filter(Boolean).join('  |  ');
-        const footerWidth = helveticaFont.widthOfTextAtSize(footerText, 9);
-        coverPage.drawText(stripEmojis(footerText), {
-          x: (PAGE_WIDTH - footerWidth) / 2,
-          y: 25,
-          size: 9,
-          font: helveticaFont,
-          color: NPC_WHITE,
-        });
-      }
+      // Top gold accent bar
+      coverPage.drawRectangle({
+        x: 0,
+        y: PAGE_HEIGHT - 12,
+        width: PAGE_WIDTH,
+        height: 12,
+        color: NPC_GOLD,
+      });
       
-      console.log('✓ Enhanced cover page complete');
+      // NPC Business Card / Logo area (simulated with text block)
+      const cardY = PAGE_HEIGHT - 180;
+      const cardWidth = 300;
+      const cardHeight = 100;
+      const cardX = (PAGE_WIDTH - cardWidth) / 2;
       
-      // Define metrics early for TOC page numbers
+      // Card background
+      coverPage.drawRectangle({
+        x: cardX,
+        y: cardY - cardHeight,
+        width: cardWidth,
+        height: cardHeight,
+        color: NPC_BLACK,
+        borderColor: NPC_GOLD,
+        borderWidth: 1,
+      });
+      
+      // Left side of card - Contact info
+      const contactInfoX = cardX + 15;
+      coverPage.drawText('Rugesh Naidu', {
+        x: contactInfoX,
+        y: cardY - 20,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      coverPage.drawText('Director', {
+        x: contactInfoX,
+        y: cardY - 35,
+        size: 8,
+        font: helveticaFont,
+        color: NPC_WHITE,
+      });
+      
+      coverPage.drawText('Property Consultant & Buyers Agent', {
+        x: contactInfoX,
+        y: cardY - 47,
+        size: 7,
+        font: helveticaFont,
+        color: NPC_WHITE,
+      });
+      
+      coverPage.drawText('Mobile: 0433 005 110', {
+        x: contactInfoX,
+        y: cardY - 62,
+        size: 7,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      coverPage.drawText('Email: Rugesh@npcservices.com.au', {
+        x: contactInfoX,
+        y: cardY - 74,
+        size: 7,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      coverPage.drawText('Website: www.npcservices.com.au', {
+        x: contactInfoX,
+        y: cardY - 86,
+        size: 7,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      // Right side of card - Company name
+      const rightSideX = cardX + cardWidth / 2 + 10;
+      coverPage.drawRectangle({
+        x: cardX + cardWidth / 2,
+        y: cardY - cardHeight,
+        width: cardWidth / 2,
+        height: cardHeight,
+        color: rgb(0.08, 0.08, 0.08), // Slightly lighter black
+      });
+      
+      coverPage.drawText('Naidu Property Consulting', {
+        x: rightSideX,
+        y: cardY - 25,
+        size: 9,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      coverPage.drawText('Services', {
+        x: rightSideX,
+        y: cardY - 38,
+        size: 9,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      // "YOUR DEDICATED PROPERTY PARTNER" tagline
+      const taglineText = 'YOUR DEDICATED PROPERTY PARTNER';
+      const taglineWidth = helveticaBold.widthOfTextAtSize(taglineText, 11);
+      coverPage.drawText(taglineText, {
+        x: (PAGE_WIDTH - taglineWidth) / 2,
+        y: cardY - cardHeight - 35,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      // Gold separator line
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH / 2 - 120, y: cardY - cardHeight - 55 },
+        end: { x: PAGE_WIDTH / 2 + 120, y: cardY - cardHeight - 55 },
+        thickness: 1,
+        color: NPC_GOLD,
+      });
+      
+      // Main title - "PORTFOLIO PERFORMANCE" 
+      const title1 = 'PORTFOLIO';
+      const title1Width = helveticaBold.widthOfTextAtSize(title1, 42);
+      coverPage.drawText(title1, {
+        x: (PAGE_WIDTH - title1Width) / 2,
+        y: PAGE_HEIGHT - 400,
+        size: 42,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      const title2 = 'PERFORMANCE ANALYSIS';
+      const title2Width = helveticaBold.widthOfTextAtSize(title2, 42);
+      coverPage.drawText(title2, {
+        x: (PAGE_WIDTH - title2Width) / 2,
+        y: PAGE_HEIGHT - 455,
+        size: 42,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      // Client name (property/client identifier)
+      const clientText = stripEmojis(analysisData.clientName);
+      const clientWidth = helveticaFont.widthOfTextAtSize(clientText, 16);
+      coverPage.drawText(clientText, {
+        x: (PAGE_WIDTH - clientWidth) / 2,
+        y: PAGE_HEIGHT - 520,
+        size: 16,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      // Prepared date at bottom
+      const dateText = `Prepared: ${new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })}`;
+      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 12);
+      coverPage.drawText(dateText, {
+        x: (PAGE_WIDTH - dateWidth) / 2,
+        y: 100,
+        size: 12,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      // Bottom gold accent bar
+      coverPage.drawRectangle({
+        x: 0,
+        y: 0,
+        width: PAGE_WIDTH,
+        height: 12,
+        color: NPC_GOLD,
+      });
+      
+      console.log('✓ NPC branded cover page complete');
+      
+      // Define metrics and health score early for TOC page numbers and later use
       const metrics = analysisData.portfolioMetrics;
+      const healthScore = safeNumber(analysisData.analysis?.executiveSummary?.healthScore, 0);
       
       // ============= PHASE 5: TABLE OF CONTENTS =============
       console.log('📝 Creating table of contents...');
@@ -2024,91 +2035,163 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Property details page complete');
       
-      // ============= PAGE 11: DISCLAIMER & CONTACT =============
-      console.log('📝 Creating disclaimer page...');
-      page = addContentPage();
-      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      // ============= NPC BRANDED DISCLAIMER & CONTACT PAGE (Matching Cash Flow PDF) =============
+      console.log('📝 Creating NPC branded disclaimer page...');
+      const disclaimerPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
-      yPos = drawSectionHeader(page, 'Important Disclaimer', yPos);
+      // Full black background
+      disclaimerPage.drawRectangle({
+        x: 0,
+        y: 0,
+        width: PAGE_WIDTH,
+        height: PAGE_HEIGHT,
+        color: NPC_BLACK,
+      });
       
-      const disclaimerText = `This Portfolio Performance Analysis report is provided for general information purposes only and does not constitute personal financial advice. The projections, assessments, and recommendations contained herein are based on the data provided and various assumptions about future market conditions, which may not eventuate.
-
-Past performance is not a reliable indicator of future performance. Property values and rental yields can fluctuate, and there is always a risk of loss when investing in property.
-
-Before making any investment decisions, you should consult with qualified financial advisors, tax professionals, and legal experts who can consider your individual circumstances, objectives, and risk tolerance.
-
-The information in this report is current as of the generation date and may change without notice. We do not accept any liability for any errors or omissions in this report or for any actions taken in reliance on its contents.`;
+      // Top gold accent bar
+      disclaimerPage.drawRectangle({
+        x: 0,
+        y: PAGE_HEIGHT - 12,
+        width: PAGE_WIDTH,
+        height: 12,
+        color: NPC_GOLD,
+      });
       
-      yPos = drawWrappedText(page, disclaimerText, MARGIN_LEFT, yPos, CONTENT_WIDTH, helveticaFont, 9, MUTED_COLOR, 1.5);
+      // "NAIDU PROPERTY" - large gold text
+      const naiduText = 'NAIDU PROPERTY';
+      const naiduWidth = helveticaBold.widthOfTextAtSize(naiduText, 36);
+      disclaimerPage.drawText(naiduText, {
+        x: MARGIN_LEFT,
+        y: PAGE_HEIGHT - 100,
+        size: 36,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
       
-      yPos -= 40;
+      // "CONSULTING SERVICES" - gold text below
+      const servicesText = 'CONSULTING SERVICES';
+      disclaimerPage.drawText(servicesText, {
+        x: MARGIN_LEFT,
+        y: PAGE_HEIGHT - 140,
+        size: 24,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
       
-      // Contact information from global settings if available
-      if (globalSettings?.contactDetails) {
-        const contact = globalSettings.contactDetails;
+      // "CONTACT US" section
+      disclaimerPage.drawText('CONTACT US', {
+        x: MARGIN_LEFT,
+        y: PAGE_HEIGHT - 200,
+        size: 18,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      
+      // Contact details with labels
+      const labelX = MARGIN_LEFT;
+      const valueX = MARGIN_LEFT + 90;
+      let contactY = PAGE_HEIGHT - 250;
+      
+      // Website
+      disclaimerPage.drawText('WEBSITE:', {
+        x: labelX,
+        y: contactY,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      disclaimerPage.drawText('npcservices.com.au', {
+        x: valueX,
+        y: contactY,
+        size: 11,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      contactY -= 30;
+      
+      // Email
+      disclaimerPage.drawText('EMAIL:', {
+        x: labelX,
+        y: contactY,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      disclaimerPage.drawText('admin@npcservices.com.au', {
+        x: valueX,
+        y: contactY,
+        size: 11,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      contactY -= 30;
+      
+      // Phone
+      disclaimerPage.drawText('PHONE:', {
+        x: labelX,
+        y: contactY,
+        size: 11,
+        font: helveticaBold,
+        color: NPC_GOLD,
+      });
+      disclaimerPage.drawText('0433 005 110', {
+        x: valueX,
+        y: contactY,
+        size: 11,
+        font: helveticaFont,
+        color: NPC_GOLD,
+      });
+      
+      // Disclaimer text at bottom
+      const disclaimerFullText = 'AS A PROFESSIONAL PROPERTY CONSULTANT & BUYERS AGENT, WE PROVIDE INFORMATION AND ADVICE BASED ON OUR EXPERTISE AND EXPERIENCE IN THE REAL ESTATE MARKET. PLEASE BE AWARE THAT THE ADVICE AND INSIGHTS OFFERED ARE FOR GENERAL INFORMATIONAL PURPOSES ONLY AND SHOULD NOT BE CONSIDERED FINANCIAL ADVICE. WHILE WE STRIVE TO ENSURE THE ACCURACY AND RELEVANCE OF THE INFORMATION PROVIDED, REAL ESTATE MARKETS ARE DYNAMIC AND SUBJECT TO CHANGE AND WE CANNOT GUARANTEE THE FUTURE PERFORMANCE OR OUTCOMES OF ANY PROPERTY INVESTMENT.';
+      
+      // Draw wrapped disclaimer text
+      const disclaimerWords = disclaimerFullText.split(' ');
+      let disclaimerLine = '';
+      let disclaimerY = 280;
+      const maxDisclaimerWidth = CONTENT_WIDTH - 20;
+      
+      for (const word of disclaimerWords) {
+        const testLine = disclaimerLine ? `${disclaimerLine} ${word}` : word;
+        const testWidth = helveticaFont.widthOfTextAtSize(testLine, 9);
         
-        page.drawLine({
-          start: { x: MARGIN_LEFT, y: yPos },
-          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: yPos },
-          thickness: 1,
-          color: rgb(0.8, 0.8, 0.8),
-        });
-        
-        yPos -= 25;
-        
-        page.drawText('Contact Information', {
-          x: MARGIN_LEFT,
-          y: yPos,
-          size: 11,
-          font: helveticaBold,
-          color: PRIMARY_COLOR,
-        });
-        
-        yPos -= 18;
-        
-        if (contact.company_name) {
-          page.drawText(stripEmojis(contact.company_name), {
+        if (testWidth > maxDisclaimerWidth && disclaimerLine) {
+          disclaimerPage.drawText(disclaimerLine, {
             x: MARGIN_LEFT,
-            y: yPos,
-            size: 10,
-            font: helveticaBold,
-            color: SECONDARY_COLOR,
-          });
-          yPos -= 14;
-        }
-        
-        if (contact.phone) {
-          page.drawText(`Phone: ${stripEmojis(contact.phone)}`, {
-            x: MARGIN_LEFT,
-            y: yPos,
+            y: disclaimerY,
             size: 9,
             font: helveticaFont,
-            color: SECONDARY_COLOR,
+            color: NPC_GOLD,
           });
-          yPos -= 12;
-        }
-        
-        if (contact.email) {
-          page.drawText(`Email: ${stripEmojis(contact.email)}`, {
-            x: MARGIN_LEFT,
-            y: yPos,
-            size: 9,
-            font: helveticaFont,
-            color: SECONDARY_COLOR,
-          });
-          yPos -= 12;
-        }
-        
-        if (contact.website) {
-          page.drawText(`Website: ${stripEmojis(contact.website)}`, {
-            x: MARGIN_LEFT,
-            y: yPos,
-            size: 9,
-            font: helveticaFont,
-            color: SECONDARY_COLOR,
-          });
+          disclaimerY -= 14;
+          disclaimerLine = word;
+        } else {
+          disclaimerLine = testLine;
         }
       }
+      
+      if (disclaimerLine) {
+        disclaimerPage.drawText(disclaimerLine, {
+          x: MARGIN_LEFT,
+          y: disclaimerY,
+          size: 9,
+          font: helveticaFont,
+          color: NPC_GOLD,
+        });
+      }
+      
+      // Bottom gold accent bar
+      disclaimerPage.drawRectangle({
+        x: 0,
+        y: 0,
+        width: PAGE_WIDTH,
+        height: 12,
+        color: NPC_GOLD,
+      });
+      
+      console.log('✓ NPC branded disclaimer page complete');
       
       // ============= PHASE 5: ENHANCED PAGE FOOTERS =============
       const totalPages = pdfDoc.getPageCount();
