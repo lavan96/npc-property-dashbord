@@ -22,6 +22,8 @@ export interface ClientFiltersState {
   portfolioMax: number | null;
   cashFlowStatus: 'all' | 'positive' | 'negative';
   syncStatus: 'all' | 'synced' | 'pending' | 'error' | 'not_synced';
+  reviewStatus: 'all' | 'overdue' | 'due_soon' | 'upcoming' | 'no_review';
+  reviewFrequency: 'all' | 'quarterly' | 'bi_annual' | 'annual';
 }
 
 interface ClientFiltersProps {
@@ -34,6 +36,8 @@ export const defaultFilters: ClientFiltersState = {
   portfolioMax: null,
   cashFlowStatus: 'all',
   syncStatus: 'all',
+  reviewStatus: 'all',
+  reviewFrequency: 'all',
 };
 
 export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) {
@@ -43,6 +47,8 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
     filters.portfolioMin !== null || filters.portfolioMax !== null,
     filters.cashFlowStatus !== 'all',
     filters.syncStatus !== 'all',
+    filters.reviewStatus !== 'all',
+    filters.reviewFrequency !== 'all',
   ].filter(Boolean).length;
 
   const handleReset = () => {
@@ -140,6 +146,49 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="error">Error</SelectItem>
                 <SelectItem value="not_synced">Not Synced</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Review Status */}
+          <div className="space-y-2">
+            <Label className="text-sm">Review Status</Label>
+            <Select
+              value={filters.reviewStatus}
+              onValueChange={(value: 'all' | 'overdue' | 'due_soon' | 'upcoming' | 'no_review') => 
+                onFiltersChange({ ...filters, reviewStatus: value })
+              }
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="due_soon">Due Soon (7 days)</SelectItem>
+                <SelectItem value="upcoming">Upcoming (30 days)</SelectItem>
+                <SelectItem value="no_review">No Review Scheduled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Review Frequency */}
+          <div className="space-y-2">
+            <Label className="text-sm">Review Frequency</Label>
+            <Select
+              value={filters.reviewFrequency}
+              onValueChange={(value: 'all' | 'quarterly' | 'bi_annual' | 'annual') => 
+                onFiltersChange({ ...filters, reviewFrequency: value })
+              }
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="bi_annual">Bi-Annual</SelectItem>
+                <SelectItem value="annual">Annual</SelectItem>
               </SelectContent>
             </Select>
           </div>

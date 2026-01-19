@@ -38,6 +38,7 @@ import {
   Loader2,
   Edit,
   Landmark,
+  ClipboardCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -62,6 +63,7 @@ import { VownetPDFGenerator } from './VownetPDFGenerator';
 import { PropertyEditSheet } from './PropertyEditSheet';
 import { ClientPropertyInvestmentReport } from './ClientPropertyInvestmentReport';
 import { ClientPortfolioActions } from './ClientPortfolioActions';
+import { ReviewWizard } from './review-wizard';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -82,6 +84,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [portfolioEmailSubject, setPortfolioEmailSubject] = useState('');
   const [portfolioEmailBody, setPortfolioEmailBody] = useState('');
   const [editingProperty, setEditingProperty] = useState<any>(null);
+  const [showReviewWizard, setShowReviewWizard] = useState(false);
 
   // Handle PDF email callback (for finance)
   const handlePdfEmailClick = (pdfBlob: Blob, fileName: string) => {
@@ -291,6 +294,18 @@ NPC Team`
                 onEmailClick={handlePdfEmailClick}
                 buttonLabel="Send to Finance"
               />
+              
+              {/* Start Portfolio Review */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowReviewWizard(true)}
+                disabled={properties.length === 0}
+                title={properties.length === 0 ? 'Add properties to start a review' : 'Start portfolio review wizard'}
+              >
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Start Review
+              </Button>
               
               {/* Send Portfolio to Client */}
               <Button
@@ -679,6 +694,21 @@ NPC Team`
       clientName={`${client.primary_first_name} ${client.primary_surname}`}
       defaultSubject={portfolioEmailSubject || undefined}
       defaultBody={portfolioEmailBody || undefined}
+    />
+
+    {/* Portfolio Review Wizard */}
+    <ReviewWizard
+      clientId={client.id}
+      clientName={`${client.primary_first_name} ${client.primary_surname}`}
+      properties={properties}
+      clientData={fullClient}
+      isOpen={showReviewWizard}
+      onClose={() => setShowReviewWizard(false)}
+      onComplete={(reviewId) => {
+        setShowReviewWizard(false);
+        refetchClient();
+        toast.success('Portfolio review completed successfully');
+      }}
     />
   </>
   );

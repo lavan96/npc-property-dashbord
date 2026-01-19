@@ -542,19 +542,29 @@ export function useReviewWizard(
         key_findings: keyFindings as unknown as Json,
         recommendations: recommendations as unknown as Json,
         action_items: actionItems as unknown as Json,
-        property_scores: scorecard.propertyScores as unknown as Json,
+        property_scores: scorecard.propertyScores.map(ps => ({
+          propertyId: ps.propertyId,
+          address: ps.address,
+          overallScore: ps.overallScore,
+          healthScore: ps.healthScore,
+          cashFlowScore: ps.cashFlowScore,
+          growthPotential: ps.growthPotential,
+          classification: ps.classification,
+          strengths: ps.strengths,
+          concerns: ps.concerns
+        })) as unknown as Json,
         scenarios: scenarios as unknown as Json,
         next_review_due: nextReviewDue.toISOString()
       };
 
-      let result;
+      let result: { id: string } | null = null;
       if (reviewId) {
         // Update existing review
         const { data, error } = await supabase
           .from('portfolio_reviews')
-          .update(reviewData)
+          .update(reviewData as any)
           .eq('id', reviewId)
-          .select()
+          .select('id')
           .single();
         if (error) throw error;
         result = data;
@@ -562,8 +572,8 @@ export function useReviewWizard(
         // Create new review
         const { data, error } = await supabase
           .from('portfolio_reviews')
-          .insert(reviewData)
-          .select()
+          .insert(reviewData as any)
+          .select('id')
           .single();
         if (error) throw error;
         result = data;

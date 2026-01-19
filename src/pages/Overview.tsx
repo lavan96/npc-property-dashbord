@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { OverviewFilters } from '@/components/overview/OverviewFilters';
 import { DataIntegrityPanel } from '@/components/debug/DataIntegrityPanel';
+import { ReviewsDueWidget } from '@/components/clients/ReviewsDueWidget';
 import { PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
@@ -493,10 +494,13 @@ export default function Overview() {
       </div>
 
       {/* Data Integrity Monitor */}
-      <DataIntegrityPanel 
-        dashboardData={recentListings} 
-        className="animate-fade-in"
-      />
+      {/* Reviews Due Widget & Data Integrity Panel */}
+      <div className="grid gap-4 lg:grid-cols-2 animate-fade-in">
+        <ReviewsDueWidget />
+        <DataIntegrityPanel 
+          dashboardData={recentListings} 
+        />
+      </div>
 
       {/* Charts Section */}
       <div className="space-y-8">
