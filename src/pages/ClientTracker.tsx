@@ -36,7 +36,9 @@ import {
   GripVertical,
   FileText,
   UserCheck,
-  ChevronLeft
+  ChevronLeft,
+  Zap,
+  Video
 } from 'lucide-react';
 import {
   Pagination,
@@ -46,7 +48,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useGHLCalendar } from '@/hooks/useGHLCalendar';
 import { toast } from 'sonner';
 
 // Types for GHL pipeline data
@@ -118,6 +123,18 @@ export default function ClientTracker() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [activeNotesPage, setActiveNotesPage] = useState(1);
   const NOTES_PER_PAGE = 9;
+  
+  // Auto-sync state
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  
+  // GHL Calendar integration
+  const { 
+    events: ghlEvents, 
+    isLoading: calendarLoading, 
+    fetchEvents: fetchCalendarEvents 
+  } = useGHLCalendar();
 
   // Fetch pipelines from database
   const { data: pipelines = [], isLoading: pipelinesLoading } = useQuery({
@@ -180,6 +197,61 @@ export default function ClientTracker() {
   useEffect(() => {
     setActiveNotesPage(1);
   }, [searchQuery]);
+
+  // Auto-sync from GHL periodically
+  useEffect(() => {
+    if (!autoSyncEnabled) return;
+
+    const performAutoSync = async () => {
+      if (isSyncingPipelines || isAutoSyncing) return;
+      
+      setIsAutoSyncing(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('sync-ghl-pipelines');
+
+        if (!error && data?.success) {
+          setLastSyncTime(new Date());
+          queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
+          queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+          queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+          queryClient.invalidateQueries({ queryKey: ['clients'] });
+          
+          // Also refresh calendar events
+          const now = new Date();
+          const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          fetchCalendarEvents(now.toISOString(), weekFromNow.toISOString());
+        }
+      } catch (err) {
+        console.error('Auto-sync error:', err);
+      } finally {
+        setIsAutoSyncing(false);
+      }
+    };
+
+    // Initial sync on mount
+    performAutoSync();
+
+    // Set up interval
+    const intervalId = setInterval(performAutoSync, AUTO_SYNC_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [autoSyncEnabled, isSyncingPipelines, queryClient, fetchCalendarEvents]);
+
+  // Initial calendar events fetch
+  useEffect(() => {
+    const now = new Date();
+    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    fetchCalendarEvents(now.toISOString(), weekFromNow.toISOString());
+  }, []);
+
+  // Filter upcoming appointments (next 7 days)
+  const upcomingAppointments = useMemo(() => {
+    const now = new Date();
+    return ghlEvents
+      .filter(event => new Date(event.startTime) >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+      .slice(0, 10); // Show top 10
+  }, [ghlEvents]);
 
   const { data: activeClientNotes = [], isLoading: notesLoading } = useQuery({
     queryKey: ['active-client-notes', activeClients.map(c => c.id)],
@@ -464,6 +536,36 @@ export default function ClientTracker() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Auto-sync toggle */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                  {isAutoSyncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <Zap className={`h-4 w-4 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                  )}
+                  <span className="text-sm font-medium">Auto-sync</span>
+                  <Switch
+                    checked={autoSyncEnabled}
+                    onCheckedChange={setAutoSyncEnabled}
+                    className="scale-90"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Auto-sync every 5 minutes from GHL</p>
+                {lastSyncTime && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Clock className="h-3 w-3" />
+                    Last sync: {formatLastSync(lastSyncTime)}
+                  </p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
           {lastSyncTime && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
@@ -553,6 +655,64 @@ export default function ClientTracker() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming Appointments from GHL Calendar */}
+      {upcomingAppointments.length > 0 && (
+        <Card>
+          <CardHeader className="py-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-medium flex items-center gap-2">
+                <Video className="h-4 w-4 text-primary" />
+                Upcoming Appointments
+                <Badge variant="secondary" className="text-xs">
+                  {upcomingAppointments.length}
+                </Badge>
+              </CardTitle>
+              {calendarLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 pb-2">
+                {upcomingAppointments.map(event => (
+                  <Card key={event.id} className="flex-shrink-0 w-64 bg-muted/30">
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm line-clamp-1">{event.title}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {format(new Date(event.startTime), 'MMM d, h:mm a')}
+                      </div>
+                      {event.calendarName && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-[10px] mt-2"
+                          style={{ 
+                            borderColor: event.calendarColor || '#6B7280',
+                            color: event.calendarColor || '#6B7280'
+                          }}
+                        >
+                          {event.calendarName}
+                        </Badge>
+                      )}
+                      {event.status && (
+                        <Badge 
+                          variant={event.status === 'confirmed' ? 'default' : 'secondary'}
+                          className="text-[10px] mt-2 ml-1"
+                        >
+                          {event.status}
+                        </Badge>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">

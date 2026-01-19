@@ -61,7 +61,7 @@ interface Client {
   total_debt: number;
   net_monthly_cash_flow: number;
   created_at: string;
-  is_favorite?: boolean;
+  is_active?: boolean;
   client_properties?: { id: string }[];
   pipeline_status?: string | null;
   follow_up_date?: string | null;
@@ -284,8 +284,8 @@ export default function ClientManagement() {
 
   // Apply filters
   const filteredClients = clients.filter(client => {
-    // Active (favorite) filter
-    if (showActiveOnly && !client.is_favorite) return false;
+    // Active clients filter (synced with Client Tracker)
+    if (showActiveOnly && !client.is_active) return false;
 
     // Search filter
     const searchLower = searchQuery.toLowerCase();
@@ -320,8 +320,8 @@ export default function ClientManagement() {
     secondary_surname: smartCapitalize(client.secondary_surname),
   }));
 
-  // Count active clients for the button badge
-  const activeClientCount = clients.filter(c => c.is_favorite).length;
+  // Count active clients for the button badge (synced with Client Tracker)
+  const activeClientCount = clients.filter(c => c.is_active).length;
 
   // Calculate summary stats
   const totalClients = clients.length;
