@@ -2287,8 +2287,31 @@ export function PortfolioAnalysisPDFGenerator({
       
       const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
       const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const storagePath = `portfolio-reports/${clientId}/${fileName}`;
       
-      // Download the PDF
+      // Upload PDF to Supabase Storage
+      console.log('📤 Uploading PDF to storage...');
+      let uploadedFilePath: string | null = null;
+      try {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('client-files')
+          .upload(storagePath, blob, {
+            contentType: 'application/pdf',
+            upsert: true,
+          });
+        
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+          toast.error('Failed to upload PDF to storage, but will still download locally');
+        } else {
+          uploadedFilePath = uploadData.path;
+          console.log('✓ PDF uploaded to storage:', uploadedFilePath);
+        }
+      } catch (storageError) {
+        console.error('Storage upload exception:', storageError);
+      }
+      
+      // Download the PDF locally as well
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -2316,13 +2339,14 @@ export function PortfolioAnalysisPDFGenerator({
             average_lvr: analysisData.portfolioMetrics?.averageLVR || null,
             average_yield: analysisData.portfolioMetrics?.averageYield || null,
             report_data: analysisData as any,
+            pdf_file_path: uploadedFilePath,
             status: 'completed',
           });
         
         if (insertError) {
           console.error('Failed to save report metadata:', insertError);
         } else {
-          console.log('✓ Report saved to database');
+          console.log('✓ Report saved to database with PDF path:', uploadedFilePath);
         }
       } catch (dbError) {
         console.error('Database save error:', dbError);
