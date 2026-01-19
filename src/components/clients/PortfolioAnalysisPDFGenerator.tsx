@@ -234,9 +234,140 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ PDF document created with fonts');
       
-      // ============= UTILITY FUNCTIONS =============
+      // ============= PHASE 2: ENHANCED UTILITY FUNCTIONS =============
       
-      // Draw wrapped text and return new Y position
+      // Parse markdown text for bold/italic formatting
+      const parseMarkdownText = (text: string): Array<{text: string, bold: boolean, italic: boolean}> => {
+        const cleanText = stripEmojis(text);
+        const parts: Array<{text: string, bold: boolean, italic: boolean}> = [];
+        let remaining = cleanText
+          .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers
+          .replace(/^[\*\-\+]\s+/gm, '• ') // Convert markdown bullets
+          .replace(/^\d+\.\s+/gm, '') // Remove numbered lists
+          .replace(/^>\s+/gm, '') // Remove blockquotes
+          .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // Remove code formatting
+          .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove links, keep text
+
+        const boldItalicRegex = /\*\*\*(.*?)\*\*\*/g;
+        const boldRegex = /\*\*(.*?)\*\*/g;
+        const italicRegex = /\*(.*?)\*/g;
+
+        let lastIndex = 0;
+        const segments: Array<{text: string, start: number, end: number, bold: boolean, italic: boolean}> = [];
+
+        // Find all bold+italic
+        let match;
+        while ((match = boldItalicRegex.exec(remaining)) !== null) {
+          segments.push({text: match[1], start: match.index, end: match.index + match[0].length, bold: true, italic: true});
+        }
+
+        // Find all bold
+        while ((match = boldRegex.exec(remaining)) !== null) {
+          if (!segments.some(s => match!.index >= s.start && match!.index < s.end)) {
+            segments.push({text: match[1], start: match.index, end: match.index + match[0].length, bold: true, italic: false});
+          }
+        }
+
+        // Find all italic
+        while ((match = italicRegex.exec(remaining)) !== null) {
+          if (!segments.some(s => match!.index >= s.start && match!.index < s.end)) {
+            segments.push({text: match[1], start: match.index, end: match.index + match[0].length, bold: false, italic: true});
+          }
+        }
+
+        segments.sort((a, b) => a.start - b.start);
+
+        segments.forEach((seg) => {
+          if (seg.start > lastIndex) {
+            const normalText = remaining.substring(lastIndex, seg.start)
+              .replace(/\*\*\*/g, '').replace(/\*\*/g, '').replace(/\*/g, '');
+            if (normalText) parts.push({text: normalText, bold: false, italic: false});
+          }
+          parts.push({text: seg.text, bold: seg.bold, italic: seg.italic});
+          lastIndex = seg.end;
+        });
+
+        if (lastIndex < remaining.length) {
+          const normalText = remaining.substring(lastIndex)
+            .replace(/\*\*\*/g, '').replace(/\*\*/g, '').replace(/\*/g, '');
+          if (normalText) parts.push({text: normalText, bold: false, italic: false});
+        }
+
+        if (parts.length === 0) {
+          parts.push({text: remaining.replace(/\*\*\*/g, '').replace(/\*\*/g, '').replace(/\*/g, ''), bold: false, italic: false});
+        }
+
+        return parts;
+      };
+      
+      // Calculate text height for page break detection
+      const calculateTextHeight = (text: string, maxWidth: number, size: number, lineSpacing: number): number => {
+        const parts = parseMarkdownText(text);
+        let lines = 1;
+        let currentLineWidth = 0;
+        
+        for (const part of parts) {
+          const words = part.text.split(' ');
+          const font = part.bold ? helveticaBold : helveticaFont;
+          
+          for (const word of words) {
+            const wordWidth = font.widthOfTextAtSize(word + ' ', size);
+            if (currentLineWidth + wordWidth > maxWidth && currentLineWidth > 0) {
+              lines++;
+              currentLineWidth = wordWidth;
+            } else {
+              currentLineWidth += wordWidth;
+            }
+          }
+        }
+        
+        return lines * lineSpacing;
+      };
+      
+      // Draw text with markdown formatting and word wrapping
+      const drawFormattedText = (
+        page: PDFPage,
+        text: string,
+        x: number,
+        y: number,
+        maxWidth: number,
+        size: number,
+        lineSpacing: number,
+        baseColor = SECONDARY_COLOR
+      ): number => {
+        const parts = parseMarkdownText(text);
+        let currentY = y;
+        let currentX = x;
+        
+        for (const part of parts) {
+          const words = part.text.split(' ');
+          const font = part.bold ? helveticaBold : helveticaFont;
+          
+          for (const word of words) {
+            const wordWithSpace = word + ' ';
+            const wordWidth = font.widthOfTextAtSize(wordWithSpace, size);
+            
+            if (currentX + wordWidth > x + maxWidth && currentX > x) {
+              currentY -= lineSpacing;
+              currentX = x;
+            }
+            
+            page.drawText(wordWithSpace, {
+              x: currentX,
+              y: currentY,
+              size,
+              font,
+              color: baseColor,
+            });
+            
+            currentX += wordWidth;
+          }
+        }
+        
+        return currentY - lineSpacing;
+      };
+      
+      // Simple wrapped text (no markdown)
       const drawWrappedText = (
         page: PDFPage,
         text: string,
@@ -274,6 +405,118 @@ export function PortfolioAnalysisPDFGenerator({
         return currentY;
       };
       
+      // Draw a vector-based table
+      const drawTable = (
+        page: PDFPage,
+        headers: string[],
+        rows: string[][],
+        x: number,
+        y: number,
+        columnWidths: number[],
+        rowHeight: number = 22
+      ): { lastY: number; needsNewPage: boolean } => {
+        const tableWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+        let currentY = y;
+        
+        // Draw header row
+        page.drawRectangle({
+          x,
+          y: currentY - rowHeight,
+          width: tableWidth,
+          height: rowHeight,
+          color: rgb(0.93, 0.93, 0.93),
+        });
+        
+        // Header text
+        let cellX = x;
+        for (let i = 0; i < headers.length; i++) {
+          page.drawText(stripEmojis(headers[i]), {
+            x: cellX + 5,
+            y: currentY - 15,
+            size: 9,
+            font: helveticaBold,
+            color: SECONDARY_COLOR,
+          });
+          cellX += columnWidths[i];
+        }
+        
+        // Header borders
+        page.drawLine({
+          start: { x, y: currentY },
+          end: { x: x + tableWidth, y: currentY },
+          thickness: 1,
+          color: rgb(0.7, 0.7, 0.7),
+        });
+        page.drawLine({
+          start: { x, y: currentY - rowHeight },
+          end: { x: x + tableWidth, y: currentY - rowHeight },
+          thickness: 1,
+          color: rgb(0.7, 0.7, 0.7),
+        });
+        
+        currentY -= rowHeight;
+        
+        // Draw data rows
+        for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+          const row = rows[rowIndex];
+          
+          // Check page break
+          if (currentY - rowHeight < MARGIN_BOTTOM) {
+            return { lastY: currentY, needsNewPage: true };
+          }
+          
+          // Alternating row background
+          if (rowIndex % 2 === 0) {
+            page.drawRectangle({
+              x,
+              y: currentY - rowHeight,
+              width: tableWidth,
+              height: rowHeight,
+              color: rgb(0.98, 0.98, 0.98),
+            });
+          }
+          
+          // Cell text
+          cellX = x;
+          for (let i = 0; i < row.length; i++) {
+            const cellText = stripEmojis(row[i] || '');
+            const truncatedText = cellText.length > 30 ? cellText.substring(0, 27) + '...' : cellText;
+            page.drawText(truncatedText, {
+              x: cellX + 5,
+              y: currentY - 15,
+              size: 8,
+              font: helveticaFont,
+              color: SECONDARY_COLOR,
+            });
+            cellX += columnWidths[i];
+          }
+          
+          // Row border
+          page.drawLine({
+            start: { x, y: currentY - rowHeight },
+            end: { x: x + tableWidth, y: currentY - rowHeight },
+            thickness: 0.5,
+            color: rgb(0.85, 0.85, 0.85),
+          });
+          
+          currentY -= rowHeight;
+        }
+        
+        // Vertical borders
+        cellX = x;
+        for (let i = 0; i <= columnWidths.length; i++) {
+          page.drawLine({
+            start: { x: cellX, y: y },
+            end: { x: cellX, y: currentY },
+            thickness: 0.5,
+            color: rgb(0.85, 0.85, 0.85),
+          });
+          if (i < columnWidths.length) cellX += columnWidths[i];
+        }
+        
+        return { lastY: currentY - 15, needsNewPage: false };
+      };
+      
       // Draw section header
       const drawSectionHeader = (
         page: PDFPage,
@@ -288,7 +531,6 @@ export function PortfolioAnalysisPDFGenerator({
           color: PRIMARY_COLOR,
         });
         
-        // Underline
         page.drawLine({
           start: { x: MARGIN_LEFT, y: y - 5 },
           end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: y - 5 },
@@ -297,6 +539,23 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         return y - 25;
+      };
+      
+      // Draw subsection header (smaller)
+      const drawSubsectionHeader = (
+        page: PDFPage,
+        title: string,
+        y: number,
+        color = SECONDARY_COLOR
+      ): number => {
+        page.drawText(stripEmojis(title), {
+          x: MARGIN_LEFT,
+          y,
+          size: 11,
+          font: helveticaBold,
+          color,
+        });
+        return y - 18;
       };
       
       // Draw KPI box
@@ -309,7 +568,6 @@ export function PortfolioAnalysisPDFGenerator({
         width: number,
         valueColor = SECONDARY_COLOR
       ): void => {
-        // Box background
         page.drawRectangle({
           x,
           y: y - 45,
@@ -320,7 +578,6 @@ export function PortfolioAnalysisPDFGenerator({
           borderWidth: 1,
         });
         
-        // Label
         page.drawText(stripEmojis(label), {
           x: x + 8,
           y: y - 15,
@@ -329,7 +586,6 @@ export function PortfolioAnalysisPDFGenerator({
           color: MUTED_COLOR,
         });
         
-        // Value
         page.drawText(stripEmojis(value), {
           x: x + 8,
           y: y - 35,
@@ -339,14 +595,73 @@ export function PortfolioAnalysisPDFGenerator({
         });
       };
       
+      // Draw bullet list
+      const drawBulletList = (
+        page: PDFPage,
+        items: string[],
+        x: number,
+        y: number,
+        maxWidth: number,
+        size: number = 9
+      ): number => {
+        let currentY = y;
+        for (const item of items) {
+          currentY = drawWrappedText(page, `• ${item}`, x, currentY, maxWidth, helveticaFont, size, SECONDARY_COLOR);
+          currentY -= 2;
+        }
+        return currentY;
+      };
+      
+      // Draw badge (colored rectangle with text)
+      const drawBadge = (
+        page: PDFPage,
+        text: string,
+        x: number,
+        y: number,
+        bgColor = PRIMARY_COLOR,
+        textColor = rgb(1, 1, 1)
+      ): number => {
+        const badgeText = stripEmojis(text.toUpperCase());
+        const textWidth = helveticaBold.widthOfTextAtSize(badgeText, 8);
+        const padding = 6;
+        
+        page.drawRectangle({
+          x,
+          y: y - 12,
+          width: textWidth + padding * 2,
+          height: 16,
+          color: bgColor,
+        });
+        
+        page.drawText(badgeText, {
+          x: x + padding,
+          y: y - 8,
+          size: 8,
+          font: helveticaBold,
+          color: textColor,
+        });
+        
+        return x + textWidth + padding * 2 + 8;
+      };
+      
       // Check if new page needed
       const needsNewPage = (currentY: number, requiredSpace: number): boolean => {
         return currentY - requiredSpace < MARGIN_BOTTOM;
       };
       
-      // Add new content page
-      const addContentPage = (): PDFPage => {
-        return pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      // Add new content page with optional header
+      const addContentPage = (pageTitle?: string): PDFPage => {
+        const newPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+        if (pageTitle) {
+          newPage.drawText(stripEmojis(pageTitle), {
+            x: MARGIN_LEFT,
+            y: PAGE_HEIGHT - MARGIN_TOP,
+            size: 12,
+            font: helveticaBold,
+            color: PRIMARY_COLOR,
+          });
+        }
+        return newPage;
       };
       
       // ============= PAGE 1: COVER PAGE =============
