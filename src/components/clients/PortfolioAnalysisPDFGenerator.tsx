@@ -664,14 +664,40 @@ export function PortfolioAnalysisPDFGenerator({
         return newPage;
       };
       
-      // ============= PAGE 1: COVER PAGE =============
-      console.log('📝 Creating cover page...');
+      // ============= PHASE 5: ENHANCED COVER PAGE =============
+      console.log('📝 Creating enhanced cover page...');
       const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
-      // Logo would be loaded from storage if available - for now, skip logo
-      // Future enhancement: fetch logo from client_branding_profiles or global settings
+      // Top decorative bar
+      coverPage.drawRectangle({
+        x: 0,
+        y: PAGE_HEIGHT - 80,
+        width: PAGE_WIDTH,
+        height: 80,
+        color: PRIMARY_COLOR,
+      });
       
-      // Title
+      // Company name in header bar (from global settings)
+      const companyName = globalSettings?.contactDetails?.company_name || 'Portfolio Analysis';
+      const companyNameWidth = helveticaBold.widthOfTextAtSize(companyName, 14);
+      coverPage.drawText(stripEmojis(companyName.toUpperCase()), {
+        x: (PAGE_WIDTH - companyNameWidth) / 2,
+        y: PAGE_HEIGHT - 50,
+        size: 14,
+        font: helveticaBold,
+        color: rgb(1, 1, 1),
+      });
+      
+      // Decorative accent line below header
+      coverPage.drawRectangle({
+        x: PAGE_WIDTH / 2 - 60,
+        y: PAGE_HEIGHT - 90,
+        width: 120,
+        height: 3,
+        color: rgb(0.9, 0.75, 0.4), // Gold accent
+      });
+      
+      // Main title block
       const title = 'PORTFOLIO PERFORMANCE';
       const titleWidth = helveticaBold.widthOfTextAtSize(title, 28);
       coverPage.drawText(title, {
@@ -692,14 +718,31 @@ export function PortfolioAnalysisPDFGenerator({
         color: PRIMARY_COLOR,
       });
       
+      // Decorative line under title
+      coverPage.drawLine({
+        start: { x: PAGE_WIDTH / 2 - 80, y: PAGE_HEIGHT - 335 },
+        end: { x: PAGE_WIDTH / 2 + 80, y: PAGE_HEIGHT - 335 },
+        thickness: 2,
+        color: rgb(0.8, 0.8, 0.8),
+      });
+      
+      // "Prepared for" label
+      coverPage.drawText('Prepared for', {
+        x: (PAGE_WIDTH - helveticaFont.widthOfTextAtSize('Prepared for', 11)) / 2,
+        y: PAGE_HEIGHT - 365,
+        size: 11,
+        font: helveticaFont,
+        color: MUTED_COLOR,
+      });
+      
       // Client name
       const clientText = stripEmojis(analysisData.clientName);
-      const clientWidth = helveticaFont.widthOfTextAtSize(clientText, 18);
+      const clientWidth = helveticaBold.widthOfTextAtSize(clientText, 20);
       coverPage.drawText(clientText, {
         x: (PAGE_WIDTH - clientWidth) / 2,
-        y: PAGE_HEIGHT - 380,
-        size: 18,
-        font: helveticaFont,
+        y: PAGE_HEIGHT - 395,
+        size: 20,
+        font: helveticaBold,
         color: SECONDARY_COLOR,
       });
       
@@ -712,34 +755,214 @@ export function PortfolioAnalysisPDFGenerator({
       const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 12);
       coverPage.drawText(dateText, {
         x: (PAGE_WIDTH - dateWidth) / 2,
-        y: PAGE_HEIGHT - 410,
+        y: PAGE_HEIGHT - 425,
         size: 12,
         font: helveticaFont,
         color: MUTED_COLOR,
       });
       
-      // Health score badge at bottom
+      // Health score badge - centered, larger
       const healthScore = analysisData.analysis.executiveSummary.healthScore;
-      const healthText = `Health Score: ${healthScore}/100`;
-      const healthWidth = helveticaBold.widthOfTextAtSize(healthText, 16);
+      const healthLabel = 'PORTFOLIO HEALTH SCORE';
+      const healthLabelWidth = helveticaFont.widthOfTextAtSize(healthLabel, 10);
       
-      coverPage.drawRectangle({
-        x: (PAGE_WIDTH - healthWidth - 40) / 2,
-        y: PAGE_HEIGHT - 520,
-        width: healthWidth + 40,
-        height: 40,
-        color: PRIMARY_COLOR,
+      coverPage.drawText(healthLabel, {
+        x: (PAGE_WIDTH - healthLabelWidth) / 2,
+        y: PAGE_HEIGHT - 490,
+        size: 10,
+        font: helveticaFont,
+        color: MUTED_COLOR,
       });
       
-      coverPage.drawText(healthText, {
-        x: (PAGE_WIDTH - healthWidth) / 2,
-        y: PAGE_HEIGHT - 506,
-        size: 16,
+      // Score circle background
+      const circleX = PAGE_WIDTH / 2;
+      const circleY = PAGE_HEIGHT - 560;
+      const circleRadius = 45;
+      
+      // Draw circular badge (approximated with rectangle for pdf-lib)
+      coverPage.drawRectangle({
+        x: circleX - circleRadius,
+        y: circleY - circleRadius,
+        width: circleRadius * 2,
+        height: circleRadius * 2,
+        color: PRIMARY_COLOR,
+        borderColor: rgb(0.05, 0.4, 0.27),
+        borderWidth: 3,
+      });
+      
+      const scoreText = healthScore.toString();
+      const scoreWidth = helveticaBold.widthOfTextAtSize(scoreText, 32);
+      coverPage.drawText(scoreText, {
+        x: circleX - scoreWidth / 2,
+        y: circleY + 5,
+        size: 32,
         font: helveticaBold,
         color: rgb(1, 1, 1),
       });
       
-      console.log('✓ Cover page complete');
+      coverPage.drawText('/100', {
+        x: circleX - helveticaFont.widthOfTextAtSize('/100', 12) / 2,
+        y: circleY - 18,
+        size: 12,
+        font: helveticaFont,
+        color: rgb(0.9, 0.9, 0.9),
+      });
+      
+      // Health status text below score
+      const coverHealthStatus = analysisData.analysis.executiveSummary.overallHealth;
+      const coverStatusText = stripEmojis(coverHealthStatus.toUpperCase());
+      const coverStatusWidth = helveticaBold.widthOfTextAtSize(coverStatusText, 14);
+      coverPage.drawText(coverStatusText, {
+        x: (PAGE_WIDTH - coverStatusWidth) / 2,
+        y: PAGE_HEIGHT - 630,
+        size: 14,
+        font: helveticaBold,
+        color: PRIMARY_COLOR,
+      });
+      
+      // Bottom decorative bar with contact info
+      coverPage.drawRectangle({
+        x: 0,
+        y: 0,
+        width: PAGE_WIDTH,
+        height: 60,
+        color: rgb(0.95, 0.95, 0.95),
+      });
+      
+      // Contact info in footer
+      const contactInfo = globalSettings?.contactDetails;
+      if (contactInfo) {
+        const footerText = [contactInfo.phone, contactInfo.email, contactInfo.website].filter(Boolean).join('  |  ');
+        const footerWidth = helveticaFont.widthOfTextAtSize(footerText, 9);
+        coverPage.drawText(stripEmojis(footerText), {
+          x: (PAGE_WIDTH - footerWidth) / 2,
+          y: 25,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+      }
+      
+      console.log('✓ Enhanced cover page complete');
+      
+      // Define metrics early for TOC page numbers
+      const metrics = analysisData.portfolioMetrics;
+      
+      // ============= PHASE 5: TABLE OF CONTENTS =============
+      console.log('📝 Creating table of contents...');
+      const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      let tocY = PAGE_HEIGHT - MARGIN_TOP;
+      
+      // Header bar for TOC
+      tocPage.drawRectangle({
+        x: 0,
+        y: PAGE_HEIGHT - 40,
+        width: PAGE_WIDTH,
+        height: 40,
+        color: PRIMARY_COLOR,
+      });
+      
+      tocPage.drawText('TABLE OF CONTENTS', {
+        x: MARGIN_LEFT,
+        y: PAGE_HEIGHT - 27,
+        size: 12,
+        font: helveticaBold,
+        color: rgb(1, 1, 1),
+      });
+      
+      tocY -= 30;
+      
+      // TOC entries with page numbers
+      const tocEntries = [
+        { title: 'Executive Summary', page: 3 },
+        { title: 'Portfolio Overview', page: 3 },
+        { title: 'Portfolio Composition Analysis', page: metrics.smsfCount > 0 ? 5 : 4 },
+        { title: 'Property Cashflow Analysis', page: metrics.smsfCount > 0 ? 6 : 5 },
+        { title: 'Property Performance Rankings', page: metrics.smsfCount > 0 ? 7 : 6 },
+        { title: 'Financial Health Analysis', page: metrics.smsfCount > 0 ? 8 : 7 },
+        { title: 'Risk Assessment', page: metrics.smsfCount > 0 ? 8 : 7 },
+        { title: 'Growth Opportunities', page: metrics.smsfCount > 0 ? 9 : 8 },
+        { title: 'Portfolio Projections', page: metrics.smsfCount > 0 ? 9 : 8 },
+        { title: 'Strategic Recommendations', page: metrics.smsfCount > 0 ? 10 : 9 },
+        { title: 'Property Portfolio Details', page: metrics.smsfCount > 0 ? 11 : 10 },
+        { title: 'Disclaimer & Contact', page: metrics.smsfCount > 0 ? 12 : 11 },
+      ];
+      
+      if (metrics.smsfCount > 0) {
+        tocEntries.splice(2, 0, { title: 'SMSF Portfolio Summary', page: 4 });
+      }
+      
+      for (let i = 0; i < tocEntries.length; i++) {
+        const entry = tocEntries[i];
+        const entryY = tocY - (i * 28);
+        
+        // Section number
+        tocPage.drawText(`${i + 1}.`, {
+          x: MARGIN_LEFT,
+          y: entryY,
+          size: 11,
+          font: helveticaBold,
+          color: PRIMARY_COLOR,
+        });
+        
+        // Section title
+        tocPage.drawText(stripEmojis(entry.title), {
+          x: MARGIN_LEFT + 25,
+          y: entryY,
+          size: 11,
+          font: helveticaFont,
+          color: SECONDARY_COLOR,
+        });
+        
+        // Dotted line
+        const titleWidth = helveticaFont.widthOfTextAtSize(entry.title, 11);
+        const dotsStart = MARGIN_LEFT + 30 + titleWidth;
+        const dotsEnd = PAGE_WIDTH - MARGIN_RIGHT - 30;
+        const dotSpacing = 4;
+        
+        for (let dotX = dotsStart; dotX < dotsEnd; dotX += dotSpacing) {
+          tocPage.drawCircle({
+            x: dotX,
+            y: entryY + 3,
+            size: 0.5,
+            color: rgb(0.7, 0.7, 0.7),
+          });
+        }
+        
+        // Page number
+        tocPage.drawText(entry.page.toString(), {
+          x: PAGE_WIDTH - MARGIN_RIGHT - 15,
+          y: entryY,
+          size: 11,
+          font: helveticaBold,
+          color: PRIMARY_COLOR,
+        });
+      }
+      
+      // Note about report contents
+      const noteY = tocY - (tocEntries.length * 28) - 40;
+      tocPage.drawRectangle({
+        x: MARGIN_LEFT,
+        y: noteY - 50,
+        width: CONTENT_WIDTH,
+        height: 55,
+        color: rgb(0.97, 0.97, 0.97),
+        borderColor: rgb(0.9, 0.9, 0.9),
+        borderWidth: 1,
+      });
+      
+      tocPage.drawText('About This Report', {
+        x: MARGIN_LEFT + 10,
+        y: noteY - 15,
+        size: 10,
+        font: helveticaBold,
+        color: PRIMARY_COLOR,
+      });
+      
+      const aboutText = `This comprehensive portfolio analysis covers ${metrics.totalProperties} properties with a combined value of ${formatCurrency(metrics.totalValue)}. The analysis includes performance rankings, financial health assessment, risk evaluation, and strategic recommendations.`;
+      drawWrappedText(tocPage, aboutText, MARGIN_LEFT + 10, noteY - 30, CONTENT_WIDTH - 20, helveticaFont, 9, MUTED_COLOR);
+      
+      console.log('✓ Table of contents complete');
       
       // ============= PAGE 2: EXECUTIVE SUMMARY =============
       console.log('📝 Creating executive summary page...');
@@ -839,7 +1062,6 @@ export function PortfolioAnalysisPDFGenerator({
       // ============= PORTFOLIO OVERVIEW SECTION =============
       yPos = drawSectionHeader(page, 'Portfolio Overview', yPos);
       
-      const metrics = analysisData.portfolioMetrics;
       const kpiWidth = (CONTENT_WIDTH - 20) / 3;
       
       // Row 1: Total Value, Total Equity, Average LVR
@@ -1423,7 +1645,7 @@ export function PortfolioAnalysisPDFGenerator({
         { label: 'LVR Risk', value: financialHealth.lvrRisk },
       ];
       
-      const statusWidth = (CONTENT_WIDTH - 30) / 4;
+      const statusBoxWidth = (CONTENT_WIDTH - 30) / 4;
       let statusX = MARGIN_LEFT;
       
       for (const item of statusItems) {
@@ -1436,7 +1658,7 @@ export function PortfolioAnalysisPDFGenerator({
         page.drawRectangle({
           x: statusX,
           y: yPos - 45,
-          width: statusWidth,
+          width: statusBoxWidth,
           height: 50,
           color: rgb(0.97, 0.97, 0.97),
           borderColor: statusColor,
@@ -1460,7 +1682,7 @@ export function PortfolioAnalysisPDFGenerator({
           color: statusColor,
         });
         
-        statusX += statusWidth + 10;
+        statusX += statusBoxWidth + 10;
       }
       
       yPos -= 70;
@@ -1816,28 +2038,89 @@ The information in this report is current as of the generation date and may chan
         }
       }
       
-      // Add page numbers to all pages
+      // ============= PHASE 5: ENHANCED PAGE FOOTERS =============
       const totalPages = pdfDoc.getPageCount();
+      const footerCompanyName = globalSettings?.contactDetails?.company_name || '';
+      
       for (let i = 0; i < totalPages; i++) {
         const currentPage = pdfDoc.getPage(i);
         const pageNum = i + 1;
-        const pageText = `Page ${pageNum} of ${totalPages}`;
-        const pageNumWidth = helveticaFont.widthOfTextAtSize(pageText, 8);
         
+        // Skip footer on cover page (page 1)
+        if (i === 0) {
+          continue;
+        }
+        
+        // Header bar on content pages (not cover or TOC)
+        if (i > 1) {
+          currentPage.drawRectangle({
+            x: 0,
+            y: PAGE_HEIGHT - 35,
+            width: PAGE_WIDTH,
+            height: 35,
+            color: PRIMARY_COLOR,
+          });
+          
+          // Company name in header
+          if (footerCompanyName) {
+            currentPage.drawText(stripEmojis(footerCompanyName.toUpperCase()), {
+              x: MARGIN_LEFT,
+              y: PAGE_HEIGHT - 23,
+              size: 9,
+              font: helveticaBold,
+              color: rgb(1, 1, 1),
+            });
+          }
+          
+          // Page number in header right
+          const headerPageText = `Page ${pageNum}`;
+          const headerPageWidth = helveticaFont.widthOfTextAtSize(headerPageText, 9);
+          currentPage.drawText(headerPageText, {
+            x: PAGE_WIDTH - MARGIN_RIGHT - headerPageWidth,
+            y: PAGE_HEIGHT - 23,
+            size: 9,
+            font: helveticaFont,
+            color: rgb(0.9, 0.9, 0.9),
+          });
+        }
+        
+        // Footer
+        currentPage.drawLine({
+          start: { x: MARGIN_LEFT, y: 45 },
+          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: 45 },
+          thickness: 0.5,
+          color: rgb(0.85, 0.85, 0.85),
+        });
+        
+        // Page number centered
+        const pageText = `${pageNum} of ${totalPages}`;
+        const pageNumWidth = helveticaFont.widthOfTextAtSize(pageText, 8);
         currentPage.drawText(pageText, {
           x: (PAGE_WIDTH - pageNumWidth) / 2,
-          y: 25,
+          y: 28,
           size: 8,
           font: helveticaFont,
           color: MUTED_COLOR,
         });
         
-        // Footer line
-        currentPage.drawLine({
-          start: { x: MARGIN_LEFT, y: 40 },
-          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: 40 },
-          thickness: 0.5,
-          color: rgb(0.85, 0.85, 0.85),
+        // Confidential notice on left
+        currentPage.drawText('CONFIDENTIAL', {
+          x: MARGIN_LEFT,
+          y: 28,
+          size: 7,
+          font: helveticaFont,
+          color: rgb(0.75, 0.75, 0.75),
+        });
+        
+        // Client name on right
+        const clientFooter = stripEmojis(analysisData.clientName);
+        const clientFooterWidth = helveticaFont.widthOfTextAtSize(clientFooter, 7);
+        currentPage.drawText(clientFooter, {
+          x: PAGE_WIDTH - MARGIN_RIGHT - clientFooterWidth,
+          y: 28,
+          size: 7,
+          font: helveticaFont,
+          color: rgb(0.75, 0.75, 0.75),
         });
       }
       
