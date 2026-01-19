@@ -716,10 +716,15 @@ function generateHTMLContent(data: VownetPDFData): string {
   };
 
   const generateAssetsTable = () => {
-    // Filter out credit cards from assets
+    // Filter out credit cards from assets - check all relevant fields
     const filteredAssets = assets.filter(asset => {
       const type = (asset.asset_type || '').toLowerCase();
-      return !type.includes('credit') && !type.includes('card');
+      const desc = (asset.description || '').toLowerCase();
+      const institution = (asset.institution_name || '').toLowerCase();
+      const isCreditCard = type.includes('credit') || type.includes('card') ||
+                          desc.includes('credit') || desc.includes('card') ||
+                          institution.includes('credit') || institution.includes('card');
+      return !isCreditCard;
     });
     
     if (filteredAssets.length === 0) {
