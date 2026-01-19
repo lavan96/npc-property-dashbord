@@ -497,7 +497,17 @@ function generateHTMLContent(data: VownetPDFData): string {
   };
 
   // Generate investment property HTML for a single property
-  const generateInvestmentPropertyHTML = (prop: PropertyData, index: number) => `
+  // Helper to calculate weekly rental from monthly
+  const calculateWeeklyRental = (monthlyRental: number | null | undefined): number | null => {
+    if (monthlyRental === null || monthlyRental === undefined || monthlyRental === 0) return null;
+    return Math.round(monthlyRental / 4.33);
+  };
+
+  const generateInvestmentPropertyHTML = (prop: PropertyData, index: number) => {
+    // Calculate weekly rental from monthly if not provided
+    const weeklyRental = prop.weekly_rental_income || calculateWeeklyRental(prop.monthly_rental_income);
+    
+    return `
     <div class="property-card">
       <div class="section-header">
         <span class="section-header-text">📈 Investment Property ${index}</span>
@@ -530,7 +540,7 @@ function generateHTMLContent(data: VownetPDFData): string {
       </table>
       <div class="subsection-header">Income & Cashflow</div>
       <table class="data-table compact">
-        <tr><td class="label">Weekly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.weekly_rental_income)}</td></tr>
+        <tr><td class="label">Weekly Rental Income</td><td class="value currency income-value">${formatCurrency(weeklyRental)}</td></tr>
         <tr><td class="label">Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.monthly_rental_income)}</td></tr>
         <tr class="cashflow-row ${(prop.net_monthly_cashflow || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
           <td class="label"><strong>Net Monthly Cashflow</strong></td>
@@ -542,12 +552,17 @@ function generateHTMLContent(data: VownetPDFData): string {
       </table>
     </div>
   `;
+  };
 
   // ALL investment properties go to their own individual pages now
   // Each investment property gets a dedicated page for better readability
 
   // Generate SMSF property HTML for a single property
-  const generateSmsfPropertyHTML = (prop: PropertyData, index: number) => `
+  const generateSmsfPropertyHTML = (prop: PropertyData, index: number) => {
+    // Calculate weekly rental from monthly if not provided
+    const weeklyRental = prop.weekly_rental_income || calculateWeeklyRental(prop.monthly_rental_income);
+    
+    return `
     <div class="property-card smsf-card">
       <div class="section-header gold">
         <span class="section-header-text">🏛️ SMSF Property ${index}</span>
@@ -598,7 +613,7 @@ function generateHTMLContent(data: VownetPDFData): string {
       
       <div class="subsection-header">Income & Cashflow</div>
       <table class="data-table compact">
-        <tr><td class="label">Weekly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.weekly_rental_income)}</td></tr>
+        <tr><td class="label">Weekly Rental Income</td><td class="value currency income-value">${formatCurrency(weeklyRental)}</td></tr>
         <tr><td class="label">Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(prop.monthly_rental_income)}</td></tr>
         <tr class="cashflow-row ${(prop.net_monthly_cashflow || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
           <td class="label"><strong>Net Monthly Cashflow</strong></td>
@@ -610,6 +625,7 @@ function generateHTMLContent(data: VownetPDFData): string {
       </table>
     </div>
   `;
+  };
 
   // Calculate total pages dynamically
   // ALL investment properties now get their own individual page (one property per page)
@@ -811,14 +827,14 @@ function generateHTMLContent(data: VownetPDFData): string {
     `;
   };
 
-  // Properties summary rows
+  // Properties summary rows - show more of address
   const propertiesSummaryRows = properties.map(prop => `
     <tr>
-      <td>${prop.address?.substring(0, 30) || '-'}${(prop.address?.length || 0) > 30 ? '...' : ''}</td>
-      <td class="text-right">${formatCurrency(prop.value)}</td>
-      <td class="text-right">${formatCurrency(prop.loan_remaining)}</td>
-      <td class="text-right">${formatCurrency(prop.monthly_rental_income)}</td>
-      <td class="text-right ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td>
+      <td class="property-address-cell">${prop.address?.substring(0, 45) || '-'}${(prop.address?.length || 0) > 45 ? '...' : ''}</td>
+      <td class="text-right compact-col">${formatCurrency(prop.value)}</td>
+      <td class="text-right compact-col">${formatCurrency(prop.loan_remaining)}</td>
+      <td class="text-right compact-col">${formatCurrency(prop.monthly_rental_income)}</td>
+      <td class="text-right compact-col ${(prop.net_monthly_cashflow || 0) >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(prop.net_monthly_cashflow)}</td>
     </tr>
   `).join('');
 
@@ -1408,6 +1424,20 @@ function generateHTMLContent(data: VownetPDFData): string {
         .text-green { color: ${NPC_COLORS.success}; }
         .text-red { color: ${NPC_COLORS.danger}; }
         .mt-2 { margin-top: 12px; }
+        
+        /* Properties Overview Table - Smart column sizing */
+        .property-address-cell { 
+          max-width: 200px; 
+          word-wrap: break-word; 
+          font-size: 8pt;
+        }
+        .compact-col { 
+          white-space: nowrap; 
+          font-size: 8pt;
+          padding: 8px 6px !important;
+        }
+        .financial-table th:first-child { width: 40%; }
+        .financial-table th:not(:first-child) { width: 15%; }
       </style>
     </head>
     <body>
@@ -1461,7 +1491,18 @@ function generateHTMLContent(data: VownetPDFData): string {
             </div>
             <div class="column column-right">
               <div class="section">
-                <div class="section-header gold">Property (Owner Occupied)</div>
+                <div class="section-header gold">Address & Status</div>
+                <table class="data-table">
+                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
+                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
+                  <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
+                </table>
+              </div>
+              <div class="section">
+                <div class="section-header">Property (Owner Occupied)</div>
                 <table class="data-table">
                   <tr><td class="label">Address</td><td class="value">${ownerOccupied?.address || '-'}</td></tr>
                   <tr><td class="label">Value</td><td class="value currency">${formatCurrency(ownerOccupied?.value)}</td></tr>
@@ -1470,17 +1511,6 @@ function generateHTMLContent(data: VownetPDFData): string {
                   <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(ownerOccupied?.ownership_percentage)}</td></tr>
                   <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
-                </table>
-              </div>
-              <div class="section">
-                <div class="section-header">Address & Status</div>
-                <table class="data-table">
-                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
-                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
-                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
-                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
-                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
-                  <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
             </div>
@@ -1605,14 +1635,14 @@ function generateHTMLContent(data: VownetPDFData): string {
           <div class="summary-box">
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
             <table class="data-table alt-rows compact">
-              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income)}</td></tr>
-              <tr><td class="label">Total Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_rental_income)}</td></tr>
-              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure)}</td></tr>
-              <tr class="cashflow-row ${(client.net_monthly_cash_flow || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income || 0)}</td></tr>
+              <tr><td class="label">Total Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_rental_income || totalRental)}</td></tr>
+              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure || 0)}</td></tr>
+              <tr class="cashflow-row ${(client.net_monthly_cash_flow || totalNetCF || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
                 <td class="label"><strong>Net Monthly Cash Flow</strong></td>
                 <td class="value currency">
-                  ${getCashflowIndicator(client.net_monthly_cash_flow)}
-                  <strong>${formatCurrency(client.net_monthly_cash_flow)}</strong>
+                  ${getCashflowIndicator(client.net_monthly_cash_flow || totalNetCF)}
+                  <strong>${formatCurrency(client.net_monthly_cash_flow || totalNetCF)}</strong>
                 </td>
               </tr>
             </table>
