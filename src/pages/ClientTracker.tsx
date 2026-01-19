@@ -33,7 +33,9 @@ import {
   Download,
   Layers,
   ChevronDown,
-  GripVertical
+  GripVertical,
+  FileText,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -76,6 +78,15 @@ interface TrackedClient {
   current_pipeline_id: string | null;
   current_stage_id: string | null;
   opportunity_status: string | null;
+  is_active?: boolean;
+}
+
+interface ClientNote {
+  id: string;
+  client_id: string;
+  content: string;
+  note_type: string;
+  created_at: string;
 }
 
 // Fallback stages for when no pipelines are synced
@@ -132,12 +143,31 @@ export default function ClientTracker() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status')
+        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_active')
         .order('follow_up_date', { ascending: true, nullsFirst: false });
       
       if (error) throw error;
       return data as TrackedClient[];
     },
+  });
+
+  // Fetch active clients and their notes
+  const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
+
+  const { data: activeClientNotes = [], isLoading: notesLoading } = useQuery({
+    queryKey: ['active-client-notes', activeClients.map(c => c.id)],
+    queryFn: async () => {
+      if (activeClients.length === 0) return [];
+      const { data, error } = await supabase
+        .from('client_notes')
+        .select('*')
+        .in('client_id', activeClients.map(c => c.id))
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as ClientNote[];
+    },
+    enabled: activeClients.length > 0,
   });
 
   // State for drag and drop
@@ -576,6 +606,10 @@ export default function ClientTracker() {
             <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline View</TabsTrigger>
             <TabsTrigger value="table">Table View</TabsTrigger>
+            <TabsTrigger value="active" className="flex items-center gap-1">
+              <UserCheck className="h-3.5 w-3.5" />
+              Active Clients ({activeClients.length})
+            </TabsTrigger>
           </TabsList>
 
           {/* Kanban Board View */}
@@ -919,6 +953,103 @@ export default function ClientTracker() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Active Clients View */}
+          <TabsContent value="active" className="mt-4">
+            <div className="grid gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCheck className="h-5 w-5 text-primary" />
+                    Active Clients Notes
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    View notes for {activeClients.length} active clients
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {notesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : activeClients.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No active clients found
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {activeClients.map(client => {
+                        const clientNotes = activeClientNotes.filter(n => n.client_id === client.id);
+                        const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
+                        
+                        return (
+                          <div key={client.id} className="border rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="font-medium text-lg">
+                                  {client.primary_first_name} {client.primary_surname}
+                                </h3>
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                  {client.primary_email && (
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="h-3 w-3" />
+                                      {client.primary_email}
+                                    </span>
+                                  )}
+                                  {client.primary_mobile && (
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="h-3 w-3" />
+                                      {client.primary_mobile}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <Badge 
+                                style={{ 
+                                  backgroundColor: stageInfo.color + '20',
+                                  color: stageInfo.color,
+                                  borderColor: stageInfo.color 
+                                }}
+                                variant="outline"
+                              >
+                                {stageInfo.name}
+                              </Badge>
+                            </div>
+                            
+                            {clientNotes.length > 0 ? (
+                              <div className="space-y-2">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  Notes ({clientNotes.length})
+                                </p>
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  {clientNotes.map(note => (
+                                    <div 
+                                      key={note.id} 
+                                      className="bg-muted/50 rounded-md p-3 text-sm"
+                                    >
+                                      <p className="whitespace-pre-wrap">{note.content}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic">
+                                No notes for this client
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       )}

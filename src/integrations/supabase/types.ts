@@ -1449,6 +1449,7 @@ export type Database = {
           ghl_opportunity_id: string | null
           ghl_sync_status: string | null
           id: string
+          is_active: boolean | null
           is_favorite: boolean
           last_review_date: string | null
           living_situation: string | null
@@ -1500,6 +1501,7 @@ export type Database = {
           ghl_opportunity_id?: string | null
           ghl_sync_status?: string | null
           id?: string
+          is_active?: boolean | null
           is_favorite?: boolean
           last_review_date?: string | null
           living_situation?: string | null
@@ -1551,6 +1553,7 @@ export type Database = {
           ghl_opportunity_id?: string | null
           ghl_sync_status?: string | null
           id?: string
+          is_active?: boolean | null
           is_favorite?: boolean
           last_review_date?: string | null
           living_situation?: string | null
