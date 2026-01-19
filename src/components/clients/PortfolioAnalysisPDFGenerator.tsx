@@ -895,7 +895,399 @@ export function PortfolioAnalysisPDFGenerator({
         console.log('✓ SMSF summary page complete');
       }
       
-      // ============= PAGE 4: PROPERTY RANKINGS =============
+      // ============= PHASE 4: COMPOSITION ANALYSIS PAGE =============
+      console.log('📝 Creating composition analysis page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Portfolio Composition Analysis', yPos);
+      
+      const composition = analysisData.analysis.compositionAnalysis;
+      
+      // Diversification Score Visual (Progress Bar Style)
+      const drawScoreBar = (
+        page: PDFPage,
+        label: string,
+        score: number,
+        maxScore: number,
+        x: number,
+        y: number,
+        width: number
+      ): number => {
+        const barHeight = 20;
+        const percentage = Math.min(score / maxScore, 1);
+        const filledWidth = width * percentage;
+        
+        // Label
+        page.drawText(stripEmojis(label), {
+          x,
+          y: y + 5,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        // Background bar
+        page.drawRectangle({
+          x,
+          y: y - barHeight,
+          width,
+          height: barHeight,
+          color: rgb(0.93, 0.93, 0.93),
+        });
+        
+        // Filled bar
+        const barColor = percentage >= 0.7 ? SUCCESS_COLOR : percentage >= 0.4 ? WARNING_COLOR : DANGER_COLOR;
+        page.drawRectangle({
+          x,
+          y: y - barHeight,
+          width: filledWidth,
+          height: barHeight,
+          color: barColor,
+        });
+        
+        // Score text
+        const scoreText = `${score}/${maxScore}`;
+        page.drawText(scoreText, {
+          x: x + width + 10,
+          y: y - 14,
+          size: 11,
+          font: helveticaBold,
+          color: barColor,
+        });
+        
+        return y - barHeight - 20;
+      };
+      
+      // Diversification Score
+      yPos = drawScoreBar(page, 'Diversification Score', composition.diversificationScore, 100, MARGIN_LEFT, yPos, CONTENT_WIDTH - 80);
+      
+      yPos -= 10;
+      
+      // Asset Allocation
+      yPos = drawSubsectionHeader(page, 'Asset Allocation', yPos);
+      yPos -= 5;
+      yPos = drawFormattedText(page, composition.assetAllocation, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      yPos -= 15;
+      
+      // Property Mix Assessment
+      yPos = drawSubsectionHeader(page, 'Property Mix Assessment', yPos);
+      yPos -= 5;
+      yPos = drawFormattedText(page, composition.propertyMixAssessment, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      yPos -= 15;
+      
+      // Property Type Breakdown Visual
+      yPos = drawSubsectionHeader(page, 'Portfolio Breakdown by Type', yPos);
+      yPos -= 10;
+      
+      const investmentPercent = metrics.totalProperties > 0 
+        ? Math.round((metrics.investmentCount / metrics.totalProperties) * 100) 
+        : 0;
+      const ownerOccPercent = metrics.totalProperties > 0 
+        ? Math.round((metrics.ownerOccupiedCount / metrics.totalProperties) * 100) 
+        : 0;
+      const smsfPercent = metrics.totalProperties > 0 
+        ? Math.round((metrics.smsfCount / metrics.totalProperties) * 100) 
+        : 0;
+      
+      // Investment properties bar
+      const barWidth = CONTENT_WIDTH - 100;
+      
+      page.drawText('Investment', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 8,
+        font: helveticaFont,
+        color: MUTED_COLOR,
+      });
+      page.drawRectangle({
+        x: MARGIN_LEFT + 70,
+        y: yPos - 8,
+        width: barWidth,
+        height: 14,
+        color: rgb(0.93, 0.93, 0.93),
+      });
+      page.drawRectangle({
+        x: MARGIN_LEFT + 70,
+        y: yPos - 8,
+        width: barWidth * (investmentPercent / 100),
+        height: 14,
+        color: PRIMARY_COLOR,
+      });
+      page.drawText(`${investmentPercent}% (${metrics.investmentCount})`, {
+        x: MARGIN_LEFT + 75 + barWidth,
+        y: yPos - 5,
+        size: 8,
+        font: helveticaBold,
+        color: PRIMARY_COLOR,
+      });
+      yPos -= 22;
+      
+      // Owner Occupied bar
+      page.drawText('Owner Occ.', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 8,
+        font: helveticaFont,
+        color: MUTED_COLOR,
+      });
+      page.drawRectangle({
+        x: MARGIN_LEFT + 70,
+        y: yPos - 8,
+        width: barWidth,
+        height: 14,
+        color: rgb(0.93, 0.93, 0.93),
+      });
+      page.drawRectangle({
+        x: MARGIN_LEFT + 70,
+        y: yPos - 8,
+        width: barWidth * (ownerOccPercent / 100),
+        height: 14,
+        color: SUCCESS_COLOR,
+      });
+      page.drawText(`${ownerOccPercent}% (${metrics.ownerOccupiedCount})`, {
+        x: MARGIN_LEFT + 75 + barWidth,
+        y: yPos - 5,
+        size: 8,
+        font: helveticaBold,
+        color: SUCCESS_COLOR,
+      });
+      yPos -= 22;
+      
+      // SMSF bar
+      if (metrics.smsfCount > 0) {
+        page.drawText('SMSF', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 8,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawRectangle({
+          x: MARGIN_LEFT + 70,
+          y: yPos - 8,
+          width: barWidth,
+          height: 14,
+          color: rgb(0.93, 0.93, 0.93),
+        });
+        page.drawRectangle({
+          x: MARGIN_LEFT + 70,
+          y: yPos - 8,
+          width: barWidth * (smsfPercent / 100),
+          height: 14,
+          color: WARNING_COLOR,
+        });
+        page.drawText(`${smsfPercent}% (${metrics.smsfCount})`, {
+          x: MARGIN_LEFT + 75 + barWidth,
+          y: yPos - 5,
+          size: 8,
+          font: helveticaBold,
+          color: WARNING_COLOR,
+        });
+        yPos -= 22;
+      }
+      
+      yPos -= 15;
+      
+      // Composition Recommendations
+      if (composition.recommendations && composition.recommendations.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Composition Recommendations', yPos, PRIMARY_COLOR);
+        yPos -= 5;
+        yPos = drawBulletList(page, composition.recommendations, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+      }
+      
+      console.log('✓ Composition analysis page complete');
+      
+      // ============= PHASE 4: ENHANCED PROPERTY CASHFLOW TABLE =============
+      console.log('📝 Creating property cashflow details page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Property Cashflow Analysis', yPos);
+      
+      // Enhanced property cards with cashflow details
+      for (const prop of analysisData.propertyAnalyses) {
+        // Check for page break - each property card needs ~100px
+        if (needsNewPage(yPos, 100)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Property Cashflow Analysis (continued)', yPos);
+        }
+        
+        // Property card background
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - 80,
+          width: CONTENT_WIDTH,
+          height: 85,
+          color: rgb(0.98, 0.98, 0.98),
+          borderColor: rgb(0.9, 0.9, 0.9),
+          borderWidth: 1,
+        });
+        
+        // Property number badge
+        page.drawRectangle({
+          x: MARGIN_LEFT + 5,
+          y: yPos - 20,
+          width: 22,
+          height: 18,
+          color: PRIMARY_COLOR,
+        });
+        page.drawText(`${prop.propertyNumber}`, {
+          x: MARGIN_LEFT + 12,
+          y: yPos - 16,
+          size: 10,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+        
+        // Address
+        const truncatedAddress = prop.address.length > 50 ? prop.address.substring(0, 47) + '...' : prop.address;
+        page.drawText(stripEmojis(truncatedAddress), {
+          x: MARGIN_LEFT + 35,
+          y: yPos - 15,
+          size: 10,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        // Property type badge
+        page.drawText(stripEmojis(prop.propertyType), {
+          x: PAGE_WIDTH - MARGIN_RIGHT - 60,
+          y: yPos - 15,
+          size: 8,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        // Metrics row 1
+        const metricsY = yPos - 40;
+        const metricWidth = CONTENT_WIDTH / 5;
+        
+        // Value
+        page.drawText('Value', {
+          x: MARGIN_LEFT + 10,
+          y: metricsY + 10,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(formatCurrency(prop.value), {
+          x: MARGIN_LEFT + 10,
+          y: metricsY - 3,
+          size: 9,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        // Equity
+        page.drawText('Equity', {
+          x: MARGIN_LEFT + 10 + metricWidth,
+          y: metricsY + 10,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(formatCurrency(prop.equity), {
+          x: MARGIN_LEFT + 10 + metricWidth,
+          y: metricsY - 3,
+          size: 9,
+          font: helveticaBold,
+          color: SUCCESS_COLOR,
+        });
+        
+        // LVR
+        page.drawText('LVR', {
+          x: MARGIN_LEFT + 10 + metricWidth * 2,
+          y: metricsY + 10,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        const lvrValue = parseFloat(prop.lvr) || 0;
+        const lvrColor = lvrValue <= 60 ? SUCCESS_COLOR : lvrValue <= 80 ? WARNING_COLOR : DANGER_COLOR;
+        page.drawText(prop.lvr, {
+          x: MARGIN_LEFT + 10 + metricWidth * 2,
+          y: metricsY - 3,
+          size: 9,
+          font: helveticaBold,
+          color: lvrColor,
+        });
+        
+        // Yield
+        page.drawText('Gross Yield', {
+          x: MARGIN_LEFT + 10 + metricWidth * 3,
+          y: metricsY + 10,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(prop.grossYield, {
+          x: MARGIN_LEFT + 10 + metricWidth * 3,
+          y: metricsY - 3,
+          size: 9,
+          font: helveticaBold,
+          color: PRIMARY_COLOR,
+        });
+        
+        // Net Cashflow
+        page.drawText('Net Cashflow/mo', {
+          x: MARGIN_LEFT + 10 + metricWidth * 4,
+          y: metricsY + 10,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        const cfColor = prop.netMonthlyCashflow >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
+        const cfPrefix = prop.netMonthlyCashflow >= 0 ? '+' : '';
+        page.drawText(`${cfPrefix}${formatCurrency(prop.netMonthlyCashflow)}`, {
+          x: MARGIN_LEFT + 10 + metricWidth * 4,
+          y: metricsY - 3,
+          size: 9,
+          font: helveticaBold,
+          color: cfColor,
+        });
+        
+        // Portfolio contribution bar
+        const contributionY = metricsY - 25;
+        page.drawText('Portfolio Contribution:', {
+          x: MARGIN_LEFT + 10,
+          y: contributionY,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        const contributionPercent = parseFloat(prop.portfolioContribution) || 0;
+        const contribBarWidth = 150;
+        page.drawRectangle({
+          x: MARGIN_LEFT + 110,
+          y: contributionY - 5,
+          width: contribBarWidth,
+          height: 10,
+          color: rgb(0.9, 0.9, 0.9),
+        });
+        page.drawRectangle({
+          x: MARGIN_LEFT + 110,
+          y: contributionY - 5,
+          width: contribBarWidth * (contributionPercent / 100),
+          height: 10,
+          color: PRIMARY_COLOR,
+        });
+        page.drawText(prop.portfolioContribution, {
+          x: MARGIN_LEFT + 115 + contribBarWidth,
+          y: contributionY - 2,
+          size: 8,
+          font: helveticaBold,
+          color: PRIMARY_COLOR,
+        });
+        
+        yPos -= 95;
+      }
+      
+      console.log('✓ Property cashflow details page complete');
+      
+      // ============= PAGE: PROPERTY RANKINGS =============
       console.log('📝 Creating property rankings page...');
       page = addContentPage();
       yPos = PAGE_HEIGHT - MARGIN_TOP;
