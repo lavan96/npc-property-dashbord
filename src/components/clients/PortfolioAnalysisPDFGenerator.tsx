@@ -1204,26 +1204,29 @@ export function PortfolioAnalysisPDFGenerator({
       
       // Note about report contents
       const noteY = tocY - (tocEntries.length * 28) - 40;
+      const aboutBoxPadding = 14;
+      const aboutBoxHeight = 75;
+      
       tocPage.drawRectangle({
         x: MARGIN_LEFT,
-        y: noteY - 50,
+        y: noteY - aboutBoxHeight,
         width: CONTENT_WIDTH,
-        height: 55,
+        height: aboutBoxHeight,
         color: rgb(0.99, 0.98, 0.93), // Gold tint
         borderColor: NPC_GOLD_LIGHT,
         borderWidth: 1,
       });
       
       tocPage.drawText('About This Report', {
-        x: MARGIN_LEFT + 10,
-        y: noteY - 15,
+        x: MARGIN_LEFT + aboutBoxPadding,
+        y: noteY - 20,
         size: 10,
         font: helveticaBold,
         color: PRIMARY_COLOR,
       });
       
       const aboutText = `This comprehensive portfolio analysis covers ${metrics.totalProperties} properties with a combined value of ${formatCurrency(metrics.totalValue)}. The analysis includes performance rankings, financial health assessment, risk evaluation, and strategic recommendations.`;
-      drawWrappedText(tocPage, aboutText, MARGIN_LEFT + 10, noteY - 30, CONTENT_WIDTH - 20, helveticaFont, 9, MUTED_COLOR);
+      drawWrappedText(tocPage, aboutText, MARGIN_LEFT + aboutBoxPadding, noteY - 38, CONTENT_WIDTH - (aboutBoxPadding * 2), helveticaFont, 9, MUTED_COLOR, 1.6);
       
       console.log('✓ Table of contents complete');
       
