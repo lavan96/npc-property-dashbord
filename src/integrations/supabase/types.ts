@@ -1444,9 +1444,11 @@ export type Database = {
           ghl_sync_status: string | null
           id: string
           is_favorite: boolean
+          last_review_date: string | null
           living_situation: string | null
           marital_status: string | null
           net_monthly_cash_flow: number | null
+          next_review_due: string | null
           notes: string | null
           primary_dob: string | null
           primary_email: string | null
@@ -1456,6 +1458,7 @@ export type Database = {
           primary_mobile: string | null
           primary_surname: string
           residential_status: string | null
+          review_frequency: string | null
           secondary_dob: string | null
           secondary_email: string | null
           secondary_first_name: string | null
@@ -1481,9 +1484,11 @@ export type Database = {
           ghl_sync_status?: string | null
           id?: string
           is_favorite?: boolean
+          last_review_date?: string | null
           living_situation?: string | null
           marital_status?: string | null
           net_monthly_cash_flow?: number | null
+          next_review_due?: string | null
           notes?: string | null
           primary_dob?: string | null
           primary_email?: string | null
@@ -1493,6 +1498,7 @@ export type Database = {
           primary_mobile?: string | null
           primary_surname: string
           residential_status?: string | null
+          review_frequency?: string | null
           secondary_dob?: string | null
           secondary_email?: string | null
           secondary_first_name?: string | null
@@ -1518,9 +1524,11 @@ export type Database = {
           ghl_sync_status?: string | null
           id?: string
           is_favorite?: boolean
+          last_review_date?: string | null
           living_situation?: string | null
           marital_status?: string | null
           net_monthly_cash_flow?: number | null
+          next_review_due?: string | null
           notes?: string | null
           primary_dob?: string | null
           primary_email?: string | null
@@ -1530,6 +1538,7 @@ export type Database = {
           primary_mobile?: string | null
           primary_surname?: string
           residential_status?: string | null
+          review_frequency?: string | null
           secondary_dob?: string | null
           secondary_email?: string | null
           secondary_first_name?: string | null
@@ -2741,6 +2750,102 @@ export type Database = {
           {
             foreignKeyName: "permission_invite_tokens_invited_by_fkey"
             columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_reviews: {
+        Row: {
+          action_items: Json | null
+          cash_flow_score: number | null
+          client_id: string
+          created_at: string
+          data_completeness_score: number | null
+          data_issues: Json | null
+          executive_summary: string | null
+          growth_potential: number | null
+          id: string
+          key_findings: Json | null
+          next_review_due: string | null
+          notes: string | null
+          overall_score: number | null
+          portfolio_health: number | null
+          property_scores: Json | null
+          recommendations: Json | null
+          review_date: string
+          review_frequency: string
+          reviewer_id: string | null
+          risk_level: string | null
+          scenarios: Json | null
+          status: string
+          updated_at: string
+          validation_flags: Json | null
+        }
+        Insert: {
+          action_items?: Json | null
+          cash_flow_score?: number | null
+          client_id: string
+          created_at?: string
+          data_completeness_score?: number | null
+          data_issues?: Json | null
+          executive_summary?: string | null
+          growth_potential?: number | null
+          id?: string
+          key_findings?: Json | null
+          next_review_due?: string | null
+          notes?: string | null
+          overall_score?: number | null
+          portfolio_health?: number | null
+          property_scores?: Json | null
+          recommendations?: Json | null
+          review_date?: string
+          review_frequency: string
+          reviewer_id?: string | null
+          risk_level?: string | null
+          scenarios?: Json | null
+          status?: string
+          updated_at?: string
+          validation_flags?: Json | null
+        }
+        Update: {
+          action_items?: Json | null
+          cash_flow_score?: number | null
+          client_id?: string
+          created_at?: string
+          data_completeness_score?: number | null
+          data_issues?: Json | null
+          executive_summary?: string | null
+          growth_potential?: number | null
+          id?: string
+          key_findings?: Json | null
+          next_review_due?: string | null
+          notes?: string | null
+          overall_score?: number | null
+          portfolio_health?: number | null
+          property_scores?: Json | null
+          recommendations?: Json | null
+          review_date?: string
+          review_frequency?: string
+          reviewer_id?: string | null
+          risk_level?: string | null
+          scenarios?: Json | null
+          status?: string
+          updated_at?: string
+          validation_flags?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
             isOneToOne: false
             referencedRelation: "custom_users"
             referencedColumns: ["id"]
