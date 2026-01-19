@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { 
   Search, 
@@ -32,7 +32,8 @@ import {
   Loader2,
   Download,
   Layers,
-  ChevronDown
+  ChevronDown,
+  GripVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -139,6 +140,10 @@ export default function ClientTracker() {
     },
   });
 
+  // State for drag and drop
+  const [draggedClient, setDraggedClient] = useState<TrackedClient | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+
   // Update client mutation
   const updateClientMutation = useMutation({
     mutationFn: async (client: Partial<TrackedClient> & { id: string }) => {
@@ -167,6 +172,84 @@ export default function ClientTracker() {
       toast.error(error.message);
     },
   });
+
+  // Move client to different stage mutation (silent, no toast on success)
+  const moveClientMutation = useMutation({
+    mutationFn: async ({ clientId, stageId, stageName }: { clientId: string; stageId: string | null; stageName: string }) => {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          current_stage_id: stageId,
+          pipeline_status: stageName,
+        })
+        .eq('id', clientId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to move client: ${error.message}`);
+    },
+  });
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, client: TrackedClient) => {
+    setDraggedClient(client);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', client.id);
+    // Add a slight delay to show the dragging state
+    setTimeout(() => {
+      const element = e.target as HTMLElement;
+      element.style.opacity = '0.5';
+    }, 0);
+  }, []);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    setDraggedClient(null);
+    setDragOverStageId(null);
+    const element = e.target as HTMLElement;
+    element.style.opacity = '1';
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverStageId(stageId);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if leaving the drop zone entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverStageId(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, stageId: string | null, stageName: string) => {
+    e.preventDefault();
+    setDragOverStageId(null);
+    
+    if (!draggedClient) return;
+    
+    // Don't do anything if dropping on same stage
+    if (draggedClient.current_stage_id === stageId) {
+      setDraggedClient(null);
+      return;
+    }
+    
+    moveClientMutation.mutate({
+      clientId: draggedClient.id,
+      stageId,
+      stageName,
+    });
+    
+    setDraggedClient(null);
+  }, [draggedClient, moveClientMutation]);
+
+  // Check if drag and drop should be enabled (only for specific pipeline, not "All Pipelines")
+  const isDragDropEnabled = selectedPipelineId !== 'all';
 
   // Get stages for selected pipeline
   const stagesForPipeline = useMemo(() => {
@@ -465,14 +548,38 @@ export default function ClientTracker() {
 
           {/* Kanban Board View */}
           <TabsContent value="kanban" className="mt-4">
-            <ScrollArea className="w-full">
-              <div className="flex gap-4 pb-4 min-w-max">
+            {/* Drag and drop hint */}
+            {isDragDropEnabled && (
+              <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+                <GripVertical className="h-3 w-3" />
+                Drag cards to move opportunities between stages
+              </p>
+            )}
+            {!isDragDropEnabled && stagesForPipeline.length > 0 && (
+              <p className="text-xs text-muted-foreground mb-3">
+                Select a specific pipeline to enable drag-and-drop between stages
+              </p>
+            )}
+            
+            <ScrollArea className="w-full whitespace-nowrap">
+              <div className="flex gap-4 pb-4">
                 {/* Render stages in order */}
                 {stagesForPipeline.map(stage => {
                   const stageClients = groupedByStage[stage.id] || [];
+                  const isDragOver = dragOverStageId === stage.id;
+                  
                   return (
-                    <div key={stage.id} className="flex-shrink-0 w-80">
-                      <Card className="h-full">
+                    <div 
+                      key={stage.id} 
+                      className="flex-shrink-0 w-80"
+                      onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, stage.id) : undefined}
+                      onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
+                      onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
+                    >
+                      <Card className={cn(
+                        "h-full transition-all duration-200",
+                        isDragOver && isDragDropEnabled && "ring-2 ring-primary/50 bg-primary/5"
+                      )}>
                         <CardHeader className="py-3 px-4">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -488,10 +595,16 @@ export default function ClientTracker() {
                           </div>
                         </CardHeader>
                         <CardContent className="px-3 pb-3">
-                          <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                          <div className={cn(
+                            "space-y-2 max-h-[500px] overflow-y-auto min-h-[100px]",
+                            isDragOver && isDragDropEnabled && "bg-primary/5 rounded-md"
+                          )}>
                             {stageClients.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground text-sm">
-                                No clients
+                              <div className={cn(
+                                "text-center py-8 text-muted-foreground text-sm",
+                                isDragOver && isDragDropEnabled && "text-primary font-medium"
+                              )}>
+                                {isDragOver && isDragDropEnabled ? 'Drop here' : 'No clients'}
                               </div>
                             ) : (
                               stageClients.map(client => (
@@ -500,6 +613,10 @@ export default function ClientTracker() {
                                   client={client} 
                                   formatCurrency={formatCurrency}
                                   onEdit={() => setEditingClient(client)}
+                                  isDraggable={isDragDropEnabled}
+                                  onDragStart={(e) => handleDragStart(e, client)}
+                                  onDragEnd={handleDragEnd}
+                                  isDragging={draggedClient?.id === client.id}
                                 />
                               ))
                             )}
@@ -511,9 +628,17 @@ export default function ClientTracker() {
                 })}
 
                 {/* Unassigned column */}
-                {groupedByStage['unassigned']?.length > 0 && (
-                  <div className="flex-shrink-0 w-80">
-                    <Card className="h-full border-dashed">
+                {(groupedByStage['unassigned']?.length > 0 || isDragDropEnabled) && (
+                  <div 
+                    className="flex-shrink-0 w-80"
+                    onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, 'unassigned') : undefined}
+                    onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
+                    onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
+                  >
+                    <Card className={cn(
+                      "h-full border-dashed transition-all duration-200",
+                      dragOverStageId === 'unassigned' && isDragDropEnabled && "ring-2 ring-primary/50 bg-primary/5"
+                    )}>
                       <CardHeader className="py-3 px-4">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
@@ -521,26 +646,43 @@ export default function ClientTracker() {
                             Unassigned
                           </CardTitle>
                           <Badge variant="secondary" className="text-xs">
-                            {groupedByStage['unassigned'].length}
+                            {groupedByStage['unassigned']?.length || 0}
                           </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="px-3 pb-3">
-                        <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                          {groupedByStage['unassigned'].map(client => (
-                            <KanbanCard 
-                              key={client.id} 
-                              client={client} 
-                              formatCurrency={formatCurrency}
-                              onEdit={() => setEditingClient(client)}
-                            />
-                          ))}
+                        <div className={cn(
+                          "space-y-2 max-h-[500px] overflow-y-auto min-h-[100px]",
+                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/5 rounded-md"
+                        )}>
+                          {!groupedByStage['unassigned']?.length ? (
+                            <div className={cn(
+                              "text-center py-8 text-muted-foreground text-sm",
+                              dragOverStageId === 'unassigned' && isDragDropEnabled && "text-primary font-medium"
+                            )}>
+                              {dragOverStageId === 'unassigned' && isDragDropEnabled ? 'Drop here' : 'No clients'}
+                            </div>
+                          ) : (
+                            groupedByStage['unassigned'].map(client => (
+                              <KanbanCard 
+                                key={client.id} 
+                                client={client} 
+                                formatCurrency={formatCurrency}
+                                onEdit={() => setEditingClient(client)}
+                                isDraggable={isDragDropEnabled}
+                                onDragStart={(e) => handleDragStart(e, client)}
+                                onDragEnd={handleDragEnd}
+                                isDragging={draggedClient?.id === client.id}
+                              />
+                            ))
+                          )}
                         </div>
                       </CardContent>
                     </Card>
                   </div>
                 )}
               </div>
+              <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </TabsContent>
 
@@ -777,22 +919,46 @@ interface KanbanCardProps {
   client: TrackedClient;
   formatCurrency: (value: number | null) => string;
   onEdit: () => void;
+  isDraggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+  isDragging?: boolean;
 }
 
-function KanbanCard({ client, formatCurrency, onEdit }: KanbanCardProps) {
+function KanbanCard({ 
+  client, 
+  formatCurrency, 
+  onEdit, 
+  isDraggable = false,
+  onDragStart,
+  onDragEnd,
+  isDragging = false
+}: KanbanCardProps) {
   const isOverdue = client.follow_up_date && new Date(client.follow_up_date) < new Date();
   
   return (
     <Card 
-      className="p-3 cursor-pointer hover:shadow-md transition-shadow bg-card"
+      className={cn(
+        "p-3 cursor-pointer hover:shadow-md transition-all duration-200 bg-card",
+        isDraggable && "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 scale-95 ring-2 ring-primary/50"
+      )}
       onClick={onEdit}
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="font-medium text-sm line-clamp-1">
-          {client.primary_first_name} {client.primary_surname}
-        </h4>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {isDraggable && (
+            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          )}
+          <h4 className="font-medium text-sm line-clamp-1">
+            {client.primary_first_name} {client.primary_surname}
+          </h4>
+        </div>
         {isOverdue && (
-          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0">
             Overdue
           </Badge>
         )}
