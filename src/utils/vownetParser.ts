@@ -28,27 +28,37 @@ function parseCurrency(value: any): number {
     // Handle "Paid Off", "N/A", "-" etc.
     if (/^(paid off|n\/a|nil|none|-|—)$/i.test(str)) return 0;
     
-    // Handle "Million" notation (e.g., "1.15Million" → 1150000)
-    const millionMatch = str.match(/^[\$]?\s*([\d.,]+)\s*million/i);
+    // Handle parenthetical negatives (e.g., "($500)" → -500)
+    const parenMatch = str.match(/^\([\$]?\s*([\d.,]+)\s*\)$/);
+    if (parenMatch) {
+      const num = parseFloat(parenMatch[1].replace(/,/g, ''));
+      return isNaN(num) ? 0 : -num;
+    }
+    
+    // Handle "Million" notation (e.g., "1.15Million", "$1.15 million" → 1150000)
+    const millionMatch = str.match(/[\$]?\s*([\d.,]+)\s*million/i);
     if (millionMatch) {
       const num = parseFloat(millionMatch[1].replace(/,/g, ''));
       return isNaN(num) ? 0 : num * 1000000;
     }
     
-    // Handle "K" notation (e.g., "950K" → 950000, "85k" → 85000)
-    const kMatch = str.match(/^[\$]?\s*([\d.,]+)\s*k(?:\s|$|-|–)/i);
+    // Handle "K" notation more flexibly (e.g., "950K", "680K - Cbus", "$85k", "950k")
+    // Match number followed by K, regardless of what comes after
+    const kMatch = str.match(/[\$]?\s*([\d.,]+)\s*k\b/i);
     if (kMatch) {
       const num = parseFloat(kMatch[1].replace(/,/g, ''));
       return isNaN(num) ? 0 : num * 1000;
     }
     
-    // Handle range values (e.g., "120-130" → take midpoint 125)
+    // Handle range values (e.g., "120-130 Excl Super" → take midpoint, assume thousands)
     const rangeMatch = str.match(/^[\$]?\s*([\d.,]+)\s*[-–]\s*([\d.,]+)/);
     if (rangeMatch) {
       const low = parseFloat(rangeMatch[1].replace(/,/g, ''));
       const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
       if (!isNaN(low) && !isNaN(high)) {
-        return (low + high) / 2 * 1000; // Assume it's in thousands if no suffix
+        // If values are small (<500), likely in thousands
+        const midpoint = (low + high) / 2;
+        return midpoint < 500 ? midpoint * 1000 : midpoint;
       }
     }
     
@@ -73,6 +83,70 @@ function parseCurrency(value: any): number {
     }
   }
   return 0;
+}
+
+// Helper to extract institution name from combined text (e.g., "680K - Cbus" → "Cbus")
+function extractInstitutionFromCombinedText(value: any): string | null {
+  if (!value || typeof value !== 'string') return null;
+  const str = value.trim();
+  
+  // Pattern: "Amount - Institution" (e.g., "680K - Cbus", "950K - ANZ")
+  const dashMatch = str.match(/[\d.,]+\s*[kKmM]?\s*[-–]\s*(.+)/);
+  if (dashMatch) {
+    return dashMatch[1].trim();
+  }
+  
+  // Pattern: "Institution Amount" or "Amount Institution" without dash
+  // Only extract if there's clearly text after the number
+  const textAfterNum = str.match(/[\d.,]+\s*[kKmM]?\s+([a-zA-Z].+)/);
+  if (textAfterNum) {
+    return textAfterNum[1].trim();
+  }
+  
+  return null;
+}
+
+// Helper to validate if a value looks like it belongs in a text field (not a currency/number)
+// Returns null if the value appears to be contaminated data (e.g., "950K - ANZ" in living situation)
+function validateTextField(value: any, fieldType: 'livingSituation' | 'residentialStatus' | 'maritalStatus' | 'gender' | 'generic'): string | null {
+  if (!value) return null;
+  const str = value.toString().trim();
+  
+  // If it looks like a currency value (e.g., "950K - ANZ", "$500,000"), it's contaminated
+  if (/^\$?\d+[\d.,]*\s*[kKmM]?\s*[-–]/.test(str) || /^\$[\d,]+/.test(str)) {
+    console.warn(`Data contamination detected in ${fieldType} field: "${str}"`);
+    return null;
+  }
+  
+  // Validate based on field type
+  switch (fieldType) {
+    case 'livingSituation':
+      // Valid values: Own, Rent, Boarding, Living with Parents, etc.
+      if (/^(own|rent|board|living|lease|mortgage)/i.test(str)) return str;
+      if (str.length < 50 && !/\d{3,}/.test(str)) return str; // Short text without large numbers
+      return null;
+      
+    case 'residentialStatus':
+      // Valid values: Citizen, Permanent Resident, Visa Holder, etc.
+      if (/^(citizen|resident|visa|temporary|permanent)/i.test(str)) return str;
+      if (str.length < 50 && !/\d{3,}/.test(str)) return str;
+      return null;
+      
+    case 'maritalStatus':
+      // Valid values: Single, Married, De Facto, Divorced, Widowed, etc.
+      if (/^(single|married|de facto|defacto|divorced|separated|widowed|partnered)/i.test(str)) return str;
+      if (str.length < 30 && !/\d/.test(str)) return str;
+      return null;
+      
+    case 'gender':
+      // Valid values: Male, Female, Other, etc.
+      if (/^(male|female|other|m|f|non-binary)/i.test(str)) return str;
+      if (str.length < 20 && !/\d/.test(str)) return str;
+      return null;
+      
+    default:
+      return str;
+  }
 }
 
 // Helper to parse percentage values with enhanced handling
@@ -268,7 +342,7 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
     address.country = getCellValue(sheet, `B${countryRow}`);
   }
 
-  // Parse family relations
+  // Parse family relations with validation for data contamination
   const family: ParsedFamilyRelations = {
     maritalStatus: null,
     dependentsCount: 0
@@ -276,7 +350,8 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
   
   const maritalRow = findRowByLabel(sheet, 'marital');
   if (maritalRow) {
-    family.maritalStatus = getCellValue(sheet, `B${maritalRow}`);
+    const rawMarital = getCellValue(sheet, `B${maritalRow}`);
+    family.maritalStatus = validateTextField(rawMarital, 'maritalStatus');
   }
   
   const dependentsRow = findRowByLabel(sheet, 'dependent');
@@ -285,11 +360,19 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
     family.dependentsCount = typeof depValue === 'number' ? depValue : parseInt(depValue) || 0;
   }
 
-  // Residential status
+  // Residential status with validation
   let residentialStatus: string | undefined;
   const residentialRow = findRowByLabel(sheet, 'residential status');
   if (residentialRow) {
-    residentialStatus = getCellValue(sheet, `B${residentialRow}`);
+    const rawResidential = getCellValue(sheet, `B${residentialRow}`);
+    residentialStatus = validateTextField(rawResidential, 'residentialStatus') || undefined;
+  }
+  
+  // Living situation with validation (often stored near address)
+  const livingSituationRow = findRowByLabel(sheet, 'living situation') || findRowByLabel(sheet, 'housing');
+  if (livingSituationRow) {
+    const rawLiving = getCellValue(sheet, `B${livingSituationRow}`);
+    address.livingSituation = validateTextField(rawLiving, 'livingSituation');
   }
 
   return { primary, secondary, address, family, residentialStatus };
@@ -477,19 +560,33 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
     }
   }
 
-  // Parse savings accounts
+  // Parse savings accounts - handle combined text like "950K - ANZ"
   const savingsRow = findRowByLabel(sheet, 'savings');
   if (savingsRow) {
     for (let offset = 0; offset <= 10; offset++) {
       const label = getCellValue(sheet, `A${savingsRow + offset}`)?.toString().toLowerCase() || '';
-      const value = getCellValue(sheet, `B${savingsRow + offset}`);
+      const cellValue = getCellValue(sheet, `B${savingsRow + offset}`);
+      
+      // Check for combined value+institution format
+      if (cellValue && typeof cellValue === 'string') {
+        const combinedInstitution = extractInstitutionFromCombinedText(cellValue);
+        const amount = parseCurrency(cellValue);
+        if (combinedInstitution && amount > 0) {
+          assets.push({
+            assetType: 'savings',
+            institutionName: combinedInstitution,
+            value: amount
+          });
+          continue;
+        }
+      }
       
       if (label.includes('bank') || label.includes('institution')) {
         const amount = getCellValue(sheet, `B${savingsRow + offset + 1}`);
-        if (value || parseCurrency(amount) > 0) {
+        if (cellValue || parseCurrency(amount) > 0) {
           assets.push({
             assetType: 'savings',
-            institutionName: value,
+            institutionName: cellValue,
             value: parseCurrency(amount)
           });
         }
@@ -497,21 +594,38 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
     }
   }
 
-  // Parse superannuation
+  // Parse superannuation - handle combined text like "680K - Cbus"
   const superRow = findRowByLabel(sheet, 'superannuation') || findRowByLabel(sheet, 'superfund');
   if (superRow) {
     let institutionName: string | undefined;
     let value = 0;
 
-    for (let offset = 0; offset <= 5; offset++) {
+    for (let offset = 0; offset <= 8; offset++) {
       const label = getCellValue(sheet, `A${superRow + offset}`)?.toString().toLowerCase() || '';
       const cellValue = getCellValue(sheet, `B${superRow + offset}`);
       
       if (label.includes('fund') || label.includes('provider') || label.includes('institution')) {
         institutionName = cellValue;
       }
-      if (label.includes('balance') || label.includes('value')) {
+      if (label.includes('balance') || label.includes('value') || label.includes('super')) {
+        // Check if it's combined text (e.g., "680K - Cbus")
+        const combinedInstitution = extractInstitutionFromCombinedText(cellValue);
+        if (combinedInstitution && !institutionName) {
+          institutionName = combinedInstitution;
+        }
         value = parseCurrency(cellValue);
+      }
+    }
+    
+    // Also check the cell right next to "Superfund" label for combined values
+    if (value === 0) {
+      const directValue = getCellValue(sheet, `B${superRow}`);
+      if (directValue) {
+        value = parseCurrency(directValue);
+        const combinedInstitution = extractInstitutionFromCombinedText(directValue);
+        if (combinedInstitution && !institutionName) {
+          institutionName = combinedInstitution;
+        }
       }
     }
 
@@ -527,11 +641,57 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
   return assets;
 }
 
-// Parse liabilities
+// Parse liabilities - enhanced to handle combined text like "5k Credit Card"
 function parseLiabilities(sheet: XLSX.WorkSheet): ParsedLiability[] {
   const liabilities: ParsedLiability[] = [];
 
-  // Credit cards
+  // First, scan for any combined text liabilities in common locations
+  // Pattern: "5k Credit Card", "10k Car Loan", etc.
+  for (let row = 1; row <= 200; row++) {
+    for (const col of ['A', 'B', 'E', 'F']) {
+      const cellValue = getCellValue(sheet, `${col}${row}`);
+      if (cellValue && typeof cellValue === 'string') {
+        const str = cellValue.toLowerCase();
+        
+        // Check for combined credit card text (e.g., "5k credit card")
+        if (str.includes('credit card') && /\d+\s*k?\b/i.test(str)) {
+          const amount = parseCurrency(cellValue);
+          if (amount > 0) {
+            // Check if we haven't already added this
+            const exists = liabilities.some(l => 
+              l.liabilityType === 'credit_card' && Math.abs(l.currentBalance - amount) < 100
+            );
+            if (!exists) {
+              liabilities.push({
+                liabilityType: 'credit_card',
+                currentBalance: amount,
+                monthlyRepayment: 0
+              });
+            }
+          }
+        }
+        
+        // Check for combined car/vehicle loan text
+        if ((str.includes('car loan') || str.includes('vehicle loan')) && /\d+\s*k?\b/i.test(str)) {
+          const amount = parseCurrency(cellValue);
+          if (amount > 0) {
+            const exists = liabilities.some(l => 
+              l.liabilityType === 'vehicle_loan' && Math.abs(l.currentBalance - amount) < 100
+            );
+            if (!exists) {
+              liabilities.push({
+                liabilityType: 'vehicle_loan',
+                currentBalance: amount,
+                monthlyRepayment: 0
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Credit cards - structured parsing
   const creditCardRow = findRowByLabel(sheet, 'credit card');
   if (creditCardRow) {
     for (let cardNum = 1; cardNum <= 4; cardNum++) {
@@ -567,14 +727,20 @@ function parseLiabilities(sheet: XLSX.WorkSheet): ParsedLiability[] {
         }
 
         if (currentBalance > 0 || creditLimit) {
-          liabilities.push({
-            liabilityType: 'credit_card',
-            providerName,
-            currentBalance,
-            creditLimit,
-            interestRate,
-            monthlyRepayment
-          });
+          // Check for duplicates from combined text scan
+          const exists = liabilities.some(l => 
+            l.liabilityType === 'credit_card' && Math.abs(l.currentBalance - currentBalance) < 100
+          );
+          if (!exists) {
+            liabilities.push({
+              liabilityType: 'credit_card',
+              providerName,
+              currentBalance,
+              creditLimit,
+              interestRate,
+              monthlyRepayment
+            });
+          }
         }
       }
     }

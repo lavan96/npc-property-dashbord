@@ -121,27 +121,35 @@ function parseCurrency(value: any): number {
     // Handle "Paid Off", "N/A", "-" etc.
     if (/^(paid off|n\/a|nil|none|-|—)$/i.test(str)) return 0;
     
-    // Handle "Million" notation (e.g., "1.15Million" → 1150000)
-    const millionMatch = str.match(/^[\$]?\s*([\d.,]+)\s*million/i);
+    // Handle parenthetical negatives (e.g., "($500)" → -500)
+    const parenMatch = str.match(/^\([\$]?\s*([\d.,]+)\s*\)$/);
+    if (parenMatch) {
+      const num = parseFloat(parenMatch[1].replace(/,/g, ''));
+      return isNaN(num) ? 0 : -num;
+    }
+    
+    // Handle "Million" notation (e.g., "1.15Million", "$1.15 million" → 1150000)
+    const millionMatch = str.match(/[\$]?\s*([\d.,]+)\s*million/i);
     if (millionMatch) {
       const num = parseFloat(millionMatch[1].replace(/,/g, ''));
       return isNaN(num) ? 0 : num * 1000000;
     }
     
-    // Handle "K" notation (e.g., "950K" → 950000, "85k" → 85000)
-    const kMatch = str.match(/^[\$]?\s*([\d.,]+)\s*k(?:\s|$|-|–)/i);
+    // Handle "K" notation more flexibly (e.g., "950K", "680K - Cbus", "$85k", "950k")
+    const kMatch = str.match(/[\$]?\s*([\d.,]+)\s*k\b/i);
     if (kMatch) {
       const num = parseFloat(kMatch[1].replace(/,/g, ''));
       return isNaN(num) ? 0 : num * 1000;
     }
     
-    // Handle range values (e.g., "120-130" → take midpoint 125)
+    // Handle range values (e.g., "120-130 Excl Super" → take midpoint, assume thousands)
     const rangeMatch = str.match(/^[\$]?\s*([\d.,]+)\s*[-–]\s*([\d.,]+)/);
     if (rangeMatch) {
       const low = parseFloat(rangeMatch[1].replace(/,/g, ''));
       const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
       if (!isNaN(low) && !isNaN(high)) {
-        return (low + high) / 2 * 1000; // Assume it's in thousands if no suffix
+        const midpoint = (low + high) / 2;
+        return midpoint < 500 ? midpoint * 1000 : midpoint;
       }
     }
     
@@ -164,6 +172,26 @@ function parseCurrency(value: any): number {
     }
   }
   return 0;
+}
+
+// Helper to extract institution name from combined text (e.g., "680K - Cbus" → "Cbus")
+function extractInstitutionFromCombinedText(value: any): string | null {
+  if (!value || typeof value !== 'string') return null;
+  const str = value.trim();
+  
+  // Pattern: "Amount - Institution" (e.g., "680K - Cbus", "950K - ANZ")
+  const dashMatch = str.match(/[\d.,]+\s*[kKmM]?\s*[-–]\s*(.+)/);
+  if (dashMatch) {
+    return dashMatch[1].trim();
+  }
+  
+  // Pattern: "Amount Institution" without dash
+  const textAfterNum = str.match(/[\d.,]+\s*[kKmM]?\s+([a-zA-Z].+)/);
+  if (textAfterNum) {
+    return textAfterNum[1].trim();
+  }
+  
+  return null;
 }
 
 // Helper to parse percentage values with enhanced handling
