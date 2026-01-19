@@ -2756,6 +2756,81 @@ export type Database = {
           },
         ]
       }
+      portfolio_analysis_reports: {
+        Row: {
+          average_lvr: number | null
+          average_yield: number | null
+          client_id: string
+          client_name: string
+          created_at: string
+          generated_by: string | null
+          health_score: number | null
+          id: string
+          net_monthly_cashflow: number | null
+          overall_health: string | null
+          pdf_file_path: string | null
+          portfolio_value: number | null
+          report_data: Json
+          status: string
+          total_equity: number | null
+          total_properties: number | null
+          updated_at: string
+        }
+        Insert: {
+          average_lvr?: number | null
+          average_yield?: number | null
+          client_id: string
+          client_name: string
+          created_at?: string
+          generated_by?: string | null
+          health_score?: number | null
+          id?: string
+          net_monthly_cashflow?: number | null
+          overall_health?: string | null
+          pdf_file_path?: string | null
+          portfolio_value?: number | null
+          report_data: Json
+          status?: string
+          total_equity?: number | null
+          total_properties?: number | null
+          updated_at?: string
+        }
+        Update: {
+          average_lvr?: number | null
+          average_yield?: number | null
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          generated_by?: string | null
+          health_score?: number | null
+          id?: string
+          net_monthly_cashflow?: number | null
+          overall_health?: string | null
+          pdf_file_path?: string | null
+          portfolio_value?: number | null
+          report_data?: Json
+          status?: string
+          total_equity?: number | null
+          total_properties?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_analysis_reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_analysis_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_reviews: {
         Row: {
           action_items: Json | null
