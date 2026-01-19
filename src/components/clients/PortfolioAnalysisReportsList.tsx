@@ -346,18 +346,20 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {report.pdf_file_path && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleViewPDF(report)}>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Report
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDownloadPDF(report)}>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download PDF
-                                </DropdownMenuItem>
-                              </>
-                            )}
+                            <DropdownMenuItem
+                              disabled={!report.pdf_file_path}
+                              onClick={() => handleViewPDF(report)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={!report.pdf_file_path}
+                              onClick={() => handleDownloadPDF(report)}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download PDF
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => setReportToDelete(report)}
