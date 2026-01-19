@@ -2143,170 +2143,166 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Property details page complete');
       
-      // ============= NPC BRANDED DISCLAIMER & CONTACT PAGE (Matching Vownet Form Style) =============
-      console.log('📝 Creating NPC branded disclaimer page (Vownet Form style)...');
+      // ============= NPC BRANDED DISCLAIMER & CONTACT PAGE (Exact Template Match) =============
+      console.log('📝 Creating NPC branded disclaimer page (exact template match)...');
       const disclaimerPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
-      // Full black background
+      // Full dark background (slightly lighter than pure black for the template look)
+      const bgColor = rgb(0.08, 0.08, 0.08);
       disclaimerPage.drawRectangle({
         x: 0,
         y: 0,
         width: PAGE_WIDTH,
         height: PAGE_HEIGHT,
-        color: NPC_BLACK,
+        color: bgColor,
       });
       
-      // Top gold accent bar
-      disclaimerPage.drawRectangle({
-        x: 0,
-        y: PAGE_HEIGHT - 12,
-        width: PAGE_WIDTH,
-        height: 12,
-        color: NPC_GOLD,
-      });
-      
-      // "NAIDU PROPERTY" - large gold text (matching Vownet form exactly)
+      // "NAIDU PROPERTY" - large gold text, left-aligned
       disclaimerPage.drawText('NAIDU PROPERTY', {
         x: MARGIN_LEFT,
-        y: PAGE_HEIGHT - 100,
-        size: 36,
+        y: PAGE_HEIGHT - 80,
+        size: 32,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      // "CONSULTING SERVICES" - gold text below (matching Vownet form exactly)
+      // "CONSULTING SERVICES" - smaller gold text below
       disclaimerPage.drawText('CONSULTING SERVICES', {
         x: MARGIN_LEFT,
-        y: PAGE_HEIGHT - 140,
-        size: 24,
-        font: helveticaBold,
+        y: PAGE_HEIGHT - 115,
+        size: 18,
+        font: helveticaFont,
         color: NPC_GOLD,
       });
       
       // "CONTACT US" section header
       disclaimerPage.drawText('CONTACT US', {
         x: MARGIN_LEFT,
-        y: PAGE_HEIGHT - 200,
-        size: 18,
+        y: PAGE_HEIGHT - 190,
+        size: 16,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       
-      // Contact details with labels (matching Vownet form exactly)
+      // Contact details with labels in table format
       const labelX = MARGIN_LEFT;
-      const valueX = MARGIN_LEFT + 100;
-      let contactY = PAGE_HEIGHT - 260;
+      const valueX = MARGIN_LEFT + 90;
+      let contactY = PAGE_HEIGHT - 240;
+      const contactLineHeight = 28;
       
       // Website
       disclaimerPage.drawText('WEBSITE:', {
         x: labelX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       disclaimerPage.drawText('npcservices.com.au', {
         x: valueX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaFont,
         color: NPC_GOLD,
       });
       
-      contactY -= 30;
+      contactY -= contactLineHeight;
       
       // Email
       disclaimerPage.drawText('EMAIL:', {
         x: labelX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       disclaimerPage.drawText('admin@npcservices.com.au', {
         x: valueX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaFont,
         color: NPC_GOLD,
       });
       
-      contactY -= 30;
+      contactY -= contactLineHeight;
       
-      // Phone (matching Vownet form - (02) 8609 3299)
+      // Phone
       disclaimerPage.drawText('PHONE:', {
         x: labelX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       disclaimerPage.drawText('(02) 8609 3299', {
         x: valueX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaFont,
         color: NPC_GOLD,
       });
       
-      contactY -= 30;
+      contactY -= contactLineHeight;
       
-      // Address (matching Vownet form exactly)
+      // Address
       disclaimerPage.drawText('ADDRESS:', {
         x: labelX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       disclaimerPage.drawText('Level 5 Nexus Norwest, 4 Columbia Ct, Norwest NSW 2153', {
         x: valueX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaFont,
         color: NPC_GOLD,
       });
       
-      contactY -= 30;
+      contactY -= contactLineHeight;
       
-      // ABN (matching Vownet form exactly)
+      // ABN
       disclaimerPage.drawText('ABN:', {
         x: labelX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaBold,
         color: NPC_GOLD,
       });
       disclaimerPage.drawText('50 684 555 771', {
         x: valueX,
         y: contactY,
-        size: 11,
+        size: 10,
         font: helveticaFont,
         color: NPC_GOLD,
       });
       
-      // Disclaimer text at bottom (matching Vownet form exactly - full text)
+      // Disclaimer text at bottom - gray/muted color for subtlety
       const disclaimerFullText = 'As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice. While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment. It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses. Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process. Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors. By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions. Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.';
       
-      // Draw wrapped disclaimer text
+      // Draw wrapped disclaimer text with muted gray color
+      const disclaimerGray = rgb(0.6, 0.6, 0.6);
       const disclaimerWords = disclaimerFullText.split(' ');
       let disclaimerLine = '';
-      let disclaimerY = 280;
-      const maxDisclaimerWidth = CONTENT_WIDTH - 20;
+      let disclaimerY = 200;
+      const maxDisclaimerWidth = CONTENT_WIDTH;
+      const disclaimerFontSize = 8;
+      const disclaimerLineHeight = 13;
       
       for (const word of disclaimerWords) {
         const testLine = disclaimerLine ? `${disclaimerLine} ${word}` : word;
-        const testWidth = helveticaFont.widthOfTextAtSize(testLine, 8);
+        const testWidth = helveticaFont.widthOfTextAtSize(testLine, disclaimerFontSize);
         
         if (testWidth > maxDisclaimerWidth && disclaimerLine) {
           disclaimerPage.drawText(disclaimerLine, {
             x: MARGIN_LEFT,
             y: disclaimerY,
-            size: 8,
+            size: disclaimerFontSize,
             font: helveticaFont,
-            color: NPC_GOLD,
+            color: disclaimerGray,
           });
-          disclaimerY -= 12;
+          disclaimerY -= disclaimerLineHeight;
           disclaimerLine = word;
         } else {
           disclaimerLine = testLine;
@@ -2317,20 +2313,11 @@ export function PortfolioAnalysisPDFGenerator({
         disclaimerPage.drawText(disclaimerLine, {
           x: MARGIN_LEFT,
           y: disclaimerY,
-          size: 8,
+          size: disclaimerFontSize,
           font: helveticaFont,
-          color: NPC_GOLD,
+          color: disclaimerGray,
         });
       }
-      
-      // Bottom gold accent bar
-      disclaimerPage.drawRectangle({
-        x: 0,
-        y: 0,
-        width: PAGE_WIDTH,
-        height: 12,
-        color: NPC_GOLD,
-      });
       
       console.log('✓ NPC branded disclaimer page complete');
       
