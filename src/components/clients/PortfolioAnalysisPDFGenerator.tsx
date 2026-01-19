@@ -268,10 +268,50 @@ export function PortfolioAnalysisPDFGenerator({
       // Create PDF document
       const pdfDoc = await PDFDocument.create();
       
-      // Embed fonts
+      // Embed standard fonts
       const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+      
+      // Fetch and embed custom Google Fonts (Playfair Display Italic & Cinzel Regular)
+      console.log('📥 Fetching custom fonts...');
+      
+      let playfairFont = timesItalic; // Fallback to Times Italic
+      let cinzelFont = helveticaBold; // Fallback to Helvetica Bold
+      
+      try {
+        // Playfair Display Italic from Google Fonts CSS API
+        const playfairCssUrl = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap';
+        const playfairCssResponse = await fetch(playfairCssUrl);
+        const playfairCss = await playfairCssResponse.text();
+        const playfairUrlMatch = playfairCss.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2?)\)/);
+        
+        if (playfairUrlMatch) {
+          const playfairFontResponse = await fetch(playfairUrlMatch[1]);
+          const playfairFontBytes = await playfairFontResponse.arrayBuffer();
+          playfairFont = await pdfDoc.embedFont(playfairFontBytes);
+          console.log('✓ Playfair Display font embedded');
+        }
+      } catch (fontError) {
+        console.warn('Could not load Playfair Display, using fallback:', fontError);
+      }
+      
+      try {
+        // Cinzel Regular from Google Fonts CSS API
+        const cinzelCssUrl = 'https://fonts.googleapis.com/css2?family=Cinzel&display=swap';
+        const cinzelCssResponse = await fetch(cinzelCssUrl);
+        const cinzelCss = await cinzelCssResponse.text();
+        const cinzelUrlMatch = cinzelCss.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2?)\)/);
+        
+        if (cinzelUrlMatch) {
+          const cinzelFontResponse = await fetch(cinzelUrlMatch[1]);
+          const cinzelFontBytes = await cinzelFontResponse.arrayBuffer();
+          cinzelFont = await pdfDoc.embedFont(cinzelFontBytes);
+          console.log('✓ Cinzel font embedded');
+        }
+      } catch (fontError) {
+        console.warn('Could not load Cinzel, using fallback:', fontError);
+      }
       
       console.log('✓ PDF document created with fonts');
       
@@ -923,27 +963,27 @@ export function PortfolioAnalysisPDFGenerator({
         });
       }
       
-      // ============= REPORT TITLE (Italic Serif Font) =============
+      // ============= REPORT TITLE (Playfair Display Italic) =============
       const reportTitleY = diamondY - 60;
       const reportTitle = 'Portfolio Performance Report';
-      const reportTitleWidth = timesItalic.widthOfTextAtSize(reportTitle, 36);
+      const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, 36);
       coverPage.drawText(reportTitle, {
         x: (PAGE_WIDTH - reportTitleWidth) / 2,
         y: reportTitleY,
         size: 36,
-        font: timesItalic,
+        font: playfairFont,
         color: NPC_WHITE,
       });
       
-      // ============= CLIENT NAME (Small Caps Style) =============
+      // ============= CLIENT NAME (Cinzel Font) =============
       const clientNameY = reportTitleY - 50;
       const clientText = stripEmojis(analysisData.clientName).toUpperCase();
-      const clientNameWidth = helveticaBold.widthOfTextAtSize(clientText, 16);
+      const clientNameWidth = cinzelFont.widthOfTextAtSize(clientText, 16);
       coverPage.drawText(clientText, {
         x: (PAGE_WIDTH - clientNameWidth) / 2,
         y: clientNameY,
         size: 16,
-        font: helveticaBold,
+        font: cinzelFont,
         color: NPC_GOLD,
       });
       
