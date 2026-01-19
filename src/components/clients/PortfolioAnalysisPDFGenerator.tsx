@@ -176,9 +176,13 @@ const getRiskBadgeVariant = (risk: string | null | undefined): 'default' | 'seco
   }
 };
 
-// Strip emojis and non-WinAnsi characters
+// Strip emojis, control characters, and non-WinAnsi characters
 const stripEmojis = (text: string): string => {
+  if (!text) return '';
   return text
+    // Remove control characters (newlines, tabs, etc.) - replace with space
+    .replace(/[\x00-\x1F\x7F]/g, ' ')
+    // Remove emojis
     .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
     .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
     .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
@@ -190,7 +194,11 @@ const stripEmojis = (text: string): string => {
     .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
     .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
     .replace(/[\u200D]/gu, '')
-    .replace(/[^\x00-\xFF]/g, '');
+    // Remove any remaining non-WinAnsi characters
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+    // Clean up multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 export function PortfolioAnalysisPDFGenerator({ 
