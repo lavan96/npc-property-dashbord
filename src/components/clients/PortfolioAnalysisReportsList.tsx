@@ -43,6 +43,7 @@ import {
   RefreshCw,
   Loader2,
   Building2,
+  Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -151,6 +152,29 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
     ? Math.round(reports.reduce((acc, r) => acc + (r.health_score || 0), 0) / reports.length)
     : 0;
   const totalPortfolioValue = reports.reduce((acc, r) => acc + (Number(r.portfolio_value) || 0), 0);
+
+  const handleViewPDF = async (report: PortfolioAnalysisReport) => {
+    if (!report.pdf_file_path) {
+      toast.error('No PDF available for this report');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('client-files')
+        .download(report.pdf_file_path);
+
+      if (error) throw error;
+
+      // Open PDF in new tab for viewing
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+      // Note: URL will be revoked when the tab is closed
+      toast.success('Opening report...');
+    } catch (error: any) {
+      toast.error('Failed to open PDF: ' + error.message);
+    }
+  };
 
   const handleDownloadPDF = async (report: PortfolioAnalysisReport) => {
     if (!report.pdf_file_path) {
@@ -323,10 +347,16 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {report.pdf_file_path && (
-                              <DropdownMenuItem onClick={() => handleDownloadPDF(report)}>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download PDF
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => handleViewPDF(report)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Report
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDownloadPDF(report)}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download PDF
+                                </DropdownMenuItem>
+                              </>
                             )}
                             <DropdownMenuItem
                               className="text-destructive"
