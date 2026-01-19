@@ -88,6 +88,24 @@ export function ClientReportsTab({
     },
   });
 
+  // Fetch investment reports linked to client properties
+  const propertyIds = properties.map((p) => p.id);
+  const { data: investmentReports = [] } = useQuery({
+    queryKey: ['client-investment-reports', clientId, propertyIds],
+    queryFn: async () => {
+      if (propertyIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('investment_reports')
+        .select('id, property_address, status, created_at, client_property_id')
+        .eq('is_client_report', true)
+        .in('client_property_id', propertyIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: propertyIds.length > 0,
+  });
+
   // Note: Portfolio analyses are stored as files in client_files with report_type='portfolio'
   // The cash_flow_analyses table is for comparison analyses, not client-specific reports
 
@@ -116,6 +134,15 @@ export function ClientReportsTab({
         fileUrl: f.file_path,
         propertyAddress: f.description,
       })),
+    // Investment reports from investment_reports table
+    ...investmentReports.map((r: any) => ({
+      id: r.id,
+      type: 'investment' as const,
+      name: `Investment Report - ${r.property_address}`,
+      generatedAt: r.created_at,
+      status: (r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'pending') as 'completed' | 'pending' | 'failed',
+      propertyAddress: r.property_address,
+    })),
   ];
 
   const getReportIcon = (type: string) => {
@@ -344,6 +371,20 @@ export function ClientReportsTab({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Investment reports from investment_reports table - open in viewer */}
+                    {report.type === 'investment' && !report.fileUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          // Open in investment report view page
+                          window.open(`/investment-report/${report.id}`, '_blank');
+                        }}
+                        title="View Report"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
                     {report.fileUrl && (
                       <>
                         <Button

@@ -2355,6 +2355,7 @@ export type Database = {
       investment_reports: {
         Row: {
           calculation_version: string | null
+          client_property_id: string | null
           created_at: string
           current_version: number | null
           data_sources: Json | null
@@ -2366,6 +2367,7 @@ export type Database = {
           id: string
           investment_score: Json | null
           is_archived: boolean
+          is_client_report: boolean | null
           location_intelligence: Json | null
           manual_overrides: Json | null
           parent_report_id: string | null
@@ -2383,6 +2385,7 @@ export type Database = {
         }
         Insert: {
           calculation_version?: string | null
+          client_property_id?: string | null
           created_at?: string
           current_version?: number | null
           data_sources?: Json | null
@@ -2394,6 +2397,7 @@ export type Database = {
           id?: string
           investment_score?: Json | null
           is_archived?: boolean
+          is_client_report?: boolean | null
           location_intelligence?: Json | null
           manual_overrides?: Json | null
           parent_report_id?: string | null
@@ -2411,6 +2415,7 @@ export type Database = {
         }
         Update: {
           calculation_version?: string | null
+          client_property_id?: string | null
           created_at?: string
           current_version?: number | null
           data_sources?: Json | null
@@ -2422,6 +2427,7 @@ export type Database = {
           id?: string
           investment_score?: Json | null
           is_archived?: boolean
+          is_client_report?: boolean | null
           location_intelligence?: Json | null
           manual_overrides?: Json | null
           parent_report_id?: string | null
@@ -2438,6 +2444,13 @@ export type Database = {
           validation_flags?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "investment_reports_client_property_id_fkey"
+            columns: ["client_property_id"]
+            isOneToOne: false
+            referencedRelation: "client_properties"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "investment_reports_generated_by_fkey"
             columns: ["generated_by"]
