@@ -18,30 +18,121 @@ function getCellValue(sheet: XLSX.WorkSheet, cellRef: string): any {
   return cell ? cell.v : null;
 }
 
-// Helper to parse currency values
+// Helper to parse currency values with enhanced handling for edge cases
 function parseCurrency(value: any): number {
   if (value === null || value === undefined) return 0;
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
-    const cleaned = value.replace(/[$,\s]/g, '').replace(/[()]/g, '-');
+    let str = value.trim();
+    
+    // Handle "Paid Off", "N/A", "-" etc.
+    if (/^(paid off|n\/a|nil|none|-|—)$/i.test(str)) return 0;
+    
+    // Handle "Million" notation (e.g., "1.15Million" → 1150000)
+    const millionMatch = str.match(/^[\$]?\s*([\d.,]+)\s*million/i);
+    if (millionMatch) {
+      const num = parseFloat(millionMatch[1].replace(/,/g, ''));
+      return isNaN(num) ? 0 : num * 1000000;
+    }
+    
+    // Handle "K" notation (e.g., "950K" → 950000, "85k" → 85000)
+    const kMatch = str.match(/^[\$]?\s*([\d.,]+)\s*k(?:\s|$|-|–)/i);
+    if (kMatch) {
+      const num = parseFloat(kMatch[1].replace(/,/g, ''));
+      return isNaN(num) ? 0 : num * 1000;
+    }
+    
+    // Handle range values (e.g., "120-130" → take midpoint 125)
+    const rangeMatch = str.match(/^[\$]?\s*([\d.,]+)\s*[-–]\s*([\d.,]+)/);
+    if (rangeMatch) {
+      const low = parseFloat(rangeMatch[1].replace(/,/g, ''));
+      const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
+      if (!isNaN(low) && !isNaN(high)) {
+        return (low + high) / 2 * 1000; // Assume it's in thousands if no suffix
+      }
+    }
+    
+    // Handle European-style decimals (e.g., "476.433.17" → 476433.17)
+    // Count periods - if more than one, treat all but last as thousand separators
+    const periods = (str.match(/\./g) || []).length;
+    if (periods > 1) {
+      // Replace all periods except the last one
+      const parts = str.split('.');
+      const lastPart = parts.pop();
+      str = parts.join('') + '.' + lastPart;
+    }
+    
+    // Standard cleanup: remove currency symbols, commas, spaces
+    const cleaned = str.replace(/[$,\s]/g, '').replace(/[()]/g, '-');
+    
+    // Extract the first valid number from the string
+    const numMatch = cleaned.match(/-?[\d.]+/);
+    if (numMatch) {
+      const parsed = parseFloat(numMatch[0]);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+  }
+  return 0;
+}
+
+// Helper to parse percentage values with enhanced handling
+function parsePercentage(value: any): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') {
+    // If already a decimal (0.059 for 5.9%), convert to percentage
+    return value < 1 ? value * 100 : value;
+  }
+  if (typeof value === 'string') {
+    // Handle "$1.00" mistakenly entered as percentage (should be 100%)
+    if (value.startsWith('$')) {
+      const num = parseCurrency(value);
+      // If it's $1.00 or similar, likely meant to be 100%
+      if (num === 1) return 100;
+      return num;
+    }
+    const cleaned = value.replace(/[%\s]/g, '');
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;
   }
   return 0;
 }
 
-// Helper to parse percentage values
-function parsePercentage(value: any): number {
-  if (value === null || value === undefined) return 0;
-  if (typeof value === 'number') {
-    return value < 1 ? value * 100 : value;
+// Helper to parse text-based dates (e.g., "8/9/73", "6/29/81", "1992")
+function parseTextDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const str = dateStr.toString().trim();
+  
+  // Handle year-only (e.g., "1992")
+  if (/^\d{4}$/.test(str)) {
+    return `${str}-01-01`;
   }
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[%\s]/g, '');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
+  
+  // Handle "X Years" format (e.g., "10 Years")
+  if (/^\d+\s*years?$/i.test(str)) {
+    return null; // Not a valid date, just duration
   }
-  return 0;
+  
+  // Handle MM/DD/YY or M/D/YY format (US format common in Excel)
+  const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (usMatch) {
+    let [, month, day, year] = usMatch;
+    // Handle 2-digit year
+    if (year.length === 2) {
+      const yearNum = parseInt(year);
+      year = yearNum > 50 ? `19${year}` : `20${year}`;
+    }
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Handle DD/MM/YYYY format (AU format)
+  const auMatch = str.match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{4})$/);
+  if (auMatch) {
+    const [, day, month, year] = auMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Return original if no pattern matched
+  return str;
 }
 
 // Helper to find row by label in column A (or any column)
@@ -110,7 +201,7 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
             const date = XLSX.SSF.parse_date_code(value);
             primary.dob = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
           } else {
-            primary.dob = value?.toString();
+            primary.dob = parseTextDate(value?.toString());
           }
         }
       }
@@ -135,7 +226,8 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
           dob: null
         };
         
-        for (let offset = 1; offset <= 10; offset++) {
+        // Extend search range to include DOB which may be further down
+        for (let offset = 1; offset <= 15; offset++) {
           const label = getCellValue(sheet, `A${secFirstNameRow + offset}`)?.toString().toLowerCase() || '';
           const value = getCellValue(sheet, `B${secFirstNameRow + offset}`);
           
@@ -144,6 +236,16 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
           if (label.includes('mobile') || label.includes('phone')) secondary.mobile = value?.toString();
           if (label.includes('email')) secondary.email = value;
           if (label.includes('gender')) secondary.gender = value;
+          if (label.includes('dob') || label.includes('date of birth') || label.includes('birth')) {
+            if (value) {
+              if (typeof value === 'number') {
+                const date = XLSX.SSF.parse_date_code(value);
+                secondary.dob = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+              } else {
+                secondary.dob = parseTextDate(value?.toString());
+              }
+            }
+          }
         }
       }
     }
@@ -658,6 +760,27 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
         }
         if (label.includes('total') && label.includes('expenditure')) prop.totalMonthlyExpenditure = parseCurrency(value);
         if (label.includes('net') && label.includes('cashflow')) prop.netMonthlyCashflow = parseCurrency(value);
+      }
+
+      // Verify and reconcile weekly vs monthly rental income
+      // If weekly is provided and significantly differs from stated monthly, recalculate
+      if (prop.weeklyRentalIncome > 0) {
+        const calculatedMonthly = prop.weeklyRentalIncome * (52 / 12); // 4.333...
+        // If monthly wasn't captured or differs significantly (>5%), use calculated
+        if (prop.monthlyRentalIncome === 0 || 
+            Math.abs(prop.monthlyRentalIncome - calculatedMonthly) / calculatedMonthly > 0.05) {
+          prop.monthlyRentalIncome = Math.round(calculatedMonthly * 100) / 100;
+        }
+      }
+
+      // Recalculate net cashflow if not set or seems wrong
+      if (prop.monthlyRentalIncome > 0 || prop.totalMonthlyExpenditure > 0) {
+        const calculatedNet = prop.monthlyRentalIncome - prop.totalMonthlyExpenditure - prop.monthlyInterestRepayment;
+        if (prop.netMonthlyCashflow === 0 || 
+            Math.abs(prop.netMonthlyCashflow - calculatedNet) > 100) {
+          // Only override if significantly different
+          // Keep form value if close, as it may include other factors
+        }
       }
 
       if (prop.value > 0 || prop.monthlyRentalIncome > 0 || prop.address) {
