@@ -173,10 +173,11 @@ export default function ClientTracker() {
     },
   });
 
-  // Move client to different stage mutation (silent, no toast on success)
+  // Move client to different stage mutation with two-way GHL sync
   const moveClientMutation = useMutation({
     mutationFn: async ({ clientId, stageId, stageName }: { clientId: string; stageId: string | null; stageName: string }) => {
-      const { error } = await supabase
+      // First update locally for instant UI feedback
+      const { error: localError } = await supabase
         .from('clients')
         .update({
           current_stage_id: stageId,
@@ -184,13 +185,44 @@ export default function ClientTracker() {
         })
         .eq('id', clientId);
       
-      if (error) throw error;
+      if (localError) throw localError;
+
+      // Then sync to GHL (non-blocking, but show toast on result)
+      if (stageId) {
+        const { data, error } = await supabase.functions.invoke('update-ghl-opportunity-stage', {
+          body: { clientId, newStageId: stageId }
+        });
+
+        if (error) {
+          console.error('GHL sync failed:', error);
+          throw new Error(`GHL sync failed: ${error.message}`);
+        }
+
+        if (!data?.success) {
+          // If GHL sync fails but has a specific error (like no opportunity linked), don't throw
+          if (data?.error?.includes('No GHL opportunity linked')) {
+            console.log('Client has no GHL opportunity, local update only');
+            return { localOnly: true };
+          }
+          throw new Error(data?.error || 'GHL sync failed');
+        }
+
+        return { ghlSynced: true, stage: data.newStage };
+      }
+
+      return { localOnly: true };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      if (result?.ghlSynced) {
+        toast.success(`Moved to ${result.stage} (synced to GHL)`);
+      }
     },
     onError: (error) => {
+      // Refetch to restore correct state
+      queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.error(`Failed to move client: ${error.message}`);
     },
   });
