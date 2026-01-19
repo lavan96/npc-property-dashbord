@@ -859,6 +859,598 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Executive summary page complete');
       
+      // ============= PAGE 3: SMSF SUMMARY (if applicable) =============
+      if (metrics.smsfCount > 0) {
+        console.log('📝 Creating SMSF summary page...');
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        
+        yPos = drawSectionHeader(page, 'SMSF Portfolio Summary', yPos);
+        
+        // SMSF KPI boxes
+        const smsfKpiWidth = (CONTENT_WIDTH - 10) / 2;
+        drawKPIBox(page, 'SMSF PROPERTIES', metrics.smsfCount.toString(), MARGIN_LEFT, yPos, smsfKpiWidth);
+        drawKPIBox(page, 'SMSF TOTAL VALUE', formatCurrency(metrics.smsfTotalValue), MARGIN_LEFT + smsfKpiWidth + 10, yPos, smsfKpiWidth, PRIMARY_COLOR);
+        
+        yPos -= 65;
+        
+        drawKPIBox(page, 'SMSF EQUITY', formatCurrency(metrics.smsfTotalEquity), MARGIN_LEFT, yPos, smsfKpiWidth, SUCCESS_COLOR);
+        
+        yPos -= 80;
+        
+        // Compliance status
+        yPos = drawSubsectionHeader(page, 'Compliance Status', yPos);
+        yPos -= 5;
+        
+        const complianceData = [
+          ['Status', 'Count'],
+          ['Compliant', metrics.smsfCompliantCount.toString()],
+          ['Pending Audit', metrics.smsfPendingAuditCount.toString()],
+          ['Non-Compliant', metrics.smsfNonCompliantCount.toString()],
+        ];
+        
+        const { lastY: complianceLastY } = drawTable(page, complianceData[0], complianceData.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH / 2, CONTENT_WIDTH / 2]);
+        yPos = complianceLastY - 20;
+        
+        console.log('✓ SMSF summary page complete');
+      }
+      
+      // ============= PAGE 4: PROPERTY RANKINGS =============
+      console.log('📝 Creating property rankings page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Property Performance Rankings', yPos);
+      
+      for (const prop of analysisData.analysis.propertyRankings) {
+        // Check for page break
+        if (needsNewPage(yPos, 120)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Property Performance Rankings (continued)', yPos);
+        }
+        
+        // Rank badge
+        const rankBadgeColor = prop.rank === 1 ? SUCCESS_COLOR : prop.rank === 2 ? PRIMARY_COLOR : MUTED_COLOR;
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - 16,
+          width: 25,
+          height: 20,
+          color: rankBadgeColor,
+        });
+        page.drawText(`#${prop.rank}`, {
+          x: MARGIN_LEFT + 6,
+          y: yPos - 12,
+          size: 10,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+        
+        // Address
+        page.drawText(stripEmojis(prop.address), {
+          x: MARGIN_LEFT + 35,
+          y: yPos - 10,
+          size: 10,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        // Performance rating badge
+        const ratingColor = prop.performanceRating.toLowerCase() === 'strong' ? SUCCESS_COLOR :
+                           prop.performanceRating.toLowerCase() === 'moderate' ? WARNING_COLOR : DANGER_COLOR;
+        const ratingText = stripEmojis(prop.performanceRating.toUpperCase());
+        const ratingWidth = helveticaBold.widthOfTextAtSize(ratingText, 8);
+        page.drawRectangle({
+          x: PAGE_WIDTH - MARGIN_RIGHT - ratingWidth - 12,
+          y: yPos - 14,
+          width: ratingWidth + 12,
+          height: 16,
+          color: ratingColor,
+        });
+        page.drawText(ratingText, {
+          x: PAGE_WIDTH - MARGIN_RIGHT - ratingWidth - 6,
+          y: yPos - 10,
+          size: 8,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+        
+        yPos -= 28;
+        
+        // Strengths (green)
+        if (prop.strengths && prop.strengths.length > 0) {
+          page.drawText('Strengths:', {
+            x: MARGIN_LEFT + 10,
+            y: yPos,
+            size: 8,
+            font: helveticaBold,
+            color: SUCCESS_COLOR,
+          });
+          yPos -= 12;
+          for (const strength of prop.strengths.slice(0, 2)) {
+            yPos = drawWrappedText(page, `+ ${strength}`, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
+          }
+        }
+        
+        // Concerns (amber)
+        if (prop.concerns && prop.concerns.length > 0) {
+          page.drawText('Concerns:', {
+            x: MARGIN_LEFT + 10,
+            y: yPos,
+            size: 8,
+            font: helveticaBold,
+            color: WARNING_COLOR,
+          });
+          yPos -= 12;
+          for (const concern of prop.concerns.slice(0, 2)) {
+            yPos = drawWrappedText(page, `- ${concern}`, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
+          }
+        }
+        
+        // Recommendation
+        if (prop.recommendation) {
+          page.drawText('Recommendation:', {
+            x: MARGIN_LEFT + 10,
+            y: yPos,
+            size: 8,
+            font: helveticaBold,
+            color: PRIMARY_COLOR,
+          });
+          yPos -= 12;
+          yPos = drawWrappedText(page, prop.recommendation, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
+        }
+        
+        // Separator line
+        yPos -= 10;
+        page.drawLine({
+          start: { x: MARGIN_LEFT, y: yPos },
+          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: yPos },
+          thickness: 0.5,
+          color: rgb(0.9, 0.9, 0.9),
+        });
+        yPos -= 15;
+      }
+      
+      console.log('✓ Property rankings page complete');
+      
+      // ============= PAGE 5: FINANCIAL HEALTH ANALYSIS =============
+      console.log('📝 Creating financial health page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Financial Health Analysis', yPos);
+      
+      const financialHealth = analysisData.analysis.financialHealth;
+      
+      // Status indicators
+      const statusItems = [
+        { label: 'Cashflow Status', value: financialHealth.cashflowStatus },
+        { label: 'Equity Position', value: financialHealth.equityPosition },
+        { label: 'Debt Serviceability', value: financialHealth.debtServiceability },
+        { label: 'LVR Risk', value: financialHealth.lvrRisk },
+      ];
+      
+      const statusWidth = (CONTENT_WIDTH - 30) / 4;
+      let statusX = MARGIN_LEFT;
+      
+      for (const item of statusItems) {
+        const statusColor = item.value.toLowerCase().includes('strong') || item.value.toLowerCase().includes('healthy') || item.value.toLowerCase() === 'low'
+          ? SUCCESS_COLOR
+          : item.value.toLowerCase().includes('moderate') || item.value.toLowerCase() === 'medium'
+          ? WARNING_COLOR
+          : DANGER_COLOR;
+        
+        page.drawRectangle({
+          x: statusX,
+          y: yPos - 45,
+          width: statusWidth,
+          height: 50,
+          color: rgb(0.97, 0.97, 0.97),
+          borderColor: statusColor,
+          borderWidth: 2,
+        });
+        
+        page.drawText(stripEmojis(item.label), {
+          x: statusX + 5,
+          y: yPos - 15,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        const truncatedValue = item.value.length > 12 ? item.value.substring(0, 10) + '..' : item.value;
+        page.drawText(stripEmojis(truncatedValue), {
+          x: statusX + 5,
+          y: yPos - 35,
+          size: 10,
+          font: helveticaBold,
+          color: statusColor,
+        });
+        
+        statusX += statusWidth + 10;
+      }
+      
+      yPos -= 70;
+      
+      // Detailed analysis
+      yPos = drawSubsectionHeader(page, 'Detailed Analysis', yPos);
+      yPos -= 5;
+      yPos = drawFormattedText(page, financialHealth.analysis, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      
+      console.log('✓ Financial health page complete');
+      
+      // ============= PAGE 6: RISK ASSESSMENT =============
+      console.log('📝 Creating risk assessment page...');
+      
+      if (needsNewPage(yPos, 200)) {
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+      } else {
+        yPos -= 25;
+      }
+      
+      yPos = drawSectionHeader(page, 'Risk Assessment', yPos);
+      
+      const risk = analysisData.analysis.riskAssessment;
+      
+      // Overall risk level badge
+      const overallRiskColor = risk.overallRiskLevel.toLowerCase() === 'low' ? SUCCESS_COLOR :
+                               risk.overallRiskLevel.toLowerCase() === 'medium' ? WARNING_COLOR : DANGER_COLOR;
+      
+      page.drawText('Overall Risk Level:', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 10,
+        font: helveticaFont,
+        color: MUTED_COLOR,
+      });
+      
+      const riskLevelText = stripEmojis(risk.overallRiskLevel.toUpperCase());
+      page.drawRectangle({
+        x: MARGIN_LEFT + 105,
+        y: yPos - 5,
+        width: helveticaBold.widthOfTextAtSize(riskLevelText, 12) + 16,
+        height: 20,
+        color: overallRiskColor,
+      });
+      page.drawText(riskLevelText, {
+        x: MARGIN_LEFT + 113,
+        y: yPos,
+        size: 12,
+        font: helveticaBold,
+        color: rgb(1, 1, 1),
+      });
+      
+      yPos -= 35;
+      
+      // Risk categories table
+      const riskCategories = [
+        ['Risk Category', 'Assessment'],
+        ['Concentration Risk', risk.concentrationRisk],
+        ['Interest Rate Sensitivity', risk.interestRateSensitivity],
+        ['Vacancy Risk', risk.vacancyRisk],
+      ];
+      
+      const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.4, CONTENT_WIDTH * 0.6]);
+      yPos = riskTableLastY - 20;
+      
+      // Market risks
+      if (risk.marketRisks && risk.marketRisks.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Market Risks', yPos, DANGER_COLOR);
+        yPos -= 5;
+        yPos = drawBulletList(page, risk.marketRisks, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= 10;
+      }
+      
+      // Mitigation strategies
+      if (risk.mitigationStrategies && risk.mitigationStrategies.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Mitigation Strategies', yPos, SUCCESS_COLOR);
+        yPos -= 5;
+        yPos = drawBulletList(page, risk.mitigationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+      }
+      
+      console.log('✓ Risk assessment page complete');
+      
+      // ============= PAGE 7: GROWTH OPPORTUNITIES =============
+      console.log('📝 Creating growth opportunities page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Growth Opportunities', yPos);
+      
+      const growth = analysisData.analysis.growthOpportunities;
+      
+      // Equity Release Options
+      if (growth.equityReleaseOptions && growth.equityReleaseOptions.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Equity Release Options', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, growth.equityReleaseOptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= 15;
+      }
+      
+      // Refinancing Opportunities
+      if (growth.refinancingOpportunities && growth.refinancingOpportunities.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Refinancing Opportunities', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, growth.refinancingOpportunities, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= 15;
+      }
+      
+      // Next Purchase Recommendations
+      if (growth.nextPurchaseRecommendations && growth.nextPurchaseRecommendations.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Next Purchase Recommendations', yPos, PRIMARY_COLOR);
+        yPos -= 5;
+        yPos = drawBulletList(page, growth.nextPurchaseRecommendations, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= 15;
+      }
+      
+      // Optimization Strategies
+      if (growth.optimizationStrategies && growth.optimizationStrategies.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Portfolio Optimization Strategies', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, growth.optimizationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+      }
+      
+      console.log('✓ Growth opportunities page complete');
+      
+      // ============= PAGE 8: 10-YEAR PROJECTIONS =============
+      console.log('📝 Creating projections page...');
+      
+      if (needsNewPage(yPos, 200)) {
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+      } else {
+        yPos -= 25;
+      }
+      
+      yPos = drawSectionHeader(page, `${analysisData.analysis.projections.years}-Year Portfolio Projections`, yPos);
+      
+      const projections = analysisData.analysis.projections;
+      
+      // Projection KPI boxes
+      const projKpiWidth = (CONTENT_WIDTH - 20) / 3;
+      drawKPIBox(page, 'PROJECTED VALUE', formatCurrency(projections.projectedPortfolioValue), MARGIN_LEFT, yPos, projKpiWidth, PRIMARY_COLOR);
+      drawKPIBox(page, 'PROJECTED EQUITY', formatCurrency(projections.projectedEquity), MARGIN_LEFT + projKpiWidth + 10, yPos, projKpiWidth, SUCCESS_COLOR);
+      drawKPIBox(page, 'PROJECTED CASHFLOW', formatCurrency(projections.projectedMonthlyCashflow) + '/mo', MARGIN_LEFT + (projKpiWidth + 10) * 2, yPos, projKpiWidth);
+      
+      yPos -= 80;
+      
+      // Assumptions
+      if (projections.assumptions && projections.assumptions.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Key Assumptions', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, projections.assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 8);
+      }
+      
+      console.log('✓ Projections page complete');
+      
+      // ============= PAGE 9: STRATEGIC RECOMMENDATIONS =============
+      console.log('📝 Creating strategic recommendations page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Strategic Recommendations', yPos);
+      
+      const recommendations = analysisData.analysis.strategicRecommendations;
+      
+      // Priority Actions (highlighted)
+      if (recommendations.priorityActions && recommendations.priorityActions.length > 0) {
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - (recommendations.priorityActions.length * 18 + 35),
+          width: CONTENT_WIDTH,
+          height: recommendations.priorityActions.length * 18 + 35,
+          color: rgb(0.95, 0.97, 0.95),
+          borderColor: SUCCESS_COLOR,
+          borderWidth: 1,
+        });
+        
+        page.drawText('PRIORITY ACTIONS', {
+          x: MARGIN_LEFT + 10,
+          y: yPos - 18,
+          size: 11,
+          font: helveticaBold,
+          color: SUCCESS_COLOR,
+        });
+        
+        yPos -= 35;
+        for (let i = 0; i < recommendations.priorityActions.length; i++) {
+          page.drawText(`${i + 1}.`, {
+            x: MARGIN_LEFT + 15,
+            y: yPos,
+            size: 9,
+            font: helveticaBold,
+            color: PRIMARY_COLOR,
+          });
+          yPos = drawWrappedText(page, recommendations.priorityActions[i], MARGIN_LEFT + 30, yPos, CONTENT_WIDTH - 50, helveticaFont, 9, SECONDARY_COLOR);
+          yPos -= 3;
+        }
+        yPos -= 20;
+      }
+      
+      // Short-Term (0-12 months)
+      if (recommendations.shortTerm && recommendations.shortTerm.length > 0) {
+        yPos = drawSubsectionHeader(page, 'Short-Term (0-12 months)', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, recommendations.shortTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= 15;
+      }
+      
+      // Medium-Term (1-3 years)
+      if (recommendations.mediumTerm && recommendations.mediumTerm.length > 0) {
+        if (needsNewPage(yPos, 80)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+        }
+        yPos = drawSubsectionHeader(page, 'Medium-Term (1-3 years)', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, recommendations.mediumTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos -= 15;
+      }
+      
+      // Long-Term (3+ years)
+      if (recommendations.longTerm && recommendations.longTerm.length > 0) {
+        if (needsNewPage(yPos, 80)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+        }
+        yPos = drawSubsectionHeader(page, 'Long-Term (3+ years)', yPos);
+        yPos -= 5;
+        yPos = drawBulletList(page, recommendations.longTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+      }
+      
+      console.log('✓ Strategic recommendations page complete');
+      
+      // ============= PAGE 10: PROPERTY DETAILS TABLE =============
+      console.log('📝 Creating property details page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Property Portfolio Details', yPos);
+      
+      // Build property table
+      const propHeaders = ['#', 'Address', 'Type', 'Value', 'Equity', 'LVR', 'Yield'];
+      const propColumnWidths = [25, 170, 60, 70, 70, 40, 50];
+      
+      const propRows = analysisData.propertyAnalyses.map(prop => [
+        prop.propertyNumber.toString(),
+        prop.address.substring(0, 35),
+        prop.propertyType,
+        formatCurrency(prop.value),
+        formatCurrency(prop.equity),
+        prop.lvr,
+        prop.grossYield,
+      ]);
+      
+      let tableResult = drawTable(page, propHeaders, propRows, MARGIN_LEFT, yPos, propColumnWidths, 20);
+      yPos = tableResult.lastY;
+      
+      // Handle table overflow to new page
+      if (tableResult.needsNewPage) {
+        const remainingRows = propRows.slice(Math.floor((PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM) / 20) - 1);
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        yPos = drawSectionHeader(page, 'Property Portfolio Details (continued)', yPos);
+        tableResult = drawTable(page, propHeaders, remainingRows, MARGIN_LEFT, yPos, propColumnWidths, 20);
+        yPos = tableResult.lastY;
+      }
+      
+      console.log('✓ Property details page complete');
+      
+      // ============= PAGE 11: DISCLAIMER & CONTACT =============
+      console.log('📝 Creating disclaimer page...');
+      page = addContentPage();
+      yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      yPos = drawSectionHeader(page, 'Important Disclaimer', yPos);
+      
+      const disclaimerText = `This Portfolio Performance Analysis report is provided for general information purposes only and does not constitute personal financial advice. The projections, assessments, and recommendations contained herein are based on the data provided and various assumptions about future market conditions, which may not eventuate.
+
+Past performance is not a reliable indicator of future performance. Property values and rental yields can fluctuate, and there is always a risk of loss when investing in property.
+
+Before making any investment decisions, you should consult with qualified financial advisors, tax professionals, and legal experts who can consider your individual circumstances, objectives, and risk tolerance.
+
+The information in this report is current as of the generation date and may change without notice. We do not accept any liability for any errors or omissions in this report or for any actions taken in reliance on its contents.`;
+      
+      yPos = drawWrappedText(page, disclaimerText, MARGIN_LEFT, yPos, CONTENT_WIDTH, helveticaFont, 9, MUTED_COLOR, 1.5);
+      
+      yPos -= 40;
+      
+      // Contact information from global settings if available
+      if (globalSettings?.contactDetails) {
+        const contact = globalSettings.contactDetails;
+        
+        page.drawLine({
+          start: { x: MARGIN_LEFT, y: yPos },
+          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: yPos },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+        
+        yPos -= 25;
+        
+        page.drawText('Contact Information', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 11,
+          font: helveticaBold,
+          color: PRIMARY_COLOR,
+        });
+        
+        yPos -= 18;
+        
+        if (contact.company_name) {
+          page.drawText(stripEmojis(contact.company_name), {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 10,
+            font: helveticaBold,
+            color: SECONDARY_COLOR,
+          });
+          yPos -= 14;
+        }
+        
+        if (contact.phone) {
+          page.drawText(`Phone: ${stripEmojis(contact.phone)}`, {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 9,
+            font: helveticaFont,
+            color: SECONDARY_COLOR,
+          });
+          yPos -= 12;
+        }
+        
+        if (contact.email) {
+          page.drawText(`Email: ${stripEmojis(contact.email)}`, {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 9,
+            font: helveticaFont,
+            color: SECONDARY_COLOR,
+          });
+          yPos -= 12;
+        }
+        
+        if (contact.website) {
+          page.drawText(`Website: ${stripEmojis(contact.website)}`, {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 9,
+            font: helveticaFont,
+            color: SECONDARY_COLOR,
+          });
+        }
+      }
+      
+      // Add page numbers to all pages
+      const totalPages = pdfDoc.getPageCount();
+      for (let i = 0; i < totalPages; i++) {
+        const currentPage = pdfDoc.getPage(i);
+        const pageNum = i + 1;
+        const pageText = `Page ${pageNum} of ${totalPages}`;
+        const pageNumWidth = helveticaFont.widthOfTextAtSize(pageText, 8);
+        
+        currentPage.drawText(pageText, {
+          x: (PAGE_WIDTH - pageNumWidth) / 2,
+          y: 25,
+          size: 8,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        // Footer line
+        currentPage.drawLine({
+          start: { x: MARGIN_LEFT, y: 40 },
+          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: 40 },
+          thickness: 0.5,
+          color: rgb(0.85, 0.85, 0.85),
+        });
+      }
+      
+      console.log('✓ Disclaimer page complete');
+      
       // ============= SAVE PDF =============
       console.log('💾 Saving PDF...');
       const pdfBytes = await pdfDoc.save();
