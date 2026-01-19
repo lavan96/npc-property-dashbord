@@ -70,7 +70,7 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing income records
+  // Fetch existing income records - always enabled to show summary outside sheet
   const { data: existingIncome = [] } = useQuery({
     queryKey: ['client-income', clientId],
     queryFn: async () => {
@@ -81,7 +81,6 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
       if (error) throw error;
       return data;
     },
-    enabled: open,
   });
 
   const primaryIncome = existingIncome.find(i => i.contact_type === 'primary');
@@ -364,60 +363,115 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
     </div>
   );
 
+  // Calculate total annual income for display
+  const calculateTotalForContact = (contactIncome: typeof primaryIncome) => {
+    if (!contactIncome) return 0;
+    const annualSalary = convertToAnnual(contactIncome.gross_salary || 0, contactIncome.salary_frequency || 'annual');
+    return annualSalary + (contactIncome.bonus || 0) + (contactIncome.allowance || 0) + 
+           (contactIncome.commission || 0) + (contactIncome.overtime_essential || 0) + 
+           (contactIncome.overtime_non_essential || 0) + (contactIncome.other_taxable_income || 0);
+  };
+
+  const primaryTotal = calculateTotalForContact(primaryIncome);
+  const secondaryTotal = calculateTotalForContact(secondaryIncome);
+  const combinedTotal = primaryTotal + secondaryTotal;
+
   return (
-    <Sheet open={open} onOpenChange={(v) => {
-      setOpen(v);
-      if (v) {
-        const income = activeTab === 'primary' ? primaryIncome : secondaryIncome;
-        loadIncomeData(income, activeTab);
-      }
-    }}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Income
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Financial Details (Income)
-          </SheetTitle>
-          <SheetDescription>
-            Manage income details for primary and secondary contacts
-          </SheetDescription>
-        </SheetHeader>
+    <div className="space-y-4">
+      {/* Income Summary Display */}
+      {existingIncome.length > 0 ? (
+        <div className="space-y-2">
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-4 w-4 text-green-600" />
+                <span className="font-medium text-green-700">Total Household Income</span>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(combinedTotal)}/year</p>
+              <p className="text-sm text-muted-foreground">{formatCurrency(combinedTotal / 12)}/month</p>
+            </CardContent>
+          </Card>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {primaryIncome && (
+              <Card>
+                <CardContent className="pt-3">
+                  <p className="text-xs text-muted-foreground">Primary</p>
+                  <p className="font-medium">{formatCurrency(primaryTotal)}/year</p>
+                </CardContent>
+              </Card>
+            )}
+            {secondaryIncome && (
+              <Card>
+                <CardContent className="pt-3">
+                  <p className="text-xs text-muted-foreground">Secondary</p>
+                  <p className="font-medium">{formatCurrency(secondaryTotal)}/year</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-4 text-muted-foreground">
+          <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No income records</p>
+        </div>
+      )}
 
-        <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
-          <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as 'primary' | 'secondary')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="primary">
-                Primary Contact
-                {primaryIncome && <Edit className="h-3 w-3 ml-1" />}
-              </TabsTrigger>
-              <TabsTrigger value="secondary">
-                Secondary Contact
-                {secondaryIncome && <Edit className="h-3 w-3 ml-1" />}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="primary" className="mt-4">
-              <IncomeForm />
-            </TabsContent>
-
-            <TabsContent value="secondary" className="mt-4">
-              <IncomeForm />
-            </TabsContent>
-          </Tabs>
-        </ScrollArea>
-
-        <SheetFooter className="pt-4">
-          <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
-            Done
+      <Sheet open={open} onOpenChange={(v) => {
+        setOpen(v);
+        if (v) {
+          const income = activeTab === 'primary' ? primaryIncome : secondaryIncome;
+          loadIncomeData(income, activeTab);
+        }
+      }}>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            {existingIncome.length > 0 ? 'Edit Income' : 'Add Income'}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </SheetTrigger>
+        <SheetContent className="w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Financial Details (Income)
+            </SheetTitle>
+            <SheetDescription>
+              Manage income details for primary and secondary contacts
+            </SheetDescription>
+          </SheetHeader>
+
+          <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
+            <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as 'primary' | 'secondary')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="primary">
+                  Primary Contact
+                  {primaryIncome && <Edit className="h-3 w-3 ml-1" />}
+                </TabsTrigger>
+                <TabsTrigger value="secondary">
+                  Secondary Contact
+                  {secondaryIncome && <Edit className="h-3 w-3 ml-1" />}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="primary" className="mt-4">
+                <IncomeForm />
+              </TabsContent>
+
+              <TabsContent value="secondary" className="mt-4">
+                <IncomeForm />
+              </TabsContent>
+            </Tabs>
+          </ScrollArea>
+
+          <SheetFooter className="pt-4">
+            <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
+              Done
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }

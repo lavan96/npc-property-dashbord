@@ -72,7 +72,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing assets
+  // Fetch existing assets - always enabled to show summary outside sheet
   const { data: existingAssets = [] } = useQuery({
     queryKey: ['client-assets', clientId],
     queryFn: async () => {
@@ -84,7 +84,6 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
       if (error) throw error;
       return data;
     },
-    enabled: open,
   });
 
   const vehicleAssets = existingAssets.filter(a => a.asset_type === 'vehicle');
@@ -398,93 +397,136 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
     </Card>
   );
 
+  const getAssetLabel = (asset: any) => {
+    if (asset.asset_type === 'vehicle') return asset.make_model || 'Vehicle';
+    if (asset.asset_type === 'savings') return asset.institution_name || 'Savings/Deposit';
+    if (asset.asset_type === 'superfund') return asset.institution_name || 'Superfund';
+    return asset.description || 'Other Asset';
+  };
+
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Asset
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <PiggyBank className="h-5 w-5" />
-            Financial Details (Assets)
-          </SheetTitle>
-          <SheetDescription>
-            Manage vehicles, savings, and superfund assets
-          </SheetDescription>
-        </SheetHeader>
-
-        {/* Total Summary */}
-        <Card className="bg-muted/50 border-0 mt-4">
-          <CardContent className="pt-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Assets Value</span>
-              <span className="text-lg font-bold text-green-600">
-                {formatCurrency(totalAssetValue)}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <ScrollArea className="h-[calc(100vh-280px)] pr-4 mt-4">
-          <Tabs value={activeTab} onValueChange={(v) => {
-            setActiveTab(v);
-            setFormData(prev => ({ ...prev, asset_type: v }));
-            setEditingId(null);
-          }}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="vehicle">Vehicles</TabsTrigger>
-              <TabsTrigger value="savings">Savings</TabsTrigger>
-              <TabsTrigger value="superfund">Super</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="vehicle" className="space-y-4 mt-4">
-              {vehicleAssets.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Existing Vehicles</Label>
-                  {vehicleAssets.map(asset => (
-                    <AssetCard key={asset.id} asset={asset} />
-                  ))}
+    <div className="space-y-4">
+      {/* Assets Summary Display */}
+      {existingAssets.length > 0 ? (
+        <div className="space-y-2">
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <PiggyBank className="h-4 w-4 text-green-600" />
+                <span className="font-medium text-green-700">Total Assets</span>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(totalAssetValue)}</p>
+            </CardContent>
+          </Card>
+          
+          {existingAssets.map(asset => (
+            <Card key={asset.id}>
+              <CardContent className="pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">{getAssetLabel(asset)}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{asset.asset_type}</p>
+                  </div>
+                  <p className="font-medium text-green-600">{formatCurrency(asset.value || 0)}</p>
                 </div>
-              )}
-              <VehicleForm />
-            </TabsContent>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-4 text-muted-foreground">
+          <PiggyBank className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No assets recorded</p>
+        </div>
+      )}
 
-            <TabsContent value="savings" className="space-y-4 mt-4">
-              {savingsAssets.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Existing Savings</Label>
-                  {savingsAssets.map(asset => (
-                    <AssetCard key={asset.id} asset={asset} />
-                  ))}
-                </div>
-              )}
-              <SavingsForm />
-            </TabsContent>
-
-            <TabsContent value="superfund" className="space-y-4 mt-4">
-              {superfundAssets.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Existing Superfunds</Label>
-                  {superfundAssets.map(asset => (
-                    <AssetCard key={asset.id} asset={asset} />
-                  ))}
-                </div>
-              )}
-              <SuperfundForm />
-            </TabsContent>
-          </Tabs>
-        </ScrollArea>
-
-        <SheetFooter className="pt-4">
-          <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
-            Done
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            {existingAssets.length > 0 ? 'Edit Assets' : 'Add Asset'}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </SheetTrigger>
+        <SheetContent className="w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <PiggyBank className="h-5 w-5" />
+              Financial Details (Assets)
+            </SheetTitle>
+            <SheetDescription>
+              Manage vehicles, savings, and superfund assets
+            </SheetDescription>
+          </SheetHeader>
+
+          {/* Total Summary */}
+          <Card className="bg-muted/50 border-0 mt-4">
+            <CardContent className="pt-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Assets Value</span>
+                <span className="text-lg font-bold text-green-600">
+                  {formatCurrency(totalAssetValue)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <ScrollArea className="h-[calc(100vh-280px)] pr-4 mt-4">
+            <Tabs value={activeTab} onValueChange={(v) => {
+              setActiveTab(v);
+              setFormData(prev => ({ ...prev, asset_type: v }));
+              setEditingId(null);
+            }}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="vehicle">Vehicles</TabsTrigger>
+                <TabsTrigger value="savings">Savings</TabsTrigger>
+                <TabsTrigger value="superfund">Super</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="vehicle" className="space-y-4 mt-4">
+                {vehicleAssets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Existing Vehicles</Label>
+                    {vehicleAssets.map(asset => (
+                      <AssetCard key={asset.id} asset={asset} />
+                    ))}
+                  </div>
+                )}
+                <VehicleForm />
+              </TabsContent>
+
+              <TabsContent value="savings" className="space-y-4 mt-4">
+                {savingsAssets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Existing Savings</Label>
+                    {savingsAssets.map(asset => (
+                      <AssetCard key={asset.id} asset={asset} />
+                    ))}
+                  </div>
+                )}
+                <SavingsForm />
+              </TabsContent>
+
+              <TabsContent value="superfund" className="space-y-4 mt-4">
+                {superfundAssets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Existing Superfunds</Label>
+                    {superfundAssets.map(asset => (
+                      <AssetCard key={asset.id} asset={asset} />
+                    ))}
+                  </div>
+                )}
+                <SuperfundForm />
+              </TabsContent>
+            </Tabs>
+          </ScrollArea>
+
+          <SheetFooter className="pt-4">
+            <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
+              Done
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }

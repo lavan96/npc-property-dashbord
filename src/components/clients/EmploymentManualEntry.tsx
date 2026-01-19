@@ -66,7 +66,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing employment records
+  // Fetch existing employment records - always enabled to show summary outside sheet
   const { data: existingEmployment = [] } = useQuery({
     queryKey: ['client-employment', clientId],
     queryFn: async () => {
@@ -78,7 +78,6 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
       if (error) throw error;
       return data;
     },
-    enabled: open,
   });
 
   const primaryEmployment = existingEmployment.filter(e => e.contact_type === 'primary');
@@ -287,67 +286,104 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
   );
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Employment
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Briefcase className="h-5 w-5" />
-            Employment Details
-          </SheetTitle>
-          <SheetDescription>
-            Manage employment records for primary and secondary contacts
-          </SheetDescription>
-        </SheetHeader>
-
-        <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
-          <Tabs value={activeTab} onValueChange={(v) => {
-            setActiveTab(v as 'primary' | 'secondary');
-            setFormData(prev => ({ ...prev, contact_type: v as 'primary' | 'secondary' }));
-            setEditingId(null);
-          }}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="primary">Primary Contact</TabsTrigger>
-              <TabsTrigger value="secondary">Secondary Contact</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="primary" className="space-y-4 mt-4">
-              {primaryEmployment.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Existing Records</Label>
-                  {primaryEmployment.map(emp => (
-                    <EmploymentCard key={emp.id} employment={emp} />
-                  ))}
+    <div className="space-y-4">
+      {/* Employment Summary Display */}
+      {existingEmployment.length > 0 && (
+        <div className="space-y-2">
+          {existingEmployment.map(emp => (
+            <Card key={emp.id} className="mb-2">
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{emp.employer_name || 'Unknown Employer'}</span>
+                      {emp.is_current && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                      )}
+                      <span className="text-xs text-muted-foreground capitalize">({emp.contact_type})</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{emp.occupation_role}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {emp.employment_type} • Started: {emp.start_date || 'N/A'}
+                    </p>
+                  </div>
                 </div>
-              )}
-              <EmploymentForm />
-            </TabsContent>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-            <TabsContent value="secondary" className="space-y-4 mt-4">
-              {secondaryEmployment.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Existing Records</Label>
-                  {secondaryEmployment.map(emp => (
-                    <EmploymentCard key={emp.id} employment={emp} />
-                  ))}
-                </div>
-              )}
-              <EmploymentForm />
-            </TabsContent>
-          </Tabs>
-        </ScrollArea>
+      {existingEmployment.length === 0 && (
+        <div className="text-center py-4 text-muted-foreground">
+          <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No employment records</p>
+        </div>
+      )}
 
-        <SheetFooter className="pt-4">
-          <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
-            Done
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            {existingEmployment.length > 0 ? 'Edit Employment' : 'Add Employment'}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </SheetTrigger>
+        <SheetContent className="w-full sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Employment Details
+            </SheetTitle>
+            <SheetDescription>
+              Manage employment records for primary and secondary contacts
+            </SheetDescription>
+          </SheetHeader>
+
+          <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
+            <Tabs value={activeTab} onValueChange={(v) => {
+              setActiveTab(v as 'primary' | 'secondary');
+              setFormData(prev => ({ ...prev, contact_type: v as 'primary' | 'secondary' }));
+              setEditingId(null);
+            }}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="primary">Primary Contact</TabsTrigger>
+                <TabsTrigger value="secondary">Secondary Contact</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="primary" className="space-y-4 mt-4">
+                {primaryEmployment.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Existing Records</Label>
+                    {primaryEmployment.map(emp => (
+                      <EmploymentCard key={emp.id} employment={emp} />
+                    ))}
+                  </div>
+                )}
+                <EmploymentForm />
+              </TabsContent>
+
+              <TabsContent value="secondary" className="space-y-4 mt-4">
+                {secondaryEmployment.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Existing Records</Label>
+                    {secondaryEmployment.map(emp => (
+                      <EmploymentCard key={emp.id} employment={emp} />
+                    ))}
+                  </div>
+                )}
+                <EmploymentForm />
+              </TabsContent>
+            </Tabs>
+          </ScrollArea>
+
+          <SheetFooter className="pt-4">
+            <Button variant="outline" onClick={() => { setOpen(false); onComplete(); }}>
+              Done
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }
