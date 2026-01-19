@@ -269,3 +269,7 @@ request_timeout = 120
 
 [functions.clean-note-transcript]
 verify_jwt = false
+
+[functions.sync-ghl-pipelines]
+verify_jwt = false
+request_timeout = 120
