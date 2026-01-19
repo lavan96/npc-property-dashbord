@@ -331,12 +331,38 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
   const deleteMutation = useMutation({
     mutationFn: async (file: { id: string; file_path: string }) => {
+      // 1. Delete associated data from all related tables
+      const deletePromises = [
+        supabase.from('client_employment').delete().eq('client_id', clientId),
+        supabase.from('client_income').delete().eq('client_id', clientId),
+        supabase.from('client_assets').delete().eq('client_id', clientId),
+        supabase.from('client_liabilities').delete().eq('client_id', clientId),
+        supabase.from('client_properties').delete().eq('client_id', clientId),
+      ];
+      
+      await Promise.all(deletePromises);
+
+      // 2. Clear portfolio summary fields on client record
+      await supabase
+        .from('clients')
+        .update({
+          total_portfolio_value: null,
+          total_debt: null,
+          total_monthly_expenditure: null,
+          total_monthly_income: null,
+          total_monthly_rental_income: null,
+          net_monthly_cash_flow: null,
+        })
+        .eq('id', clientId);
+
+      // 3. Delete file from storage
       const { error: storageError } = await supabase.storage
         .from('vownet-forms')
         .remove([file.file_path]);
 
       if (storageError) console.warn('Storage delete failed:', storageError);
 
+      // 4. Delete file record from database
       const { error: dbError } = await supabase
         .from('client_files')
         .delete()
@@ -345,11 +371,19 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       if (dbError) throw dbError;
     },
     onSuccess: () => {
+      // Invalidate all related queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ['client-vownet-forms', clientId] });
-      toast.success('VowNet form deleted');
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-income', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-assets', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-liabilities', clientId] });
+      toast.success('VowNet form and associated data deleted');
     },
     onError: (error: any) => {
-      toast.error('Failed to delete file: ' + error.message);
+      toast.error('Failed to delete: ' + error.message);
     }
   });
 

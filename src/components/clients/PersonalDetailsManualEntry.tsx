@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,9 +24,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, User, Users, MapPin, IdCard, Heart, Loader2 } from 'lucide-react';
+import { Edit, User, Users, MapPin, IdCard, Heart, Loader2, Phone, Mail, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { format } from 'date-fns';
 
 interface PersonalDetailsManualEntryProps {
   clientId: string;
@@ -114,6 +115,25 @@ const maritalStatusOptions = [
   { value: 'widowed', label: 'Widowed' },
   { value: 'separated', label: 'Separated' },
 ];
+
+// Helper to format display values
+const formatLabel = (value: string | null | undefined, options?: { value: string; label: string }[]): string => {
+  if (!value) return '-';
+  if (options) {
+    const found = options.find(o => o.value === value);
+    return found?.label || value;
+  }
+  return value;
+};
+
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '-';
+  try {
+    return format(new Date(dateStr), 'dd MMM yyyy');
+  } catch {
+    return dateStr;
+  }
+};
 
 export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }: PersonalDetailsManualEntryProps) {
   const [open, setOpen] = useState(false);
@@ -207,6 +227,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Personal details updated successfully');
       
       addNotification({
@@ -319,176 +340,248 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
     </Card>
   );
 
+  // Read-only display component for when sheet is closed
+  const DisplayCard = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Icon className="h-4 w-4" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-sm space-y-2">
+        {children}
+      </CardContent>
+    </Card>
+  );
+
+  const DisplayItem = ({ label, value }: { label: string; value: string }) => (
+    <div className="flex justify-between py-1 border-b border-border/50 last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{value}</span>
+    </div>
+  );
+
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit Details
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-2xl">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Personal Details (All Applicants)
-          </SheetTitle>
-          <SheetDescription>
-            Edit personal details matching Vownet template format
-          </SheetDescription>
-        </SheetHeader>
+    <div className="space-y-4">
+      {/* Stateful Display - Always shows current data */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Personal Details
+        </h3>
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Details
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-2xl">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Personal Details (All Applicants)
+              </SheetTitle>
+              <SheetDescription>
+                Edit personal details matching Vownet template format
+              </SheetDescription>
+            </SheetHeader>
 
-        <ScrollArea className="h-[calc(100vh-180px)] pr-4">
-          <Tabs defaultValue="contacts" className="w-full mt-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="contacts">Contacts</TabsTrigger>
-              <TabsTrigger value="address">Address & ID</TabsTrigger>
-              <TabsTrigger value="family">Family</TabsTrigger>
-            </TabsList>
+            <ScrollArea className="h-[calc(100vh-180px)] pr-4">
+              <Tabs defaultValue="contacts" className="w-full mt-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="contacts">Contacts</TabsTrigger>
+                  <TabsTrigger value="address">Address & ID</TabsTrigger>
+                  <TabsTrigger value="family">Family</TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="contacts" className="space-y-4 mt-4">
-              <ContactFields prefix="primary" title="Primary Contact" />
-              
-              <Separator className="my-4" />
-              
-              <ContactFields prefix="secondary" title="Secondary Contact" />
-            </TabsContent>
+                <TabsContent value="contacts" className="space-y-4 mt-4">
+                  <ContactFields prefix="primary" title="Primary Contact" />
+                  
+                  <Separator className="my-4" />
+                  
+                  <ContactFields prefix="secondary" title="Secondary Contact" />
+                </TabsContent>
 
-            <TabsContent value="address" className="space-y-4 mt-4">
-              {/* Address Section */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Address
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Current Address</Label>
-                    <Input
-                      value={formData.current_address}
-                      onChange={(e) => updateField('current_address', e.target.value)}
-                      placeholder="123 Main Street, Sydney NSW 2000"
-                    />
-                  </div>
+                <TabsContent value="address" className="space-y-4 mt-4">
+                  {/* Address Section */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Address
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Current Address</Label>
+                        <Input
+                          value={formData.current_address}
+                          onChange={(e) => updateField('current_address', e.target.value)}
+                          placeholder="123 Main Street, Sydney NSW 2000"
+                        />
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Country</Label>
-                      <Input
-                        value={formData.country}
-                        onChange={(e) => updateField('country', e.target.value)}
-                        placeholder="Australia"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Living Situation</Label>
-                      <Select
-                        value={formData.living_situation}
-                        onValueChange={(v) => updateField('living_situation', v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select situation" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {livingSituationOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Country</Label>
+                          <Input
+                            value={formData.country}
+                            onChange={(e) => updateField('country', e.target.value)}
+                            placeholder="Australia"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Living Situation</Label>
+                          <Select
+                            value={formData.living_situation}
+                            onValueChange={(v) => updateField('living_situation', v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select situation" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {livingSituationOptions.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-              {/* ID Section */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <IdCard className="h-4 w-4" />
-                    ID
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Residential Status</Label>
-                    <Select
-                      value={formData.residential_status}
-                      onValueChange={(v) => updateField('residential_status', v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {residentialStatusOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  {/* ID Section */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <IdCard className="h-4 w-4" />
+                        ID
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Residential Status</Label>
+                        <Select
+                          value={formData.residential_status}
+                          onValueChange={(v) => updateField('residential_status', v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {residentialStatusOptions.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-            <TabsContent value="family" className="space-y-4 mt-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Heart className="h-4 w-4" />
-                    Family Relations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Marital Status</Label>
-                      <Select
-                        value={formData.marital_status}
-                        onValueChange={(v) => updateField('marital_status', v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {maritalStatusOptions.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Number of Dependents (under 18)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={formData.dependents_count || ''}
-                        onChange={(e) => updateField('dependents_count', parseInt(e.target.value) || 0)}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </ScrollArea>
+                <TabsContent value="family" className="space-y-4 mt-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Heart className="h-4 w-4" />
+                        Family Relations
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Marital Status</Label>
+                          <Select
+                            value={formData.marital_status}
+                            onValueChange={(v) => updateField('marital_status', v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {maritalStatusOptions.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Number of Dependents (under 18)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={formData.dependents_count || ''}
+                            onChange={(e) => updateField('dependents_count', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </ScrollArea>
 
-        <SheetFooter className="pt-4">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            disabled={updateClientMutation.isPending}
-          >
-            {updateClientMutation.isPending && (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            )}
-            Save Changes
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+            <SheetFooter className="pt-4">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={updateClientMutation.isPending}
+              >
+                {updateClientMutation.isPending && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
+                Save Changes
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Read-only data display */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Primary Contact Display */}
+        <DisplayCard title="Primary Contact" icon={User}>
+          <DisplayItem 
+            label="Name" 
+            value={[clientData?.primary_first_name, clientData?.primary_middle_name, clientData?.primary_surname].filter(Boolean).join(' ') || '-'} 
+          />
+          <DisplayItem label="Mobile" value={clientData?.primary_mobile || '-'} />
+          <DisplayItem label="Email" value={clientData?.primary_email || '-'} />
+          <DisplayItem label="Gender" value={formatLabel(clientData?.primary_gender, genderOptions)} />
+          <DisplayItem label="Date of Birth" value={formatDate(clientData?.primary_dob)} />
+        </DisplayCard>
+
+        {/* Secondary Contact Display */}
+        <DisplayCard title="Secondary Contact" icon={Users}>
+          <DisplayItem 
+            label="Name" 
+            value={[clientData?.secondary_first_name, clientData?.secondary_middle_name, clientData?.secondary_surname].filter(Boolean).join(' ') || '-'} 
+          />
+          <DisplayItem label="Mobile" value={clientData?.secondary_mobile || '-'} />
+          <DisplayItem label="Email" value={clientData?.secondary_email || '-'} />
+          <DisplayItem label="Gender" value={formatLabel(clientData?.secondary_gender, genderOptions)} />
+          <DisplayItem label="Date of Birth" value={formatDate(clientData?.secondary_dob)} />
+        </DisplayCard>
+
+        {/* Address Display */}
+        <DisplayCard title="Address" icon={MapPin}>
+          <DisplayItem label="Current Address" value={clientData?.current_address || '-'} />
+          <DisplayItem label="Country" value={clientData?.country || '-'} />
+          <DisplayItem label="Living Situation" value={formatLabel(clientData?.living_situation, livingSituationOptions)} />
+        </DisplayCard>
+
+        {/* ID & Family Display */}
+        <DisplayCard title="ID & Family" icon={Heart}>
+          <DisplayItem label="Residential Status" value={formatLabel(clientData?.residential_status, residentialStatusOptions)} />
+          <DisplayItem label="Marital Status" value={formatLabel(clientData?.marital_status, maritalStatusOptions)} />
+          <DisplayItem label="Dependents" value={clientData?.dependents_count?.toString() || '0'} />
+        </DisplayCard>
+      </div>
+    </div>
   );
 }
