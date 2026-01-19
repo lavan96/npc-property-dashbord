@@ -1968,7 +1968,7 @@ export function PortfolioAnalysisPDFGenerator({
       // Detailed analysis
       yPos = drawSubsectionHeader(page, 'Detailed Analysis', yPos);
       yPos = drawFormattedText(page, safeString(financialHealth?.analysis, 'No detailed analysis available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 16);
-      yPos -= SECTION_SPACING + 5;
+      yPos -= PARAGRAPH_SPACING;
       
       console.log('✓ Financial health page complete');
       
@@ -1979,7 +1979,7 @@ export function PortfolioAnalysisPDFGenerator({
         page = addContentPage();
         yPos = PAGE_HEIGHT - MARGIN_TOP;
       } else {
-        yPos -= SECTION_SPACING;
+        yPos -= SUBSECTION_SPACING;
       }
       
       yPos = drawSectionHeader(page, 'Risk Assessment', yPos);
