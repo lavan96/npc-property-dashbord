@@ -80,8 +80,9 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
     },
   });
 
-  const primaryEmployment = existingEmployment.filter(e => e.contact_type === 'primary');
-  const secondaryEmployment = existingEmployment.filter(e => e.contact_type === 'secondary');
+  const primaryEmployment = existingEmployment.filter(e => e.contact_type === 'primary' && e.is_current);
+  const secondaryEmployment = existingEmployment.filter(e => e.contact_type === 'secondary' && e.is_current);
+  const previousEmployment = existingEmployment.filter(e => !e.is_current);
 
   const updateField = (field: keyof EmploymentFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -167,7 +168,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
     saveMutation.mutate();
   };
 
-  const EmploymentCard = ({ employment }: { employment: any }) => (
+  const EmploymentCard = ({ employment, showContactType = false }: { employment: any; showContactType?: boolean }) => (
     <Card className="mb-2">
       <CardContent className="pt-4">
         <div className="flex items-start justify-between">
@@ -176,6 +177,12 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
               <span className="font-medium">{employment.employer_name || 'Unknown Employer'}</span>
               {employment.is_current && (
                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+              )}
+              {!employment.is_current && (
+                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
+              )}
+              {showContactType && (
+                <span className="text-xs text-muted-foreground capitalize">({employment.contact_type})</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground">{employment.occupation_role}</p>
@@ -346,15 +353,16 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
               setFormData(prev => ({ ...prev, contact_type: v as 'primary' | 'secondary' }));
               setEditingId(null);
             }}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="primary">Primary Contact</TabsTrigger>
-                <TabsTrigger value="secondary">Secondary Contact</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="primary">Primary</TabsTrigger>
+                <TabsTrigger value="secondary">Secondary</TabsTrigger>
+                <TabsTrigger value="previous">Previous</TabsTrigger>
               </TabsList>
 
               <TabsContent value="primary" className="space-y-4 mt-4">
                 {primaryEmployment.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Existing Records</Label>
+                    <Label className="text-xs text-muted-foreground">Current Employment</Label>
                     {primaryEmployment.map(emp => (
                       <EmploymentCard key={emp.id} employment={emp} />
                     ))}
@@ -366,13 +374,30 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
               <TabsContent value="secondary" className="space-y-4 mt-4">
                 {secondaryEmployment.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Existing Records</Label>
+                    <Label className="text-xs text-muted-foreground">Current Employment</Label>
                     {secondaryEmployment.map(emp => (
                       <EmploymentCard key={emp.id} employment={emp} />
                     ))}
                   </div>
                 )}
                 <EmploymentForm />
+              </TabsContent>
+
+              <TabsContent value="previous" className="space-y-4 mt-4">
+                {previousEmployment.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Previous Employment Records</Label>
+                    {previousEmployment.map(emp => (
+                      <EmploymentCard key={emp.id} employment={emp} showContactType />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No previous employment records</p>
+                    <p className="text-xs mt-1">Toggle off "Current Employer" when adding to mark as previous</p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </ScrollArea>

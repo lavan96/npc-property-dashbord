@@ -23,7 +23,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, PiggyBank, Loader2, Trash2, Edit, Car, Wallet, Building } from 'lucide-react';
+import { Plus, PiggyBank, Loader2, Trash2, Edit, Car, Wallet, Building, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AssetManualEntryProps {
@@ -45,6 +45,7 @@ const assetTypeOptions = [
   { value: 'vehicle', label: 'Vehicle', icon: Car },
   { value: 'savings', label: 'Savings/Deposit', icon: Wallet },
   { value: 'superfund', label: 'Superfund', icon: Building },
+  { value: 'alternative', label: 'Alternative', icon: TrendingUp },
   { value: 'other', label: 'Other', icon: PiggyBank },
 ];
 
@@ -54,6 +55,20 @@ const vehicleTypeOptions = [
   { value: 'boat', label: 'Boat' },
   { value: 'caravan', label: 'Caravan' },
   { value: 'other', label: 'Other' },
+];
+
+const alternativeAssetOptions = [
+  { value: 'cryptocurrency', label: 'Cryptocurrency' },
+  { value: 'hedge_fund', label: 'Hedge Fund' },
+  { value: 'forex', label: 'Foreign Exchange (Forex)' },
+  { value: 'private_equity', label: 'Private Equity' },
+  { value: 'commodities', label: 'Commodities' },
+  { value: 'art_collectibles', label: 'Art & Collectibles' },
+  { value: 'precious_metals', label: 'Precious Metals' },
+  { value: 'venture_capital', label: 'Venture Capital' },
+  { value: 'real_estate_fund', label: 'Real Estate Fund (REITs)' },
+  { value: 'options_derivatives', label: 'Options & Derivatives' },
+  { value: 'other', label: 'Other Alternative' },
 ];
 
 const defaultFormData: AssetFormData = {
@@ -89,6 +104,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
   const vehicleAssets = existingAssets.filter(a => a.asset_type === 'vehicle');
   const savingsAssets = existingAssets.filter(a => a.asset_type === 'savings');
   const superfundAssets = existingAssets.filter(a => a.asset_type === 'superfund');
+  const alternativeAssets = existingAssets.filter(a => a.asset_type === 'alternative');
   const otherAssets = existingAssets.filter(a => a.asset_type === 'other');
 
   const updateField = (field: keyof AssetFormData, value: any) => {
@@ -181,6 +197,11 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
 
   const totalAssetValue = existingAssets.reduce((sum, a) => sum + (a.value || 0), 0);
 
+  const getAlternativeAssetLabel = (vehicleType: string | null) => {
+    const option = alternativeAssetOptions.find(o => o.value === vehicleType);
+    return option?.label || vehicleType || 'Alternative Asset';
+  };
+
   const AssetCard = ({ asset }: { asset: any }) => (
     <Card className="mb-2">
       <CardContent className="pt-4">
@@ -191,11 +212,15 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                 {asset.asset_type === 'vehicle' && asset.make_model}
                 {asset.asset_type === 'savings' && 'Savings/Deposit'}
                 {asset.asset_type === 'superfund' && (asset.institution_name || 'Superfund')}
+                {asset.asset_type === 'alternative' && getAlternativeAssetLabel(asset.vehicle_type)}
                 {asset.asset_type === 'other' && (asset.description || 'Other Asset')}
               </span>
             </div>
             {asset.asset_type === 'vehicle' && (
               <p className="text-sm text-muted-foreground">{asset.vehicle_type}</p>
+            )}
+            {asset.asset_type === 'alternative' && asset.description && (
+              <p className="text-sm text-muted-foreground">{asset.description}</p>
             )}
             {asset.institution_name && asset.asset_type !== 'superfund' && (
               <p className="text-sm text-muted-foreground">{asset.institution_name}</p>
@@ -401,8 +426,86 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
     if (asset.asset_type === 'vehicle') return asset.make_model || 'Vehicle';
     if (asset.asset_type === 'savings') return asset.institution_name || 'Savings/Deposit';
     if (asset.asset_type === 'superfund') return asset.institution_name || 'Superfund';
+    if (asset.asset_type === 'alternative') return getAlternativeAssetLabel(asset.vehicle_type);
     return asset.description || 'Other Asset';
   };
+
+  const AlternativeForm = () => (
+    <Card className="border-primary/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          {editingId ? 'Edit Alternative Asset' : 'Add Alternative Asset'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-xs">Asset Type</Label>
+          <Select
+            value={formData.vehicle_type}
+            onValueChange={(v) => updateField('vehicle_type', v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {alternativeAssetOptions.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Platform/Provider (Optional)</Label>
+          <Input
+            value={formData.institution_name}
+            onChange={(e) => updateField('institution_name', e.target.value)}
+            placeholder="e.g., Coinbase, Binance, BlackRock"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Description (Optional)</Label>
+          <Input
+            value={formData.description}
+            onChange={(e) => updateField('description', e.target.value)}
+            placeholder="e.g., Bitcoin holdings, Gold ETF"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs">Value</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <Input
+              type="number"
+              value={formData.value || ''}
+              onChange={(e) => updateField('value', parseFloat(e.target.value) || 0)}
+              className="pl-7"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          {editingId && (
+            <Button variant="outline" onClick={resetForm} className="flex-1">
+              Cancel
+            </Button>
+          )}
+          <Button 
+            onClick={handleSubmit} 
+            disabled={saveMutation.isPending}
+            className="flex-1"
+          >
+            {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {editingId ? 'Update' : 'Add Asset'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-4">
@@ -453,9 +556,9 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
               <PiggyBank className="h-5 w-5" />
               Financial Details (Assets)
             </SheetTitle>
-            <SheetDescription>
-              Manage vehicles, savings, and superfund assets
-            </SheetDescription>
+          <SheetDescription>
+            Manage vehicles, savings, superfund, and alternative assets
+          </SheetDescription>
           </SheetHeader>
 
           {/* Total Summary */}
@@ -476,10 +579,11 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
               setFormData(prev => ({ ...prev, asset_type: v }));
               setEditingId(null);
             }}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="vehicle">Vehicles</TabsTrigger>
                 <TabsTrigger value="savings">Savings</TabsTrigger>
                 <TabsTrigger value="superfund">Super</TabsTrigger>
+                <TabsTrigger value="alternative">Others</TabsTrigger>
               </TabsList>
 
               <TabsContent value="vehicle" className="space-y-4 mt-4">
@@ -516,6 +620,18 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                   </div>
                 )}
                 <SuperfundForm />
+              </TabsContent>
+
+              <TabsContent value="alternative" className="space-y-4 mt-4">
+                {alternativeAssets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Alternative Investments</Label>
+                    {alternativeAssets.map(asset => (
+                      <AssetCard key={asset.id} asset={asset} />
+                    ))}
+                  </div>
+                )}
+                <AlternativeForm />
               </TabsContent>
             </Tabs>
           </ScrollArea>
