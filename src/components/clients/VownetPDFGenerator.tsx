@@ -922,7 +922,9 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
     ? `${properCase(client.secondary_first_name)} ${properCase(client.secondary_surname || client.primary_surname)}`
     : '';
   const clientFullName = secondaryName ? `${primaryName} & ${secondaryName}` : primaryName;
-  const equity = (client.total_portfolio_value || 0) - (client.total_debt || 0);
+  
+  // Calculate equity based on filtered properties (respects toggle setting)
+  const summaryEquity = totalValue - totalLoans;
 
   // Generate individual investment property pages HTML (one per page)
   const investmentPropertyPagesHTML = investmentPropertyPages.map((item, pageIndex) => `
@@ -1685,22 +1687,22 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           </div>
         </div>
         <div class="page-content">
-          <!-- KPI Cards -->
+          <!-- KPI Cards - Uses filtered property calculations based on toggle -->
           <div class="kpi-grid">
             <div class="kpi-card">
               <span class="kpi-icon">🏠</span>
               <div class="kpi-label">TOTAL PORTFOLIO VALUE</div>
-              <div class="kpi-value">${formatCurrency(client.total_portfolio_value)}</div>
+              <div class="kpi-value">${formatCurrency(totalValue)}</div>
             </div>
             <div class="kpi-card">
               <span class="kpi-icon">💳</span>
               <div class="kpi-label">TOTAL DEBT</div>
-              <div class="kpi-value">${formatCurrency(client.total_debt)}</div>
+              <div class="kpi-value">${formatCurrency(totalLoans)}</div>
             </div>
             <div class="kpi-card">
               <span class="kpi-icon">📈</span>
               <div class="kpi-label">PORTFOLIO EQUITY</div>
-              <div class="kpi-value ${equity >= 0 ? 'positive' : 'negative'}">${formatCurrency(equity)}</div>
+              <div class="kpi-value ${summaryEquity >= 0 ? 'positive' : 'negative'}">${formatCurrency(summaryEquity)}</div>
             </div>
           </div>
           
