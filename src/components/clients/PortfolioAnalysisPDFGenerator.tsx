@@ -271,6 +271,7 @@ export function PortfolioAnalysisPDFGenerator({
       // Embed fonts
       const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
       
       console.log('✓ PDF document created with fonts');
       
@@ -868,12 +869,12 @@ export function PortfolioAnalysisPDFGenerator({
       // ============= TAGLINE WITH DECORATIVE LINES =============
       const taglineY = PAGE_HEIGHT / 2 - 160;
       const taglineText = 'YOUR DEDICATED PROPERTY PARTNER';
-      const taglineWidth = helveticaFont.widthOfTextAtSize(taglineText, 14);
+      const taglineWidth = helveticaBold.widthOfTextAtSize(taglineText, 13);
       const taglineX = (PAGE_WIDTH - taglineWidth) / 2;
       
       // Left decorative line
-      const lineLength = 80;
-      const lineGap = 15;
+      const lineLength = 100;
+      const lineGap = 20;
       coverPage.drawLine({
         start: { x: taglineX - lineGap - lineLength, y: taglineY + 5 },
         end: { x: taglineX - lineGap, y: taglineY + 5 },
@@ -881,12 +882,12 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Tagline text
+      // Tagline text (spaced out for elegance)
       coverPage.drawText(taglineText, {
         x: taglineX,
         y: taglineY,
-        size: 14,
-        font: helveticaFont,
+        size: 13,
+        font: helveticaBold,
         color: NPC_GOLD,
       });
       
@@ -898,33 +899,68 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Center diamond shape
-      const diamondY = taglineY - 25;
-      const diamondSize = 6;
-      // Draw diamond as 4 lines
-      coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2, y: diamondY + diamondSize },
-        end: { x: PAGE_WIDTH / 2 + diamondSize, y: diamondY },
-        thickness: 1.5,
+      // ============= DIAMOND SHAPE =============
+      const diamondY = taglineY - 30;
+      const diamondSize = 8;
+      
+      // Draw filled diamond using lines
+      for (let i = 0; i <= diamondSize; i++) {
+        const halfWidth = i;
+        coverPage.drawLine({
+          start: { x: PAGE_WIDTH / 2 - halfWidth, y: diamondY + diamondSize - i },
+          end: { x: PAGE_WIDTH / 2 + halfWidth, y: diamondY + diamondSize - i },
+          thickness: 1,
+          color: NPC_GOLD,
+        });
+      }
+      for (let i = 0; i <= diamondSize; i++) {
+        const halfWidth = diamondSize - i;
+        coverPage.drawLine({
+          start: { x: PAGE_WIDTH / 2 - halfWidth, y: diamondY - i },
+          end: { x: PAGE_WIDTH / 2 + halfWidth, y: diamondY - i },
+          thickness: 1,
+          color: NPC_GOLD,
+        });
+      }
+      
+      // ============= REPORT TITLE (Italic Serif Font) =============
+      const reportTitleY = diamondY - 60;
+      const reportTitle = 'Portfolio Performance Report';
+      const reportTitleWidth = timesItalic.widthOfTextAtSize(reportTitle, 36);
+      coverPage.drawText(reportTitle, {
+        x: (PAGE_WIDTH - reportTitleWidth) / 2,
+        y: reportTitleY,
+        size: 36,
+        font: timesItalic,
+        color: NPC_WHITE,
+      });
+      
+      // ============= CLIENT NAME (Small Caps Style) =============
+      const clientNameY = reportTitleY - 50;
+      const clientText = stripEmojis(analysisData.clientName).toUpperCase();
+      const clientNameWidth = helveticaBold.widthOfTextAtSize(clientText, 16);
+      coverPage.drawText(clientText, {
+        x: (PAGE_WIDTH - clientNameWidth) / 2,
+        y: clientNameY,
+        size: 16,
+        font: helveticaBold,
         color: NPC_GOLD,
       });
-      coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2 + diamondSize, y: diamondY },
-        end: { x: PAGE_WIDTH / 2, y: diamondY - diamondSize },
-        thickness: 1.5,
-        color: NPC_GOLD,
+      
+      // ============= DATE =============
+      const dateY = clientNameY - 50;
+      const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
       });
-      coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2, y: diamondY - diamondSize },
-        end: { x: PAGE_WIDTH / 2 - diamondSize, y: diamondY },
-        thickness: 1.5,
-        color: NPC_GOLD,
-      });
-      coverPage.drawLine({
-        start: { x: PAGE_WIDTH / 2 - diamondSize, y: diamondY },
-        end: { x: PAGE_WIDTH / 2, y: diamondY + diamondSize },
-        thickness: 1.5,
-        color: NPC_GOLD,
+      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 14);
+      coverPage.drawText(dateText, {
+        x: (PAGE_WIDTH - dateWidth) / 2,
+        y: dateY,
+        size: 14,
+        font: helveticaFont,
+        color: NPC_WHITE,
       });
       
       console.log('✓ NPC branded cover page complete (exact template match)');
