@@ -406,6 +406,7 @@ export default function GeneratedReports() {
 
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Apply 30-day cutoff for non-archived reports to reduce payload
+      // Filter out client reports (is_client_report = true) - those are only accessible from clients page
       const { data, error } = await supabase
         .from('investment_reports')
         .select(
@@ -414,6 +415,7 @@ export default function GeneratedReports() {
         .in('status', ['completed', 'pending'])
         .gte('created_at', thirtyDaysAgo)
         .eq('is_archived', false)
+        .or('is_client_report.is.null,is_client_report.eq.false') // Exclude client reports
         .order('created_at', { ascending: false });
 
       console.log('📊 Investment reports response:', { count: data?.length, error });

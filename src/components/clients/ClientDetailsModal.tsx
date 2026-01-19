@@ -60,6 +60,7 @@ import { ClientEmailCompose } from './ClientEmailCompose';
 import { ClientReportsTab } from './ClientReportsTab';
 import { VownetPDFGenerator } from './VownetPDFGenerator';
 import { PropertyEditSheet } from './PropertyEditSheet';
+import { ClientPropertyInvestmentReport } from './ClientPropertyInvestmentReport';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -488,13 +489,23 @@ NPC Team`
                             <p className="text-xs text-muted-foreground mt-1">{property.smsf_fund_name}</p>
                           )}
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setEditingProperty(property)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {/* Investment Report Button - only for investment properties */}
+                          {(property.property_type === 'investment' || property.property_type === 'smsf') && (
+                            <ClientPropertyInvestmentReport
+                              property={property}
+                              clientId={client.id}
+                              clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                            />
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setEditingProperty(property)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
