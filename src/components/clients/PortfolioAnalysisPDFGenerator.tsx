@@ -233,6 +233,43 @@ const stripEmojis = (text: string): string => {
     .trim();
 };
 
+// Strip markdown bold markers and return clean text
+const stripMarkdownBold = (text: string): string => {
+  if (!text) return '';
+  return text.replace(/\*\*/g, '');
+};
+
+// Parse text into segments with bold/normal styling
+interface TextSegment {
+  text: string;
+  isBold: boolean;
+}
+
+const parseMarkdownBold = (text: string): TextSegment[] => {
+  if (!text) return [];
+  const segments: TextSegment[] = [];
+  const regex = /\*\*([^*]+)\*\*/g;
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before the bold part
+    if (match.index > lastIndex) {
+      segments.push({ text: text.slice(lastIndex, match.index), isBold: false });
+    }
+    // Add the bold part
+    segments.push({ text: match[1], isBold: true });
+    lastIndex = regex.lastIndex;
+  }
+  
+  // Add remaining text
+  if (lastIndex < text.length) {
+    segments.push({ text: text.slice(lastIndex), isBold: false });
+  }
+  
+  return segments;
+};
+
 // Format property type for display (owner_occupied -> Owner Occupied)
 const formatPropertyType = (type: string | null | undefined): string => {
   if (!type) return 'Property';
@@ -497,7 +534,7 @@ export function PortfolioAnalysisPDFGenerator({
         color = SECONDARY_COLOR,
         lineHeight = 1.4
       ): number => {
-        const cleanText = stripEmojis(text);
+        const cleanText = stripEmojis(stripMarkdownBold(text));
         const words = cleanText.split(' ');
         let line = '';
         let currentY = y;
@@ -517,6 +554,71 @@ export function PortfolioAnalysisPDFGenerator({
         
         if (line) {
           page.drawText(line, { x, y: currentY, size, font, color });
+          currentY -= size * lineHeight;
+        }
+        
+        return currentY;
+      };
+      
+      // Draw wrapped text with markdown bold support
+      const drawWrappedTextWithBold = (
+        page: PDFPage,
+        text: string,
+        x: number,
+        y: number,
+        maxWidth: number,
+        regularFont: PDFFont,
+        boldFont: PDFFont,
+        size: number,
+        color = SECONDARY_COLOR,
+        lineHeight = 1.5
+      ): number => {
+        const segments = parseMarkdownBold(stripEmojis(text));
+        let currentX = x;
+        let currentY = y;
+        let lineWords: { word: string; isBold: boolean }[] = [];
+        
+        // Flatten segments into individual words with their styles
+        const allWords: { word: string; isBold: boolean }[] = [];
+        for (const segment of segments) {
+          const words = segment.text.split(' ').filter(w => w.length > 0);
+          for (const word of words) {
+            allWords.push({ word, isBold: segment.isBold });
+          }
+        }
+        
+        // Process words and wrap lines
+        let currentLineWidth = 0;
+        
+        for (const { word, isBold } of allWords) {
+          const font = isBold ? boldFont : regularFont;
+          const wordWidth = font.widthOfTextAtSize(word + ' ', size);
+          
+          if (currentLineWidth + wordWidth > maxWidth && lineWords.length > 0) {
+            // Draw current line
+            let drawX = x;
+            for (const { word: w, isBold: bold } of lineWords) {
+              const f = bold ? boldFont : regularFont;
+              page.drawText(w, { x: drawX, y: currentY, size, font: f, color });
+              drawX += f.widthOfTextAtSize(w + ' ', size);
+            }
+            currentY -= size * lineHeight;
+            lineWords = [];
+            currentLineWidth = 0;
+          }
+          
+          lineWords.push({ word, isBold });
+          currentLineWidth += wordWidth;
+        }
+        
+        // Draw remaining words
+        if (lineWords.length > 0) {
+          let drawX = x;
+          for (const { word: w, isBold: bold } of lineWords) {
+            const f = bold ? boldFont : regularFont;
+            page.drawText(w, { x: drawX, y: currentY, size, font: f, color });
+            drawX += f.widthOfTextAtSize(w + ' ', size);
+          }
           currentY -= size * lineHeight;
         }
         
@@ -717,7 +819,7 @@ export function PortfolioAnalysisPDFGenerator({
         });
       };
       
-      // Draw bullet list with improved formatting
+      // Draw bullet list with markdown bold support
       const drawBulletList = (
         page: PDFPage,
         items: string[],
@@ -725,7 +827,7 @@ export function PortfolioAnalysisPDFGenerator({
         y: number,
         maxWidth: number,
         size: number = 9,
-        bulletIndent: number = 12
+        bulletIndent: number = 15
       ): number => {
         let currentY = y;
         const bulletChar = '•';
@@ -740,18 +842,20 @@ export function PortfolioAnalysisPDFGenerator({
             color: PRIMARY_COLOR,
           });
           
-          // Draw wrapped text after bullet with proper indent
-          currentY = drawWrappedText(
+          // Draw wrapped text with bold support after bullet
+          currentY = drawWrappedTextWithBold(
             page, 
-            stripEmojis(item), 
+            item, 
             x + bulletIndent, 
             currentY, 
             maxWidth - bulletIndent, 
             helveticaFont, 
+            helveticaBold,
             size, 
-            SECONDARY_COLOR
+            SECONDARY_COLOR,
+            1.6
           );
-          currentY -= LIST_ITEM_SPACING;
+          currentY -= LIST_ITEM_SPACING + 4;
         }
         return currentY;
       };
@@ -2133,12 +2237,12 @@ export function PortfolioAnalysisPDFGenerator({
       
       const recommendations = analysisData.analysis?.strategicRecommendations;
       
-      // Priority Actions (highlighted) - improved spacing
+      // Priority Actions (highlighted) - improved spacing and margins
       const priorityActions = safeArray(recommendations?.priorityActions);
       if (priorityActions.length > 0) {
-        const actionItemHeight = 22;
-        const boxPadding = 15;
-        const headerHeight = 28;
+        const actionItemHeight = 28;
+        const boxPadding = 18;
+        const headerHeight = 32;
         const boxHeight = priorityActions.length * actionItemHeight + headerHeight + boxPadding * 2;
         
         page.drawRectangle({
@@ -2148,30 +2252,30 @@ export function PortfolioAnalysisPDFGenerator({
           height: boxHeight,
           color: rgb(0.95, 0.97, 0.95),
           borderColor: SUCCESS_COLOR,
-          borderWidth: 1,
+          borderWidth: 1.5,
         });
         
         page.drawText('PRIORITY ACTIONS', {
           x: MARGIN_LEFT + boxPadding,
-          y: yPos - headerHeight,
+          y: yPos - headerHeight + 6,
           size: 11,
           font: helveticaBold,
           color: SUCCESS_COLOR,
         });
         
-        yPos -= headerHeight + boxPadding;
+        let actionY = yPos - headerHeight - boxPadding + 2;
         for (let i = 0; i < priorityActions.length; i++) {
           page.drawText(`${i + 1}.`, {
-            x: MARGIN_LEFT + boxPadding + 5,
-            y: yPos,
+            x: MARGIN_LEFT + boxPadding,
+            y: actionY,
             size: 9,
             font: helveticaBold,
             color: PRIMARY_COLOR,
           });
-          yPos = drawWrappedText(page, safeString(priorityActions[i], 'N/A'), MARGIN_LEFT + boxPadding + 22, yPos, CONTENT_WIDTH - boxPadding * 2 - 30, helveticaFont, 9, SECONDARY_COLOR);
-          yPos -= LIST_ITEM_SPACING;
+          drawWrappedText(page, safeString(priorityActions[i], 'N/A'), MARGIN_LEFT + boxPadding + 18, actionY, CONTENT_WIDTH - boxPadding * 2 - 24, helveticaFont, 9, SECONDARY_COLOR, 1.5);
+          actionY -= actionItemHeight;
         }
-        yPos -= SUBSECTION_SPACING;
+        yPos -= boxHeight + SUBSECTION_SPACING;
       }
       
       // Short-Term (0-12 months)
