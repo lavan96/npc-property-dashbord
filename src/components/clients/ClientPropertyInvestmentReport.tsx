@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Sheet,
   SheetContent,
@@ -34,6 +35,10 @@ import {
 import { PreGenerationOverrides, PreGenerationData } from '@/components/reports/PreGenerationOverrides';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
+import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
+import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
+import { ComparisonViewer } from '@/components/reports/ComparisonViewer';
+import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -50,7 +55,10 @@ import {
   Settings,
   Trash2,
   Calculator,
-  MoreHorizontal,
+  Download,
+  RefreshCw,
+  History,
+  GitCompare,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -62,6 +70,11 @@ interface InvestmentReportData {
   report_content: string;
   manual_overrides?: any;
   financial_calculations?: any;
+  demographics_data?: any;
+  economic_data?: any;
+  investment_score?: any;
+  location_intelligence?: any;
+  current_version?: number;
 }
 
 interface ClientPropertyInvestmentReportProps {
@@ -85,12 +98,20 @@ interface ClientPropertyInvestmentReportProps {
   };
   clientId: string;
   clientName: string;
+  onReportsChange?: (reports: InvestmentReportData[]) => void;
+  selectedReportIds?: string[];
+  onSelectReport?: (reportId: string, selected: boolean) => void;
+  comparisonMode?: boolean;
 }
 
 export function ClientPropertyInvestmentReport({
   property,
   clientId,
   clientName,
+  onReportsChange,
+  selectedReportIds = [],
+  onSelectReport,
+  comparisonMode = false,
 }: ClientPropertyInvestmentReportProps) {
   const [isOverrideSheetOpen, setIsOverrideSheetOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -101,6 +122,8 @@ export function ClientPropertyInvestmentReport({
   // Modal states for post-generation actions
   const [selectedReportForOverride, setSelectedReportForOverride] = useState<InvestmentReportData | null>(null);
   const [selectedReportForCashFlow, setSelectedReportForCashFlow] = useState<InvestmentReportData | null>(null);
+  const [selectedReportForPDF, setSelectedReportForPDF] = useState<InvestmentReportData | null>(null);
+  const [selectedReportForHistory, setSelectedReportForHistory] = useState<InvestmentReportData | null>(null);
   const [reportToDelete, setReportToDelete] = useState<InvestmentReportData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -109,13 +132,26 @@ export function ClientPropertyInvestmentReport({
   const { addNotification } = useNotifications();
   const queryClient = useQueryClient();
 
-  // Fetch existing investment reports for this property
+  // Fetch existing investment reports for this property with full data for PDF
   const { data: existingReports = [], refetch: refetchReports } = useQuery({
     queryKey: ['client-property-reports', property.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, status, created_at, report_content, manual_overrides, financial_calculations')
+        .select(`
+          id, 
+          property_address, 
+          status, 
+          created_at, 
+          report_content, 
+          manual_overrides, 
+          financial_calculations,
+          demographics_data,
+          economic_data,
+          investment_score,
+          location_intelligence,
+          current_version
+        `)
         .eq('client_property_id', property.id)
         .eq('is_client_report', true)
         .order('created_at', { ascending: false });
@@ -123,6 +159,13 @@ export function ClientPropertyInvestmentReport({
       return (data || []) as InvestmentReportData[];
     },
   });
+
+  // Notify parent of report changes
+  useEffect(() => {
+    if (onReportsChange) {
+      onReportsChange(existingReports);
+    }
+  }, [existingReports, onReportsChange]);
 
   // Check if any reports are in-progress
   const hasInProgressReports = existingReports.some(
@@ -341,6 +384,7 @@ export function ClientPropertyInvestmentReport({
   };
 
   const hasExistingReports = existingReports.length > 0;
+  const completedReports = existingReports.filter(r => r.status === 'completed');
 
   return (
     <>
@@ -353,7 +397,7 @@ export function ClientPropertyInvestmentReport({
               <ChevronDown className="h-3 w-3 ml-2" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-96">
             <DropdownMenuItem onClick={handleOpenOverrideSheet}>
               <Plus className="h-4 w-4 mr-2" />
               Generate New Report
@@ -366,15 +410,29 @@ export function ClientPropertyInvestmentReport({
               <div key={report.id} className="px-2 py-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {/* Comparison checkbox */}
+                    {comparisonMode && report.status === 'completed' && onSelectReport && (
+                      <Checkbox
+                        checked={selectedReportIds.includes(report.id)}
+                        onCheckedChange={(checked) => onSelectReport(report.id, !!checked)}
+                        className="h-4 w-4"
+                      />
+                    )}
                     {getStatusIcon(report.status)}
                     <span className="text-xs truncate">
                       {format(new Date(report.created_at), 'dd MMM yyyy HH:mm')}
                     </span>
                     {getStatusBadge(report.status)}
+                    {report.current_version && report.current_version > 1 && (
+                      <Badge variant="outline" className="text-xs">
+                        v{report.current_version}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {report.status === 'completed' && (
                       <>
+                        {/* View */}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -384,6 +442,17 @@ export function ClientPropertyInvestmentReport({
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
+                        {/* Download PDF */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setSelectedReportForPDF(report)}
+                          title="Download PDF"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </Button>
+                        {/* Cash Flow */}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -393,6 +462,7 @@ export function ClientPropertyInvestmentReport({
                         >
                           <Calculator className="h-3.5 w-3.5" />
                         </Button>
+                        {/* Edit Overrides */}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -402,8 +472,30 @@ export function ClientPropertyInvestmentReport({
                         >
                           <Settings className="h-3.5 w-3.5" />
                         </Button>
+                        {/* Regenerate */}
+                        <RegenerateReportButton
+                          reportId={report.id}
+                          propertyAddress={report.property_address}
+                          onRegenerated={() => refetchReports()}
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                        />
+                        {/* Version History */}
+                        {report.current_version && report.current_version > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setSelectedReportForHistory(report)}
+                            title="Version History"
+                          >
+                            <History className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </>
                     )}
+                    {/* Delete */}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -528,6 +620,48 @@ export function ClientPropertyInvestmentReport({
         onClose={() => setSelectedReportForCashFlow(null)}
         onReportUpdated={() => refetchReports()}
       />
+
+      {/* PDF Download Modal */}
+      {selectedReportForPDF && (
+        <Sheet open={!!selectedReportForPDF} onOpenChange={(open) => !open && setSelectedReportForPDF(null)}>
+          <SheetContent side="right" className="w-full sm:max-w-md">
+            <SheetHeader>
+              <SheetTitle>Download Report</SheetTitle>
+              <SheetDescription>
+                Generate and download PDF for {selectedReportForPDF.property_address}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6 space-y-4">
+              <ClientPDFGenerator
+                report={{
+                  id: selectedReportForPDF.id,
+                  property_address: selectedReportForPDF.property_address,
+                  report_content: selectedReportForPDF.report_content,
+                  demographics_data: selectedReportForPDF.demographics_data,
+                  economic_data: selectedReportForPDF.economic_data,
+                  financial_calculations: selectedReportForPDF.financial_calculations,
+                  investment_score: selectedReportForPDF.investment_score,
+                  location_intelligence: selectedReportForPDF.location_intelligence,
+                  manual_overrides: selectedReportForPDF.manual_overrides,
+                }}
+                includeSources={true}
+                includeScoring={true}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Version History Modal */}
+      {selectedReportForHistory && (
+        <ReportVersionHistory
+          reportId={selectedReportForHistory.id}
+          currentVersion={selectedReportForHistory.current_version || 1}
+          open={!!selectedReportForHistory}
+          onOpenChange={(open) => !open && setSelectedReportForHistory(null)}
+          onVersionRestored={() => refetchReports()}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!reportToDelete} onOpenChange={(open) => !open && setReportToDelete(null)}>
