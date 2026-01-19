@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2, Mail, Send, Users } from 'lucide-react';
+import { Download, FileText, Home, Loader2, Mail, Send, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import html2canvas from 'html2canvas';
@@ -15,6 +15,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useFinanceContacts } from '@/hooks/useFinanceContacts';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -175,6 +177,7 @@ export function VownetPDFGenerator({
 }: VownetPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
   const { contacts, defaultContact, hasContacts } = useFinanceContacts();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -192,7 +195,7 @@ export function VownetPDFGenerator({
       document.body.appendChild(container);
 
       // Generate HTML content
-      const htmlContent = generateHTMLContent(data);
+      const htmlContent = generateHTMLContent(data, includeOwnerOccupied);
       container.innerHTML = htmlContent;
 
       // Wait for styles to apply
@@ -362,8 +365,23 @@ export function VownetPDFGenerator({
           {isSending ? 'Sending...' : buttonLabel}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleDownload} disabled={isDisabled}>
+      <DropdownMenuContent align="end" className="w-64">
+        {/* Owner Occupied Toggle */}
+        <div className="flex items-center justify-between px-2 py-2 border-b">
+          <div className="flex items-center gap-2">
+            <Home className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="include-owner-occupied" className="text-sm cursor-pointer">
+              Include Owner Occupied
+            </Label>
+          </div>
+          <Switch
+            id="include-owner-occupied"
+            checked={includeOwnerOccupied}
+            onCheckedChange={setIncludeOwnerOccupied}
+          />
+        </div>
+        
+        <DropdownMenuItem onClick={handleDownload} disabled={isDisabled} className="mt-1">
           <Download className="h-4 w-4 mr-2" />
           Export VowNet as PDF
         </DropdownMenuItem>
@@ -438,14 +456,19 @@ const NPC_COLORS = {
 };
 
 // Generate the full HTML content for the PDF
-function generateHTMLContent(data: VownetPDFData): string {
+function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean = true): string {
   const { client, properties, employment = [], income = [], assets = [], liabilities = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
-  // Find owner occupied property
-  const ownerOccupied = properties.find(p => p.property_type === 'owner_occupied');
+  // Find owner occupied property (only if included)
+  const ownerOccupied = includeOwnerOccupied ? properties.find(p => p.property_type === 'owner_occupied') : null;
   const investmentProperties = properties.filter(p => p.property_type === 'investment');
   const smsfProperties = properties.filter(p => p.property_type === 'smsf');
+  
+  // Filter properties for summary based on toggle
+  const summaryProperties = includeOwnerOccupied 
+    ? properties 
+    : properties.filter(p => p.property_type !== 'owner_occupied');
   
   // Helper to format SMSF compliance status
   const formatComplianceStatus = (status: string | null | undefined): string => {
@@ -874,8 +897,8 @@ function generateHTMLContent(data: VownetPDFData): string {
     `;
   };
 
-  // Properties summary rows - show more of address
-  const propertiesSummaryRows = properties.map(prop => `
+  // Properties summary rows - show more of address (uses filtered properties based on toggle)
+  const propertiesSummaryRows = summaryProperties.map(prop => `
     <tr>
       <td class="property-address-cell">${prop.address?.substring(0, 45) || '-'}${(prop.address?.length || 0) > 45 ? '...' : ''}</td>
       <td class="text-right compact-col">${formatCurrency(prop.value)}</td>
@@ -885,11 +908,11 @@ function generateHTMLContent(data: VownetPDFData): string {
     </tr>
   `).join('');
 
-  // Calculate totals
-  const totalValue = properties.reduce((sum, p) => sum + (p.value || 0), 0);
-  const totalLoans = properties.reduce((sum, p) => sum + (p.loan_remaining || 0), 0);
-  const totalRental = properties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
-  const totalNetCF = properties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
+  // Calculate totals (uses filtered properties based on toggle)
+  const totalValue = summaryProperties.reduce((sum, p) => sum + (p.value || 0), 0);
+  const totalLoans = summaryProperties.reduce((sum, p) => sum + (p.loan_remaining || 0), 0);
+  const totalRental = summaryProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
+  const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
   // Properly capitalize client names
   const primaryName = `${properCase(client.primary_first_name)} ${properCase(client.primary_surname)}`;
@@ -1548,6 +1571,7 @@ function generateHTMLContent(data: VownetPDFData): string {
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
+              ${includeOwnerOccupied ? `
               <div class="section">
                 <div class="section-header">Property (Owner Occupied)</div>
                 <table class="data-table">
@@ -1560,6 +1584,7 @@ function generateHTMLContent(data: VownetPDFData): string {
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
               </div>
+              ` : ''}
             </div>
           </div>
         </div>
