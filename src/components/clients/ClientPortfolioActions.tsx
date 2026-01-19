@@ -31,7 +31,9 @@ import {
   FileText,
   CheckCircle2,
   Building2,
+  History,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 interface ClientProperty {
@@ -210,6 +212,19 @@ export function ClientPortfolioActions({
             >
               <GitCompare className="h-4 w-4 mr-2" />
               Compare Properties
+            </Button>
+
+            {/* View Past Reports */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Navigate to portfolio reports with client filter
+                window.location.href = `/portfolio-reports?clientId=${clientId}`;
+              }}
+            >
+              <History className="h-4 w-4 mr-2" />
+              View Past Reports
             </Button>
           </div>
 
