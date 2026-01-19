@@ -133,12 +133,32 @@ const SUCCESS_COLOR = rgb(0.13, 0.55, 0.13);
 const DANGER_COLOR = rgb(0.86, 0.21, 0.27);
 const WARNING_COLOR = rgb(0.85, 0.65, 0.13);
 
-const formatCurrency = (value: number): string => {
+// ============= PHASE 6: SAFE FORMATTING UTILITIES =============
+const formatCurrency = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) return '$0';
   return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
 
-const getHealthColor = (health: string): string => {
-  switch (health?.toLowerCase()) {
+const formatPercentage = (value: number | null | undefined, decimals: number = 1): string => {
+  if (value === null || value === undefined || isNaN(value)) return '0%';
+  return `${value.toFixed(decimals)}%`;
+};
+
+const safeString = (value: string | null | undefined, fallback: string = ''): string => {
+  return value?.trim() || fallback;
+};
+
+const safeNumber = (value: number | null | undefined, fallback: number = 0): number => {
+  if (value === null || value === undefined || isNaN(value)) return fallback;
+  return value;
+};
+
+const safeArray = <T,>(arr: T[] | null | undefined): T[] => {
+  return Array.isArray(arr) ? arr : [];
+};
+
+const getHealthColor = (health: string | null | undefined): string => {
+  switch (safeString(health).toLowerCase()) {
     case 'excellent': return 'text-green-600';
     case 'good': return 'text-blue-600';
     case 'fair': return 'text-yellow-600';
@@ -147,8 +167,8 @@ const getHealthColor = (health: string): string => {
   }
 };
 
-const getRiskBadgeVariant = (risk: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-  switch (risk?.toLowerCase()) {
+const getRiskBadgeVariant = (risk: string | null | undefined): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  switch (safeString(risk).toLowerCase()) {
     case 'low': return 'default';
     case 'medium': return 'secondary';
     case 'high': return 'destructive';
@@ -1028,33 +1048,39 @@ export function PortfolioAnalysisPDFGenerator({
       yPos -= 20;
       
       // Key Strengths
-      page.drawText('Key Strengths:', {
-        x: MARGIN_LEFT,
-        y: yPos,
-        size: 10,
-        font: helveticaBold,
-        color: SUCCESS_COLOR,
-      });
-      yPos -= 15;
-      
-      for (const strength of analysisData.analysis.executiveSummary.keyStrengths) {
-        yPos = drawWrappedText(page, `• ${strength}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
+      const keyStrengths = safeArray(analysisData.analysis?.executiveSummary?.keyStrengths);
+      if (keyStrengths.length > 0) {
+        page.drawText('Key Strengths:', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 10,
+          font: helveticaBold,
+          color: SUCCESS_COLOR,
+        });
+        yPos -= 15;
+        
+        for (const strength of keyStrengths) {
+          yPos = drawWrappedText(page, `• ${safeString(strength, 'N/A')}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
+        }
+        
+        yPos -= 15;
       }
       
-      yPos -= 15;
-      
       // Key Concerns
-      page.drawText('Key Concerns:', {
-        x: MARGIN_LEFT,
-        y: yPos,
-        size: 10,
-        font: helveticaBold,
-        color: WARNING_COLOR,
-      });
-      yPos -= 15;
-      
-      for (const concern of analysisData.analysis.executiveSummary.keyConcerns) {
-        yPos = drawWrappedText(page, `• ${concern}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
+      const keyConcerns = safeArray(analysisData.analysis?.executiveSummary?.keyConcerns);
+      if (keyConcerns.length > 0) {
+        page.drawText('Key Concerns:', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 10,
+          font: helveticaBold,
+          color: WARNING_COLOR,
+        });
+        yPos -= 15;
+        
+        for (const concern of keyConcerns) {
+          yPos = drawWrappedText(page, `• ${safeString(concern, 'N/A')}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
+        }
       }
       
       yPos -= 30;
@@ -1067,22 +1093,22 @@ export function PortfolioAnalysisPDFGenerator({
       // Row 1: Total Value, Total Equity, Average LVR
       drawKPIBox(page, 'TOTAL VALUE', formatCurrency(metrics.totalValue), MARGIN_LEFT, yPos, kpiWidth);
       drawKPIBox(page, 'TOTAL EQUITY', formatCurrency(metrics.totalEquity), MARGIN_LEFT + kpiWidth + 10, yPos, kpiWidth, SUCCESS_COLOR);
-      drawKPIBox(page, 'AVERAGE LVR', `${metrics.averageLVR.toFixed(1)}%`, MARGIN_LEFT + (kpiWidth + 10) * 2, yPos, kpiWidth);
+      drawKPIBox(page, 'AVERAGE LVR', formatPercentage(metrics.averageLVR), MARGIN_LEFT + (kpiWidth + 10) * 2, yPos, kpiWidth);
       
       yPos -= 65;
       
       // Row 2: Properties, Monthly Cashflow, Avg Yield
-      const cashflowColor = metrics.netMonthlyCashflow >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
-      drawKPIBox(page, 'PROPERTIES', metrics.totalProperties.toString(), MARGIN_LEFT, yPos, kpiWidth);
+      const cashflowColor = safeNumber(metrics.netMonthlyCashflow) >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
+      drawKPIBox(page, 'PROPERTIES', safeNumber(metrics.totalProperties).toString(), MARGIN_LEFT, yPos, kpiWidth);
       drawKPIBox(page, 'MONTHLY CASHFLOW', formatCurrency(metrics.netMonthlyCashflow), MARGIN_LEFT + kpiWidth + 10, yPos, kpiWidth, cashflowColor);
-      drawKPIBox(page, 'AVG. YIELD', `${metrics.averageYield.toFixed(2)}%`, MARGIN_LEFT + (kpiWidth + 10) * 2, yPos, kpiWidth);
+      drawKPIBox(page, 'AVG. YIELD', formatPercentage(metrics.averageYield, 2), MARGIN_LEFT + (kpiWidth + 10) * 2, yPos, kpiWidth);
       
       yPos -= 65;
       
       console.log('✓ Executive summary page complete');
       
       // ============= PAGE 3: SMSF SUMMARY (if applicable) =============
-      if (metrics.smsfCount > 0) {
+      if (safeNumber(metrics.smsfCount) > 0) {
         console.log('📝 Creating SMSF summary page...');
         page = addContentPage();
         yPos = PAGE_HEIGHT - MARGIN_TOP;
@@ -1091,7 +1117,7 @@ export function PortfolioAnalysisPDFGenerator({
         
         // SMSF KPI boxes
         const smsfKpiWidth = (CONTENT_WIDTH - 10) / 2;
-        drawKPIBox(page, 'SMSF PROPERTIES', metrics.smsfCount.toString(), MARGIN_LEFT, yPos, smsfKpiWidth);
+        drawKPIBox(page, 'SMSF PROPERTIES', safeNumber(metrics.smsfCount).toString(), MARGIN_LEFT, yPos, smsfKpiWidth);
         drawKPIBox(page, 'SMSF TOTAL VALUE', formatCurrency(metrics.smsfTotalValue), MARGIN_LEFT + smsfKpiWidth + 10, yPos, smsfKpiWidth, PRIMARY_COLOR);
         
         yPos -= 65;
@@ -1106,9 +1132,9 @@ export function PortfolioAnalysisPDFGenerator({
         
         const complianceData = [
           ['Status', 'Count'],
-          ['Compliant', metrics.smsfCompliantCount.toString()],
-          ['Pending Audit', metrics.smsfPendingAuditCount.toString()],
-          ['Non-Compliant', metrics.smsfNonCompliantCount.toString()],
+          ['Compliant', safeNumber(metrics.smsfCompliantCount).toString()],
+          ['Pending Audit', safeNumber(metrics.smsfPendingAuditCount).toString()],
+          ['Non-Compliant', safeNumber(metrics.smsfNonCompliantCount).toString()],
         ];
         
         const { lastY: complianceLastY } = drawTable(page, complianceData[0], complianceData.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH / 2, CONTENT_WIDTH / 2]);
@@ -1182,34 +1208,36 @@ export function PortfolioAnalysisPDFGenerator({
       };
       
       // Diversification Score
-      yPos = drawScoreBar(page, 'Diversification Score', composition.diversificationScore, 100, MARGIN_LEFT, yPos, CONTENT_WIDTH - 80);
+      const diversificationScore = safeNumber(composition?.diversificationScore);
+      yPos = drawScoreBar(page, 'Diversification Score', diversificationScore, 100, MARGIN_LEFT, yPos, CONTENT_WIDTH - 80);
       
       yPos -= 10;
       
       // Asset Allocation
       yPos = drawSubsectionHeader(page, 'Asset Allocation', yPos);
       yPos -= 5;
-      yPos = drawFormattedText(page, composition.assetAllocation, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      yPos = drawFormattedText(page, safeString(composition?.assetAllocation, 'No asset allocation data available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
       yPos -= 15;
       
       // Property Mix Assessment
       yPos = drawSubsectionHeader(page, 'Property Mix Assessment', yPos);
       yPos -= 5;
-      yPos = drawFormattedText(page, composition.propertyMixAssessment, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      yPos = drawFormattedText(page, safeString(composition?.propertyMixAssessment, 'No property mix data available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
       yPos -= 15;
       
       // Property Type Breakdown Visual
       yPos = drawSubsectionHeader(page, 'Portfolio Breakdown by Type', yPos);
       yPos -= 10;
       
-      const investmentPercent = metrics.totalProperties > 0 
-        ? Math.round((metrics.investmentCount / metrics.totalProperties) * 100) 
+      const totalProps = safeNumber(metrics.totalProperties);
+      const investmentPercent = totalProps > 0 
+        ? Math.round((safeNumber(metrics.investmentCount) / totalProps) * 100) 
         : 0;
-      const ownerOccPercent = metrics.totalProperties > 0 
-        ? Math.round((metrics.ownerOccupiedCount / metrics.totalProperties) * 100) 
+      const ownerOccPercent = totalProps > 0 
+        ? Math.round((safeNumber(metrics.ownerOccupiedCount) / totalProps) * 100) 
         : 0;
-      const smsfPercent = metrics.totalProperties > 0 
-        ? Math.round((metrics.smsfCount / metrics.totalProperties) * 100) 
+      const smsfPercent = totalProps > 0 
+        ? Math.round((safeNumber(metrics.smsfCount) / totalProps) * 100) 
         : 0;
       
       // Investment properties bar
@@ -1236,7 +1264,7 @@ export function PortfolioAnalysisPDFGenerator({
         height: 14,
         color: PRIMARY_COLOR,
       });
-      page.drawText(`${investmentPercent}% (${metrics.investmentCount})`, {
+      page.drawText(`${investmentPercent}% (${safeNumber(metrics.investmentCount)})`, {
         x: MARGIN_LEFT + 75 + barWidth,
         y: yPos - 5,
         size: 8,
@@ -1267,7 +1295,7 @@ export function PortfolioAnalysisPDFGenerator({
         height: 14,
         color: SUCCESS_COLOR,
       });
-      page.drawText(`${ownerOccPercent}% (${metrics.ownerOccupiedCount})`, {
+      page.drawText(`${ownerOccPercent}% (${safeNumber(metrics.ownerOccupiedCount)})`, {
         x: MARGIN_LEFT + 75 + barWidth,
         y: yPos - 5,
         size: 8,
@@ -1277,7 +1305,7 @@ export function PortfolioAnalysisPDFGenerator({
       yPos -= 22;
       
       // SMSF bar
-      if (metrics.smsfCount > 0) {
+      if (safeNumber(metrics.smsfCount) > 0) {
         page.drawText('SMSF', {
           x: MARGIN_LEFT,
           y: yPos,
@@ -1299,7 +1327,7 @@ export function PortfolioAnalysisPDFGenerator({
           height: 14,
           color: WARNING_COLOR,
         });
-        page.drawText(`${smsfPercent}% (${metrics.smsfCount})`, {
+        page.drawText(`${smsfPercent}% (${safeNumber(metrics.smsfCount)})`, {
           x: MARGIN_LEFT + 75 + barWidth,
           y: yPos - 5,
           size: 8,
@@ -1312,10 +1340,11 @@ export function PortfolioAnalysisPDFGenerator({
       yPos -= 15;
       
       // Composition Recommendations
-      if (composition.recommendations && composition.recommendations.length > 0) {
+      const compositionRecs = safeArray(composition?.recommendations);
+      if (compositionRecs.length > 0) {
         yPos = drawSubsectionHeader(page, 'Composition Recommendations', yPos, PRIMARY_COLOR);
         yPos -= 5;
-        yPos = drawBulletList(page, composition.recommendations, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, compositionRecs, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
       }
       
       console.log('✓ Composition analysis page complete');
@@ -1328,7 +1357,8 @@ export function PortfolioAnalysisPDFGenerator({
       yPos = drawSectionHeader(page, 'Property Cashflow Analysis', yPos);
       
       // Enhanced property cards with cashflow details
-      for (const prop of analysisData.propertyAnalyses) {
+      const propertyAnalyses = safeArray(analysisData.propertyAnalyses);
+      for (const prop of propertyAnalyses) {
         // Check for page break - each property card needs ~100px
         if (needsNewPage(yPos, 100)) {
           page = addContentPage();
@@ -1364,7 +1394,8 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         // Address
-        const truncatedAddress = prop.address.length > 50 ? prop.address.substring(0, 47) + '...' : prop.address;
+        const propAddress = safeString(prop.address, 'Unknown Address');
+        const truncatedAddress = propAddress.length > 50 ? propAddress.substring(0, 47) + '...' : propAddress;
         page.drawText(stripEmojis(truncatedAddress), {
           x: MARGIN_LEFT + 35,
           y: yPos - 15,
@@ -1374,7 +1405,7 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         // Property type badge
-        page.drawText(stripEmojis(prop.propertyType), {
+        page.drawText(stripEmojis(safeString(prop.propertyType, 'Property')), {
           x: PAGE_WIDTH - MARGIN_RIGHT - 60,
           y: yPos - 15,
           size: 8,
@@ -1426,9 +1457,9 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaFont,
           color: MUTED_COLOR,
         });
-        const lvrValue = parseFloat(prop.lvr) || 0;
+        const lvrValue = parseFloat(safeString(prop.lvr, '0')) || 0;
         const lvrColor = lvrValue <= 60 ? SUCCESS_COLOR : lvrValue <= 80 ? WARNING_COLOR : DANGER_COLOR;
-        page.drawText(prop.lvr, {
+        page.drawText(safeString(prop.lvr, '0%'), {
           x: MARGIN_LEFT + 10 + metricWidth * 2,
           y: metricsY - 3,
           size: 9,
@@ -1444,7 +1475,7 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaFont,
           color: MUTED_COLOR,
         });
-        page.drawText(prop.grossYield, {
+        page.drawText(safeString(prop.grossYield, '0%'), {
           x: MARGIN_LEFT + 10 + metricWidth * 3,
           y: metricsY - 3,
           size: 9,
@@ -1460,9 +1491,10 @@ export function PortfolioAnalysisPDFGenerator({
           font: helveticaFont,
           color: MUTED_COLOR,
         });
-        const cfColor = prop.netMonthlyCashflow >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
-        const cfPrefix = prop.netMonthlyCashflow >= 0 ? '+' : '';
-        page.drawText(`${cfPrefix}${formatCurrency(prop.netMonthlyCashflow)}`, {
+        const netCashflow = safeNumber(prop.netMonthlyCashflow);
+        const cfColor = netCashflow >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
+        const cfPrefix = netCashflow >= 0 ? '+' : '';
+        page.drawText(`${cfPrefix}${formatCurrency(netCashflow)}`, {
           x: MARGIN_LEFT + 10 + metricWidth * 4,
           y: metricsY - 3,
           size: 9,
@@ -1480,7 +1512,7 @@ export function PortfolioAnalysisPDFGenerator({
           color: MUTED_COLOR,
         });
         
-        const contributionPercent = parseFloat(prop.portfolioContribution) || 0;
+        const contributionPercent = parseFloat(safeString(prop.portfolioContribution, '0')) || 0;
         const contribBarWidth = 150;
         page.drawRectangle({
           x: MARGIN_LEFT + 110,
@@ -1496,7 +1528,7 @@ export function PortfolioAnalysisPDFGenerator({
           height: 10,
           color: PRIMARY_COLOR,
         });
-        page.drawText(prop.portfolioContribution, {
+        page.drawText(safeString(prop.portfolioContribution, '0%'), {
           x: MARGIN_LEFT + 115 + contribBarWidth,
           y: contributionY - 2,
           size: 8,
@@ -1516,7 +1548,8 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos = drawSectionHeader(page, 'Property Performance Rankings', yPos);
       
-      for (const prop of analysisData.analysis.propertyRankings) {
+      const propertyRankings = safeArray(analysisData.analysis?.propertyRankings);
+      for (const prop of propertyRankings) {
         // Check for page break
         if (needsNewPage(yPos, 120)) {
           page = addContentPage();
@@ -1542,7 +1575,7 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         // Address
-        page.drawText(stripEmojis(prop.address), {
+        page.drawText(stripEmojis(safeString(prop.address, 'Unknown Address')), {
           x: MARGIN_LEFT + 35,
           y: yPos - 10,
           size: 10,
@@ -1551,9 +1584,10 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         // Performance rating badge
-        const ratingColor = prop.performanceRating.toLowerCase() === 'strong' ? SUCCESS_COLOR :
-                           prop.performanceRating.toLowerCase() === 'moderate' ? WARNING_COLOR : DANGER_COLOR;
-        const ratingText = stripEmojis(prop.performanceRating.toUpperCase());
+        const perfRating = safeString(prop.performanceRating, 'Unknown');
+        const ratingColor = perfRating.toLowerCase() === 'strong' ? SUCCESS_COLOR :
+                           perfRating.toLowerCase() === 'moderate' ? WARNING_COLOR : DANGER_COLOR;
+        const ratingText = stripEmojis(perfRating.toUpperCase());
         const ratingWidth = helveticaBold.widthOfTextAtSize(ratingText, 8);
         page.drawRectangle({
           x: PAGE_WIDTH - MARGIN_RIGHT - ratingWidth - 12,
@@ -1573,7 +1607,8 @@ export function PortfolioAnalysisPDFGenerator({
         yPos -= 28;
         
         // Strengths (green)
-        if (prop.strengths && prop.strengths.length > 0) {
+        const propStrengths = safeArray(prop.strengths);
+        if (propStrengths.length > 0) {
           page.drawText('Strengths:', {
             x: MARGIN_LEFT + 10,
             y: yPos,
@@ -1582,13 +1617,14 @@ export function PortfolioAnalysisPDFGenerator({
             color: SUCCESS_COLOR,
           });
           yPos -= 12;
-          for (const strength of prop.strengths.slice(0, 2)) {
-            yPos = drawWrappedText(page, `+ ${strength}`, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
+          for (const strength of propStrengths.slice(0, 2)) {
+            yPos = drawWrappedText(page, `+ ${safeString(strength, 'N/A')}`, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
           }
         }
         
         // Concerns (amber)
-        if (prop.concerns && prop.concerns.length > 0) {
+        const propConcerns = safeArray(prop.concerns);
+        if (propConcerns.length > 0) {
           page.drawText('Concerns:', {
             x: MARGIN_LEFT + 10,
             y: yPos,
@@ -1597,13 +1633,14 @@ export function PortfolioAnalysisPDFGenerator({
             color: WARNING_COLOR,
           });
           yPos -= 12;
-          for (const concern of prop.concerns.slice(0, 2)) {
-            yPos = drawWrappedText(page, `- ${concern}`, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
+          for (const concern of propConcerns.slice(0, 2)) {
+            yPos = drawWrappedText(page, `- ${safeString(concern, 'N/A')}`, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
           }
         }
         
         // Recommendation
-        if (prop.recommendation) {
+        const propRec = safeString(prop.recommendation);
+        if (propRec) {
           page.drawText('Recommendation:', {
             x: MARGIN_LEFT + 10,
             y: yPos,
@@ -1612,7 +1649,7 @@ export function PortfolioAnalysisPDFGenerator({
             color: PRIMARY_COLOR,
           });
           yPos -= 12;
-          yPos = drawWrappedText(page, prop.recommendation, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
+          yPos = drawWrappedText(page, propRec, MARGIN_LEFT + 15, yPos, CONTENT_WIDTH - 25, helveticaFont, 8, SECONDARY_COLOR);
         }
         
         // Separator line
@@ -1635,23 +1672,24 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos = drawSectionHeader(page, 'Financial Health Analysis', yPos);
       
-      const financialHealth = analysisData.analysis.financialHealth;
+      const financialHealth = analysisData.analysis?.financialHealth;
       
       // Status indicators
       const statusItems = [
-        { label: 'Cashflow Status', value: financialHealth.cashflowStatus },
-        { label: 'Equity Position', value: financialHealth.equityPosition },
-        { label: 'Debt Serviceability', value: financialHealth.debtServiceability },
-        { label: 'LVR Risk', value: financialHealth.lvrRisk },
+        { label: 'Cashflow Status', value: safeString(financialHealth?.cashflowStatus, 'N/A') },
+        { label: 'Equity Position', value: safeString(financialHealth?.equityPosition, 'N/A') },
+        { label: 'Debt Serviceability', value: safeString(financialHealth?.debtServiceability, 'N/A') },
+        { label: 'LVR Risk', value: safeString(financialHealth?.lvrRisk, 'N/A') },
       ];
       
       const statusBoxWidth = (CONTENT_WIDTH - 30) / 4;
       let statusX = MARGIN_LEFT;
       
       for (const item of statusItems) {
-        const statusColor = item.value.toLowerCase().includes('strong') || item.value.toLowerCase().includes('healthy') || item.value.toLowerCase() === 'low'
+        const itemVal = item.value.toLowerCase();
+        const statusColor = itemVal.includes('strong') || itemVal.includes('healthy') || itemVal === 'low'
           ? SUCCESS_COLOR
-          : item.value.toLowerCase().includes('moderate') || item.value.toLowerCase() === 'medium'
+          : itemVal.includes('moderate') || itemVal === 'medium'
           ? WARNING_COLOR
           : DANGER_COLOR;
         
@@ -1690,7 +1728,7 @@ export function PortfolioAnalysisPDFGenerator({
       // Detailed analysis
       yPos = drawSubsectionHeader(page, 'Detailed Analysis', yPos);
       yPos -= 5;
-      yPos = drawFormattedText(page, financialHealth.analysis, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
+      yPos = drawFormattedText(page, safeString(financialHealth?.analysis, 'No detailed analysis available.'), MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 14);
       
       console.log('✓ Financial health page complete');
       
@@ -1706,11 +1744,12 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos = drawSectionHeader(page, 'Risk Assessment', yPos);
       
-      const risk = analysisData.analysis.riskAssessment;
+      const risk = analysisData.analysis?.riskAssessment;
       
       // Overall risk level badge
-      const overallRiskColor = risk.overallRiskLevel.toLowerCase() === 'low' ? SUCCESS_COLOR :
-                               risk.overallRiskLevel.toLowerCase() === 'medium' ? WARNING_COLOR : DANGER_COLOR;
+      const overallRiskLevel = safeString(risk?.overallRiskLevel, 'Unknown');
+      const overallRiskColor = overallRiskLevel.toLowerCase() === 'low' ? SUCCESS_COLOR :
+                               overallRiskLevel.toLowerCase() === 'medium' ? WARNING_COLOR : DANGER_COLOR;
       
       page.drawText('Overall Risk Level:', {
         x: MARGIN_LEFT,
@@ -1720,7 +1759,7 @@ export function PortfolioAnalysisPDFGenerator({
         color: MUTED_COLOR,
       });
       
-      const riskLevelText = stripEmojis(risk.overallRiskLevel.toUpperCase());
+      const riskLevelText = stripEmojis(overallRiskLevel.toUpperCase());
       page.drawRectangle({
         x: MARGIN_LEFT + 105,
         y: yPos - 5,
@@ -1741,27 +1780,29 @@ export function PortfolioAnalysisPDFGenerator({
       // Risk categories table
       const riskCategories = [
         ['Risk Category', 'Assessment'],
-        ['Concentration Risk', risk.concentrationRisk],
-        ['Interest Rate Sensitivity', risk.interestRateSensitivity],
-        ['Vacancy Risk', risk.vacancyRisk],
+        ['Concentration Risk', safeString(risk?.concentrationRisk, 'N/A')],
+        ['Interest Rate Sensitivity', safeString(risk?.interestRateSensitivity, 'N/A')],
+        ['Vacancy Risk', safeString(risk?.vacancyRisk, 'N/A')],
       ];
       
       const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.4, CONTENT_WIDTH * 0.6]);
       yPos = riskTableLastY - 20;
       
       // Market risks
-      if (risk.marketRisks && risk.marketRisks.length > 0) {
+      const marketRisks = safeArray(risk?.marketRisks);
+      if (marketRisks.length > 0) {
         yPos = drawSubsectionHeader(page, 'Market Risks', yPos, DANGER_COLOR);
         yPos -= 5;
-        yPos = drawBulletList(page, risk.marketRisks, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, marketRisks, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= 10;
       }
       
       // Mitigation strategies
-      if (risk.mitigationStrategies && risk.mitigationStrategies.length > 0) {
+      const mitigationStrategies = safeArray(risk?.mitigationStrategies);
+      if (mitigationStrategies.length > 0) {
         yPos = drawSubsectionHeader(page, 'Mitigation Strategies', yPos, SUCCESS_COLOR);
         yPos -= 5;
-        yPos = drawBulletList(page, risk.mitigationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, mitigationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
       }
       
       console.log('✓ Risk assessment page complete');
@@ -1773,37 +1814,41 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos = drawSectionHeader(page, 'Growth Opportunities', yPos);
       
-      const growth = analysisData.analysis.growthOpportunities;
+      const growth = analysisData.analysis?.growthOpportunities;
       
       // Equity Release Options
-      if (growth.equityReleaseOptions && growth.equityReleaseOptions.length > 0) {
+      const equityReleaseOptions = safeArray(growth?.equityReleaseOptions);
+      if (equityReleaseOptions.length > 0) {
         yPos = drawSubsectionHeader(page, 'Equity Release Options', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, growth.equityReleaseOptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, equityReleaseOptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= 15;
       }
       
       // Refinancing Opportunities
-      if (growth.refinancingOpportunities && growth.refinancingOpportunities.length > 0) {
+      const refinancingOpportunities = safeArray(growth?.refinancingOpportunities);
+      if (refinancingOpportunities.length > 0) {
         yPos = drawSubsectionHeader(page, 'Refinancing Opportunities', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, growth.refinancingOpportunities, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, refinancingOpportunities, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= 15;
       }
       
       // Next Purchase Recommendations
-      if (growth.nextPurchaseRecommendations && growth.nextPurchaseRecommendations.length > 0) {
+      const nextPurchaseRecs = safeArray(growth?.nextPurchaseRecommendations);
+      if (nextPurchaseRecs.length > 0) {
         yPos = drawSubsectionHeader(page, 'Next Purchase Recommendations', yPos, PRIMARY_COLOR);
         yPos -= 5;
-        yPos = drawBulletList(page, growth.nextPurchaseRecommendations, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, nextPurchaseRecs, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= 15;
       }
       
       // Optimization Strategies
-      if (growth.optimizationStrategies && growth.optimizationStrategies.length > 0) {
+      const optimizationStrategies = safeArray(growth?.optimizationStrategies);
+      if (optimizationStrategies.length > 0) {
         yPos = drawSubsectionHeader(page, 'Portfolio Optimization Strategies', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, growth.optimizationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, optimizationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
       }
       
       console.log('✓ Growth opportunities page complete');
@@ -1818,23 +1863,24 @@ export function PortfolioAnalysisPDFGenerator({
         yPos -= 25;
       }
       
-      yPos = drawSectionHeader(page, `${analysisData.analysis.projections.years}-Year Portfolio Projections`, yPos);
-      
-      const projections = analysisData.analysis.projections;
+      const projections = analysisData.analysis?.projections;
+      const projYears = safeNumber(projections?.years, 10);
+      yPos = drawSectionHeader(page, `${projYears}-Year Portfolio Projections`, yPos);
       
       // Projection KPI boxes
       const projKpiWidth = (CONTENT_WIDTH - 20) / 3;
-      drawKPIBox(page, 'PROJECTED VALUE', formatCurrency(projections.projectedPortfolioValue), MARGIN_LEFT, yPos, projKpiWidth, PRIMARY_COLOR);
-      drawKPIBox(page, 'PROJECTED EQUITY', formatCurrency(projections.projectedEquity), MARGIN_LEFT + projKpiWidth + 10, yPos, projKpiWidth, SUCCESS_COLOR);
-      drawKPIBox(page, 'PROJECTED CASHFLOW', formatCurrency(projections.projectedMonthlyCashflow) + '/mo', MARGIN_LEFT + (projKpiWidth + 10) * 2, yPos, projKpiWidth);
+      drawKPIBox(page, 'PROJECTED VALUE', formatCurrency(projections?.projectedPortfolioValue), MARGIN_LEFT, yPos, projKpiWidth, PRIMARY_COLOR);
+      drawKPIBox(page, 'PROJECTED EQUITY', formatCurrency(projections?.projectedEquity), MARGIN_LEFT + projKpiWidth + 10, yPos, projKpiWidth, SUCCESS_COLOR);
+      drawKPIBox(page, 'PROJECTED CASHFLOW', formatCurrency(projections?.projectedMonthlyCashflow) + '/mo', MARGIN_LEFT + (projKpiWidth + 10) * 2, yPos, projKpiWidth);
       
       yPos -= 80;
       
       // Assumptions
-      if (projections.assumptions && projections.assumptions.length > 0) {
+      const assumptions = safeArray(projections?.assumptions);
+      if (assumptions.length > 0) {
         yPos = drawSubsectionHeader(page, 'Key Assumptions', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, projections.assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 8);
+        yPos = drawBulletList(page, assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 8);
       }
       
       console.log('✓ Projections page complete');
@@ -1846,15 +1892,16 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos = drawSectionHeader(page, 'Strategic Recommendations', yPos);
       
-      const recommendations = analysisData.analysis.strategicRecommendations;
+      const recommendations = analysisData.analysis?.strategicRecommendations;
       
       // Priority Actions (highlighted)
-      if (recommendations.priorityActions && recommendations.priorityActions.length > 0) {
+      const priorityActions = safeArray(recommendations?.priorityActions);
+      if (priorityActions.length > 0) {
         page.drawRectangle({
           x: MARGIN_LEFT,
-          y: yPos - (recommendations.priorityActions.length * 18 + 35),
+          y: yPos - (priorityActions.length * 18 + 35),
           width: CONTENT_WIDTH,
-          height: recommendations.priorityActions.length * 18 + 35,
+          height: priorityActions.length * 18 + 35,
           color: rgb(0.95, 0.97, 0.95),
           borderColor: SUCCESS_COLOR,
           borderWidth: 1,
@@ -1869,7 +1916,7 @@ export function PortfolioAnalysisPDFGenerator({
         });
         
         yPos -= 35;
-        for (let i = 0; i < recommendations.priorityActions.length; i++) {
+        for (let i = 0; i < priorityActions.length; i++) {
           page.drawText(`${i + 1}.`, {
             x: MARGIN_LEFT + 15,
             y: yPos,
@@ -1877,41 +1924,44 @@ export function PortfolioAnalysisPDFGenerator({
             font: helveticaBold,
             color: PRIMARY_COLOR,
           });
-          yPos = drawWrappedText(page, recommendations.priorityActions[i], MARGIN_LEFT + 30, yPos, CONTENT_WIDTH - 50, helveticaFont, 9, SECONDARY_COLOR);
+          yPos = drawWrappedText(page, safeString(priorityActions[i], 'N/A'), MARGIN_LEFT + 30, yPos, CONTENT_WIDTH - 50, helveticaFont, 9, SECONDARY_COLOR);
           yPos -= 3;
         }
         yPos -= 20;
       }
       
       // Short-Term (0-12 months)
-      if (recommendations.shortTerm && recommendations.shortTerm.length > 0) {
+      const shortTerm = safeArray(recommendations?.shortTerm);
+      if (shortTerm.length > 0) {
         yPos = drawSubsectionHeader(page, 'Short-Term (0-12 months)', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, recommendations.shortTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, shortTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= 15;
       }
       
       // Medium-Term (1-3 years)
-      if (recommendations.mediumTerm && recommendations.mediumTerm.length > 0) {
+      const mediumTerm = safeArray(recommendations?.mediumTerm);
+      if (mediumTerm.length > 0) {
         if (needsNewPage(yPos, 80)) {
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
         yPos = drawSubsectionHeader(page, 'Medium-Term (1-3 years)', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, recommendations.mediumTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, mediumTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= 15;
       }
       
       // Long-Term (3+ years)
-      if (recommendations.longTerm && recommendations.longTerm.length > 0) {
+      const longTerm = safeArray(recommendations?.longTerm);
+      if (longTerm.length > 0) {
         if (needsNewPage(yPos, 80)) {
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
         yPos = drawSubsectionHeader(page, 'Long-Term (3+ years)', yPos);
         yPos -= 5;
-        yPos = drawBulletList(page, recommendations.longTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+        yPos = drawBulletList(page, longTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
       }
       
       console.log('✓ Strategic recommendations page complete');
