@@ -901,8 +901,22 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
         const label = labelE || labelA;
         const value = valueF ?? valueB;
 
+        // Boundary check: stop if we hit a new section or the next investment property
+        const combinedLabel = `${labelA} ${labelE}`.toLowerCase();
+        if (offset > 0 && (
+          combinedLabel.includes('portfolio cashflow') ||
+          combinedLabel.includes('portfolio summary') ||
+          combinedLabel.includes('total portfolio') ||
+          (combinedLabel.includes('investment property') && !combinedLabel.includes(`investment property ${propNum}`))
+        )) {
+          break;
+        }
+
         if (label.includes('address') && !prop.address) prop.address = value;
-        if (label.includes('property value') || label.includes('current value') || (label.includes('value') && !label.includes('loan'))) {
+        // More specific value matching - exclude "total" and "portfolio" to avoid picking up summary values
+        if ((label.includes('property value') || label.includes('current value') || 
+            (label.includes('value') && !label.includes('loan'))) && 
+            !label.includes('total') && !label.includes('portfolio')) {
           prop.value = parseCurrency(value);
         }
         if (label.includes('loan') && (label.includes('remaining') || label.includes('balance'))) {
@@ -924,8 +938,13 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
         if (label.includes('weekly') && label.includes('rental')) {
           prop.weeklyRentalIncome = parseCurrency(valueG) || parseCurrency(value);
         }
-        if (label.includes('total') && label.includes('expenditure')) prop.totalMonthlyExpenditure = parseCurrency(value);
-        if (label.includes('net') && label.includes('cashflow')) prop.netMonthlyCashflow = parseCurrency(value);
+        // For expenditure within a property section, don't capture "total portfolio expenditure"
+        if (label.includes('total') && label.includes('expenditure') && !label.includes('portfolio')) {
+          prop.totalMonthlyExpenditure = parseCurrency(value);
+        }
+        if (label.includes('net') && label.includes('cashflow') && !label.includes('portfolio')) {
+          prop.netMonthlyCashflow = parseCurrency(value);
+        }
       }
 
       // Verify and reconcile weekly vs monthly rental income
