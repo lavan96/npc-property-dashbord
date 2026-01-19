@@ -343,39 +343,40 @@ export function ClientReportsTab({
               {allReports.map((report) => (
                 <div
                   key={report.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-md bg-muted">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="p-2 rounded-md bg-muted flex-shrink-0">
                       {getReportIcon(report.type)}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{report.name}</span>
-                        <Badge variant={getReportBadgeVariant(report.type)} className="text-xs">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium truncate">{report.name}</span>
+                        <Badge variant={getReportBadgeVariant(report.type)} className="text-xs flex-shrink-0">
                           {report.type.charAt(0).toUpperCase() + report.type.slice(1)}
                         </Badge>
                         {getStatusIcon(report.status)}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                        <Clock className="h-3 w-3" />
-                        {format(new Date(report.generatedAt), 'dd MMM yyyy, HH:mm')}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                        <Clock className="h-3 w-3 flex-shrink-0" />
+                        <span className="flex-shrink-0">{format(new Date(report.generatedAt), 'dd MMM yyyy, HH:mm')}</span>
                         {report.propertyAddress && (
                           <>
                             <span>•</span>
-                            <span>{report.propertyAddress}</span>
+                            <span className="truncate">{report.propertyAddress}</span>
                           </>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {/* Investment reports from investment_reports table - open in viewer */}
                     {report.type === 'investment' && !report.fileUrl && (
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={() => {
                           // Open in investment report view page
                           window.open(`/investment-report/${report.id}`, '_blank');
@@ -390,13 +391,16 @@ export function ClientReportsTab({
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleDownloadFile(report.fileUrl!, report.name)}
+                          title="Download"
                         >
                           <Download className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => {
                             // Open in new tab
                             window.open(
@@ -404,6 +408,7 @@ export function ClientReportsTab({
                               '_blank'
                             );
                           }}
+                          title="Open in new tab"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
