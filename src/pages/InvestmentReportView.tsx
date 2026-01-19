@@ -34,6 +34,14 @@ interface InvestmentReport {
   economic_data?: any;
   investment_score?: any;
   location_intelligence?: any;
+  is_client_report?: boolean;
+  client_property_id?: string | null;
+}
+
+interface ClientInfo {
+  id: string;
+  primary_first_name: string;
+  primary_surname: string;
 }
 
 export default function InvestmentReportView() {
@@ -42,6 +50,7 @@ export default function InvestmentReportView() {
   const { toast } = useToast();
 
   const [report, setReport] = useState<InvestmentReport | null>(null);
+  const [clientInfo, setClientInfo] = useState<ClientInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +59,8 @@ export default function InvestmentReportView() {
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
+
+  const isClientReport = report?.is_client_report === true;
 
   useEffect(() => {
     if (!id) {
@@ -65,7 +76,7 @@ export default function InvestmentReportView() {
       const { data, error: fetchError } = await supabase
         .from('investment_reports')
         .select(
-          'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
+          'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
         )
         .eq('id', id)
         .maybeSingle();
@@ -84,6 +95,21 @@ export default function InvestmentReportView() {
       }
 
       setReport(data as InvestmentReport);
+      
+      // If it's a client report, fetch the client info for back navigation
+      if (data.is_client_report && data.client_property_id) {
+        const { data: propertyData } = await supabase
+          .from('client_properties')
+          .select('client_id, clients(id, primary_first_name, primary_surname)')
+          .eq('id', data.client_property_id)
+          .maybeSingle();
+
+        if (propertyData?.clients) {
+          const client = propertyData.clients as unknown as ClientInfo;
+          setClientInfo(client);
+        }
+      }
+
       setLoading(false);
       
       // Log report viewed
@@ -92,7 +118,7 @@ export default function InvestmentReportView() {
         entityType: 'investment_report',
         entityId: id,
         entityName: data.property_address,
-        metadata: { source: 'investment_report_view' }
+        metadata: { source: 'investment_report_view', isClientReport: data.is_client_report }
       });
     };
 
@@ -105,7 +131,7 @@ export default function InvestmentReportView() {
     const { data } = await supabase
       .from('investment_reports')
       .select(
-        'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
+        'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
       )
       .eq('id', id)
       .maybeSingle();
@@ -214,11 +240,26 @@ export default function InvestmentReportView() {
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header bar */}
       <div className="p-4 border-b flex items-center justify-between gap-4 flex-shrink-0">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
         <div className="flex items-center gap-2">
+          {isClientReport && clientInfo ? (
+            <Button variant="ghost" size="sm" onClick={() => navigate('/clients')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to {clientInfo.primary_first_name} {clientInfo.primary_surname}
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          )}
+          {isClientReport && (
+            <Badge variant="secondary" className="text-xs">
+              Client Report
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Cash Flow - available for all reports */}
           <Button
             variant="outline"
             size="sm"

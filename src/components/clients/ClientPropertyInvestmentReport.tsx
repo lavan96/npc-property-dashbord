@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PreGenerationOverrides, PreGenerationData } from '@/components/reports/PreGenerationOverrides';
+import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
+import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -34,8 +47,22 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Settings,
+  Trash2,
+  Calculator,
+  MoreHorizontal,
 } from 'lucide-react';
 import { format } from 'date-fns';
+
+interface InvestmentReportData {
+  id: string;
+  property_address: string;
+  status: string;
+  created_at: string;
+  report_content: string;
+  manual_overrides?: any;
+  financial_calculations?: any;
+}
 
 interface ClientPropertyInvestmentReportProps {
   property: {
@@ -71,9 +98,16 @@ export function ClientPropertyInvestmentReport({
     buildType: 'existing_property',
   });
 
+  // Modal states for post-generation actions
+  const [selectedReportForOverride, setSelectedReportForOverride] = useState<InvestmentReportData | null>(null);
+  const [selectedReportForCashFlow, setSelectedReportForCashFlow] = useState<InvestmentReportData | null>(null);
+  const [reportToDelete, setReportToDelete] = useState<InvestmentReportData | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const { toast } = useToast();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
+  const queryClient = useQueryClient();
 
   // Fetch existing investment reports for this property
   const { data: existingReports = [], refetch: refetchReports } = useQuery({
@@ -81,14 +115,30 @@ export function ClientPropertyInvestmentReport({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('investment_reports')
-        .select('id, property_address, status, created_at, report_content')
+        .select('id, property_address, status, created_at, report_content, manual_overrides, financial_calculations')
         .eq('client_property_id', property.id)
         .eq('is_client_report', true)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      return (data || []) as InvestmentReportData[];
     },
   });
+
+  // Check if any reports are in-progress
+  const hasInProgressReports = existingReports.some(
+    (r) => r.status === 'pending' || r.status === 'processing'
+  );
+
+  // Poll for status updates when reports are in-progress
+  useEffect(() => {
+    if (!hasInProgressReports) return;
+
+    const pollInterval = setInterval(() => {
+      refetchReports();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [hasInProgressReports, refetchReports]);
 
   // Pre-populate PreGenerationOverrides with property data
   const handleOpenOverrideSheet = () => {
@@ -230,6 +280,38 @@ export function ClientPropertyInvestmentReport({
     }
   };
 
+  const handleDeleteReport = async () => {
+    if (!reportToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('investment_reports')
+        .delete()
+        .eq('id', reportToDelete.id)
+        .eq('is_client_report', true); // Safety: only delete client reports
+
+      if (error) throw error;
+
+      toast({
+        title: 'Report Deleted',
+        description: 'The investment report has been deleted.',
+      });
+
+      refetchReports();
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      toast({
+        title: 'Delete Failed',
+        description: 'Failed to delete the report.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setReportToDelete(null);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -239,6 +321,20 @@ export function ClientPropertyInvestmentReport({
         return <Clock className="h-3 w-3 text-yellow-500 animate-pulse" />;
       case 'failed':
         return <AlertCircle className="h-3 w-3 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default" className="text-xs bg-green-500">Completed</Badge>;
+      case 'pending':
+      case 'processing':
+        return <Badge variant="secondary" className="text-xs">Processing...</Badge>;
+      case 'failed':
+        return <Badge variant="destructive" className="text-xs">Failed</Badge>;
       default:
         return null;
     }
@@ -257,30 +353,75 @@ export function ClientPropertyInvestmentReport({
               <ChevronDown className="h-3 w-3 ml-2" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuItem onClick={handleOpenOverrideSheet}>
               <Plus className="h-4 w-4 mr-2" />
               Generate New Report
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {existingReports.slice(0, 5).map((report: any) => (
-              <DropdownMenuItem
-                key={report.id}
-                onClick={() => {
-                  // Open report viewer (could navigate or open modal)
-                  window.open(`/investment-report/${report.id}`, '_blank');
-                }}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(report.status)}
-                  <span className="text-xs">
-                    {format(new Date(report.created_at), 'dd MMM yyyy HH:mm')}
-                  </span>
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              Existing Reports
+            </DropdownMenuLabel>
+            {existingReports.slice(0, 5).map((report) => (
+              <div key={report.id} className="px-2 py-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {getStatusIcon(report.status)}
+                    <span className="text-xs truncate">
+                      {format(new Date(report.created_at), 'dd MMM yyyy HH:mm')}
+                    </span>
+                    {getStatusBadge(report.status)}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {report.status === 'completed' && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => window.open(`/investment-report/${report.id}`, '_blank')}
+                          title="View Report"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setSelectedReportForCashFlow(report)}
+                          title="Cash Flow Analysis"
+                        >
+                          <Calculator className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setSelectedReportForOverride(report)}
+                          title="Edit Overrides"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => setReportToDelete(report)}
+                      title="Delete Report"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <Eye className="h-3 w-3 text-muted-foreground" />
-              </DropdownMenuItem>
+              </div>
             ))}
+            {existingReports.length > 5 && (
+              <div className="px-2 py-1 text-xs text-muted-foreground text-center">
+                +{existingReports.length - 5} more reports
+              </div>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
@@ -368,6 +509,56 @@ export function ClientPropertyInvestmentReport({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Manual Data Override Modal */}
+      <ManualDataOverrideModal
+        report={selectedReportForOverride}
+        isOpen={!!selectedReportForOverride}
+        onClose={() => setSelectedReportForOverride(null)}
+        onSave={() => {
+          refetchReports();
+          setSelectedReportForOverride(null);
+        }}
+      />
+
+      {/* Cash Flow Analysis Modal */}
+      <CashFlowAnalysisModal
+        report={selectedReportForCashFlow}
+        isOpen={!!selectedReportForCashFlow}
+        onClose={() => setSelectedReportForCashFlow(null)}
+        onReportUpdated={() => refetchReports()}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={(open) => !open && setReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Investment Report?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the investment report created on{' '}
+              {reportToDelete && format(new Date(reportToDelete.created_at), 'dd MMM yyyy HH:mm')}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteReport}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
