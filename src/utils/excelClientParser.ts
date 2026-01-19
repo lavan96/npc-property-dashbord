@@ -111,20 +111,62 @@ function getCellValue(sheet: XLSX.WorkSheet, cellRef: string): any {
   return cell ? cell.v : null;
 }
 
-// Helper to parse currency values
+// Helper to parse currency values with enhanced handling for edge cases
 function parseCurrency(value: any): number {
   if (value === null || value === undefined) return 0;
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
-    // Remove currency symbols, commas, and spaces
-    const cleaned = value.replace(/[$,\s]/g, '').replace(/[()]/g, '-');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
+    let str = value.trim();
+    
+    // Handle "Paid Off", "N/A", "-" etc.
+    if (/^(paid off|n\/a|nil|none|-|—)$/i.test(str)) return 0;
+    
+    // Handle "Million" notation (e.g., "1.15Million" → 1150000)
+    const millionMatch = str.match(/^[\$]?\s*([\d.,]+)\s*million/i);
+    if (millionMatch) {
+      const num = parseFloat(millionMatch[1].replace(/,/g, ''));
+      return isNaN(num) ? 0 : num * 1000000;
+    }
+    
+    // Handle "K" notation (e.g., "950K" → 950000, "85k" → 85000)
+    const kMatch = str.match(/^[\$]?\s*([\d.,]+)\s*k(?:\s|$|-|–)/i);
+    if (kMatch) {
+      const num = parseFloat(kMatch[1].replace(/,/g, ''));
+      return isNaN(num) ? 0 : num * 1000;
+    }
+    
+    // Handle range values (e.g., "120-130" → take midpoint 125)
+    const rangeMatch = str.match(/^[\$]?\s*([\d.,]+)\s*[-–]\s*([\d.,]+)/);
+    if (rangeMatch) {
+      const low = parseFloat(rangeMatch[1].replace(/,/g, ''));
+      const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
+      if (!isNaN(low) && !isNaN(high)) {
+        return (low + high) / 2 * 1000; // Assume it's in thousands if no suffix
+      }
+    }
+    
+    // Handle European-style decimals (e.g., "476.433.17" → 476433.17)
+    const periods = (str.match(/\./g) || []).length;
+    if (periods > 1) {
+      const parts = str.split('.');
+      const lastPart = parts.pop();
+      str = parts.join('') + '.' + lastPart;
+    }
+    
+    // Standard cleanup: remove currency symbols, commas, spaces
+    const cleaned = str.replace(/[$,\s]/g, '').replace(/[()]/g, '-');
+    
+    // Extract the first valid number from the string
+    const numMatch = cleaned.match(/-?[\d.]+/);
+    if (numMatch) {
+      const parsed = parseFloat(numMatch[0]);
+      return isNaN(parsed) ? 0 : parsed;
+    }
   }
   return 0;
 }
 
-// Helper to parse percentage values
+// Helper to parse percentage values with enhanced handling
 function parsePercentage(value: any): number {
   if (value === null || value === undefined) return 0;
   if (typeof value === 'number') {
@@ -132,11 +174,56 @@ function parsePercentage(value: any): number {
     return value < 1 ? value * 100 : value;
   }
   if (typeof value === 'string') {
+    // Handle "$1.00" mistakenly entered as percentage (should be 100%)
+    if (value.startsWith('$')) {
+      const num = parseCurrency(value);
+      // If it's $1.00 or similar, likely meant to be 100%
+      if (num === 1) return 100;
+      return num;
+    }
     const cleaned = value.replace(/[%\s]/g, '');
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;
   }
   return 0;
+}
+
+// Helper to parse text-based dates (e.g., "8/9/73", "6/29/81", "1992")
+function parseTextDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const str = dateStr.toString().trim();
+  
+  // Handle year-only (e.g., "1992")
+  if (/^\d{4}$/.test(str)) {
+    return `${str}-01-01`;
+  }
+  
+  // Handle "X Years" format (e.g., "10 Years")
+  if (/^\d+\s*years?$/i.test(str)) {
+    return null; // Not a valid date, just duration
+  }
+  
+  // Handle MM/DD/YY or M/D/YY format (US format common in Excel)
+  const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (usMatch) {
+    let [, month, day, year] = usMatch;
+    // Handle 2-digit year
+    if (year.length === 2) {
+      const yearNum = parseInt(year);
+      year = yearNum > 50 ? `19${year}` : `20${year}`;
+    }
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Handle DD/MM/YYYY format (AU format)
+  const auMatch = str.match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{4})$/);
+  if (auMatch) {
+    const [, day, month, year] = auMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Return original if no pattern matched
+  return str;
 }
 
 // Helper to find row by label in column A
@@ -180,8 +267,23 @@ function parseSheetToClient(sheet: XLSX.WorkSheet): ParsedClient | null {
       mobile: getCellValue(sheet, `B${primaryContactRow + 4}`) || getCellValue(sheet, `B12`),
       email: getCellValue(sheet, `B${primaryContactRow + 5}`) || getCellValue(sheet, `B13`),
       gender: getCellValue(sheet, `B${primaryContactRow + 6}`) || getCellValue(sheet, `B14`),
-      dob: null // Would need date parsing
+      dob: null
     };
+
+    // Parse DOB for primary contact
+    const dobRow = findRowByLabel(sheet, 'date of birth', primaryContactRow, primaryContactRow + 15) ||
+                   findRowByLabel(sheet, 'dob', primaryContactRow, primaryContactRow + 15);
+    if (dobRow) {
+      const dobValue = getCellValue(sheet, `B${dobRow}`);
+      if (dobValue) {
+        if (typeof dobValue === 'number') {
+          const date = XLSX.SSF.parse_date_code(dobValue);
+          primaryContact.dob = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+        } else {
+          primaryContact.dob = parseTextDate(dobValue?.toString());
+        }
+      }
+    }
 
     // If no first name found in expected location, search more broadly
     if (!primaryContact.firstName) {
@@ -213,6 +315,21 @@ function parseSheetToClient(sheet: XLSX.WorkSheet): ParsedClient | null {
           gender: getCellValue(sheet, `B${secondaryRow + 6}`),
           dob: null
         };
+        
+        // Parse DOB for secondary contact
+        const secDobRow = findRowByLabel(sheet, 'date of birth', secondaryRow, secondaryRow + 15) ||
+                          findRowByLabel(sheet, 'dob', secondaryRow, secondaryRow + 15);
+        if (secDobRow && secDobRow > secondaryRow) {
+          const secDobValue = getCellValue(sheet, `B${secDobRow}`);
+          if (secDobValue) {
+            if (typeof secDobValue === 'number') {
+              const date = XLSX.SSF.parse_date_code(secDobValue);
+              secondaryContact.dob = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+            } else {
+              secondaryContact.dob = parseTextDate(secDobValue?.toString());
+            }
+          }
+        }
       }
     }
 
@@ -255,7 +372,18 @@ function parseSheetToClient(sheet: XLSX.WorkSheet): ParsedClient | null {
       if (invPropRow) {
         const value = parseCurrency(getCellValue(sheet, `F${invPropRow + 2}`));
         const loanRemaining = parseCurrency(getCellValue(sheet, `F${invPropRow + 3}`));
-        const monthlyRental = parseCurrency(getCellValue(sheet, `F${invPropRow + 16}`)); // Monthly Rental Income row
+        let monthlyRental = parseCurrency(getCellValue(sheet, `F${invPropRow + 16}`)); // Monthly Rental Income row
+        const weeklyRental = parseCurrency(getCellValue(sheet, `G${invPropRow + 16}`));
+        
+        // Verify and reconcile weekly vs monthly rental income
+        if (weeklyRental > 0) {
+          const calculatedMonthly = weeklyRental * (52 / 12); // 4.333...
+          // If monthly wasn't captured or differs significantly (>5%), use calculated
+          if (monthlyRental === 0 || 
+              Math.abs(monthlyRental - calculatedMonthly) / calculatedMonthly > 0.05) {
+            monthlyRental = Math.round(calculatedMonthly * 100) / 100;
+          }
+        }
         
         if (value > 0 || monthlyRental > 0) {
           const monthlyBodyCorp = parseCurrency(getCellValue(sheet, `F${invPropRow + 7}`));
@@ -283,7 +411,7 @@ function parseSheetToClient(sheet: XLSX.WorkSheet): ParsedClient | null {
             monthlyLandlordInsurance: monthlyLandlord,
             monthlyBuildingInsurance: monthlyBuilding,
             monthlyRentalIncome: monthlyRental,
-            weeklyRentalIncome: parseCurrency(getCellValue(sheet, `G${invPropRow + 16}`)),
+            weeklyRentalIncome: weeklyRental,
             totalMonthlyExpenditure: totalExpenditure,
             netMonthlyCashflow: parseCurrency(getCellValue(sheet, `F${invPropRow + 17}`))
           });
