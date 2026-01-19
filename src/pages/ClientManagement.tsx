@@ -20,7 +20,8 @@ import {
   Trash2,
   Clock,
   Zap,
-  Star
+  Star,
+  ExternalLink
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -647,6 +648,20 @@ export default function ClientManagement() {
         </TabsContent>
 
         <TabsContent value="portfolio-reports" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Portfolio Performance Reports</h2>
+              <p className="text-sm text-muted-foreground">View generated portfolio analysis reports across all clients</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = '/portfolio-reports'}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Full Page View
+            </Button>
+          </div>
           <PortfolioAnalysisReportsList showHeader={true} />
         </TabsContent>
 
