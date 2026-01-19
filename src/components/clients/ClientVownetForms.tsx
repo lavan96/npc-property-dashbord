@@ -306,6 +306,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       // Invalidate all related queries
       queryClient.invalidateQueries({ queryKey: ['client-vownet-forms', clientId] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client-income', clientId] });
