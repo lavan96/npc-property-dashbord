@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, Landmark, Shield, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
+import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import {
   Dialog,
   DialogContent,
@@ -116,6 +116,23 @@ interface PortfolioAnalysisPDFGeneratorProps {
   onComplete?: () => void;
 }
 
+// ============= PDF CONSTANTS =============
+const PAGE_WIDTH = 595.28; // A4 width in points
+const PAGE_HEIGHT = 841.89; // A4 height in points
+const MARGIN_LEFT = 50;
+const MARGIN_RIGHT = 50;
+const MARGIN_TOP = 50;
+const MARGIN_BOTTOM = 60;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+
+// Colors
+const PRIMARY_COLOR = rgb(0.07, 0.46, 0.31); // Dark green
+const SECONDARY_COLOR = rgb(0.2, 0.2, 0.2);
+const MUTED_COLOR = rgb(0.5, 0.5, 0.5);
+const SUCCESS_COLOR = rgb(0.13, 0.55, 0.13);
+const DANGER_COLOR = rgb(0.86, 0.21, 0.27);
+const WARNING_COLOR = rgb(0.85, 0.65, 0.13);
+
 const formatCurrency = (value: number): string => {
   return '$' + value.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 };
@@ -137,6 +154,23 @@ const getRiskBadgeVariant = (risk: string): 'default' | 'secondary' | 'destructi
     case 'high': return 'destructive';
     default: return 'outline';
   }
+};
+
+// Strip emojis and non-WinAnsi characters
+const stripEmojis = (text: string): string => {
+  return text
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
+    .replace(/[\u200D]/gu, '')
+    .replace(/[^\x00-\xFF]/g, '');
 };
 
 export function PortfolioAnalysisPDFGenerator({ 
@@ -178,53 +212,359 @@ export function PortfolioAnalysisPDFGenerator({
     }
   };
 
+  // ============= PDF GENERATION ENGINE (Phase 1) =============
   const downloadPDF = async () => {
     if (!analysisData) return;
     
     setIsDownloading(true);
     
     try {
-      const container = document.getElementById('portfolio-analysis-content');
-      if (!container) throw new Error('Content not found');
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageHeight = 297;
+      console.log('📄 Starting Portfolio Analysis PDF generation with pdf-lib...');
       
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Fetch global settings for branding
+      const globalSettings = await fetchGlobalReportSettings();
+      console.log('✓ Global settings fetched');
+      
+      // Create PDF document
+      const pdfDoc = await PDFDocument.create();
+      
+      // Embed fonts
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      
+      console.log('✓ PDF document created with fonts');
+      
+      // ============= UTILITY FUNCTIONS =============
+      
+      // Draw wrapped text and return new Y position
+      const drawWrappedText = (
+        page: PDFPage,
+        text: string,
+        x: number,
+        y: number,
+        maxWidth: number,
+        font: PDFFont,
+        size: number,
+        color = SECONDARY_COLOR,
+        lineHeight = 1.4
+      ): number => {
+        const cleanText = stripEmojis(text);
+        const words = cleanText.split(' ');
+        let line = '';
+        let currentY = y;
+        
+        for (const word of words) {
+          const testLine = line ? `${line} ${word}` : word;
+          const testWidth = font.widthOfTextAtSize(testLine, size);
+          
+          if (testWidth > maxWidth && line) {
+            page.drawText(line, { x, y: currentY, size, font, color });
+            currentY -= size * lineHeight;
+            line = word;
+          } else {
+            line = testLine;
+          }
+        }
+        
+        if (line) {
+          page.drawText(line, { x, y: currentY, size, font, color });
+          currentY -= size * lineHeight;
+        }
+        
+        return currentY;
+      };
+      
+      // Draw section header
+      const drawSectionHeader = (
+        page: PDFPage,
+        title: string,
+        y: number
+      ): number => {
+        page.drawText(stripEmojis(title), {
+          x: MARGIN_LEFT,
+          y,
+          size: 14,
+          font: helveticaBold,
+          color: PRIMARY_COLOR,
+        });
+        
+        // Underline
+        page.drawLine({
+          start: { x: MARGIN_LEFT, y: y - 5 },
+          end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: y - 5 },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+        
+        return y - 25;
+      };
+      
+      // Draw KPI box
+      const drawKPIBox = (
+        page: PDFPage,
+        label: string,
+        value: string,
+        x: number,
+        y: number,
+        width: number,
+        valueColor = SECONDARY_COLOR
+      ): void => {
+        // Box background
+        page.drawRectangle({
+          x,
+          y: y - 45,
+          width,
+          height: 50,
+          color: rgb(0.97, 0.97, 0.97),
+          borderColor: rgb(0.9, 0.9, 0.9),
+          borderWidth: 1,
+        });
+        
+        // Label
+        page.drawText(stripEmojis(label), {
+          x: x + 8,
+          y: y - 15,
+          size: 8,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        // Value
+        page.drawText(stripEmojis(value), {
+          x: x + 8,
+          y: y - 35,
+          size: 14,
+          font: helveticaBold,
+          color: valueColor,
+        });
+      };
+      
+      // Check if new page needed
+      const needsNewPage = (currentY: number, requiredSpace: number): boolean => {
+        return currentY - requiredSpace < MARGIN_BOTTOM;
+      };
+      
+      // Add new content page
+      const addContentPage = (): PDFPage => {
+        return pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      };
+      
+      // ============= PAGE 1: COVER PAGE =============
+      console.log('📝 Creating cover page...');
+      const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      
+      // Logo would be loaded from storage if available - for now, skip logo
+      // Future enhancement: fetch logo from client_branding_profiles or global settings
+      
+      // Title
+      const title = 'PORTFOLIO PERFORMANCE';
+      const titleWidth = helveticaBold.widthOfTextAtSize(title, 28);
+      coverPage.drawText(title, {
+        x: (PAGE_WIDTH - titleWidth) / 2,
+        y: PAGE_HEIGHT - 280,
+        size: 28,
+        font: helveticaBold,
+        color: PRIMARY_COLOR,
+      });
+      
+      const subtitle = 'ANALYSIS';
+      const subtitleWidth = helveticaBold.widthOfTextAtSize(subtitle, 28);
+      coverPage.drawText(subtitle, {
+        x: (PAGE_WIDTH - subtitleWidth) / 2,
+        y: PAGE_HEIGHT - 315,
+        size: 28,
+        font: helveticaBold,
+        color: PRIMARY_COLOR,
+      });
+      
+      // Client name
+      const clientText = stripEmojis(analysisData.clientName);
+      const clientWidth = helveticaFont.widthOfTextAtSize(clientText, 18);
+      coverPage.drawText(clientText, {
+        x: (PAGE_WIDTH - clientWidth) / 2,
+        y: PAGE_HEIGHT - 380,
+        size: 18,
+        font: helveticaFont,
+        color: SECONDARY_COLOR,
+      });
+      
+      // Date
+      const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 12);
+      coverPage.drawText(dateText, {
+        x: (PAGE_WIDTH - dateWidth) / 2,
+        y: PAGE_HEIGHT - 410,
+        size: 12,
+        font: helveticaFont,
+        color: MUTED_COLOR,
+      });
+      
+      // Health score badge at bottom
+      const healthScore = analysisData.analysis.executiveSummary.healthScore;
+      const healthText = `Health Score: ${healthScore}/100`;
+      const healthWidth = helveticaBold.widthOfTextAtSize(healthText, 16);
+      
+      coverPage.drawRectangle({
+        x: (PAGE_WIDTH - healthWidth - 40) / 2,
+        y: PAGE_HEIGHT - 520,
+        width: healthWidth + 40,
+        height: 40,
+        color: PRIMARY_COLOR,
+      });
+      
+      coverPage.drawText(healthText, {
+        x: (PAGE_WIDTH - healthWidth) / 2,
+        y: PAGE_HEIGHT - 506,
+        size: 16,
+        font: helveticaBold,
+        color: rgb(1, 1, 1),
+      });
+      
+      console.log('✓ Cover page complete');
+      
+      // ============= PAGE 2: EXECUTIVE SUMMARY =============
+      console.log('📝 Creating executive summary page...');
+      let page = addContentPage();
+      let yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      // Page header
+      yPos = drawSectionHeader(page, 'Executive Summary', yPos);
+      
+      // Health status row
+      const healthStatus = analysisData.analysis.executiveSummary.overallHealth;
+      page.drawText('Portfolio Health:', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 11,
+        font: helveticaFont,
+        color: MUTED_COLOR,
+      });
+      
+      const healthStatusColor = healthStatus.toLowerCase() === 'excellent' || healthStatus.toLowerCase() === 'good' 
+        ? SUCCESS_COLOR 
+        : healthStatus.toLowerCase() === 'poor' ? DANGER_COLOR : WARNING_COLOR;
+      
+      page.drawText(stripEmojis(healthStatus.toUpperCase()), {
+        x: MARGIN_LEFT + 95,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+        color: healthStatusColor,
+      });
+      
+      page.drawText(`Score: ${healthScore}/100`, {
+        x: PAGE_WIDTH - MARGIN_RIGHT - 80,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+        color: PRIMARY_COLOR,
+      });
+      
+      yPos -= 25;
+      
+      // Primary recommendation
+      page.drawText('Primary Recommendation:', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 10,
+        font: helveticaBold,
+        color: SECONDARY_COLOR,
+      });
+      yPos -= 15;
+      
+      yPos = drawWrappedText(
+        page,
+        analysisData.analysis.executiveSummary.primaryRecommendation,
+        MARGIN_LEFT,
+        yPos,
+        CONTENT_WIDTH,
+        helveticaFont,
+        10,
+        SECONDARY_COLOR
+      );
+      
+      yPos -= 20;
+      
+      // Key Strengths
+      page.drawText('Key Strengths:', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 10,
+        font: helveticaBold,
+        color: SUCCESS_COLOR,
+      });
+      yPos -= 15;
+      
+      for (const strength of analysisData.analysis.executiveSummary.keyStrengths) {
+        yPos = drawWrappedText(page, `• ${strength}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
       }
-
-      const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
       
+      yPos -= 15;
+      
+      // Key Concerns
+      page.drawText('Key Concerns:', {
+        x: MARGIN_LEFT,
+        y: yPos,
+        size: 10,
+        font: helveticaBold,
+        color: WARNING_COLOR,
+      });
+      yPos -= 15;
+      
+      for (const concern of analysisData.analysis.executiveSummary.keyConcerns) {
+        yPos = drawWrappedText(page, `• ${concern}`, MARGIN_LEFT + 10, yPos, CONTENT_WIDTH - 20, helveticaFont, 9, SECONDARY_COLOR);
+      }
+      
+      yPos -= 30;
+      
+      // ============= PORTFOLIO OVERVIEW SECTION =============
+      yPos = drawSectionHeader(page, 'Portfolio Overview', yPos);
+      
+      const metrics = analysisData.portfolioMetrics;
+      const kpiWidth = (CONTENT_WIDTH - 20) / 3;
+      
+      // Row 1: Total Value, Total Equity, Average LVR
+      drawKPIBox(page, 'TOTAL VALUE', formatCurrency(metrics.totalValue), MARGIN_LEFT, yPos, kpiWidth);
+      drawKPIBox(page, 'TOTAL EQUITY', formatCurrency(metrics.totalEquity), MARGIN_LEFT + kpiWidth + 10, yPos, kpiWidth, SUCCESS_COLOR);
+      drawKPIBox(page, 'AVERAGE LVR', `${metrics.averageLVR.toFixed(1)}%`, MARGIN_LEFT + (kpiWidth + 10) * 2, yPos, kpiWidth);
+      
+      yPos -= 65;
+      
+      // Row 2: Properties, Monthly Cashflow, Avg Yield
+      const cashflowColor = metrics.netMonthlyCashflow >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
+      drawKPIBox(page, 'PROPERTIES', metrics.totalProperties.toString(), MARGIN_LEFT, yPos, kpiWidth);
+      drawKPIBox(page, 'MONTHLY CASHFLOW', formatCurrency(metrics.netMonthlyCashflow), MARGIN_LEFT + kpiWidth + 10, yPos, kpiWidth, cashflowColor);
+      drawKPIBox(page, 'AVG. YIELD', `${metrics.averageYield.toFixed(2)}%`, MARGIN_LEFT + (kpiWidth + 10) * 2, yPos, kpiWidth);
+      
+      yPos -= 65;
+      
+      console.log('✓ Executive summary page complete');
+      
+      // ============= SAVE PDF =============
+      console.log('💾 Saving PDF...');
+      const pdfBytes = await pdfDoc.save();
+      
+      const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      console.log('✅ PDF generation complete!');
       toast.success('PDF downloaded successfully');
       onComplete?.();
       
     } catch (error: any) {
       console.error('PDF generation error:', error);
-      toast.error('Failed to generate PDF');
+      toast.error('Failed to generate PDF: ' + error.message);
     } finally {
       setIsDownloading(false);
     }
