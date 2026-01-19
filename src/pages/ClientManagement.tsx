@@ -19,7 +19,8 @@ import {
   Download,
   Trash2,
   Clock,
-  Zap
+  Zap,
+  Star
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -62,6 +63,36 @@ interface Client {
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
+// Smart capitalization for names from GHL (often lowercase)
+function smartCapitalize(name: string | null | undefined): string {
+  if (!name) return '';
+  
+  // Handle already properly capitalized names
+  if (name !== name.toLowerCase() && name !== name.toUpperCase()) {
+    return name;
+  }
+  
+  return name
+    .toLowerCase()
+    .split(/(\s+|-|')/)
+    .map((part, index, arr) => {
+      // Keep separators as-is
+      if (/^(\s+|-|')$/.test(part)) return part;
+      
+      // Handle special prefixes like Mc, Mac, O'
+      if (part.startsWith('mc') && part.length > 2) {
+        return 'Mc' + part.charAt(2).toUpperCase() + part.slice(3);
+      }
+      if (part.startsWith('mac') && part.length > 3) {
+        return 'Mac' + part.charAt(3).toUpperCase() + part.slice(4);
+      }
+      
+      // Standard capitalization
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join('');
+}
+
 export default function ClientManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -77,6 +108,7 @@ export default function ClientManagement() {
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch clients with property count
@@ -246,6 +278,9 @@ export default function ClientManagement() {
 
   // Apply filters
   const filteredClients = clients.filter(client => {
+    // Active (favorite) filter
+    if (showActiveOnly && !client.is_favorite) return false;
+
     // Search filter
     const searchLower = searchQuery.toLowerCase();
     const fullName = `${client.primary_first_name} ${client.primary_surname}`.toLowerCase();
@@ -269,6 +304,18 @@ export default function ClientManagement() {
 
     return true;
   });
+
+  // Apply smart capitalization to client names for display
+  const displayClients = filteredClients.map(client => ({
+    ...client,
+    primary_first_name: smartCapitalize(client.primary_first_name),
+    primary_surname: smartCapitalize(client.primary_surname),
+    secondary_first_name: smartCapitalize(client.secondary_first_name),
+    secondary_surname: smartCapitalize(client.secondary_surname),
+  }));
+
+  // Count active clients for the button badge
+  const activeClientCount = clients.filter(c => c.is_favorite).length;
 
   // Calculate summary stats
   const totalClients = clients.length;
@@ -515,6 +562,20 @@ export default function ClientManagement() {
                 className="pl-9"
               />
             </div>
+            <Button
+              variant={showActiveOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowActiveOnly(!showActiveOnly)}
+              className="gap-2"
+            >
+              <Star className={`h-4 w-4 ${showActiveOnly ? 'fill-current' : ''}`} />
+              Active Clients
+              {activeClientCount > 0 && (
+                <Badge variant={showActiveOnly ? "secondary" : "default"} className="ml-1">
+                  {activeClientCount}
+                </Badge>
+              )}
+            </Button>
             <ClientFilters filters={filters} onFiltersChange={setFilters} />
             {filteredClients.length > 0 && (
               <div className="flex items-center gap-2">
@@ -543,19 +604,19 @@ export default function ClientManagement() {
                 </Card>
               ))}
             </div>
-          ) : filteredClients.length === 0 ? (
+          ) : displayClients.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold">No clients found</h3>
                 <p className="text-muted-foreground text-center mt-1">
-                  {searchQuery || filters !== defaultFilters ? 'Try adjusting your filters' : 'Import clients using the Import tab'}
+                  {searchQuery || filters !== defaultFilters || showActiveOnly ? 'Try adjusting your filters' : 'Import clients using the Import tab'}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredClients.map((client) => (
+              {displayClients.map((client) => (
                 <div key={client.id} className="relative">
                   <div className="absolute top-3 left-3 z-10">
                     <Checkbox
