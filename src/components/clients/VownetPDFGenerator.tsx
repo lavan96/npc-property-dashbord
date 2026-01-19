@@ -716,7 +716,13 @@ function generateHTMLContent(data: VownetPDFData): string {
   };
 
   const generateAssetsTable = () => {
-    if (assets.length === 0) {
+    // Filter out credit cards from assets
+    const filteredAssets = assets.filter(asset => {
+      const type = (asset.asset_type || '').toLowerCase();
+      return !type.includes('credit') && !type.includes('card');
+    });
+    
+    if (filteredAssets.length === 0) {
       return `
         <div class="empty-state-compact">
           <div class="empty-state-icon">💎</div>
@@ -725,13 +731,48 @@ function generateHTMLContent(data: VownetPDFData): string {
       `;
     }
     
-    const totalAssets = assets.reduce((sum, a) => sum + (a.value || 0), 0);
+    const totalAssets = filteredAssets.reduce((sum, a) => sum + (a.value || 0), 0);
+    
+    // Separate SMSF/super fund assets from others
+    const smsfAssets: AssetData[] = [];
+    const regularAssets: AssetData[] = [];
+    
+    filteredAssets.forEach(asset => {
+      const type = (asset.asset_type || '').toLowerCase();
+      const desc = (asset.description || asset.institution_name || '').toLowerCase();
+      if (type.includes('super') || type.includes('smsf') || 
+          desc.includes('super') || desc.includes('smsf') || desc.includes('cbus')) {
+        smsfAssets.push(asset);
+      } else {
+        regularAssets.push(asset);
+      }
+    });
+    
+    // Group regular assets by type
     const assetsByType: Record<string, AssetData[]> = {};
-    assets.forEach(asset => {
+    regularAssets.forEach(asset => {
       const type = asset.asset_type || 'Other';
       if (!assetsByType[type]) assetsByType[type] = [];
       assetsByType[type].push(asset);
     });
+    
+    // Generate SMSF section if there are SMSF assets
+    const smsfSection = smsfAssets.length > 0 ? `
+      <div class="asset-category">
+        <div class="asset-category-header">
+          <span class="category-icon">🏛️</span>
+          <span class="category-title">Self-Managed Super Fund</span>
+        </div>
+        <table class="data-table compact alt-rows asset-table">
+          ${smsfAssets.map(asset => `
+            <tr>
+              <td class="label">${asset.description || asset.make_model || asset.institution_name || '-'}</td>
+              <td class="value currency">${formatCurrency(asset.value)}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    ` : '';
     
     return `
       <div class="assets-summary">
@@ -754,6 +795,7 @@ function generateHTMLContent(data: VownetPDFData): string {
           </table>
         </div>
       `).join('')}
+      ${smsfSection}
     `;
   };
 
@@ -1636,7 +1678,6 @@ function generateHTMLContent(data: VownetPDFData): string {
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
             <table class="data-table alt-rows compact">
               <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income || 0)}</td></tr>
-              <tr><td class="label">Total Monthly Rental Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_rental_income || totalRental)}</td></tr>
               <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure || 0)}</td></tr>
               <tr class="cashflow-row ${(client.net_monthly_cash_flow || totalNetCF || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
                 <td class="label"><strong>Net Monthly Cash Flow</strong></td>
