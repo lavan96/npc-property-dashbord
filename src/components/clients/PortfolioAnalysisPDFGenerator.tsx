@@ -125,13 +125,25 @@ const MARGIN_TOP = 50;
 const MARGIN_BOTTOM = 60;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
-// Colors
-const PRIMARY_COLOR = rgb(0.07, 0.46, 0.31); // Dark green
-const SECONDARY_COLOR = rgb(0.2, 0.2, 0.2);
+// NPC Brand Colors
+const NPC_GOLD = rgb(0.79, 0.64, 0.15);        // #c9a227 - Primary brand gold
+const NPC_GOLD_LIGHT = rgb(0.91, 0.84, 0.62);  // #e8d59d - Light gold for accents
+const NPC_GOLD_DARK = rgb(0.66, 0.52, 0.13);   // #a88520 - Dark gold
+const NPC_NAVY = rgb(0.05, 0.15, 0.30);        // #0d264d - Dark navy
+const NPC_DARK_BLUE = rgb(0.07, 0.20, 0.38);   // #113361 - Dark blue
+const NPC_BLACK = rgb(0.04, 0.04, 0.04);       // #0a0a0a - Near black
+const NPC_WHITE = rgb(1, 1, 1);                 // White
+
+// Semantic Colors
+const PRIMARY_COLOR = NPC_GOLD;
+const SECONDARY_COLOR = NPC_NAVY;
 const MUTED_COLOR = rgb(0.5, 0.5, 0.5);
-const SUCCESS_COLOR = rgb(0.13, 0.55, 0.13);
-const DANGER_COLOR = rgb(0.86, 0.21, 0.27);
-const WARNING_COLOR = rgb(0.85, 0.65, 0.13);
+const SUCCESS_COLOR = rgb(0.09, 0.64, 0.29);   // #16a34a
+const DANGER_COLOR = rgb(0.94, 0.27, 0.27);    // #ef4444
+const WARNING_COLOR = rgb(0.96, 0.62, 0.04);   // #f59e0b
+const HEADER_BG_COLOR = NPC_NAVY;
+const HEADER_TEXT_COLOR = NPC_WHITE;
+const ACCENT_COLOR = NPC_GOLD_LIGHT;
 
 // ============= PHASE 6: SAFE FORMATTING UTILITIES =============
 const formatCurrency = (value: number | null | undefined): string => {
@@ -446,16 +458,16 @@ export function PortfolioAnalysisPDFGenerator({
         const tableWidth = columnWidths.reduce((sum, w) => sum + w, 0);
         let currentY = y;
         
-        // Draw header row
+        // Draw header row with NPC Navy background
         page.drawRectangle({
           x,
           y: currentY - rowHeight,
           width: tableWidth,
           height: rowHeight,
-          color: rgb(0.93, 0.93, 0.93),
+          color: NPC_NAVY,
         });
         
-        // Header text
+        // Header text (white on navy)
         let cellX = x;
         for (let i = 0; i < headers.length; i++) {
           page.drawText(stripEmojis(headers[i]), {
@@ -463,23 +475,23 @@ export function PortfolioAnalysisPDFGenerator({
             y: currentY - 15,
             size: 9,
             font: helveticaBold,
-            color: SECONDARY_COLOR,
+            color: NPC_WHITE,
           });
           cellX += columnWidths[i];
         }
         
-        // Header borders
+        // Header borders (gold accent)
         page.drawLine({
           start: { x, y: currentY },
           end: { x: x + tableWidth, y: currentY },
           thickness: 1,
-          color: rgb(0.7, 0.7, 0.7),
+          color: NPC_GOLD,
         });
         page.drawLine({
           start: { x, y: currentY - rowHeight },
           end: { x: x + tableWidth, y: currentY - rowHeight },
           thickness: 1,
-          color: rgb(0.7, 0.7, 0.7),
+          color: NPC_GOLD,
         });
         
         currentY -= rowHeight;
@@ -493,14 +505,14 @@ export function PortfolioAnalysisPDFGenerator({
             return { lastY: currentY, needsNewPage: true };
           }
           
-          // Alternating row background
+          // Alternating row background (light gold tint)
           if (rowIndex % 2 === 0) {
             page.drawRectangle({
               x,
               y: currentY - rowHeight,
               width: tableWidth,
               height: rowHeight,
-              color: rgb(0.98, 0.98, 0.98),
+              color: rgb(0.99, 0.98, 0.93), // Gold tint #fdf9ed
             });
           }
           
@@ -596,13 +608,14 @@ export function PortfolioAnalysisPDFGenerator({
         width: number,
         valueColor = SECONDARY_COLOR
       ): void => {
+        // KPI box with gold-tinted background and gold border
         page.drawRectangle({
           x,
           y: y - 45,
           width,
           height: 50,
-          color: rgb(0.97, 0.97, 0.97),
-          borderColor: rgb(0.9, 0.9, 0.9),
+          color: rgb(0.99, 0.98, 0.93), // Gold tint #fdf9ed
+          borderColor: NPC_GOLD_LIGHT,
           borderWidth: 1,
         });
         
@@ -693,16 +706,16 @@ export function PortfolioAnalysisPDFGenerator({
       };
       
       // ============= PHASE 5: ENHANCED COVER PAGE =============
-      console.log('📝 Creating enhanced cover page...');
+      console.log('📝 Creating NPC branded cover page...');
       const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
-      // Top decorative bar
+      // Top header bar with NPC Navy
       coverPage.drawRectangle({
         x: 0,
         y: PAGE_HEIGHT - 80,
         width: PAGE_WIDTH,
         height: 80,
-        color: PRIMARY_COLOR,
+        color: NPC_NAVY,
       });
       
       // Company name in header bar (from global settings)
@@ -716,13 +729,13 @@ export function PortfolioAnalysisPDFGenerator({
         color: rgb(1, 1, 1),
       });
       
-      // Decorative accent line below header
+      // Gold accent line below header
       coverPage.drawRectangle({
         x: PAGE_WIDTH / 2 - 60,
         y: PAGE_HEIGHT - 90,
         width: 120,
         height: 3,
-        color: rgb(0.9, 0.75, 0.4), // Gold accent
+        color: NPC_GOLD,
       });
       
       // Main title block
@@ -746,12 +759,12 @@ export function PortfolioAnalysisPDFGenerator({
         color: PRIMARY_COLOR,
       });
       
-      // Decorative line under title
+      // Gold decorative line under title
       coverPage.drawLine({
         start: { x: PAGE_WIDTH / 2 - 80, y: PAGE_HEIGHT - 335 },
         end: { x: PAGE_WIDTH / 2 + 80, y: PAGE_HEIGHT - 335 },
         thickness: 2,
-        color: rgb(0.8, 0.8, 0.8),
+        color: NPC_GOLD,
       });
       
       // "Prepared for" label
@@ -807,17 +820,18 @@ export function PortfolioAnalysisPDFGenerator({
       const circleY = PAGE_HEIGHT - 560;
       const circleRadius = 45;
       
-      // Draw circular badge (approximated with rectangle for pdf-lib)
+      // Draw score badge with NPC Gold background
       coverPage.drawRectangle({
         x: circleX - circleRadius,
         y: circleY - circleRadius,
         width: circleRadius * 2,
         height: circleRadius * 2,
-        color: PRIMARY_COLOR,
-        borderColor: rgb(0.05, 0.4, 0.27),
+        color: NPC_GOLD,
+        borderColor: NPC_GOLD_DARK,
         borderWidth: 3,
       });
       
+      // Score text (navy for better contrast on gold)
       const scoreText = healthScore.toString();
       const scoreWidth = helveticaBold.widthOfTextAtSize(scoreText, 32);
       coverPage.drawText(scoreText, {
@@ -825,7 +839,7 @@ export function PortfolioAnalysisPDFGenerator({
         y: circleY + 5,
         size: 32,
         font: helveticaBold,
-        color: rgb(1, 1, 1),
+        color: NPC_NAVY,
       });
       
       coverPage.drawText('/100', {
@@ -833,7 +847,7 @@ export function PortfolioAnalysisPDFGenerator({
         y: circleY - 18,
         size: 12,
         font: helveticaFont,
-        color: rgb(0.9, 0.9, 0.9),
+        color: NPC_DARK_BLUE,
       });
       
       // Health status text below score
@@ -848,16 +862,16 @@ export function PortfolioAnalysisPDFGenerator({
         color: PRIMARY_COLOR,
       });
       
-      // Bottom decorative bar with contact info
+      // Bottom footer bar with NPC Navy
       coverPage.drawRectangle({
         x: 0,
         y: 0,
         width: PAGE_WIDTH,
         height: 60,
-        color: rgb(0.95, 0.95, 0.95),
+        color: NPC_NAVY,
       });
       
-      // Contact info in footer
+      // Contact info in footer (white text on navy)
       const contactInfo = globalSettings?.contactDetails;
       if (contactInfo) {
         const footerText = [contactInfo.phone, contactInfo.email, contactInfo.website].filter(Boolean).join('  |  ');
@@ -867,7 +881,7 @@ export function PortfolioAnalysisPDFGenerator({
           y: 25,
           size: 9,
           font: helveticaFont,
-          color: MUTED_COLOR,
+          color: NPC_WHITE,
         });
       }
       
@@ -881,13 +895,13 @@ export function PortfolioAnalysisPDFGenerator({
       const tocPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       let tocY = PAGE_HEIGHT - MARGIN_TOP;
       
-      // Header bar for TOC
+      // Header bar for TOC with NPC Navy
       tocPage.drawRectangle({
         x: 0,
         y: PAGE_HEIGHT - 40,
         width: PAGE_WIDTH,
         height: 40,
-        color: PRIMARY_COLOR,
+        color: NPC_NAVY,
       });
       
       tocPage.drawText('TABLE OF CONTENTS', {
@@ -974,8 +988,8 @@ export function PortfolioAnalysisPDFGenerator({
         y: noteY - 50,
         width: CONTENT_WIDTH,
         height: 55,
-        color: rgb(0.97, 0.97, 0.97),
-        borderColor: rgb(0.9, 0.9, 0.9),
+        color: rgb(0.99, 0.98, 0.93), // Gold tint
+        borderColor: NPC_GOLD_LIGHT,
         borderWidth: 1,
       });
       
