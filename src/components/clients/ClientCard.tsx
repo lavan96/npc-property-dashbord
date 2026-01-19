@@ -20,11 +20,26 @@ import {
   ExternalLink,
   RefreshCw,
   Loader2,
-  Star
+  Star,
+  Target
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
+
+// Pipeline stage colors
+const getPipelineStageColor = (status: string | null | undefined) => {
+  if (!status) return 'bg-gray-500';
+  if (status.includes('No Show') || status.includes('No Response')) return 'bg-red-400';
+  if (status.includes('Discovery')) return 'bg-indigo-500';
+  if (status.includes('Strategy')) return 'bg-purple-500';
+  if (status.includes('IFC') || status.includes('Initial Financial')) return 'bg-cyan-500';
+  if (status.includes('Finance Link')) return 'bg-emerald-500';
+  if (status.includes('FA -')) return 'bg-green-500';
+  if (status.includes('POP')) return 'bg-violet-500';
+  return 'bg-blue-500';
+};
 
 interface ClientCardProps {
   client: {
@@ -43,6 +58,8 @@ interface ClientCardProps {
     created_at: string;
     is_favorite?: boolean;
     client_properties?: { id: string }[];
+    pipeline_status?: string | null;
+    follow_up_date?: string | null;
   };
   onView: () => void;
   onDelete: () => void;
@@ -234,6 +251,22 @@ export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientC
             {formatCurrency(Number(client.net_monthly_cash_flow))}
           </span>
         </div>
+
+        {/* Pipeline Status */}
+        {client.pipeline_status && client.pipeline_status !== 'New Lead' && (
+          <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Pipeline</span>
+            </div>
+            <Badge className={cn(getPipelineStageColor(client.pipeline_status), 'text-white text-xs')}>
+              {client.pipeline_status.length > 20 
+                ? client.pipeline_status.substring(0, 18) + '...' 
+                : client.pipeline_status
+              }
+            </Badge>
+          </div>
+        )}
 
         {/* GHL Status */}
         <div className="flex items-center justify-between pt-2 border-t">

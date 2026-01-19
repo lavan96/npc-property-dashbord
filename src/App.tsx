@@ -48,6 +48,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import Integrations from "./pages/Integrations";
 import ClientManagement from "./pages/ClientManagement";
+import ClientTracker from "./pages/ClientTracker";
 import PortfolioReports from "./pages/PortfolioReports";
 import NotFound from "./pages/NotFound";
 
@@ -128,6 +129,7 @@ const App = () => (
                           <Route path="admin/depreciation-comps" element={<DepreciationCompsAdmin />} />
                           <Route path="integrations" element={<Integrations />} />
                           <Route path="clients" element={<ClientManagement />} />
+                          <Route path="client-tracker" element={<ClientTracker />} />
                           <Route path="portfolio-reports" element={<PortfolioReports />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
