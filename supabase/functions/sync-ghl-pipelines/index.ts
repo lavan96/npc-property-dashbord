@@ -52,6 +52,24 @@ interface GHLOpportunitiesResponse {
   };
 }
 
+// Default colors for pipeline stages based on position
+const STAGE_COLORS = [
+  '#6B7280', // gray
+  '#3B82F6', // blue
+  '#6366F1', // indigo
+  '#8B5CF6', // violet
+  '#A855F7', // purple
+  '#EC4899', // pink
+  '#EF4444', // red
+  '#F97316', // orange
+  '#F59E0B', // amber
+  '#EAB308', // yellow
+  '#84CC16', // lime
+  '#22C55E', // green
+  '#14B8A6', // teal
+  '#06B6D4', // cyan
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -95,7 +113,7 @@ serve(async (req) => {
 
     console.log('Fetching GHL pipelines...');
 
-    // Step 1: Fetch all pipelines
+    // Step 1: Fetch all pipelines from GHL
     const pipelinesResponse = await fetch(
       `${GHL_API_BASE}/opportunities/pipelines?locationId=${locationId}`,
       { headers }
@@ -108,23 +126,73 @@ serve(async (req) => {
     }
 
     const pipelinesData = await pipelinesResponse.json();
-    const pipelines: GHLPipeline[] = pipelinesData.pipelines || [];
-    console.log(`Found ${pipelines.length} pipelines`);
+    const ghlPipelines: GHLPipeline[] = pipelinesData.pipelines || [];
+    console.log(`Found ${ghlPipelines.length} pipelines from GHL`);
 
-    // Create a map of stage IDs to stage names and pipeline names
-    const stageMap: Record<string, { stageName: string; pipelineName: string }> = {};
-    for (const pipeline of pipelines) {
+    // Step 2: Sync pipelines to database
+    const pipelineIdMap: Record<string, string> = {}; // ghl_id -> supabase uuid
+    const stageIdMap: Record<string, { uuid: string; stageName: string; pipelineName: string; pipelineUuid: string }> = {};
+
+    for (let pIdx = 0; pIdx < ghlPipelines.length; pIdx++) {
+      const pipeline = ghlPipelines[pIdx];
+      
+      // Upsert pipeline
+      const { data: pipelineData, error: pipelineError } = await supabase
+        .from('ghl_pipelines')
+        .upsert({
+          ghl_id: pipeline.id,
+          name: pipeline.name,
+          position: pIdx,
+          location_id: locationId,
+          is_active: true,
+          synced_at: new Date().toISOString(),
+        }, { onConflict: 'ghl_id' })
+        .select('id')
+        .single();
+
+      if (pipelineError) {
+        console.error(`Error upserting pipeline ${pipeline.name}:`, pipelineError);
+        continue;
+      }
+
+      const pipelineUuid = pipelineData.id;
+      pipelineIdMap[pipeline.id] = pipelineUuid;
+      console.log(`Synced pipeline: ${pipeline.name} (${pipeline.id}) -> ${pipelineUuid}`);
+
+      // Upsert stages for this pipeline
       for (const stage of pipeline.stages || []) {
-        stageMap[stage.id] = {
+        const colorIndex = stage.position % STAGE_COLORS.length;
+        
+        const { data: stageData, error: stageError } = await supabase
+          .from('ghl_pipeline_stages')
+          .upsert({
+            ghl_id: stage.id,
+            pipeline_id: pipelineUuid,
+            name: stage.name,
+            position: stage.position,
+            color: STAGE_COLORS[colorIndex],
+            synced_at: new Date().toISOString(),
+          }, { onConflict: 'ghl_id' })
+          .select('id')
+          .single();
+
+        if (stageError) {
+          console.error(`Error upserting stage ${stage.name}:`, stageError);
+          continue;
+        }
+
+        stageIdMap[stage.id] = {
+          uuid: stageData.id,
           stageName: stage.name,
           pipelineName: pipeline.name,
+          pipelineUuid: pipelineUuid,
         };
       }
     }
 
-    console.log(`Mapped ${Object.keys(stageMap).length} pipeline stages`);
+    console.log(`Synced ${Object.keys(stageIdMap).length} pipeline stages to database`);
 
-    // Step 2: Fetch all opportunities
+    // Step 3: Fetch all opportunities from GHL
     let allOpportunities: GHLOpportunity[] = [];
     let startAfterId: string | null = null;
     let startAfter: number | null = null;
@@ -189,7 +257,7 @@ serve(async (req) => {
 
     console.log(`Total opportunities fetched: ${allOpportunities.length}`);
 
-    // Step 3: Update clients with pipeline data
+    // Step 4: Update clients with pipeline data using new relational structure
     let updatedCount = 0;
     let notFoundCount = 0;
     const notFoundContacts: string[] = [];
@@ -201,8 +269,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Get stage info
-      const stageInfo = stageMap[opp.pipelineStageId];
+      // Get stage info from our map
+      const stageInfo = stageIdMap[opp.pipelineStageId];
       const pipelineStatus = stageInfo 
         ? stageInfo.stageName
         : opp.status || 'Unknown Stage';
@@ -230,11 +298,21 @@ serve(async (req) => {
         borrowingCapacity = opp.monetaryValue;
       }
 
-      // Update client in Supabase
+      // Build update data with new relational fields
       const updateData: Record<string, any> = {
         pipeline_status: pipelineStatus,
         pipeline_updated_at: new Date().toISOString(),
+        ghl_opportunity_id: opp.id,
+        opportunity_status: opp.status || 'open',
       };
+
+      // Link to pipeline and stage using UUIDs
+      if (stageInfo) {
+        updateData.current_pipeline_id = stageInfo.pipelineUuid;
+        updateData.current_stage_id = stageInfo.uuid;
+      } else if (pipelineIdMap[opp.pipelineId]) {
+        updateData.current_pipeline_id = pipelineIdMap[opp.pipelineId];
+      }
 
       if (opp.followUpDate) {
         updateData.follow_up_date = opp.followUpDate;
@@ -268,23 +346,38 @@ serve(async (req) => {
         }
       } else {
         updatedCount++;
-        console.log(`Updated client ${updatedClient.primary_first_name} ${updatedClient.primary_surname} with status: ${pipelineStatus}`);
+        console.log(`Updated client ${updatedClient.primary_first_name} ${updatedClient.primary_surname} with pipeline: ${stageInfo?.pipelineName || 'Unknown'} / stage: ${pipelineStatus}`);
       }
     }
 
     console.log(`Pipeline sync complete. Updated: ${updatedCount}, Not found: ${notFoundCount}`);
 
+    // Build response with full pipeline structure
+    const pipelinesWithStages = ghlPipelines.map(p => ({
+      id: pipelineIdMap[p.id] || p.id,
+      ghl_id: p.id,
+      name: p.name,
+      stages: (p.stages || []).map(s => ({
+        id: stageIdMap[s.id]?.uuid || s.id,
+        ghl_id: s.id,
+        name: s.name,
+        position: s.position,
+        color: STAGE_COLORS[s.position % STAGE_COLORS.length],
+      })),
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Pipeline sync complete! Updated ${updatedCount} clients.`,
+        message: `Pipeline sync complete! Synced ${ghlPipelines.length} pipelines and updated ${updatedCount} clients.`,
         stats: {
-          pipelinesFound: pipelines.length,
+          pipelinesFound: ghlPipelines.length,
+          stagesSynced: Object.keys(stageIdMap).length,
           opportunitiesFound: allOpportunities.length,
           clientsUpdated: updatedCount,
           contactsNotFound: notFoundCount,
         },
-        pipelines: pipelines.map(p => ({ id: p.id, name: p.name, stageCount: p.stages?.length || 0 })),
+        pipelines: pipelinesWithStages,
         notFoundContacts: notFoundContacts.slice(0, 10),
       }),
       {

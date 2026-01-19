@@ -1439,11 +1439,14 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_address: string | null
+          current_pipeline_id: string | null
+          current_stage_id: string | null
           dependents_count: number | null
           equity_release: number | null
           follow_up_date: string | null
           ghl_contact_id: string | null
           ghl_last_synced_at: string | null
+          ghl_opportunity_id: string | null
           ghl_sync_status: string | null
           id: string
           is_favorite: boolean
@@ -1453,6 +1456,7 @@ export type Database = {
           net_monthly_cash_flow: number | null
           next_review_due: string | null
           notes: string | null
+          opportunity_status: string | null
           pipeline_notes: string | null
           pipeline_status: string | null
           pipeline_updated_at: string | null
@@ -1486,11 +1490,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_address?: string | null
+          current_pipeline_id?: string | null
+          current_stage_id?: string | null
           dependents_count?: number | null
           equity_release?: number | null
           follow_up_date?: string | null
           ghl_contact_id?: string | null
           ghl_last_synced_at?: string | null
+          ghl_opportunity_id?: string | null
           ghl_sync_status?: string | null
           id?: string
           is_favorite?: boolean
@@ -1500,6 +1507,7 @@ export type Database = {
           net_monthly_cash_flow?: number | null
           next_review_due?: string | null
           notes?: string | null
+          opportunity_status?: string | null
           pipeline_notes?: string | null
           pipeline_status?: string | null
           pipeline_updated_at?: string | null
@@ -1533,11 +1541,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_address?: string | null
+          current_pipeline_id?: string | null
+          current_stage_id?: string | null
           dependents_count?: number | null
           equity_release?: number | null
           follow_up_date?: string | null
           ghl_contact_id?: string | null
           ghl_last_synced_at?: string | null
+          ghl_opportunity_id?: string | null
           ghl_sync_status?: string | null
           id?: string
           is_favorite?: boolean
@@ -1547,6 +1558,7 @@ export type Database = {
           net_monthly_cash_flow?: number | null
           next_review_due?: string | null
           notes?: string | null
+          opportunity_status?: string | null
           pipeline_notes?: string | null
           pipeline_status?: string | null
           pipeline_updated_at?: string | null
@@ -1580,6 +1592,20 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_current_pipeline_id_fkey"
+            columns: ["current_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_pipeline_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -2328,6 +2354,86 @@ export type Database = {
           title?: string
           webhook_sent?: boolean | null
           webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      ghl_pipeline_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          ghl_id: string
+          id: string
+          name: string
+          pipeline_id: string
+          position: number | null
+          synced_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          ghl_id: string
+          id?: string
+          name: string
+          pipeline_id: string
+          position?: number | null
+          synced_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          ghl_id?: string
+          id?: string
+          name?: string
+          pipeline_id?: string
+          position?: number | null
+          synced_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghl_pipelines: {
+        Row: {
+          created_at: string
+          ghl_id: string
+          id: string
+          is_active: boolean | null
+          location_id: string | null
+          name: string
+          position: number | null
+          synced_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ghl_id: string
+          id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          name: string
+          position?: number | null
+          synced_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ghl_id?: string
+          id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          name?: string
+          position?: number | null
+          synced_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
