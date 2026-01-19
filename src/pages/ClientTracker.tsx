@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,8 +35,17 @@ import {
   ChevronDown,
   GripVertical,
   FileText,
-  UserCheck
+  UserCheck,
+  ChevronLeft
 } from 'lucide-react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -107,6 +116,8 @@ export default function ClientTracker() {
   const [activeTab, setActiveTab] = useState('kanban');
   const [isSyncingPipelines, setIsSyncingPipelines] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [activeNotesPage, setActiveNotesPage] = useState(1);
+  const NOTES_PER_PAGE = 9;
 
   // Fetch pipelines from database
   const { data: pipelines = [], isLoading: pipelinesLoading } = useQuery({
@@ -153,6 +164,22 @@ export default function ClientTracker() {
 
   // Fetch active clients and their notes
   const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
+
+  // Filter active clients by search query
+  const filteredActiveClients = useMemo(() => {
+    if (activeTab !== 'active' || searchQuery === '') return activeClients;
+    return activeClients.filter(client => {
+      const matchesSearch = 
+        `${client.primary_first_name} ${client.primary_surname}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.primary_email?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [activeClients, searchQuery, activeTab]);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setActiveNotesPage(1);
+  }, [searchQuery]);
 
   const { data: activeClientNotes = [], isLoading: notesLoading } = useQuery({
     queryKey: ['active-client-notes', activeClients.map(c => c.id)],
@@ -965,7 +992,10 @@ export default function ClientTracker() {
                     Active Clients Notes
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    View notes for {activeClients.length} active clients
+                    {searchQuery 
+                      ? `Showing ${filteredActiveClients.length} of ${activeClients.length} active clients`
+                      : `View notes for ${activeClients.length} active clients`
+                    }
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -973,79 +1003,129 @@ export default function ClientTracker() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                  ) : activeClients.length === 0 ? (
+                  ) : filteredActiveClients.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No active clients found
+                      {searchQuery ? 'No matching active clients found' : 'No active clients found'}
                     </div>
                   ) : (
-                    <div className="space-y-6">
-                      {activeClients.map(client => {
-                        const clientNotes = activeClientNotes.filter(n => n.client_id === client.id);
-                        const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
-                        
-                        return (
-                          <div key={client.id} className="border rounded-lg p-4">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-medium text-lg">
-                                  {client.primary_first_name} {client.primary_surname}
-                                </h3>
-                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                  {client.primary_email && (
-                                    <span className="flex items-center gap-1">
-                                      <Mail className="h-3 w-3" />
-                                      {client.primary_email}
-                                    </span>
-                                  )}
-                                  {client.primary_mobile && (
-                                    <span className="flex items-center gap-1">
-                                      <Phone className="h-3 w-3" />
-                                      {client.primary_mobile}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <Badge 
-                                style={{ 
-                                  backgroundColor: stageInfo.color + '20',
-                                  color: stageInfo.color,
-                                  borderColor: stageInfo.color 
-                                }}
-                                variant="outline"
-                              >
-                                {stageInfo.name}
-                              </Badge>
-                            </div>
+                    <>
+                      {/* Grid of client cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredActiveClients
+                          .slice((activeNotesPage - 1) * NOTES_PER_PAGE, activeNotesPage * NOTES_PER_PAGE)
+                          .map(client => {
+                            const clientNotes = activeClientNotes.filter(n => n.client_id === client.id);
+                            const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                             
-                            {clientNotes.length > 0 ? (
-                              <div className="space-y-2">
-                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                                  <FileText className="h-3 w-3" />
-                                  Notes ({clientNotes.length})
-                                </p>
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                  {clientNotes.map(note => (
-                                    <div 
-                                      key={note.id} 
-                                      className="bg-muted/50 rounded-md p-3 text-sm"
-                                    >
-                                      <p className="whitespace-pre-wrap">{note.content}</p>
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        {format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}
-                                      </p>
+                            return (
+                              <Card key={client.id} className="flex flex-col">
+                                <CardHeader className="pb-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <CardTitle className="text-base truncate">
+                                        {client.primary_first_name} {client.primary_surname}
+                                      </CardTitle>
+                                      <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
+                                        {client.primary_email && (
+                                          <span className="flex items-center gap-1 truncate">
+                                            <Mail className="h-3 w-3 flex-shrink-0" />
+                                            <span className="truncate">{client.primary_email}</span>
+                                          </span>
+                                        )}
+                                        {client.primary_mobile && (
+                                          <span className="flex items-center gap-1">
+                                            <Phone className="h-3 w-3 flex-shrink-0" />
+                                            {client.primary_mobile}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-sm text-muted-foreground italic">
-                                No notes for this client
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                                    <Badge 
+                                      className="text-xs flex-shrink-0"
+                                      style={{ 
+                                        backgroundColor: stageInfo.color + '20',
+                                        color: stageInfo.color,
+                                        borderColor: stageInfo.color 
+                                      }}
+                                      variant="outline"
+                                    >
+                                      {stageInfo.name}
+                                    </Badge>
+                                  </div>
+                                </CardHeader>
+                                <CardContent className="flex-1 pt-0">
+                                  {clientNotes.length > 0 ? (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                                        <FileText className="h-3 w-3" />
+                                        Notes ({clientNotes.length})
+                                      </p>
+                                      <ScrollArea className="h-40">
+                                        <div className="space-y-2 pr-3">
+                                          {clientNotes.map(note => (
+                                            <div 
+                                              key={note.id} 
+                                              className="bg-muted/50 rounded-md p-2.5 text-xs"
+                                            >
+                                              <p className="whitespace-pre-wrap line-clamp-4">{note.content}</p>
+                                              <p className="text-[10px] text-muted-foreground mt-1">
+                                                {format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}
+                                              </p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </ScrollArea>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground italic">
+                                      No notes for this client
+                                    </p>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                      </div>
+
+                      {/* Pagination */}
+                      {filteredActiveClients.length > NOTES_PER_PAGE && (
+                        <div className="mt-6">
+                          <Pagination>
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious 
+                                  onClick={() => setActiveNotesPage(p => Math.max(1, p - 1))}
+                                  className={cn(
+                                    "cursor-pointer",
+                                    activeNotesPage === 1 && "pointer-events-none opacity-50"
+                                  )}
+                                />
+                              </PaginationItem>
+                              {Array.from({ length: Math.ceil(filteredActiveClients.length / NOTES_PER_PAGE) }).map((_, i) => (
+                                <PaginationItem key={i}>
+                                  <PaginationLink
+                                    onClick={() => setActiveNotesPage(i + 1)}
+                                    isActive={activeNotesPage === i + 1}
+                                    className="cursor-pointer"
+                                  >
+                                    {i + 1}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              ))}
+                              <PaginationItem>
+                                <PaginationNext 
+                                  onClick={() => setActiveNotesPage(p => Math.min(Math.ceil(filteredActiveClients.length / NOTES_PER_PAGE), p + 1))}
+                                  className={cn(
+                                    "cursor-pointer",
+                                    activeNotesPage >= Math.ceil(filteredActiveClients.length / NOTES_PER_PAGE) && "pointer-events-none opacity-50"
+                                  )}
+                                />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
