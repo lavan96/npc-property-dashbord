@@ -433,6 +433,28 @@ NPC Team`
             <TabsContent value="personal" className="mt-4">
               <PersonalDetailsManualEntry 
                 clientId={client.id} 
+                clientData={fullClient ? {
+                  primary_first_name: fullClient.primary_first_name,
+                  primary_middle_name: fullClient.primary_middle_name,
+                  primary_surname: fullClient.primary_surname,
+                  primary_mobile: fullClient.primary_mobile,
+                  primary_email: fullClient.primary_email,
+                  primary_gender: fullClient.primary_gender,
+                  primary_dob: fullClient.primary_dob,
+                  secondary_first_name: fullClient.secondary_first_name,
+                  secondary_middle_name: fullClient.secondary_middle_name,
+                  secondary_surname: fullClient.secondary_surname,
+                  secondary_mobile: fullClient.secondary_mobile,
+                  secondary_email: fullClient.secondary_email,
+                  secondary_gender: fullClient.secondary_gender,
+                  secondary_dob: fullClient.secondary_dob,
+                  current_address: fullClient.current_address,
+                  country: fullClient.country,
+                  living_situation: fullClient.living_situation,
+                  residential_status: fullClient.residential_status,
+                  marital_status: fullClient.marital_status,
+                  dependents_count: fullClient.dependents_count,
+                } : undefined}
                 onComplete={() => refetchClient()} 
               />
             </TabsContent>
