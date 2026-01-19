@@ -366,12 +366,13 @@ export function VownetPDFGenerator({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        {/* Owner Occupied Toggle */}
+        {/* Owner Occupied Toggle - affects Portfolio Summary calculations only */}
         <div className="flex items-center justify-between px-2 py-2 border-b">
           <div className="flex items-center gap-2">
             <Home className="h-4 w-4 text-muted-foreground" />
-            <Label htmlFor="include-owner-occupied" className="text-sm cursor-pointer">
-              Include Owner Occupied
+            <Label htmlFor="include-owner-occupied" className="text-sm cursor-pointer leading-tight">
+              <span className="block">Owner Occupied in Summary</span>
+              <span className="text-xs text-muted-foreground">Include in portfolio calculations</span>
             </Label>
           </div>
           <Switch
@@ -460,12 +461,13 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const { client, properties, employment = [], income = [], assets = [], liabilities = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
-  // Find owner occupied property (only if included)
-  const ownerOccupied = includeOwnerOccupied ? properties.find(p => p.property_type === 'owner_occupied') : null;
+  // Always find owner occupied property (shown on page 1 regardless of toggle)
+  const ownerOccupied = properties.find(p => p.property_type === 'owner_occupied');
   const investmentProperties = properties.filter(p => p.property_type === 'investment');
   const smsfProperties = properties.filter(p => p.property_type === 'smsf');
   
-  // Filter properties for summary based on toggle
+  // Filter properties for Portfolio Summary calculations based on toggle
+  // When toggle is OFF, only investment properties are included in summary calculations
   const summaryProperties = includeOwnerOccupied 
     ? properties 
     : properties.filter(p => p.property_type !== 'owner_occupied');
@@ -1571,7 +1573,6 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
-              ${includeOwnerOccupied ? `
               <div class="section">
                 <div class="section-header">Property (Owner Occupied)</div>
                 <table class="data-table">
@@ -1584,7 +1585,6 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
               </div>
-              ` : ''}
             </div>
           </div>
         </div>
