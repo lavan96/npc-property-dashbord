@@ -844,9 +844,18 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
       
       const label = labelE || labelA;
       const value = valueF ?? valueB;
+      const combinedLabel = `${labelA} ${labelE}`.toLowerCase();
+
+      // Boundary check: stop if we hit investment property section
+      if (offset > 0 && combinedLabel.includes('investment property')) {
+        break;
+      }
 
       if (label.includes('address') && !prop.address) prop.address = value;
-      if (label.includes('property value') || label.includes('current value') || (label.includes('value') && !label.includes('loan'))) {
+      // Only capture values that are specifically for owner-occupied, not investment properties
+      if ((label.includes('property value') || label.includes('current value') || 
+          (label.includes('value') && !label.includes('loan'))) && 
+          !label.includes('investment')) {
         prop.value = parseCurrency(value);
       }
       if (label.includes('loan') && (label.includes('remaining') || label.includes('balance') || label.includes('owing'))) {
