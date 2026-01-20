@@ -325,6 +325,7 @@ export function PortfolioAnalysisPDFGenerator({
           analysisDepth: 'comprehensive',
           includeProjections: true,
           projectionYears: 10,
+          includeOwnerOccupied: true // Default to include; can be parameterized later
         }
       });
 

@@ -12,6 +12,8 @@ export type ReviewStep =
 export interface PropertyDataQuality {
   propertyId: string;
   address: string;
+  propertyType?: string;
+  isOwnerOccupied?: boolean;
   missingFields: string[];
   completenessScore: number;
   issues: string[];
@@ -34,6 +36,8 @@ export interface PropertyMetrics {
 export interface PropertyScore {
   propertyId: string;
   address: string;
+  propertyType?: string;
+  isOwnerOccupied?: boolean;
   overallScore: number;
   healthScore: number;
   cashFlowScore: number;

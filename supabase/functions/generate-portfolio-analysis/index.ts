@@ -54,7 +54,8 @@ serve(async (req) => {
       investorProfile = 'general',
       analysisDepth = 'comprehensive',
       includeProjections = true,
-      projectionYears = 10
+      projectionYears = 10,
+      includeOwnerOccupied = true
     } = await req.json();
 
     if (!clientId) {
@@ -109,21 +110,34 @@ serve(async (req) => {
     }
 
     console.log(`Found ${properties.length} properties for analysis`);
+    console.log(`Include owner-occupied in calculations: ${includeOwnerOccupied}`);
 
-    // Aggregate portfolio metrics
-    const investmentProperties = properties.filter(p => p.property_type === 'investment');
-    const ownerOccupiedProperties = properties.filter(p => p.property_type === 'owner_occupied');
+    // Helper to check if property is owner-occupied
+    const isOwnerOccupied = (propertyType: string) => 
+      propertyType?.toLowerCase() === 'owner_occupied' || 
+      propertyType?.toLowerCase() === 'owner-occupied' ||
+      propertyType?.toLowerCase() === 'ppor';
+
+    // Separate properties by type
+    const investmentProperties = properties.filter(p => !isOwnerOccupied(p.property_type));
+    const ownerOccupiedProperties = properties.filter(p => isOwnerOccupied(p.property_type));
+    
+    // Determine which properties to include in portfolio totals
+    const propertiesForTotals = includeOwnerOccupied ? properties : investmentProperties;
     
     const portfolioMetrics = {
       totalProperties: properties.length,
       investmentCount: investmentProperties.length,
       ownerOccupiedCount: ownerOccupiedProperties.length,
-      totalValue: properties.reduce((sum, p) => sum + (Number(p.value) || 0), 0),
-      totalDebt: properties.reduce((sum, p) => sum + (Number(p.loan_remaining) || 0), 0),
+      includeOwnerOccupied,
+      // Portfolio totals based on toggle
+      totalValue: propertiesForTotals.reduce((sum, p) => sum + (Number(p.value) || 0), 0),
+      totalDebt: propertiesForTotals.reduce((sum, p) => sum + (Number(p.loan_remaining) || 0), 0),
       totalEquity: 0,
       averageLVR: 0,
+      // Cash flow always from investment properties only
       totalMonthlyRentalIncome: investmentProperties.reduce((sum, p) => sum + (Number(p.monthly_rental_income) || 0), 0),
-      totalMonthlyExpenses: properties.reduce((sum, p) => sum + (Number(p.total_monthly_expenditure) || 0), 0),
+      totalMonthlyExpenses: propertiesForTotals.reduce((sum, p) => sum + (Number(p.total_monthly_expenditure) || 0), 0),
       netMonthlyCashflow: investmentProperties.reduce((sum, p) => sum + (Number(p.net_monthly_cashflow) || 0), 0),
       averageYield: 0,
       bestPerformer: null as ClientProperty | null,

@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -15,9 +16,18 @@ import {
   Calendar,
   CheckCircle2,
   Loader2,
-  Save
+  Save,
+  Home,
+  Building2,
+  Info
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface GenerateReportStepProps {
   clientName: string;
@@ -29,6 +39,10 @@ interface GenerateReportStepProps {
   highPriorityCount: number;
   reviewFrequency: 'quarterly' | 'bi_annual' | 'annual';
   onReviewFrequencyChange: (frequency: 'quarterly' | 'bi_annual' | 'annual') => void;
+  includeOwnerOccupied: boolean;
+  onIncludeOwnerOccupiedChange: (include: boolean) => void;
+  ownerOccupiedCount: number;
+  investmentCount: number;
   onSaveDraft: () => Promise<void>;
   onComplete: () => Promise<void>;
   isSaving: boolean;
@@ -44,6 +58,10 @@ export function GenerateReportStep({
   highPriorityCount,
   reviewFrequency,
   onReviewFrequencyChange,
+  includeOwnerOccupied,
+  onIncludeOwnerOccupiedChange,
+  ownerOccupiedCount,
+  investmentCount,
   onSaveDraft,
   onComplete,
   isSaving
@@ -114,6 +132,58 @@ export function GenerateReportStep({
           </div>
         </CardContent>
       </Card>
+
+      {/* Owner-Occupied Toggle */}
+      {ownerOccupiedCount > 0 && (
+        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Home className="h-5 w-5 text-amber-600" />
+              Owner-Occupied Properties
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>When disabled, owner-occupied properties are excluded from portfolio-level calculations (value, debt, equity, LVR, scores) but still shown in property list for reference.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="include-owner-occupied" className="text-sm font-medium">
+                  Include in Portfolio Calculations
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {ownerOccupiedCount} owner-occupied, {investmentCount} investment properties
+                </p>
+              </div>
+              <Switch
+                id="include-owner-occupied"
+                checked={includeOwnerOccupied}
+                onCheckedChange={onIncludeOwnerOccupiedChange}
+              />
+            </div>
+            
+            {!includeOwnerOccupied && (
+              <div className="p-3 bg-amber-100/50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2">
+                  <Building2 className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Portfolio metrics now reflect <strong>investment properties only</strong>. 
+                    Owner-occupied properties will still appear in property lists but won't affect 
+                    portfolio value, LVR, or score calculations.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Review Frequency */}
       <Card>

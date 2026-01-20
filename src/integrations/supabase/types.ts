@@ -3077,6 +3077,7 @@ export type Database = {
           executive_summary: string | null
           growth_potential: number | null
           id: string
+          include_owner_occupied: boolean
           key_findings: Json | null
           next_review_due: string | null
           notes: string | null
@@ -3103,6 +3104,7 @@ export type Database = {
           executive_summary?: string | null
           growth_potential?: number | null
           id?: string
+          include_owner_occupied?: boolean
           key_findings?: Json | null
           next_review_due?: string | null
           notes?: string | null
@@ -3129,6 +3131,7 @@ export type Database = {
           executive_summary?: string | null
           growth_potential?: number | null
           id?: string
+          include_owner_occupied?: boolean
           key_findings?: Json | null
           next_review_due?: string | null
           notes?: string | null

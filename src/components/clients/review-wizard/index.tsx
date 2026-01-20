@@ -56,6 +56,13 @@ export function ReviewWizard({
       case 'recommendations':
         return <RecommendationsStep recommendations={wizard.recommendations} />;
       case 'generate_report':
+        const ownerOccupiedCount = properties.filter(p => 
+          p.property_type?.toLowerCase() === 'owner_occupied' || 
+          p.property_type?.toLowerCase() === 'owner-occupied' ||
+          p.property_type?.toLowerCase() === 'ppor'
+        ).length;
+        const investmentCount = properties.length - ownerOccupiedCount;
+        
         return (
           <GenerateReportStep
             clientName={clientName}
@@ -67,6 +74,10 @@ export function ReviewWizard({
             highPriorityCount={wizard.recommendations.filter(r => r.priority === 'high').length}
             reviewFrequency={wizard.reviewFrequency}
             onReviewFrequencyChange={wizard.setReviewFrequency}
+            includeOwnerOccupied={wizard.includeOwnerOccupied}
+            onIncludeOwnerOccupiedChange={wizard.setIncludeOwnerOccupied}
+            ownerOccupiedCount={ownerOccupiedCount}
+            investmentCount={investmentCount}
             onSaveDraft={handleSaveDraft}
             onComplete={handleComplete}
             isSaving={wizard.isSaving}
