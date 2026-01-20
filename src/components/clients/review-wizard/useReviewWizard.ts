@@ -54,6 +54,7 @@ export function useReviewWizard(
   const [reviewFrequency, setReviewFrequency] = useState<'quarterly' | 'bi_annual' | 'annual'>(
     clientData?.review_frequency || 'annual'
   );
+  const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
 
   // Calculate data completeness for each property
   const dataCompleteness = useMemo(() => {
@@ -149,13 +150,28 @@ export function useReviewWizard(
       };
     });
 
-    const totalValue = propertyMetrics.reduce((sum, p) => sum + p.value, 0);
-    const totalDebt = propertyMetrics.reduce((sum, p) => sum + p.loanRemaining, 0);
+    // Filter properties for portfolio totals based on includeOwnerOccupied toggle
+    const propertiesForTotals = includeOwnerOccupied 
+      ? properties 
+      : properties.filter(p => !isOwnerOccupied(p.property_type));
+    
+    const metricsForTotals = includeOwnerOccupied
+      ? propertyMetrics
+      : propertyMetrics.filter((_, index) => !isOwnerOccupied(properties[index]?.property_type));
+
+    const totalValue = metricsForTotals.reduce((sum, p) => sum + p.value, 0);
+    const totalDebt = metricsForTotals.reduce((sum, p) => sum + p.loanRemaining, 0);
     const totalEquity = totalValue - totalDebt;
     const portfolioLvr = totalValue > 0 ? (totalDebt / totalValue) * 100 : 0;
-    const totalMonthlyCashflow = propertyMetrics.reduce((sum, p) => sum + p.netMonthlyCashflow, 0);
-    const averageYield = propertyMetrics.length > 0
-      ? propertyMetrics.reduce((sum, p) => sum + p.grossYield, 0) / propertyMetrics.length
+    
+    // Only investment properties contribute to cash flow calculation
+    const investmentMetrics = propertyMetrics.filter((_, index) => 
+      !isOwnerOccupied(properties[index]?.property_type)
+    );
+    const totalMonthlyCashflow = investmentMetrics.reduce((sum, p) => sum + p.netMonthlyCashflow, 0);
+    
+    const averageYield = investmentMetrics.length > 0
+      ? investmentMetrics.reduce((sum, p) => sum + p.grossYield, 0) / investmentMetrics.length
       : 0;
 
     return {
@@ -169,18 +185,23 @@ export function useReviewWizard(
         averageYield
       }
     };
-  }, [properties]);
+  }, [properties, includeOwnerOccupied]);
 
   // Calculate scorecard
   const scorecard = useMemo(() => {
     const { portfolioTotals } = metrics;
+    
+    // Count properties for growth calculation based on toggle
+    const propertiesForScore = includeOwnerOccupied 
+      ? properties 
+      : properties.filter(p => !isOwnerOccupied(p.property_type));
     
     // Portfolio-level scores (all rounded to integers for database compatibility)
     const portfolioHealth = Math.round(Math.min(100, Math.max(0, 100 - portfolioTotals.portfolioLvr)));
     const cashFlowScore = Math.round(portfolioTotals.totalMonthlyCashflow >= 0
       ? Math.min(100, 50 + (portfolioTotals.totalMonthlyCashflow / 100))
       : Math.max(0, 50 + (portfolioTotals.totalMonthlyCashflow / 50)));
-    const growthPotential = Math.round(Math.min(100, properties.length * 20 + (portfolioHealth * 0.3)));
+    const growthPotential = Math.round(Math.min(100, propertiesForScore.length * 20 + (portfolioHealth * 0.3)));
     const overallScore = Math.round((portfolioHealth * 0.4 + cashFlowScore * 0.4 + growthPotential * 0.2));
 
     // Risk assessment
@@ -285,7 +306,7 @@ export function useReviewWizard(
       riskFactors,
       propertyScores
     };
-  }, [metrics, properties.length]);
+  }, [metrics, properties, includeOwnerOccupied]);
 
   // Generate validation flags
   const flags = useMemo(() => {
@@ -601,6 +622,7 @@ export function useReviewWizard(
         client_id: clientId,
         status,
         review_frequency: reviewFrequency,
+        include_owner_occupied: includeOwnerOccupied,
         overall_score: scorecard.overallScore,
         portfolio_health: scorecard.portfolioHealth,
         cash_flow_score: scorecard.cashFlowScore,
@@ -616,6 +638,8 @@ export function useReviewWizard(
         property_scores: scorecard.propertyScores.map(ps => ({
           propertyId: ps.propertyId,
           address: ps.address,
+          propertyType: ps.propertyType,
+          isOwnerOccupied: ps.isOwnerOccupied,
           overallScore: ps.overallScore,
           healthScore: ps.healthScore,
           cashFlowScore: ps.cashFlowScore,
@@ -672,7 +696,7 @@ export function useReviewWizard(
     } finally {
       setIsSaving(false);
     }
-  }, [clientId, clientName, reviewId, reviewFrequency, scorecard, metrics, dataCompleteness, flags, recommendations, scenarios, properties.length]);
+  }, [clientId, clientName, reviewId, reviewFrequency, includeOwnerOccupied, scorecard, metrics, dataCompleteness, flags, recommendations, scenarios, properties.length]);
 
   return {
     // State
@@ -683,6 +707,8 @@ export function useReviewWizard(
     reviewId,
     reviewFrequency,
     setReviewFrequency,
+    includeOwnerOccupied,
+    setIncludeOwnerOccupied,
     
     // Calculated data
     dataCompleteness,
