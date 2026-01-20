@@ -411,6 +411,7 @@ serve(async (req) => {
           ? convertHtmlToStructuredText(email.body.content)
           : email.body?.content || email.bodyPreview || '';
 
+        const toRecipients = extractEmailAddresses(email.toRecipients);
         const ccRecipients = extractEmailAddresses(email.ccRecipients);
         const bccRecipients = extractEmailAddresses(email.bccRecipients);
 
@@ -423,6 +424,7 @@ serve(async (req) => {
             body: bodyContent.substring(0, 10000),
             received_at: email.receivedDateTime,
             status: 'unread',
+            to_recipients: toRecipients,
             cc_recipients: ccRecipients,
             bcc_recipients: bccRecipients,
             attachments: [],

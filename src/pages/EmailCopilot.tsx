@@ -107,6 +107,7 @@ interface Email {
   linked_report_id: string | null;
   status: 'unread' | 'read' | 'summarized' | 'drafted' | 'replied' | 'archived';
   created_at: string;
+  to_recipients: string[];
   cc_recipients: string[];
   bcc_recipients: string[];
   attachments: EmailAttachment[];
@@ -690,6 +691,7 @@ export default function EmailCopilot() {
         linked_report_id: email.linked_report_id,
         status: email.status as Email['status'],
         created_at: email.created_at,
+        to_recipients: (email.to_recipients as string[]) || [],
         cc_recipients: (email.cc_recipients as string[]) || [],
         bcc_recipients: (email.bcc_recipients as string[]) || [],
         attachments: (email.attachments as unknown as EmailAttachment[]) || [],
@@ -2032,6 +2034,13 @@ export default function EmailCopilot() {
                         <span className="text-sm font-medium">{extractSenderName(selectedEmail.sender)}</span>
                         <span className="text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>
                       </div>
+                      {/* To Recipients */}
+                      {selectedEmail.to_recipients && selectedEmail.to_recipients.length > 0 && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/70">To:</span>
+                          <span>{selectedEmail.to_recipients.join(', ')}</span>
+                        </div>
+                      )}
                       {/* CC Recipients */}
                       {selectedEmail.cc_recipients && selectedEmail.cc_recipients.length > 0 && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
