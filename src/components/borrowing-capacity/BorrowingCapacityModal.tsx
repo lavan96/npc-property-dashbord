@@ -216,7 +216,7 @@ export function BorrowingCapacityModal({
                    clientData?.client?.marital_status === 'de_facto' ||
                    !!clientData?.client?.secondary_first_name;
   const dependents = Math.min(3, clientData?.client?.dependents_count || 0);
-  const hemBenchmark = getHemBenchmark(isCouple, dependents);
+  const hemBenchmark = getHemBenchmark(isCouple ? 'couple' : 'single', dependents);
 
   // Effective expenses
   const effectiveExpenses = expenseMethod === 'hem' 
