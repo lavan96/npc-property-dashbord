@@ -396,6 +396,41 @@ Format your response as valid JSON with this structure:
     const processingTime = Date.now() - startTime;
     console.log(`✅ Portfolio analysis completed in ${processingTime}ms`);
 
+    // Fetch the latest borrowing capacity assessment for this client
+    let borrowingCapacity = null;
+    try {
+      const { data: bcData, error: bcError } = await supabase
+        .from('borrowing_capacity_assessments')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (!bcError && bcData) {
+        borrowingCapacity = {
+          borrowingCapacity: bcData.borrowing_capacity || 0,
+          monthlySurplus: bcData.monthly_surplus || 0,
+          serviceabilityBand: (bcData.serviceability_band || 'unknown').toLowerCase(),
+          dtiRatio: bcData.dti_ratio || 0,
+          stressTestedCapacity: bcData.stress_tested_capacity || 0,
+          assessmentRate: bcData.assessment_rate || 0,
+          grossAnnualIncome: bcData.gross_annual_income || 0,
+          shadedAnnualIncome: bcData.shaded_annual_income || 0,
+          livingExpenses: bcData.living_expenses_monthly || 0,
+          existingCommitments: bcData.existing_commitments_monthly || 0,
+          recommendations: Array.isArray(bcData.recommendations) ? bcData.recommendations : [],
+          warnings: Array.isArray(bcData.warnings) ? bcData.warnings : [],
+          calculatedAt: bcData.created_at,
+        };
+        console.log('✓ Borrowing capacity assessment found');
+      } else {
+        console.log('ℹ No borrowing capacity assessment found for client');
+      }
+    } catch (bcFetchError) {
+      console.warn('Could not fetch borrowing capacity:', bcFetchError);
+    }
+
     // Return comprehensive response
     return new Response(
       JSON.stringify({
@@ -405,6 +440,7 @@ Format your response as valid JSON with this structure:
         portfolioMetrics,
         propertyAnalyses,
         analysis,
+        borrowingCapacity,
         generatedAt: new Date().toISOString(),
         processingTimeMs: processingTime,
       }),
