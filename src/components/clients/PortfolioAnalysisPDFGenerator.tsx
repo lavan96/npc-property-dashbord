@@ -17,6 +17,22 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
+interface BorrowingCapacityAssessment {
+  borrowingCapacity: number;
+  monthlySurplus: number;
+  serviceabilityBand: string;
+  dtiRatio: number;
+  stressTestedCapacity: number;
+  assessmentRate: number;
+  grossAnnualIncome: number;
+  shadedAnnualIncome: number;
+  livingExpenses: number;
+  existingCommitments: number;
+  recommendations: string[];
+  warnings: string[];
+  calculatedAt: string;
+}
+
 interface PortfolioAnalysisData {
   clientId: string;
   clientName: string;
@@ -107,6 +123,7 @@ interface PortfolioAnalysisData {
       priorityActions: string[];
     };
   };
+  borrowingCapacity: BorrowingCapacityAssessment | null;
   generatedAt: string;
 }
 
@@ -1894,6 +1911,291 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Financial health page complete');
       
+      // ============= PAGE: BORROWING CAPACITY ASSESSMENT =============
+      // Only include if borrowing capacity data exists
+      if (analysisData.borrowingCapacity) {
+        console.log('📝 Creating borrowing capacity page...');
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        
+        // Section header with gold accent bar
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - 5,
+          width: 4,
+          height: 18,
+          color: PRIMARY_COLOR,
+        });
+        
+        page.drawText('Borrowing Capacity Assessment', {
+          x: MARGIN_LEFT + 12,
+          y: yPos,
+          size: 14,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        yPos -= 45;
+        
+        const bcData = analysisData.borrowingCapacity;
+        const bcBoxWidth = (CONTENT_WIDTH - 20) / 3;
+        const bcBoxHeight = 55;
+        const bcBoxPadding = 8;
+        
+        // Box 1: Borrowing Capacity
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - bcBoxHeight,
+          width: bcBoxWidth,
+          height: bcBoxHeight,
+          color: rgb(0.97, 0.97, 0.97),
+          borderColor: rgb(0.9, 0.9, 0.9),
+          borderWidth: 1,
+        });
+        
+        page.drawText('BORROWING CAPACITY', {
+          x: MARGIN_LEFT + bcBoxPadding,
+          y: yPos - 16,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        page.drawText(formatCurrency(bcData.borrowingCapacity), {
+          x: MARGIN_LEFT + bcBoxPadding,
+          y: yPos - 38,
+          size: 16,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        // Box 2: Monthly Surplus
+        const bc2X = MARGIN_LEFT + bcBoxWidth + 10;
+        const surplusColor = bcData.monthlySurplus >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
+        
+        page.drawRectangle({
+          x: bc2X,
+          y: yPos - bcBoxHeight,
+          width: bcBoxWidth,
+          height: bcBoxHeight,
+          color: rgb(0.97, 0.97, 0.97),
+          borderColor: rgb(0.9, 0.9, 0.9),
+          borderWidth: 1,
+        });
+        
+        page.drawText('MONTHLY SURPLUS', {
+          x: bc2X + bcBoxPadding,
+          y: yPos - 16,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        page.drawText(formatCurrency(bcData.monthlySurplus), {
+          x: bc2X + bcBoxPadding,
+          y: yPos - 38,
+          size: 16,
+          font: helveticaBold,
+          color: surplusColor,
+        });
+        
+        // Box 3: Serviceability Band
+        const bc3X = MARGIN_LEFT + (bcBoxWidth + 10) * 2;
+        const bandLabel = bcData.serviceabilityBand === 'green' ? 'STRONG' :
+                         bcData.serviceabilityBand === 'amber' ? 'MODERATE' : 'LIMITED';
+        const bandColor = bcData.serviceabilityBand === 'green' ? SUCCESS_COLOR :
+                         bcData.serviceabilityBand === 'amber' ? WARNING_COLOR : DANGER_COLOR;
+        
+        page.drawRectangle({
+          x: bc3X,
+          y: yPos - bcBoxHeight,
+          width: bcBoxWidth,
+          height: bcBoxHeight,
+          color: rgb(0.97, 0.97, 0.97),
+          borderColor: rgb(0.9, 0.9, 0.9),
+          borderWidth: 1,
+        });
+        
+        page.drawText('SERVICEABILITY', {
+          x: bc3X + bcBoxPadding,
+          y: yPos - 16,
+          size: 7,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        // Draw colored badge
+        const badgeWidth = helveticaBold.widthOfTextAtSize(bandLabel, 10) + 16;
+        page.drawRectangle({
+          x: bc3X + bcBoxPadding,
+          y: yPos - 45,
+          width: badgeWidth,
+          height: 20,
+          color: bandColor,
+        });
+        
+        page.drawText(bandLabel, {
+          x: bc3X + bcBoxPadding + 8,
+          y: yPos - 39,
+          size: 10,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+        
+        yPos -= bcBoxHeight + 25;
+        
+        // Secondary metrics row
+        const bcColWidth = CONTENT_WIDTH / 3;
+        const dtiColor = bcData.dtiRatio < 6 ? SUCCESS_COLOR : bcData.dtiRatio < 8 ? WARNING_COLOR : DANGER_COLOR;
+        
+        page.drawText('DTI Ratio:', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(`${bcData.dtiRatio.toFixed(1)}x`, {
+          x: MARGIN_LEFT + 55,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+          color: dtiColor,
+        });
+        
+        page.drawText('Stress Tested:', {
+          x: MARGIN_LEFT + bcColWidth,
+          y: yPos,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(formatCurrency(bcData.stressTestedCapacity), {
+          x: MARGIN_LEFT + bcColWidth + 70,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        page.drawText('Assessment Rate:', {
+          x: MARGIN_LEFT + bcColWidth * 2,
+          y: yPos,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(`${bcData.assessmentRate.toFixed(2)}%`, {
+          x: MARGIN_LEFT + bcColWidth * 2 + 85,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        yPos -= 35;
+        
+        // Income breakdown row
+        page.drawText('Gross Income:', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(formatCurrency(bcData.grossAnnualIncome) + '/yr', {
+          x: MARGIN_LEFT + 72,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        page.drawText('Shaded Income:', {
+          x: MARGIN_LEFT + bcColWidth,
+          y: yPos,
+          size: 9,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        page.drawText(formatCurrency(bcData.shadedAnnualIncome) + '/yr', {
+          x: MARGIN_LEFT + bcColWidth + 80,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+          color: SECONDARY_COLOR,
+        });
+        
+        yPos -= 35;
+        
+        // Recommendations
+        const bcRecs = safeArray(bcData.recommendations);
+        if (bcRecs.length > 0) {
+          page.drawText('Recommendations:', {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 10,
+            font: helveticaBold,
+            color: SECONDARY_COLOR,
+          });
+          yPos -= 18;
+          
+          for (const rec of bcRecs.slice(0, 4)) {
+            page.drawText('•', {
+              x: MARGIN_LEFT,
+              y: yPos,
+              size: 9,
+              font: helveticaFont,
+              color: SUCCESS_COLOR,
+            });
+            const displayText = stripEmojis(rec.length > 85 ? rec.slice(0, 82) + '...' : rec);
+            page.drawText(displayText, {
+              x: MARGIN_LEFT + 12,
+              y: yPos,
+              size: 9,
+              font: helveticaFont,
+              color: rgb(0.2, 0.2, 0.2),
+            });
+            yPos -= 16;
+          }
+          yPos -= 10;
+        }
+        
+        // Warnings
+        const bcWarnings = safeArray(bcData.warnings);
+        if (bcWarnings.length > 0) {
+          page.drawText('Warnings:', {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 10,
+            font: helveticaBold,
+            color: DANGER_COLOR,
+          });
+          yPos -= 18;
+          
+          for (const warning of bcWarnings.slice(0, 3)) {
+            page.drawText('!', {
+              x: MARGIN_LEFT,
+              y: yPos,
+              size: 9,
+              font: helveticaBold,
+              color: WARNING_COLOR,
+            });
+            const displayText = stripEmojis(warning.length > 85 ? warning.slice(0, 82) + '...' : warning);
+            page.drawText(displayText, {
+              x: MARGIN_LEFT + 12,
+              y: yPos,
+              size: 9,
+              font: helveticaFont,
+              color: rgb(0.3, 0.2, 0.1),
+            });
+            yPos -= 16;
+          }
+        }
+        
+        console.log('✓ Borrowing capacity page complete');
+      }
+      
       // ============= PAGE 6: RISK ASSESSMENT =============
       console.log('📝 Creating risk assessment page...');
       
@@ -2678,6 +2980,99 @@ export function PortfolioAnalysisPDFGenerator({
                           </div>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Borrowing Capacity Assessment */}
+                {analysisData.borrowingCapacity && (
+                  <Card className="border-primary/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                        Borrowing Capacity Assessment
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Borrowing Capacity</p>
+                          <p className="text-xl font-bold">{formatCurrency(analysisData.borrowingCapacity.borrowingCapacity)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Monthly Surplus</p>
+                          <p className={`text-xl font-bold ${analysisData.borrowingCapacity.monthlySurplus >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {formatCurrency(analysisData.borrowingCapacity.monthlySurplus)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Serviceability</p>
+                          <Badge 
+                            variant={
+                              analysisData.borrowingCapacity.serviceabilityBand === 'green' ? 'default' :
+                              analysisData.borrowingCapacity.serviceabilityBand === 'amber' ? 'secondary' : 'destructive'
+                            }
+                            className="mt-1"
+                          >
+                            {analysisData.borrowingCapacity.serviceabilityBand === 'green' ? 'STRONG' :
+                             analysisData.borrowingCapacity.serviceabilityBand === 'amber' ? 'MODERATE' : 'LIMITED'}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <Separator className="my-3" />
+                      
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">DTI Ratio</p>
+                          <p className={`font-semibold ${
+                            analysisData.borrowingCapacity.dtiRatio < 6 ? 'text-success' :
+                            analysisData.borrowingCapacity.dtiRatio < 8 ? 'text-warning' : 'text-destructive'
+                          }`}>
+                            {analysisData.borrowingCapacity.dtiRatio.toFixed(1)}x
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Stress Tested</p>
+                          <p className="font-semibold">{formatCurrency(analysisData.borrowingCapacity.stressTestedCapacity)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Assessment Rate</p>
+                          <p className="font-semibold">{analysisData.borrowingCapacity.assessmentRate.toFixed(2)}%</p>
+                        </div>
+                      </div>
+                      
+                      {analysisData.borrowingCapacity.recommendations.length > 0 && (
+                        <>
+                          <Separator className="my-3" />
+                          <div>
+                            <p className="text-sm font-medium flex items-center gap-1 mb-2">
+                              <CheckCircle className="h-4 w-4 text-success" /> Recommendations
+                            </p>
+                            <ul className="text-sm space-y-1">
+                              {analysisData.borrowingCapacity.recommendations.slice(0, 3).map((rec, i) => (
+                                <li key={i}>• {rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </>
+                      )}
+                      
+                      {analysisData.borrowingCapacity.warnings.length > 0 && (
+                        <>
+                          <Separator className="my-3" />
+                          <div>
+                            <p className="text-sm font-medium flex items-center gap-1 mb-2">
+                              <AlertTriangle className="h-4 w-4 text-warning" /> Warnings
+                            </p>
+                            <ul className="text-sm space-y-1">
+                              {analysisData.borrowingCapacity.warnings.slice(0, 2).map((warning, i) => (
+                                <li key={i}>• {warning}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 )}
