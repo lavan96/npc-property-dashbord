@@ -21,6 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -35,7 +40,9 @@ import {
   Building2, 
   CheckCircle2,
   ArrowUpDown,
-  Filter,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { useBankLendingRates, LendingRate, LenderSummary } from '@/hooks/useBankLendingRates';
 
@@ -61,6 +68,9 @@ export function BankRateComparisonModal({
   const [lvr, setLvr] = useState(defaultLvr);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'rate' | 'lender'>('rate');
+  const [expandedLenders, setExpandedLenders] = useState<Set<string>>(new Set());
+  const [loadingLenders, setLoadingLenders] = useState<Set<string>>(new Set());
+  const [lenderProducts, setLenderProducts] = useState<Record<string, LendingRate[]>>({});
 
   const {
     lenders,
@@ -71,6 +81,7 @@ export function BankRateComparisonModal({
     refetchBestRates,
     refreshAll,
     isRefreshing,
+    fetchLenderRates,
   } = useBankLendingRates({ loanPurpose, repaymentType, lvr });
 
   // Filter and sort best rates
@@ -102,9 +113,48 @@ export function BankRateComparisonModal({
     onOpenChange(false);
   };
 
+  const toggleLenderExpanded = async (lenderId: string) => {
+    const newExpanded = new Set(expandedLenders);
+    
+    if (newExpanded.has(lenderId)) {
+      newExpanded.delete(lenderId);
+      setExpandedLenders(newExpanded);
+    } else {
+      newExpanded.add(lenderId);
+      setExpandedLenders(newExpanded);
+      
+      // Fetch products if not already loaded
+      if (!lenderProducts[lenderId]) {
+        setLoadingLenders(prev => new Set(prev).add(lenderId));
+        try {
+          const rates = await fetchLenderRates(lenderId);
+          setLenderProducts(prev => ({ ...prev, [lenderId]: rates }));
+        } catch (error) {
+          console.error('Failed to fetch lender rates:', error);
+        } finally {
+          setLoadingLenders(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(lenderId);
+            return newSet;
+          });
+        }
+      }
+    }
+  };
+
+  // Filter products within expanded lenders
+  const getFilteredProducts = (products: LendingRate[]) => {
+    if (!searchQuery) return products;
+    const query = searchQuery.toLowerCase();
+    return products.filter(p => 
+      p.productName.toLowerCase().includes(query) ||
+      p.lenderName.toLowerCase().includes(query)
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -283,40 +333,120 @@ export function BankRateComparisonModal({
                   <p className="text-sm">Click "Refresh All Rates" to fetch latest data.</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Lender</TableHead>
-                      <TableHead className="text-right">Lowest Rate</TableHead>
-                      <TableHead className="text-right">Products</TableHead>
-                      <TableHead>Last Updated</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSummary.map((lender) => (
-                      <TableRow key={lender.lenderId}>
-                        <TableCell className="font-medium">
-                          {lender.lenderName}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {lender.lowestRate !== null ? (
-                            <span className="font-bold text-primary">
-                              {lender.lowestRate.toFixed(2)}%
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="secondary">{lender.rateCount}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {lender.fetchedAt ? new Date(lender.fetchedAt).toLocaleDateString() : 'Never'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="space-y-2">
+                  {filteredSummary.map((lender) => {
+                    const isExpanded = expandedLenders.has(lender.lenderId);
+                    const isLoading = loadingLenders.has(lender.lenderId);
+                    const products = lenderProducts[lender.lenderId] || [];
+                    const filteredProducts = getFilteredProducts(products);
+
+                    return (
+                      <Collapsible
+                        key={lender.lenderId}
+                        open={isExpanded}
+                        onOpenChange={() => toggleLenderExpanded(lender.lenderId)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors">
+                            <div className="flex items-center gap-3">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              <div>
+                                <p className="font-medium">{lender.lenderName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Last updated: {lender.fetchedAt ? new Date(lender.fetchedAt).toLocaleDateString() : 'Never'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              {lender.lowestRate !== null && (
+                                <div className="text-right">
+                                  <p className="text-xs text-muted-foreground">From</p>
+                                  <p className="font-bold text-primary">{lender.lowestRate.toFixed(2)}%</p>
+                                </div>
+                              )}
+                              <Badge variant="secondary" className="min-w-[60px] justify-center">
+                                {lender.rateCount} products
+                              </Badge>
+                            </div>
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="ml-7 mt-2 border rounded-lg overflow-hidden">
+                            {isLoading ? (
+                              <div className="flex items-center justify-center p-6">
+                                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                <span className="text-sm text-muted-foreground">Loading products...</span>
+                              </div>
+                            ) : filteredProducts.length === 0 ? (
+                              <div className="p-6 text-center text-muted-foreground text-sm">
+                                No products match current filters.
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-[40%]">Product Name</TableHead>
+                                    <TableHead className="text-right">Rate</TableHead>
+                                    <TableHead className="text-right">Comparison</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead className="text-right">LVR Range</TableHead>
+                                    <TableHead className="w-[80px]"></TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {filteredProducts.sort((a, b) => a.rate - b.rate).map((product, idx) => (
+                                    <TableRow key={`${product.productId}-${idx}`}>
+                                      <TableCell className="font-medium text-sm">
+                                        {product.productName}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        <span className="font-bold text-primary">
+                                          {product.rate.toFixed(2)}%
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="text-right text-sm text-muted-foreground">
+                                        {product.comparisonRate ? `${product.comparisonRate.toFixed(2)}%` : '-'}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline" className="text-xs">
+                                          {product.rateType}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right text-xs text-muted-foreground">
+                                        {product.lvrMin !== null && product.lvrMax !== null
+                                          ? `${product.lvrMin}% - ${product.lvrMax}%`
+                                          : product.lvrMax !== null
+                                          ? `≤ ${product.lvrMax}%`
+                                          : '-'}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSelectRate(product);
+                                          }}
+                                          className="h-8 px-2"
+                                        >
+                                          <CheckCircle2 className="h-4 w-4" />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
               )}
             </ScrollArea>
           </TabsContent>
@@ -325,7 +455,7 @@ export function BankRateComparisonModal({
         {/* Footer */}
         <div className="pt-4 border-t text-xs text-muted-foreground text-center">
           Rates sourced from Australia's Consumer Data Right (CDR) Open Banking APIs.
-          Data is cached for 24 hours.
+          Data is cached for 24 hours. Click on a lender to view all products.
         </div>
       </DialogContent>
     </Dialog>
