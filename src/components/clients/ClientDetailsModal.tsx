@@ -47,7 +47,7 @@ import { ClientReminders } from './ClientReminders';
 import { ClientActivityTimeline } from './ClientActivityTimeline';
 import { ClientFiles } from './ClientFiles';
 import { ClientScoreCard } from './ClientScoreCard';
-import { BorrowingCapacityCard } from '@/components/borrowing-capacity';
+import { BorrowingCapacityCard, BorrowingCapacityModal } from '@/components/borrowing-capacity';
 import { ClientAIInsights } from './ClientAIInsights';
 import { ClientVownetUpload } from './ClientVownetUpload';
 import { ClientVownetForms } from './ClientVownetForms';
@@ -86,6 +86,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [portfolioEmailBody, setPortfolioEmailBody] = useState('');
   const [editingProperty, setEditingProperty] = useState<any>(null);
   const [showReviewWizard, setShowReviewWizard] = useState(false);
+  const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
 
   // Handle PDF email callback (for finance)
   const handlePdfEmailClick = (pdfBlob: Blob, fileName: string) => {
@@ -693,7 +694,10 @@ NPC Team`
 
             <TabsContent value="insights" className="mt-4 space-y-4">
               <ClientScoreCard clientId={client.id} />
-              <BorrowingCapacityCard clientId={client.id} />
+              <BorrowingCapacityCard 
+                clientId={client.id} 
+                onOpenCalculator={() => setShowBorrowingCalculator(true)}
+              />
               <ClientTags clientId={client.id} />
               <ClientAIInsights clientId={client.id} />
             </TabsContent>
@@ -733,6 +737,13 @@ NPC Team`
         refetchClient();
         toast.success('Portfolio review completed successfully');
       }}
+    />
+
+    {/* Borrowing Capacity Calculator Modal */}
+    <BorrowingCapacityModal
+      clientId={client.id}
+      open={showBorrowingCalculator}
+      onOpenChange={setShowBorrowingCalculator}
     />
   </>
   );
