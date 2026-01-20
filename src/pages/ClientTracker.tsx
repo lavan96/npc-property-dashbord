@@ -38,7 +38,8 @@ import {
   UserCheck,
   ChevronLeft,
   Zap,
-  Video
+  Video,
+  User
 } from 'lucide-react';
 import {
   Pagination,
@@ -51,7 +52,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useGHLCalendar } from '@/hooks/useGHLCalendar';
+import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
+import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
 import { toast } from 'sonner';
 
 // Types for GHL pipeline data
@@ -92,7 +94,7 @@ interface TrackedClient {
   current_pipeline_id: string | null;
   current_stage_id: string | null;
   opportunity_status: string | null;
-  is_active?: boolean;
+  is_favorite?: boolean;
 }
 
 interface ClientNote {
@@ -124,6 +126,10 @@ export default function ClientTracker() {
   const [activeNotesPage, setActiveNotesPage] = useState(1);
   const NOTES_PER_PAGE = 9;
   
+  // Event details modal state
+  const [selectedEvent, setSelectedEvent] = useState<GHLEvent | null>(null);
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  
   // Auto-sync state
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
@@ -133,7 +139,11 @@ export default function ClientTracker() {
   const { 
     events: ghlEvents, 
     isLoading: calendarLoading, 
-    fetchEvents: fetchCalendarEvents 
+    fetchEvents: fetchCalendarEvents,
+    updateEvent,
+    deleteEvent,
+    rescheduleEvent,
+    fetchContact
   } = useGHLCalendar();
 
   // Fetch pipelines from database
@@ -171,7 +181,7 @@ export default function ClientTracker() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_active')
+        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite')
         .order('follow_up_date', { ascending: true, nullsFirst: false });
       
       if (error) throw error;
@@ -179,9 +189,8 @@ export default function ClientTracker() {
     },
   });
 
-  // Fetch active clients and their notes
-  const activeClients = useMemo(() => clients.filter(c => c.is_active), [clients]);
-
+  // Fetch active clients (marked as favorite) and their notes
+  const activeClients = useMemo(() => clients.filter(c => c.is_favorite), [clients]);
   // Filter active clients by search query
   const filteredActiveClients = useMemo(() => {
     if (activeTab !== 'active' || searchQuery === '') return activeClients;
@@ -518,6 +527,31 @@ export default function ClientTracker() {
     return `${diffHours}h ago`;
   };
 
+  // Helper for event status colors
+  const getEventStatusColor = (status: string, appointmentStatus?: string) => {
+    const effectiveStatus = appointmentStatus || status;
+    switch (effectiveStatus?.toLowerCase()) {
+      case 'confirmed':
+        return 'bg-green-500/10 text-green-600 border-green-500/20';
+      case 'showed':
+        return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+      case 'noshow':
+        return 'bg-red-500/10 text-red-600 border-red-500/20';
+      case 'cancelled':
+        return 'bg-muted text-muted-foreground border-muted';
+      case 'pending':
+        return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+      default:
+        return 'bg-secondary text-secondary-foreground border-secondary';
+    }
+  };
+
+  // Handle appointment card click
+  const handleEventClick = (event: GHLEvent) => {
+    setSelectedEvent(event);
+    setEventModalOpen(true);
+  };
+
   const isLoading = pipelinesLoading || stagesLoading || clientsLoading;
 
   return (
@@ -677,33 +711,54 @@ export default function ClientTracker() {
             <ScrollArea className="w-full">
               <div className="flex gap-3 pb-2">
                 {upcomingAppointments.map(event => (
-                  <Card key={event.id} className="flex-shrink-0 w-64 bg-muted/30">
-                    <CardContent className="p-3">
-                      <p className="font-medium text-sm line-clamp-1">{event.title}</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <CalendarIcon className="h-3 w-3" />
-                        {format(new Date(event.startTime), 'MMM d, h:mm a')}
+                  <Card 
+                    key={event.id} 
+                    className="flex-shrink-0 w-72 bg-muted/30 cursor-pointer hover:bg-muted/50 hover:shadow-md transition-all"
+                    onClick={() => handleEventClick(event)}
+                  >
+                    <CardContent className="p-4">
+                      {/* Client Name - Full display with icon */}
+                      <div className="flex items-start gap-2 mb-2">
+                        <User className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-foreground leading-tight">
+                            {event.title || 'Untitled Appointment'}
+                          </p>
+                        </div>
                       </div>
-                      {event.calendarName && (
-                        <Badge 
-                          variant="outline" 
-                          className="text-[10px] mt-2"
-                          style={{ 
-                            borderColor: event.calendarColor || '#6B7280',
-                            color: event.calendarColor || '#6B7280'
-                          }}
-                        >
-                          {event.calendarName}
-                        </Badge>
-                      )}
-                      {event.status && (
-                        <Badge 
-                          variant={event.status === 'confirmed' ? 'default' : 'secondary'}
-                          className="text-[10px] mt-2 ml-1"
-                        >
-                          {event.status}
-                        </Badge>
-                      )}
+                      
+                      {/* Date and Time */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                        <CalendarIcon className="h-3.5 w-3.5" />
+                        <span>{format(new Date(event.startTime), 'EEE, MMM d')}</span>
+                        <span className="text-muted-foreground/50">•</span>
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>{format(new Date(event.startTime), 'h:mm a')}</span>
+                      </div>
+                      
+                      {/* Badges row */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {event.calendarName && (
+                          <Badge 
+                            variant="outline" 
+                            className="text-[10px]"
+                            style={{ 
+                              borderColor: event.calendarColor || 'hsl(var(--border))',
+                              color: event.calendarColor || 'hsl(var(--muted-foreground))'
+                            }}
+                          >
+                            {event.calendarName}
+                          </Badge>
+                        )}
+                        {(event.appointmentStatus || event.status) && (
+                          <Badge 
+                            variant="outline"
+                            className={cn("text-[10px]", getEventStatusColor(event.status, event.appointmentStatus))}
+                          >
+                            {event.appointmentStatus || event.status}
+                          </Badge>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -713,6 +768,18 @@ export default function ClientTracker() {
           </CardContent>
         </Card>
       )}
+
+      {/* Event Details Modal */}
+      <EventDetailsModal
+        event={selectedEvent}
+        open={eventModalOpen}
+        onOpenChange={setEventModalOpen}
+        getStatusColor={getEventStatusColor}
+        fetchContact={fetchContact}
+        onUpdateEvent={updateEvent}
+        onDeleteEvent={deleteEvent}
+        onRescheduleEvent={rescheduleEvent}
+      />
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
