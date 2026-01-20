@@ -81,6 +81,11 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
     setImportSummary(null);
 
     try {
+      // Check if it's a PDF file - PDFs require OCR and are not supported for data extraction
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        throw new Error('PDF parsing is not yet supported for VowNet data extraction. Please upload an Excel file (.xlsx or .xls) instead.');
+      }
+
       // Parse the Excel file
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
