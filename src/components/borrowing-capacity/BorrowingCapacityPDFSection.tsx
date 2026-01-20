@@ -97,7 +97,7 @@ export function drawBorrowingCapacityKPIs(
   const { page, regularFont, boldFont, marginLeft, contentWidth } = ctx;
   
   const boxWidth = (contentWidth - 20) / 3;
-  const boxHeight = 55;
+  const boxHeight = 65; // Increased height for "Estimate" label
   const boxPadding = 8;
   
   // Box 1: Borrowing Capacity
@@ -121,10 +121,19 @@ export function drawBorrowingCapacityKPIs(
   
   page.drawText(formatCurrency(data.borrowingCapacity), {
     x: marginLeft + boxPadding,
-    y: yPos - 38,
+    y: yPos - 36,
     size: 16,
     font: boldFont,
     color: NPC_NAVY,
+  });
+  
+  // Add "Estimate" label below the figure
+  page.drawText('Estimate', {
+    x: marginLeft + boxPadding,
+    y: yPos - 52,
+    size: 8,
+    font: regularFont,
+    color: MUTED_COLOR,
   });
   
   // Box 2: Monthly Surplus
@@ -151,7 +160,7 @@ export function drawBorrowingCapacityKPIs(
   
   page.drawText(formatCurrency(data.monthlySurplus), {
     x: box2X + boxPadding,
-    y: yPos - 38,
+    y: yPos - 36,
     size: 16,
     font: boldFont,
     color: surplusColor,
@@ -185,7 +194,7 @@ export function drawBorrowingCapacityKPIs(
   
   page.drawRectangle({
     x: box3X + boxPadding,
-    y: yPos - 45,
+    y: yPos - 44,
     width: badgeWidth,
     height: 20,
     color: bandColor,
@@ -195,13 +204,13 @@ export function drawBorrowingCapacityKPIs(
   
   page.drawText(badgeLabel, {
     x: box3X + boxPadding + 8,
-    y: yPos - 39,
+    y: yPos - 38,
     size: 10,
     font: boldFont,
     color: rgb(1, 1, 1),
   });
   
-  return yPos - boxHeight - 20;
+  return yPos - boxHeight - 15;
 }
 
 /**
