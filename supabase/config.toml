@@ -273,3 +273,9 @@ verify_jwt = false
 [functions.sync-ghl-pipelines]
 verify_jwt = false
 request_timeout = 120
+
+[functions.update-ghl-opportunity-stage]
+verify_jwt = false
+
+[functions.calculate-borrowing-capacity]
+verify_jwt = false

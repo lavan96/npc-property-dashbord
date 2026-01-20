@@ -311,6 +311,111 @@ export type Database = {
           },
         ]
       }
+      borrowing_capacity_assessments: {
+        Row: {
+          assessment_rate: number | null
+          assumptions: Json | null
+          borrowing_capacity: number
+          buffer_rate: number | null
+          calculated_by: string | null
+          client_id: string
+          created_at: string
+          dti_ratio: number | null
+          existing_commitments_monthly: number
+          expense_breakdown: Json | null
+          expense_method: string | null
+          gross_annual_income: number
+          id: string
+          income_breakdown: Json | null
+          interest_rate_used: number | null
+          liability_breakdown: Json | null
+          living_expenses_monthly: number
+          loan_term_years: number | null
+          monthly_surplus: number
+          proposed_loan_amount: number | null
+          proposed_lvr: number | null
+          recommendations: Json | null
+          serviceability_band: string
+          shaded_annual_income: number
+          stress_tested_capacity: number | null
+          updated_at: string
+          warnings: string[] | null
+        }
+        Insert: {
+          assessment_rate?: number | null
+          assumptions?: Json | null
+          borrowing_capacity?: number
+          buffer_rate?: number | null
+          calculated_by?: string | null
+          client_id: string
+          created_at?: string
+          dti_ratio?: number | null
+          existing_commitments_monthly?: number
+          expense_breakdown?: Json | null
+          expense_method?: string | null
+          gross_annual_income?: number
+          id?: string
+          income_breakdown?: Json | null
+          interest_rate_used?: number | null
+          liability_breakdown?: Json | null
+          living_expenses_monthly?: number
+          loan_term_years?: number | null
+          monthly_surplus?: number
+          proposed_loan_amount?: number | null
+          proposed_lvr?: number | null
+          recommendations?: Json | null
+          serviceability_band?: string
+          shaded_annual_income?: number
+          stress_tested_capacity?: number | null
+          updated_at?: string
+          warnings?: string[] | null
+        }
+        Update: {
+          assessment_rate?: number | null
+          assumptions?: Json | null
+          borrowing_capacity?: number
+          buffer_rate?: number | null
+          calculated_by?: string | null
+          client_id?: string
+          created_at?: string
+          dti_ratio?: number | null
+          existing_commitments_monthly?: number
+          expense_breakdown?: Json | null
+          expense_method?: string | null
+          gross_annual_income?: number
+          id?: string
+          income_breakdown?: Json | null
+          interest_rate_used?: number | null
+          liability_breakdown?: Json | null
+          living_expenses_monthly?: number
+          loan_term_years?: number | null
+          monthly_surplus?: number
+          proposed_loan_amount?: number | null
+          proposed_lvr?: number | null
+          recommendations?: Json | null
+          serviceability_band?: string
+          shaded_annual_income?: number
+          stress_tested_capacity?: number | null
+          updated_at?: string
+          warnings?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "borrowing_capacity_assessments_calculated_by_fkey"
+            columns: ["calculated_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "borrowing_capacity_assessments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_generation_items: {
         Row: {
           completed_at: string | null
