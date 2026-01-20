@@ -365,15 +365,15 @@ export function PortfolioAnalysisPDFGenerator({
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
       
-      // Fetch and embed custom Google Fonts (Playfair Display Italic & Cinzel Regular)
+      // Fetch and embed custom Google Fonts (Playfair Display Medium 500 & Cinzel Bold 700)
       console.log('📥 Fetching custom fonts...');
       
-      let playfairFont = timesItalic; // Fallback to Times Italic
+      let playfairFont = helveticaFont; // Fallback to Helvetica
       let cinzelFont = helveticaBold; // Fallback to Helvetica Bold
       
       try {
-        // Playfair Display Italic from Google Fonts CSS API
-        const playfairCssUrl = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap';
+        // Playfair Display Medium 500 (not italic) from Google Fonts CSS API
+        const playfairCssUrl = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&display=swap';
         const playfairCssResponse = await fetch(playfairCssUrl);
         const playfairCss = await playfairCssResponse.text();
         const playfairUrlMatch = playfairCss.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2?)\)/);
@@ -382,15 +382,15 @@ export function PortfolioAnalysisPDFGenerator({
           const playfairFontResponse = await fetch(playfairUrlMatch[1]);
           const playfairFontBytes = await playfairFontResponse.arrayBuffer();
           playfairFont = await pdfDoc.embedFont(playfairFontBytes);
-          console.log('✓ Playfair Display font embedded');
+          console.log('✓ Playfair Display Medium 500 font embedded');
         }
       } catch (fontError) {
-        console.warn('Could not load Playfair Display, using fallback:', fontError);
+        console.warn('Could not load Playfair Display Medium, using fallback:', fontError);
       }
       
       try {
-        // Cinzel Regular from Google Fonts CSS API
-        const cinzelCssUrl = 'https://fonts.googleapis.com/css2?family=Cinzel&display=swap';
+        // Cinzel Bold 700 from Google Fonts CSS API
+        const cinzelCssUrl = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap';
         const cinzelCssResponse = await fetch(cinzelCssUrl);
         const cinzelCss = await cinzelCssResponse.text();
         const cinzelUrlMatch = cinzelCss.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2?)\)/);
@@ -399,10 +399,10 @@ export function PortfolioAnalysisPDFGenerator({
           const cinzelFontResponse = await fetch(cinzelUrlMatch[1]);
           const cinzelFontBytes = await cinzelFontResponse.arrayBuffer();
           cinzelFont = await pdfDoc.embedFont(cinzelFontBytes);
-          console.log('✓ Cinzel font embedded');
+          console.log('✓ Cinzel Bold 700 font embedded');
         }
       } catch (fontError) {
-        console.warn('Could not load Cinzel, using fallback:', fontError);
+        console.warn('Could not load Cinzel Bold, using fallback:', fontError);
       }
       
       console.log('✓ PDF document created with fonts');
