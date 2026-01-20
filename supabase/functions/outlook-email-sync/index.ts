@@ -91,10 +91,13 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-async function fetchEmails(accessToken: string, mailboxEmail: string, limit: number = 20): Promise<OutlookMessage[]> {
-  console.log(`[Outlook Sync] Fetching emails for ${mailboxEmail}...`);
+async function fetchEmailsFromFolder(accessToken: string, mailboxEmail: string, folder: string = 'inbox', limit: number = 20): Promise<OutlookMessage[]> {
+  console.log(`[Outlook Sync] Fetching ${folder} emails for ${mailboxEmail}...`);
   
-  const graphUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments`;
+  // Use folder-specific endpoint for sent items, default endpoint for inbox
+  const graphUrl = folder === 'sent' 
+    ? `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/mailFolders/sentitems/messages?$top=${limit}&$orderby=sentDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments`
+    : `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -105,12 +108,12 @@ async function fetchEmails(accessToken: string, mailboxEmail: string, limit: num
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[Outlook Sync] Graph API error:', errorText);
-    throw new Error(`Failed to fetch emails: ${response.status} ${errorText}`);
+    console.error(`[Outlook Sync] Graph API error for ${folder}:`, errorText);
+    throw new Error(`Failed to fetch ${folder} emails: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
-  console.log(`[Outlook Sync] Fetched ${data.value?.length || 0} emails`);
+  console.log(`[Outlook Sync] Fetched ${data.value?.length || 0} ${folder} emails`);
   return data.value || [];
 }
 
@@ -377,110 +380,134 @@ serve(async (req) => {
     // Get access token
     const accessToken = await getAccessToken();
 
-    // Fetch emails from Outlook using the target mailbox
-    const outlookEmails = await fetchEmails(accessToken, targetMailbox, limit);
+    // Fetch both inbox and sent emails from Outlook
+    const [inboxEmails, sentEmails] = await Promise.all([
+      fetchEmailsFromFolder(accessToken, targetMailbox, 'inbox', limit),
+      fetchEmailsFromFolder(accessToken, targetMailbox, 'sent', limit)
+    ]);
+
+    console.log(`[Outlook Sync] Fetched ${inboxEmails.length} inbox and ${sentEmails.length} sent emails`);
 
     // Get existing emails for this specific mailbox to avoid duplicates
     // Filter by mailbox_source so admin and personal inboxes are treated separately
     const { data: existingEmails } = await supabase
       .from('email_copilot_emails')
-      .select('sender, subject, received_at')
+      .select('sender, subject, received_at, folder')
       .eq('mailbox_source', mailboxSource);
 
-    // Create a set of composite keys for quick lookup
+    // Create a set of composite keys for quick lookup (include folder in key)
     const existingKeys = new Set<string>();
     (existingEmails || []).forEach(e => {
       const normalizedDate = new Date(e.received_at).toISOString();
-      existingKeys.add(`${e.sender?.toLowerCase()}|${e.subject?.toLowerCase()}|${normalizedDate}`);
+      existingKeys.add(`${e.folder || 'inbox'}|${e.sender?.toLowerCase()}|${e.subject?.toLowerCase()}|${normalizedDate}`);
     });
 
     console.log(`[Outlook Sync] Found ${existingKeys.size} existing ${mailboxSource} emails in database`);
 
-    // Process and insert new emails
-    let insertedCount = 0;
-    for (const email of outlookEmails) {
-      const sender = (email.from?.emailAddress?.address || 'unknown').toLowerCase();
-      const subject = (email.subject || '(No Subject)').toLowerCase();
-      const receivedAt = new Date(email.receivedDateTime).toISOString();
+    // Helper function to process and insert emails
+    async function processEmails(emails: OutlookMessage[], folder: 'inbox' | 'sent') {
+      let insertedCount = 0;
       
-      const key = `${sender}|${subject}|${receivedAt}`;
-      
-      if (!existingKeys.has(key)) {
-        // Use structure-preserving HTML conversion
-        const bodyContent = email.body?.contentType === 'html' 
-          ? convertHtmlToStructuredText(email.body.content)
-          : email.body?.content || email.bodyPreview || '';
+      for (const email of emails) {
+        const sender = (email.from?.emailAddress?.address || 'unknown').toLowerCase();
+        const subject = (email.subject || '(No Subject)').toLowerCase();
+        // For sent emails, use sentDateTime if available, otherwise fall back to receivedDateTime
+        const emailDate = folder === 'sent' 
+          ? (email as any).sentDateTime || email.receivedDateTime
+          : email.receivedDateTime;
+        const receivedAt = new Date(emailDate).toISOString();
+        
+        const key = `${folder}|${sender}|${subject}|${receivedAt}`;
+        
+        if (!existingKeys.has(key)) {
+          // Use structure-preserving HTML conversion
+          const bodyContent = email.body?.contentType === 'html' 
+            ? convertHtmlToStructuredText(email.body.content)
+            : email.body?.content || email.bodyPreview || '';
 
-        const toRecipients = extractEmailAddresses(email.toRecipients);
-        const ccRecipients = extractEmailAddresses(email.ccRecipients);
-        const bccRecipients = extractEmailAddresses(email.bccRecipients);
+          const toRecipients = extractEmailAddresses(email.toRecipients);
+          const ccRecipients = extractEmailAddresses(email.ccRecipients);
+          const bccRecipients = extractEmailAddresses(email.bccRecipients);
 
-        // Insert email first to get the ID
-        const { data: insertedEmail, error: insertError } = await supabase
-          .from('email_copilot_emails')
-          .insert({
-            sender: email.from?.emailAddress?.address || 'unknown',
-            subject: email.subject || '(No Subject)',
-            body: bodyContent.substring(0, 10000),
-            received_at: email.receivedDateTime,
-            status: 'unread',
-            to_recipients: toRecipients,
-            cc_recipients: ccRecipients,
-            bcc_recipients: bccRecipients,
-            attachments: [],
-            mailbox_source: mailboxSource
-          })
-          .select('id')
-          .single();
+          // Insert email first to get the ID
+          const { data: insertedEmail, error: insertError } = await supabase
+            .from('email_copilot_emails')
+            .insert({
+              sender: email.from?.emailAddress?.address || 'unknown',
+              subject: email.subject || '(No Subject)',
+              body: bodyContent.substring(0, 10000),
+              received_at: emailDate,
+              status: folder === 'sent' ? 'replied' : 'unread',
+              to_recipients: toRecipients,
+              cc_recipients: ccRecipients,
+              bcc_recipients: bccRecipients,
+              attachments: [],
+              mailbox_source: mailboxSource,
+              folder: folder
+            })
+            .select('id')
+            .single();
 
-        if (insertError) {
-          console.error('[Outlook Sync] Insert error:', insertError);
-          continue;
-        }
+          if (insertError) {
+            console.error(`[Outlook Sync] Insert error for ${folder}:`, insertError);
+            continue;
+          }
 
-        // Fetch and upload attachments if email has any
-        if (email.hasAttachments && insertedEmail) {
-          console.log(`[Outlook Sync] Email has attachments, fetching...`);
-          const attachments = await fetchAttachments(accessToken, targetMailbox, email.id);
-          const storedAttachments: StoredAttachment[] = [];
+          // Fetch and upload attachments if email has any
+          if (email.hasAttachments && insertedEmail) {
+            console.log(`[Outlook Sync] Email has attachments, fetching...`);
+            const attachments = await fetchAttachments(accessToken, targetMailbox, email.id);
+            const storedAttachments: StoredAttachment[] = [];
 
-          for (const attachment of attachments) {
-            // Skip inline images and very large files (>10MB)
-            if (attachment.size > 10 * 1024 * 1024) {
-              console.log(`[Outlook Sync] Skipping large attachment: ${attachment.name} (${attachment.size} bytes)`);
-              continue;
+            for (const attachment of attachments) {
+              // Skip inline images and very large files (>10MB)
+              if (attachment.size > 10 * 1024 * 1024) {
+                console.log(`[Outlook Sync] Skipping large attachment: ${attachment.name} (${attachment.size} bytes)`);
+                continue;
+              }
+
+              const stored = await uploadAttachmentToStorage(supabase, attachment, insertedEmail.id);
+              if (stored) {
+                storedAttachments.push(stored);
+              }
             }
 
-            const stored = await uploadAttachmentToStorage(supabase, attachment, insertedEmail.id);
-            if (stored) {
-              storedAttachments.push(stored);
+            // Update email with attachment metadata
+            if (storedAttachments.length > 0) {
+              await supabase
+                .from('email_copilot_emails')
+                .update({ attachments: storedAttachments })
+                .eq('id', insertedEmail.id);
+              
+              console.log(`[Outlook Sync] Stored ${storedAttachments.length} attachments for email`);
             }
           }
 
-          // Update email with attachment metadata
-          if (storedAttachments.length > 0) {
-            await supabase
-              .from('email_copilot_emails')
-              .update({ attachments: storedAttachments })
-              .eq('id', insertedEmail.id);
-            
-            console.log(`[Outlook Sync] Stored ${storedAttachments.length} attachments for email`);
-          }
+          insertedCount++;
+          existingKeys.add(key);
         }
-
-        insertedCount++;
-        existingKeys.add(key);
       }
+      
+      return insertedCount;
     }
 
-    console.log(`[Outlook Sync] Inserted ${insertedCount} new emails`);
+    // Process both inbox and sent emails
+    const [inboxInserted, sentInserted] = await Promise.all([
+      processEmails(inboxEmails, 'inbox'),
+      processEmails(sentEmails, 'sent')
+    ]);
+
+    const totalInserted = inboxInserted + sentInserted;
+    console.log(`[Outlook Sync] Inserted ${inboxInserted} inbox + ${sentInserted} sent = ${totalInserted} total new emails`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        fetched: outlookEmails.length,
-        inserted: insertedCount,
-        message: `Synced ${insertedCount} new emails from Outlook`
+        fetched: inboxEmails.length + sentEmails.length,
+        inserted: totalInserted,
+        inboxInserted,
+        sentInserted,
+        message: `Synced ${totalInserted} new emails from Outlook (${inboxInserted} inbox, ${sentInserted} sent)`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
