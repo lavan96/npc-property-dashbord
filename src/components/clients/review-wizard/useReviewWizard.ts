@@ -175,12 +175,12 @@ export function useReviewWizard(
   const scorecard = useMemo(() => {
     const { portfolioTotals } = metrics;
     
-    // Portfolio-level scores
-    const portfolioHealth = Math.min(100, Math.max(0, 100 - portfolioTotals.portfolioLvr));
-    const cashFlowScore = portfolioTotals.totalMonthlyCashflow >= 0
+    // Portfolio-level scores (all rounded to integers for database compatibility)
+    const portfolioHealth = Math.round(Math.min(100, Math.max(0, 100 - portfolioTotals.portfolioLvr)));
+    const cashFlowScore = Math.round(portfolioTotals.totalMonthlyCashflow >= 0
       ? Math.min(100, 50 + (portfolioTotals.totalMonthlyCashflow / 100))
-      : Math.max(0, 50 + (portfolioTotals.totalMonthlyCashflow / 50));
-    const growthPotential = Math.min(100, properties.length * 20 + (portfolioHealth * 0.3));
+      : Math.max(0, 50 + (portfolioTotals.totalMonthlyCashflow / 50)));
+    const growthPotential = Math.round(Math.min(100, properties.length * 20 + (portfolioHealth * 0.3)));
     const overallScore = Math.round((portfolioHealth * 0.4 + cashFlowScore * 0.4 + growthPotential * 0.2));
 
     // Risk assessment
@@ -209,7 +209,7 @@ export function useReviewWizard(
       const originalProp = properties.find(p => p.id === prop.propertyId);
       const ownerOccupied = originalProp ? isOwnerOccupied(originalProp.property_type) : false;
 
-      const healthScore = Math.min(100, Math.max(0, 100 - prop.lvr));
+      const healthScore = Math.round(Math.min(100, Math.max(0, 100 - prop.lvr)));
       
       // For owner-occupied properties, don't penalize for lack of rental income
       // Instead, score based on equity position and leverage only
@@ -220,12 +220,12 @@ export function useReviewWizard(
         propCashFlowScore = healthScore; // Use health score as proxy
       } else {
         // Investment properties: score based on actual cashflow
-        propCashFlowScore = prop.netMonthlyCashflow >= 0
+        propCashFlowScore = Math.round(prop.netMonthlyCashflow >= 0
           ? Math.min(100, 50 + (prop.netMonthlyCashflow / 50))
-          : Math.max(0, 50 + (prop.netMonthlyCashflow / 25));
+          : Math.max(0, 50 + (prop.netMonthlyCashflow / 25)));
       }
-      
-      const propGrowthPotential = 50 + (healthScore * 0.3);
+
+      const propGrowthPotential = Math.round(50 + (healthScore * 0.3));
       
       // Different scoring weights for owner-occupied vs investment
       let propOverallScore: number;
