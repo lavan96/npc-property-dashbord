@@ -279,3 +279,7 @@ verify_jwt = false
 
 [functions.calculate-borrowing-capacity]
 verify_jwt = false
+
+[functions.cdr-lending-rates-service]
+verify_jwt = false
+request_timeout = 120

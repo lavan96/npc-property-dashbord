@@ -6,7 +6,8 @@ const corsHeaders = {
 };
 
 // ============================================
-// CDR DATA HOLDER ENDPOINTS (Public APIs)
+// CDR DATA HOLDER ENDPOINTS (Verified Production APIs)
+// Updated with official CDR Register endpoints
 // ============================================
 const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string }> = {
   cba: {
@@ -36,22 +37,22 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
   },
   ing: {
     name: "ING",
-    baseUrl: "https://openbanking.api.ing.com.au/cds-au/v1",
+    baseUrl: "https://apic.ing.com.au/cds-au/v1",
     logo: "https://www.ing.com.au/favicon.ico"
   },
   bankwest: {
     name: "Bankwest",
-    baseUrl: "https://open-api.bankwest.com.au/cds-au/v1",
+    baseUrl: "https://open-api.bankwest.com.au/bwpublic/cds-au/v1",
     logo: "https://www.bankwest.com.au/favicon.ico"
   },
   suncorp: {
     name: "Suncorp",
-    baseUrl: "https://id-ob.suncorpbank.com.au/cds-au/v1",
+    baseUrl: "https://prd.suncorpbank.com.au/cds-au/v1",
     logo: "https://www.suncorp.com.au/favicon.ico"
   },
   bendigo: {
     name: "Bendigo Bank",
-    baseUrl: "https://api.bendigobank.com.au/cds-au/v1",
+    baseUrl: "https://api.cdr.bendigobank.com.au/cds-au/v1",
     logo: "https://www.bendigobank.com.au/favicon.ico"
   },
   amp: {
@@ -61,17 +62,17 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
   },
   banksa: {
     name: "BankSA",
-    baseUrl: "https://digital-api.banksa.com.au/cds-au/v1",
+    baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
     logo: "https://www.banksa.com.au/favicon.ico"
   },
   stgeorge: {
     name: "St.George",
-    baseUrl: "https://digital-api.stgeorge.com.au/cds-au/v1",
+    baseUrl: "https://digital-api.westpac.com.au/cds-au/v1",
     logo: "https://www.stgeorge.com.au/favicon.ico"
   },
   boq: {
     name: "Bank of Queensland",
-    baseUrl: "https://secure.boq.com.au/cds-au/v1",
+    baseUrl: "https://secure.api.boq.com.au/cds-au/v1",
     logo: "https://www.boq.com.au/favicon.ico"
   },
   hsbc: {
@@ -81,7 +82,7 @@ const CDR_LENDERS: Record<string, { name: string; baseUrl: string; logo?: string
   },
   ubank: {
     name: "UBank",
-    baseUrl: "https://openbank.api.nab.com.au/ubank/cds-au/v1",
+    baseUrl: "https://openbank.api.ubank.com.au/cds-au/v1",
     logo: "https://www.ubank.com.au/favicon.ico"
   }
 };
@@ -247,13 +248,29 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Support both GET query params and POST body
     const url = new URL(req.url);
-    const action = url.searchParams.get('action') || 'list';
-    const lenderId = url.searchParams.get('lender');
-    const loanPurpose = url.searchParams.get('purpose') as 'OWNER_OCCUPIED' | 'INVESTMENT' | null;
-    const repaymentType = url.searchParams.get('repayment') as 'PRINCIPAL_AND_INTEREST' | 'INTEREST_ONLY' | null;
-    const lvr = url.searchParams.get('lvr') ? parseFloat(url.searchParams.get('lvr')!) : null;
-    const forceRefresh = url.searchParams.get('refresh') === 'true';
+    let action = url.searchParams.get('action') || 'list';
+    let lenderId = url.searchParams.get('lender');
+    let loanPurpose = url.searchParams.get('purpose') as 'OWNER_OCCUPIED' | 'INVESTMENT' | null;
+    let repaymentType = url.searchParams.get('repayment') as 'PRINCIPAL_AND_INTEREST' | 'INTEREST_ONLY' | null;
+    let lvr = url.searchParams.get('lvr') ? parseFloat(url.searchParams.get('lvr')!) : null;
+    let forceRefresh = url.searchParams.get('refresh') === 'true';
+
+    // Parse POST body if present
+    if (req.method === 'POST') {
+      try {
+        const body = await req.json();
+        if (body.action) action = body.action;
+        if (body.lender) lenderId = body.lender;
+        if (body.purpose) loanPurpose = body.purpose;
+        if (body.repayment) repaymentType = body.repayment;
+        if (body.lvr !== undefined) lvr = parseFloat(body.lvr);
+        if (body.refresh) forceRefresh = body.refresh === true || body.refresh === 'true';
+      } catch (e) {
+        // No body or invalid JSON, continue with query params
+      }
+    }
 
     console.log(`[CDR] Action: ${action}, Lender: ${lenderId}, Purpose: ${loanPurpose}, LVR: ${lvr}`);
 
