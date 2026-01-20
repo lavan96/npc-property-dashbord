@@ -11,9 +11,6 @@ const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
 const tenantId = Deno.env.get('MICROSOFT_TENANT_ID');
 const mailboxEmail = Deno.env.get('MICROSOFT_MAILBOX_EMAIL');
 
-// Cache for signature to avoid repeated env reads
-let cachedSignature: string | null = null;
-
 interface EmailAttachment {
   name: string;
   contentType: string;
@@ -29,6 +26,17 @@ interface SendEmailRequest {
   originalEmailId?: string;
   attachments?: EmailAttachment[];
   mailboxSource?: 'admin' | 'personal';
+}
+
+interface WhiteLabelSettings {
+  email_signature_banner?: string;
+  email_signature_name?: string;
+  email_signature_title?: string;
+  email_signature_phone?: string;
+  email_signature_email?: string;
+  email_signature_website?: string;
+  email_signature_address?: string;
+  email_signature_disclaimer?: string;
 }
 
 async function getAccessToken(): Promise<string> {
@@ -57,22 +65,70 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-function getOutlookSignature(): string {
-  // Use cached signature if available
-  if (cachedSignature !== null) {
-    console.log('[Send Email] Using cached signature');
-    return cachedSignature;
-  }
+async function getSignatureFromDatabase(supabase: any): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('whitelabel_settings')
+      .select('email_signature_banner, email_signature_name, email_signature_title, email_signature_phone, email_signature_email, email_signature_website, email_signature_address, email_signature_disclaimer')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
 
-  // Get signature from Supabase secret
-  const signature = Deno.env.get('OUTLOOK_EMAIL_SIGNATURE') || '';
-  
-  console.log('[Send Email] Loaded signature from secret:', signature ? 'Found' : 'Not configured');
-  
-  // Cache the signature
-  cachedSignature = signature;
-  
-  return signature;
+    if (error || !data) {
+      console.log('[Send Email] No signature settings found in database:', error?.message);
+      return '';
+    }
+
+    const settings: WhiteLabelSettings = data;
+    
+    // Build HTML signature from database settings
+    let signatureHtml = '';
+    
+    // Add banner image if configured
+    if (settings.email_signature_banner) {
+      signatureHtml += `<img src="${settings.email_signature_banner}" alt="Email Signature" style="max-width: 600px; height: auto; display: block; margin-bottom: 10px;" />`;
+    }
+    
+    // Build contact info section
+    const contactParts: string[] = [];
+    
+    if (settings.email_signature_email) {
+      contactParts.push(`<strong>Email:</strong> <a href="mailto:${settings.email_signature_email}" style="color: #d4a843; text-decoration: none;">${settings.email_signature_email}</a>`);
+    }
+    
+    if (settings.email_signature_website) {
+      const websiteUrl = settings.email_signature_website.startsWith('http') 
+        ? settings.email_signature_website 
+        : `https://${settings.email_signature_website}`;
+      contactParts.push(`<strong>Website:</strong> <a href="${websiteUrl}" style="color: #d4a843; text-decoration: none;">${settings.email_signature_website}</a>`);
+    }
+    
+    if (contactParts.length > 0) {
+      signatureHtml += `<p style="margin: 10px 0; font-family: Arial, sans-serif; font-size: 14px; color: #333;">${contactParts.join(' | ')}</p>`;
+    }
+    
+    // Add disclaimer if configured
+    if (settings.email_signature_disclaimer) {
+      // Format disclaimer with proper paragraphs
+      const disclaimerParagraphs = settings.email_signature_disclaimer
+        .split('\n\n')
+        .filter(p => p.trim())
+        .map(p => `<p style="margin: 0 0 10px 0;">${p.trim().replace(/\n/g, ' ')}</p>`)
+        .join('');
+      
+      signatureHtml += `<div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; font-family: Arial, sans-serif; font-size: 12px; color: #666;">
+        <p style="margin: 0 0 10px 0; font-weight: bold;">Disclaimer:</p>
+        ${disclaimerParagraphs}
+      </div>`;
+    }
+    
+    console.log('[Send Email] Built signature from database settings');
+    return signatureHtml;
+    
+  } catch (error) {
+    console.error('[Send Email] Error fetching signature from database:', error);
+    return '';
+  }
 }
 
 serve(async (req) => {
@@ -95,18 +151,22 @@ serve(async (req) => {
 
     console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Attachments: ${attachments?.length || 0}`);
 
-    // Get access token
-    const accessToken = await getAccessToken();
+    // Initialize Supabase client early for signature fetch
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get Outlook signature from secret
-    const signature = getOutlookSignature();
+    // Get access token and signature in parallel
+    const [accessToken, signature] = await Promise.all([
+      getAccessToken(),
+      getSignatureFromDatabase(supabase)
+    ]);
     
     // Detect if the email body is already HTML
     const isHtmlBody = body.includes('<html') || body.includes('<p>') || body.includes('<div') || 
                        body.includes('<br') || body.includes('<table') || body.includes('<span');
     
     // Combine body with signature
-    // If signature is HTML, we need to use HTML content type
     const hasSignature = signature && signature.trim().length > 0;
     const isHtmlSignature = hasSignature && (signature.includes('<') && signature.includes('>'));
     
@@ -143,7 +203,7 @@ serve(async (req) => {
         finalBody = `${body}\n\n${signature}`;
         contentType = 'Text';
       }
-      console.log('[Send Email] Appended Outlook signature to email');
+      console.log('[Send Email] Appended database signature to email');
     } else {
       finalBody = body;
       contentType = 'Text';
@@ -212,11 +272,6 @@ serve(async (req) => {
     }
 
     console.log('[Send Email] Email sent successfully');
-
-    // Store the sent reply in database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Store attachment metadata (without contentBytes) for tracking
     const attachmentMetadata = attachments?.map(att => ({
