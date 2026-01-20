@@ -88,20 +88,28 @@ export const INCOME_SHADING_RULES: Record<string, { rate: number; label: string 
   other_taxable: { rate: 0.80, label: "Other Taxable" },
 };
 
+// HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
+// Updated to align with major lender HEM tables
 export const HEM_BENCHMARKS: Record<string, Record<number, number>> = {
   single: {
-    0: 1500,
-    1: 2000,
-    2: 2300,
-    3: 2600,
+    0: 2100,  // Was 1500 - updated to 2024 standards
+    1: 2650,  // Was 2000
+    2: 3050,  // Was 2300
+    3: 3450,  // Was 2600
   },
   couple: {
-    0: 2200,
-    1: 2600,
-    2: 2900,
-    3: 3200,
+    0: 2950,  // Was 2200 - updated to 2024 standards
+    1: 3400,  // Was 2600
+    2: 3850,  // Was 2900
+    3: 4300,  // Was 3200
   },
 };
+
+// Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
+export const RENTAL_EXPENSE_RATIO = 0.20;
+
+// Assessment rate for stress-testing existing loans
+export const LOAN_ASSESSMENT_RATE = 0.095; // 9.5% (approx 6.5% + 3% buffer)
 
 export const DEFAULT_CALCULATION_PARAMS = {
   interestRate: 6.50,
