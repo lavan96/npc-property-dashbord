@@ -112,6 +112,7 @@ interface Email {
   bcc_recipients: string[];
   attachments: EmailAttachment[];
   mailbox_source: 'admin' | 'personal';
+  folder: 'inbox' | 'sent';
 }
 
 interface SentAttachment {
@@ -696,6 +697,7 @@ export default function EmailCopilot() {
         bcc_recipients: (email.bcc_recipients as string[]) || [],
         attachments: (email.attachments as unknown as EmailAttachment[]) || [],
         mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
+        folder: (email.folder as 'inbox' | 'sent') || 'inbox',
       }));
       
       setEmails(typedEmails);
@@ -1408,13 +1410,19 @@ export default function EmailCopilot() {
 
   // Filter and search emails
   const filteredEmails = emails.filter(email => {
-    // Status filter
-    if (statusFilter === 'all') {
-      if (!showArchived && email.status === 'archived') return false;
-    } else if (statusFilter === 'archived') {
-      if (email.status !== 'archived') return false;
-    } else {
-      if (email.status !== statusFilter) return false;
+    // Folder filter based on viewMode
+    const targetFolder = viewMode === 'sent' ? 'sent' : 'inbox';
+    if (email.folder !== targetFolder) return false;
+    
+    // Status filter (only apply to inbox view)
+    if (viewMode === 'inbox') {
+      if (statusFilter === 'all') {
+        if (!showArchived && email.status === 'archived') return false;
+      } else if (statusFilter === 'archived') {
+        if (email.status !== 'archived') return false;
+      } else {
+        if (email.status !== statusFilter) return false;
+      }
     }
     
     // Search filter
@@ -1423,7 +1431,9 @@ export default function EmailCopilot() {
       const matchesSender = email.sender.toLowerCase().includes(query);
       const matchesSubject = email.subject.toLowerCase().includes(query);
       const matchesBody = email.body.toLowerCase().includes(query);
-      if (!matchesSender && !matchesSubject && !matchesBody) return false;
+      // For sent emails, also search in recipients
+      const matchesRecipients = email.to_recipients?.some(r => r.toLowerCase().includes(query));
+      if (!matchesSender && !matchesSubject && !matchesBody && !matchesRecipients) return false;
     }
     
     return true;
@@ -1437,8 +1447,10 @@ export default function EmailCopilot() {
     return new Date(bEmails[0].received_at).getTime() - new Date(aEmails[0].received_at).getTime();
   });
   
-  const activeEmails = emails.filter(e => e.status !== 'archived');
-  const unreadCount = activeEmails.filter(e => e.status === 'unread').length;
+  const inboxEmails = emails.filter(e => e.folder === 'inbox' && e.status !== 'archived');
+  const sentEmails = emails.filter(e => e.folder === 'sent');
+  const unreadCount = inboxEmails.filter(e => e.status === 'unread').length;
+  const sentCount = sentEmails.length + sentReplies.length;
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -1594,7 +1606,7 @@ export default function EmailCopilot() {
               >
                 <Send className="h-4 w-4" />
                 Sent
-                <Badge variant="outline" className="text-xs h-5 px-1.5">{sentReplies.length}</Badge>
+                <Badge variant="outline" className="text-xs h-5 px-1.5">{sentCount}</Badge>
               </button>
             </div>
           </div>
@@ -1674,7 +1686,7 @@ export default function EmailCopilot() {
               <div className="flex items-center gap-2">
                 <Send className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">
-                  {sentReplies.length} sent {sentReplies.length === 1 ? 'reply' : 'replies'}
+                  {sentCount} sent {sentCount === 1 ? 'email' : 'emails'}
                 </span>
               </div>
             </div>
@@ -1847,23 +1859,78 @@ export default function EmailCopilot() {
                 )}
               </>
             ) : (
-              // Sent replies view
+              // Sent view - shows both synced sent emails AND manually sent replies
               <>
-                {sentReplies.length === 0 ? (
+                {filteredEmails.length === 0 && sentReplies.length === 0 ? (
                   <div className="p-8 text-center">
                     <Send className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                    <p className="text-sm font-medium text-muted-foreground">No sent replies</p>
+                    <p className="text-sm font-medium text-muted-foreground">No sent emails</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Replies you send will appear here
+                      Emails you send will appear here
                     </p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
+                    {/* Show synced sent emails from Outlook */}
+                    {filteredEmails.map((email) => (
+                      <div
+                        key={email.id}
+                        onClick={() => {
+                          handleSelectEmail(email);
+                          setSelectedSentReply(null);
+                        }}
+                        className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
+                          selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Send className="h-4 w-4 text-primary" />
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <span className="text-sm font-medium truncate">
+                                To: {email.to_recipients?.[0] || 'Unknown'}
+                                {email.to_recipients?.length > 1 && ` +${email.to_recipients.length - 1}`}
+                              </span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">
+                                {formatEmailDate(email.received_at)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {email.subject || '(No Subject)'}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {email.body.slice(0, 80).replace(/\n/g, ' ')}...
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-primary border-primary/30">
+                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent
+                              </Badge>
+                              {email.attachments && email.attachments.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {email.attachments.length}
+                                </Badge>
+                              )}
+                              {email.cc_recipients?.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  CC: {email.cc_recipients.length}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Show manually sent replies from the dashboard */}
                     {sentReplies.map((reply) => (
                       <div
-                        key={reply.id}
+                        key={`reply-${reply.id}`}
                         onClick={() => {
                           setSelectedSentReply(reply);
+                          setSelectedEmail(null);
                           if (isMobile) setShowMobileDetail(true);
                         }}
                         className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
@@ -1892,7 +1959,7 @@ export default function EmailCopilot() {
                             </p>
                             <div className="flex items-center gap-1.5 mt-2">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
-                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent
+                                <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent via Copilot
                               </Badge>
                               {reply.attachments && reply.attachments.length > 0 && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">

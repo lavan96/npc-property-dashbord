@@ -2245,6 +2245,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           draft_reply: string | null
+          folder: string
           id: string
           linked_property_address: string | null
           linked_report_id: string | null
@@ -2266,6 +2267,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft_reply?: string | null
+          folder?: string
           id?: string
           linked_property_address?: string | null
           linked_report_id?: string | null
@@ -2287,6 +2289,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           draft_reply?: string | null
+          folder?: string
           id?: string
           linked_property_address?: string | null
           linked_report_id?: string | null
