@@ -4,6 +4,7 @@ import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, La
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import {
   Dialog,
@@ -365,37 +366,35 @@ export function PortfolioAnalysisPDFGenerator({
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
       
-      // Fetch and embed custom Google Fonts (Playfair Display Medium 500 & Cinzel Bold 700)
-      // Using direct TTF URLs from Google Fonts CDN
-      console.log('📥 Fetching custom fonts (TTF format for pdf-lib)...');
-      
-      let playfairFont = timesItalic; // Fallback to Times Italic (closer to Playfair style)
-      let cinzelFont = helveticaBold; // Fallback to Helvetica Bold
-      
+      // Register fontkit for custom TTF embedding (required by pdf-lib)
+      pdfDoc.registerFontkit(fontkit);
+
+      // Load and embed custom fonts from local TTF files (exact files provided)
+      console.log('📥 Loading embedded fonts (local TTF files)...');
+
+      let playfairFont = timesItalic; // Fallback
+      let cinzelFont = helveticaBold; // Fallback
+
       try {
-        // Playfair Display Medium 500 - fetch TTF via fonts.gstatic.com with explicit format
-        const playfairTtfUrl = 'https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvXDXbtM.ttf';
-        const playfairFontResponse = await fetch(playfairTtfUrl);
-        if (playfairFontResponse.ok) {
-          const playfairFontBytes = await playfairFontResponse.arrayBuffer();
-          playfairFont = await pdfDoc.embedFont(playfairFontBytes);
-          console.log('✓ Playfair Display Medium 500 font embedded (TTF)');
-        }
+        const [playfairRes, cinzelRes] = await Promise.all([
+          fetch('/fonts/PlayfairDisplay-Medium.ttf'),
+          fetch('/fonts/Cinzel-Bold.ttf'),
+        ]);
+
+        if (!playfairRes.ok) throw new Error(`Playfair font fetch failed: ${playfairRes.status}`);
+        if (!cinzelRes.ok) throw new Error(`Cinzel font fetch failed: ${cinzelRes.status}`);
+
+        const [playfairBytes, cinzelBytes] = await Promise.all([
+          playfairRes.arrayBuffer(),
+          cinzelRes.arrayBuffer(),
+        ]);
+
+        playfairFont = await pdfDoc.embedFont(playfairBytes, { subset: true });
+        cinzelFont = await pdfDoc.embedFont(cinzelBytes, { subset: true });
+
+        console.log('✓ Custom fonts embedded (PlayfairDisplay-Medium.ttf, Cinzel-Bold.ttf)');
       } catch (fontError) {
-        console.warn('Could not load Playfair Display Medium TTF, using fallback:', fontError);
-      }
-      
-      try {
-        // Cinzel Bold 700 - fetch TTF via fonts.gstatic.com
-        const cinzelTtfUrl = 'https://fonts.gstatic.com/s/cinzel/v23/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnfY3lCQ.ttf';
-        const cinzelFontResponse = await fetch(cinzelTtfUrl);
-        if (cinzelFontResponse.ok) {
-          const cinzelFontBytes = await cinzelFontResponse.arrayBuffer();
-          cinzelFont = await pdfDoc.embedFont(cinzelFontBytes);
-          console.log('✓ Cinzel Bold 700 font embedded (TTF)');
-        }
-      } catch (fontError) {
-        console.warn('Could not load Cinzel Bold TTF, using fallback:', fontError);
+        console.warn('Could not load embedded TTF fonts; using fallbacks:', fontError);
       }
       
       console.log('✓ PDF document created with fonts');
@@ -963,28 +962,32 @@ export function PortfolioAnalysisPDFGenerator({
         return newPage;
       };
       
-      // ============= NPC BRANDED COVER PAGE (Using Image Template) =============
-      console.log('📝 Creating NPC branded cover page from image template...');
-      const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      
-      // Load and embed the cover page image (new template with logo/tagline/line+diamond baked in)
+      // ============= NPC BRANDED COVER PAGE (Using PDF Template) =============
+      console.log('📝 Creating NPC branded cover page from PDF template...');
+
+      let coverPage: PDFPage;
+      let coverWidth = PAGE_WIDTH;
+      let coverHeight = PAGE_HEIGHT;
+
       try {
-        const coverImageResponse = await fetch('/templates/npc-portfolio-cover-new.jpg');
-        const coverImageBytes = await coverImageResponse.arrayBuffer();
-        const coverImage = await pdfDoc.embedJpg(coverImageBytes);
-        
-        // Draw the cover image to fill the entire page
-        coverPage.drawImage(coverImage, {
-          x: 0,
-          y: 0,
-          width: PAGE_WIDTH,
-          height: PAGE_HEIGHT,
-        });
-        
-        console.log('✓ Cover page image embedded successfully');
-      } catch (imageError) {
-        console.error('Failed to load cover image, using fallback:', imageError);
-        // Fallback: Draw a simple black background if image fails
+        const coverTemplateResponse = await fetch('/templates/NPC_PDF_Template-6.pdf');
+        if (!coverTemplateResponse.ok) {
+          throw new Error(`Cover template fetch failed: ${coverTemplateResponse.status}`);
+        }
+
+        const coverTemplateBytes = await coverTemplateResponse.arrayBuffer();
+        const coverTemplateDoc = await PDFDocument.load(coverTemplateBytes);
+        const [templateCoverPage] = await pdfDoc.copyPages(coverTemplateDoc, [0]);
+        coverPage = pdfDoc.addPage(templateCoverPage);
+
+        const size = coverPage.getSize();
+        coverWidth = size.width;
+        coverHeight = size.height;
+
+        console.log('✓ Cover page template imported successfully');
+      } catch (templateError) {
+        console.error('Failed to load cover PDF template, using fallback:', templateError);
+        coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
         coverPage.drawRectangle({
           x: 0,
           y: 0,
@@ -993,62 +996,56 @@ export function PortfolioAnalysisPDFGenerator({
           color: NPC_BLACK,
         });
       }
-      
+
       // ============= OVERLAY DYNAMIC TEXT ON COVER =============
-      // The template already has: Logo, "NAIDU PROPERTY CONSULTING SERVICES", 
-      // "YOUR DEDICATED PROPERTY PARTNER", horizontal line, and diamond icon
-      // We only need to add: Report Title, Client Name, and Date BELOW the diamond
-      
-      // The diamond in template is at approximately 38% from bottom (62% from top)
-      // We position our text starting below that
-      
-      // Report Title - "Portfolio Performance Report" (Playfair Display Medium 500)
-      // Position: centered, below the template's diamond icon
-      const reportTitleY = PAGE_HEIGHT * 0.32; // ~32% from bottom, below the diamond
+      // Template already contains: logo/tagline/line/diamond.
+      // We only add: Report Title, Client Name, Date.
+      // Positioning moved LOWER to match the provided reference.
+
+      // Report Title (PlayfairDisplay-Medium.ttf)
       const reportTitle = 'Portfolio Performance Report';
       const reportTitleSize = 32;
+      const reportTitleY = coverHeight * 0.26; // moved lower (was 0.32)
       const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, reportTitleSize);
       coverPage.drawText(reportTitle, {
-        x: (PAGE_WIDTH - reportTitleWidth) / 2,
+        x: (coverWidth - reportTitleWidth) / 2,
         y: reportTitleY,
         size: reportTitleSize,
         font: playfairFont,
         color: NPC_WHITE,
       });
-      
-      // Client Name - (Cinzel Bold 700, UPPERCASE, Gold)
-      // Position: centered, below title with proper spacing
-      const clientNameY = reportTitleY - 45;
+
+      // Client Name (Cinzel-Bold.ttf)
       const clientText = stripEmojis(analysisData.clientName).toUpperCase();
-      const clientNameSize = 16;
+      const clientNameSize = 18;
+      const clientNameY = reportTitleY - 52;
       const clientNameWidth = cinzelFont.widthOfTextAtSize(clientText, clientNameSize);
       coverPage.drawText(clientText, {
-        x: (PAGE_WIDTH - clientNameWidth) / 2,
+        x: (coverWidth - clientNameWidth) / 2,
         y: clientNameY,
         size: clientNameSize,
         font: cinzelFont,
         color: NPC_GOLD,
       });
-      
-      // Date - (Helvetica, White)
-      // Position: centered, below client name
-      const dateY = clientNameY - 35;
+
+      // Date (Helvetica)
       const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
       });
       const dateSize = 14;
+      const dateY = clientNameY - 40;
       const dateWidth = helveticaFont.widthOfTextAtSize(dateText, dateSize);
       coverPage.drawText(dateText, {
-        x: (PAGE_WIDTH - dateWidth) / 2,
+        x: (coverWidth - dateWidth) / 2,
         y: dateY,
         size: dateSize,
         font: helveticaFont,
         color: NPC_WHITE,
       });
-      
-      console.log('✓ NPC branded cover page complete (image template)');
+
+      console.log('✓ NPC branded cover page complete (PDF template)');
       
       // Define metrics and health score early for TOC page numbers and later use
       const metrics = analysisData.portfolioMetrics;
