@@ -118,19 +118,40 @@ serve(async (req) => {
       propertyType?.toLowerCase() === 'owner-occupied' ||
       propertyType?.toLowerCase() === 'ppor';
 
+    // Helper to check if property is a rental (client is tenant)
+    const isRentalProperty = (propertyType: string) =>
+      propertyType?.toLowerCase() === 'rental';
+
     // Separate properties by type
-    const investmentProperties = properties.filter(p => !isOwnerOccupied(p.property_type));
+    const investmentProperties = properties.filter(p => 
+      !isOwnerOccupied(p.property_type) && !isRentalProperty(p.property_type)
+    );
     const ownerOccupiedProperties = properties.filter(p => isOwnerOccupied(p.property_type));
+    const rentalProperties = properties.filter(p => isRentalProperty(p.property_type));
     
-    // Determine which properties to include in portfolio totals
-    const propertiesForTotals = includeOwnerOccupied ? properties : investmentProperties;
+    // Properties owned by client (excludes rental where they're a tenant)
+    const ownedProperties = properties.filter(p => !isRentalProperty(p.property_type));
+    
+    // Determine which properties to include in portfolio totals (owned properties only)
+    const propertiesForTotals = includeOwnerOccupied ? ownedProperties : investmentProperties;
+    
+    // Calculate personal expenses from rental properties
+    const personalExpenses = {
+      totalMonthlyRentPaid: rentalProperties.reduce((sum, p) => sum + (Number(p.monthly_rental_income) || 0), 0),
+      rentalProperties: rentalProperties.map(p => ({
+        address: p.address,
+        monthlyRent: Number(p.monthly_rental_income) || 0,
+        weeklyRent: Number(p.weekly_rental_income) || 0,
+      })),
+    };
     
     const portfolioMetrics = {
-      totalProperties: properties.length,
+      totalProperties: ownedProperties.length,
       investmentCount: investmentProperties.length,
       ownerOccupiedCount: ownerOccupiedProperties.length,
+      rentalCount: rentalProperties.length,
       includeOwnerOccupied,
-      // Portfolio totals based on toggle
+      // Portfolio totals based on toggle (only owned properties)
       totalValue: propertiesForTotals.reduce((sum, p) => sum + (Number(p.value) || 0), 0),
       totalDebt: propertiesForTotals.reduce((sum, p) => sum + (Number(p.loan_remaining) || 0), 0),
       totalEquity: 0,
@@ -139,6 +160,8 @@ serve(async (req) => {
       totalMonthlyRentalIncome: investmentProperties.reduce((sum, p) => sum + (Number(p.monthly_rental_income) || 0), 0),
       totalMonthlyExpenses: propertiesForTotals.reduce((sum, p) => sum + (Number(p.total_monthly_expenditure) || 0), 0),
       netMonthlyCashflow: investmentProperties.reduce((sum, p) => sum + (Number(p.net_monthly_cashflow) || 0), 0),
+      // Personal expenses (rent paid as tenant)
+      personalExpenses,
       averageYield: 0,
       bestPerformer: null as ClientProperty | null,
       worstPerformer: null as ClientProperty | null,
