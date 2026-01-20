@@ -524,7 +524,29 @@ function parseIncome(sheet: XLSX.WorkSheet): ParsedIncome[] {
   return incomeList;
 }
 
-// Parse assets
+// Helper to check if an asset record has meaningful data (not empty/placeholder)
+function hasValidAssetData(asset: ParsedAsset): boolean {
+  // Must have either a value greater than 0 or meaningful descriptive data
+  if (asset.value > 0) return true;
+  
+  // Check for meaningful text in other fields (not just whitespace or generic placeholders)
+  const isValidText = (text: string | undefined): boolean => {
+    if (!text) return false;
+    const trimmed = text.trim().toLowerCase();
+    if (trimmed.length < 2) return false;
+    // Reject common placeholder values
+    if (['n/a', 'na', '-', 'nil', 'none', 'tba', 'tbc'].includes(trimmed)) return false;
+    return true;
+  };
+  
+  if (isValidText(asset.makeModel)) return true;
+  if (isValidText(asset.institutionName)) return true;
+  if (isValidText(asset.description)) return true;
+  
+  return false;
+}
+
+// Parse assets with validation to skip empty records
 function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
   const assets: ParsedAsset[] = [];
 
@@ -532,7 +554,7 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
   const assetsRow = findRowByLabel(sheet, 'assets') || findRowByLabel(sheet, 'vehicle') || findRowByLabel(sheet, 'savings');
   if (!assetsRow) return assets;
 
-  // Parse vehicles
+  // Parse vehicles with validation
   for (let i = 1; i <= 3; i++) {
     const vehicleRow = findRowByLabel(sheet, `vehicle ${i}`) || (i === 1 ? findRowByLabel(sheet, 'vehicle') : null);
     if (vehicleRow) {
@@ -549,13 +571,16 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
         if (label.includes('value') || label.includes('worth')) value = parseCurrency(cellValue);
       }
 
-      if (makeModel || value > 0) {
-        assets.push({
-          assetType: 'vehicle',
-          vehicleType,
-          makeModel,
-          value
-        });
+      const asset: ParsedAsset = {
+        assetType: 'vehicle',
+        vehicleType,
+        makeModel,
+        value
+      };
+      
+      // Only add if has valid data
+      if (hasValidAssetData(asset)) {
+        assets.push(asset);
       }
     }
   }
@@ -572,23 +597,27 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
         const combinedInstitution = extractInstitutionFromCombinedText(cellValue);
         const amount = parseCurrency(cellValue);
         if (combinedInstitution && amount > 0) {
-          assets.push({
+          const asset: ParsedAsset = {
             assetType: 'savings',
             institutionName: combinedInstitution,
             value: amount
-          });
+          };
+          if (hasValidAssetData(asset)) {
+            assets.push(asset);
+          }
           continue;
         }
       }
       
       if (label.includes('bank') || label.includes('institution')) {
         const amount = getCellValue(sheet, `B${savingsRow + offset + 1}`);
-        if (cellValue || parseCurrency(amount) > 0) {
-          assets.push({
-            assetType: 'savings',
-            institutionName: cellValue,
-            value: parseCurrency(amount)
-          });
+        const asset: ParsedAsset = {
+          assetType: 'savings',
+          institutionName: cellValue,
+          value: parseCurrency(amount)
+        };
+        if (hasValidAssetData(asset)) {
+          assets.push(asset);
         }
       }
     }
@@ -629,12 +658,14 @@ function parseAssets(sheet: XLSX.WorkSheet): ParsedAsset[] {
       }
     }
 
-    if (institutionName || value > 0) {
-      assets.push({
-        assetType: 'superfund',
-        institutionName,
-        value
-      });
+    const asset: ParsedAsset = {
+      assetType: 'superfund',
+      institutionName,
+      value
+    };
+    
+    if (hasValidAssetData(asset)) {
+      assets.push(asset);
     }
   }
 
@@ -807,9 +838,55 @@ function parseLiabilities(sheet: XLSX.WorkSheet): ParsedLiability[] {
   return liabilities;
 }
 
-// Parse properties (improved version)
+// Helper to validate if a value is a valid property address (not a financial value or label)
+function isValidPropertyAddress(value: any): boolean {
+  if (!value || typeof value !== 'string') return false;
+  const str = value.trim();
+  
+  // Reject if it looks like a currency value
+  if (/^\$[\d,]+/.test(str) || /^\d+\s*[kKmM]?\s*[-–]/.test(str)) return false;
+  
+  // Reject if it's a common label
+  const labels = ['address', 'value', 'loan', 'rate', 'ownership', 'rental', 'income', 'expenditure', 'cashflow', 'total', 'balance'];
+  if (labels.some(l => str.toLowerCase() === l)) return false;
+  
+  // Reject if it's too short (less than 5 chars) or just a number
+  if (str.length < 5 || /^\d+$/.test(str)) return false;
+  
+  // Accept if it contains typical address patterns (numbers, street names, suburb indicators)
+  if (/\d+.*(?:street|st|road|rd|avenue|ave|drive|dr|court|ct|place|pl|crescent|cres|lane|ln|way|boulevard|blvd)/i.test(str)) {
+    return true;
+  }
+  
+  // Accept if it looks like an address (contains comma or postcode pattern)
+  if (/,/.test(str) || /\b\d{4}\b/.test(str)) {
+    return true;
+  }
+  
+  // Accept if reasonably long and doesn't look like a financial field
+  if (str.length >= 10 && !/^\d/.test(str) && !/[%$]/.test(str)) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Helper to detect if we've entered a new section (for boundary detection)
+function isNewSection(labelA: string, labelE: string, sectionKeywords: string[]): boolean {
+  const combined = `${labelA} ${labelE}`.toLowerCase();
+  return sectionKeywords.some(keyword => combined.includes(keyword));
+}
+
+// Parse properties with robust section boundary detection and validation
 function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
   const properties: ParsedProperty[] = [];
+  
+  // Define section boundaries to prevent data bleeding between sections
+  const sectionBoundaries = [
+    'portfolio cashflow', 'portfolio summary', 'total portfolio', 
+    'liabilities', 'assets', 'income section', 'employment section',
+    'secondary contact', 'notes', 'comments'
+  ];
 
   // Owner Occupied Property
   const ownerOccupiedRow = findRowByLabel(sheet, 'owner occupied') || findRowByLabel(sheet, 'ppor');
@@ -835,8 +912,27 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
       netMonthlyCashflow: 0
     };
 
-    // Search for values in columns E/F (common VowNet layout)
-    for (let offset = 0; offset <= 20; offset++) {
+    // Determine the boundary for this property section
+    let maxOffset = 25;
+    for (let offset = 1; offset <= 40; offset++) {
+      const labelA = getCellValue(sheet, `A${ownerOccupiedRow + offset}`)?.toString().toLowerCase() || '';
+      const labelE = getCellValue(sheet, `E${ownerOccupiedRow + offset}`)?.toString().toLowerCase() || '';
+      
+      // Check for investment property section which marks end of owner-occupied
+      if (labelA.includes('investment property') || labelE.includes('investment property')) {
+        maxOffset = offset - 1;
+        break;
+      }
+      
+      // Check for other section boundaries
+      if (isNewSection(labelA, labelE, sectionBoundaries)) {
+        maxOffset = offset - 1;
+        break;
+      }
+    }
+
+    // Parse within the bounded section
+    for (let offset = 0; offset <= maxOffset; offset++) {
       const labelE = getCellValue(sheet, `E${ownerOccupiedRow + offset}`)?.toString().toLowerCase() || '';
       const labelA = getCellValue(sheet, `A${ownerOccupiedRow + offset}`)?.toString().toLowerCase() || '';
       const valueF = getCellValue(sheet, `F${ownerOccupiedRow + offset}`);
@@ -844,142 +940,227 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
       
       const label = labelE || labelA;
       const value = valueF ?? valueB;
-      const combinedLabel = `${labelA} ${labelE}`.toLowerCase();
 
-      // Boundary check: stop if we hit investment property section
-      if (offset > 0 && combinedLabel.includes('investment property')) {
-        break;
+      // Address parsing with validation
+      if (label.includes('address') && !prop.address) {
+        if (isValidPropertyAddress(value)) {
+          prop.address = value;
+        }
       }
-
-      if (label.includes('address') && !prop.address) prop.address = value;
-      // Only capture values that are specifically for owner-occupied, not investment properties
+      
+      // Property value - be specific to avoid capturing wrong values
       if ((label.includes('property value') || label.includes('current value') || 
-          (label.includes('value') && !label.includes('loan'))) && 
-          !label.includes('investment')) {
-        prop.value = parseCurrency(value);
+          (label === 'value') || (label.includes('value') && !label.includes('loan'))) && 
+          !label.includes('investment') && !label.includes('portfolio') && !label.includes('total')) {
+        const parsedValue = parseCurrency(value);
+        // Sanity check: property value should be reasonable (between $10k and $50M)
+        if (parsedValue >= 10000 && parsedValue <= 50000000) {
+          prop.value = parsedValue;
+        }
       }
-      if (label.includes('loan') && (label.includes('remaining') || label.includes('balance') || label.includes('owing'))) {
+      
+      // Loan remaining - explicit label matching
+      if ((label.includes('loan remaining') || label.includes('loan balance') || 
+          label.includes('remaining loan') || label.includes('balance owing') ||
+          (label.includes('loan') && (label.includes('remaining') || label.includes('balance') || label.includes('owing'))))) {
         prop.loanRemaining = parseCurrency(value);
       }
-      if (label.includes('interest rate') || label.includes('rate')) {
-        prop.interestRate = parsePercentage(value);
+      
+      // Interest rate - ensure it's actually a rate field, not ownership
+      if ((label.includes('interest rate') || label === 'rate' || label === 'interest') && 
+          !label.includes('ownership') && !label.includes('share')) {
+        const rate = parsePercentage(value);
+        // Interest rates are typically between 2% and 15%
+        if (rate >= 2 && rate <= 15) {
+          prop.interestRate = rate;
+        }
       }
-      if (label.includes('ownership')) prop.ownershipPercentage = parsePercentage(value) || 100;
-      if (label.includes('monthly') && label.includes('interest')) prop.monthlyInterestRepayment = parseCurrency(value);
+      
+      // Ownership percentage - must be explicitly ownership related
+      if (label.includes('ownership') || label.includes('share %') || label.includes('ownership %')) {
+        const pct = parsePercentage(value);
+        // Ownership is typically 50% or 100%
+        if (pct >= 1 && pct <= 100) {
+          prop.ownershipPercentage = pct;
+        }
+      }
+      
+      if (label.includes('monthly') && label.includes('interest') && label.includes('repayment')) {
+        prop.monthlyInterestRepayment = parseCurrency(value);
+      }
     }
 
-    if (prop.value > 0 || prop.loanRemaining > 0 || prop.address) {
+    // Only add property if it has meaningful data
+    if (prop.value > 0 || prop.loanRemaining > 0 || isValidPropertyAddress(prop.address)) {
       properties.push(prop);
     }
   }
 
-  // Investment Properties (search for multiple)
-  for (let propNum = 1; propNum <= 10; propNum++) {
-    const invPropRow = findRowByLabel(sheet, `investment property ${propNum}`) || 
-                       (propNum === 1 ? findRowByLabel(sheet, 'investment property') : null);
+  // Investment Properties - dynamic detection without assuming fixed count
+  // First, find all investment property section starts
+  const investmentPropertyRows: number[] = [];
+  const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z500');
+  
+  for (let row = 1; row <= range.e.r; row++) {
+    const labelA = getCellValue(sheet, `A${row}`)?.toString().toLowerCase() || '';
+    const labelE = getCellValue(sheet, `E${row}`)?.toString().toLowerCase() || '';
+    const combined = `${labelA} ${labelE}`;
     
-    if (invPropRow) {
-      const prop: ParsedProperty = {
-        propertyType: 'investment',
-        address: null,
-        value: 0,
-        loanRemaining: 0,
-        interestRate: 0,
-        ownershipPercentage: 100,
-        monthlyInterestRepayment: 0,
-        monthlyBodyCorporate: 0,
-        monthlyCouncilRates: 0,
-        monthlyWaterRates: 0,
-        monthlyRepairsMaintenance: 0,
-        monthlyPropertyManagement: 0,
-        monthlyLandlordInsurance: 0,
-        monthlyBuildingInsurance: 0,
-        monthlyRentalIncome: 0,
-        weeklyRentalIncome: 0,
-        totalMonthlyExpenditure: 0,
-        netMonthlyCashflow: 0
-      };
+    // Match "Investment Property", "Investment Property 1", "Investment Property 2", etc.
+    if (/investment\s*property\s*\d*/i.test(combined)) {
+      // Avoid duplicates (same row matched in both columns)
+      if (!investmentPropertyRows.includes(row)) {
+        investmentPropertyRows.push(row);
+      }
+    }
+  }
 
-      for (let offset = 0; offset <= 25; offset++) {
-        const labelE = getCellValue(sheet, `E${invPropRow + offset}`)?.toString().toLowerCase() || '';
+  // Parse each investment property section
+  for (let i = 0; i < investmentPropertyRows.length; i++) {
+    const invPropRow = investmentPropertyRows[i];
+    
+    // Determine the end boundary for this property
+    let maxOffset = 30;
+    const nextPropertyRow = investmentPropertyRows[i + 1];
+    
+    if (nextPropertyRow) {
+      maxOffset = nextPropertyRow - invPropRow - 1;
+    } else {
+      // Find the portfolio summary or other section boundary
+      for (let offset = 1; offset <= 40; offset++) {
         const labelA = getCellValue(sheet, `A${invPropRow + offset}`)?.toString().toLowerCase() || '';
-        const valueF = getCellValue(sheet, `F${invPropRow + offset}`);
-        const valueB = getCellValue(sheet, `B${invPropRow + offset}`);
-        const valueG = getCellValue(sheet, `G${invPropRow + offset}`);
+        const labelE = getCellValue(sheet, `E${invPropRow + offset}`)?.toString().toLowerCase() || '';
         
-        const label = labelE || labelA;
-        const value = valueF ?? valueB;
-
-        // Boundary check: stop if we hit a new section or the next investment property
-        const combinedLabel = `${labelA} ${labelE}`.toLowerCase();
-        if (offset > 0 && (
-          combinedLabel.includes('portfolio cashflow') ||
-          combinedLabel.includes('portfolio summary') ||
-          combinedLabel.includes('total portfolio') ||
-          (combinedLabel.includes('investment property') && !combinedLabel.includes(`investment property ${propNum}`))
-        )) {
+        if (isNewSection(labelA, labelE, sectionBoundaries)) {
+          maxOffset = offset - 1;
           break;
         }
+      }
+    }
 
-        if (label.includes('address') && !prop.address) prop.address = value;
-        // More specific value matching - exclude "total" and "portfolio" to avoid picking up summary values
-        if ((label.includes('property value') || label.includes('current value') || 
-            (label.includes('value') && !label.includes('loan'))) && 
-            !label.includes('total') && !label.includes('portfolio')) {
-          prop.value = parseCurrency(value);
-        }
-        if (label.includes('loan') && (label.includes('remaining') || label.includes('balance'))) {
-          prop.loanRemaining = parseCurrency(value);
-        }
-        if (label.includes('interest rate')) prop.interestRate = parsePercentage(value);
-        if (label.includes('ownership')) prop.ownershipPercentage = parsePercentage(value) || 100;
-        if (label.includes('monthly') && label.includes('interest') && label.includes('repayment')) {
-          prop.monthlyInterestRepayment = parseCurrency(value);
-        }
-        if (label.includes('body corporate') || label.includes('strata')) prop.monthlyBodyCorporate = parseCurrency(value);
-        if (label.includes('council')) prop.monthlyCouncilRates = parseCurrency(value);
-        if (label.includes('water')) prop.monthlyWaterRates = parseCurrency(value);
-        if (label.includes('repairs') || label.includes('maintenance')) prop.monthlyRepairsMaintenance = parseCurrency(value);
-        if (label.includes('property management') || label.includes('agent')) prop.monthlyPropertyManagement = parseCurrency(value);
-        if (label.includes('landlord insurance')) prop.monthlyLandlordInsurance = parseCurrency(value);
-        if (label.includes('building insurance')) prop.monthlyBuildingInsurance = parseCurrency(value);
-        if (label.includes('monthly') && label.includes('rental')) prop.monthlyRentalIncome = parseCurrency(value);
-        if (label.includes('weekly') && label.includes('rental')) {
-          prop.weeklyRentalIncome = parseCurrency(valueG) || parseCurrency(value);
-        }
-        // For expenditure within a property section, don't capture "total portfolio expenditure"
-        if (label.includes('total') && label.includes('expenditure') && !label.includes('portfolio')) {
-          prop.totalMonthlyExpenditure = parseCurrency(value);
-        }
-        if (label.includes('net') && label.includes('cashflow') && !label.includes('portfolio')) {
-          prop.netMonthlyCashflow = parseCurrency(value);
+    const prop: ParsedProperty = {
+      propertyType: 'investment',
+      address: null,
+      value: 0,
+      loanRemaining: 0,
+      interestRate: 0,
+      ownershipPercentage: 100,
+      monthlyInterestRepayment: 0,
+      monthlyBodyCorporate: 0,
+      monthlyCouncilRates: 0,
+      monthlyWaterRates: 0,
+      monthlyRepairsMaintenance: 0,
+      monthlyPropertyManagement: 0,
+      monthlyLandlordInsurance: 0,
+      monthlyBuildingInsurance: 0,
+      monthlyRentalIncome: 0,
+      weeklyRentalIncome: 0,
+      totalMonthlyExpenditure: 0,
+      netMonthlyCashflow: 0
+    };
+
+    for (let offset = 0; offset <= maxOffset; offset++) {
+      const labelE = getCellValue(sheet, `E${invPropRow + offset}`)?.toString().toLowerCase() || '';
+      const labelA = getCellValue(sheet, `A${invPropRow + offset}`)?.toString().toLowerCase() || '';
+      const valueF = getCellValue(sheet, `F${invPropRow + offset}`);
+      const valueB = getCellValue(sheet, `B${invPropRow + offset}`);
+      const valueG = getCellValue(sheet, `G${invPropRow + offset}`);
+      
+      const label = labelE || labelA;
+      const value = valueF ?? valueB;
+
+      // Address with validation
+      if (label.includes('address') && !prop.address) {
+        if (isValidPropertyAddress(value)) {
+          prop.address = value;
         }
       }
-
-      // Verify and reconcile weekly vs monthly rental income
-      // If weekly is provided and significantly differs from stated monthly, recalculate
-      if (prop.weeklyRentalIncome > 0) {
-        const calculatedMonthly = prop.weeklyRentalIncome * (52 / 12); // 4.333...
-        // If monthly wasn't captured or differs significantly (>5%), use calculated
-        if (prop.monthlyRentalIncome === 0 || 
-            Math.abs(prop.monthlyRentalIncome - calculatedMonthly) / calculatedMonthly > 0.05) {
-          prop.monthlyRentalIncome = Math.round(calculatedMonthly * 100) / 100;
+      
+      // Property value - exclude summary fields
+      if ((label.includes('property value') || label.includes('current value') || 
+          (label === 'value') || (label.includes('value') && !label.includes('loan'))) && 
+          !label.includes('total') && !label.includes('portfolio')) {
+        const parsedValue = parseCurrency(value);
+        if (parsedValue >= 10000 && parsedValue <= 50000000) {
+          prop.value = parsedValue;
         }
       }
-
-      // Recalculate net cashflow if not set or seems wrong
-      if (prop.monthlyRentalIncome > 0 || prop.totalMonthlyExpenditure > 0) {
-        const calculatedNet = prop.monthlyRentalIncome - prop.totalMonthlyExpenditure - prop.monthlyInterestRepayment;
-        if (prop.netMonthlyCashflow === 0 || 
-            Math.abs(prop.netMonthlyCashflow - calculatedNet) > 100) {
-          // Only override if significantly different
-          // Keep form value if close, as it may include other factors
+      
+      // Loan - explicit matching
+      if ((label.includes('loan remaining') || label.includes('loan balance') || 
+          label.includes('remaining loan') || label.includes('balance owing') ||
+          (label.includes('loan') && (label.includes('remaining') || label.includes('balance'))))) {
+        prop.loanRemaining = parseCurrency(value);
+      }
+      
+      // Interest rate with validation
+      if ((label.includes('interest rate') || label === 'rate') && 
+          !label.includes('ownership')) {
+        const rate = parsePercentage(value);
+        if (rate >= 2 && rate <= 15) {
+          prop.interestRate = rate;
         }
       }
-
-      if (prop.value > 0 || prop.monthlyRentalIncome > 0 || prop.address) {
-        properties.push(prop);
+      
+      // Ownership percentage with validation
+      if (label.includes('ownership') || label.includes('share %')) {
+        const pct = parsePercentage(value);
+        if (pct >= 1 && pct <= 100) {
+          prop.ownershipPercentage = pct;
+        }
       }
+      
+      if (label.includes('monthly') && label.includes('interest') && label.includes('repayment')) {
+        prop.monthlyInterestRepayment = parseCurrency(value);
+      }
+      if (label.includes('body corporate') || label.includes('strata')) {
+        prop.monthlyBodyCorporate = parseCurrency(value);
+      }
+      if (label.includes('council')) {
+        prop.monthlyCouncilRates = parseCurrency(value);
+      }
+      if (label.includes('water')) {
+        prop.monthlyWaterRates = parseCurrency(value);
+      }
+      if (label.includes('repairs') || label.includes('maintenance')) {
+        prop.monthlyRepairsMaintenance = parseCurrency(value);
+      }
+      if (label.includes('property management') || label.includes('agent fee')) {
+        prop.monthlyPropertyManagement = parseCurrency(value);
+      }
+      if (label.includes('landlord insurance')) {
+        prop.monthlyLandlordInsurance = parseCurrency(value);
+      }
+      if (label.includes('building insurance')) {
+        prop.monthlyBuildingInsurance = parseCurrency(value);
+      }
+      if (label.includes('monthly') && label.includes('rental')) {
+        prop.monthlyRentalIncome = parseCurrency(value);
+      }
+      if (label.includes('weekly') && label.includes('rental')) {
+        prop.weeklyRentalIncome = parseCurrency(valueG) || parseCurrency(value);
+      }
+      // Expenditure within property section only
+      if (label.includes('expenditure') && !label.includes('portfolio') && !label.includes('total portfolio')) {
+        prop.totalMonthlyExpenditure = parseCurrency(value);
+      }
+      if (label.includes('net') && label.includes('cashflow') && !label.includes('portfolio')) {
+        prop.netMonthlyCashflow = parseCurrency(value);
+      }
+    }
+
+    // Reconcile weekly vs monthly rental income
+    if (prop.weeklyRentalIncome > 0) {
+      const calculatedMonthly = prop.weeklyRentalIncome * (52 / 12);
+      if (prop.monthlyRentalIncome === 0 || 
+          Math.abs(prop.monthlyRentalIncome - calculatedMonthly) / calculatedMonthly > 0.05) {
+        prop.monthlyRentalIncome = Math.round(calculatedMonthly * 100) / 100;
+      }
+    }
+
+    // Only add if it has meaningful data (address or significant financial values)
+    if (prop.value > 0 || prop.monthlyRentalIncome > 0 || isValidPropertyAddress(prop.address)) {
+      properties.push(prop);
     }
   }
 

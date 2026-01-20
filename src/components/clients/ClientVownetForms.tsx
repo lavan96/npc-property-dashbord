@@ -404,7 +404,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       'application/vnd.ms-excel.sheet.macroEnabled.12': ['.xlsm'],
       'application/vnd.ms-excel.sheet.binary.macroEnabled.12': ['.xlsb'],
       'application/octet-stream': ['.xlsx', '.xls', '.xlsm', '.xlsb'],
-      'text/csv': ['.csv']
+      'text/csv': ['.csv'],
+      'application/pdf': ['.pdf']
     },
     disabled: uploadStatus === 'parsing' || uploadStatus === 'importing'
   });
@@ -471,7 +472,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
                 <div className="flex flex-col items-center gap-2">
                   <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">
-                    Drag & drop VowNet form to import all client data
+                    Drag & drop VowNet form to import all client data (Excel or PDF)
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Automatically populates personal details, employment, income, assets, liabilities & properties
