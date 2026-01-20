@@ -2200,10 +2200,22 @@ export function PortfolioAnalysisPDFGenerator({
         console.log('✓ Borrowing capacity page complete');
       }
       
-      // ============= PAGE 6: RISK ASSESSMENT =============
+      // ============= PAGE: RISK ASSESSMENT =============
       console.log('📝 Creating risk assessment page...');
       
-      if (needsNewPage(yPos, 200)) {
+      // Calculate required space for Risk Assessment section
+      const risk = analysisData.analysis?.riskAssessment;
+      const marketRisks = safeArray(risk?.marketRisks);
+      const mitigationStrategies = safeArray(risk?.mitigationStrategies);
+      
+      // Estimate space needed: header + badge + table + market risks + mitigation strategies
+      const riskTableHeight = 100; // Fixed table size
+      const marketRisksHeight = marketRisks.length * 20 + 35; // bullets + header
+      const mitigationHeight = mitigationStrategies.length * 20 + 35;
+      const totalRiskSectionHeight = 80 + riskTableHeight + marketRisksHeight + mitigationHeight;
+      
+      // Force new page if insufficient space
+      if (needsNewPage(yPos, totalRiskSectionHeight)) {
         page = addContentPage();
         yPos = PAGE_HEIGHT - MARGIN_TOP;
       } else {
@@ -2211,8 +2223,6 @@ export function PortfolioAnalysisPDFGenerator({
       }
       
       yPos = drawSectionHeader(page, 'Risk Assessment', yPos);
-      
-      const risk = analysisData.analysis?.riskAssessment;
       
       // Overall risk level badge
       const overallRiskLevel = safeString(risk?.overallRiskLevel, 'Unknown');
@@ -2256,17 +2266,25 @@ export function PortfolioAnalysisPDFGenerator({
       const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.65]);
       yPos = riskTableLastY - SUBSECTION_SPACING;
       
-      // Market risks
-      const marketRisks = safeArray(risk?.marketRisks);
+      // Market risks - check for page break
       if (marketRisks.length > 0) {
+        if (needsNewPage(yPos, marketRisksHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Risk Assessment (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Market Risks', yPos, DANGER_COLOR);
         yPos = drawBulletList(page, marketRisks, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= SUBSECTION_SPACING;
       }
       
-      // Mitigation strategies
-      const mitigationStrategies = safeArray(risk?.mitigationStrategies);
+      // Mitigation strategies - check for page break
       if (mitigationStrategies.length > 0) {
+        if (needsNewPage(yPos, mitigationHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Risk Assessment (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Mitigation Strategies', yPos, SUCCESS_COLOR);
         yPos = drawBulletList(page, mitigationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= SUBSECTION_SPACING;
@@ -2274,7 +2292,7 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Risk assessment page complete');
       
-      // ============= PAGE 7: GROWTH OPPORTUNITIES =============
+      // ============= PAGE: GROWTH OPPORTUNITIES =============
       console.log('📝 Creating growth opportunities page...');
       page = addContentPage();
       yPos = PAGE_HEIGHT - MARGIN_TOP;
@@ -2286,6 +2304,12 @@ export function PortfolioAnalysisPDFGenerator({
       // Equity Release Options
       const equityReleaseOptions = safeArray(growth?.equityReleaseOptions);
       if (equityReleaseOptions.length > 0) {
+        const equityHeight = equityReleaseOptions.length * 22 + 35;
+        if (needsNewPage(yPos, equityHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Growth Opportunities (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Equity Release Options', yPos);
         yPos = drawBulletList(page, equityReleaseOptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= PARAGRAPH_SPACING;
@@ -2294,6 +2318,12 @@ export function PortfolioAnalysisPDFGenerator({
       // Refinancing Opportunities
       const refinancingOpportunities = safeArray(growth?.refinancingOpportunities);
       if (refinancingOpportunities.length > 0) {
+        const refinanceHeight = refinancingOpportunities.length * 22 + 35;
+        if (needsNewPage(yPos, refinanceHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Growth Opportunities (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Refinancing Opportunities', yPos);
         yPos = drawBulletList(page, refinancingOpportunities, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= PARAGRAPH_SPACING;
@@ -2302,6 +2332,12 @@ export function PortfolioAnalysisPDFGenerator({
       // Next Purchase Recommendations
       const nextPurchaseRecs = safeArray(growth?.nextPurchaseRecommendations);
       if (nextPurchaseRecs.length > 0) {
+        const nextPurchaseHeight = nextPurchaseRecs.length * 22 + 35;
+        if (needsNewPage(yPos, nextPurchaseHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Growth Opportunities (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Next Purchase Recommendations', yPos, PRIMARY_COLOR);
         yPos = drawBulletList(page, nextPurchaseRecs, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= PARAGRAPH_SPACING;
@@ -2310,6 +2346,12 @@ export function PortfolioAnalysisPDFGenerator({
       // Optimization Strategies
       const optimizationStrategies = safeArray(growth?.optimizationStrategies);
       if (optimizationStrategies.length > 0) {
+        const optimizeHeight = optimizationStrategies.length * 22 + 35;
+        if (needsNewPage(yPos, optimizeHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Growth Opportunities (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Portfolio Optimization Strategies', yPos);
         yPos = drawBulletList(page, optimizationStrategies, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= PARAGRAPH_SPACING;
@@ -2349,7 +2391,7 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Projections page complete');
       
-      // ============= PAGE 9: STRATEGIC RECOMMENDATIONS =============
+      // ============= PAGE: STRATEGIC RECOMMENDATIONS =============
       console.log('📝 Creating strategic recommendations page...');
       page = addContentPage();
       yPos = PAGE_HEIGHT - MARGIN_TOP;
@@ -2358,13 +2400,20 @@ export function PortfolioAnalysisPDFGenerator({
       
       const recommendations = analysisData.analysis?.strategicRecommendations;
       
-      // Priority Actions (highlighted) - improved spacing and margins
+      // Priority Actions (highlighted) - with page break detection
       const priorityActions = safeArray(recommendations?.priorityActions);
       if (priorityActions.length > 0) {
         const actionItemHeight = 28;
         const boxPadding = 18;
         const headerHeight = 32;
         const boxHeight = priorityActions.length * actionItemHeight + headerHeight + boxPadding * 2;
+        
+        // Check if box fits on current page
+        if (needsNewPage(yPos, boxHeight + 20)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Strategic Recommendations', yPos);
+        }
         
         page.drawRectangle({
           x: MARGIN_LEFT,
@@ -2402,6 +2451,12 @@ export function PortfolioAnalysisPDFGenerator({
       // Short-Term (0-12 months)
       const shortTerm = safeArray(recommendations?.shortTerm);
       if (shortTerm.length > 0) {
+        const shortTermHeight = shortTerm.length * 25 + 35;
+        if (needsNewPage(yPos, shortTermHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Strategic Recommendations (continued)', yPos);
+        }
         yPos = drawSubsectionHeader(page, 'Short-Term (0-12 months)', yPos);
         yPos = drawBulletList(page, shortTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= SUBSECTION_SPACING;
@@ -2410,9 +2465,11 @@ export function PortfolioAnalysisPDFGenerator({
       // Medium-Term (1-3 years)
       const mediumTerm = safeArray(recommendations?.mediumTerm);
       if (mediumTerm.length > 0) {
-        if (needsNewPage(yPos, 100)) {
+        const mediumTermHeight = mediumTerm.length * 25 + 35;
+        if (needsNewPage(yPos, mediumTermHeight)) {
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Strategic Recommendations (continued)', yPos);
         }
         yPos = drawSubsectionHeader(page, 'Medium-Term (1-3 years)', yPos);
         yPos = drawBulletList(page, mediumTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
@@ -2422,9 +2479,11 @@ export function PortfolioAnalysisPDFGenerator({
       // Long-Term (3+ years)
       const longTerm = safeArray(recommendations?.longTerm);
       if (longTerm.length > 0) {
-        if (needsNewPage(yPos, 100)) {
+        const longTermHeight = longTerm.length * 25 + 35;
+        if (needsNewPage(yPos, longTermHeight)) {
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSectionHeader(page, 'Strategic Recommendations (continued)', yPos);
         }
         yPos = drawSubsectionHeader(page, 'Long-Term (3+ years)', yPos);
         yPos = drawBulletList(page, longTerm, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
