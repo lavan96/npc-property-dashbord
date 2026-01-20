@@ -168,12 +168,6 @@ serve(async (req) => {
       portfolioMetrics.worstPerformer = sortedByPerformance[sortedByPerformance.length - 1];
     }
 
-    // Helper to check if property is owner-occupied
-    const isOwnerOccupied = (propertyType: string) => 
-      propertyType?.toLowerCase() === 'owner_occupied' || 
-      propertyType?.toLowerCase() === 'owner-occupied' ||
-      propertyType?.toLowerCase() === 'ppor';
-
     // Generate property-level analysis with property-type awareness
     const propertyAnalyses = properties.map((prop, index) => {
       const value = Number(prop.value) || 0;
