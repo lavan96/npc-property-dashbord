@@ -1002,42 +1002,101 @@ export function PortfolioAnalysisPDFGenerator({
       }
       
       // ============= OVERLAY DYNAMIC TEXT ON COVER =============
-      // Report Title - positioned in the center-lower area
-      const reportTitleY = PAGE_HEIGHT * 0.35;
+      // Report Title - positioned in the upper-center area with decorative lines
+      const reportTitleY = PAGE_HEIGHT * 0.62;
       const reportTitle = 'Portfolio Performance Report';
-      const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, 36);
+      const reportTitleSize = 32;
+      const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, reportTitleSize);
+      
+      // Draw horizontal decorative lines on either side of title
+      const lineLength = 80;
+      const lineGap = 20;
+      const titleCenterX = PAGE_WIDTH / 2;
+      const titleLeftEdge = titleCenterX - reportTitleWidth / 2;
+      const titleRightEdge = titleCenterX + reportTitleWidth / 2;
+      
+      // Left line
+      coverPage.drawLine({
+        start: { x: titleLeftEdge - lineGap - lineLength, y: reportTitleY + 8 },
+        end: { x: titleLeftEdge - lineGap, y: reportTitleY + 8 },
+        thickness: 1,
+        color: NPC_GOLD,
+      });
+      
+      // Right line
+      coverPage.drawLine({
+        start: { x: titleRightEdge + lineGap, y: reportTitleY + 8 },
+        end: { x: titleRightEdge + lineGap + lineLength, y: reportTitleY + 8 },
+        thickness: 1,
+        color: NPC_GOLD,
+      });
+      
+      // Draw title text
       coverPage.drawText(reportTitle, {
         x: (PAGE_WIDTH - reportTitleWidth) / 2,
         y: reportTitleY,
-        size: 36,
+        size: reportTitleSize,
         font: playfairFont,
         color: NPC_WHITE,
       });
       
-      // Client Name - below the report title
-      const clientNameY = reportTitleY - 50;
+      // Draw diamond icon below title
+      const diamondY = reportTitleY - 45;
+      const diamondSize = 10;
+      const diamondCenterX = PAGE_WIDTH / 2;
+      
+      // Draw rotated square (diamond shape) using lines
+      coverPage.drawLine({
+        start: { x: diamondCenterX, y: diamondY + diamondSize },
+        end: { x: diamondCenterX + diamondSize, y: diamondY },
+        thickness: 2,
+        color: NPC_GOLD,
+      });
+      coverPage.drawLine({
+        start: { x: diamondCenterX + diamondSize, y: diamondY },
+        end: { x: diamondCenterX, y: diamondY - diamondSize },
+        thickness: 2,
+        color: NPC_GOLD,
+      });
+      coverPage.drawLine({
+        start: { x: diamondCenterX, y: diamondY - diamondSize },
+        end: { x: diamondCenterX - diamondSize, y: diamondY },
+        thickness: 2,
+        color: NPC_GOLD,
+      });
+      coverPage.drawLine({
+        start: { x: diamondCenterX - diamondSize, y: diamondY },
+        end: { x: diamondCenterX, y: diamondY + diamondSize },
+        thickness: 2,
+        color: NPC_GOLD,
+      });
+      
+      // Client Name - below the diamond icon
+      const clientNameY = diamondY - 40;
       const clientText = stripEmojis(analysisData.clientName).toUpperCase();
-      const clientNameWidth = cinzelFont.widthOfTextAtSize(clientText, 16);
+      const clientNameSize = 18;
+      const clientNameWidth = cinzelFont.widthOfTextAtSize(clientText, clientNameSize);
       coverPage.drawText(clientText, {
         x: (PAGE_WIDTH - clientNameWidth) / 2,
         y: clientNameY,
-        size: 16,
+        size: clientNameSize,
         font: cinzelFont,
         color: NPC_GOLD,
       });
       
       // Date - below the client name
-      const dateY = clientNameY - 45;
+      const dateY = clientNameY - 35;
       const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
       });
-      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, 14);
+      const dateSize = 14;
+      const dateWidth = helveticaFont.widthOfTextAtSize(dateText, dateSize);
       coverPage.drawText(dateText, {
         x: (PAGE_WIDTH - dateWidth) / 2,
         y: dateY,
-        size: 14,
+        size: dateSize,
         font: helveticaFont,
         color: NPC_WHITE,
       });
