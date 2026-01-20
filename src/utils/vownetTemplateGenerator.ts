@@ -173,6 +173,33 @@ export function generateVownetTemplate(data: VownetExportData): XLSX.WorkBook {
     formData.push(['', '', '', '', 'Net Monthly Cashflow ($)', prop.net_monthly_cashflow || '', '', '', '', '', '']);
   });
 
+  // Personal Expenses (Rental Properties - where client pays rent)
+  const rentalProps = data.properties.filter(p => p.property_type === 'rental');
+  if (rentalProps.length > 0) {
+    formData.push(['', '', '', '', '', '', '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Personal Expenses', '', '', '', '', '', '']);
+    
+    let totalWeeklyRent = 0;
+    let totalMonthlyRent = 0;
+    
+    rentalProps.forEach((prop, index) => {
+      // For rental properties, monthly_rental_income stores the rent they PAY
+      const monthlyRent = prop.monthly_rental_income || 0;
+      const weeklyRent = prop.weekly_rental_income || (monthlyRent ? Math.round(monthlyRent / 4.33) : 0);
+      totalWeeklyRent += weeklyRent;
+      totalMonthlyRent += monthlyRent;
+      
+      formData.push(['', '', '', '', `Rental Property ${index + 1}`, '', '', '', '', '', '']);
+      formData.push(['', '', '', '', 'Address', prop.address || '', '', '', '', '', '']);
+      formData.push(['', '', '', '', 'Weekly Rent Paid ($)', weeklyRent, '', '', '', '', '']);
+      formData.push(['', '', '', '', 'Monthly Rent Paid ($)', monthlyRent, '', '', '', '', '']);
+    });
+    
+    formData.push(['', '', '', '', '', '', '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Total Weekly Rent Expense', totalWeeklyRent, '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Total Monthly Rent Expense', totalMonthlyRent, '', '', '', '', '']);
+  }
+
   // Portfolio Cashflow Analysis
   formData.push(['', '', '', '', '', '', '', '', '', '', '']);
   formData.push(['', '', '', '', 'Portfolio Cashflow Analysis', '', '', '', '', '', '']);
