@@ -366,43 +366,36 @@ export function PortfolioAnalysisPDFGenerator({
       const timesItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
       
       // Fetch and embed custom Google Fonts (Playfair Display Medium 500 & Cinzel Bold 700)
-      console.log('📥 Fetching custom fonts...');
+      // Using direct TTF URLs from Google Fonts CDN
+      console.log('📥 Fetching custom fonts (TTF format for pdf-lib)...');
       
-      let playfairFont = helveticaFont; // Fallback to Helvetica
+      let playfairFont = timesItalic; // Fallback to Times Italic (closer to Playfair style)
       let cinzelFont = helveticaBold; // Fallback to Helvetica Bold
       
       try {
-        // Playfair Display Medium 500 (not italic) from Google Fonts CSS API
-        const playfairCssUrl = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&display=swap';
-        const playfairCssResponse = await fetch(playfairCssUrl);
-        const playfairCss = await playfairCssResponse.text();
-        const playfairUrlMatch = playfairCss.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2?)\)/);
-        
-        if (playfairUrlMatch) {
-          const playfairFontResponse = await fetch(playfairUrlMatch[1]);
+        // Playfair Display Medium 500 - fetch TTF via fonts.gstatic.com with explicit format
+        const playfairTtfUrl = 'https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvXDXbtM.ttf';
+        const playfairFontResponse = await fetch(playfairTtfUrl);
+        if (playfairFontResponse.ok) {
           const playfairFontBytes = await playfairFontResponse.arrayBuffer();
           playfairFont = await pdfDoc.embedFont(playfairFontBytes);
-          console.log('✓ Playfair Display Medium 500 font embedded');
+          console.log('✓ Playfair Display Medium 500 font embedded (TTF)');
         }
       } catch (fontError) {
-        console.warn('Could not load Playfair Display Medium, using fallback:', fontError);
+        console.warn('Could not load Playfair Display Medium TTF, using fallback:', fontError);
       }
       
       try {
-        // Cinzel Bold 700 from Google Fonts CSS API
-        const cinzelCssUrl = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap';
-        const cinzelCssResponse = await fetch(cinzelCssUrl);
-        const cinzelCss = await cinzelCssResponse.text();
-        const cinzelUrlMatch = cinzelCss.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2?)\)/);
-        
-        if (cinzelUrlMatch) {
-          const cinzelFontResponse = await fetch(cinzelUrlMatch[1]);
+        // Cinzel Bold 700 - fetch TTF via fonts.gstatic.com
+        const cinzelTtfUrl = 'https://fonts.gstatic.com/s/cinzel/v23/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnfY3lCQ.ttf';
+        const cinzelFontResponse = await fetch(cinzelTtfUrl);
+        if (cinzelFontResponse.ok) {
           const cinzelFontBytes = await cinzelFontResponse.arrayBuffer();
           cinzelFont = await pdfDoc.embedFont(cinzelFontBytes);
-          console.log('✓ Cinzel Bold 700 font embedded');
+          console.log('✓ Cinzel Bold 700 font embedded (TTF)');
         }
       } catch (fontError) {
-        console.warn('Could not load Cinzel Bold, using fallback:', fontError);
+        console.warn('Could not load Cinzel Bold TTF, using fallback:', fontError);
       }
       
       console.log('✓ PDF document created with fonts');
@@ -974,9 +967,9 @@ export function PortfolioAnalysisPDFGenerator({
       console.log('📝 Creating NPC branded cover page from image template...');
       const coverPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       
-      // Load and embed the cover page image
+      // Load and embed the cover page image (new template with logo/tagline/line+diamond baked in)
       try {
-        const coverImageResponse = await fetch('/templates/npc-portfolio-cover.jpg');
+        const coverImageResponse = await fetch('/templates/npc-portfolio-cover-new.jpg');
         const coverImageBytes = await coverImageResponse.arrayBuffer();
         const coverImage = await pdfDoc.embedJpg(coverImageBytes);
         
@@ -1002,51 +995,16 @@ export function PortfolioAnalysisPDFGenerator({
       }
       
       // ============= OVERLAY DYNAMIC TEXT ON COVER =============
-      // Layout order (top to bottom): Line → Diamond → Title → Client Name → Date
+      // The template already has: Logo, "NAIDU PROPERTY CONSULTING SERVICES", 
+      // "YOUR DEDICATED PROPERTY PARTNER", horizontal line, and diamond icon
+      // We only need to add: Report Title, Client Name, and Date BELOW the diamond
       
-      // Horizontal gold line - positioned in upper area
-      const lineY = PAGE_HEIGHT * 0.58;
-      const lineMargin = 72; // Match page margins
-      coverPage.drawLine({
-        start: { x: lineMargin, y: lineY },
-        end: { x: PAGE_WIDTH - lineMargin, y: lineY },
-        thickness: 1,
-        color: NPC_GOLD,
-      });
+      // The diamond in template is at approximately 38% from bottom (62% from top)
+      // We position our text starting below that
       
-      // Diamond icon - centered below the line
-      const diamondY = lineY - 25;
-      const diamondSize = 8;
-      const diamondCenterX = PAGE_WIDTH / 2;
-      
-      // Draw filled diamond shape using lines
-      coverPage.drawLine({
-        start: { x: diamondCenterX, y: diamondY + diamondSize },
-        end: { x: diamondCenterX + diamondSize, y: diamondY },
-        thickness: 2,
-        color: NPC_GOLD,
-      });
-      coverPage.drawLine({
-        start: { x: diamondCenterX + diamondSize, y: diamondY },
-        end: { x: diamondCenterX, y: diamondY - diamondSize },
-        thickness: 2,
-        color: NPC_GOLD,
-      });
-      coverPage.drawLine({
-        start: { x: diamondCenterX, y: diamondY - diamondSize },
-        end: { x: diamondCenterX - diamondSize, y: diamondY },
-        thickness: 2,
-        color: NPC_GOLD,
-      });
-      coverPage.drawLine({
-        start: { x: diamondCenterX - diamondSize, y: diamondY },
-        end: { x: diamondCenterX, y: diamondY + diamondSize },
-        thickness: 2,
-        color: NPC_GOLD,
-      });
-      
-      // Report Title - positioned below diamond (Playfair Display Medium 500)
-      const reportTitleY = diamondY - 45;
+      // Report Title - "Portfolio Performance Report" (Playfair Display Medium 500)
+      // Position: centered, below the template's diamond icon
+      const reportTitleY = PAGE_HEIGHT * 0.32; // ~32% from bottom, below the diamond
       const reportTitle = 'Portfolio Performance Report';
       const reportTitleSize = 32;
       const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, reportTitleSize);
@@ -1058,10 +1016,11 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_WHITE,
       });
       
-      // Client Name - below title (Cinzel Bold 700)
-      const clientNameY = reportTitleY - 40;
+      // Client Name - (Cinzel Bold 700, UPPERCASE, Gold)
+      // Position: centered, below title with proper spacing
+      const clientNameY = reportTitleY - 45;
       const clientText = stripEmojis(analysisData.clientName).toUpperCase();
-      const clientNameSize = 18;
+      const clientNameSize = 16;
       const clientNameWidth = cinzelFont.widthOfTextAtSize(clientText, clientNameSize);
       coverPage.drawText(clientText, {
         x: (PAGE_WIDTH - clientNameWidth) / 2,
@@ -1071,7 +1030,8 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Date - below client name
+      // Date - (Helvetica, White)
+      // Position: centered, below client name
       const dateY = clientNameY - 35;
       const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
         day: 'numeric',
