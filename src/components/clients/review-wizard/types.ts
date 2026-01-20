@@ -4,6 +4,7 @@ export type ReviewStep =
   | 'data_completeness'
   | 'metrics_review'
   | 'scorecard'
+  | 'borrowing_capacity'
   | 'flags_scenarios'
   | 'recommendations'
   | 'generate_report';

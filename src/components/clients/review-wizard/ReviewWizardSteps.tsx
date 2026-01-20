@@ -13,6 +13,7 @@ const stepLabels: Record<ReviewStep, string> = {
   data_completeness: 'Data Quality',
   metrics_review: 'Metrics',
   scorecard: 'Scorecard',
+  borrowing_capacity: 'Borrowing Power',
   flags_scenarios: 'Flags & Scenarios',
   recommendations: 'Recommendations',
   generate_report: 'Complete'

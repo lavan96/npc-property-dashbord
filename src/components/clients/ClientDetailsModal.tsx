@@ -47,6 +47,7 @@ import { ClientReminders } from './ClientReminders';
 import { ClientActivityTimeline } from './ClientActivityTimeline';
 import { ClientFiles } from './ClientFiles';
 import { ClientScoreCard } from './ClientScoreCard';
+import { BorrowingCapacityCard } from '@/components/borrowing-capacity';
 import { ClientAIInsights } from './ClientAIInsights';
 import { ClientVownetUpload } from './ClientVownetUpload';
 import { ClientVownetForms } from './ClientVownetForms';
@@ -692,6 +693,7 @@ NPC Team`
 
             <TabsContent value="insights" className="mt-4 space-y-4">
               <ClientScoreCard clientId={client.id} />
+              <BorrowingCapacityCard clientId={client.id} />
               <ClientTags clientId={client.id} />
               <ClientAIInsights clientId={client.id} />
             </TabsContent>

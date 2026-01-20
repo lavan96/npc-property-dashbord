@@ -12,6 +12,7 @@ import { ReviewWizardSteps } from './ReviewWizardSteps';
 import { DataCompletenessStep } from './DataCompletenessStep';
 import { MetricsReviewStep } from './MetricsReviewStep';
 import { ScorecardStep } from './ScorecardStep';
+import { BorrowingCapacityStep } from './BorrowingCapacityStep';
 import { FlagsScenariosStep } from './FlagsScenariosStep';
 import { RecommendationsStep } from './RecommendationsStep';
 import { GenerateReportStep } from './GenerateReportStep';
@@ -48,6 +49,8 @@ export function ReviewWizard({
         return <MetricsReviewStep {...wizard.metrics} />;
       case 'scorecard':
         return <ScorecardStep {...wizard.scorecard} />;
+      case 'borrowing_capacity':
+        return <BorrowingCapacityStep clientId={clientId} clientName={clientName} />;
       case 'flags_scenarios':
         return <FlagsScenariosStep flags={wizard.flags} scenarios={wizard.scenarios} />;
       case 'recommendations':
