@@ -154,35 +154,46 @@ serve(async (req) => {
       portfolioMetrics.worstPerformer = sortedByPerformance[sortedByPerformance.length - 1];
     }
 
-    // Generate property-level analysis
+    // Helper to check if property is owner-occupied
+    const isOwnerOccupied = (propertyType: string) => 
+      propertyType?.toLowerCase() === 'owner_occupied' || 
+      propertyType?.toLowerCase() === 'owner-occupied' ||
+      propertyType?.toLowerCase() === 'ppor';
+
+    // Generate property-level analysis with property-type awareness
     const propertyAnalyses = properties.map((prop, index) => {
       const value = Number(prop.value) || 0;
       const loan = Number(prop.loan_remaining) || 0;
       const equity = value - loan;
       const lvr = value > 0 ? (loan / value) * 100 : 0;
-      const weeklyRent = Number(prop.weekly_rental_income) || 0;
+      const ownerOccupied = isOwnerOccupied(prop.property_type);
+      
+      // Investment-specific metrics (only calculate for investment properties)
+      const weeklyRent = ownerOccupied ? 0 : (Number(prop.weekly_rental_income) || 0);
       const annualRent = weeklyRent * 52;
-      const grossYield = value > 0 ? (annualRent / value) * 100 : 0;
-      const monthlyIncome = Number(prop.monthly_rental_income) || 0;
+      const grossYield = (!ownerOccupied && value > 0) ? (annualRent / value) * 100 : null;
+      const monthlyIncome = ownerOccupied ? 0 : (Number(prop.monthly_rental_income) || 0);
       const monthlyExpenses = Number(prop.total_monthly_expenditure) || 0;
-      const netCashflow = Number(prop.net_monthly_cashflow) || 0;
-      const cashOnCashReturn = equity > 0 ? ((netCashflow * 12) / equity) * 100 : 0;
+      const netCashflow = ownerOccupied ? -monthlyExpenses : (Number(prop.net_monthly_cashflow) || 0);
+      const cashOnCashReturn = (!ownerOccupied && equity > 0) ? ((netCashflow * 12) / equity) * 100 : null;
 
       return {
         propertyNumber: index + 1,
         address: prop.address,
         propertyType: prop.property_type,
+        isOwnerOccupied: ownerOccupied,
         value,
         loan,
         equity,
         lvr: lvr.toFixed(1),
         ownershipPercentage: prop.ownership_percentage || 100,
-        grossYield: grossYield.toFixed(2),
-        monthlyRentalIncome: monthlyIncome,
+        // Return null for investment-specific metrics on owner-occupied properties
+        grossYield: grossYield !== null ? grossYield.toFixed(2) : 'N/A',
+        monthlyRentalIncome: ownerOccupied ? null : monthlyIncome,
         monthlyExpenses,
-        netMonthlyCashflow: netCashflow,
-        annualCashflow: netCashflow * 12,
-        cashOnCashReturn: cashOnCashReturn.toFixed(2),
+        netMonthlyCashflow: ownerOccupied ? null : netCashflow,
+        annualCashflow: ownerOccupied ? null : netCashflow * 12,
+        cashOnCashReturn: cashOnCashReturn !== null ? cashOnCashReturn.toFixed(2) : 'N/A',
         portfolioContribution: portfolioMetrics.totalValue > 0 
           ? ((value / portfolioMetrics.totalValue) * 100).toFixed(1) 
           : '0',
@@ -213,6 +224,12 @@ serve(async (req) => {
 **INDIVIDUAL PROPERTY ANALYSIS:**
 ${JSON.stringify(propertyAnalyses, null, 2)}
 
+**IMPORTANT CONTEXT:**
+- Owner-occupied properties should be evaluated differently from investment properties
+- Do NOT penalize owner-occupied properties for lack of rental income, yield, or cash flow
+- Owner-occupied properties should be scored on: equity position, LVR, and capital growth potential
+- Investment properties should be scored on: yield, cash flow, LVR, and capital growth
+
 **ANALYSIS REQUIREMENTS:**
 Provide a comprehensive portfolio analysis with these sections:
 
@@ -222,19 +239,20 @@ Provide a comprehensive portfolio analysis with these sections:
    - Overall recommendation
 
 2. PORTFOLIO COMPOSITION ANALYSIS
-   - Asset allocation assessment
+   - Asset allocation assessment (distinguish owner-occupied vs investment)
    - Geographic diversification (if applicable)
    - Property type mix evaluation
 
 3. FINANCIAL HEALTH METRICS
-   - Cashflow analysis (positive/negative gearing)
-   - Equity position assessment
+   - Cashflow analysis (for investment properties only)
+   - Equity position assessment (for all properties)
    - Debt serviceability analysis
    - LVR risk assessment
 
 4. INDIVIDUAL PROPERTY RANKINGS
-   - Rank all properties by performance
-   - Identify star performers vs underperformers
+   - Rank investment properties by performance (yield, cashflow)
+   - Rank owner-occupied properties by equity position only
+   - Identify star performers vs underperformers (investment only)
    - Specific recommendations per property
 
 5. RISK ASSESSMENT

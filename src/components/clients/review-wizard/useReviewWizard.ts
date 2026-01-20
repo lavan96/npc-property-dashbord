@@ -12,15 +12,34 @@ import type {
   Scenario
 } from './types';
 
-const REQUIRED_PROPERTY_FIELDS = [
+// Required fields for investment properties (rental income related)
+const REQUIRED_INVESTMENT_FIELDS = [
   'value', 'loan_remaining', 'interest_rate', 'monthly_rental_income',
   'monthly_council_rates', 'monthly_water_rates', 'monthly_property_management'
 ];
 
-const OPTIONAL_PROPERTY_FIELDS = [
+// Required fields for owner-occupied properties (no rental income fields)
+const REQUIRED_OWNER_OCCUPIED_FIELDS = [
+  'value', 'loan_remaining', 'interest_rate'
+];
+
+// Optional fields for investment properties
+const OPTIONAL_INVESTMENT_FIELDS = [
   'monthly_body_corporate', 'monthly_repairs_maintenance', 
   'monthly_landlord_insurance', 'monthly_building_insurance'
 ];
+
+// Optional fields for owner-occupied properties
+const OPTIONAL_OWNER_OCCUPIED_FIELDS = [
+  'monthly_council_rates', 'monthly_water_rates',
+  'monthly_body_corporate', 'monthly_building_insurance'
+];
+
+// Helper to determine if property is owner-occupied
+const isOwnerOccupied = (propertyType: string) => 
+  propertyType?.toLowerCase() === 'owner_occupied' || 
+  propertyType?.toLowerCase() === 'owner-occupied' ||
+  propertyType?.toLowerCase() === 'ppor';
 
 export function useReviewWizard(
   clientId: string,
@@ -43,16 +62,21 @@ export function useReviewWizard(
       const issues: string[] = [];
       const warnings: string[] = [];
 
-      // Check required fields
-      REQUIRED_PROPERTY_FIELDS.forEach(field => {
+      // Determine field requirements based on property type
+      const ownerOccupied = isOwnerOccupied(prop.property_type);
+      const requiredFields = ownerOccupied ? REQUIRED_OWNER_OCCUPIED_FIELDS : REQUIRED_INVESTMENT_FIELDS;
+      const optionalFields = ownerOccupied ? OPTIONAL_OWNER_OCCUPIED_FIELDS : OPTIONAL_INVESTMENT_FIELDS;
+
+      // Check required fields (property-type aware)
+      requiredFields.forEach(field => {
         const value = prop[field];
         if (value === null || value === undefined || value === 0) {
           missingFields.push(field.replace(/_/g, ' '));
         }
       });
 
-      // Check optional fields
-      OPTIONAL_PROPERTY_FIELDS.forEach(field => {
+      // Check optional fields (property-type aware)
+      optionalFields.forEach(field => {
         const value = prop[field];
         if (value === null || value === undefined) {
           warnings.push(`Missing ${field.replace(/_/g, ' ')}`);
@@ -68,13 +92,15 @@ export function useReviewWizard(
         issues.push('Interest rate seems unusual');
       }
 
-      const totalFields = REQUIRED_PROPERTY_FIELDS.length + OPTIONAL_PROPERTY_FIELDS.length;
+      const totalFields = requiredFields.length + optionalFields.length;
       const filledFields = totalFields - missingFields.length - warnings.length;
       const completenessScore = Math.round((filledFields / totalFields) * 100);
 
       return {
         propertyId: prop.id,
         address: prop.address,
+        propertyType: prop.property_type,
+        isOwnerOccupied: ownerOccupied,
         missingFields,
         completenessScore,
         issues,
@@ -179,12 +205,37 @@ export function useReviewWizard(
 
     // Property-level scores
     const propertyScores: PropertyScore[] = metrics.properties.map(prop => {
+      // Find the original property to check type
+      const originalProp = properties.find(p => p.id === prop.propertyId);
+      const ownerOccupied = originalProp ? isOwnerOccupied(originalProp.property_type) : false;
+
       const healthScore = Math.min(100, Math.max(0, 100 - prop.lvr));
-      const propCashFlowScore = prop.netMonthlyCashflow >= 0
-        ? Math.min(100, 50 + (prop.netMonthlyCashflow / 50))
-        : Math.max(0, 50 + (prop.netMonthlyCashflow / 25));
+      
+      // For owner-occupied properties, don't penalize for lack of rental income
+      // Instead, score based on equity position and leverage only
+      let propCashFlowScore: number;
+      if (ownerOccupied) {
+        // Owner-occupied: cashflow score based on low mortgage burden relative to value
+        // Lower LVR = better score (they're building equity in their home)
+        propCashFlowScore = healthScore; // Use health score as proxy
+      } else {
+        // Investment properties: score based on actual cashflow
+        propCashFlowScore = prop.netMonthlyCashflow >= 0
+          ? Math.min(100, 50 + (prop.netMonthlyCashflow / 50))
+          : Math.max(0, 50 + (prop.netMonthlyCashflow / 25));
+      }
+      
       const propGrowthPotential = 50 + (healthScore * 0.3);
-      const propOverallScore = Math.round((healthScore * 0.4 + propCashFlowScore * 0.4 + propGrowthPotential * 0.2));
+      
+      // Different scoring weights for owner-occupied vs investment
+      let propOverallScore: number;
+      if (ownerOccupied) {
+        // Owner-occupied: prioritize equity position (60%) and growth (40%)
+        propOverallScore = Math.round((healthScore * 0.6 + propGrowthPotential * 0.4));
+      } else {
+        // Investment: balanced scoring
+        propOverallScore = Math.round((healthScore * 0.4 + propCashFlowScore * 0.4 + propGrowthPotential * 0.2));
+      }
 
       let classification: 'Star' | 'Good' | 'Average' | 'Underperformer' = 'Average';
       if (propOverallScore >= 80) classification = 'Star';
@@ -194,17 +245,27 @@ export function useReviewWizard(
       const strengths: string[] = [];
       const concerns: string[] = [];
 
+      // Common strengths/concerns
       if (prop.lvr < 50) strengths.push('Low leverage');
-      if (prop.netMonthlyCashflow > 500) strengths.push('Strong cash flow');
-      if (prop.grossYield > 5) strengths.push('Good rental yield');
-
       if (prop.lvr > 70) concerns.push('High leverage');
-      if (prop.netMonthlyCashflow < 0) concerns.push('Negative cash flow');
-      if (prop.grossYield < 3) concerns.push('Low rental yield');
+
+      if (ownerOccupied) {
+        // Owner-occupied specific assessments
+        if (prop.lvr < 30) strengths.push('Strong equity position');
+        if (prop.lvr === 0) strengths.push('Fully owned');
+      } else {
+        // Investment specific assessments
+        if (prop.netMonthlyCashflow > 500) strengths.push('Strong cash flow');
+        if (prop.grossYield > 5) strengths.push('Good rental yield');
+        if (prop.netMonthlyCashflow < 0) concerns.push('Negative cash flow');
+        if (prop.grossYield < 3) concerns.push('Low rental yield');
+      }
 
       return {
         propertyId: prop.propertyId,
         address: prop.address,
+        propertyType: originalProp?.property_type || 'investment',
+        isOwnerOccupied: ownerOccupied,
         overallScore: propOverallScore,
         healthScore,
         cashFlowScore: propCashFlowScore,
@@ -252,29 +313,38 @@ export function useReviewWizard(
         });
       }
 
-      // Cash flow flags
-      if (prop.netMonthlyCashflow < -500) {
-        validationFlags.push({
-          type: 'error',
-          severity: 'high',
-          field: 'cashflow',
-          message: `Significant negative cash flow of $${Math.abs(prop.netMonthlyCashflow).toFixed(0)}/month`,
-          propertyAddress: prop.address,
-          recommendation: 'Review expenses and consider rent increase'
-        });
-      } else if (prop.netMonthlyCashflow < 0) {
-        validationFlags.push({
-          type: 'warning',
-          severity: 'medium',
-          field: 'cashflow',
-          message: `Negative cash flow of $${Math.abs(prop.netMonthlyCashflow).toFixed(0)}/month`,
-          propertyAddress: prop.address,
-          recommendation: 'Monitor expenses and rental income'
-        });
+      // Cash flow flags - only for investment properties
+      const propForCashflow = properties.find(p => p.id === prop.propertyId);
+      const isOwnerOccupiedProp = propForCashflow ? isOwnerOccupied(propForCashflow.property_type) : false;
+      
+      // Skip cash flow warnings for owner-occupied properties (they're expected to have no rental income)
+      if (!isOwnerOccupiedProp) {
+        if (prop.netMonthlyCashflow < -500) {
+          validationFlags.push({
+            type: 'error',
+            severity: 'high',
+            field: 'cashflow',
+            message: `Significant negative cash flow of $${Math.abs(prop.netMonthlyCashflow).toFixed(0)}/month`,
+            propertyAddress: prop.address,
+            recommendation: 'Review expenses and consider rent increase'
+          });
+        } else if (prop.netMonthlyCashflow < 0) {
+          validationFlags.push({
+            type: 'warning',
+            severity: 'medium',
+            field: 'cashflow',
+            message: `Negative cash flow of $${Math.abs(prop.netMonthlyCashflow).toFixed(0)}/month`,
+            propertyAddress: prop.address,
+            recommendation: 'Monitor expenses and rental income'
+          });
+        }
       }
 
-      // Yield flags
-      if (prop.grossYield < 2) {
+      // Yield flags - only for investment properties
+      const originalProp = properties.find(p => p.id === prop.propertyId);
+      const ownerOccupied = originalProp ? isOwnerOccupied(originalProp.property_type) : false;
+      
+      if (!ownerOccupied && prop.grossYield < 2) {
         validationFlags.push({
           type: 'warning',
           severity: 'medium',
