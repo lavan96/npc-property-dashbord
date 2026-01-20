@@ -2254,6 +2254,7 @@ export type Database = {
           status: string
           subject: string
           summary: Json | null
+          to_recipients: string[] | null
           updated_at: string
           urgency_level: string | null
         }
@@ -2274,6 +2275,7 @@ export type Database = {
           status?: string
           subject: string
           summary?: Json | null
+          to_recipients?: string[] | null
           updated_at?: string
           urgency_level?: string | null
         }
@@ -2294,6 +2296,7 @@ export type Database = {
           status?: string
           subject?: string
           summary?: Json | null
+          to_recipients?: string[] | null
           updated_at?: string
           urgency_level?: string | null
         }
