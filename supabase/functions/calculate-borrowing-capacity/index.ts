@@ -295,7 +295,22 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
 
   // Add existing property loans
   for (const property of properties) {
-    if (property.monthly_interest_repayment && property.monthly_interest_repayment > 0) {
+    const propertyType = property.property_type?.toLowerCase() || '';
+    
+    // Handle rental properties (where client is tenant paying rent)
+    if (propertyType === 'rental') {
+      // Rent paid is treated as an existing commitment
+      const monthlyRentPaid = property.monthly_rental_income || 0;
+      if (monthlyRentPaid > 0) {
+        totalMonthly += monthlyRentPaid;
+        breakdown.push({
+          type: `Rent Expense (${property.address?.substring(0, 30) || 'Rental'}...)`,
+          balance: 0,
+          monthlyServicing: monthlyRentPaid,
+        });
+      }
+    } else if (property.monthly_interest_repayment && property.monthly_interest_repayment > 0) {
+      // Standard property loan
       const monthlyServicing = property.monthly_interest_repayment;
       totalMonthly += monthlyServicing;
       breakdown.push({

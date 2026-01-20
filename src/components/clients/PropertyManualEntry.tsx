@@ -23,7 +23,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield } from 'lucide-react';
+import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Key } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import {
@@ -47,7 +47,7 @@ interface ExpenseField {
 }
 
 interface PropertyFormData {
-  property_type: 'owner_occupied' | 'investment' | 'smsf';
+  property_type: 'owner_occupied' | 'investment' | 'smsf' | 'rental';
   address: string;
   value: number;
   loan_remaining: number;
@@ -185,26 +185,33 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
 
   const createPropertyMutation = useMutation({
     mutationFn: async () => {
+      // For rental properties, we store rent paid in a special way
+      const isRental = formData.property_type === 'rental';
+      
       const { error } = await supabase.from('client_properties').insert({
         client_id: clientId,
         property_type: formData.property_type,
         address: formData.address,
-        value: formData.value,
-        loan_remaining: formData.loan_remaining,
-        interest_rate: formData.interest_rate,
-        ownership_percentage: formData.ownership_percentage,
-        monthly_interest_repayment: formData.monthly_interest_repayment,
-        monthly_body_corporate: formData.body_corporate.monthlyValue,
-        monthly_council_rates: formData.council_rates.monthlyValue,
-        monthly_water_rates: formData.water_rates.monthlyValue,
-        monthly_repairs_maintenance: formData.repairs_maintenance.monthlyValue,
-        monthly_property_management: formData.property_management.monthlyValue,
-        monthly_landlord_insurance: formData.landlord_insurance.monthlyValue,
-        monthly_building_insurance: formData.building_insurance.monthlyValue,
-        monthly_rental_income: monthlyRentalIncome,
+        // For rental properties, value and loan are not applicable
+        value: isRental ? 0 : formData.value,
+        loan_remaining: isRental ? 0 : formData.loan_remaining,
+        interest_rate: isRental ? 0 : formData.interest_rate,
+        ownership_percentage: isRental ? 0 : formData.ownership_percentage,
+        monthly_interest_repayment: isRental ? 0 : formData.monthly_interest_repayment,
+        monthly_body_corporate: isRental ? 0 : formData.body_corporate.monthlyValue,
+        monthly_council_rates: isRental ? 0 : formData.council_rates.monthlyValue,
+        monthly_water_rates: isRental ? 0 : formData.water_rates.monthlyValue,
+        monthly_repairs_maintenance: isRental ? 0 : formData.repairs_maintenance.monthlyValue,
+        monthly_property_management: isRental ? 0 : formData.property_management.monthlyValue,
+        monthly_landlord_insurance: isRental ? 0 : formData.landlord_insurance.monthlyValue,
+        monthly_building_insurance: isRental ? 0 : formData.building_insurance.monthlyValue,
+        // For rental properties, this stores the rent PAID (expense), not income
+        monthly_rental_income: isRental ? monthlyRentalIncome : monthlyRentalIncome,
         weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : formData.rental_income.monthlyValue / 4.33,
-        total_monthly_expenditure: totalMonthlyExpenditure,
-        net_monthly_cashflow: netMonthlyCashflow,
+        // For rental properties, total expenditure IS the rent paid
+        total_monthly_expenditure: isRental ? monthlyRentalIncome : totalMonthlyExpenditure,
+        // For rental properties, net cashflow is negative (expense)
+        net_monthly_cashflow: isRental ? -monthlyRentalIncome : netMonthlyCashflow,
         // SMSF-specific fields
         smsf_fund_name: formData.property_type === 'smsf' ? formData.smsf_fund_name : null,
         smsf_trustee_name: formData.property_type === 'smsf' ? formData.smsf_trustee_name : null,
@@ -219,10 +226,16 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
       toast.success('Property added successfully');
       
+      const propertyTypeLabel = 
+        formData.property_type === 'investment' ? 'investment' :
+        formData.property_type === 'smsf' ? 'SMSF' :
+        formData.property_type === 'rental' ? 'rental (tenant)' :
+        'owner-occupied';
+      
       addNotification({
         type: 'portfolio_updated',
-        title: 'Portfolio Updated',
-        message: `New ${formData.property_type === 'investment' ? 'investment' : formData.property_type === 'smsf' ? 'SMSF' : 'owner-occupied'} property added: ${formData.address}`,
+        title: formData.property_type === 'rental' ? 'Personal Expense Added' : 'Portfolio Updated',
+        message: `New ${propertyTypeLabel} property added: ${formData.address}`,
         entityId: clientId
       });
       
@@ -242,6 +255,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
     }
     if (formData.property_type === 'smsf' && !formData.smsf_fund_name.trim()) {
       toast.error('Please enter the SMSF fund name');
+      return;
+    }
+    if (formData.property_type === 'rental' && formData.rental_income.value <= 0) {
+      toast.error('Please enter the rent you pay');
       return;
     }
     createPropertyMutation.mutate();
@@ -339,7 +356,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                     <Label>Property Type</Label>
                     <Select
                       value={formData.property_type}
-                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment' | 'smsf')}
+                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment' | 'smsf' | 'rental')}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -361,6 +378,12 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                           <div className="flex items-center gap-2">
                             <Landmark className="h-4 w-4" />
                             SMSF (Self-Managed Super Fund)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="rental">
+                          <div className="flex items-center gap-2">
+                            <Key className="h-4 w-4" />
+                            Rental Property (Tenant)
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -487,7 +510,31 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
               </Card>
             )}
 
-            {/* Financial Details */}
+            {/* Rental Property Details - Only shown when Rental is selected */}
+            {formData.property_type === 'rental' && (
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-blue-600">
+                      <Key className="h-4 w-4" />
+                      Rental Details (You Are a Tenant)
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      This property is where you currently live and pay rent. The rent you pay will be treated as a personal expense in borrowing capacity calculations.
+                    </p>
+                    
+                    <ExpenseInput 
+                      label="Rent You Pay" 
+                      field="rental_income" 
+                      defaultFrequency="weekly" 
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Financial Details - Not shown for Rental properties */}
+            {formData.property_type !== 'rental' && (
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
@@ -601,6 +648,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                 )}
               </div>
             </div>
+            )}
 
             {/* Monthly Expenses - Only for Investment Properties */}
             {formData.property_type === 'investment' && (
@@ -667,55 +715,84 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
             {/* Summary Card */}
             <Card className="bg-muted/50 border-0">
               <CardContent className="pt-4 space-y-3">
-                <h4 className="font-medium text-sm">Cashflow Summary</h4>
+                <h4 className="font-medium text-sm">
+                  {formData.property_type === 'rental' ? 'Personal Expense Summary' : 'Cashflow Summary'}
+                </h4>
                 
                 {formData.property_type === 'investment' && (
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Monthly Rental Income</span>
-                      <span className="font-medium text-green-600">
+                      <span className="font-medium text-emerald-500">
                         {formatCurrency(monthlyRentalIncome)}
                       </span>
                     </div>
                   </>
                 )}
+
+                {formData.property_type === 'rental' && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Monthly Rent You Pay</span>
+                      <span className="font-medium text-destructive">
+                        -{formatCurrency(monthlyRentalIncome)}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>Personal Expense (Commitment)</span>
+                      <span className="text-destructive">
+                        -{formatCurrency(monthlyRentalIncome)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This will be added to your existing commitments when calculating borrowing capacity.
+                    </p>
+                  </>
+                )}
                 
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Monthly Interest Repayment</span>
-                  <span className="font-medium text-red-600">
-                    -{formatCurrency(formData.monthly_interest_repayment)}
-                  </span>
-                </div>
+                {formData.property_type !== 'rental' && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Monthly Interest Repayment</span>
+                    <span className="font-medium text-destructive">
+                      -{formatCurrency(formData.monthly_interest_repayment)}
+                    </span>
+                  </div>
+                )}
                 
                 {formData.property_type === 'investment' && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Other Monthly Expenses</span>
-                    <span className="font-medium text-red-600">
+                    <span className="font-medium text-destructive">
                       -{formatCurrency(totalMonthlyExpenditure - formData.monthly_interest_repayment)}
                     </span>
                   </div>
                 )}
                 
-                <Separator />
-                
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Expenditure</span>
-                  <span className="font-medium text-red-600">
-                    {formatCurrency(formData.property_type === 'owner_occupied' ? formData.monthly_interest_repayment : totalMonthlyExpenditure)}
-                  </span>
-                </div>
+                {formData.property_type !== 'rental' && (
+                  <>
+                    <Separator />
+                    
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total Expenditure</span>
+                      <span className="font-medium text-destructive">
+                        {formatCurrency(formData.property_type === 'owner_occupied' ? formData.monthly_interest_repayment : totalMonthlyExpenditure)}
+                      </span>
+                    </div>
+                  </>
+                )}
                 
                 {formData.property_type === 'investment' && (
                   <>
                     <div className="flex justify-between text-sm font-medium">
                       <span>Net Monthly Cashflow</span>
-                      <span className={netMonthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      <span className={netMonthlyCashflow >= 0 ? 'text-emerald-500' : 'text-destructive'}>
                         {formatCurrency(netMonthlyCashflow)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Net Monthly Rental Position</span>
-                      <span className={netMonthlyRentalPosition >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      <span className={netMonthlyRentalPosition >= 0 ? 'text-emerald-500' : 'text-destructive'}>
                         {formatCurrency(netMonthlyRentalPosition)}
                       </span>
                     </div>
@@ -725,7 +802,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                 {formData.property_type === 'owner_occupied' && (
                   <div className="flex justify-between text-sm font-medium">
                     <span>Net Monthly Cashflow</span>
-                    <span className="text-red-600">
+                    <span className="text-destructive">
                       -{formatCurrency(formData.monthly_interest_repayment)}
                     </span>
                   </div>

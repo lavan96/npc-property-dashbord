@@ -41,6 +41,10 @@ const isOwnerOccupied = (propertyType: string) =>
   propertyType?.toLowerCase() === 'owner-occupied' ||
   propertyType?.toLowerCase() === 'ppor';
 
+// Helper to check if property is a rental (client is tenant)
+const isRentalProperty = (propertyType: string) =>
+  propertyType?.toLowerCase() === 'rental';
+
 export function useReviewWizard(
   clientId: string,
   clientName: string,
