@@ -465,6 +465,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const ownerOccupied = properties.find(p => p.property_type === 'owner_occupied');
   const investmentProperties = properties.filter(p => p.property_type === 'investment');
   const smsfProperties = properties.filter(p => p.property_type === 'smsf');
+  const rentalProperties = properties.filter(p => p.property_type === 'rental');
   
   // Filter properties for Portfolio Summary calculations based on toggle
   // When toggle is OFF, only investment properties are included in summary calculations
@@ -896,6 +897,65 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           </table>
         </div>
       `).join('')}
+    `;
+  };
+
+  // Personal Expenses table - rental properties where client pays rent
+  const generateExpensesTable = () => {
+    if (rentalProperties.length === 0) {
+      return `
+        <div class="empty-state-compact">
+          <div class="empty-state-icon">🏠</div>
+          <p class="empty-state-text">No personal expenses recorded</p>
+        </div>
+      `;
+    }
+    
+    // For rental properties, monthly_rental_income stores the rent they PAY (as expense)
+    const totalMonthlyRent = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
+    const totalWeeklyRent = rentalProperties.reduce((sum, p) => {
+      const weekly = p.weekly_rental_income || (p.monthly_rental_income ? Math.round(p.monthly_rental_income / 4.33) : 0);
+      return sum + weekly;
+    }, 0);
+    
+    return `
+      <div class="expenses-summary">
+        <div class="expense-summary-item">
+          <span class="expense-label">TOTAL WEEKLY RENT</span>
+          <span class="expense-value">${formatCurrency(totalWeeklyRent)}</span>
+        </div>
+        <div class="expense-summary-item">
+          <span class="expense-label">TOTAL MONTHLY RENT</span>
+          <span class="expense-value negative">${formatCurrency(totalMonthlyRent)}</span>
+        </div>
+      </div>
+      <div class="expense-category">
+        <div class="expense-category-header">
+          <span class="category-icon">🏠</span>
+          <span class="category-title">Rental Accommodation</span>
+        </div>
+        <table class="data-table financial-mini alt-rows">
+          <thead>
+            <tr>
+              <th>ADDRESS</th>
+              <th class="text-right">WEEKLY</th>
+              <th class="text-right">MONTHLY</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rentalProperties.map(prop => {
+              const weeklyRent = prop.weekly_rental_income || (prop.monthly_rental_income ? Math.round(prop.monthly_rental_income / 4.33) : 0);
+              return `
+                <tr>
+                  <td class="value">${prop.address?.substring(0, 30) || '-'}${(prop.address?.length || 0) > 30 ? '...' : ''}</td>
+                  <td class="value currency">${formatCurrency(weeklyRent)}/wk</td>
+                  <td class="value currency">${formatCurrency(prop.monthly_rental_income)}/mo</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     `;
   };
 
@@ -1403,6 +1463,35 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .liab-value { display: block; font-size: 18pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .liab-value.negative { color: ${NPC_COLORS.danger}; }
         
+        /* Expenses Summary - Personal expenses like rent */
+        .expenses-summary {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 14px;
+        }
+        .expense-summary-item {
+          background: ${NPC_COLORS.lightGray};
+          padding: 14px 16px;
+          border-radius: 6px;
+          border-left: 4px solid ${NPC_COLORS.warning};
+        }
+        .expense-label { display: block; font-size: 7.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .expense-value { display: block; font-size: 18pt; font-weight: 700; color: ${NPC_COLORS.darkGray}; }
+        .expense-value.negative { color: ${NPC_COLORS.warning}; }
+        
+        .expense-category { margin-bottom: 12px; }
+        .expense-category-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          background: ${NPC_COLORS.warningLight};
+          border-left: 3px solid ${NPC_COLORS.warning};
+          margin-bottom: 6px;
+          border-radius: 0 4px 4px 0;
+        }
+        
         /* Empty States */
         .empty-state {
           padding: 20px;
@@ -1644,11 +1733,11 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
       </div>
       
-      <!-- PAGE 3: Assets & Liabilities -->
+      <!-- PAGE 3: Assets, Liabilities & Expenses -->
       <div class="page">
         <div class="page-header">
           <div class="header-title-group">
-            <div class="header-title">Assets & Liabilities</div>
+            <div class="header-title">Assets, Liabilities & Expenses</div>
             <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
           </div>
         </div>
@@ -1661,9 +1750,15 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
               </div>
             </div>
             <div class="column">
-              <div class="section">
+              <div class="section" style="margin-bottom: 16px;">
                 <div class="section-header">Liabilities</div>
                 ${generateLiabilitiesTable()}
+              </div>
+              <div class="section">
+                <div class="section-header" style="background: linear-gradient(135deg, ${NPC_COLORS.warning} 0%, ${NPC_COLORS.goldDark} 100%); border-left-color: ${NPC_COLORS.darkBlue};">
+                  <span class="section-header-text">💸 Personal Expenses</span>
+                </div>
+                ${generateExpensesTable()}
               </div>
             </div>
           </div>
