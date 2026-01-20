@@ -42,6 +42,17 @@ interface UseBankLendingRatesOptions {
   lvr?: number;
 }
 
+// Helper to call edge function with query params via POST body
+async function invokeEdgeFunction(action: string, params?: Record<string, string | number | undefined>) {
+  const { data, error } = await supabase.functions.invoke('cdr-lending-rates-service', {
+    body: { action, ...params },
+  });
+  
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error(data?.error || 'Request failed');
+  return data.data;
+}
+
 export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   const queryClient = useQueryClient();
   const [selectedLender, setSelectedLender] = useState<string | null>(null);
@@ -54,26 +65,8 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   } = useQuery({
     queryKey: ['bank-lenders'],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('cdr-lending-rates-service', {
-        body: null,
-      });
-      
-      // Parse query params approach - use GET with query string
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cdr-lending-rates-service?action=lenders`,
-        {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch lenders');
-      const result = await response.json();
-      
-      if (!result.success) throw new Error(result.error || 'Failed to fetch lenders');
-      return result.data as Lender[];
+      const result = await invokeEdgeFunction('lenders');
+      return result as Lender[];
     },
     staleTime: 24 * 60 * 60 * 1000, // 24 hours
   });
@@ -86,51 +79,21 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   } = useQuery({
     queryKey: ['bank-rates-summary'],
     queryFn: async () => {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cdr-lending-rates-service?action=list`,
-        {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch rates summary');
-      const result = await response.json();
-      
-      if (!result.success) throw new Error(result.error || 'Failed to fetch rates summary');
-      return result.data as LenderSummary[];
+      const result = await invokeEdgeFunction('list');
+      return result as LenderSummary[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch rates for a specific lender
   const fetchLenderRates = useCallback(async (lenderId: string): Promise<LendingRate[]> => {
-    const params = new URLSearchParams({
-      action: 'rates',
+    const result = await invokeEdgeFunction('rates', {
       lender: lenderId,
+      purpose: options?.loanPurpose,
+      repayment: options?.repaymentType,
+      lvr: options?.lvr,
     });
-
-    if (options?.loanPurpose) params.append('purpose', options.loanPurpose);
-    if (options?.repaymentType) params.append('repayment', options.repaymentType);
-    if (options?.lvr !== undefined) params.append('lvr', options.lvr.toString());
-
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cdr-lending-rates-service?${params}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) throw new Error('Failed to fetch lender rates');
-    const result = await response.json();
-    
-    if (!result.success) throw new Error(result.error || 'Failed to fetch lender rates');
-    return result.data as LendingRate[];
+    return result as LendingRate[];
   }, [options?.loanPurpose, options?.repaymentType, options?.lvr]);
 
   // Query for selected lender's rates
@@ -153,27 +116,12 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   } = useQuery({
     queryKey: ['bank-best-rates', options?.loanPurpose, options?.repaymentType, options?.lvr],
     queryFn: async () => {
-      const params = new URLSearchParams({ action: 'best-rates' });
-
-      if (options?.loanPurpose) params.append('purpose', options.loanPurpose);
-      if (options?.repaymentType) params.append('repayment', options.repaymentType);
-      if (options?.lvr !== undefined) params.append('lvr', options.lvr.toString());
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cdr-lending-rates-service?${params}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to fetch best rates');
-      const result = await response.json();
-      
-      if (!result.success) throw new Error(result.error || 'Failed to fetch best rates');
-      return result.data as LendingRate[];
+      const result = await invokeEdgeFunction('best-rates', {
+        purpose: options?.loanPurpose,
+        repayment: options?.repaymentType,
+        lvr: options?.lvr,
+      });
+      return result as LendingRate[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -181,21 +129,8 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   // Refresh all lender caches
   const refreshAllMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cdr-lending-rates-service?action=refresh-all`,
-        {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to refresh rates');
-      const result = await response.json();
-      
-      if (!result.success) throw new Error(result.error || 'Failed to refresh rates');
-      return result.data;
+      const result = await invokeEdgeFunction('refresh-all');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bank-rates-summary'] });
