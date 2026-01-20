@@ -9,17 +9,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Loader2, RefreshCw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark } from '@/utils/borrowingCapacityCalculations';
-import type { FullAssessmentResult } from '@/utils/borrowingCapacityCalculations';
+import type { FullAssessmentResult, BorrowingCapacityInput } from '@/utils/borrowingCapacityCalculations';
+import { toast } from 'sonner';
 
 import { IncomeSection } from './sections/IncomeSection';
 import { ExpensesSection } from './sections/ExpensesSection';
 import { LiabilitiesSection } from './sections/LiabilitiesSection';
 import { ProposedLoanSection } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
+import { ScenarioModeling } from './ScenarioModeling';
+import { CapacityHistoryChart } from './CapacityHistoryChart';
 
 interface BorrowingCapacityModalProps {
   clientId: string;
@@ -51,8 +55,16 @@ export function BorrowingCapacityModal({
   open, 
   onOpenChange 
 }: BorrowingCapacityModalProps) {
-  const { quickCalculate, isCalculating } = useBorrowingCapacity({ clientId, autoFetch: false });
+  const { 
+    quickCalculate, 
+    isCalculating, 
+    calculate, 
+    assessmentHistory,
+    isLoadingHistory,
+  } = useBorrowingCapacity({ clientId, autoFetch: true });
   
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'calculator' | 'scenarios' | 'history'>('calculator');
   // Local state for inputs
   const [expenseMethod, setExpenseMethod] = useState<'hem' | 'declared' | 'hybrid'>('hybrid');
   const [declaredExpenses, setDeclaredExpenses] = useState(0);
@@ -260,71 +272,140 @@ export function BorrowingCapacityModal({
               <Calculator className="h-5 w-5 text-primary" />
               Borrowing Capacity Calculator
             </DialogTitle>
-            <Button 
-              onClick={handleCalculate}
-              disabled={isLocalCalculating || isCalculating}
-              size="sm"
-            >
-              {isLocalCalculating || isCalculating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Recalculate
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  calculate({
+                    grossAnnualIncome: totalGrossIncome,
+                    livingExpenses: effectiveExpenses,
+                    interestRate,
+                    loanTermYears,
+                    proposedLoanAmount,
+                  });
+                  toast.success('Assessment saved');
+                }}
+                disabled={isLocalCalculating || isCalculating || !result}
+                size="sm"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save
+              </Button>
+              <Button 
+                onClick={handleCalculate}
+                disabled={isLocalCalculating || isCalculating}
+                size="sm"
+              >
+                {isLocalCalculating || isCalculating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Recalculate
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Panel - Inputs */}
-          <div className="w-1/2 border-r">
-            <ScrollArea className="h-[calc(90vh-80px)]">
-              <div className="p-6 space-y-4">
-                <IncomeSection
-                  incomeBreakdown={incomeBreakdown}
-                  totalGross={totalGrossIncome}
-                  totalShaded={totalShadedIncome}
-                />
-
-                <ExpensesSection
-                  expenseMethod={expenseMethod}
-                  hemBenchmark={hemBenchmark}
-                  declaredExpenses={declaredExpenses}
-                  effectiveExpenses={effectiveExpenses}
-                  onMethodChange={setExpenseMethod}
-                  onDeclaredExpensesChange={setDeclaredExpenses}
-                />
-
-                <LiabilitiesSection
-                  liabilities={liabilitiesBreakdown}
-                  totalMonthlyCommitments={totalMonthlyCommitments}
-                />
-
-                <ProposedLoanSection
-                  proposedLoanAmount={proposedLoanAmount}
-                  interestRate={interestRate}
-                  bufferRate={3.0}
-                  loanTermYears={loanTermYears}
-                  onProposedLoanChange={setProposedLoanAmount}
-                  onInterestRateChange={setInterestRate}
-                  onLoanTermChange={setLoanTermYears}
-                />
-              </div>
-            </ScrollArea>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 border-b">
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="calculator" className="flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                Calculator
+              </TabsTrigger>
+              <TabsTrigger value="scenarios" className="flex items-center gap-2">
+                <FlaskConical className="h-4 w-4" />
+                What-If
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                History
+              </TabsTrigger>
+            </TabsList>
           </div>
 
-          {/* Right Panel - Results */}
-          <div className="w-1/2">
-            <ScrollArea className="h-[calc(90vh-80px)]">
+          <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
+            <div className="flex flex-1 h-full overflow-hidden">
+              {/* Left Panel - Inputs */}
+              <div className="w-1/2 border-r">
+                <ScrollArea className="h-[calc(90vh-140px)]">
+                  <div className="p-6 space-y-4">
+                    <IncomeSection
+                      incomeBreakdown={incomeBreakdown}
+                      totalGross={totalGrossIncome}
+                      totalShaded={totalShadedIncome}
+                    />
+                    <ExpensesSection
+                      expenseMethod={expenseMethod}
+                      hemBenchmark={hemBenchmark}
+                      declaredExpenses={declaredExpenses}
+                      effectiveExpenses={effectiveExpenses}
+                      onMethodChange={setExpenseMethod}
+                      onDeclaredExpensesChange={setDeclaredExpenses}
+                    />
+                    <LiabilitiesSection
+                      liabilities={liabilitiesBreakdown}
+                      totalMonthlyCommitments={totalMonthlyCommitments}
+                    />
+                    <ProposedLoanSection
+                      proposedLoanAmount={proposedLoanAmount}
+                      interestRate={interestRate}
+                      bufferRate={3.0}
+                      loanTermYears={loanTermYears}
+                      onProposedLoanChange={setProposedLoanAmount}
+                      onInterestRateChange={setInterestRate}
+                      onLoanTermChange={setLoanTermYears}
+                    />
+                  </div>
+                </ScrollArea>
+              </div>
+              {/* Right Panel - Results */}
+              <div className="w-1/2">
+                <ScrollArea className="h-[calc(90vh-140px)]">
+                  <div className="p-6">
+                    <ResultsPanel result={result} isCalculating={isLocalCalculating || isCalculating} />
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="scenarios" className="flex-1 overflow-hidden m-0">
+            <ScrollArea className="h-[calc(90vh-140px)]">
               <div className="p-6">
-                <ResultsPanel 
-                  result={result} 
-                  isCalculating={isLocalCalculating || isCalculating} 
+                {result ? (
+                  <ScenarioModeling
+                    baseInputs={{
+                      shadedAnnualIncome: totalShadedIncome,
+                      monthlyLivingExpenses: effectiveExpenses,
+                      monthlyCommitments: totalMonthlyCommitments,
+                      interestRate,
+                      bufferRate: 3.0,
+                      loanTermYears,
+                    }}
+                    baseResult={result}
+                  />
+                ) : (
+                  <div className="text-center text-muted-foreground py-12">
+                    Calculate borrowing capacity first to model scenarios.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="history" className="flex-1 overflow-hidden m-0">
+            <ScrollArea className="h-[calc(90vh-140px)]">
+              <div className="p-6">
+                <CapacityHistoryChart 
+                  history={assessmentHistory || []} 
+                  isLoading={isLoadingHistory} 
                 />
               </div>
             </ScrollArea>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
