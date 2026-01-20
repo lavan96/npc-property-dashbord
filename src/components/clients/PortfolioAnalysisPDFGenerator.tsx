@@ -1002,50 +1002,24 @@ export function PortfolioAnalysisPDFGenerator({
       }
       
       // ============= OVERLAY DYNAMIC TEXT ON COVER =============
-      // Report Title - positioned in the upper-center area with decorative lines
-      const reportTitleY = PAGE_HEIGHT * 0.62;
-      const reportTitle = 'Portfolio Performance Report';
-      const reportTitleSize = 32;
-      const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, reportTitleSize);
+      // Layout order (top to bottom): Line → Diamond → Title → Client Name → Date
       
-      // Draw horizontal decorative lines on either side of title
-      const lineLength = 80;
-      const lineGap = 20;
-      const titleCenterX = PAGE_WIDTH / 2;
-      const titleLeftEdge = titleCenterX - reportTitleWidth / 2;
-      const titleRightEdge = titleCenterX + reportTitleWidth / 2;
-      
-      // Left line
+      // Horizontal gold line - positioned in upper area
+      const lineY = PAGE_HEIGHT * 0.58;
+      const lineMargin = 72; // Match page margins
       coverPage.drawLine({
-        start: { x: titleLeftEdge - lineGap - lineLength, y: reportTitleY + 8 },
-        end: { x: titleLeftEdge - lineGap, y: reportTitleY + 8 },
+        start: { x: lineMargin, y: lineY },
+        end: { x: PAGE_WIDTH - lineMargin, y: lineY },
         thickness: 1,
         color: NPC_GOLD,
       });
       
-      // Right line
-      coverPage.drawLine({
-        start: { x: titleRightEdge + lineGap, y: reportTitleY + 8 },
-        end: { x: titleRightEdge + lineGap + lineLength, y: reportTitleY + 8 },
-        thickness: 1,
-        color: NPC_GOLD,
-      });
-      
-      // Draw title text
-      coverPage.drawText(reportTitle, {
-        x: (PAGE_WIDTH - reportTitleWidth) / 2,
-        y: reportTitleY,
-        size: reportTitleSize,
-        font: playfairFont,
-        color: NPC_WHITE,
-      });
-      
-      // Draw diamond icon below title
-      const diamondY = reportTitleY - 45;
-      const diamondSize = 10;
+      // Diamond icon - centered below the line
+      const diamondY = lineY - 25;
+      const diamondSize = 8;
       const diamondCenterX = PAGE_WIDTH / 2;
       
-      // Draw rotated square (diamond shape) using lines
+      // Draw filled diamond shape using lines
       coverPage.drawLine({
         start: { x: diamondCenterX, y: diamondY + diamondSize },
         end: { x: diamondCenterX + diamondSize, y: diamondY },
@@ -1071,8 +1045,21 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Client Name - below the diamond icon
-      const clientNameY = diamondY - 40;
+      // Report Title - positioned below diamond (Playfair Display Medium 500)
+      const reportTitleY = diamondY - 45;
+      const reportTitle = 'Portfolio Performance Report';
+      const reportTitleSize = 32;
+      const reportTitleWidth = playfairFont.widthOfTextAtSize(reportTitle, reportTitleSize);
+      coverPage.drawText(reportTitle, {
+        x: (PAGE_WIDTH - reportTitleWidth) / 2,
+        y: reportTitleY,
+        size: reportTitleSize,
+        font: playfairFont,
+        color: NPC_WHITE,
+      });
+      
+      // Client Name - below title (Cinzel Bold 700)
+      const clientNameY = reportTitleY - 40;
       const clientText = stripEmojis(analysisData.clientName).toUpperCase();
       const clientNameSize = 18;
       const clientNameWidth = cinzelFont.widthOfTextAtSize(clientText, clientNameSize);
@@ -1084,7 +1071,7 @@ export function PortfolioAnalysisPDFGenerator({
         color: NPC_GOLD,
       });
       
-      // Date - below the client name
+      // Date - below client name
       const dateY = clientNameY - 35;
       const dateText = new Date(analysisData.generatedAt).toLocaleDateString('en-AU', {
         day: 'numeric',
