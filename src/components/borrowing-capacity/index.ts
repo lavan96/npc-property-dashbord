@@ -3,6 +3,8 @@ export { BorrowingCapacityModal } from './BorrowingCapacityModal';
 export { ResultsPanel } from './ResultsPanel';
 export { ScenarioModeling } from './ScenarioModeling';
 export { CapacityHistoryChart } from './CapacityHistoryChart';
+export { BankRateSelector } from './BankRateSelector';
+export { BankRateComparisonModal } from './BankRateComparisonModal';
 export { IncomeSection } from './sections/IncomeSection';
 export { ExpensesSection } from './sections/ExpensesSection';
 export { LiabilitiesSection } from './sections/LiabilitiesSection';

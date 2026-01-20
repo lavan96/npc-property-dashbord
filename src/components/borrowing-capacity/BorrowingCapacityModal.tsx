@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save } from 'lucide-react';
+import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark } from '@/utils/borrowingCapacityCalculations';
@@ -24,6 +24,8 @@ import { ProposedLoanSection } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
 import { ScenarioModeling } from './ScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
+import { BankRateSelector } from './BankRateSelector';
+import { BankRateComparisonModal } from './BankRateComparisonModal';
 
 interface BorrowingCapacityModalProps {
   clientId: string;
@@ -71,8 +73,10 @@ export function BorrowingCapacityModal({
   const [proposedLoanAmount, setProposedLoanAmount] = useState(500000);
   const [interestRate, setInterestRate] = useState(6.5);
   const [loanTermYears, setLoanTermYears] = useState(30);
+  const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [result, setResult] = useState<FullAssessmentResult | null>(null);
   const [isLocalCalculating, setIsLocalCalculating] = useState(false);
+  const [showRateComparison, setShowRateComparison] = useState(false);
 
   // Fetch client data
   const { data: clientData } = useQuery({
@@ -357,6 +361,29 @@ export function BorrowingCapacityModal({
                       onInterestRateChange={setInterestRate}
                       onLoanTermChange={setLoanTermYears}
                     />
+
+                    {/* Bank Rate Selector - CDR Integration */}
+                    <div className="rounded-lg border p-4 bg-card">
+                      <h3 className="font-medium mb-3 flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-primary" />
+                        Live Bank Rates (CDR)
+                      </h3>
+                      <BankRateSelector
+                        value={interestRate}
+                        onChange={(rate, lenderName) => {
+                          setInterestRate(rate);
+                          if (lenderName) setSelectedLenderName(lenderName);
+                        }}
+                        loanPurpose="INVESTMENT"
+                        repaymentType="PRINCIPAL_AND_INTEREST"
+                        onOpenComparison={() => setShowRateComparison(true)}
+                      />
+                      {selectedLenderName && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Using rate from: {selectedLenderName}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </ScrollArea>
               </div>
@@ -406,6 +433,19 @@ export function BorrowingCapacityModal({
             </ScrollArea>
           </TabsContent>
         </Tabs>
+
+        {/* Bank Rate Comparison Modal */}
+        <BankRateComparisonModal
+          open={showRateComparison}
+          onOpenChange={setShowRateComparison}
+          onSelectRate={(rate, lenderName, productName) => {
+            setInterestRate(rate);
+            setSelectedLenderName(lenderName);
+            toast.success(`Selected ${lenderName} rate: ${rate.toFixed(2)}%`);
+          }}
+          defaultLoanPurpose="INVESTMENT"
+          defaultRepaymentType="PRINCIPAL_AND_INTEREST"
+        />
       </DialogContent>
     </Dialog>
   );

@@ -311,6 +311,36 @@ export type Database = {
           },
         ]
       }
+      bank_lending_rates_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          fetched_at: string
+          lender_id: string
+          lender_name: string
+          rates: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          lender_id: string
+          lender_name: string
+          rates?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          fetched_at?: string
+          lender_id?: string
+          lender_name?: string
+          rates?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       borrowing_capacity_assessments: {
         Row: {
           assessment_rate: number | null
