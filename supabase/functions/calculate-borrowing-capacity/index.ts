@@ -27,22 +27,26 @@ const INCOME_SHADING_RULES: Record<string, { rate: number; label: string }> = {
 };
 
 // ============================================
-// HEM BENCHMARK TABLE (Monthly - AUD)
+// HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
+// Updated to align with major lender HEM tables
 // ============================================
 const HEM_BENCHMARKS: Record<string, Record<number, number>> = {
   single: {
-    0: 1500,
-    1: 2000,
-    2: 2300,
-    3: 2600,
+    0: 2100,  // Was 1500 - updated to 2024 standards
+    1: 2650,  // Was 2000
+    2: 3050,  // Was 2300
+    3: 3450,  // Was 2600
   },
   couple: {
-    0: 2200,
-    1: 2600,
-    2: 2900,
-    3: 3200,
+    0: 2950,  // Was 2200 - updated to 2024 standards
+    1: 3400,  // Was 2600
+    2: 3850,  // Was 2900
+    3: 4300,  // Was 3200
   },
 };
+
+// Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
+const RENTAL_EXPENSE_RATIO = 0.20;
 
 // ============================================
 // HECS/HELP REPAYMENT THRESHOLDS (2024-25)
@@ -221,18 +225,34 @@ function calculateIncomeBreakdown(incomeRecords: any[], properties: any[]): {
     }
   }
 
-  // Add rental income from properties
+  // Add rental income from investment properties (not rental properties where client is tenant)
   for (const property of properties) {
+    const propertyType = property.property_type?.toLowerCase() || '';
+    
+    // Skip rental properties (where client pays rent) - these are expenses, not income
+    if (propertyType === 'rental') continue;
+    
     if (property.monthly_rental_income && property.monthly_rental_income > 0) {
-      const annualRent = property.monthly_rental_income * 12;
+      const annualGrossRent = property.monthly_rental_income * 12;
+      
+      // Apply expense ratio - banks assume ~20% of rent goes to property expenses
+      // This gives NET rental income before shading
+      const annualNetRent = annualGrossRent * (1 - RENTAL_EXPENSE_RATIO);
+      
       const rule = INCOME_SHADING_RULES.rental_existing;
-      grossTotal += annualRent;
-      shadedTotal += annualRent * rule.rate;
+      
+      // Gross total uses the net rent (after expenses)
+      grossTotal += annualNetRent;
+      
+      // Shaded total applies the 80% shading on net rent
+      const shadedAmount = annualNetRent * rule.rate;
+      shadedTotal += shadedAmount;
+      
       breakdown.push({
         component: `${rule.label} (${property.address?.substring(0, 30) || 'Property'}...)`,
-        grossAmount: annualRent,
+        grossAmount: annualNetRent,
         shadingRate: rule.rate,
-        shadedAmount: annualRent * rule.rate,
+        shadedAmount: shadedAmount,
       });
     }
   }
@@ -293,7 +313,11 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
     totalMonthly += monthlyServicing;
   }
 
-  // Add existing property loans
+  // Add existing property loans - stress-tested at P&I repayments
+  // Banks assess existing loans at P&I even if currently interest-only
+  const assessmentRateForLoans = 0.095; // 9.5% assessment rate (approx 6.5% + 3% buffer)
+  const loanTermMonths = 30 * 12; // 30 year term for calculation
+  
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
     
@@ -309,14 +333,25 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
           monthlyServicing: monthlyRentPaid,
         });
       }
-    } else if (property.monthly_interest_repayment && property.monthly_interest_repayment > 0) {
-      // Standard property loan
-      const monthlyServicing = property.monthly_interest_repayment;
+    } else if (property.loan_remaining && property.loan_remaining > 0) {
+      // Calculate P&I servicing at assessment rate, regardless of actual loan type
+      // This is how banks stress-test existing loans
+      const loanBalance = property.loan_remaining;
+      const monthlyRate = assessmentRateForLoans / 12;
+      
+      // P&I repayment formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
+      const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, loanTermMonths)) 
+                          / (Math.pow(1 + monthlyRate, loanTermMonths) - 1);
+      
+      // Use the higher of: P&I calculated or actual recorded repayment
+      const actualRepayment = property.monthly_interest_repayment || 0;
+      const monthlyServicing = Math.max(piRepayment, actualRepayment);
+      
       totalMonthly += monthlyServicing;
       breakdown.push({
-        type: `Existing Loan (${property.address?.substring(0, 30) || 'Property'}...)`,
-        balance: property.loan_remaining || 0,
-        monthlyServicing,
+        type: `Existing Loan P&I (${property.address?.substring(0, 30) || 'Property'}...)`,
+        balance: loanBalance,
+        monthlyServicing: Math.round(monthlyServicing * 100) / 100,
       });
     }
   }
@@ -541,8 +576,10 @@ Deno.serve(async (req) => {
         { key: "Buffer Rate", value: `${bufferRate}%` },
         { key: "Assessment Rate", value: `${result.assessmentRate}%` },
         { key: "Loan Term", value: `${loanTermYears} years` },
-        { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo` },
+        { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (2024)` },
         { key: "Repayment Type", value: "Principal & Interest" },
+        { key: "Rental Expense Ratio", value: `${RENTAL_EXPENSE_RATIO * 100}%` },
+        { key: "Existing Loan Assessment", value: "P&I at 9.5%" },
       ],
       calculatedAt: new Date().toISOString(),
     };
