@@ -437,7 +437,7 @@ serve(async (req) => {
               subject: email.subject || '(No Subject)',
               body: bodyContent.substring(0, 10000),
               received_at: emailDate,
-              status: folder === 'sent' ? 'replied' : 'unread',
+              status: folder === 'sent' ? 'sent' : 'unread',
               to_recipients: toRecipients,
               cc_recipients: ccRecipients,
               bcc_recipients: bccRecipients,
