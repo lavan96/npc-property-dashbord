@@ -141,7 +141,8 @@ export function ClientVownetUpload({
     },
     accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-excel': ['.xls']
+      'application/vnd.ms-excel': ['.xls'],
+      'application/pdf': ['.pdf']
     },
     maxFiles: 1,
     disabled: status === 'parsing' || status === 'importing'
@@ -327,7 +328,7 @@ export function ClientVownetUpload({
             {isDragActive ? 'Drop Vownet form here' : 'Upload Vownet Form'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Drag & drop or click to update {clientName}'s portfolio
+            Drag & drop or click to update {clientName}'s portfolio (Excel or PDF)
           </p>
         </div>
       )}
