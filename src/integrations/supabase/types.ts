@@ -1020,6 +1020,53 @@ export type Database = {
           },
         ]
       }
+      client_expenses: {
+        Row: {
+          client_id: string
+          created_at: string
+          expense_category: string
+          expense_name: string | null
+          frequency: string | null
+          id: string
+          is_essential: boolean | null
+          monthly_amount: number
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expense_category: string
+          expense_name?: string | null
+          frequency?: string | null
+          id?: string
+          is_essential?: boolean | null
+          monthly_amount?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expense_category?: string
+          expense_name?: string | null
+          frequency?: string | null
+          id?: string
+          is_essential?: boolean | null
+          monthly_amount?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_expenses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_files: {
         Row: {
           category: string

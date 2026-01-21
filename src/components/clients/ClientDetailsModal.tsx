@@ -57,6 +57,7 @@ import { EmploymentManualEntry } from './EmploymentManualEntry';
 import { IncomeManualEntry } from './IncomeManualEntry';
 import { AssetManualEntry } from './AssetManualEntry';
 import { LiabilityManualEntry } from './LiabilityManualEntry';
+import { ExpenseManualEntry } from './ExpenseManualEntry';
 import { ExportVownetButton } from './ExportVownetButton';
 import { ClientEmailCompose } from './ClientEmailCompose';
 import { ClientReportsTab } from './ClientReportsTab';
@@ -626,6 +627,11 @@ NPC Team`
             <TabsContent value="financials" className="space-y-6 mt-4">
               {/* Income Section */}
               <IncomeManualEntry clientId={client.id} onComplete={() => refetchClient()} />
+              
+              <Separator />
+              
+              {/* Living Expenses Section */}
+              <ExpenseManualEntry clientId={client.id} onComplete={() => refetchClient()} />
               
               <Separator />
               
