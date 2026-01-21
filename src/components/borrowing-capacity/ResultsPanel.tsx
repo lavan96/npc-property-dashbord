@@ -16,9 +16,11 @@ import {
   ChevronDown,
   Lightbulb,
   Info,
+  Receipt,
 } from 'lucide-react';
-import { useState } from 'react';
-import type { FullAssessmentResult, ServiceabilityBand, CalculationMode } from '@/utils/borrowingCapacityCalculations';
+import { useState, useMemo } from 'react';
+import type { FullAssessmentResult, ServiceabilityBand, CalculationMode, TaxBreakdown } from '@/utils/borrowingCapacityCalculations';
+import { getTaxBreakdown } from '@/utils/borrowingCapacityCalculations';
 
 interface ResultsPanelProps {
   result: FullAssessmentResult | null;
@@ -31,6 +33,13 @@ interface ResultsPanelProps {
 export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
+
+  // Calculate tax breakdown based on gross income
+  const taxBreakdown: TaxBreakdown | null = useMemo(() => {
+    if (!result?.grossAnnualIncome) return null;
+    return getTaxBreakdown(result.grossAnnualIncome);
+  }, [result?.grossAnnualIncome]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-AU', {
@@ -145,6 +154,68 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             <p className="text-xs text-muted-foreground">rate</p>
           </div>
         </div>
+
+        {/* Tax Breakdown Section */}
+        {taxBreakdown && (
+          <Collapsible open={showTaxBreakdown} onOpenChange={setShowTaxBreakdown}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full text-left p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Tax Breakdown (2025-26)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-success">
+                  {formatCurrency(taxBreakdown.monthlyTakeHome)}/mo take-home
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showTaxBreakdown ? 'rotate-180' : ''}`} />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 p-4 rounded-lg border bg-card">
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Gross Income:</span>
+                    <span className="font-medium">{formatCurrency(taxBreakdown.grossIncome)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Income Tax:</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(taxBreakdown.taxPayable)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Medicare Levy (2%):</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(taxBreakdown.medicareLevy)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Tax:</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(taxBreakdown.totalTax)}</span>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium">After-Tax Income:</span>
+                  <span className="font-bold text-success">{formatCurrency(taxBreakdown.afterTaxIncome)}/yr</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Effective Rate:</span>
+                    <span className="font-medium">{(taxBreakdown.effectiveTaxRate * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Marginal Rate:</span>
+                    <span className="font-medium">{(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+                
+                <div className="p-2 rounded bg-muted/50 text-xs text-muted-foreground">
+                  <strong>Tax Bracket:</strong> {taxBreakdown.marginalBracket}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
         {/* Serviceability Band */}
         <div className={`p-4 rounded-lg ${bandConfig.bgLight} border ${bandConfig.borderColor}`}>
