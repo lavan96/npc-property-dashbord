@@ -79,6 +79,152 @@ export interface FullAssessmentResult extends BorrowingCapacityResult {
 }
 
 // ============================================
+// 2025-26 AUSTRALIAN TAX BRACKETS
+// ============================================
+
+// Tax brackets excluding Medicare Levy (which is 2% additional)
+export const TAX_BRACKETS_2025_26 = [
+  { min: 0, max: 18200, rate: 0, base: 0 },
+  { min: 18201, max: 45000, rate: 0.16, base: 0 },
+  { min: 45001, max: 135000, rate: 0.30, base: 4288 },
+  { min: 135001, max: 190000, rate: 0.37, base: 31288 },
+  { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
+];
+
+export const MEDICARE_LEVY_RATE = 0.02;
+
+/**
+ * Calculate income tax payable for a given taxable income (2025-26 rates)
+ * @param taxableIncome - Annual taxable income
+ * @param includeMedicareLevy - Whether to include 2% Medicare Levy (default: true)
+ * @returns Tax payable amount
+ */
+export function calculateIncomeTax(taxableIncome: number, includeMedicareLevy: boolean = true): number {
+  if (taxableIncome <= 0) return 0;
+  
+  let tax = 0;
+  
+  for (const bracket of TAX_BRACKETS_2025_26) {
+    if (taxableIncome >= bracket.min) {
+      if (bracket.rate === 0) {
+        // Tax-free threshold - no tax
+        continue;
+      }
+      if (taxableIncome <= bracket.max) {
+        // Income falls within this bracket
+        const previousBracketMax = TAX_BRACKETS_2025_26[TAX_BRACKETS_2025_26.indexOf(bracket) - 1]?.max || 0;
+        tax = bracket.base + (taxableIncome - previousBracketMax) * bracket.rate;
+        break;
+      }
+    }
+  }
+  
+  // Add Medicare Levy (2%)
+  if (includeMedicareLevy) {
+    tax += taxableIncome * MEDICARE_LEVY_RATE;
+  }
+  
+  return Math.round(tax);
+}
+
+/**
+ * Get the marginal tax rate for a given income level
+ * @param taxableIncome - Annual taxable income
+ * @param includeMedicareLevy - Whether to include 2% Medicare Levy (default: true)
+ * @returns Marginal tax rate as decimal (e.g., 0.32 for 32%)
+ */
+export function getMarginalTaxRate(taxableIncome: number, includeMedicareLevy: boolean = true): number {
+  if (taxableIncome <= 0) return 0;
+  
+  let marginalRate = 0;
+  
+  for (const bracket of TAX_BRACKETS_2025_26) {
+    if (taxableIncome >= bracket.min && taxableIncome <= bracket.max) {
+      marginalRate = bracket.rate;
+      break;
+    }
+  }
+  
+  // Add Medicare Levy if applicable
+  if (includeMedicareLevy) {
+    marginalRate += MEDICARE_LEVY_RATE;
+  }
+  
+  return marginalRate;
+}
+
+/**
+ * Calculate after-tax income (take-home pay)
+ * @param grossAnnualIncome - Annual gross income
+ * @param includeMedicareLevy - Whether to include 2% Medicare Levy (default: true)
+ * @returns After-tax income
+ */
+export function calculateAfterTaxIncome(grossAnnualIncome: number, includeMedicareLevy: boolean = true): number {
+  const tax = calculateIncomeTax(grossAnnualIncome, includeMedicareLevy);
+  return grossAnnualIncome - tax;
+}
+
+/**
+ * Get full tax breakdown for display purposes
+ */
+export interface TaxBreakdown {
+  grossIncome: number;
+  taxPayable: number;
+  medicareLevy: number;
+  totalTax: number;
+  afterTaxIncome: number;
+  effectiveTaxRate: number;
+  marginalTaxRate: number;
+  marginalBracket: string;
+  monthlyTakeHome: number;
+}
+
+export function getTaxBreakdown(grossAnnualIncome: number): TaxBreakdown {
+  const taxWithoutMedicare = calculateIncomeTax(grossAnnualIncome, false);
+  const medicareLevy = Math.round(grossAnnualIncome * MEDICARE_LEVY_RATE);
+  const totalTax = taxWithoutMedicare + medicareLevy;
+  const afterTaxIncome = grossAnnualIncome - totalTax;
+  const marginalRate = getMarginalTaxRate(grossAnnualIncome, true);
+  
+  // Determine marginal bracket label
+  let marginalBracket = '$0 - $18,200 (0%)';
+  if (grossAnnualIncome > 190000) {
+    marginalBracket = '$190,001+ (45% + 2% ML)';
+  } else if (grossAnnualIncome > 135000) {
+    marginalBracket = '$135,001 - $190,000 (37% + 2% ML)';
+  } else if (grossAnnualIncome > 45000) {
+    marginalBracket = '$45,001 - $135,000 (30% + 2% ML)';
+  } else if (grossAnnualIncome > 18200) {
+    marginalBracket = '$18,201 - $45,000 (16% + 2% ML)';
+  }
+  
+  return {
+    grossIncome: grossAnnualIncome,
+    taxPayable: taxWithoutMedicare,
+    medicareLevy,
+    totalTax,
+    afterTaxIncome,
+    effectiveTaxRate: grossAnnualIncome > 0 ? totalTax / grossAnnualIncome : 0,
+    marginalTaxRate: marginalRate,
+    marginalBracket,
+    monthlyTakeHome: Math.round(afterTaxIncome / 12),
+  };
+}
+
+/**
+ * Calculate negative gearing tax refund based on marginal rate
+ * @param taxableLoss - The negative gearing loss (should be positive number)
+ * @param grossAnnualIncome - Client's gross annual income to determine marginal rate
+ * @returns Tax refund amount
+ */
+export function calculateNegativeGearingRefund(taxableLoss: number, grossAnnualIncome: number): number {
+  if (taxableLoss <= 0) return 0;
+  
+  const marginalRate = getMarginalTaxRate(grossAnnualIncome, true);
+  return Math.round(taxableLoss * marginalRate);
+}
+
+// ============================================
 // CONSTANTS
 // ============================================
 
