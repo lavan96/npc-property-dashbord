@@ -71,6 +71,7 @@ export function useReviewWizard(
     clientData?.review_frequency || 'annual'
   );
   const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
+  const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(true);
 
   // Calculate data completeness for each property
   const dataCompleteness = useMemo(() => {
@@ -775,6 +776,8 @@ export function useReviewWizard(
     setReviewFrequency,
     includeOwnerOccupied,
     setIncludeOwnerOccupied,
+    includeBorrowingCapacity,
+    setIncludeBorrowingCapacity,
     
     // Calculated data
     dataCompleteness,

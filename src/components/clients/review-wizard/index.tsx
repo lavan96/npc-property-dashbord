@@ -79,6 +79,8 @@ export function ReviewWizard({
             onReviewFrequencyChange={wizard.setReviewFrequency}
             includeOwnerOccupied={wizard.includeOwnerOccupied}
             onIncludeOwnerOccupiedChange={wizard.setIncludeOwnerOccupied}
+            includeBorrowingCapacity={wizard.includeBorrowingCapacity}
+            onIncludeBorrowingCapacityChange={wizard.setIncludeBorrowingCapacity}
             ownerOccupiedCount={ownerOccupiedCount}
             investmentCount={investmentCount}
             onSaveDraft={handleSaveDraft}
