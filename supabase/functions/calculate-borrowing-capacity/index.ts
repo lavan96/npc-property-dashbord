@@ -331,32 +331,30 @@ function calculateIncomeBreakdown(incomeRecords: any[], properties: any[]): {
     }
   }
 
-  // Add rental income from investment properties (not rental properties where client is tenant)
+  // Add POSITIVE property cash flows as income (not rental income - only net cash flow)
+  // Properties with negative cash flow are handled in the expense calculation
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
     
     // Skip rental properties (where client pays rent) - these are expenses, not income
     if (propertyType === 'rental') continue;
     
-    if (property.monthly_rental_income && property.monthly_rental_income > 0) {
-      const annualGrossRent = property.monthly_rental_income * 12;
+    // Only add property cash flow if it's POSITIVE
+    const netMonthlyCashflow = property.net_monthly_cashflow || 0;
+    
+    if (netMonthlyCashflow > 0) {
+      const annualPositiveCashflow = netMonthlyCashflow * 12;
       
-      // Apply expense ratio - banks assume ~20% of rent goes to property expenses
-      // This gives NET rental income before shading
-      const annualNetRent = annualGrossRent * (1 - RENTAL_EXPENSE_RATIO);
-      
+      // Apply 80% shading to positive property cash flow (conservative bank approach)
       const rule = INCOME_SHADING_RULES.rental_existing;
       
-      // Gross total uses the net rent (after expenses)
-      grossTotal += annualNetRent;
-      
-      // Shaded total applies the 80% shading on net rent
-      const shadedAmount = annualNetRent * rule.rate;
+      grossTotal += annualPositiveCashflow;
+      const shadedAmount = annualPositiveCashflow * rule.rate;
       shadedTotal += shadedAmount;
       
       breakdown.push({
-        component: `${rule.label} (${property.address?.substring(0, 30) || 'Property'}...)`,
-        grossAmount: annualNetRent,
+        component: `Positive Cash Flow (${property.address?.substring(0, 30) || 'Property'}...)`,
+        grossAmount: annualPositiveCashflow,
         shadingRate: rule.rate,
         shadedAmount: shadedAmount,
       });
@@ -364,6 +362,36 @@ function calculateIncomeBreakdown(incomeRecords: any[], properties: any[]): {
   }
 
   return { grossTotal, shadedTotal, breakdown };
+}
+
+// Calculate negative property cash flows to be layered on top of expenses
+function calculateNegativePropertyCashFlows(properties: any[]): {
+  totalMonthly: number;
+  breakdown: { address: string; monthlyCashflow: number }[];
+} {
+  let totalMonthly = 0;
+  const breakdown: { address: string; monthlyCashflow: number }[] = [];
+
+  for (const property of properties) {
+    const propertyType = property.property_type?.toLowerCase() || '';
+    
+    // Skip rental properties (where client pays rent) - handled separately
+    if (propertyType === 'rental') continue;
+    
+    const netMonthlyCashflow = property.net_monthly_cashflow || 0;
+    
+    // Only include NEGATIVE cash flows as additional expenses
+    if (netMonthlyCashflow < 0) {
+      const absoluteCashflow = Math.abs(netMonthlyCashflow);
+      totalMonthly += absoluteCashflow;
+      breakdown.push({
+        address: property.address?.substring(0, 40) || 'Investment Property',
+        monthlyCashflow: absoluteCashflow,
+      });
+    }
+  }
+
+  return { totalMonthly, breakdown };
 }
 
 function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annualIncome: number): {
@@ -662,6 +690,16 @@ Deno.serve(async (req) => {
     
     console.log(`[calculate-borrowing-capacity] Expenses: HEM=$${hemBenchmark}, Declared=$${totalDeclaredExpenses}, Using=$${livingExpenses} (${expenseMethodUsed})`);
 
+    // Calculate NEGATIVE property cash flows - these are layered ON TOP of expenses
+    const { totalMonthly: negativePropertyCashFlows, breakdown: negativeCashFlowBreakdown } = 
+      calculateNegativePropertyCashFlows(properties);
+    
+    // Total living expenses = MAX(HEM, declared) + negative property cash flows
+    const totalLivingExpenses = livingExpenses + negativePropertyCashFlows;
+    
+    console.log(`[calculate-borrowing-capacity] Negative property cash flows: $${negativePropertyCashFlows}/month from ${negativeCashFlowBreakdown.length} properties`);
+    console.log(`[calculate-borrowing-capacity] Total living expenses (base + negative CF): $${totalLivingExpenses}/month`);
+
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
       calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
@@ -675,11 +713,12 @@ Deno.serve(async (req) => {
     const bufferRate = overrides?.bufferRate ?? 3.00;
     const loanTermYears = overrides?.loanTermYears ?? 30;
 
-    // Perform calculation - now uses after-tax income internally
+    // Perform calculation - uses after-tax income internally
+    // NOTE: Uses totalLivingExpenses which includes negative property cash flows
     const result = calculateBorrowingCapacity({
       grossAnnualIncome: effectiveGrossIncome,
       shadedAnnualIncome: effectiveShadedIncome,
-      monthlyLivingExpenses: livingExpenses,
+      monthlyLivingExpenses: totalLivingExpenses, // Includes negative property cash flows
       monthlyCommitments: effectiveCommitments,
       interestRate,
       bufferRate,
@@ -698,7 +737,10 @@ Deno.serve(async (req) => {
       grossAnnualIncome: effectiveGrossIncome,
       shadedAnnualIncome: effectiveShadedIncome,
       incomeBreakdown,
-      livingExpensesMonthly: livingExpenses,
+      livingExpensesMonthly: livingExpenses, // Base living expenses (HEM or declared)
+      negativePropertyCashFlows, // Negative cash flows from properties
+      negativeCashFlowBreakdown, // Breakdown of negative cash flow properties
+      totalLivingExpenses, // Base + negative property cash flows
       expenseMethod: expenseMethodUsed,
       hemBenchmark,
       declaredExpenses: totalDeclaredExpenses,

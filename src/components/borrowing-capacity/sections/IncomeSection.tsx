@@ -123,9 +123,13 @@ export function IncomeSection({
               <ul className="space-y-0.5">
                 <li>• Base salary: 100%</li>
                 <li>• Bonus/Commission: 80%</li>
-                <li>• Rental income: 80%</li>
+                <li>• Positive property cash flow: 80%</li>
                 <li>• Non-essential overtime: 50%</li>
               </ul>
+              <p className="mt-2 text-xs italic">
+                Note: Only properties with positive cash flow contribute to income. 
+                Negative cash flow properties are treated as expenses.
+              </p>
             </div>
           </CardContent>
         </CollapsibleContent>
