@@ -19,7 +19,8 @@ import {
   Save,
   Home,
   Building2,
-  Info
+  Info,
+  Landmark
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -41,6 +42,8 @@ interface GenerateReportStepProps {
   onReviewFrequencyChange: (frequency: 'quarterly' | 'bi_annual' | 'annual') => void;
   includeOwnerOccupied: boolean;
   onIncludeOwnerOccupiedChange: (include: boolean) => void;
+  includeBorrowingCapacity: boolean;
+  onIncludeBorrowingCapacityChange: (include: boolean) => void;
   ownerOccupiedCount: number;
   investmentCount: number;
   onSaveDraft: () => Promise<void>;
@@ -60,6 +63,8 @@ export function GenerateReportStep({
   onReviewFrequencyChange,
   includeOwnerOccupied,
   onIncludeOwnerOccupiedChange,
+  includeBorrowingCapacity,
+  onIncludeBorrowingCapacityChange,
   ownerOccupiedCount,
   investmentCount,
   onSaveDraft,
@@ -184,6 +189,55 @@ export function GenerateReportStep({
           </CardContent>
         </Card>
       )}
+
+      {/* Borrowing Capacity Toggle */}
+      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Landmark className="h-5 w-5 text-blue-600" />
+            Borrowing Capacity Section
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Control whether the Borrowing Capacity section is included in the final Portfolio Performance Report PDF export.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="include-borrowing-capacity" className="text-sm font-medium">
+                Include in Report
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Show borrowing capacity assessment in PDF export
+              </p>
+            </div>
+            <Switch
+              id="include-borrowing-capacity"
+              checked={includeBorrowingCapacity}
+              onCheckedChange={onIncludeBorrowingCapacityChange}
+            />
+          </div>
+          
+          {!includeBorrowingCapacity && (
+            <div className="p-3 bg-blue-100/50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-2">
+                <Landmark className="h-4 w-4 text-blue-600 mt-0.5" />
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  The Borrowing Capacity section will be <strong>excluded</strong> from the 
+                  Portfolio Performance Report PDF. All other sections will remain.
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Review Frequency */}
       <Card>

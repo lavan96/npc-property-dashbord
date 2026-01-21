@@ -131,6 +131,7 @@ interface PortfolioAnalysisData {
 interface PortfolioAnalysisPDFGeneratorProps {
   clientId: string;
   clientName: string;
+  includeBorrowingCapacity?: boolean;
   onComplete?: () => void;
 }
 
@@ -318,6 +319,7 @@ const ensurePercentage = (value: string | null | undefined): string => {
 export function PortfolioAnalysisPDFGenerator({ 
   clientId, 
   clientName,
+  includeBorrowingCapacity = true,
   onComplete 
 }: PortfolioAnalysisPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -2074,8 +2076,8 @@ export function PortfolioAnalysisPDFGenerator({
       console.log('✓ Financial health page complete');
       
       // ============= PAGE: BORROWING CAPACITY ASSESSMENT =============
-      // Only include if borrowing capacity data exists
-      if (analysisData.borrowingCapacity) {
+      // Only include if borrowing capacity data exists AND includeBorrowingCapacity is true
+      if (analysisData.borrowingCapacity && includeBorrowingCapacity) {
         console.log('📝 Creating borrowing capacity page...');
         page = addContentPage();
         yPos = PAGE_HEIGHT - MARGIN_TOP;
