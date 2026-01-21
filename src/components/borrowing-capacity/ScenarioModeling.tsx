@@ -52,8 +52,10 @@ export function ScenarioModeling({
   
   // Calculate scenario whenever adjustments change
   useEffect(() => {
+    const adjustedGrossIncome = baseInputs.grossAnnualIncome * (1 + adjustments.incomeChange / 100);
     const scenarioInputs: BorrowingCapacityInput = {
       ...baseInputs,
+      grossAnnualIncome: adjustedGrossIncome,
       shadedAnnualIncome: baseInputs.shadedAnnualIncome * (1 + adjustments.incomeChange / 100),
       monthlyLivingExpenses: baseInputs.monthlyLivingExpenses * (1 + adjustments.expenseChange / 100),
       monthlyCommitments: baseInputs.monthlyCommitments * (1 + adjustments.debtChange / 100),
