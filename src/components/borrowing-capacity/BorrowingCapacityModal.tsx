@@ -84,22 +84,31 @@ export function BorrowingCapacityModal({
   const [dtiCapEnabled, setDtiCapEnabled] = useState(false);
   const [dtiCapLimit, setDtiCapLimit] = useState(DEFAULT_DTI_CAP);
 
-  // Fetch client data
+  // Fetch client data INCLUDING expenses
   const { data: clientData } = useQuery({
     queryKey: ['borrowing-capacity-client-data', clientId],
     queryFn: async () => {
-      const [clientRes, incomeRes, liabilitiesRes, propertiesRes] = await Promise.all([
+      const [clientRes, incomeRes, liabilitiesRes, propertiesRes, expensesRes] = await Promise.all([
         supabase.from('clients').select('*').eq('id', clientId).single(),
         supabase.from('client_income').select('*').eq('client_id', clientId),
         supabase.from('client_liabilities').select('*').eq('client_id', clientId),
         supabase.from('client_properties').select('*').eq('client_id', clientId),
+        supabase.from('client_expenses').select('*').eq('client_id', clientId),
       ]);
+
+      // Calculate total declared expenses from database
+      const totalDeclaredFromDB = (expensesRes.data || []).reduce(
+        (sum, exp) => sum + (Number(exp.monthly_amount) || 0), 
+        0
+      );
 
       return {
         client: clientRes.data,
         income: incomeRes.data || [],
         liabilities: liabilitiesRes.data || [],
         properties: propertiesRes.data || [],
+        expenses: expensesRes.data || [],
+        totalDeclaredExpenses: totalDeclaredFromDB,
       };
     },
     enabled: open,
@@ -241,7 +250,15 @@ export function BorrowingCapacityModal({
   const hemBreakdown: HemBreakdown = getHemBreakdown(isCouple ? 'couple' : 'single', dependents, totalGrossIncome);
   const hemBenchmark = hemBreakdown.finalHem;
 
-  // Effective expenses
+  // Sync declared expenses from database when data loads
+  useEffect(() => {
+    if (clientData?.totalDeclaredExpenses !== undefined && clientData.totalDeclaredExpenses > 0) {
+      setDeclaredExpenses(clientData.totalDeclaredExpenses);
+    }
+  }, [clientData?.totalDeclaredExpenses]);
+
+  // Effective expenses - use the appropriate method
+  // CRITICAL: This is the "hybrid" logic that banks use
   const effectiveExpenses = expenseMethod === 'hem' 
     ? hemBenchmark 
     : expenseMethod === 'declared' 
