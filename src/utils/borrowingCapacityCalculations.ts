@@ -89,21 +89,34 @@ export const INCOME_SHADING_RULES: Record<string, { rate: number; label: string 
 };
 
 // HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
-// Updated to align with major lender HEM tables
-export const HEM_BENCHMARKS: Record<string, Record<number, number>> = {
+// BASE values - these get scaled by income level
+export const HEM_BENCHMARKS_BASE: Record<string, Record<number, number>> = {
   single: {
-    0: 2100,  // Was 1500 - updated to 2024 standards
-    1: 2650,  // Was 2000
-    2: 3050,  // Was 2300
-    3: 3450,  // Was 2600
+    0: 2100,  // Base for < $80k income
+    1: 2650,
+    2: 3050,
+    3: 3450,
   },
   couple: {
-    0: 2950,  // Was 2200 - updated to 2024 standards
-    1: 3400,  // Was 2600
-    2: 3850,  // Was 2900
-    3: 4300,  // Was 3200
+    0: 2950,  // Base for < $80k income
+    1: 3400,
+    2: 3850,
+    3: 4300,
   },
 };
+
+// Income-based HEM scaling factors
+// Higher income = higher expected living expenses
+export const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
+  { maxIncome: 80000, multiplier: 1.00 },   // Base HEM
+  { maxIncome: 120000, multiplier: 1.20 },  // 20% uplift for $80-120k
+  { maxIncome: 180000, multiplier: 1.40 },  // 40% uplift for $120-180k
+  { maxIncome: 250000, multiplier: 1.60 },  // 60% uplift for $180-250k
+  { maxIncome: Infinity, multiplier: 1.80 }, // 80% uplift for $250k+
+];
+
+// For backwards compatibility - deprecated, use getHemBenchmark with income param
+export const HEM_BENCHMARKS = HEM_BENCHMARKS_BASE;
 
 // Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
 export const RENTAL_EXPENSE_RATIO = 0.20;
@@ -122,15 +135,27 @@ export const DEFAULT_CALCULATION_PARAMS = {
 // ============================================
 
 /**
- * Get HEM benchmark based on marital status and dependents
+ * Get HEM benchmark based on marital status, dependents, and income
+ * Income-scaled to reflect higher living costs for higher earners
  */
-export function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null): number {
+export function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0): number {
   const status = maritalStatus?.toLowerCase() || 'single';
   const isCouple = ['married', 'de facto', 'couple', 'partnered'].includes(status);
   const dependents = Math.min(dependentsCount || 0, 3);
   
   const category = isCouple ? 'couple' : 'single';
-  return HEM_BENCHMARKS[category][dependents] || HEM_BENCHMARKS[category][0];
+  const baseHem = HEM_BENCHMARKS_BASE[category][dependents] || HEM_BENCHMARKS_BASE[category][0];
+  
+  // Apply income-based scaling
+  let multiplier = 1.0;
+  for (const tier of HEM_INCOME_SCALING) {
+    if (grossAnnualIncome <= tier.maxIncome) {
+      multiplier = tier.multiplier;
+      break;
+    }
+  }
+  
+  return Math.round(baseHem * multiplier);
 }
 
 /**

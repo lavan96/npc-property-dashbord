@@ -227,12 +227,12 @@ export function BorrowingCapacityModal({
     0
   );
 
-  // Calculate HEM benchmark
+  // Calculate HEM benchmark - now income-scaled
   const isCouple = clientData?.client?.marital_status === 'married' || 
                    clientData?.client?.marital_status === 'de_facto' ||
                    !!clientData?.client?.secondary_first_name;
   const dependents = Math.min(3, clientData?.client?.dependents_count || 0);
-  const hemBenchmark = getHemBenchmark(isCouple ? 'couple' : 'single', dependents);
+  const hemBenchmark = getHemBenchmark(isCouple ? 'couple' : 'single', dependents, totalGrossIncome);
 
   // Effective expenses
   const effectiveExpenses = expenseMethod === 'hem' 
