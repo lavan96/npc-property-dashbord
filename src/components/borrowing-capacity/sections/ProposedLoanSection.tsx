@@ -2,18 +2,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { 
   Collapsible, 
   CollapsibleContent, 
   CollapsibleTrigger 
 } from '@/components/ui/collapsible';
-import { ChevronDown, Target, DollarSign, Percent, Calendar } from 'lucide-react';
+import { ChevronDown, Target, DollarSign, Percent, Calendar, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 interface ProposedLoanSectionProps {
   proposedLoanAmount: number;
   interestRate: number;
   bufferRate: number;
+  bufferEnabled: boolean;
+  onBufferEnabledChange: (enabled: boolean) => void;
   loanTermYears: number;
   onProposedLoanChange?: (value: number) => void;
   onInterestRateChange?: (value: number) => void;
@@ -24,6 +27,8 @@ export function ProposedLoanSection({
   proposedLoanAmount,
   interestRate,
   bufferRate,
+  bufferEnabled,
+  onBufferEnabledChange,
   loanTermYears,
   onProposedLoanChange,
   onInterestRateChange,
@@ -155,15 +160,39 @@ export function ProposedLoanSection({
               </div>
             </div>
 
+            {/* APRA Buffer Toggle */}
+            <div className="p-4 rounded-lg border bg-card">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="buffer-toggle" className="text-sm font-medium flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    APRA +3% Buffer
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Stress-test at loan rate + 3%
+                  </p>
+                </div>
+                <Switch
+                  id="buffer-toggle"
+                  checked={bufferEnabled}
+                  onCheckedChange={onBufferEnabledChange}
+                />
+              </div>
+            </div>
+
             {/* Assessment Rate Display */}
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+            <div className={`p-4 rounded-lg border ${bufferEnabled ? 'bg-primary/10 border-primary/20' : 'bg-muted/50 border-muted'}`}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">Assessment Rate</p>
-                  <p className="text-xs text-muted-foreground">Interest + {bufferRate}% buffer</p>
+                  <p className="text-xs text-muted-foreground">
+                    {bufferEnabled ? `Interest + ${bufferRate}% buffer` : 'Interest rate only (no buffer)'}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-primary">{assessmentRate.toFixed(2)}%</p>
+                  <p className={`text-xl font-bold ${bufferEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {assessmentRate.toFixed(2)}%
+                  </p>
                 </div>
               </div>
             </div>
@@ -171,8 +200,9 @@ export function ProposedLoanSection({
             {/* Buffer Explanation */}
             <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
               <p>
-                <strong>APRA Serviceability Buffer:</strong> Lenders must assess borrowers at the 
-                loan rate + 3% buffer to ensure repayment capacity if rates rise.
+                <strong>APRA Serviceability Buffer:</strong> {bufferEnabled 
+                  ? 'Lenders must assess borrowers at the loan rate + 3% buffer to ensure repayment capacity if rates rise.'
+                  : 'Buffer disabled — calculating at the nominal interest rate only. This shows theoretical maximum capacity.'}
               </p>
             </div>
           </CardContent>

@@ -83,6 +83,10 @@ export function BorrowingCapacityModal({
   const [calculationMode, setCalculationMode] = useState<CalculationMode>('bank');
   const [dtiCapEnabled, setDtiCapEnabled] = useState(false);
   const [dtiCapLimit, setDtiCapLimit] = useState(DEFAULT_DTI_CAP);
+  const [bufferEnabled, setBufferEnabled] = useState(true); // APRA 3% buffer toggle
+  
+  // Computed buffer rate based on toggle
+  const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
 
   // Fetch client data INCLUDING expenses
   const { data: clientData } = useQuery({
@@ -354,14 +358,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, totalGrossIncome, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit]);
+  }, [quickCalculate, totalGrossIncome, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit]);
+  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -455,7 +459,9 @@ export function BorrowingCapacityModal({
                     <ProposedLoanSection
                       proposedLoanAmount={proposedLoanAmount}
                       interestRate={interestRate}
-                      bufferRate={3.0}
+                      bufferRate={effectiveBufferRate}
+                      bufferEnabled={bufferEnabled}
+                      onBufferEnabledChange={setBufferEnabled}
                       loanTermYears={loanTermYears}
                       onProposedLoanChange={setProposedLoanAmount}
                       onInterestRateChange={setInterestRate}
@@ -624,7 +630,7 @@ export function BorrowingCapacityModal({
                       monthlyLivingExpenses: effectiveExpenses,
                       monthlyCommitments: totalMonthlyCommitments,
                       interestRate,
-                      bufferRate: 3.0,
+                      bufferRate: effectiveBufferRate,
                       loanTermYears,
                     }}
                     baseResult={result}
