@@ -8,13 +8,15 @@ import {
   CollapsibleContent, 
   CollapsibleTrigger 
 } from '@/components/ui/collapsible';
-import { ChevronDown, Home, DollarSign, Info } from 'lucide-react';
+import { ChevronDown, Home, DollarSign, Info, Users, User, Baby } from 'lucide-react';
 import { useState } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { HemBreakdown } from '@/utils/borrowingCapacityCalculations';
 
 interface ExpensesSectionProps {
   expenseMethod: 'hem' | 'declared' | 'hybrid';
   hemBenchmark: number;
+  hemBreakdown?: HemBreakdown;
   declaredExpenses: number;
   effectiveExpenses: number;
   onMethodChange?: (method: 'hem' | 'declared' | 'hybrid') => void;
@@ -24,6 +26,7 @@ interface ExpensesSectionProps {
 export function ExpensesSection({
   expenseMethod,
   hemBenchmark,
+  hemBreakdown,
   declaredExpenses,
   effectiveExpenses,
   onMethodChange,
@@ -108,8 +111,8 @@ export function ExpensesSection({
               </RadioGroup>
             </div>
 
-            {/* HEM Benchmark Display */}
-            <div className="p-3 rounded-lg bg-muted/50 border border-border">
+            {/* HEM Benchmark Display with Breakdown */}
+            <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground">HEM Benchmark</p>
@@ -119,6 +122,50 @@ export function ExpensesSection({
                   Based on household profile
                 </Badge>
               </div>
+              
+              {/* HEM Breakdown Details */}
+              {hemBreakdown && (
+                <div className="pt-2 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground mb-2 font-medium">HEM Calculation Breakdown:</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      {hemBreakdown.householdType === 'couple' ? (
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                      ) : (
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <span className="text-muted-foreground">Household:</span>
+                      <span className="font-medium capitalize">{hemBreakdown.householdType}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Baby className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Dependants:</span>
+                      <span className="font-medium">{hemBreakdown.dependentsCount}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Base HEM:</span>
+                      <span className="font-medium">{formatCurrency(hemBreakdown.baseHem)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">Income Tier:</span>
+                      <span className="font-medium">{hemBreakdown.incomeTier}</span>
+                    </div>
+                  </div>
+                  {hemBreakdown.multiplier > 1 && (
+                    <div className="mt-2 p-2 rounded bg-primary/5 border border-primary/10">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium text-primary">{hemBreakdown.multiplier}x multiplier</span> applied 
+                        for {hemBreakdown.incomeTier} income tier
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatCurrency(hemBreakdown.baseHem)} × {hemBreakdown.multiplier} = {formatCurrency(hemBreakdown.finalHem)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Declared Expenses Input */}

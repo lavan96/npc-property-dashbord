@@ -18,14 +18,17 @@ import {
   Info,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { FullAssessmentResult, ServiceabilityBand } from '@/utils/borrowingCapacityCalculations';
+import type { FullAssessmentResult, ServiceabilityBand, CalculationMode } from '@/utils/borrowingCapacityCalculations';
 
 interface ResultsPanelProps {
   result: FullAssessmentResult | null;
   isCalculating?: boolean;
+  calculationMode?: CalculationMode;
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
 }
 
-export function ResultsPanel({ result, isCalculating }: ResultsPanelProps) {
+export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
 
