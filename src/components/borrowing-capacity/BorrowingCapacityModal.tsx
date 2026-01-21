@@ -177,14 +177,27 @@ export function BorrowingCapacityModal({
   }) || [];
 
   // Add rental income from properties
+  // CRITICAL: Apply 20% expense ratio BEFORE shading (banks assume property costs)
+  const RENTAL_EXPENSE_RATIO = 0.20;
   clientData?.properties.forEach(prop => {
-    if (prop.monthly_rental_income) {
+    const propertyType = prop.property_type?.toLowerCase() || '';
+    
+    // Skip rental properties where client is tenant (this is an expense, not income)
+    if (propertyType === 'rental') return;
+    
+    if (prop.monthly_rental_income && prop.monthly_rental_income > 0) {
+      const annualGrossRent = Number(prop.monthly_rental_income) * 12;
+      // Net rent after property expenses (20% assumed by banks)
+      const annualNetRent = annualGrossRent * (1 - RENTAL_EXPENSE_RATIO);
+      // Then apply 80% shading factor
+      const shadedAmount = annualNetRent * 0.8;
+      
       incomeBreakdown.push({
         id: `prop-${prop.id}-rental`,
         label: `Rental: ${(prop.address || 'Property').slice(0, 30)}...`,
-        grossAmount: Number(prop.monthly_rental_income) * 12,
+        grossAmount: annualNetRent, // Show net rent (after expenses) as gross
         shadingRate: 0.8,
-        shadedAmount: Number(prop.monthly_rental_income) * 12 * 0.8,
+        shadedAmount: shadedAmount,
       });
     }
   });
@@ -224,15 +237,47 @@ export function BorrowingCapacityModal({
     };
   }) || [];
 
-  // Add existing property loans
+  // Add existing property loans - STRESS-TESTED at P&I assessment rate
+  // Banks assess existing loans at P&I even if currently interest-only
+  const LOAN_ASSESSMENT_RATE = 0.095; // 9.5% (approx 6.5% + 3% buffer)
+  const LOAN_TERM_MONTHS = 30 * 12; // 30 year term for calculation
+  
   clientData?.properties.forEach(prop => {
-    if (prop.loan_remaining && prop.monthly_interest_repayment) {
+    const propertyType = prop.property_type?.toLowerCase() || '';
+    
+    // Handle rental properties (where client is tenant paying rent)
+    if (propertyType === 'rental') {
+      const monthlyRentPaid = Number(prop.monthly_rental_income) || 0;
+      if (monthlyRentPaid > 0) {
+        liabilitiesBreakdown.push({
+          id: `prop-${prop.id}-rent-expense`,
+          type: 'rent_expense',
+          label: `Rent Expense: ${prop.address?.slice(0, 20)}...`,
+          balance: 0,
+          monthlyServicing: monthlyRentPaid,
+          calculationNote: 'Rent paid as tenant',
+        });
+      }
+    } else if (prop.loan_remaining && prop.loan_remaining > 0) {
+      // Calculate P&I servicing at assessment rate (stress-tested)
+      const loanBalance = Number(prop.loan_remaining);
+      const monthlyRate = LOAN_ASSESSMENT_RATE / 12;
+      
+      // P&I repayment formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
+      const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS)) 
+                          / (Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS) - 1);
+      
+      // Use the HIGHER of: P&I calculated OR actual recorded repayment
+      const actualRepayment = Number(prop.monthly_interest_repayment) || 0;
+      const monthlyServicing = Math.max(piRepayment, actualRepayment);
+      
       liabilitiesBreakdown.push({
         id: `prop-${prop.id}-loan`,
         type: prop.property_type === 'owner_occupied' ? 'home_loan' : 'investment_loan',
         label: `Loan: ${prop.address?.slice(0, 25)}...`,
-        balance: Number(prop.loan_remaining),
-        monthlyServicing: Number(prop.monthly_interest_repayment),
+        balance: loanBalance,
+        monthlyServicing: Math.round(monthlyServicing * 100) / 100,
+        calculationNote: piRepayment > actualRepayment ? 'Stress-tested P&I @ 9.5%' : 'Actual repayment',
       });
     }
   });
