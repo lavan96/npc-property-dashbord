@@ -10,12 +10,14 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2 } from 'lucide-react';
+import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
-import { getHemBenchmark } from '@/utils/borrowingCapacityCalculations';
-import type { FullAssessmentResult, BorrowingCapacityInput } from '@/utils/borrowingCapacityCalculations';
+import { getHemBenchmark, getHemBreakdown, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
+import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 import { IncomeSection } from './sections/IncomeSection';
 import { ExpensesSection } from './sections/ExpensesSection';
@@ -77,6 +79,10 @@ export function BorrowingCapacityModal({
   const [result, setResult] = useState<FullAssessmentResult | null>(null);
   const [isLocalCalculating, setIsLocalCalculating] = useState(false);
   const [showRateComparison, setShowRateComparison] = useState(false);
+  // New mode states
+  const [calculationMode, setCalculationMode] = useState<CalculationMode>('bank');
+  const [dtiCapEnabled, setDtiCapEnabled] = useState(false);
+  const [dtiCapLimit, setDtiCapLimit] = useState(DEFAULT_DTI_CAP);
 
   // Fetch client data
   const { data: clientData } = useQuery({
@@ -227,12 +233,13 @@ export function BorrowingCapacityModal({
     0
   );
 
-  // Calculate HEM benchmark - now income-scaled
+  // Calculate HEM benchmark with breakdown
   const isCouple = clientData?.client?.marital_status === 'married' || 
                    clientData?.client?.marital_status === 'de_facto' ||
                    !!clientData?.client?.secondary_first_name;
   const dependents = Math.min(3, clientData?.client?.dependents_count || 0);
-  const hemBenchmark = getHemBenchmark(isCouple ? 'couple' : 'single', dependents, totalGrossIncome);
+  const hemBreakdown: HemBreakdown = getHemBreakdown(isCouple ? 'couple' : 'single', dependents, totalGrossIncome);
+  const hemBenchmark = hemBreakdown.finalHem;
 
   // Effective expenses
   const effectiveExpenses = expenseMethod === 'hem' 
@@ -251,6 +258,10 @@ export function BorrowingCapacityModal({
         interestRate,
         loanTermYears,
         proposedLoanAmount,
+        // Pass mode settings
+        calculationMode,
+        dtiCapEnabled,
+        dtiCapLimit,
       });
       setResult(calcResult);
     } catch (error) {
@@ -258,14 +269,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, totalGrossIncome, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount]);
+  }, [quickCalculate, totalGrossIncome, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears]);
+  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -343,6 +354,7 @@ export function BorrowingCapacityModal({
                     <ExpensesSection
                       expenseMethod={expenseMethod}
                       hemBenchmark={hemBenchmark}
+                      hemBreakdown={hemBreakdown}
                       declaredExpenses={declaredExpenses}
                       effectiveExpenses={effectiveExpenses}
                       onMethodChange={setExpenseMethod}
@@ -384,6 +396,115 @@ export function BorrowingCapacityModal({
                         </p>
                       )}
                     </div>
+
+                    {/* Calculation Mode Controls */}
+                    <div className="rounded-lg border p-4 bg-card space-y-4">
+                      <h3 className="font-medium flex items-center gap-2">
+                        {calculationMode === 'conservative' ? (
+                          <ShieldAlert className="h-4 w-4 text-warning" />
+                        ) : (
+                          <Shield className="h-4 w-4 text-primary" />
+                        )}
+                        Calculation Mode
+                      </h3>
+                      
+                      {/* Conservative Mode Toggle */}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="conservative-mode" className="text-sm font-medium">
+                            Conservative Mode
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Quickli-style with surplus floors & DTI cap
+                          </p>
+                        </div>
+                        <Switch
+                          id="conservative-mode"
+                          checked={calculationMode === 'conservative'}
+                          onCheckedChange={(checked) => {
+                            setCalculationMode(checked ? 'conservative' : 'bank');
+                            if (checked) {
+                              setDtiCapEnabled(true);
+                              setDtiCapLimit(6);
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <Separator />
+
+                      {/* DTI Cap Controls */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="dti-cap" className="text-sm font-medium">
+                              Enforce DTI Cap
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Limit capacity based on debt-to-income ratio
+                            </p>
+                          </div>
+                          <Switch
+                            id="dti-cap"
+                            checked={dtiCapEnabled || calculationMode === 'conservative'}
+                            onCheckedChange={setDtiCapEnabled}
+                            disabled={calculationMode === 'conservative'}
+                          />
+                        </div>
+                        
+                        {(dtiCapEnabled || calculationMode === 'conservative') && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs text-muted-foreground">DTI Limit</Label>
+                              <span className="text-sm font-medium">{dtiCapLimit}x</span>
+                            </div>
+                            <div className="flex gap-2">
+                              {[5, 6, 7, 8].map((cap) => (
+                                <button
+                                  key={cap}
+                                  onClick={() => setDtiCapLimit(cap)}
+                                  disabled={calculationMode === 'conservative'}
+                                  className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                                    dtiCapLimit === cap
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-secondary hover:bg-secondary/80'
+                                  } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                  {cap}x
+                                </button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {calculationMode === 'conservative' 
+                                ? 'Conservative mode enforces 6x DTI cap'
+                                : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
+                              }
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mode Description */}
+                      <div className={`p-3 rounded-lg text-xs ${
+                        calculationMode === 'conservative' 
+                          ? 'bg-warning/10 border border-warning/30 text-warning'
+                          : 'bg-primary/10 border border-primary/30 text-primary'
+                      }`}>
+                        {calculationMode === 'conservative' ? (
+                          <p>
+                            <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
+                            residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
+                            Results align with consumer-focused tools like Quickli.
+                          </p>
+                        ) : (
+                          <p>
+                            <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
+                            constraints. Shows maximum theoretical lending capacity similar to major lender 
+                            assessments.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </ScrollArea>
               </div>
@@ -391,7 +512,13 @@ export function BorrowingCapacityModal({
               <div className="w-1/2">
                 <ScrollArea className="h-[calc(90vh-140px)]">
                   <div className="p-6">
-                    <ResultsPanel result={result} isCalculating={isLocalCalculating || isCalculating} />
+                    <ResultsPanel 
+                      result={result} 
+                      isCalculating={isLocalCalculating || isCalculating}
+                      calculationMode={calculationMode}
+                      dtiCapEnabled={dtiCapEnabled}
+                      dtiCapLimit={dtiCapLimit}
+                    />
                   </div>
                 </ScrollArea>
               </div>

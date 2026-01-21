@@ -20,6 +20,9 @@ interface BorrowingCapacityOverrides {
   bufferRate?: number;
   loanTermYears?: number;
   proposedLoanAmount?: number;
+  calculationMode?: 'bank' | 'conservative';
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
 }
 
 interface UseBorrowingCapacityOptions {

@@ -27,6 +27,14 @@ export interface LiabilityBreakdownItem {
   monthlyServicing: number;
 }
 
+export type CalculationMode = 'bank' | 'conservative';
+
+export interface CalculationModeConfig {
+  mode: CalculationMode;
+  dtiCapEnabled: boolean;
+  dtiCapLimit: number;
+}
+
 export interface BorrowingCapacityInput {
   shadedAnnualIncome: number;
   monthlyLivingExpenses: number;
@@ -34,6 +42,10 @@ export interface BorrowingCapacityInput {
   interestRate: number;
   bufferRate: number;
   loanTermYears: number;
+  // Optional mode configuration
+  calculationMode?: CalculationMode;
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
 }
 
 export interface BorrowingCapacityResult {
@@ -130,6 +142,17 @@ export const DEFAULT_CALCULATION_PARAMS = {
   loanTermYears: 30,
 };
 
+// Conservative mode adjustments (Quickli-style)
+export const CONSERVATIVE_MODE_ADJUSTMENTS = {
+  minimumSurplusFloor: 1000, // Enforce $1,000/mo minimum surplus
+  residualIncomeFloor: 1500, // Minimum residual income requirement
+  surplusBufferMultiplier: 0.85, // Only use 85% of calculated surplus
+  dtiHardCap: 6, // Hard cap DTI at 6x
+};
+
+// Default DTI cap settings
+export const DEFAULT_DTI_CAP = 6.0;
+
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
@@ -138,24 +161,52 @@ export const DEFAULT_CALCULATION_PARAMS = {
  * Get HEM benchmark based on marital status, dependents, and income
  * Income-scaled to reflect higher living costs for higher earners
  */
-export function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0): number {
+export interface HemBreakdown {
+  householdType: 'single' | 'couple';
+  dependentsCount: number;
+  baseHem: number;
+  incomeTier: string;
+  multiplier: number;
+  finalHem: number;
+}
+
+export function getHemBreakdown(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0): HemBreakdown {
   const status = maritalStatus?.toLowerCase() || 'single';
   const isCouple = ['married', 'de facto', 'couple', 'partnered'].includes(status);
   const dependents = Math.min(dependentsCount || 0, 3);
   
-  const category = isCouple ? 'couple' : 'single';
-  const baseHem = HEM_BENCHMARKS_BASE[category][dependents] || HEM_BENCHMARKS_BASE[category][0];
+  const householdType = isCouple ? 'couple' : 'single';
+  const baseHem = HEM_BENCHMARKS_BASE[householdType][dependents] || HEM_BENCHMARKS_BASE[householdType][0];
   
-  // Apply income-based scaling
+  // Find income tier and multiplier
   let multiplier = 1.0;
-  for (const tier of HEM_INCOME_SCALING) {
+  let incomeTier = 'Under $80k';
+  
+  for (let i = 0; i < HEM_INCOME_SCALING.length; i++) {
+    const tier = HEM_INCOME_SCALING[i];
     if (grossAnnualIncome <= tier.maxIncome) {
       multiplier = tier.multiplier;
+      if (tier.maxIncome === 80000) incomeTier = 'Under $80k';
+      else if (tier.maxIncome === 120000) incomeTier = '$80k - $120k';
+      else if (tier.maxIncome === 180000) incomeTier = '$120k - $180k';
+      else if (tier.maxIncome === 250000) incomeTier = '$180k - $250k';
+      else incomeTier = 'Over $250k';
       break;
     }
   }
   
-  return Math.round(baseHem * multiplier);
+  return {
+    householdType,
+    dependentsCount: dependents,
+    baseHem,
+    incomeTier,
+    multiplier,
+    finalHem: Math.round(baseHem * multiplier),
+  };
+}
+
+export function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0): number {
+  return getHemBreakdown(maritalStatus, dependentsCount, grossAnnualIncome).finalHem;
 }
 
 /**
@@ -245,8 +296,13 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     monthlyCommitments, 
     interestRate, 
     bufferRate, 
-    loanTermYears 
+    loanTermYears,
+    calculationMode = 'bank',
+    dtiCapEnabled = false,
+    dtiCapLimit = DEFAULT_DTI_CAP,
   } = params;
+  
+  const isConservative = calculationMode === 'conservative';
   
   // Assessment rate = current rate + APRA buffer
   const assessmentRate = interestRate + bufferRate;
@@ -254,10 +310,27 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
   
   // Monthly net income available
   const monthlyIncome = shadedAnnualIncome / 12;
-  const monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
+  let monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
+  
+  // Conservative mode adjustments
+  if (isConservative) {
+    // Apply surplus buffer multiplier (only use 85% of calculated surplus)
+    monthlySurplus = monthlySurplus * CONSERVATIVE_MODE_ADJUSTMENTS.surplusBufferMultiplier;
+    
+    // Enforce minimum surplus floor
+    if (monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
+      monthlySurplus = Math.max(0, monthlySurplus);
+    }
+    
+    // Enforce residual income floor
+    const residualIncome = monthlyIncome - monthlyCommitments;
+    if (residualIncome < CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor) {
+      monthlySurplus = Math.max(0, monthlySurplus - (CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor - residualIncome));
+    }
+  }
   
   // Max new repayment = available surplus
-  const maxNewRepayment = Math.max(0, monthlySurplus);
+  let maxNewRepayment = Math.max(0, monthlySurplus);
   
   // Reverse-calculate max loan from repayment using P&I formula
   const periods = loanTermYears * 12;
@@ -268,17 +341,42 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     borrowingCapacity = Math.round(maxNewRepayment * factor);
   }
   
+  // Calculate initial DTI ratio for potential capping
+  let totalAnnualDebt = (monthlyCommitments * 12) + (borrowingCapacity > 0 ? borrowingCapacity / loanTermYears : 0);
+  let dtiRatio = shadedAnnualIncome > 0 ? Math.round((totalAnnualDebt / shadedAnnualIncome) * 100) / 100 : 0;
+  
+  // Apply DTI cap if enabled or in conservative mode
+  const effectiveDtiCap = isConservative ? CONSERVATIVE_MODE_ADJUSTMENTS.dtiHardCap : dtiCapLimit;
+  const shouldApplyDtiCap = dtiCapEnabled || isConservative;
+  
+  if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && shadedAnnualIncome > 0) {
+    // Calculate max borrowing capacity to stay within DTI cap
+    const maxDebtForDtiCap = shadedAnnualIncome * effectiveDtiCap;
+    const existingAnnualDebt = monthlyCommitments * 12;
+    const maxNewAnnualDebt = Math.max(0, maxDebtForDtiCap - existingAnnualDebt);
+    const dtiCappedCapacity = maxNewAnnualDebt * loanTermYears;
+    
+    // Use the lower of DTI-capped or serviceability-based capacity
+    if (dtiCappedCapacity < borrowingCapacity) {
+      borrowingCapacity = Math.round(dtiCappedCapacity);
+      // Recalculate DTI with capped capacity
+      totalAnnualDebt = existingAnnualDebt + (borrowingCapacity / loanTermYears);
+      dtiRatio = Math.round((totalAnnualDebt / shadedAnnualIncome) * 100) / 100;
+    }
+  }
+  
   // Stress test at +1% above assessment
   const stressRate = ((assessmentRate + 1) / 100) / 12;
   let stressTestedCapacity = 0;
   if (stressRate > 0 && maxNewRepayment > 0) {
     const stressFactor = (1 - Math.pow(1 + stressRate, -periods)) / stressRate;
     stressTestedCapacity = Math.round(maxNewRepayment * stressFactor);
+    
+    // Apply DTI cap to stress-tested capacity as well
+    if (shouldApplyDtiCap && stressTestedCapacity > borrowingCapacity) {
+      stressTestedCapacity = Math.min(stressTestedCapacity, borrowingCapacity);
+    }
   }
-  
-  // DTI ratio
-  const totalAnnualDebt = (monthlyCommitments * 12) + (borrowingCapacity > 0 ? borrowingCapacity / loanTermYears : 0);
-  const dtiRatio = shadedAnnualIncome > 0 ? Math.round((totalAnnualDebt / shadedAnnualIncome) * 100) / 100 : 0;
   
   // Determine band
   let serviceabilityBand: ServiceabilityBand;
@@ -293,6 +391,11 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
   // Generate recommendations
   const recommendations: string[] = [];
   const warnings: string[] = [];
+  
+  // Add mode-specific context
+  if (isConservative) {
+    recommendations.push("Conservative mode: Capacity adjusted with minimum surplus floors and DTI cap");
+  }
   
   if (serviceabilityBand === 'green') {
     recommendations.push("Strong borrowing position - ready for property acquisition");
@@ -316,6 +419,9 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
   }
   
   // Add warnings
+  if (shouldApplyDtiCap && dtiRatio >= effectiveDtiCap * 0.9) {
+    warnings.push(`DTI ratio approaching ${effectiveDtiCap}x cap limit`);
+  }
   if (dtiRatio >= 7) {
     warnings.push("DTI ratio exceeds most lender thresholds");
   }
@@ -324,6 +430,9 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
   }
   if (borrowingCapacity < 100000 && shadedAnnualIncome > 50000) {
     warnings.push("Borrowing capacity constrained by existing commitments");
+  }
+  if (isConservative && monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
+    warnings.push(`Surplus below conservative minimum floor of $${CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor}/mo`);
   }
   
   return {
