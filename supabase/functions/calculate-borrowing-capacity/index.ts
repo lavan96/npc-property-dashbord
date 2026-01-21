@@ -519,16 +519,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch related data in parallel
-    const [incomeResult, liabilitiesResult, propertiesResult] = await Promise.all([
+    // Fetch related data in parallel - INCLUDING client_expenses
+    const [incomeResult, liabilitiesResult, propertiesResult, expensesResult] = await Promise.all([
       supabase.from("client_income").select("*").eq("client_id", clientId),
       supabase.from("client_liabilities").select("*").eq("client_id", clientId),
       supabase.from("client_properties").select("*").eq("client_id", clientId),
+      supabase.from("client_expenses").select("*").eq("client_id", clientId),
     ]);
 
     const incomeRecords = incomeResult.data || [];
     const liabilities = liabilitiesResult.data || [];
     const properties = propertiesResult.data || [];
+    const clientExpenses = expensesResult.data || [];
+    
+    // Calculate total declared living expenses from client_expenses table
+    const totalDeclaredExpenses = clientExpenses.reduce((sum, exp) => sum + (Number(exp.monthly_amount) || 0), 0);
+    console.log(`[calculate-borrowing-capacity] Declared expenses from DB: $${totalDeclaredExpenses}/month from ${clientExpenses.length} expense records`);
 
     console.log(`[calculate-borrowing-capacity] Found ${incomeRecords.length} income records, ${liabilities.length} liabilities, ${properties.length} properties`);
 
@@ -544,12 +550,23 @@ Deno.serve(async (req) => {
     // Calculate living expenses (HEM or override) - use income-scaled HEM
     const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome);
     
-    // Check if client is renting - if so, we need to add rent to HEM
-    // because HEM assumes homeownership. Rent paid is ALSO in liabilities,
-    // but we need to separate: HEM = living costs EXCLUDING housing
-    // So we use HEM as-is (which excludes rent) and rent is added via liabilities
-    // This is the correct approach - no double counting
-    const livingExpenses = overrides?.livingExpenses ?? hemBenchmark;
+    // CRITICAL: Use the HIGHER of HEM benchmark OR declared expenses from database
+    // This is the "hybrid" approach that banks use - they take the greater value
+    // Overrides take precedence if provided (for UI-driven calculations)
+    let livingExpenses: number;
+    if (overrides?.livingExpenses !== undefined && overrides?.livingExpenses !== null) {
+      // UI explicitly passed a value - use it
+      livingExpenses = overrides.livingExpenses;
+    } else {
+      // Default: use MAX(HEM, declared) - the "hybrid" approach
+      livingExpenses = Math.max(hemBenchmark, totalDeclaredExpenses);
+    }
+    
+    const expenseMethodUsed = overrides?.livingExpenses 
+      ? 'declared' 
+      : (totalDeclaredExpenses > hemBenchmark ? 'declared_higher' : 'hem');
+    
+    console.log(`[calculate-borrowing-capacity] Expenses: HEM=$${hemBenchmark}, Declared=$${totalDeclaredExpenses}, Using=$${livingExpenses} (${expenseMethodUsed})`);
 
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
@@ -583,8 +600,9 @@ Deno.serve(async (req) => {
       shadedAnnualIncome: effectiveShadedIncome,
       incomeBreakdown,
       livingExpensesMonthly: livingExpenses,
-      expenseMethod: overrides?.livingExpenses ? 'declared' : 'hem',
+      expenseMethod: expenseMethodUsed,
       hemBenchmark,
+      declaredExpenses: totalDeclaredExpenses,
       existingCommitmentsMonthly: effectiveCommitments,
       liabilityBreakdown,
       interestRate,
@@ -622,8 +640,8 @@ Deno.serve(async (req) => {
           shaded_annual_income: effectiveShadedIncome,
           income_breakdown: incomeBreakdown,
           living_expenses_monthly: livingExpenses,
-          expense_method: overrides?.livingExpenses ? 'declared' : 'hem',
-          expense_breakdown: { hemBenchmark },
+          expense_method: expenseMethodUsed,
+          expense_breakdown: { hemBenchmark, declaredExpenses: totalDeclaredExpenses },
           existing_commitments_monthly: effectiveCommitments,
           liability_breakdown: liabilityBreakdown,
           interest_rate_used: interestRate,
