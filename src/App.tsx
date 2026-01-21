@@ -1,4 +1,4 @@
-// App configuration - updated Dec 29, 2025
+// App configuration - updated Jan 21, 2026
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
