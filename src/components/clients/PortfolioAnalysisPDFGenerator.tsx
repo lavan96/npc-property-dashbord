@@ -2293,7 +2293,7 @@ export function PortfolioAnalysisPDFGenerator({
       
       yPos -= 40;
       
-      // Risk categories table - wider Assessment column to prevent truncation
+      // Risk categories table - much wider Assessment column (75%) to prevent truncation of descriptive text
       const riskCategories = [
         ['Risk Category', 'Assessment'],
         ['Concentration Risk', safeString(risk?.concentrationRisk, 'N/A')],
@@ -2301,7 +2301,7 @@ export function PortfolioAnalysisPDFGenerator({
         ['Vacancy Risk', safeString(risk?.vacancyRisk, 'N/A')],
       ];
       
-      const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.35, CONTENT_WIDTH * 0.65]);
+      const { lastY: riskTableLastY } = drawTable(page, riskCategories[0], riskCategories.slice(1), MARGIN_LEFT, yPos, [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.75]);
       yPos = riskTableLastY - SUBSECTION_SPACING;
       
       // Market risks - check for page break
@@ -2538,12 +2538,14 @@ export function PortfolioAnalysisPDFGenerator({
       yPos = drawSectionHeader(page, 'Property Portfolio Details', yPos);
       
       // Build property table - adjusted column widths for new margins
+      // Increased Address column width (160) and Type width (70) to prevent truncation
       const propHeaders = ['#', 'Address', 'Type', 'Value', 'Equity', 'LVR', 'Yield'];
-      const propColumnWidths = [22, 140, 55, 65, 65, 45, 50];
+      const propColumnWidths = [20, 160, 70, 60, 60, 40, 42];
       
+      // Let drawTable handle truncation via binary search - don't pre-truncate
       const propRows = analysisData.propertyAnalyses.map(prop => [
         prop.propertyNumber.toString(),
-        prop.address.substring(0, 30),
+        prop.address, // Full address - drawTable will truncate if needed
         formatPropertyType(prop.propertyType),
         formatCurrency(prop.value),
         formatCurrency(prop.equity),
