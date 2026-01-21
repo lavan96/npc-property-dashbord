@@ -23,6 +23,11 @@ const REQUIRED_OWNER_OCCUPIED_FIELDS = [
   'value', 'loan_remaining', 'interest_rate'
 ];
 
+// Required fields for rental properties (client is tenant - only rent paid matters)
+const REQUIRED_RENTAL_FIELDS = [
+  'monthly_rental_income' // This stores the weekly rent the client pays
+];
+
 // Optional fields for investment properties
 const OPTIONAL_INVESTMENT_FIELDS = [
   'monthly_body_corporate', 'monthly_repairs_maintenance', 
@@ -35,6 +40,9 @@ const OPTIONAL_OWNER_OCCUPIED_FIELDS = [
   'monthly_body_corporate', 'monthly_building_insurance'
 ];
 
+// Optional fields for rental properties (minimal - just the rent is needed)
+const OPTIONAL_RENTAL_FIELDS: string[] = [];
+
 // Helper to determine if property is owner-occupied
 const isOwnerOccupied = (propertyType: string) => 
   propertyType?.toLowerCase() === 'owner_occupied' || 
@@ -44,6 +52,10 @@ const isOwnerOccupied = (propertyType: string) =>
 // Helper to check if property is a rental (client is tenant)
 const isRentalProperty = (propertyType: string) =>
   propertyType?.toLowerCase() === 'rental';
+
+// Helper to check if property is an investment property
+const isInvestmentProperty = (propertyType: string) =>
+  !isOwnerOccupied(propertyType) && !isRentalProperty(propertyType);
 
 export function useReviewWizard(
   clientId: string,
@@ -69,8 +81,21 @@ export function useReviewWizard(
 
       // Determine field requirements based on property type
       const ownerOccupied = isOwnerOccupied(prop.property_type);
-      const requiredFields = ownerOccupied ? REQUIRED_OWNER_OCCUPIED_FIELDS : REQUIRED_INVESTMENT_FIELDS;
-      const optionalFields = ownerOccupied ? OPTIONAL_OWNER_OCCUPIED_FIELDS : OPTIONAL_INVESTMENT_FIELDS;
+      const rental = isRentalProperty(prop.property_type);
+      
+      let requiredFields: string[];
+      let optionalFields: string[];
+      
+      if (rental) {
+        requiredFields = REQUIRED_RENTAL_FIELDS;
+        optionalFields = OPTIONAL_RENTAL_FIELDS;
+      } else if (ownerOccupied) {
+        requiredFields = REQUIRED_OWNER_OCCUPIED_FIELDS;
+        optionalFields = OPTIONAL_OWNER_OCCUPIED_FIELDS;
+      } else {
+        requiredFields = REQUIRED_INVESTMENT_FIELDS;
+        optionalFields = OPTIONAL_INVESTMENT_FIELDS;
+      }
 
       // Check required fields (property-type aware)
       requiredFields.forEach(field => {
@@ -98,14 +123,18 @@ export function useReviewWizard(
       }
 
       const totalFields = requiredFields.length + optionalFields.length;
-      const filledFields = totalFields - missingFields.length - warnings.length;
-      const completenessScore = Math.round((filledFields / totalFields) * 100);
+      // For rental properties with only 1 required field, ensure proper scoring
+      const filledFields = Math.max(0, totalFields - missingFields.length - warnings.length);
+      const completenessScore = totalFields > 0 
+        ? Math.round((filledFields / totalFields) * 100) 
+        : 100; // If no fields required, consider complete
 
       return {
         propertyId: prop.id,
         address: prop.address,
         propertyType: prop.property_type,
         isOwnerOccupied: ownerOccupied,
+        isRental: rental,
         missingFields,
         completenessScore,
         issues,
@@ -155,22 +184,30 @@ export function useReviewWizard(
     });
 
     // Filter properties for portfolio totals based on includeOwnerOccupied toggle
-    const propertiesForTotals = includeOwnerOccupied 
-      ? properties 
-      : properties.filter(p => !isOwnerOccupied(p.property_type));
+    // Always exclude rental properties from portfolio value/equity calculations (they're not assets)
+    const propertiesForTotals = properties.filter(p => {
+      const isRental = isRentalProperty(p.property_type);
+      if (isRental) return false; // Never include rentals in portfolio totals
+      if (!includeOwnerOccupied && isOwnerOccupied(p.property_type)) return false;
+      return true;
+    });
     
-    const metricsForTotals = includeOwnerOccupied
-      ? propertyMetrics
-      : propertyMetrics.filter((_, index) => !isOwnerOccupied(properties[index]?.property_type));
+    const metricsForTotals = propertyMetrics.filter((_, index) => {
+      const isRental = isRentalProperty(properties[index]?.property_type);
+      if (isRental) return false;
+      if (!includeOwnerOccupied && isOwnerOccupied(properties[index]?.property_type)) return false;
+      return true;
+    });
 
     const totalValue = metricsForTotals.reduce((sum, p) => sum + p.value, 0);
     const totalDebt = metricsForTotals.reduce((sum, p) => sum + p.loanRemaining, 0);
     const totalEquity = totalValue - totalDebt;
     const portfolioLvr = totalValue > 0 ? (totalDebt / totalValue) * 100 : 0;
     
-    // Only investment properties contribute to cash flow calculation
+    // Only investment properties contribute to cash flow and yield calculations
+    // Exclude both owner-occupied (no rental income) and rental (expense, not income)
     const investmentMetrics = propertyMetrics.filter((_, index) => 
-      !isOwnerOccupied(properties[index]?.property_type)
+      isInvestmentProperty(properties[index]?.property_type)
     );
     const totalMonthlyCashflow = investmentMetrics.reduce((sum, p) => sum + p.netMonthlyCashflow, 0);
     
@@ -195,10 +232,12 @@ export function useReviewWizard(
   const scorecard = useMemo(() => {
     const { portfolioTotals } = metrics;
     
-    // Count properties for growth calculation based on toggle
-    const propertiesForScore = includeOwnerOccupied 
-      ? properties 
-      : properties.filter(p => !isOwnerOccupied(p.property_type));
+    // Count properties for growth calculation based on toggle (exclude rentals always)
+    const propertiesForScore = properties.filter(p => {
+      if (isRentalProperty(p.property_type)) return false;
+      if (!includeOwnerOccupied && isOwnerOccupied(p.property_type)) return false;
+      return true;
+    });
     
     // Portfolio-level scores (all rounded to integers for database compatibility)
     const portfolioHealth = Math.round(Math.min(100, Math.max(0, 100 - portfolioTotals.portfolioLvr)));
@@ -233,6 +272,28 @@ export function useReviewWizard(
       // Find the original property to check type
       const originalProp = properties.find(p => p.id === prop.propertyId);
       const ownerOccupied = originalProp ? isOwnerOccupied(originalProp.property_type) : false;
+      const rental = originalProp ? isRentalProperty(originalProp.property_type) : false;
+
+      // Rental properties are expenses, not assets - give them a neutral/informational score
+      if (rental) {
+        const weeklyRent = prop.monthlyRentalIncome; // This stores weekly rent for rental properties
+        const monthlyRent = weeklyRent * (52 / 12);
+        
+        return {
+          propertyId: prop.propertyId,
+          address: prop.address,
+          propertyType: 'rental',
+          isOwnerOccupied: false,
+          isRental: true,
+          overallScore: 50, // Neutral score - not an asset
+          healthScore: 50, // N/A for rentals
+          cashFlowScore: 50, // N/A - this is an expense
+          growthPotential: 0, // No growth potential for a rental
+          classification: 'Average' as const, // Neutral classification
+          strengths: [],
+          concerns: monthlyRent > 2500 ? ['High rental expense'] : []
+        };
+      }
 
       const healthScore = Math.round(Math.min(100, Math.max(0, 100 - prop.lvr)));
       
@@ -270,7 +331,7 @@ export function useReviewWizard(
       const strengths: string[] = [];
       const concerns: string[] = [];
 
-      // Common strengths/concerns
+      // Common strengths/concerns (only for owned properties)
       if (prop.lvr < 50) strengths.push('Low leverage');
       if (prop.lvr > 70) concerns.push('High leverage');
 
@@ -291,6 +352,7 @@ export function useReviewWizard(
         address: prop.address,
         propertyType: originalProp?.property_type || 'investment',
         isOwnerOccupied: ownerOccupied,
+        isRental: false,
         overallScore: propOverallScore,
         healthScore,
         cashFlowScore: propCashFlowScore,
@@ -317,7 +379,14 @@ export function useReviewWizard(
     const validationFlags: ValidationFlag[] = [];
 
     metrics.properties.forEach(prop => {
-      // LVR flags
+      const originalProp = properties.find(p => p.id === prop.propertyId);
+      const ownerOccupied = originalProp ? isOwnerOccupied(originalProp.property_type) : false;
+      const rental = originalProp ? isRentalProperty(originalProp.property_type) : false;
+
+      // Skip all LVR/cashflow/yield flags for rental properties (they're not assets)
+      if (rental) return;
+
+      // LVR flags (only for owned properties)
       if (prop.lvr > 90) {
         validationFlags.push({
           type: 'error',
@@ -338,12 +407,8 @@ export function useReviewWizard(
         });
       }
 
-      // Cash flow flags - only for investment properties
-      const propForCashflow = properties.find(p => p.id === prop.propertyId);
-      const isOwnerOccupiedProp = propForCashflow ? isOwnerOccupied(propForCashflow.property_type) : false;
-      
-      // Skip cash flow warnings for owner-occupied properties (they're expected to have no rental income)
-      if (!isOwnerOccupiedProp) {
+      // Cash flow flags - only for investment properties (not owner-occupied or rental)
+      if (!ownerOccupied) {
         if (prop.netMonthlyCashflow < -500) {
           validationFlags.push({
             type: 'error',
@@ -366,9 +431,6 @@ export function useReviewWizard(
       }
 
       // Yield flags - only for investment properties
-      const originalProp = properties.find(p => p.id === prop.propertyId);
-      const ownerOccupied = originalProp ? isOwnerOccupied(originalProp.property_type) : false;
-      
       if (!ownerOccupied && prop.grossYield < 2) {
         validationFlags.push({
           type: 'warning',

@@ -79,6 +79,23 @@ export function DataCompletenessStep({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{prop.address}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {prop.isRental && (
+                      <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
+                        Rental (Living Expense)
+                      </Badge>
+                    )}
+                    {prop.isOwnerOccupied && (
+                      <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-xs">
+                        Owner Occupied
+                      </Badge>
+                    )}
+                    {!prop.isRental && !prop.isOwnerOccupied && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">
+                        Investment
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <Badge 
                   variant="outline" 
