@@ -645,7 +645,110 @@ export function PortfolioAnalysisPDFGenerator({
         return currentY;
       };
       
-      // Draw a vector-based table
+      // Calculate row height needed for text wrapping in a cell
+      const calculateCellHeight = (
+        text: string,
+        columnWidth: number,
+        fontSize: number,
+        lineHeight: number,
+        padding: number = 12
+      ): number => {
+        const cleanText = stripEmojis(text || '');
+        const availableWidth = columnWidth - padding;
+        const words = cleanText.split(' ');
+        
+        if (words.length === 0 || !cleanText) return lineHeight;
+        
+        let lines = 1;
+        let currentLineWidth = 0;
+        
+        for (const word of words) {
+          const wordWidth = helveticaFont.widthOfTextAtSize(word + ' ', fontSize);
+          if (currentLineWidth + wordWidth > availableWidth && currentLineWidth > 0) {
+            lines++;
+            currentLineWidth = wordWidth;
+          } else {
+            currentLineWidth += wordWidth;
+          }
+        }
+        
+        return lines * lineHeight;
+      };
+      
+      // Calculate the maximum row height needed for all cells in a row
+      const calculateSmartRowHeight = (
+        row: string[],
+        columnWidths: number[],
+        fontSize: number = 8,
+        lineHeight: number = 12,
+        minRowHeight: number = 22,
+        padding: number = 12
+      ): number => {
+        let maxHeight = minRowHeight;
+        
+        for (let i = 0; i < row.length; i++) {
+          const cellHeight = calculateCellHeight(row[i], columnWidths[i], fontSize, lineHeight, padding);
+          const totalCellHeight = cellHeight + 10; // Add vertical padding
+          if (totalCellHeight > maxHeight) {
+            maxHeight = totalCellHeight;
+          }
+        }
+        
+        return maxHeight;
+      };
+      
+      // Draw wrapped text within a table cell
+      const drawCellText = (
+        page: PDFPage,
+        text: string,
+        x: number,
+        y: number,
+        columnWidth: number,
+        fontSize: number = 8,
+        lineHeight: number = 12,
+        padding: number = 6,
+        color = SECONDARY_COLOR
+      ): void => {
+        const cleanText = stripEmojis(text || '');
+        const availableWidth = columnWidth - (padding * 2);
+        const words = cleanText.split(' ');
+        
+        if (words.length === 0 || !cleanText) return;
+        
+        let currentLine = '';
+        let currentY = y;
+        
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
+          
+          if (testWidth > availableWidth && currentLine) {
+            page.drawText(currentLine, {
+              x: x + padding,
+              y: currentY,
+              size: fontSize,
+              font: helveticaFont,
+              color,
+            });
+            currentY -= lineHeight;
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        
+        if (currentLine) {
+          page.drawText(currentLine, {
+            x: x + padding,
+            y: currentY,
+            size: fontSize,
+            font: helveticaFont,
+            color,
+          });
+        }
+      };
+      
+      // Draw a vector-based table with smart row heights
       const drawTable = (
         page: PDFPage,
         headers: string[],
@@ -653,17 +756,21 @@ export function PortfolioAnalysisPDFGenerator({
         x: number,
         y: number,
         columnWidths: number[],
-        rowHeight: number = 22
+        minRowHeight: number = 22,
+        enableSmartHeight: boolean = true
       ): { lastY: number; needsNewPage: boolean } => {
         const tableWidth = columnWidths.reduce((sum, w) => sum + w, 0);
         let currentY = y;
+        const headerRowHeight = 22; // Fixed header height
+        const fontSize = 8;
+        const lineHeight = 12;
         
         // Draw header row with NPC Navy background
         page.drawRectangle({
           x,
-          y: currentY - rowHeight,
+          y: currentY - headerRowHeight,
           width: tableWidth,
-          height: rowHeight,
+          height: headerRowHeight,
           color: NPC_NAVY,
         });
         
@@ -688,20 +795,37 @@ export function PortfolioAnalysisPDFGenerator({
           color: NPC_GOLD,
         });
         page.drawLine({
-          start: { x, y: currentY - rowHeight },
-          end: { x: x + tableWidth, y: currentY - rowHeight },
+          start: { x, y: currentY - headerRowHeight },
+          end: { x: x + tableWidth, y: currentY - headerRowHeight },
           thickness: 1,
           color: NPC_GOLD,
         });
         
-        currentY -= rowHeight;
+        currentY -= headerRowHeight;
+        const tableStartY = y; // Remember where table started for vertical borders
         
         // Draw data rows
         for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
           const row = rows[rowIndex];
           
+          // Calculate smart row height based on content
+          const rowHeight = enableSmartHeight 
+            ? calculateSmartRowHeight(row, columnWidths, fontSize, lineHeight, minRowHeight)
+            : minRowHeight;
+          
           // Check page break
           if (currentY - rowHeight < MARGIN_BOTTOM) {
+            // Draw vertical borders up to current point before returning
+            cellX = x;
+            for (let i = 0; i <= columnWidths.length; i++) {
+              page.drawLine({
+                start: { x: cellX, y: tableStartY },
+                end: { x: cellX, y: currentY },
+                thickness: 0.5,
+                color: rgb(0.85, 0.85, 0.85),
+              });
+              if (i < columnWidths.length) cellX += columnWidths[i];
+            }
             return { lastY: currentY, needsNewPage: true };
           }
           
@@ -716,39 +840,44 @@ export function PortfolioAnalysisPDFGenerator({
             });
           }
           
-          // Cell text - dynamic truncation based on actual text width measurement
+          // Cell text - use smart wrapping instead of truncation
           cellX = x;
           for (let i = 0; i < row.length; i++) {
             const cellText = stripEmojis(row[i] || '');
-            const availableWidth = columnWidths[i] - 12; // 6px padding on each side
+            const textStartY = currentY - 5 - (fontSize * 0.5); // Start near top of cell
             
-            // Measure actual text width and truncate if needed
-            let displayText = cellText;
-            let textWidth = helveticaFont.widthOfTextAtSize(displayText, 8);
-            
-            if (textWidth > availableWidth) {
-              // Binary search for optimal truncation point
-              let left = 0;
-              let right = cellText.length;
-              while (left < right) {
-                const mid = Math.ceil((left + right) / 2);
-                const testText = cellText.substring(0, mid) + '...';
-                if (helveticaFont.widthOfTextAtSize(testText, 8) <= availableWidth) {
-                  left = mid;
-                } else {
-                  right = mid - 1;
+            if (enableSmartHeight) {
+              // Draw wrapped text
+              drawCellText(page, cellText, cellX, textStartY, columnWidths[i], fontSize, lineHeight, 6, SECONDARY_COLOR);
+            } else {
+              // Legacy truncation behavior
+              const availableWidth = columnWidths[i] - 12;
+              let displayText = cellText;
+              let textWidth = helveticaFont.widthOfTextAtSize(displayText, fontSize);
+              
+              if (textWidth > availableWidth) {
+                let left = 0;
+                let right = cellText.length;
+                while (left < right) {
+                  const mid = Math.ceil((left + right) / 2);
+                  const testText = cellText.substring(0, mid) + '...';
+                  if (helveticaFont.widthOfTextAtSize(testText, fontSize) <= availableWidth) {
+                    left = mid;
+                  } else {
+                    right = mid - 1;
+                  }
                 }
+                displayText = left > 0 ? cellText.substring(0, left) + '...' : '...';
               }
-              displayText = left > 0 ? cellText.substring(0, left) + '...' : '...';
+              
+              page.drawText(displayText, {
+                x: cellX + 6,
+                y: currentY - 15,
+                size: fontSize,
+                font: helveticaFont,
+                color: SECONDARY_COLOR,
+              });
             }
-            
-            page.drawText(displayText, {
-              x: cellX + 6,
-              y: currentY - 15,
-              size: 8,
-              font: helveticaFont,
-              color: SECONDARY_COLOR,
-            });
             cellX += columnWidths[i];
           }
           
@@ -767,7 +896,7 @@ export function PortfolioAnalysisPDFGenerator({
         cellX = x;
         for (let i = 0; i <= columnWidths.length; i++) {
           page.drawLine({
-            start: { x: cellX, y: y },
+            start: { x: cellX, y: tableStartY },
             end: { x: cellX, y: currentY },
             thickness: 0.5,
             color: rgb(0.85, 0.85, 0.85),
