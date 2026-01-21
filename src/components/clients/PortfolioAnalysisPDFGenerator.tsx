@@ -296,6 +296,16 @@ const formatPropertyType = (type: string | null | undefined): string => {
     .replace(/\b\w/g, c => c.toUpperCase());
 };
 
+// Format name with proper title case (PETER RALEVSKI -> Peter Ralevski)
+const formatProperName = (name: string | null | undefined): string => {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 // Ensure percentage values include % symbol
 const ensurePercentage = (value: string | null | undefined): string => {
   if (!value) return '0%';
@@ -706,14 +716,33 @@ export function PortfolioAnalysisPDFGenerator({
             });
           }
           
-          // Cell text - dynamic truncation based on column width
+          // Cell text - dynamic truncation based on actual text width measurement
           cellX = x;
           for (let i = 0; i < row.length; i++) {
             const cellText = stripEmojis(row[i] || '');
-            // Calculate max characters based on column width (approx 5pt per char at size 8)
-            const maxChars = Math.floor((columnWidths[i] - 10) / 4.5);
-            const truncatedText = cellText.length > maxChars ? cellText.substring(0, maxChars - 3) + '...' : cellText;
-            page.drawText(truncatedText, {
+            const availableWidth = columnWidths[i] - 12; // 6px padding on each side
+            
+            // Measure actual text width and truncate if needed
+            let displayText = cellText;
+            let textWidth = helveticaFont.widthOfTextAtSize(displayText, 8);
+            
+            if (textWidth > availableWidth) {
+              // Binary search for optimal truncation point
+              let left = 0;
+              let right = cellText.length;
+              while (left < right) {
+                const mid = Math.ceil((left + right) / 2);
+                const testText = cellText.substring(0, mid) + '...';
+                if (helveticaFont.widthOfTextAtSize(testText, 8) <= availableWidth) {
+                  left = mid;
+                } else {
+                  right = mid - 1;
+                }
+              }
+              displayText = left > 0 ? cellText.substring(0, left) + '...' : '...';
+            }
+            
+            page.drawText(displayText, {
               x: cellX + 6,
               y: currentY - 15,
               size: 8,
@@ -1973,6 +2002,15 @@ export function PortfolioAnalysisPDFGenerator({
           color: SECONDARY_COLOR,
         });
         
+        // Add "Estimate" label below the capacity figure
+        page.drawText('Estimate', {
+          x: MARGIN_LEFT + bcBoxPadding,
+          y: yPos - 52,
+          size: 8,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
         // Box 2: Monthly Surplus
         const bc2X = MARGIN_LEFT + bcBoxWidth + 10;
         const surplusColor = bcData.monthlySurplus >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
@@ -2749,8 +2787,8 @@ export function PortfolioAnalysisPDFGenerator({
           color: rgb(0.75, 0.75, 0.75),
         });
         
-        // Client name on right
-        const clientFooter = stripEmojis(analysisData.clientName);
+        // Client name on right - properly capitalized
+        const clientFooter = formatProperName(stripEmojis(analysisData.clientName));
         const clientFooterWidth = helveticaFont.widthOfTextAtSize(clientFooter, 7);
         currentPage.drawText(clientFooter, {
           x: PAGE_WIDTH - MARGIN_RIGHT - clientFooterWidth,
