@@ -176,28 +176,48 @@ export function BorrowingCapacityModal({
     return items;
   }) || [];
 
-  // Add rental income from properties
-  // CRITICAL: Apply 20% expense ratio BEFORE shading (banks assume property costs)
-  const RENTAL_EXPENSE_RATIO = 0.20;
+  // Add POSITIVE property cash flows as income (NOT rental income - only net cash flow)
+  // Properties with negative cash flow are handled in expenses
   clientData?.properties.forEach(prop => {
     const propertyType = prop.property_type?.toLowerCase() || '';
     
     // Skip rental properties where client is tenant (this is an expense, not income)
     if (propertyType === 'rental') return;
     
-    if (prop.monthly_rental_income && prop.monthly_rental_income > 0) {
-      const annualGrossRent = Number(prop.monthly_rental_income) * 12;
-      // Net rent after property expenses (20% assumed by banks)
-      const annualNetRent = annualGrossRent * (1 - RENTAL_EXPENSE_RATIO);
-      // Then apply 80% shading factor
-      const shadedAmount = annualNetRent * 0.8;
+    const netMonthlyCashflow = Number(prop.net_monthly_cashflow) || 0;
+    
+    // Only add property cash flow if it's POSITIVE
+    if (netMonthlyCashflow > 0) {
+      const annualPositiveCashflow = netMonthlyCashflow * 12;
+      // Apply 80% shading to positive property cash flow (conservative bank approach)
+      const shadedAmount = annualPositiveCashflow * 0.8;
       
       incomeBreakdown.push({
-        id: `prop-${prop.id}-rental`,
-        label: `Rental: ${(prop.address || 'Property').slice(0, 30)}...`,
-        grossAmount: annualNetRent, // Show net rent (after expenses) as gross
+        id: `prop-${prop.id}-cashflow`,
+        label: `Positive Cash Flow: ${(prop.address || 'Property').slice(0, 25)}...`,
+        grossAmount: annualPositiveCashflow,
         shadingRate: 0.8,
         shadedAmount: shadedAmount,
+      });
+    }
+  });
+  
+  // Calculate NEGATIVE property cash flows (to be added as expense layer)
+  const negativePropertyCashFlows: { address: string; monthlyCashflow: number }[] = [];
+  let totalNegativeCashFlows = 0;
+  
+  clientData?.properties.forEach(prop => {
+    const propertyType = prop.property_type?.toLowerCase() || '';
+    if (propertyType === 'rental') return; // Skip rental properties (tenant)
+    
+    const netMonthlyCashflow = Number(prop.net_monthly_cashflow) || 0;
+    
+    if (netMonthlyCashflow < 0) {
+      const absoluteCashflow = Math.abs(netMonthlyCashflow);
+      totalNegativeCashFlows += absoluteCashflow;
+      negativePropertyCashFlows.push({
+        address: (prop.address || 'Investment Property').slice(0, 40),
+        monthlyCashflow: absoluteCashflow,
       });
     }
   });
@@ -304,11 +324,14 @@ export function BorrowingCapacityModal({
 
   // Effective expenses - use the appropriate method
   // CRITICAL: This is the "hybrid" logic that banks use
-  const effectiveExpenses = expenseMethod === 'hem' 
+  const baseExpenses = expenseMethod === 'hem' 
     ? hemBenchmark 
     : expenseMethod === 'declared' 
       ? declaredExpenses 
       : Math.max(hemBenchmark, declaredExpenses);
+  
+  // Total living expenses = base expenses + negative property cash flows
+  const effectiveExpenses = baseExpenses + totalNegativeCashFlows;
 
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
@@ -418,6 +441,9 @@ export function BorrowingCapacityModal({
                       hemBenchmark={hemBenchmark}
                       hemBreakdown={hemBreakdown}
                       declaredExpenses={declaredExpenses}
+                      baseExpenses={baseExpenses}
+                      negativePropertyCashFlows={negativePropertyCashFlows}
+                      totalNegativeCashFlows={totalNegativeCashFlows}
                       effectiveExpenses={effectiveExpenses}
                       onMethodChange={setExpenseMethod}
                       onDeclaredExpensesChange={setDeclaredExpenses}

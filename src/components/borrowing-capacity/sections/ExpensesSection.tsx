@@ -8,16 +8,24 @@ import {
   CollapsibleContent, 
   CollapsibleTrigger 
 } from '@/components/ui/collapsible';
-import { ChevronDown, Home, DollarSign, Info, Users, User, Baby } from 'lucide-react';
+import { ChevronDown, Home, DollarSign, Info, Users, User, Baby, TrendingDown, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { HemBreakdown } from '@/utils/borrowingCapacityCalculations';
+
+interface NegativePropertyCashFlow {
+  address: string;
+  monthlyCashflow: number;
+}
 
 interface ExpensesSectionProps {
   expenseMethod: 'hem' | 'declared' | 'hybrid';
   hemBenchmark: number;
   hemBreakdown?: HemBreakdown;
   declaredExpenses: number;
+  baseExpenses: number;
+  negativePropertyCashFlows: NegativePropertyCashFlow[];
+  totalNegativeCashFlows: number;
   effectiveExpenses: number;
   onMethodChange?: (method: 'hem' | 'declared' | 'hybrid') => void;
   onDeclaredExpensesChange?: (value: number) => void;
@@ -28,6 +36,9 @@ export function ExpensesSection({
   hemBenchmark,
   hemBreakdown,
   declaredExpenses,
+  baseExpenses,
+  negativePropertyCashFlows,
+  totalNegativeCashFlows,
   effectiveExpenses,
   onMethodChange,
   onDeclaredExpensesChange,
@@ -189,10 +200,61 @@ export function ExpensesSection({
             <div className="pt-3 border-t border-border">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Effective Living Expenses</p>
+                  <p className="text-xs text-muted-foreground">Base Living Expenses</p>
                   <p className="text-xs text-muted-foreground">
                     {expenseMethod === 'hybrid' ? 'Higher of HEM or Declared' : 
                      expenseMethod === 'hem' ? 'HEM Benchmark' : 'Declared'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium">{formatCurrency(baseExpenses)}</p>
+                  <p className="text-xs text-muted-foreground">/month</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Negative Property Cash Flows - Layered on top */}
+            {negativePropertyCashFlows.length > 0 && (
+              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 space-y-3">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-destructive" />
+                  <p className="text-sm font-medium text-destructive">Negative Property Cash Flows</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <AlertTriangle className="h-3.5 w-3.5 text-destructive/70" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Properties with negative cash flow reduce borrowing capacity. 
+                        These amounts are added to your total expenses.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <div className="space-y-2">
+                  {negativePropertyCashFlows.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground truncate max-w-[200px]">{item.address}</span>
+                      <span className="font-medium text-destructive">-{formatCurrency(item.monthlyCashflow)}/mo</span>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="pt-2 border-t border-destructive/20 flex items-center justify-between">
+                  <span className="text-xs font-medium text-destructive">Total Negative Cash Flow</span>
+                  <span className="font-semibold text-destructive">-{formatCurrency(totalNegativeCashFlows)}/mo</span>
+                </div>
+              </div>
+            )}
+
+            {/* Total Effective Expenses */}
+            <div className="pt-3 border-t border-border bg-muted/30 -mx-6 px-6 py-3 -mb-6 rounded-b-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Total Monthly Expenses</p>
+                  <p className="text-xs text-muted-foreground">
+                    Base expenses {negativePropertyCashFlows.length > 0 ? '+ negative property cash flows' : ''}
                   </p>
                 </div>
                 <div className="text-right">
