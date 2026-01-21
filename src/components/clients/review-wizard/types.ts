@@ -14,6 +14,7 @@ export interface PropertyDataQuality {
   address: string;
   propertyType?: string;
   isOwnerOccupied?: boolean;
+  isRental?: boolean;
   missingFields: string[];
   completenessScore: number;
   issues: string[];
@@ -38,6 +39,7 @@ export interface PropertyScore {
   address: string;
   propertyType?: string;
   isOwnerOccupied?: boolean;
+  isRental?: boolean;
   overallScore: number;
   healthScore: number;
   cashFlowScore: number;

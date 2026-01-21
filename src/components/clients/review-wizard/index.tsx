@@ -61,7 +61,10 @@ export function ReviewWizard({
           p.property_type?.toLowerCase() === 'owner-occupied' ||
           p.property_type?.toLowerCase() === 'ppor'
         ).length;
-        const investmentCount = properties.length - ownerOccupiedCount;
+        const rentalCount = properties.filter(p => 
+          p.property_type?.toLowerCase() === 'rental'
+        ).length;
+        const investmentCount = properties.length - ownerOccupiedCount - rentalCount;
         
         return (
           <GenerateReportStep

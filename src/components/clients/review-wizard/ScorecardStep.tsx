@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import type { PropertyScore } from './types';
 
+// Extended interface to include isRental from the hook
+interface ExtendedPropertyScore extends PropertyScore {
+  isRental?: boolean;
+}
+
 interface ScorecardStepProps {
   overallScore: number;
   portfolioHealth: number;
@@ -22,7 +27,7 @@ interface ScorecardStepProps {
   growthPotential: number;
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   riskFactors: string[];
-  propertyScores: PropertyScore[];
+  propertyScores: ExtendedPropertyScore[];
 }
 
 export function ScorecardStep({
@@ -78,7 +83,11 @@ export function ScorecardStep({
     }
   };
 
-  const getClassificationBadge = (classification: string) => {
+  const getClassificationBadge = (classification: string, isRental?: boolean) => {
+    // Rental properties get a special badge
+    if (isRental) {
+      return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Living Expense</Badge>;
+    }
     switch (classification) {
       case 'Star':
         return <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Star Performer</Badge>;
@@ -205,8 +214,8 @@ export function ScorecardStep({
                   <div>
                     <p className="font-medium text-sm">{prop.address}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      {getClassificationIcon(prop.classification)}
-                      {getClassificationBadge(prop.classification)}
+                      {!prop.isRental && getClassificationIcon(prop.classification)}
+                      {getClassificationBadge(prop.classification, prop.isRental)}
                     </div>
                   </div>
                 </div>
