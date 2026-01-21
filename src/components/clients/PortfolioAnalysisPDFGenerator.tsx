@@ -1972,7 +1972,7 @@ export function PortfolioAnalysisPDFGenerator({
         
         const bcData = analysisData.borrowingCapacity;
         const bcBoxWidth = (CONTENT_WIDTH - 20) / 3;
-        const bcBoxHeight = 55;
+        const bcBoxHeight = 70; // Increased from 55 for better bottom padding
         const bcBoxPadding = 8;
         
         // Box 1: Borrowing Capacity
