@@ -466,22 +466,29 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
 }
 
 function calculateBorrowingCapacity(params: {
+  grossAnnualIncome: number;
   shadedAnnualIncome: number;
   monthlyLivingExpenses: number;
   monthlyCommitments: number;
   interestRate: number;
   bufferRate: number;
   loanTermYears: number;
-}): CalculationResult {
-  const { shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
+}): CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number } {
+  const { grossAnnualIncome, shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
           interestRate, bufferRate, loanTermYears } = params;
   
   // Assessment rate = current rate + APRA buffer
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
   
-  // Monthly net income available
-  const monthlyIncome = shadedAnnualIncome / 12;
+  // *** KEY CHANGE: Calculate after-tax income for serviceability ***
+  // Banks assess serviceability based on after-tax income, not gross
+  const taxBreakdown = getTaxBreakdown(grossAnnualIncome);
+  const afterTaxAnnualIncome = taxBreakdown.afterTaxIncome;
+  const monthlyAfterTaxIncome = afterTaxAnnualIncome / 12;
+  
+  // Monthly net income available = after-tax income (what they actually take home)
+  const monthlyIncome = monthlyAfterTaxIncome;
   const monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
   
   // Max new repayment = available surplus
@@ -564,6 +571,8 @@ function calculateBorrowingCapacity(params: {
     assessmentRate,
     recommendations,
     warnings,
+    afterTaxAnnualIncome,
+    monthlyAfterTaxIncome: Math.round(monthlyAfterTaxIncome),
   };
 }
 
@@ -666,8 +675,9 @@ Deno.serve(async (req) => {
     const bufferRate = overrides?.bufferRate ?? 3.00;
     const loanTermYears = overrides?.loanTermYears ?? 30;
 
-    // Perform calculation
+    // Perform calculation - now uses after-tax income internally
     const result = calculateBorrowingCapacity({
+      grossAnnualIncome: effectiveGrossIncome,
       shadedAnnualIncome: effectiveShadedIncome,
       monthlyLivingExpenses: livingExpenses,
       monthlyCommitments: effectiveCommitments,
@@ -718,6 +728,7 @@ Deno.serve(async (req) => {
         monthlyTakeHome: taxBreakdown.monthlyTakeHome,
       },
       assumptions: [
+        { key: "Serviceability Basis", value: "After-Tax Income" },
         { key: "Buffer Rate", value: `${bufferRate}%` },
         { key: "Assessment Rate", value: `${result.assessmentRate}%` },
         { key: "Loan Term", value: `${loanTermYears} years` },
@@ -726,6 +737,7 @@ Deno.serve(async (req) => {
         { key: "Rental Expense Ratio", value: `${RENTAL_EXPENSE_RATIO * 100}%` },
         { key: "Existing Loan Assessment", value: "P&I at 9.5%" },
         { key: "Tax Year", value: "2025-26 (incl. 2% Medicare Levy)" },
+        { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
         { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
       ],
       calculatedAt: new Date().toISOString(),

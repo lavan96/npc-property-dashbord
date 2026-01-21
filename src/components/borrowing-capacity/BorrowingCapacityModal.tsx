@@ -593,6 +593,7 @@ export function BorrowingCapacityModal({
                 {result ? (
                   <ScenarioModeling
                     baseInputs={{
+                      grossAnnualIncome: totalGrossIncome,
                       shadedAnnualIncome: totalShadedIncome,
                       monthlyLivingExpenses: effectiveExpenses,
                       monthlyCommitments: totalMonthlyCommitments,

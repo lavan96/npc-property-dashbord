@@ -212,6 +212,13 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
                 <div className="p-2 rounded bg-muted/50 text-xs text-muted-foreground">
                   <strong>Tax Bracket:</strong> {taxBreakdown.marginalBracket}
                 </div>
+                
+                <div className="p-2 rounded bg-primary/10 border border-primary/20 text-xs">
+                  <div className="flex items-center gap-1 text-primary font-medium">
+                    <Info className="h-3 w-3" />
+                    <span>After-tax income is used for serviceability assessment</span>
+                  </div>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>

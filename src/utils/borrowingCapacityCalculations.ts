@@ -36,7 +36,8 @@ export interface CalculationModeConfig {
 }
 
 export interface BorrowingCapacityInput {
-  shadedAnnualIncome: number;
+  grossAnnualIncome: number; // Gross income before tax
+  shadedAnnualIncome: number; // After shading applied (kept for DTI calc)
   monthlyLivingExpenses: number;
   monthlyCommitments: number;
   interestRate: number;
@@ -57,6 +58,9 @@ export interface BorrowingCapacityResult {
   assessmentRate: number;
   recommendations: string[];
   warnings: string[];
+  // After-tax metrics for transparency
+  afterTaxAnnualIncome: number;
+  monthlyAfterTaxIncome: number;
 }
 
 export interface FullAssessmentResult extends BorrowingCapacityResult {
@@ -437,6 +441,7 @@ export function getServiceabilityBandColor(band: ServiceabilityBand): {
  */
 export function calculateBorrowingCapacity(params: BorrowingCapacityInput): BorrowingCapacityResult {
   const { 
+    grossAnnualIncome,
     shadedAnnualIncome, 
     monthlyLivingExpenses, 
     monthlyCommitments, 
@@ -454,8 +459,13 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
   
-  // Monthly net income available
-  const monthlyIncome = shadedAnnualIncome / 12;
+  // *** KEY CHANGE: Calculate after-tax income for serviceability ***
+  // Banks assess serviceability based on after-tax income, not gross
+  const afterTaxAnnualIncome = calculateAfterTaxIncome(grossAnnualIncome);
+  const monthlyAfterTaxIncome = afterTaxAnnualIncome / 12;
+  
+  // Monthly net income available = after-tax income (what they actually take home)
+  const monthlyIncome = monthlyAfterTaxIncome;
   let monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
   
   // Conservative mode adjustments
@@ -590,6 +600,8 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     assessmentRate,
     recommendations,
     warnings,
+    afterTaxAnnualIncome,
+    monthlyAfterTaxIncome: Math.round(monthlyAfterTaxIncome),
   };
 }
 
