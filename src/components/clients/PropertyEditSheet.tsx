@@ -247,7 +247,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
   const updatePropertyMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('client_properties').update({
+      const updateData = {
         property_type: formData.property_type,
         address: formData.address,
         value: formData.value,
@@ -272,11 +272,32 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
         smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
-      }).eq('id', property.id);
+      };
+
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'update',
+            table: 'client_properties',
+            clientId: property.client_id,
+            recordId: property.id,
+            data: updateData,
+          },
+        });
+        if (!fnError && data?.success) return;
+        console.warn('Secure update failed, falling back to direct query');
+      }
+
+      // Fallback to direct query
+      const { error } = await supabase.from('client_properties').update(updateData).eq('id', property.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-data', property.client_id] });
       toast.success('Property updated successfully');
       
       addNotification({
@@ -296,11 +317,29 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
   const deletePropertyMutation = useMutation({
     mutationFn: async () => {
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'delete',
+            table: 'client_properties',
+            clientId: property.client_id,
+            recordId: property.id,
+          },
+        });
+        if (!fnError && data?.success) return;
+        console.warn('Secure delete failed, falling back to direct query');
+      }
+
+      // Fallback to direct query
       const { error } = await supabase.from('client_properties').delete().eq('id', property.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-data', property.client_id] });
       toast.success('Property deleted successfully');
       
       addNotification({

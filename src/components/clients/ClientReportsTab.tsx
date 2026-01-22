@@ -78,6 +78,23 @@ export function ClientReportsTab({
   const { data: reportFiles = [] } = useQuery({
     queryKey: ['client-report-files', clientId],
     queryFn: async () => {
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error } = await supabase.functions.invoke('get-client-data', {
+          body: {
+            session_token: sessionToken,
+            clientId,
+            include: { files: true },
+          },
+        });
+        if (!error && data?.success && data.data?.files) {
+          // Filter for report files
+          return (data.data.files || []).filter((f: any) => f.is_vownet_form || f.report_type);
+        }
+      }
+
+      // Fallback to direct query
       const { data, error } = await supabase
         .from('client_files')
         .select('*')

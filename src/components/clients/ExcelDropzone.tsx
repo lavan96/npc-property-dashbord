@@ -73,76 +73,122 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
         const client = clients[i];
         
         try {
-          // Insert client
-          const { data: clientData, error: clientError } = await supabase
-            .from('clients')
-            .insert({
-              primary_first_name: client.primaryContact.firstName || 'Unknown',
-              primary_middle_name: client.primaryContact.middleName,
-              primary_surname: client.primaryContact.surname || 'Unknown',
-              primary_mobile: client.primaryContact.mobile,
-              primary_email: client.primaryContact.email,
-              primary_gender: client.primaryContact.gender,
-              primary_dob: client.primaryContact.dob,
-              secondary_first_name: client.secondaryContact?.firstName,
-              secondary_middle_name: client.secondaryContact?.middleName,
-              secondary_surname: client.secondaryContact?.surname,
-              secondary_mobile: client.secondaryContact?.mobile,
-              secondary_email: client.secondaryContact?.email,
-              secondary_gender: client.secondaryContact?.gender,
-              secondary_dob: client.secondaryContact?.dob,
-              current_address: client.address?.currentAddress,
-              country: client.address?.country || 'Australia',
-              living_situation: client.address?.livingSituation,
-              residential_status: client.residentialStatus,
-              marital_status: client.familyRelations?.maritalStatus,
-              dependents_count: client.familyRelations?.dependentsCount || 0,
-              total_portfolio_value: client.portfolioSummary?.totalPortfolioValue || 0,
-              total_debt: client.portfolioSummary?.totalDebt || 0,
-              total_monthly_expenditure: client.portfolioSummary?.totalMonthlyExpenditure || 0,
-              total_monthly_income: client.portfolioSummary?.totalMonthlyIncome || 0,
-              total_monthly_rental_income: client.portfolioSummary?.totalMonthlyRentalIncome || 0,
-              net_monthly_cash_flow: client.portfolioSummary?.netMonthlyCashFlow || 0,
-              ghl_sync_status: 'pending',
-              created_by: user?.id
-            })
-            .select()
-            .single();
+          // Get session token for secure operations
+          const sessionToken = localStorage.getItem('session_token');
 
-          if (clientError) throw clientError;
+          // Prepare client data
+          const clientInsertData = {
+            primary_first_name: client.primaryContact.firstName || 'Unknown',
+            primary_middle_name: client.primaryContact.middleName,
+            primary_surname: client.primaryContact.surname || 'Unknown',
+            primary_mobile: client.primaryContact.mobile,
+            primary_email: client.primaryContact.email,
+            primary_gender: client.primaryContact.gender,
+            primary_dob: client.primaryContact.dob,
+            secondary_first_name: client.secondaryContact?.firstName,
+            secondary_middle_name: client.secondaryContact?.middleName,
+            secondary_surname: client.secondaryContact?.surname,
+            secondary_mobile: client.secondaryContact?.mobile,
+            secondary_email: client.secondaryContact?.email,
+            secondary_gender: client.secondaryContact?.gender,
+            secondary_dob: client.secondaryContact?.dob,
+            current_address: client.address?.currentAddress,
+            country: client.address?.country || 'Australia',
+            living_situation: client.address?.livingSituation,
+            residential_status: client.residentialStatus,
+            marital_status: client.familyRelations?.maritalStatus,
+            dependents_count: client.familyRelations?.dependentsCount || 0,
+            total_portfolio_value: client.portfolioSummary?.totalPortfolioValue || 0,
+            total_debt: client.portfolioSummary?.totalDebt || 0,
+            total_monthly_expenditure: client.portfolioSummary?.totalMonthlyExpenditure || 0,
+            total_monthly_income: client.portfolioSummary?.totalMonthlyIncome || 0,
+            total_monthly_rental_income: client.portfolioSummary?.totalMonthlyRentalIncome || 0,
+            net_monthly_cash_flow: client.portfolioSummary?.netMonthlyCashFlow || 0,
+            ghl_sync_status: 'pending',
+            created_by: user?.id
+          };
+
+          // Insert client - try secure endpoint first
+          let clientData: any = null;
+          if (sessionToken) {
+            const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+              body: {
+                session_token: sessionToken,
+                operation: 'create',
+                table: 'clients',
+                clientId: '', // Not needed for create
+                data: clientInsertData,
+              },
+            });
+            if (!fnError && fnData?.success) {
+              clientData = fnData.result;
+            }
+          }
+          
+          // Fallback to direct insert
+          if (!clientData) {
+            const { data, error: clientError } = await supabase
+              .from('clients')
+              .insert(clientInsertData)
+              .select()
+              .single();
+
+            if (clientError) throw clientError;
+            clientData = data;
+          }
+          
           result.clientsCreated++;
+          const newClientId = clientData.id;
 
           // Insert properties
           if (client.properties && client.properties.length > 0) {
             for (const property of client.properties) {
-              const { error: propError } = await supabase
-                .from('client_properties')
-                .insert({
-                  client_id: clientData.id,
-                  property_type: property.propertyType,
-                  address: property.address || 'Unknown Address',
-                  value: property.value || 0,
-                  loan_remaining: property.loanRemaining || 0,
-                  interest_rate: property.interestRate || 0,
-                  ownership_percentage: property.ownershipPercentage || 100,
-                  monthly_interest_repayment: property.monthlyInterestRepayment || 0,
-                  monthly_body_corporate: property.monthlyBodyCorporate || 0,
-                  monthly_council_rates: property.monthlyCouncilRates || 0,
-                  monthly_water_rates: property.monthlyWaterRates || 0,
-                  monthly_repairs_maintenance: property.monthlyRepairsMaintenance || 0,
-                  monthly_property_management: property.monthlyPropertyManagement || 0,
-                  monthly_landlord_insurance: property.monthlyLandlordInsurance || 0,
-                  monthly_building_insurance: property.monthlyBuildingInsurance || 0,
-                  monthly_rental_income: property.monthlyRentalIncome || 0,
-                  weekly_rental_income: property.weeklyRentalIncome || 0,
-                  total_monthly_expenditure: property.totalMonthlyExpenditure || 0,
-                  net_monthly_cashflow: property.netMonthlyCashflow || 0
-                });
+              const propertyData = {
+                client_id: newClientId,
+                property_type: property.propertyType,
+                address: property.address || 'Unknown Address',
+                value: property.value || 0,
+                loan_remaining: property.loanRemaining || 0,
+                interest_rate: property.interestRate || 0,
+                ownership_percentage: property.ownershipPercentage || 100,
+                monthly_interest_repayment: property.monthlyInterestRepayment || 0,
+                monthly_body_corporate: property.monthlyBodyCorporate || 0,
+                monthly_council_rates: property.monthlyCouncilRates || 0,
+                monthly_water_rates: property.monthlyWaterRates || 0,
+                monthly_repairs_maintenance: property.monthlyRepairsMaintenance || 0,
+                monthly_property_management: property.monthlyPropertyManagement || 0,
+                monthly_landlord_insurance: property.monthlyLandlordInsurance || 0,
+                monthly_building_insurance: property.monthlyBuildingInsurance || 0,
+                monthly_rental_income: property.monthlyRentalIncome || 0,
+                weekly_rental_income: property.weeklyRentalIncome || 0,
+                total_monthly_expenditure: property.totalMonthlyExpenditure || 0,
+                net_monthly_cashflow: property.netMonthlyCashflow || 0
+              };
 
-              if (propError) {
-                result.errors.push(`Property error for ${client.primaryContact.firstName}: ${propError.message}`);
-              } else {
-                result.propertiesCreated++;
+              let propSuccess = false;
+              if (sessionToken) {
+                const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+                  body: {
+                    session_token: sessionToken,
+                    operation: 'create',
+                    table: 'client_properties',
+                    clientId: newClientId,
+                    data: propertyData,
+                  },
+                });
+                if (!fnError && fnData?.success) {
+                  propSuccess = true;
+                  result.propertiesCreated++;
+                }
+              }
+              
+              if (!propSuccess) {
+                const { error: propError } = await supabase.from('client_properties').insert(propertyData);
+                if (propError) {
+                  result.errors.push(`Property error for ${client.primaryContact.firstName}: ${propError.message}`);
+                } else {
+                  result.propertiesCreated++;
+                }
               }
             }
           }
@@ -150,23 +196,39 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
           // Insert employment records
           if (client.employment) {
             for (const emp of client.employment) {
-              await supabase.from('client_employment').insert({
-                client_id: clientData.id,
+              const empData = {
+                client_id: newClientId,
                 contact_type: emp.contactType,
                 employer_name: emp.employerName,
                 employment_type: emp.employmentType,
                 occupation_role: emp.occupationRole,
                 start_date: emp.startDate,
                 is_current: true
-              });
+              };
+              
+              if (sessionToken) {
+                await supabase.functions.invoke('manage-client-data', {
+                  body: {
+                    session_token: sessionToken,
+                    operation: 'create',
+                    table: 'client_employment',
+                    clientId: newClientId,
+                    data: empData,
+                  },
+                }).catch(() => {
+                  supabase.from('client_employment').insert(empData);
+                });
+              } else {
+                await supabase.from('client_employment').insert(empData);
+              }
             }
           }
 
           // Insert income records
           if (client.income) {
             for (const inc of client.income) {
-              await supabase.from('client_income').insert({
-                client_id: clientData.id,
+              const incData = {
+                client_id: newClientId,
                 contact_type: inc.contactType,
                 gross_salary: inc.grossSalary || 0,
                 salary_frequency: inc.salaryFrequency || 'annual',
@@ -176,30 +238,62 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 overtime_essential: inc.overtimeEssential || 0,
                 overtime_non_essential: inc.overtimeNonEssential || 0,
                 other_taxable_income: inc.otherTaxableIncome || 0
-              });
+              };
+              
+              if (sessionToken) {
+                await supabase.functions.invoke('manage-client-data', {
+                  body: {
+                    session_token: sessionToken,
+                    operation: 'create',
+                    table: 'client_income',
+                    clientId: newClientId,
+                    data: incData,
+                  },
+                }).catch(() => {
+                  supabase.from('client_income').insert(incData);
+                });
+              } else {
+                await supabase.from('client_income').insert(incData);
+              }
             }
           }
 
           // Insert assets
           if (client.assets) {
             for (const asset of client.assets) {
-              await supabase.from('client_assets').insert({
-                client_id: clientData.id,
+              const assetData = {
+                client_id: newClientId,
                 asset_type: asset.assetType,
                 vehicle_type: asset.vehicleType,
                 make_model: asset.makeModel,
                 institution_name: asset.institutionName,
                 description: asset.description,
                 value: asset.value || 0
-              });
+              };
+              
+              if (sessionToken) {
+                await supabase.functions.invoke('manage-client-data', {
+                  body: {
+                    session_token: sessionToken,
+                    operation: 'create',
+                    table: 'client_assets',
+                    clientId: newClientId,
+                    data: assetData,
+                  },
+                }).catch(() => {
+                  supabase.from('client_assets').insert(assetData);
+                });
+              } else {
+                await supabase.from('client_assets').insert(assetData);
+              }
             }
           }
 
           // Insert liabilities
           if (client.liabilities) {
             for (const liability of client.liabilities) {
-              await supabase.from('client_liabilities').insert({
-                client_id: clientData.id,
+              const liabData = {
+                client_id: newClientId,
                 liability_type: liability.liabilityType,
                 provider_name: liability.providerName,
                 current_balance: liability.currentBalance || 0,
@@ -207,7 +301,23 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 interest_rate: liability.interestRate,
                 monthly_repayment: liability.monthlyRepayment || 0,
                 repayment_type: liability.repaymentType
-              });
+              };
+              
+              if (sessionToken) {
+                await supabase.functions.invoke('manage-client-data', {
+                  body: {
+                    session_token: sessionToken,
+                    operation: 'create',
+                    table: 'client_liabilities',
+                    clientId: newClientId,
+                    data: liabData,
+                  },
+                }).catch(() => {
+                  supabase.from('client_liabilities').insert(liabData);
+                });
+              } else {
+                await supabase.from('client_liabilities').insert(liabData);
+              }
             }
           }
 
