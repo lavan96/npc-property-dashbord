@@ -14,6 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ClientAIInsightsProps {
   clientId: string;
@@ -28,64 +29,25 @@ interface AIInsight {
 }
 
 /**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
- * Secure fetch for AI insights data with fallback
+ * Secure fetch for AI insights data using HttpOnly cookies
  */
 async function fetchAIInsightsDataSecure(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { client: true, properties: true },
-        },
-      });
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { client: true, properties: true },
+  });
 
-      if (!error && data?.success) {
-        const client = data.data?.client;
-        const properties = data.data?.properties || [];
-        return {
-          clientName: `${client?.primary_first_name} ${client?.primary_surname}`,
-          portfolioValue: Number(client?.total_portfolio_value) || 0,
-          debt: Number(client?.total_debt) || 0,
-          cashFlow: Number(client?.net_monthly_cash_flow) || 0,
-          properties,
-        };
-      }
-    } catch (err) {
-      console.warn('Secure AI insights data fetch failed, falling back:', err);
-    }
-  }
-
-  // Fallback: Direct Supabase queries
-  const [clientRes, propertiesRes] = await Promise.all([
-    supabase.from('clients')
-      .select('primary_first_name, primary_surname, total_portfolio_value, total_debt, net_monthly_cash_flow')
-      .eq('id', clientId)
-      .single(),
-    supabase.from('client_properties')
-      .select('*')
-      .eq('client_id', clientId),
-  ]);
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error('Failed to fetch client data');
   
-  if (clientRes.error) throw clientRes.error;
-  
+  const client = data.data?.client;
+  const properties = data.data?.properties || [];
   return {
-    clientName: `${clientRes.data.primary_first_name} ${clientRes.data.primary_surname}`,
-    portfolioValue: Number(clientRes.data.total_portfolio_value) || 0,
-    debt: Number(clientRes.data.total_debt) || 0,
-    cashFlow: Number(clientRes.data.net_monthly_cash_flow) || 0,
-    properties: propertiesRes.data || [],
+    clientName: `${client?.primary_first_name} ${client?.primary_surname}`,
+    portfolioValue: Number(client?.total_portfolio_value) || 0,
+    debt: Number(client?.total_debt) || 0,
+    cashFlow: Number(client?.net_monthly_cash_flow) || 0,
+    properties,
   };
 }
 

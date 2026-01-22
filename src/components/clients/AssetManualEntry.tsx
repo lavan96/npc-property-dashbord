@@ -80,12 +80,7 @@ const defaultFormData: AssetFormData = {
   make_model: '',
 };
 
-/**
- * Get session token for secure API calls
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps) {
   const [open, setOpen] = useState(false);
@@ -94,39 +89,18 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing assets with secure Edge Function + fallback
+  // Fetch existing assets with secure Edge Function (HttpOnly cookies)
   const { data: existingAssets = [] } = useQuery({
     queryKey: ['client-assets', clientId],
     queryFn: async () => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        clientId,
+        include: { assets: true },
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              session_token: sessionToken,
-              clientId,
-              include: { assets: true },
-            },
-          });
-          
-          if (!error && data?.success && data.data?.assets) {
-            return data.data.assets;
-          }
-        } catch (err) {
-          console.warn('Secure assets fetch failed, falling back:', err);
-        }
-      }
-      
-      // Fallback: Direct Supabase query
-      const { data, error } = await supabase
-        .from('client_assets')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at');
-      if (error) throw error;
-      return data;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error('Failed to fetch assets');
+      return data.data?.assets || [];
     },
   });
 
@@ -171,26 +145,16 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
         make_model: formData.asset_type === 'vehicle' ? formData.make_model : null,
       };
 
-      const sessionToken = getSessionToken();
-      
-      if (!sessionToken) {
-        throw new Error('Authentication required. Please log in.');
-      }
-
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: editingId ? 'update' : 'create',
-          table: 'client_assets',
-          clientId,
-          recordId: editingId,
-          data: payload,
-        },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: editingId ? 'update' : 'create',
+        table: 'client_assets',
+        clientId,
+        recordId: editingId,
+        data: payload,
       });
       
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.error || 'Failed to save asset');
-      }
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to save asset');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-assets', clientId] });
@@ -204,33 +168,15 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_assets',
+        clientId,
+        recordId: id,
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'delete',
-              table: 'client_assets',
-              clientId,
-              recordId: id,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return;
-          }
-          console.warn('Secure delete failed, falling back:', error?.message || data?.error);
-        } catch (err) {
-          console.warn('Edge function call failed, falling back:', err);
-        }
-      }
-
-      // Fallback: Direct Supabase mutation
-      const { error } = await supabase.from('client_assets').delete().eq('id', id);
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete asset');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-assets', clientId] });

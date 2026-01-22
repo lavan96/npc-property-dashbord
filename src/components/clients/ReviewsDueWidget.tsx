@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { format, isPast, isWithinInterval, addDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ReviewsDueClient {
   id: string;
@@ -27,54 +27,30 @@ interface ReviewsDueClient {
 
 export function ReviewsDueWidget() {
   const navigate = useNavigate();
-  
-  const getSessionToken = () => localStorage.getItem('session_token');
 
   const { data: clientsDue = [], isLoading } = useQuery({
     queryKey: ['clients-reviews-due'],
     queryFn: async () => {
       const today = new Date();
       const thirtyDaysFromNow = addDays(today, 30);
-      const sessionToken = getSessionToken();
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              listMode: true,
-              listOptions: {
-                select: 'id, primary_first_name, primary_surname, review_frequency, next_review_due, last_review_date, total_portfolio_value',
-                orderBy: 'next_review_due',
-                orderAsc: true,
-                limit: 10,
-              },
-              session_token: sessionToken,
-            },
-          });
-          
-          if (!error && data?.success) {
-            // Filter for reviews due within 30 days
-            return (data.clients || []).filter((c: ReviewsDueClient) => 
-              c.next_review_due && new Date(c.next_review_due) <= thirtyDaysFromNow
-            ) as ReviewsDueClient[];
-          }
-        } catch (err) {
-          console.warn('Edge function failed, falling back to direct query:', err);
-        }
-      }
+      const { data, error } = await invokeSecureFunction<{ success: boolean; clients: ReviewsDueClient[] }>('get-client-data', {
+        listMode: true,
+        listOptions: {
+          select: 'id, primary_first_name, primary_surname, review_frequency, next_review_due, last_review_date, total_portfolio_value',
+          orderBy: 'next_review_due',
+          orderAsc: true,
+          limit: 10,
+        },
+      });
       
-      // Fallback to direct query
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, primary_first_name, primary_surname, review_frequency, next_review_due, last_review_date, total_portfolio_value')
-        .not('next_review_due', 'is', null)
-        .lte('next_review_due', thirtyDaysFromNow.toISOString())
-        .order('next_review_due', { ascending: true })
-        .limit(10);
-        
-      if (error) throw error;
-      return data as ReviewsDueClient[];
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error('Failed to fetch clients');
+      
+      // Filter for reviews due within 30 days
+      return (data.clients || []).filter((c: ReviewsDueClient) => 
+        c.next_review_due && new Date(c.next_review_due) <= thirtyDaysFromNow
+      ) as ReviewsDueClient[];
     },
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });

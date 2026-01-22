@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +15,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ClientNotesProps {
   clientId: string;
@@ -32,31 +32,15 @@ const noteTypes = [
 type NoteType = typeof noteTypes[number]['value'];
 
 /**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
- * Secure fetch for notes data with fallback
+ * Secure fetch for notes data using HttpOnly cookies
  */
 async function fetchNotesSecure(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  if (!sessionToken) {
-    throw new Error('Not authenticated');
-  }
-
-  const { data, error } = await supabase.functions.invoke('get-client-data', {
-    body: {
-      session_token: sessionToken,
-      clientId,
-      include: { notes: true },
-    },
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { notes: true },
   });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   if (!data?.success) throw new Error(data?.error || 'Failed to fetch notes');
   return data.data?.notes || [];
 }
@@ -74,34 +58,21 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = getSessionToken();
       const payload = {
         note_type: noteType,
         content: newNote.trim(),
       };
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'create',
-              table: 'client_notes',
-              clientId,
-              data: payload,
-            },
-          });
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_notes',
+        clientId,
+        data: payload,
+      });
 
-          if (!error && data?.success) {
-            return data.result;
-          }
-        } catch (err) {
-          throw err;
-        }
-      }
-
-      throw new Error('Not authenticated');
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to add note');
+      return data.result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
@@ -116,30 +87,15 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_notes',
+        clientId,
+        recordId: noteId,
+      });
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'delete',
-              table: 'client_notes',
-              clientId,
-              recordId: noteId,
-            },
-          });
-
-          if (!error && data?.success) {
-            return;
-          }
-        } catch (err) {
-          throw err;
-        }
-      }
-
-      throw new Error('Not authenticated');
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete note');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });

@@ -67,12 +67,7 @@ const defaultFormData: LiabilityFormData = {
   repayment_type: 'principal_interest',
 };
 
-/**
- * Get session token for secure API calls
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEntryProps) {
   const [open, setOpen] = useState(false);
@@ -80,39 +75,18 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing liabilities with secure Edge Function + fallback
+  // Fetch existing liabilities with secure Edge Function (HttpOnly cookies)
   const { data: existingLiabilities = [] } = useQuery({
     queryKey: ['client-liabilities', clientId],
     queryFn: async () => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        clientId,
+        include: { liabilities: true },
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              session_token: sessionToken,
-              clientId,
-              include: { liabilities: true },
-            },
-          });
-          
-          if (!error && data?.success && data.data?.liabilities) {
-            return data.data.liabilities;
-          }
-        } catch (err) {
-          console.warn('Secure liabilities fetch failed, falling back:', err);
-        }
-      }
-      
-      // Fallback: Direct Supabase query
-      const { data, error } = await supabase
-        .from('client_liabilities')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at');
-      if (error) throw error;
-      return data;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error('Failed to fetch liabilities');
+      return data.data?.liabilities || [];
     },
   });
 
@@ -152,26 +126,16 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
         repayment_type: formData.repayment_type || null,
       };
 
-      const sessionToken = getSessionToken();
-      
-      if (!sessionToken) {
-        throw new Error('Authentication required. Please log in.');
-      }
-
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: editingId ? 'update' : 'create',
-          table: 'client_liabilities',
-          clientId,
-          recordId: editingId,
-          data: payload,
-        },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: editingId ? 'update' : 'create',
+        table: 'client_liabilities',
+        clientId,
+        recordId: editingId,
+        data: payload,
       });
       
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.error || 'Failed to save liability');
-      }
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to save liability');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-liabilities', clientId] });
@@ -185,33 +149,15 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_liabilities',
+        clientId,
+        recordId: id,
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'delete',
-              table: 'client_liabilities',
-              clientId,
-              recordId: id,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return;
-          }
-          console.warn('Secure delete failed, falling back:', error?.message || data?.error);
-        } catch (err) {
-          console.warn('Edge function call failed, falling back:', err);
-        }
-      }
-
-      // Fallback: Direct Supabase mutation
-      const { error } = await supabase.from('client_liabilities').delete().eq('id', id);
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete liability');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-liabilities', clientId] });
