@@ -3345,20 +3345,11 @@ function MailboxSettingsModal({
   }, [currentMailbox, open]);
 
   const handleSave = async () => {
-    const sessionToken = localStorage.getItem('session_token');
-    if (!sessionToken) {
-      toast.error('Session expired. Please log in again.');
-      return;
-    }
-
     setIsSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: { 
-          action: 'update_own_mailbox', 
-          session_token: sessionToken,
-          personal_mailbox: mailboxValue || null
-        }
+      const { data, error } = await invokeSecureFunction('admin-user-management', { 
+        action: 'update_own_mailbox', 
+        personal_mailbox: mailboxValue || null
       });
 
       if (error) throw error;

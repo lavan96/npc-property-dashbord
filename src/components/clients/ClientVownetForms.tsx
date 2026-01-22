@@ -164,81 +164,117 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       // 2. Import employment records (delete existing first to avoid duplicates)
       if (parsedData.employment && parsedData.employment.length > 0) {
-        // Delete existing employment records for this client
-        await supabase.from('client_employment').delete().eq('client_id', clientId);
+        // Delete existing employment records for this client via secure function
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table: 'client_employment',
+          clientId,
+        });
         
         for (const emp of parsedData.employment) {
-          const { error } = await supabase.from('client_employment').insert({
-            client_id: clientId,
-            contact_type: emp.contactType,
-            employer_name: emp.employerName,
-            employment_type: emp.employmentType,
-            occupation_role: emp.occupationRole,
-            start_date: emp.startDate,
-            is_current: true
+          const { data: empResult, error: empError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_employment',
+            clientId,
+            data: {
+              client_id: clientId,
+              contact_type: emp.contactType,
+              employer_name: emp.employerName,
+              employment_type: emp.employmentType,
+              occupation_role: emp.occupationRole,
+              start_date: emp.startDate,
+              is_current: true
+            }
           });
-          if (!error) summary.employmentRecords++;
+          if (!empError && empResult?.success) summary.employmentRecords++;
         }
       }
       setProgress(60);
 
       // 3. Import income records
       if (parsedData.income && parsedData.income.length > 0) {
-        await supabase.from('client_income').delete().eq('client_id', clientId);
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table: 'client_income',
+          clientId,
+        });
         
         for (const inc of parsedData.income) {
-          const { error } = await supabase.from('client_income').insert({
-            client_id: clientId,
-            contact_type: inc.contactType,
-            gross_salary: inc.grossSalary || 0,
-            salary_frequency: inc.salaryFrequency || 'annual',
-            bonus: inc.bonus || 0,
-            allowance: inc.allowance || 0,
-            commission: inc.commission || 0,
-            overtime_essential: inc.overtimeEssential || 0,
-            overtime_non_essential: inc.overtimeNonEssential || 0,
-            other_taxable_income: inc.otherTaxableIncome || 0
+          const { data: incResult, error: incError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_income',
+            clientId,
+            data: {
+              client_id: clientId,
+              contact_type: inc.contactType,
+              gross_salary: inc.grossSalary || 0,
+              salary_frequency: inc.salaryFrequency || 'annual',
+              bonus: inc.bonus || 0,
+              allowance: inc.allowance || 0,
+              commission: inc.commission || 0,
+              overtime_essential: inc.overtimeEssential || 0,
+              overtime_non_essential: inc.overtimeNonEssential || 0,
+              other_taxable_income: inc.otherTaxableIncome || 0
+            }
           });
-          if (!error) summary.incomeRecords++;
+          if (!incError && incResult?.success) summary.incomeRecords++;
         }
       }
       setProgress(70);
 
       // 4. Import assets
       if (parsedData.assets && parsedData.assets.length > 0) {
-        await supabase.from('client_assets').delete().eq('client_id', clientId);
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table: 'client_assets',
+          clientId,
+        });
         
         for (const asset of parsedData.assets) {
-          const { error } = await supabase.from('client_assets').insert({
-            client_id: clientId,
-            asset_type: asset.assetType,
-            vehicle_type: asset.vehicleType,
-            make_model: asset.makeModel,
-            institution_name: asset.institutionName,
-            description: asset.description,
-            value: asset.value || 0
+          const { data: assetResult, error: assetError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_assets',
+            clientId,
+            data: {
+              client_id: clientId,
+              asset_type: asset.assetType,
+              vehicle_type: asset.vehicleType,
+              make_model: asset.makeModel,
+              institution_name: asset.institutionName,
+              description: asset.description,
+              value: asset.value || 0
+            }
           });
-          if (!error) summary.assetRecords++;
+          if (!assetError && assetResult?.success) summary.assetRecords++;
         }
       }
       setProgress(80);
 
       // 5. Import liabilities
       if (parsedData.liabilities && parsedData.liabilities.length > 0) {
-        await supabase.from('client_liabilities').delete().eq('client_id', clientId);
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table: 'client_liabilities',
+          clientId,
+        });
         
         for (const liability of parsedData.liabilities) {
-          const { error } = await supabase.from('client_liabilities').insert({
-            client_id: clientId,
-            liability_type: liability.liabilityType,
-            provider_name: liability.providerName,
-            current_balance: liability.currentBalance || 0,
-            credit_limit: liability.creditLimit,
-            interest_rate: liability.interestRate,
-            monthly_repayment: liability.monthlyRepayment || 0,
-            repayment_type: liability.repaymentType
+          const { data: liabResult, error: liabError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_liabilities',
+            clientId,
+            data: {
+              client_id: clientId,
+              liability_type: liability.liabilityType,
+              provider_name: liability.providerName,
+              current_balance: liability.currentBalance || 0,
+              credit_limit: liability.creditLimit,
+              interest_rate: liability.interestRate,
+              monthly_repayment: liability.monthlyRepayment || 0,
+              repayment_type: liability.repaymentType
+            }
           });
-          if (!error) summary.liabilityRecords++;
+          if (!liabError && liabResult?.success) summary.liabilityRecords++;
         }
       }
       setProgress(85);
@@ -246,49 +282,60 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       // 6. Import properties
       if (parsedData.properties && parsedData.properties.length > 0) {
         // Delete existing properties to avoid duplicates
-        await supabase.from('client_properties').delete().eq('client_id', clientId);
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table: 'client_properties',
+          clientId,
+        });
         
         for (const prop of parsedData.properties) {
-          const { error } = await supabase.from('client_properties').insert({
-            client_id: clientId,
-            property_type: prop.propertyType,
-            address: prop.address || 'Unknown Address',
-            value: prop.value || 0,
-            loan_remaining: prop.loanRemaining || 0,
-            interest_rate: prop.interestRate || 0,
-            ownership_percentage: prop.ownershipPercentage || 100,
-            monthly_interest_repayment: prop.monthlyInterestRepayment || 0,
-            monthly_body_corporate: prop.monthlyBodyCorporate || 0,
-            monthly_council_rates: prop.monthlyCouncilRates || 0,
-            monthly_water_rates: prop.monthlyWaterRates || 0,
-            monthly_repairs_maintenance: prop.monthlyRepairsMaintenance || 0,
-            monthly_property_management: prop.monthlyPropertyManagement || 0,
-            monthly_landlord_insurance: prop.monthlyLandlordInsurance || 0,
-            monthly_building_insurance: prop.monthlyBuildingInsurance || 0,
-            monthly_rental_income: prop.monthlyRentalIncome || 0,
-            weekly_rental_income: prop.weeklyRentalIncome || 0,
-            total_monthly_expenditure: prop.totalMonthlyExpenditure || 0,
-            net_monthly_cashflow: prop.netMonthlyCashflow || 0
+          const { data: propResult, error: propError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_properties',
+            clientId,
+            data: {
+              client_id: clientId,
+              property_type: prop.propertyType,
+              address: prop.address || 'Unknown Address',
+              value: prop.value || 0,
+              loan_remaining: prop.loanRemaining || 0,
+              interest_rate: prop.interestRate || 0,
+              ownership_percentage: prop.ownershipPercentage || 100,
+              monthly_interest_repayment: prop.monthlyInterestRepayment || 0,
+              monthly_body_corporate: prop.monthlyBodyCorporate || 0,
+              monthly_council_rates: prop.monthlyCouncilRates || 0,
+              monthly_water_rates: prop.monthlyWaterRates || 0,
+              monthly_repairs_maintenance: prop.monthlyRepairsMaintenance || 0,
+              monthly_property_management: prop.monthlyPropertyManagement || 0,
+              monthly_landlord_insurance: prop.monthlyLandlordInsurance || 0,
+              monthly_building_insurance: prop.monthlyBuildingInsurance || 0,
+              monthly_rental_income: prop.monthlyRentalIncome || 0,
+              weekly_rental_income: prop.weeklyRentalIncome || 0,
+              total_monthly_expenditure: prop.totalMonthlyExpenditure || 0,
+              net_monthly_cashflow: prop.netMonthlyCashflow || 0
+            }
           });
-          if (!error) summary.propertyRecords++;
+          if (!propError && propResult?.success) summary.propertyRecords++;
         }
       }
       setProgress(90);
 
       // 7. Update portfolio summary
       if (parsedData.portfolioSummary) {
-        const { error } = await supabase
-          .from('clients')
-          .update({
+        const { data: summaryResult, error: summaryError } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'clients',
+          clientId,
+          data: {
             total_portfolio_value: parsedData.portfolioSummary.totalPortfolioValue,
             total_debt: parsedData.portfolioSummary.totalDebt,
             total_monthly_expenditure: parsedData.portfolioSummary.totalMonthlyExpenditure,
             total_monthly_income: parsedData.portfolioSummary.totalMonthlyIncome,
             total_monthly_rental_income: parsedData.portfolioSummary.totalMonthlyRentalIncome,
             net_monthly_cash_flow: parsedData.portfolioSummary.netMonthlyCashFlow
-          })
-          .eq('id', clientId);
-        if (!error) summary.portfolioUpdated = true;
+          }
+        });
+        if (!summaryError && summaryResult?.success) summary.portfolioUpdated = true;
       }
       setProgress(95);
 
@@ -299,16 +346,21 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       });
 
       if (uploadResult.success) {
-        await supabase.from('client_files').insert({
-          client_id: clientId,
-          file_name: file.name,
-          file_path: uploadResult.path || filePath,
-          file_size: file.size,
-          file_type: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          category: 'vownet',
-          document_type: 'vownet_form',
-          is_vownet_form: true,
-          uploaded_by: user?.id
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'client_files',
+          clientId,
+          data: {
+            client_id: clientId,
+            file_name: file.name,
+            file_path: uploadResult.path || filePath,
+            file_size: file.size,
+            file_type: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            category: 'vownet',
+            document_type: 'vownet_form',
+            is_vownet_form: true,
+            uploaded_by: user?.id
+          }
         });
       }
 
@@ -345,42 +397,46 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
   const deleteMutation = useMutation({
     mutationFn: async (file: { id: string; file_path: string }) => {
-      // 1. Delete associated data from all related tables
-      const deletePromises = [
-        supabase.from('client_employment').delete().eq('client_id', clientId),
-        supabase.from('client_income').delete().eq('client_id', clientId),
-        supabase.from('client_assets').delete().eq('client_id', clientId),
-        supabase.from('client_liabilities').delete().eq('client_id', clientId),
-        supabase.from('client_properties').delete().eq('client_id', clientId),
-      ];
+      // 1. Delete associated data from all related tables via secure Edge Function
+      const tablesToDelete = ['client_employment', 'client_income', 'client_assets', 'client_liabilities', 'client_properties'];
       
-      await Promise.all(deletePromises);
+      for (const table of tablesToDelete) {
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table,
+          clientId,
+        });
+      }
 
       // 2. Clear portfolio summary fields on client record
-      await supabase
-        .from('clients')
-        .update({
+      await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'clients',
+        clientId,
+        data: {
           total_portfolio_value: null,
           total_debt: null,
           total_monthly_expenditure: null,
           total_monthly_income: null,
           total_monthly_rental_income: null,
           net_monthly_cash_flow: null,
-        })
-        .eq('id', clientId);
+        }
+      });
 
       // 3. Delete file from storage via secure Edge Function
       const deleteResult = await secureStorageDelete('vownet-forms', file.file_path);
 
       if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
-      // 4. Delete file record from database
-      const { error: dbError } = await supabase
-        .from('client_files')
-        .delete()
-        .eq('id', file.id);
+      // 4. Delete file record from database via secure Edge Function
+      const { error: dbError } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_files',
+        clientId,
+        recordId: file.id,
+      });
 
-      if (dbError) throw dbError;
+      if (dbError) throw new Error(dbError.message);
     },
     onSuccess: () => {
       // Invalidate all related queries to refresh UI

@@ -248,34 +248,41 @@ export function ClientVownetUpload({
         });
 
         if (uploadResult.success) {
-          // Record in client_files table
-          await supabase.from('client_files').insert({
-            client_id: clientId,
-            file_name: uploadedFile.name,
-            file_path: uploadResult.path || filePath,
-            file_size: uploadedFile.size,
-            file_type: uploadedFile.type,
-            category: 'vownet',
-            document_type: 'vownet_form',
-            is_vownet_form: true,
-            uploaded_by: user?.id
+          // Record in client_files table via secure Edge Function
+          await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_files',
+            clientId,
+            data: {
+              client_id: clientId,
+              file_name: uploadedFile.name,
+              file_path: uploadResult.path || filePath,
+              file_size: uploadedFile.size,
+              file_type: uploadedFile.type,
+              category: 'vownet',
+              document_type: 'vownet_form',
+              is_vownet_form: true,
+              uploaded_by: user?.id
+            }
           });
         }
       }
 
-      // Update client portfolio summary if parsed
+      // Update client portfolio summary if parsed via secure Edge Function
       if (parsedClient?.portfolioSummary) {
-        await supabase
-          .from('clients')
-          .update({
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'clients',
+          clientId,
+          data: {
             total_portfolio_value: parsedClient.portfolioSummary.totalPortfolioValue,
             total_debt: parsedClient.portfolioSummary.totalDebt,
             total_monthly_expenditure: parsedClient.portfolioSummary.totalMonthlyExpenditure,
             total_monthly_income: parsedClient.portfolioSummary.totalMonthlyIncome,
             total_monthly_rental_income: parsedClient.portfolioSummary.totalMonthlyRentalIncome,
             net_monthly_cash_flow: parsedClient.portfolioSummary.netMonthlyCashFlow
-          })
-          .eq('id', clientId);
+          }
+        });
       }
 
       toast.success(`Portfolio updated: ${added} added, ${updated} updated`);

@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { supabase } from '@/integrations/supabase/client';
 
 interface ListOptions {
   select?: string;
@@ -49,7 +48,6 @@ export function useSecureInvestmentReports() {
     setError(null);
     
     try {
-      // Use secure Edge Function with HttpOnly cookie auth
       const { data, error: fnError } = await invokeSecureFunction('get-investment-reports', {
         reportId
       });
@@ -57,22 +55,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && data?.success && data?.report) {
         return data.report;
       }
-      console.log('Secure fetch failed, falling back to direct query:', fnError?.message || data?.error);
-
-      // Fallback to direct query (will fail if RLS is strict)
-      const { data: fallbackData, error: queryError } = await supabase
-        .from('investment_reports')
-        .select('*')
-        .eq('id', reportId)
-        .single();
-
-      if (queryError) {
-        console.error('Direct query failed:', queryError);
-        setError(queryError.message);
-        return null;
-      }
-
-      return fallbackData as InvestmentReport;
+      
+      console.error('Failed to fetch report:', fnError?.message || data?.error);
+      setError(fnError?.message || data?.error || 'Failed to fetch report');
+      return null;
     } catch (err: any) {
       console.error('Error fetching report:', err);
       setError(err.message);
@@ -95,21 +81,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && data?.success && data?.reports) {
         return data.reports;
       }
-      console.log('Secure fetch failed, falling back:', fnError?.message || data?.error);
-
-      // Fallback
-      const { data: fallbackData, error: queryError } = await supabase
-        .from('investment_reports')
-        .select('*')
-        .in('id', reportIds);
-
-      if (queryError) {
-        console.error('Direct query failed:', queryError);
-        setError(queryError.message);
-        return [];
-      }
-
-      return (fallbackData as InvestmentReport[]) || [];
+      
+      console.error('Failed to fetch reports:', fnError?.message || data?.error);
+      setError(fnError?.message || data?.error || 'Failed to fetch reports');
+      return [];
     } catch (err: any) {
       console.error('Error fetching reports:', err);
       setError(err.message);
@@ -132,54 +107,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && data?.success && data?.reports) {
         return data.reports;
       }
-      console.log('Secure list failed, falling back:', fnError?.message || data?.error);
-
-      // Fallback to direct query
-      let query = supabase.from('investment_reports').select(options.select || '*');
-
-      if (options.status) {
-        if (Array.isArray(options.status)) {
-          query = query.in('status', options.status);
-        } else {
-          query = query.eq('status', options.status);
-        }
-      }
-
-      if (typeof options.isArchived === 'boolean') {
-        query = query.eq('is_archived', options.isArchived);
-      }
-
-      if (options.isClientReport === true) {
-        query = query.eq('is_client_report', true);
-      } else if (options.isClientReport === false) {
-        query = query.or('is_client_report.is.null,is_client_report.eq.false');
-      }
-
-      if (options.clientPropertyId) {
-        query = query.eq('client_property_id', options.clientPropertyId);
-      } else if (options.clientPropertyIds && options.clientPropertyIds.length > 0) {
-        query = query.in('client_property_id', options.clientPropertyIds);
-      }
-
-      if (options.createdAfter) {
-        query = query.gte('created_at', options.createdAfter);
-      }
-
-      query = query.order(options.orderBy || 'created_at', { ascending: options.orderAsc || false });
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      const { data: fallbackData, error: queryError } = await query;
-
-      if (queryError) {
-        console.error('Direct query failed:', queryError);
-        setError(queryError.message);
-        return [];
-      }
-
-      return (fallbackData as unknown as InvestmentReport[]) || [];
+      
+      console.error('Failed to list reports:', fnError?.message || data?.error);
+      setError(fnError?.message || data?.error || 'Failed to list reports');
+      return [];
     } catch (err: any) {
       console.error('Error listing reports:', err);
       setError(err.message);
@@ -202,22 +133,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && result?.success && result?.report) {
         return result.report;
       }
-      console.log('Secure insert failed, falling back:', fnError?.message || result?.error);
-
-      // Fallback
-      const { data: report, error: insertError } = await supabase
-        .from('investment_reports')
-        .insert(reportData as any)
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Direct insert failed:', insertError);
-        setError(insertError.message);
-        return null;
-      }
-
-      return report as InvestmentReport;
+      
+      console.error('Failed to insert report:', fnError?.message || result?.error);
+      setError(fnError?.message || result?.error || 'Failed to insert report');
+      return null;
     } catch (err: any) {
       console.error('Error inserting report:', err);
       setError(err.message);
@@ -240,23 +159,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && result?.success && result?.report) {
         return result.report;
       }
-      console.log('Secure update failed, falling back:', fnError?.message || result?.error);
-
-      // Fallback
-      const { data: report, error: updateError } = await supabase
-        .from('investment_reports')
-        .update({ ...reportData, updated_at: new Date().toISOString() })
-        .eq('id', reportId)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Direct update failed:', updateError);
-        setError(updateError.message);
-        return null;
-      }
-
-      return report as InvestmentReport;
+      
+      console.error('Failed to update report:', fnError?.message || result?.error);
+      setError(fnError?.message || result?.error || 'Failed to update report');
+      return null;
     } catch (err: any) {
       console.error('Error updating report:', err);
       setError(err.message);
@@ -279,21 +185,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && result?.success) {
         return true;
       }
-      console.log('Secure delete failed, falling back:', fnError?.message || result?.error);
-
-      // Fallback
-      const { error: deleteError } = await supabase
-        .from('investment_reports')
-        .delete()
-        .eq('id', reportId);
-
-      if (deleteError) {
-        console.error('Direct delete failed:', deleteError);
-        setError(deleteError.message);
-        return false;
-      }
-
-      return true;
+      
+      console.error('Failed to delete report:', fnError?.message || result?.error);
+      setError(fnError?.message || result?.error || 'Failed to delete report');
+      return false;
     } catch (err: any) {
       console.error('Error deleting report:', err);
       setError(err.message);
@@ -316,23 +211,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && result?.success && result?.report) {
         return result.report;
       }
-      console.log('Secure archive toggle failed, falling back:', fnError?.message || result?.error);
-
-      // Fallback
-      const { data: report, error: archiveError } = await supabase
-        .from('investment_reports')
-        .update({ is_archived: archive, updated_at: new Date().toISOString() })
-        .eq('id', reportId)
-        .select()
-        .single();
-
-      if (archiveError) {
-        console.error('Direct archive toggle failed:', archiveError);
-        setError(archiveError.message);
-        return null;
-      }
-
-      return report as InvestmentReport;
+      
+      console.error('Failed to toggle archive:', fnError?.message || result?.error);
+      setError(fnError?.message || result?.error || 'Failed to toggle archive');
+      return null;
     } catch (err: any) {
       console.error('Error toggling archive:', err);
       setError(err.message);
@@ -355,22 +237,10 @@ export function useSecureInvestmentReports() {
       if (!fnError && result?.success) {
         return result.deletedCount || 0;
       }
-      console.log('Secure bulk delete failed, falling back:', fnError?.message || result?.error);
-
-      // Fallback
-      const { data, error: deleteError } = await supabase
-        .from('investment_reports')
-        .delete()
-        .in('status', statusFilter)
-        .select('id');
-
-      if (deleteError) {
-        console.error('Direct bulk delete failed:', deleteError);
-        setError(deleteError.message);
-        return 0;
-      }
-
-      return data?.length || 0;
+      
+      console.error('Failed to bulk delete:', fnError?.message || result?.error);
+      setError(fnError?.message || result?.error || 'Failed to bulk delete');
+      return 0;
     } catch (err: any) {
       console.error('Error in bulk delete:', err);
       setError(err.message);

@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 import type { 
@@ -744,43 +745,21 @@ export function useReviewWizard(
 
       // Update client's last review date and next due via secure Edge Function
       if (status === 'completed') {
-        const sessionToken = localStorage.getItem('session_token');
         const updateData = {
           last_review_date: new Date().toISOString(),
           next_review_due: nextReviewDue.toISOString(),
           review_frequency: reviewFrequency
         };
 
-        if (sessionToken) {
-          try {
-            const { data: updateResult, error: updateError } = await supabase.functions.invoke('manage-client-data', {
-              body: {
-                operation: 'update',
-                table: 'clients',
-                clientId,
-                data: updateData,
-                session_token: sessionToken,
-              },
-            });
-            
-            if (!updateError && updateResult?.success) {
-              // Success via Edge Function
-            } else {
-              throw new Error('Edge function failed');
-            }
-          } catch {
-            // Fallback to direct query
-            await supabase
-              .from('clients')
-              .update(updateData)
-              .eq('id', clientId);
-          }
-        } else {
-          // Direct query fallback
-          await supabase
-            .from('clients')
-            .update(updateData)
-            .eq('id', clientId);
+        const { data: updateResult, error: updateError } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'clients',
+          clientId,
+          data: updateData,
+        });
+        
+        if (updateError || !updateResult?.success) {
+          console.error('Failed to update client review dates:', updateError?.message || updateResult?.error);
         }
       }
 
