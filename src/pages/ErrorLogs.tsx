@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, subDays } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Link } from 'react-router-dom';
+import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 
 // Error source types
 type ErrorSource = 'investment_report' | 'bulk_generation' | 'vapi_call' | 'api_service' | 'email_sync' | 'automation';
@@ -85,6 +86,7 @@ export default function ErrorLogs() {
   const [dateRange, setDateRange] = useState<'24h' | '7d' | '30d'>('7d');
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { fetchErrorCalls } = useSecureCallLogs();
 
   const fetchErrors = useCallback(async () => {
     setIsLoading(true);
@@ -173,14 +175,8 @@ export default function ErrorLogs() {
         });
       }
 
-      // 4. Fetch Vapi call errors
-      const { data: vapiErrors } = await supabase
-        .from('vapi_call_logs')
-        .select('*')
-        .in('call_outcome', ['failed', 'error', 'timeout', 'no-answer'])
-        .gte('created_at', cutoffDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // 4. Fetch Vapi call errors via secure hook
+      const { data: vapiErrors } = await fetchErrorCalls(cutoffDate.toISOString(), 100);
 
       if (vapiErrors) {
         vapiErrors.forEach(err => {
