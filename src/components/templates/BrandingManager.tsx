@@ -31,6 +31,7 @@ import {
 import { Plus, Palette, Trash2, Edit, Upload, Star, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface BrandingProfile {
   id: string;
@@ -108,15 +109,15 @@ export function BrandingManager({ profiles, isLoading }: BrandingManagerProps) {
     try {
       let logoPath = editingProfile?.logo_path || null;
 
-      // Upload logo if provided
+      // Upload logo if provided - use secure storage
       if (logoFile) {
         const filePath = `client-branding/${Date.now()}-${logoFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('report-templates')
-          .upload(filePath, logoFile);
+        const uploadResult = await secureStorageUpload('report-templates', filePath, logoFile, {
+          contentType: logoFile.type
+        });
 
-        if (uploadError) throw uploadError;
-        logoPath = filePath;
+        if (!uploadResult.success) throw new Error(uploadResult.error || 'Logo upload failed');
+        logoPath = uploadResult.path || filePath;
       }
 
       const profileData = {

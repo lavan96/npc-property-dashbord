@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface TemplateUploaderProps {
   templateType: 'ai_structure' | 'pdf_layout' | 'client_branding';
@@ -106,12 +107,12 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
       const fileExt = file.name.split('.').pop();
       const filePath = `${templateType}/${Date.now()}-${file.name}`;
 
-      // Upload file to storage
-      const { error: uploadError } = await supabase.storage
-        .from('report-templates')
-        .upload(filePath, file);
+      // Upload file to secure storage
+      const uploadResult = await secureStorageUpload('report-templates', filePath, file, {
+        contentType: getMimeType(file)
+      });
 
-      if (uploadError) throw uploadError;
+      if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
 
       // Create database record - cast enums properly for Supabase
       const insertData = {

@@ -32,6 +32,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import * as XLSX from 'xlsx';
 import { parseVownetForm } from '@/utils/vownetParser';
 import type { ParsedClient } from '@/utils/excelClientParser';
+import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 
 interface ClientVownetFormsProps {
   clientId: string;
@@ -319,17 +320,17 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       }
       setProgress(95);
 
-      // 8. Store the file in storage
+      // 8. Store the file in storage via secure Edge Function
       const filePath = `${clientId}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('vownet-forms')
-        .upload(filePath, file);
+      const uploadResult = await secureStorageUpload('vownet-forms', filePath, file, {
+        contentType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
 
-      if (!uploadError) {
+      if (uploadResult.success) {
         await supabase.from('client_files').insert({
           client_id: clientId,
           file_name: file.name,
-          file_path: filePath,
+          file_path: uploadResult.path || filePath,
           file_size: file.size,
           file_type: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           category: 'vownet',
@@ -396,12 +397,10 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
         })
         .eq('id', clientId);
 
-      // 3. Delete file from storage
-      const { error: storageError } = await supabase.storage
-        .from('vownet-forms')
-        .remove([file.file_path]);
+      // 3. Delete file from storage via secure Edge Function
+      const deleteResult = await secureStorageDelete('vownet-forms', file.file_path);
 
-      if (storageError) console.warn('Storage delete failed:', storageError);
+      if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
       // 4. Delete file record from database
       const { error: dbError } = await supabase
@@ -451,16 +450,14 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const { data, error } = await supabase.storage
-      .from('vownet-forms')
-      .download(file.file_path);
+    const result = await secureStorageDownload('vownet-forms', file.file_path);
 
-    if (error) {
-      toast.error('Failed to download file');
+    if (!result.success || !result.blob) {
+      toast.error('Failed to download file: ' + (result.error || 'Unknown error'));
       return;
     }
 
-    const url = URL.createObjectURL(data);
+    const url = URL.createObjectURL(result.blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = file.file_name;
