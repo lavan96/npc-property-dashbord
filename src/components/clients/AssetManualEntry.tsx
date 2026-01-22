@@ -173,39 +173,23 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
 
       const sessionToken = getSessionToken();
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: editingId ? 'update' : 'create',
-              table: 'client_assets',
-              clientId,
-              recordId: editingId,
-              data: payload,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return;
-          }
-          console.warn('Secure save failed, falling back:', error?.message || data?.error);
-        } catch (err) {
-          console.warn('Edge function call failed, falling back:', err);
-        }
+      if (!sessionToken) {
+        throw new Error('Authentication required. Please log in.');
       }
 
-      // Fallback: Direct Supabase mutation
-      if (editingId) {
-        const { error } = await supabase
-          .from('client_assets')
-          .update(payload)
-          .eq('id', editingId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('client_assets').insert(payload);
-        if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('manage-client-data', {
+        body: {
+          session_token: sessionToken,
+          operation: editingId ? 'update' : 'create',
+          table: 'client_assets',
+          clientId,
+          recordId: editingId,
+          data: payload,
+        },
+      });
+      
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Failed to save asset');
       }
     },
     onSuccess: () => {

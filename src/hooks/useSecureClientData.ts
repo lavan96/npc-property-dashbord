@@ -93,8 +93,8 @@ function getSessionToken(): string | null {
 }
 
 /**
- * Fetch client data securely via Edge Function with fallback to direct queries
- * This provides backward compatibility during the security transition
+ * Fetch client data securely via Edge Function
+ * All client data access is now restricted to service_role (Edge Functions) only
  */
 async function fetchClientDataSecure(
   clientId: string,
@@ -102,6 +102,10 @@ async function fetchClientDataSecure(
 ): Promise<SecureClientDataResponse> {
   const sessionToken = getSessionToken();
   
+  if (!sessionToken) {
+    throw new Error('Authentication required. Please log in to access client data.');
+  }
+
   // Default includes if not specified
   const includeConfig = {
     client: include.client !== false,
@@ -117,146 +121,36 @@ async function fetchClientDataSecure(
     borrowingCapacity: include.borrowingCapacity ?? false,
   };
 
-  // Try secure Edge Function first if we have a session
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: includeConfig,
-        },
-      });
+  const { data, error } = await supabase.functions.invoke('get-client-data', {
+    body: {
+      session_token: sessionToken,
+      clientId,
+      include: includeConfig,
+    },
+  });
 
-      if (!error && data?.success) {
-        return {
-          client: data.data?.client || null,
-          properties: data.data?.properties || [],
-          employment: data.data?.employment || [],
-          income: data.data?.income || [],
-          assets: data.data?.assets || [],
-          liabilities: data.data?.liabilities || [],
-          expenses: data.data?.expenses || [],
-          notes: data.data?.notes || [],
-          files: data.data?.files || [],
-          activities: data.data?.activities || [],
-          borrowingCapacity: data.data?.borrowingCapacity || null,
-        };
-      }
-      
-      // If edge function fails (but not 401), log warning and fall through to direct query
-      if (error && !error.message?.includes('401')) {
-        console.warn('Secure fetch failed, falling back to direct query:', error.message);
-      }
-    } catch (err) {
-      console.warn('Edge function call failed, falling back to direct query:', err);
-    }
+  if (error) {
+    console.error('Secure client data fetch failed:', error);
+    throw new Error(error.message || 'Failed to fetch client data');
   }
 
-  // Fallback: Direct Supabase queries (backward compatible during transition)
-  // This maintains existing functionality while we migrate
-  const result: SecureClientDataResponse = {
-    client: null,
-    properties: [],
-    employment: [],
-    income: [],
-    assets: [],
-    liabilities: [],
-    expenses: [],
+  if (!data?.success) {
+    throw new Error(data?.error || 'Failed to fetch client data');
+  }
+
+  return {
+    client: data.client || null,
+    properties: data.properties || [],
+    employment: data.employment || [],
+    income: data.income || [],
+    assets: data.assets || [],
+    liabilities: data.liabilities || [],
+    expenses: data.expenses || [],
+    notes: data.notes || [],
+    files: data.files || [],
+    activities: data.activities || [],
+    borrowingCapacity: data.borrowingCapacity || null,
   };
-
-  const promises: Promise<void>[] = [];
-
-  if (includeConfig.client) {
-    const clientPromise = (async () => {
-      const { data } = await supabase.from('clients').select('*').eq('id', clientId).single();
-      result.client = data as ClientData | null;
-    })();
-    promises.push(clientPromise);
-  }
-
-  if (includeConfig.properties) {
-    const propsPromise = (async () => {
-      const { data } = await supabase.from('client_properties').select('*').eq('client_id', clientId).order('created_at');
-      result.properties = (data || []) as ClientProperty[];
-    })();
-    promises.push(propsPromise);
-  }
-
-  if (includeConfig.employment) {
-    const empPromise = (async () => {
-      const { data } = await supabase.from('client_employment').select('*').eq('client_id', clientId);
-      result.employment = (data || []) as ClientEmployment[];
-    })();
-    promises.push(empPromise);
-  }
-
-  if (includeConfig.income) {
-    const incPromise = (async () => {
-      const { data } = await supabase.from('client_income').select('*').eq('client_id', clientId);
-      result.income = (data || []) as ClientIncome[];
-    })();
-    promises.push(incPromise);
-  }
-
-  if (includeConfig.assets) {
-    const assetPromise = (async () => {
-      const { data } = await supabase.from('client_assets').select('*').eq('client_id', clientId);
-      result.assets = (data || []) as ClientAsset[];
-    })();
-    promises.push(assetPromise);
-  }
-
-  if (includeConfig.liabilities) {
-    const liabPromise = (async () => {
-      const { data } = await supabase.from('client_liabilities').select('*').eq('client_id', clientId);
-      result.liabilities = (data || []) as ClientLiability[];
-    })();
-    promises.push(liabPromise);
-  }
-
-  if (includeConfig.expenses) {
-    const expPromise = (async () => {
-      const { data } = await supabase.from('client_expenses').select('*').eq('client_id', clientId);
-      result.expenses = (data || []) as ClientExpense[];
-    })();
-    promises.push(expPromise);
-  }
-
-  if (includeConfig.notes) {
-    const notesPromise = (async () => {
-      const { data } = await supabase.from('client_notes').select('*').eq('client_id', clientId).order('created_at', { ascending: false });
-      result.notes = data || [];
-    })();
-    promises.push(notesPromise);
-  }
-
-  if (includeConfig.files) {
-    const filesPromise = (async () => {
-      const { data } = await supabase.from('client_files').select('*').eq('client_id', clientId);
-      result.files = data || [];
-    })();
-    promises.push(filesPromise);
-  }
-
-  if (includeConfig.activities) {
-    const activitiesPromise = (async () => {
-      const { data } = await supabase.from('client_activities').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(50);
-      result.activities = data || [];
-    })();
-    promises.push(activitiesPromise);
-  }
-
-  if (includeConfig.borrowingCapacity) {
-    const bcPromise = (async () => {
-      const { data } = await supabase.from('borrowing_capacity_assessments').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(1);
-      result.borrowingCapacity = data?.[0] || null;
-    })();
-    promises.push(bcPromise);
-  }
-
-  await Promise.all(promises);
-  return result;
 }
 
 /**
