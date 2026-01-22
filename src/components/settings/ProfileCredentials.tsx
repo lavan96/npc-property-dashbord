@@ -5,17 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { User, Key, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { User, Key, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export function ProfileCredentials() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const sessionToken = localStorage.getItem('session_token');
 
   const [profile, setProfile] = useState<{
     username: string;
@@ -40,14 +39,9 @@ export function ProfileCredentials() {
   }, []);
 
   const fetchProfile = async () => {
-    if (!sessionToken) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: { action: 'get_own_profile', session_token: sessionToken }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'get_own_profile'
       });
 
       if (data?.success && data.user) {
@@ -66,7 +60,7 @@ export function ProfileCredentials() {
   };
 
   const handleUpdateUsername = async () => {
-    if (!sessionToken || !newUsername.trim()) return;
+    if (!newUsername.trim()) return;
 
     if (newUsername.trim().length < 3) {
       toast({
@@ -79,12 +73,9 @@ export function ProfileCredentials() {
 
     setUpdatingUsername(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'update_own_credentials',
-          session_token: sessionToken,
-          new_username: newUsername.trim()
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_own_credentials',
+        new_username: newUsername.trim()
       });
 
       if (data?.success) {
@@ -112,8 +103,6 @@ export function ProfileCredentials() {
   };
 
   const handleUpdatePassword = async () => {
-    if (!sessionToken) return;
-
     setPasswordError('');
 
     if (!currentPassword) {
@@ -135,13 +124,10 @@ export function ProfileCredentials() {
 
     setUpdatingPassword(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'update_own_credentials',
-          session_token: sessionToken,
-          current_password: currentPassword,
-          new_password: newPassword
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_own_credentials',
+        current_password: currentPassword,
+        new_password: newPassword
       });
 
       if (data?.success) {

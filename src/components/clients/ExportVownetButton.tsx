@@ -11,7 +11,7 @@ import { Download, FileSpreadsheet, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadVownetTemplate, downloadBlankVownetTemplate, type VownetExportData } from '@/utils/vownetTemplateGenerator';
 import { useNotifications } from '@/contexts/NotificationsContext';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ExportVownetButtonProps {
   clientId: string;
@@ -21,67 +21,33 @@ interface ExportVownetButtonProps {
 }
 
 /**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
- * Fetch client data securely with fallback
+ * Fetch client data securely via HttpOnly cookies
  */
 async function fetchClientDataForExport(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: {
-            client: true,
-            properties: true,
-            employment: true,
-            income: true,
-            assets: true,
-            liabilities: true,
-          },
-        },
-      });
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: {
+      client: true,
+      properties: true,
+      employment: true,
+      income: true,
+      assets: true,
+      liabilities: true,
+    },
+  });
 
-      if (!error && data?.success) {
-        return {
-          client: data.data?.client,
-          properties: data.data?.properties || [],
-          employment: data.data?.employment || [],
-          income: data.data?.income || [],
-          assets: data.data?.assets || [],
-          liabilities: data.data?.liabilities || [],
-        };
-      }
-      
-      if (error && !error.message?.includes('401')) {
-        throw error;
-      }
-      
-      if (!error && data?.success) {
-        return {
-          client: data.data?.client,
-          properties: data.data?.properties || [],
-          employment: data.data?.employment || [],
-          income: data.data?.income || [],
-          assets: data.data?.assets || [],
-          liabilities: data.data?.liabilities || [],
-        };
-      }
-    } catch (err) {
-      throw err;
-    }
+  if (error || !data?.success) {
+    throw new Error(error?.message || data?.error || 'Failed to fetch client data');
   }
-
-  throw new Error('Not authenticated');
+  
+  return {
+    client: data.data?.client,
+    properties: data.data?.properties || [],
+    employment: data.data?.employment || [],
+    income: data.data?.income || [],
+    assets: data.data?.assets || [],
+    liabilities: data.data?.liabilities || [],
+  };
 }
 
 export function ExportVownetButton({ 
@@ -92,7 +58,7 @@ export function ExportVownetButton({
 }: ExportVownetButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { addNotification } = useNotifications();
-
+      
   const handleExportPrefilled = async () => {
     setIsExporting(true);
     try {

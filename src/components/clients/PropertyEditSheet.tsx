@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -274,26 +274,17 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
       };
 
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-          body: {
-            session_token: sessionToken,
-            operation: 'update',
-            table: 'client_properties',
-            clientId: property.client_id,
-            recordId: property.id,
-            data: updateData,
-          },
-        });
-        if (!fnError && data?.success) return;
-        console.warn('Secure update failed, falling back to direct query');
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'client_properties',
+        clientId: property.client_id,
+        recordId: property.id,
+        data: updateData,
+      });
+      
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Failed to update property');
       }
-
-      // Fallback to direct query
-      const { error } = await supabase.from('client_properties').update(updateData).eq('id', property.id);
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
@@ -317,25 +308,16 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
   const deletePropertyMutation = useMutation({
     mutationFn: async () => {
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-          body: {
-            session_token: sessionToken,
-            operation: 'delete',
-            table: 'client_properties',
-            clientId: property.client_id,
-            recordId: property.id,
-          },
-        });
-        if (!fnError && data?.success) return;
-        console.warn('Secure delete failed, falling back to direct query');
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_properties',
+        clientId: property.client_id,
+        recordId: property.id,
+      });
+      
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Failed to delete property');
       }
-
-      // Fallback to direct query
-      const { error } = await supabase.from('client_properties').delete().eq('id', property.id);
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });

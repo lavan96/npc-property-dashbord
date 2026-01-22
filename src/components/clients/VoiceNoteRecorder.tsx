@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, Square, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface VoiceNoteRecorderProps {
   onTranscriptReady: (cleanedText: string) => void;
@@ -71,8 +71,8 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
       const base64Audio = await base64Promise;
 
       // Step 1: Transcribe audio
-      const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64Audio }
+      const { data: transcribeData, error: transcribeError } = await invokeSecureFunction('voice-to-text', {
+        audio: base64Audio
       });
 
       if (transcribeError || !transcribeData?.text) {
@@ -83,8 +83,8 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
       toast.info('Processing your note...', { duration: 2000 });
 
       // Step 2: Clean up with AI
-      const { data: cleanData, error: cleanError } = await supabase.functions.invoke('clean-note-transcript', {
-        body: { transcript: rawTranscript, noteType }
+      const { data: cleanData, error: cleanError } = await invokeSecureFunction('clean-note-transcript', {
+        transcript: rawTranscript, noteType
       });
 
       if (cleanError) {

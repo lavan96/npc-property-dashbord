@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,25 +98,23 @@ export default function UserManagement() {
   const [editingMailboxValue, setEditingMailboxValue] = useState('');
   const [savingMailbox, setSavingMailbox] = useState(false);
 
-  const sessionToken = localStorage.getItem('session_token');
-
   useEffect(() => {
-    if (isSuperadmin && sessionToken) {
+    if (isSuperadmin) {
       fetchUsers();
       fetchModules();
     }
-  }, [isSuperadmin, sessionToken]);
+  }, [isSuperadmin]);
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: { action: 'list_users', session_token: sessionToken }
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'list_users'
       });
 
       if (data?.success) {
         setUsers(data.users);
       } else {
-        toast.error(data?.error || 'Failed to fetch users');
+        toast.error(data?.error || error?.message || 'Failed to fetch users');
       }
     } catch (err) {
       toast.error('Failed to fetch users');
@@ -127,8 +125,8 @@ export default function UserManagement() {
 
   const fetchModules = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: { action: 'list_modules', session_token: sessionToken }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'list_modules'
       });
 
       if (data?.success) {
@@ -150,8 +148,8 @@ export default function UserManagement() {
 
   const fetchUserPermissions = async (userId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: { action: 'get_user_permissions', session_token: sessionToken, user_id: userId }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'get_user_permissions', user_id: userId
       });
 
       if (data?.success) {
@@ -188,16 +186,13 @@ export default function UserManagement() {
 
     setInviteSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'send_invite',
-          session_token: sessionToken,
-          invite_data: {
-            email: inviteEmail,
-            username: inviteUsername || undefined,
-            invite_type: inviteType,
-            permissions: invitePermissions.filter(p => p.can_view),
-          }
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'send_invite',
+        invite_data: {
+          email: inviteEmail,
+          username: inviteUsername || undefined,
+          invite_type: inviteType,
+          permissions: invitePermissions.filter(p => p.can_view),
         }
       });
 
@@ -230,13 +225,10 @@ export default function UserManagement() {
 
     setSavingPermissions(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'update_permissions',
-          session_token: sessionToken,
-          user_id: editingUserId,
-          permissions: editPermissions.filter(p => p.can_view),
-        }
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_permissions',
+        user_id: editingUserId,
+        permissions: editPermissions.filter(p => p.can_view),
       });
 
       if (data?.success) {
@@ -268,13 +260,10 @@ export default function UserManagement() {
 
   const handleToggleActive = async (userId: string, isActive: boolean) => {
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'update_user',
-          session_token: sessionToken,
-          user_id: userId,
-          is_active: isActive,
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_user',
+        user_id: userId,
+        is_active: isActive,
       });
 
       if (data?.success) {
@@ -291,12 +280,9 @@ export default function UserManagement() {
   const handlePromoteToSuperadmin = async (userId: string) => {
     const targetUser = users.find(u => u.id === userId);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'promote_to_superadmin',
-          session_token: sessionToken,
-          user_id: userId,
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'promote_to_superadmin',
+        user_id: userId,
       });
 
       if (data?.success) {
@@ -328,12 +314,9 @@ export default function UserManagement() {
     const targetUser = users.find(u => u.id === userId);
 
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'demote_from_superadmin',
-          session_token: sessionToken,
-          user_id: userId,
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'demote_from_superadmin',
+        user_id: userId,
       });
 
       if (data?.success) {
@@ -359,12 +342,9 @@ export default function UserManagement() {
     const targetUser = users.find(u => u.id === userId);
 
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'delete_user',
-          session_token: sessionToken,
-          user_id: userId,
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'delete_user',
+        user_id: userId,
       });
 
       if (data?.success) {
@@ -421,17 +401,14 @@ export default function UserManagement() {
 
     setCreating(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'create_subadmin',
-          session_token: sessionToken,
-          subadmin_data: {
-            username: createUsername,
-            password: createPassword,
-            email: createEmail || undefined,
-            personal_mailbox: createMailbox || undefined,
-            permissions: createPermissions.filter(p => p.can_view),
-          }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'create_subadmin',
+        subadmin_data: {
+          username: createUsername,
+          password: createPassword,
+          email: createEmail || undefined,
+          personal_mailbox: createMailbox || undefined,
+          permissions: createPermissions.filter(p => p.can_view),
         }
       });
 
@@ -484,13 +461,10 @@ export default function UserManagement() {
 
     setSavingMailbox(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: {
-          action: 'update_user',
-          session_token: sessionToken,
-          user_id: editingMailboxUserId,
-          personal_mailbox: editingMailboxValue || null,
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_user',
+        user_id: editingMailboxUserId,
+        personal_mailbox: editingMailboxValue || null,
       });
 
       if (data?.success) {

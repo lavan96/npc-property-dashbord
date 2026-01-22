@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -424,15 +425,9 @@ export default function EmailCopilot() {
   // Fetch user profile to get personal mailbox
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) {
-        setIsUserProfileLoaded(true);
-        return;
-      }
-
       try {
-        const { data } = await supabase.functions.invoke('admin-user-management', {
-          body: { action: 'get_own_profile', session_token: sessionToken }
+        const { data } = await invokeSecureFunction('admin-user-management', {
+          action: 'get_own_profile'
         });
 
         if (data?.success && data.user?.personal_mailbox) {
