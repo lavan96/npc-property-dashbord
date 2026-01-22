@@ -1,13 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { verifyPassword, isLegacyPassword, hashPassword } from "../_shared/password.ts"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -102,6 +101,9 @@ serve(async (req) => {
 
     const roles = userRoles?.map(r => r.role) || []
 
+    // Create HttpOnly session cookie
+    const sessionCookie = createSessionCookie(sessionToken, expiresAt);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -111,12 +113,15 @@ serve(async (req) => {
           role: user.role
         },
         roles,
-        session_token: sessionToken,
         expires_at: expiresAt.toISOString()
       }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Set-Cookie': sessionCookie
+        } 
       }
     )
 

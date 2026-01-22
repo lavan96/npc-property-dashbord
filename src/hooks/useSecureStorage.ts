@@ -1,8 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
-
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
+import { invokeSecureFunction } from "@/lib/secureInvoke";
 
 type StorageBucket = 
   | 'client-files'
@@ -85,7 +81,7 @@ function base64ToBlob(base64: string, contentType: string = 'application/octet-s
 /**
  * Secure storage operations hook
  * All storage operations go through the secure-storage Edge Function
- * which validates session tokens before performing operations
+ * which validates session tokens via HttpOnly cookies
  */
 export function useSecureStorage() {
   
@@ -98,26 +94,17 @@ export function useSecureStorage() {
     file: File | Blob,
     options?: UploadOptions
   ): Promise<UploadResult> => {
-    const sessionToken = getSessionToken();
-    
-    if (!sessionToken) {
-      return { success: false, error: 'No session token - please log in' };
-    }
-
     try {
       const fileData = await fileToBase64(file);
       const contentType = options?.contentType || (file instanceof File ? file.type : 'application/octet-stream');
 
-      const { data, error } = await supabase.functions.invoke('secure-storage', {
-        body: {
-          session_token: sessionToken,
-          operation: 'upload',
-          bucket,
-          path,
-          file_data: fileData,
-          content_type: contentType,
-          upsert: options?.upsert || false
-        }
+      const { data, error } = await invokeSecureFunction('secure-storage', {
+        operation: 'upload',
+        bucket,
+        path,
+        file_data: fileData,
+        content_type: contentType,
+        upsert: options?.upsert || false
       });
 
       if (error) {
@@ -147,20 +134,11 @@ export function useSecureStorage() {
     bucket: StorageBucket,
     path: string
   ): Promise<DownloadResult> => {
-    const sessionToken = getSessionToken();
-    
-    if (!sessionToken) {
-      return { success: false, error: 'No session token - please log in' };
-    }
-
     try {
-      const { data, error } = await supabase.functions.invoke('secure-storage', {
-        body: {
-          session_token: sessionToken,
-          operation: 'download',
-          bucket,
-          path
-        }
+      const { data, error } = await invokeSecureFunction('secure-storage', {
+        operation: 'download',
+        bucket,
+        path
       });
 
       if (error) {
@@ -194,20 +172,11 @@ export function useSecureStorage() {
     bucket: StorageBucket,
     paths: string | string[]
   ): Promise<DeleteResult> => {
-    const sessionToken = getSessionToken();
-    
-    if (!sessionToken) {
-      return { success: false, error: 'No session token - please log in' };
-    }
-
     try {
-      const { data, error } = await supabase.functions.invoke('secure-storage', {
-        body: {
-          session_token: sessionToken,
-          operation: 'delete',
-          bucket,
-          path: paths
-        }
+      const { data, error } = await invokeSecureFunction('secure-storage', {
+        operation: 'delete',
+        bucket,
+        path: paths
       });
 
       if (error) {
@@ -237,21 +206,12 @@ export function useSecureStorage() {
     path: string,
     expiresIn: number = 3600
   ): Promise<SignedUrlResult> => {
-    const sessionToken = getSessionToken();
-    
-    if (!sessionToken) {
-      return { success: false, error: 'No session token - please log in' };
-    }
-
     try {
-      const { data, error } = await supabase.functions.invoke('secure-storage', {
-        body: {
-          session_token: sessionToken,
-          operation: 'signedUrl',
-          bucket,
-          path,
-          expires_in: expiresIn
-        }
+      const { data, error } = await invokeSecureFunction('secure-storage', {
+        operation: 'signedUrl',
+        bucket,
+        path,
+        expires_in: expiresIn
       });
 
       if (error) {
@@ -280,20 +240,11 @@ export function useSecureStorage() {
     bucket: StorageBucket,
     path: string
   ): Promise<PublicUrlResult> => {
-    const sessionToken = getSessionToken();
-    
-    if (!sessionToken) {
-      return { success: false, error: 'No session token - please log in' };
-    }
-
     try {
-      const { data, error } = await supabase.functions.invoke('secure-storage', {
-        body: {
-          session_token: sessionToken,
-          operation: 'publicUrl',
-          bucket,
-          path
-        }
+      const { data, error } = await invokeSecureFunction('secure-storage', {
+        operation: 'publicUrl',
+        bucket,
+        path
       });
 
       if (error) {
@@ -331,26 +282,17 @@ export const secureStorageUpload = async (
   file: File | Blob,
   options?: UploadOptions
 ): Promise<UploadResult> => {
-  const sessionToken = getSessionToken();
-  
-  if (!sessionToken) {
-    return { success: false, error: 'No session token - please log in' };
-  }
-
   try {
     const fileData = await fileToBase64(file);
     const contentType = options?.contentType || (file instanceof File ? file.type : 'application/octet-stream');
 
-    const { data, error } = await supabase.functions.invoke('secure-storage', {
-      body: {
-        session_token: sessionToken,
-        operation: 'upload',
-        bucket,
-        path,
-        file_data: fileData,
-        content_type: contentType,
-        upsert: options?.upsert || false
-      }
+    const { data, error } = await invokeSecureFunction('secure-storage', {
+      operation: 'upload',
+      bucket,
+      path,
+      file_data: fileData,
+      content_type: contentType,
+      upsert: options?.upsert || false
     });
 
     if (error) {
@@ -375,20 +317,11 @@ export const secureStorageDownload = async (
   bucket: StorageBucket,
   path: string
 ): Promise<DownloadResult> => {
-  const sessionToken = getSessionToken();
-  
-  if (!sessionToken) {
-    return { success: false, error: 'No session token - please log in' };
-  }
-
   try {
-    const { data, error } = await supabase.functions.invoke('secure-storage', {
-      body: {
-        session_token: sessionToken,
-        operation: 'download',
-        bucket,
-        path
-      }
+    const { data, error } = await invokeSecureFunction('secure-storage', {
+      operation: 'download',
+      bucket,
+      path
     });
 
     if (error) {
@@ -417,20 +350,11 @@ export const secureStorageDelete = async (
   bucket: StorageBucket,
   paths: string | string[]
 ): Promise<DeleteResult> => {
-  const sessionToken = getSessionToken();
-  
-  if (!sessionToken) {
-    return { success: false, error: 'No session token - please log in' };
-  }
-
   try {
-    const { data, error } = await supabase.functions.invoke('secure-storage', {
-      body: {
-        session_token: sessionToken,
-        operation: 'delete',
-        bucket,
-        path: paths
-      }
+    const { data, error } = await invokeSecureFunction('secure-storage', {
+      operation: 'delete',
+      bucket,
+      path: paths
     });
 
     if (error) {
@@ -449,12 +373,3 @@ export const secureStorageDelete = async (
     return { success: false, error: err.message };
   }
 };
-
-function base64ToBlobStandalone(base64: string, contentType: string = 'application/octet-stream'): Blob {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: contentType });
-}

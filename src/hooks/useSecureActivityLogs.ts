@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export interface ActivityLog {
   id: string;
@@ -35,22 +35,11 @@ export function useSecureActivityLogs() {
     setLoading(true);
     
     try {
-      // Get session token from localStorage
-      const sessionToken = localStorage.getItem('session_token');
-      
-      if (!sessionToken) {
-        console.error('[useSecureActivityLogs] No session token found');
-        return { logs: [], uniqueUsers: [], error: 'Authentication required' };
-      }
-
-      const { data, error } = await supabase.functions.invoke('get-activity-logs', {
-        body: {
-          session_token: sessionToken,
-          action_filter: options.actionFilter,
-          entity_filter: options.entityFilter,
-          user_filter: options.userFilter,
-          limit: options.limit || 500
-        }
+      const { data, error } = await invokeSecureFunction('get-activity-logs', {
+        action_filter: options.actionFilter,
+        entity_filter: options.entityFilter,
+        user_filter: options.userFilter,
+        limit: options.limit || 500
       });
 
       if (error) {
