@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Database, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { validatePassword } from '@/utils/passwordValidation';
+import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 
 type AuthView = 'login' | 'forgot' | 'otp' | 'reset';
 
@@ -107,8 +109,10 @@ export default function Auth() {
       setError('Passwords do not match');
       return;
     }
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Validate password strength
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
+      setError(validation.error || 'Password does not meet requirements');
       return;
     }
     setError('');
@@ -206,7 +210,8 @@ export default function Auth() {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" required disabled={isLoading} />
+                <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password (min 8 characters)" required disabled={isLoading} />
+                <PasswordStrengthMeter password={newPassword} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
