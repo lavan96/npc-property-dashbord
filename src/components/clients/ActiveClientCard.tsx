@@ -29,7 +29,9 @@ import {
   Loader2,
   MessageSquare,
   Calendar,
-  CheckSquare
+  CheckSquare,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { formatFullName } from '@/utils/nameFormatting';
 import { format } from 'date-fns';
@@ -78,6 +80,9 @@ const noteTypes = [
 
 type NoteType = typeof noteTypes[number]['value'];
 
+// Character limit for note truncation
+const NOTE_TRUNCATE_LENGTH = 150;
+
 export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardProps) {
   const queryClient = useQueryClient();
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -85,6 +90,32 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteType, setNewNoteType] = useState<NoteType>('general');
   const [editNoteContent, setEditNoteContent] = useState('');
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  // Toggle note expansion
+  const toggleNoteExpansion = (noteId: string) => {
+    setExpandedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if note needs truncation
+  const isNoteTruncated = (content: string) => content.length > NOTE_TRUNCATE_LENGTH;
+
+  // Get truncated or full content
+  const getNoteDisplay = (note: ClientNote) => {
+    const isExpanded = expandedNotes.has(note.id);
+    if (isExpanded || !isNoteTruncated(note.content)) {
+      return note.content;
+    }
+    return note.content.substring(0, NOTE_TRUNCATE_LENGTH) + '...';
+  };
 
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
@@ -428,7 +459,27 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        <p className="whitespace-pre-wrap line-clamp-4">{note.content}</p>
+                        <p className="whitespace-pre-wrap">{getNoteDisplay(note)}</p>
+                        {isNoteTruncated(note.content) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1 text-[10px] text-primary hover:text-primary/80 mt-1"
+                            onClick={() => toggleNoteExpansion(note.id)}
+                          >
+                            {expandedNotes.has(note.id) ? (
+                              <>
+                                <ChevronUp className="h-3 w-3 mr-0.5" />
+                                Show less
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-3 w-3 mr-0.5" />
+                                Read more
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
