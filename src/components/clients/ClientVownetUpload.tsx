@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -213,60 +214,25 @@ export function ClientVownetUpload({
         };
 
         if (item.action === 'update' && item.existingMatch) {
-          // Try secure Edge Function first
-          const sessionToken = localStorage.getItem('session_token');
-          if (sessionToken) {
-            const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-              body: {
-                session_token: sessionToken,
-                operation: 'update',
-                table: 'client_properties',
-                clientId,
-                recordId: item.existingMatch.id,
-                data: propertyData,
-              },
-            });
-            if (!fnError && fnData?.success) {
-              updated++;
-              processed++;
-              setProgress((processed / selectedItems.length) * 100);
-              continue;
-            }
-          }
-          // Fallback
-          const { error } = await supabase
-            .from('client_properties')
-            .update(propertyData)
-            .eq('id', item.existingMatch.id);
-          
-          if (error) throw error;
+          const { data: fnData, error: fnError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'update',
+            table: 'client_properties',
+            clientId,
+            recordId: item.existingMatch.id,
+            data: propertyData,
+          });
+          if (fnError) throw new Error(fnError.message);
+          if (!fnData?.success) throw new Error(fnData?.error || 'Failed to update property');
           updated++;
         } else if (item.action === 'add') {
-          // Try secure Edge Function first
-          const sessionToken = localStorage.getItem('session_token');
-          if (sessionToken) {
-            const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-              body: {
-                session_token: sessionToken,
-                operation: 'create',
-                table: 'client_properties',
-                clientId,
-                data: propertyData,
-              },
-            });
-            if (!fnError && fnData?.success) {
-              added++;
-              processed++;
-              setProgress((processed / selectedItems.length) * 100);
-              continue;
-            }
-          }
-          // Fallback
-          const { error } = await supabase
-            .from('client_properties')
-            .insert(propertyData);
-          
-          if (error) throw error;
+          const { data: fnData, error: fnError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_properties',
+            clientId,
+            data: propertyData,
+          });
+          if (fnError) throw new Error(fnError.message);
+          if (!fnData?.success) throw new Error(fnData?.error || 'Failed to add property');
           added++;
         }
 
