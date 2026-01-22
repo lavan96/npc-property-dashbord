@@ -3,7 +3,6 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Sparkles, 
@@ -15,7 +14,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
 
 interface ClientAIInsightsProps {
   clientId: string;
@@ -29,52 +27,89 @@ interface AIInsight {
   recommendations: string[];
 }
 
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Secure fetch for AI insights data with fallback
+ */
+async function fetchAIInsightsDataSecure(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { client: true, properties: true },
+        },
+      });
+
+      if (!error && data?.success) {
+        const client = data.data?.client;
+        const properties = data.data?.properties || [];
+        return {
+          clientName: `${client?.primary_first_name} ${client?.primary_surname}`,
+          portfolioValue: Number(client?.total_portfolio_value) || 0,
+          debt: Number(client?.total_debt) || 0,
+          cashFlow: Number(client?.net_monthly_cash_flow) || 0,
+          properties,
+        };
+      }
+    } catch (err) {
+      console.warn('Secure AI insights data fetch failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase queries
+  const [clientRes, propertiesRes] = await Promise.all([
+    supabase.from('clients')
+      .select('primary_first_name, primary_surname, total_portfolio_value, total_debt, net_monthly_cash_flow')
+      .eq('id', clientId)
+      .single(),
+    supabase.from('client_properties')
+      .select('*')
+      .eq('client_id', clientId),
+  ]);
+  
+  if (clientRes.error) throw clientRes.error;
+  
+  return {
+    clientName: `${clientRes.data.primary_first_name} ${clientRes.data.primary_surname}`,
+    portfolioValue: Number(clientRes.data.total_portfolio_value) || 0,
+    debt: Number(clientRes.data.total_debt) || 0,
+    cashFlow: Number(clientRes.data.net_monthly_cash_flow) || 0,
+    properties: propertiesRes.data || [],
+  };
+}
+
 export function ClientAIInsights({ clientId }: ClientAIInsightsProps) {
   const [insights, setInsights] = useState<AIInsight | null>(null);
 
   // Fetch client data
   const { data: clientData } = useQuery({
     queryKey: ['client-ai-data', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('primary_first_name, primary_surname, total_portfolio_value, total_debt, net_monthly_cash_flow')
-        .eq('id', clientId)
-        .single();
-      if (error) throw error;
-      return {
-        clientName: `${data.primary_first_name} ${data.primary_surname}`,
-        portfolioValue: Number(data.total_portfolio_value) || 0,
-        debt: Number(data.total_debt) || 0,
-        cashFlow: Number(data.net_monthly_cash_flow) || 0
-      };
-    }
-  });
-
-  // Fetch properties for deeper analysis
-  const { data: properties = [] } = useQuery({
-    queryKey: ['client-properties-ai', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_properties')
-        .select('*')
-        .eq('client_id', clientId);
-      if (error) throw error;
-      return data;
-    }
+    queryFn: () => fetchAIInsightsDataSecure(clientId),
   });
 
   const clientName = clientData?.clientName || 'Client';
   const portfolioValue = clientData?.portfolioValue || 0;
   const debt = clientData?.debt || 0;
   const cashFlow = clientData?.cashFlow || 0;
+  const properties = clientData?.properties || [];
   const propertyCount = properties.length;
 
   const generateInsightsMutation = useMutation({
     mutationFn: async () => {
       const ltv = portfolioValue > 0 ? (debt / portfolioValue) * 100 : 0;
       const avgPropertyValue = propertyCount > 0 ? portfolioValue / propertyCount : 0;
-      const totalRentalIncome = properties.reduce((sum, p) => sum + (Number(p.monthly_rental_income) || 0), 0);
+      const totalRentalIncome = properties.reduce((sum: number, p: any) => sum + (Number(p.monthly_rental_income) || 0), 0);
       const grossYield = portfolioValue > 0 ? (totalRentalIncome * 12 / portfolioValue) * 100 : 0;
 
       const prompt = `Analyze this property investment portfolio and provide insights:
@@ -89,7 +124,7 @@ Gross Yield: ${grossYield.toFixed(2)}%
 Average Property Value: $${avgPropertyValue.toLocaleString()}
 
 Property breakdown:
-${properties.map(p => `- ${p.address}: Value $${Number(p.value).toLocaleString()}, Loan $${Number(p.loan_remaining).toLocaleString()}, Monthly Rent $${Number(p.monthly_rental_income).toLocaleString()}, Net Cash Flow $${Number(p.net_monthly_cashflow).toLocaleString()}`).join('\n')}
+${properties.map((p: any) => `- ${p.address}: Value $${Number(p.value).toLocaleString()}, Loan $${Number(p.loan_remaining).toLocaleString()}, Monthly Rent $${Number(p.monthly_rental_income).toLocaleString()}, Net Cash Flow $${Number(p.net_monthly_cashflow).toLocaleString()}`).join('\n')}
 
 Provide a JSON response with this structure:
 {

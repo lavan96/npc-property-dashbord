@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   TrendingUp, 
@@ -23,25 +22,66 @@ interface ClientScoreCardProps {
   clientId: string;
 }
 
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Secure fetch for client score data with fallback
+ */
+async function fetchClientScoreDataSecure(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { client: true, properties: true },
+        },
+      });
+
+      if (!error && data?.success) {
+        const client = data.data?.client;
+        const properties = data.data?.properties || [];
+        return {
+          portfolioValue: Number(client?.total_portfolio_value) || 0,
+          debt: Number(client?.total_debt) || 0,
+          cashFlow: Number(client?.net_monthly_cash_flow) || 0,
+          propertyCount: properties.length
+        };
+      }
+    } catch (err) {
+      console.warn('Secure score data fetch failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase query
+  const [clientRes, propertiesRes] = await Promise.all([
+    supabase.from('clients').select('total_portfolio_value, total_debt, net_monthly_cash_flow').eq('id', clientId).single(),
+    supabase.from('client_properties').select('id').eq('client_id', clientId)
+  ]);
+  if (clientRes.error) throw clientRes.error;
+  return {
+    portfolioValue: Number(clientRes.data?.total_portfolio_value) || 0,
+    debt: Number(clientRes.data?.total_debt) || 0,
+    cashFlow: Number(clientRes.data?.net_monthly_cash_flow) || 0,
+    propertyCount: propertiesRes.data?.length || 0
+  };
+}
+
 export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
   const queryClient = useQueryClient();
 
   // Fetch client data
   const { data: clientData } = useQuery({
     queryKey: ['client-score-data', clientId],
-    queryFn: async () => {
-      const [clientRes, propertiesRes] = await Promise.all([
-        supabase.from('clients').select('total_portfolio_value, total_debt, net_monthly_cash_flow').eq('id', clientId).single(),
-        supabase.from('client_properties').select('id').eq('client_id', clientId)
-      ]);
-      if (clientRes.error) throw clientRes.error;
-      return {
-        portfolioValue: Number(clientRes.data?.total_portfolio_value) || 0,
-        debt: Number(clientRes.data?.total_debt) || 0,
-        cashFlow: Number(clientRes.data?.net_monthly_cash_flow) || 0,
-        propertyCount: propertiesRes.data?.length || 0
-      };
-    }
+    queryFn: () => fetchClientScoreDataSecure(clientId),
   });
 
   const { data: scores, isLoading } = useQuery({

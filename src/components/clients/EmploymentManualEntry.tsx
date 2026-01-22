@@ -59,6 +59,48 @@ const defaultFormData: EmploymentFormData = {
   start_date: '',
 };
 
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Secure fetch for employment data with fallback
+ */
+async function fetchEmploymentSecure(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { employment: true },
+        },
+      });
+
+      if (!error && data?.success) {
+        return data.data?.employment || [];
+      }
+    } catch (err) {
+      console.warn('Secure employment fetch failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase query
+  const { data, error } = await supabase
+    .from('client_employment')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at');
+  if (error) throw error;
+  return data;
+}
+
 export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManualEntryProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'primary' | 'secondary'>('primary');
@@ -69,20 +111,12 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
   // Fetch existing employment records - always enabled to show summary outside sheet
   const { data: existingEmployment = [] } = useQuery({
     queryKey: ['client-employment', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_employment')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at');
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => fetchEmploymentSecure(clientId),
   });
 
-  const primaryEmployment = existingEmployment.filter(e => e.contact_type === 'primary' && e.is_current);
-  const secondaryEmployment = existingEmployment.filter(e => e.contact_type === 'secondary' && e.is_current);
-  const previousEmployment = existingEmployment.filter(e => !e.is_current);
+  const primaryEmployment = existingEmployment.filter((e: any) => e.contact_type === 'primary' && e.is_current);
+  const secondaryEmployment = existingEmployment.filter((e: any) => e.contact_type === 'secondary' && e.is_current);
+  const previousEmployment = existingEmployment.filter((e: any) => !e.is_current);
 
   const updateField = (field: keyof EmploymentFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -109,28 +143,49 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const sessionToken = getSessionToken();
+      const payload = {
+        contact_type: formData.contact_type,
+        is_current: formData.is_current,
+        employment_type: formData.employment_type,
+        occupation_role: formData.occupation_role,
+        employer_name: formData.employer_name,
+        start_date: formData.start_date || null,
+      };
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: editingId ? 'update' : 'create',
+              table: 'client_employment',
+              clientId,
+              recordId: editingId || undefined,
+              data: payload,
+            },
+          });
+
+          if (!error && data?.success) {
+            return data.result;
+          }
+        } catch (err) {
+          console.warn('Secure employment save failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       if (editingId) {
         const { error } = await supabase
           .from('client_employment')
-          .update({
-            contact_type: formData.contact_type,
-            is_current: formData.is_current,
-            employment_type: formData.employment_type,
-            occupation_role: formData.occupation_role,
-            employer_name: formData.employer_name,
-            start_date: formData.start_date || null,
-          })
+          .update(payload)
           .eq('id', editingId);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('client_employment').insert({
           client_id: clientId,
-          contact_type: formData.contact_type,
-          is_current: formData.is_current,
-          employment_type: formData.employment_type,
-          occupation_role: formData.occupation_role,
-          employer_name: formData.employer_name,
-          start_date: formData.start_date || null,
+          ...payload,
         });
         if (error) throw error;
       }
@@ -147,6 +202,30 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const sessionToken = getSessionToken();
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'delete',
+              table: 'client_employment',
+              clientId,
+              recordId: id,
+            },
+          });
+
+          if (!error && data?.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Secure employment delete failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error } = await supabase.from('client_employment').delete().eq('id', id);
       if (error) throw error;
     },
@@ -297,7 +376,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
       {/* Employment Summary Display */}
       {existingEmployment.length > 0 && (
         <div className="space-y-2">
-          {existingEmployment.map(emp => (
+          {existingEmployment.map((emp: any) => (
             <Card key={emp.id} className="mb-2">
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between">
@@ -363,7 +442,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
                 {primaryEmployment.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Current Employment</Label>
-                    {primaryEmployment.map(emp => (
+                    {primaryEmployment.map((emp: any) => (
                       <EmploymentCard key={emp.id} employment={emp} />
                     ))}
                   </div>
@@ -375,7 +454,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
                 {secondaryEmployment.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Current Employment</Label>
-                    {secondaryEmployment.map(emp => (
+                    {secondaryEmployment.map((emp: any) => (
                       <EmploymentCard key={emp.id} employment={emp} />
                     ))}
                   </div>
@@ -387,7 +466,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
                 {previousEmployment.length > 0 ? (
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Previous Employment Records</Label>
-                    {previousEmployment.map(emp => (
+                    {previousEmployment.map((emp: any) => (
                       <EmploymentCard key={emp.id} employment={emp} showContactType />
                     ))}
                   </div>

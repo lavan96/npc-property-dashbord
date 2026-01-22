@@ -17,7 +17,7 @@ import {
   Settings,
   Loader2
 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 
 interface ClientActivityTimelineProps {
   clientId: string;
@@ -57,19 +57,53 @@ const activityColors: Record<string, string> = {
   custom: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
 };
 
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Secure fetch for activities data with fallback
+ */
+async function fetchActivitiesSecure(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { activities: true },
+        },
+      });
+
+      if (!error && data?.success) {
+        return data.data?.activities || [];
+      }
+    } catch (err) {
+      console.warn('Secure activities fetch failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase query
+  const { data, error } = await supabase
+    .from('client_activities')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data;
+}
+
 export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps) {
   const { data: activities = [], isLoading } = useQuery({
     queryKey: ['client-activities', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_activities')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data;
-    }
+    queryFn: () => fetchActivitiesSecure(clientId),
   });
 
   if (isLoading) {
@@ -93,7 +127,7 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
 
   // Group activities by date
   const groupedActivities: Record<string, typeof activities> = {};
-  activities.forEach((activity) => {
+  activities.forEach((activity: any) => {
     const dateKey = format(new Date(activity.created_at), 'yyyy-MM-dd');
     if (!groupedActivities[dateKey]) {
       groupedActivities[dateKey] = [];
@@ -115,7 +149,7 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
               {/* Timeline line */}
               <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
               
-              {dateActivities.map((activity, index) => {
+              {dateActivities.map((activity: any) => {
                 const Icon = activityIcons[activity.activity_type] || Activity;
                 const colorClass = activityColors[activity.activity_type] || activityColors.custom;
                 
