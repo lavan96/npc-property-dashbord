@@ -83,18 +83,11 @@ async function fetchFilesSecure(clientId: string) {
         return data.data?.files || [];
       }
     } catch (err) {
-      console.warn('Secure files fetch failed, falling back:', err);
+      throw err;
     }
   }
 
-  // Fallback: Direct Supabase query
-  const { data, error } = await supabase
-    .from('client_files')
-    .select('*')
-    .eq('client_id', clientId)
-    .order('uploaded_at', { ascending: false });
-  if (error) throw error;
-  return data;
+  throw new Error('Not authenticated');
 }
 
 export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
@@ -149,19 +142,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
             return data.result;
           }
         } catch (err) {
-          console.warn('Secure file record create failed, falling back:', err);
+          throw err;
         }
       }
 
-      // Fallback: Direct Supabase mutation
-      const { error: dbError } = await supabase
-        .from('client_files')
-        .insert({
-          client_id: clientId,
-          ...payload,
-        });
-
-      if (dbError) throw dbError;
+      throw new Error('Not authenticated');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
@@ -202,17 +187,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
             return;
           }
         } catch (err) {
-          console.warn('Secure file delete failed, falling back:', err);
+          throw err;
         }
       }
 
-      // Fallback: Direct Supabase mutation
-      const { error: dbError } = await supabase
-        .from('client_files')
-        .delete()
-        .eq('id', file.id);
-
-      if (dbError) throw dbError;
+      throw new Error('Not authenticated');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });

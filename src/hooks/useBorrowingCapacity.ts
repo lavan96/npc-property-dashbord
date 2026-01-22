@@ -69,21 +69,11 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
             return assessments.length > 0 ? assessments[0] : null;
           }
         } catch (err) {
-          console.warn('Secure borrowing capacity fetch failed, falling back:', err);
+          throw err;
         }
       }
       
-      // Fallback: Direct Supabase query
-      const { data, error } = await supabase
-        .from('borrowing_capacity_assessments')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
+      throw new Error('Not authenticated');
     },
     enabled: autoFetch && !!clientId,
   });
@@ -118,20 +108,11 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
             }));
           }
         } catch (err) {
-          console.warn('Secure borrowing capacity history fetch failed, falling back:', err);
+          throw err;
         }
       }
       
-      // Fallback: Direct Supabase query
-      const { data, error } = await supabase
-        .from('borrowing_capacity_assessments')
-        .select('id, borrowing_capacity, serviceability_band, created_at')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      return data;
+      throw new Error('Not authenticated');
     },
     enabled: autoFetch && !!clientId,
   });

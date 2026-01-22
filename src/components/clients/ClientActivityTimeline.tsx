@@ -85,19 +85,11 @@ async function fetchActivitiesSecure(clientId: string) {
         return data.data?.activities || [];
       }
     } catch (err) {
-      console.warn('Secure activities fetch failed, falling back:', err);
+      throw err;
     }
   }
 
-  // Fallback: Direct Supabase query
-  const { data, error } = await supabase
-    .from('client_activities')
-    .select('*')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (error) throw error;
-  return data;
+  throw new Error('Not authenticated');
 }
 
 export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps) {

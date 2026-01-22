@@ -57,22 +57,11 @@ async function fetchClientScoreDataSecure(clientId: string) {
         };
       }
     } catch (err) {
-      console.warn('Secure score data fetch failed, falling back:', err);
+      throw err;
     }
   }
 
-  // Fallback: Direct Supabase query
-  const [clientRes, propertiesRes] = await Promise.all([
-    supabase.from('clients').select('total_portfolio_value, total_debt, net_monthly_cash_flow').eq('id', clientId).single(),
-    supabase.from('client_properties').select('id').eq('client_id', clientId)
-  ]);
-  if (clientRes.error) throw clientRes.error;
-  return {
-    portfolioValue: Number(clientRes.data?.total_portfolio_value) || 0,
-    debt: Number(clientRes.data?.total_debt) || 0,
-    cashFlow: Number(clientRes.data?.net_monthly_cash_flow) || 0,
-    propertyCount: propertiesRes.data?.length || 0
-  };
+  throw new Error('Not authenticated');
 }
 
 export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
@@ -87,13 +76,20 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
   const { data: scores, isLoading } = useQuery({
     queryKey: ['client-scores', clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_scores')
-        .select('*')
-        .eq('client_id', clientId)
-        .maybeSingle();
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { scores: true },
+        },
+      });
+
       if (error) throw error;
-      return data;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch scores');
+      return data.data?.scores || null;
     }
   });
 
@@ -104,6 +100,9 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
 
   const calculateScoreMutation = useMutation({
     mutationFn: async () => {
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) throw new Error('Not authenticated');
+      
       // Calculate scores based on client data
       const ltv = portfolioValue > 0 ? (debt / portfolioValue) * 100 : 0;
       const portfolioHealth = Math.min(100, Math.max(0, 100 - ltv));
@@ -137,7 +136,6 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
       }
 
       const scoreData = {
-        client_id: clientId,
         overall_score: overallScore,
         portfolio_health: Math.round(portfolioHealth),
         cash_flow_score: Math.round(cashFlowScore),
@@ -148,14 +146,19 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
         calculation_notes: `Auto-calculated from portfolio data. LTV: ${ltv.toFixed(1)}%`
       };
 
-      const { data, error } = await supabase
-        .from('client_scores')
-        .upsert(scoreData, { onConflict: 'client_id' })
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('manage-client-data', {
+        body: {
+          session_token: sessionToken,
+          operation: 'upsert',
+          table: 'client_scores',
+          clientId,
+          data: scoreData,
+        },
+      });
 
       if (error) throw error;
-      return data;
+      if (!data?.success) throw new Error(data?.error || 'Failed to save score');
+      return data.result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-scores', clientId] });
