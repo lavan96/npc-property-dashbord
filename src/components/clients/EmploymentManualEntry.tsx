@@ -59,46 +59,20 @@ const defaultFormData: EmploymentFormData = {
   start_date: '',
 };
 
-/**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 /**
- * Secure fetch for employment data with fallback
+ * Secure fetch for employment data using HttpOnly cookies
  */
 async function fetchEmploymentSecure(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { employment: true },
-        },
-      });
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { employment: true },
+  });
 
-      if (!error && data?.success) {
-        return data.data?.employment || [];
-      }
-    } catch (err) {
-      console.warn('Secure employment fetch failed, falling back:', err);
-    }
-  }
-
-  // Fallback: Direct Supabase query
-  const { data, error } = await supabase
-    .from('client_employment')
-    .select('*')
-    .eq('client_id', clientId)
-    .order('created_at');
-  if (error) throw error;
-  return data;
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error('Failed to fetch employment');
+  return data.data?.employment || [];
 }
 
 export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManualEntryProps) {
@@ -143,12 +117,6 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = getSessionToken();
-      
-      if (!sessionToken) {
-        throw new Error('Authentication required. Please log in.');
-      }
-
       const payload = {
         contact_type: formData.contact_type,
         is_current: formData.is_current,
@@ -158,20 +126,16 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
         start_date: formData.start_date || null,
       };
 
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: editingId ? 'update' : 'create',
-          table: 'client_employment',
-          clientId,
-          recordId: editingId || undefined,
-          data: payload,
-        },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: editingId ? 'update' : 'create',
+        table: 'client_employment',
+        clientId,
+        recordId: editingId || undefined,
+        data: payload,
       });
 
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.error || 'Failed to save employment');
-      }
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to save employment');
       
       return data.result;
     },
@@ -187,32 +151,15 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_employment',
+        clientId,
+        recordId: id,
+      });
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'delete',
-              table: 'client_employment',
-              clientId,
-              recordId: id,
-            },
-          });
-
-          if (!error && data?.success) {
-            return;
-          }
-        } catch (err) {
-          console.warn('Secure employment delete failed, falling back:', err);
-        }
-      }
-
-      // Fallback: Direct Supabase mutation
-      const { error } = await supabase.from('client_employment').delete().eq('id', id);
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete employment');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });

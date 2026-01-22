@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,51 +16,32 @@ import {
   Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ClientScoreCardProps {
   clientId: string;
 }
 
 /**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
- * Secure fetch for client score data with fallback
+ * Secure fetch for client score data using HttpOnly cookies
  */
 async function fetchClientScoreDataSecure(clientId: string) {
-  const sessionToken = getSessionToken();
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { client: true, properties: true },
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error('Failed to fetch client data');
   
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { client: true, properties: true },
-        },
-      });
-
-      if (!error && data?.success) {
-        const client = data.data?.client;
-        const properties = data.data?.properties || [];
-        return {
-          portfolioValue: Number(client?.total_portfolio_value) || 0,
-          debt: Number(client?.total_debt) || 0,
-          cashFlow: Number(client?.net_monthly_cash_flow) || 0,
-          propertyCount: properties.length
-        };
-      }
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  throw new Error('Not authenticated');
+  const client = data.data?.client;
+  const properties = data.data?.properties || [];
+  return {
+    portfolioValue: Number(client?.total_portfolio_value) || 0,
+    debt: Number(client?.total_debt) || 0,
+    cashFlow: Number(client?.net_monthly_cash_flow) || 0,
+    propertyCount: properties.length
+  };
 }
 
 export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
@@ -76,18 +56,12 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
   const { data: scores, isLoading } = useQuery({
     queryKey: ['client-scores', clientId],
     queryFn: async () => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { scores: true },
-        },
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        clientId,
+        include: { scores: true },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch scores');
       return data.data?.scores || null;
     }
@@ -100,9 +74,6 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
 
   const calculateScoreMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
-      
       // Calculate scores based on client data
       const ltv = portfolioValue > 0 ? (debt / portfolioValue) * 100 : 0;
       const portfolioHealth = Math.min(100, Math.max(0, 100 - ltv));
@@ -146,17 +117,14 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
         calculation_notes: `Auto-calculated from portfolio data. LTV: ${ltv.toFixed(1)}%`
       };
 
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: 'upsert',
-          table: 'client_scores',
-          clientId,
-          data: scoreData,
-        },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'upsert',
+        table: 'client_scores',
+        clientId,
+        data: scoreData,
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to save score');
       return data.result;
     },

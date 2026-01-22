@@ -63,12 +63,7 @@ const defaultFormData: IncomeFormData = {
   other_taxable_income: 0,
 };
 
-/**
- * Get session token for secure API calls
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryProps) {
   const [open, setOpen] = useState(false);
@@ -77,38 +72,18 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing income records with secure Edge Function + fallback
+  // Fetch existing income records with secure Edge Function (HttpOnly cookies)
   const { data: existingIncome = [] } = useQuery({
     queryKey: ['client-income', clientId],
     queryFn: async () => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        clientId,
+        include: { income: true },
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              session_token: sessionToken,
-              clientId,
-              include: { income: true },
-            },
-          });
-          
-          if (!error && data?.success && data.data?.income) {
-            return data.data.income;
-          }
-        } catch (err) {
-          console.warn('Secure income fetch failed, falling back:', err);
-        }
-      }
-      
-      // Fallback: Direct Supabase query
-      const { data, error } = await supabase
-        .from('client_income')
-        .select('*')
-        .eq('client_id', clientId);
-      if (error) throw error;
-      return data;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error('Failed to fetch income');
+      return data.data?.income || [];
     },
   });
 
@@ -174,26 +149,16 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
         other_taxable_income: formData.other_taxable_income,
       };
 
-      const sessionToken = getSessionToken();
-      
-      if (!sessionToken) {
-        throw new Error('Authentication required. Please log in.');
-      }
-
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: editingId ? 'update' : 'create',
-          table: 'client_income',
-          clientId,
-          recordId: editingId,
-          data: payload,
-        },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: editingId ? 'update' : 'create',
+        table: 'client_income',
+        clientId,
+        recordId: editingId,
+        data: payload,
       });
       
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.error || 'Failed to save income');
-      }
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to save income');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-income', clientId] });

@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +17,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ClientActivityTimelineProps {
   clientId: string;
@@ -58,38 +58,17 @@ const activityColors: Record<string, string> = {
 };
 
 /**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
- * Secure fetch for activities data with fallback
+ * Secure fetch for activities data using HttpOnly cookies
  */
 async function fetchActivitiesSecure(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { activities: true },
-        },
-      });
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { activities: true },
+  });
 
-      if (!error && data?.success) {
-        return data.data?.activities || [];
-      }
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  throw new Error('Not authenticated');
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error('Failed to fetch activities');
+  return data.data?.activities || [];
 }
 
 export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps) {

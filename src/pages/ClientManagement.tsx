@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,50 +121,23 @@ export default function ClientManagement() {
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const queryClient = useQueryClient();
 
-  // Helper to get session token
-  const getSessionToken = () => localStorage.getItem('session_token');
-
-  // Fetch clients with property count via secure Edge Function
+  // Fetch clients with property count via secure Edge Function (HttpOnly cookies)
   const { data: clients = [], isLoading, refetch } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction<{ success: boolean; clients: Client[] }>('get-client-data', {
+        listMode: true,
+        listOptions: {
+          select: '*',
+          orderBy: 'created_at',
+          orderAsc: false,
+          includePropertyCount: true,
+        },
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              listMode: true,
-              listOptions: {
-                select: '*',
-                orderBy: 'created_at',
-                orderAsc: false,
-                includePropertyCount: true,
-              },
-              session_token: sessionToken,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return data.clients as Client[];
-          }
-        } catch (err) {
-          console.warn('Edge function failed, falling back to direct query:', err);
-        }
-      }
-      
-      // Fallback to direct query (will fail with new RLS - for backward compatibility during migration)
-      const { data, error } = await supabase
-        .from('clients')
-        .select(`
-          *,
-          client_properties(id)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Client[];
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error('Failed to fetch clients');
+      return data.clients as Client[];
     }
   });
 
@@ -315,37 +289,17 @@ export default function ClientManagement() {
     handleImportFromGHL(true);
   };
 
-  // Delete client mutation via secure Edge Function
+  // Delete client mutation via secure Edge Function (HttpOnly cookies)
   const deleteClientMutation = useMutation({
     mutationFn: async (clientId: string) => {
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'clients',
+        clientId,
+      });
       
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              operation: 'delete',
-              table: 'clients',
-              clientId,
-              session_token: sessionToken,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return;
-          }
-        } catch (err) {
-          console.warn('Edge function failed, falling back to direct query:', err);
-        }
-      }
-      
-      // Fallback to direct query
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', clientId);
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete client');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });

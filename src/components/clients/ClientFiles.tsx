@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +28,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ClientFilesProps {
   clientId: string;
@@ -56,38 +56,17 @@ const categoryColors: Record<string, string> = {
 };
 
 /**
- * Helper to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
- * Secure fetch for files data with fallback
+ * Secure fetch for files data using HttpOnly cookies
  */
 async function fetchFilesSecure(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { files: true },
-        },
-      });
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { files: true },
+  });
 
-      if (!error && data?.success) {
-        return data.data?.files || [];
-      }
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  throw new Error('Not authenticated');
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error('Failed to fetch files');
+  return data.data?.files || [];
 }
 
 export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
@@ -115,7 +94,6 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
       if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
 
-      const sessionToken = getSessionToken();
       const payload = {
         file_name: file.name,
         file_path: uploadResult.path || fileName,
@@ -125,28 +103,16 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
         description: description || null,
       };
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'create',
-              table: 'client_files',
-              clientId,
-              data: payload,
-            },
-          });
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_files',
+        clientId,
+        data: payload,
+      });
 
-          if (!error && data?.success) {
-            return data.result;
-          }
-        } catch (err) {
-          throw err;
-        }
-      }
-
-      throw new Error('Not authenticated');
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to save file record');
+      return data.result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
@@ -168,30 +134,15 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
       if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
-      const sessionToken = getSessionToken();
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_files',
+        clientId,
+        recordId: file.id,
+      });
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: 'delete',
-              table: 'client_files',
-              clientId,
-              recordId: file.id,
-            },
-          });
-
-          if (!error && data?.success) {
-            return;
-          }
-        } catch (err) {
-          throw err;
-        }
-      }
-
-      throw new Error('Not authenticated');
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete file');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
