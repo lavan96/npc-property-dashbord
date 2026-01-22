@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { hashPassword } from "../_shared/password.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -251,11 +252,14 @@ serve(async (req: Request) => {
         .update({ used_at: new Date().toISOString() })
         .eq('id', token.id);
 
-      // Update password (keeping the simple password system as requested)
+      // Hash the new password with bcrypt
+      const hashedPassword = await hashPassword(new_password);
+
+      // Update password with bcrypt hash
       const { error: updateError } = await supabase
         .from('custom_users')
         .update({ 
-          password_hash: new_password, // Using the simple system as before
+          password_hash: hashedPassword,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
