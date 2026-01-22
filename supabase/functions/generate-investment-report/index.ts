@@ -2085,9 +2085,19 @@ Note: Land tax is highly property-specific and depends on aggregated landholding
 | Net Annual Return | Income - Expenses | $${(annualRentIncome - (enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax || 0)).toLocaleString() || 'XX,XXX'} |
 | **Net Rental Yield** | **Pre-calculated (DO NOT recalculate)** | **${preCalculatedNetYield}%** |
 
+**Yield Comparison to Benchmarks:**
+
+| Benchmark | Gross Yield | Net Yield | Comparison |
+|-----------|-------------|-----------|------------|
+| This Property | ${preCalculatedGrossYield}% | ${preCalculatedNetYield}% | - |
+| ${suburb || 'Suburb'} Median | [X.XX]% | [X.XX]% | [Above/Below] |
+| LGA Average | [X.XX]% | [X.XX]% | [Above/Below] |
+| ${state || 'State'} Average | [X.XX]% | [X.XX]% | [Above/Below] |
+| National Average | 4.2% | 2.8% | [Above/Below] |
+
 **Yield Commentary:**
 
-The gross rental yield of [X.XX]% and net yield of [X.XX]% reflect typical [Suburb] residential rental returns. These yields are [comparison to other areas]. The [modest/strong] rental yield positioning suggests this property is primarily suitable for investors prioritizing [capital growth/rental income], typical of [suburb characteristics].
+The gross rental yield of ${preCalculatedGrossYield}% and net yield of ${preCalculatedNetYield}% reflect typical [Suburb] residential rental returns. These yields are [comparison to other areas]. The [modest/strong] rental yield positioning suggests this property is primarily suitable for investors prioritizing [capital growth/rental income], typical of [suburb characteristics].
 
 ---
 
@@ -2370,19 +2380,6 @@ Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income befor
 
 # Disclaimer & Data Limitations
 
-**Data Availability & Sourcing:**
-
-This investment report synthesizes publicly available data from Australian government agencies (ABS, RBA, RFS, BOCSAR) and commercial sources (Domain, Homely, Location Intelligence). ${documentContent ? 'Property-specific data has been extracted from the provided property listing.' : ''}
-
-**Missing Data Points:**
-- Recent comparable sales: ${documentContent ? 'Limited comparable sales data available' : 'Proprietary CoreLogic and SQM Research sales history data not accessible; specific 12-month sales comparables for this address unavailable'}
-- Property-specific valuation: ${documentContent ? 'Based on listing data' : 'Estimated reference price based on typical suburb specifications; actual property valuation requires professional appraisal'}
-- Precise flood risk assessment: Requires property GPS coordinates for AFRIP mapping; general flood risk rated without site-specific analysis
-- Specific bushfire risk rating: Requires [State] RFS property address lookup; area rating provided but property-specific evacuation risk level unknown
-- Rental comparables: ${documentContent ? 'Based on provided listing data and market research' : 'Market rental estimate based on typical suburb rental range; specific property rental assessment unavailable without market listing data'}
-- Council rates: ${documentContent ? 'Estimated based on suburb averages' : 'Estimated based on typical council rates; actual rates require property address verification'}
-- Land tax liability: Simplified analysis; actual land tax depends on aggregated landholding across investor portfolio
-
 **Methodology Notes:**
 - Loan calculations use standard amortization formulas; actual monthly payments will vary slightly based on lender-specific compounding methods
 - Property appreciation projections (2%, 4%, 6%) are illustrative scenarios; actual outcomes depend on macroeconomic conditions, interest rates, and market cycles
@@ -2390,7 +2387,13 @@ This investment report synthesizes publicly available data from Australian gover
 - Employment and demographic data sourced from ABS; census data supplemented with quarterly estimates; future workforce data represents trend projections
 
 **Recommendations for Verification:**
-[List specific verification steps for the investor to complete before purchase]
+- Engage a professional valuer to obtain formal property valuation
+- Conduct environmental hazard verification through State RFS for bushfire risk and AFRIP for flood mapping
+- Obtain rental market assessment through local real estate agents
+- Verify financial serviceability with mortgage broker or lender
+- Conduct pest and building inspection to assess structural condition
+- Model personal tax position with accountant for negative gearing and capital gains implications
+- Obtain local council rates search to verify exact annual charges
 
 ---
 
