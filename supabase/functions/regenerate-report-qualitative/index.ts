@@ -12,6 +12,7 @@ interface RegenerateRequest {
   currentReportContent: string;
   propertyAddress: string;
   financialCalculations?: Record<string, any>;
+  continueFrom?: boolean; // Resume from last completed section
 }
 
 // Enhanced data interface - matches generate-investment-report
@@ -1328,7 +1329,8 @@ serve(async (req) => {
       manualOverrides, 
       currentReportContent, 
       propertyAddress,
-      financialCalculations 
+      financialCalculations,
+      continueFrom = false
     }: RegenerateRequest = await req.json();
 
     console.log('=== ENHANCED MULTI-SECTION REPORT REGENERATION ===');
@@ -1336,14 +1338,88 @@ serve(async (req) => {
     console.log('📍 Property:', propertyAddress);
     console.log('📊 Manual overrides:', Object.keys(manualOverrides).length, 'fields');
     console.log('📄 Original content length:', currentReportContent?.length || 0, 'chars');
+    console.log('🔄 Continue from last section:', continueFrom);
 
-    // IMPORTANT: Mark as processing immediately.
+    // ========== RESUME LOGIC ==========
+    let resumeFromSection = 0;
+    let existingContent = '';
+    
+    if (continueFrom) {
+      // Fetch existing report state
+      const { data: existingReport, error: fetchError } = await supabase
+        .from('investment_reports')
+        .select('report_content, last_completed_section, status')
+        .eq('id', reportId)
+        .single();
+      
+      if (fetchError) {
+        console.error('Failed to fetch existing report for resume:', fetchError.message);
+      } else if (existingReport) {
+        resumeFromSection = (existingReport.last_completed_section || 0);
+        existingContent = existingReport.report_content || '';
+        
+        console.log(`📌 Resuming from section ${resumeFromSection + 1}/${REPORT_SECTIONS.length}`);
+        console.log(`📄 Existing content: ${existingContent.length} chars`);
+        
+        // If already complete (12 sections done), skip regeneration
+        if (resumeFromSection >= REPORT_SECTIONS.length) {
+          console.log('✅ Report already fully regenerated, skipping...');
+          
+          // Just update status to completed
+          await supabase
+            .from('investment_reports')
+            .update({ status: 'completed', updated_at: new Date().toISOString() })
+            .eq('id', reportId);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'Report was already complete',
+            resumed: true,
+            contentLength: existingContent.length
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
+        // Strip any partial content from the interrupted section to prevent garbling
+        // Find the last complete section separator and trim after it
+        if (resumeFromSection > 0 && existingContent) {
+          const sectionSeparators = existingContent.match(/\n---\n/g) || [];
+          const expectedSeparators = resumeFromSection;
+          
+          if (sectionSeparators.length >= expectedSeparators) {
+            // Find position after the Nth separator (where N = last completed section)
+            let separatorCount = 0;
+            let lastValidPosition = 0;
+            let searchPos = 0;
+            
+            while (separatorCount < expectedSeparators) {
+              const nextSep = existingContent.indexOf('\n---\n', searchPos);
+              if (nextSep === -1) break;
+              lastValidPosition = nextSep + 5; // Position after "---\n"
+              searchPos = nextSep + 1;
+              separatorCount++;
+            }
+            
+            if (lastValidPosition > 0) {
+              existingContent = existingContent.substring(0, lastValidPosition);
+              console.log(`📏 Trimmed to ${existingContent.length} chars (after section ${resumeFromSection})`);
+            }
+          }
+        }
+      }
+    }
+    // ========== END RESUME LOGIC ==========
+
+    // IMPORTANT: Mark as processing (only if not already processing during resume)
     // - This triggers version archiving ONCE (DB trigger)
     // - Prevents timeouts from happening *before* we even archive the old version
-    await supabase
-      .from('investment_reports')
-      .update({ status: 'processing', updated_at: new Date().toISOString() })
-      .eq('id', reportId);
+    if (!continueFrom) {
+      await supabase
+        .from('investment_reports')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', reportId);
+    }
 
     // ========== FETCH ENHANCED DATA FROM ALL APIs ==========
     const { enhancedData, suburb, postcode, state } = await fetchEnhancedData(
@@ -1405,7 +1481,7 @@ serve(async (req) => {
     console.log('📋 Override summary built:', overrideSummary.split('\n').length, 'lines');
     console.log('📊 Enhanced data sources loaded:', Object.keys(enhancedData).filter(k => enhancedData[k as keyof EnhancedData]).length);
 
-    // Generate report header
+    // Generate report header (only if starting fresh)
     const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
 
 YOUR DEDICATED PROPERTY PARTNER
@@ -1416,11 +1492,15 @@ YOUR DEDICATED PROPERTY PARTNER
 
 `;
 
-    let combinedContent = reportHeader;
+    // Use existing content if resuming, otherwise start with header
+    let combinedContent = (continueFrom && existingContent.length > 0) ? existingContent : reportHeader;
     let allCitations: any[] = [];
     let generationErrors: string[] = [];
 
     console.log('🔄 Regenerating report in', REPORT_SECTIONS.length, 'sections with enhanced data...');
+    if (resumeFromSection > 0) {
+      console.log(`📌 Skipping first ${resumeFromSection} sections (already complete)`);
+    }
 
     // Track section quality for validation
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
@@ -1428,7 +1508,7 @@ YOUR DEDICATED PROPERTY PARTNER
     // Status is already 'processing' (set immediately after request parsing).
     // Do not re-update here to avoid unnecessary DB writes.
     
-    for (let i = 0; i < REPORT_SECTIONS.length; i++) {
+    for (let i = resumeFromSection; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
       console.log(`\n📄 Regenerating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name} [FRESH GENERATION]`);
       
@@ -1519,11 +1599,13 @@ YOUR DEDICATED PROPERTY PARTNER
         
         // === PROGRESSIVE SAVE AFTER EACH SECTION ===
         // Note: Status is already 'processing', so these updates will NOT re-trigger archiving
+        // Update last_completed_section for resume capability
         console.log(`💾 Progressive save after section ${i + 1}...`);
         const { error: progressError } = await supabase
           .from('investment_reports')
           .update({
             report_content: combinedContent,
+            last_completed_section: i + 1, // Track completed section index (1-based for display)
             // Do NOT update status here - it stays 'processing', preventing additional archive triggers
             updated_at: new Date().toISOString()
           })
