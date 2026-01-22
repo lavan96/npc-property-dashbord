@@ -2973,13 +2973,14 @@ export function PortfolioAnalysisPDFGenerator({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      // Save report metadata to database
+      // Save report metadata to database via secure function
       console.log('📊 Saving report to database...');
       try {
-        // Use any cast since table was just created and types.ts is read-only
-        const { error: insertError } = await (supabase as any)
-          .from('portfolio_analysis_reports')
-          .insert({
+        const { error: insertError } = await invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'portfolio_analysis_reports',
+          clientId: clientId,
+          data: {
             client_id: clientId,
             client_name: analysisData.clientName,
             health_score: analysisData.analysis?.executiveSummary?.healthScore || null,
@@ -2993,7 +2994,8 @@ export function PortfolioAnalysisPDFGenerator({
             report_data: analysisData as any,
             pdf_file_path: uploadedFilePath,
             status: 'completed',
-          });
+          }
+        });
         
         if (insertError) {
           console.error('Failed to save report metadata:', insertError);

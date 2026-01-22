@@ -569,8 +569,8 @@ export default function EmailCopilot() {
 
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('outlook-email-sync', {
-        body: { action: 'sync', limit: 50, mailbox: mailboxToSync }
+      const { data, error } = await invokeSecureFunction('outlook-email-sync', {
+        action: 'sync', limit: 50, mailbox: mailboxToSync
       });
 
       if (error) throw error;
@@ -597,8 +597,8 @@ export default function EmailCopilot() {
     
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('outlook-email-sync', {
-        body: { action: 'clear' }
+      const { data, error } = await invokeSecureFunction('outlook-email-sync', {
+        action: 'clear'
       });
 
       if (error) throw error;
@@ -719,15 +719,13 @@ export default function EmailCopilot() {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('email-copilot', {
-        body: {
-          action: 'save_email',
-          email: {
-            sender: newEmail.sender,
-            subject: newEmail.subject,
-            body: newEmail.body,
-            received_at: new Date(newEmail.received_at).toISOString()
-          }
+      const { data, error } = await invokeSecureFunction('email-copilot', {
+        action: 'save_email',
+        email: {
+          sender: newEmail.sender,
+          subject: newEmail.subject,
+          body: newEmail.body,
+          received_at: new Date(newEmail.received_at).toISOString()
         }
       });
 
@@ -748,17 +746,15 @@ export default function EmailCopilot() {
     
     setIsSummarizing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('email-copilot', {
-        body: {
-          action: 'summarize',
-          email: {
-            sender: selectedEmail.sender,
-            subject: selectedEmail.subject,
-            body: selectedEmail.body,
-            received_at: selectedEmail.received_at
-          },
-          emailId: selectedEmail.id
-        }
+      const { data, error } = await invokeSecureFunction('email-copilot', {
+        action: 'summarize',
+        email: {
+          sender: selectedEmail.sender,
+          subject: selectedEmail.subject,
+          body: selectedEmail.body,
+          received_at: selectedEmail.received_at
+        },
+        emailId: selectedEmail.id
       });
 
       if (error) throw error;
@@ -789,19 +785,17 @@ export default function EmailCopilot() {
     try {
       const contextToUse = contextOverride ?? replyContext;
       
-      const { data, error } = await supabase.functions.invoke('email-copilot', {
-        body: {
-          action: 'draft_reply',
-          email: {
-            sender: selectedEmail.sender,
-            subject: selectedEmail.subject,
-            body: selectedEmail.body,
-            received_at: selectedEmail.received_at
-          },
-          emailId: selectedEmail.id,
-          linkedPropertyAddress: selectedEmail.linked_property_address,
-          replyContext: contextToUse || undefined
-        }
+      const { data, error } = await invokeSecureFunction('email-copilot', {
+        action: 'draft_reply',
+        email: {
+          sender: selectedEmail.sender,
+          subject: selectedEmail.subject,
+          body: selectedEmail.body,
+          received_at: selectedEmail.received_at
+        },
+        emailId: selectedEmail.id,
+        linkedPropertyAddress: selectedEmail.linked_property_address,
+        replyContext: contextToUse || undefined
       });
 
       if (error) throw error;
@@ -878,8 +872,8 @@ export default function EmailCopilot() {
       });
 
       // Call OpenAI Whisper via edge function
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: { audio: base64Audio }
+      const { data, error } = await invokeSecureFunction('voice-to-text', {
+        audio: base64Audio
       });
 
       if (error) throw error;
@@ -1135,16 +1129,14 @@ export default function EmailCopilot() {
         }))
       );
 
-      const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: forwardTo,
-          subject: `Fwd: ${selectedEmail.subject}`,
-          body: forwardBody,
-          cc: ccList.length > 0 ? ccList : undefined,
-          bcc: bccList.length > 0 ? bccList : undefined,
-          attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
-          mailboxSource: selectedMailbox
-        }
+      const { data, error } = await invokeSecureFunction('send-email-reply', {
+        to: forwardTo,
+        subject: `Fwd: ${selectedEmail.subject}`,
+        body: forwardBody,
+        cc: ccList.length > 0 ? ccList : undefined,
+        bcc: bccList.length > 0 ? bccList : undefined,
+        attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
+        mailboxSource: selectedMailbox
       });
 
       if (error) throw error;
@@ -1181,17 +1173,15 @@ export default function EmailCopilot() {
         }))
       );
 
-      const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: replyTo,
-          subject: replySubject,
-          body: currentDraft,
-          cc: ccList.length > 0 ? ccList : undefined,
-          bcc: bccList.length > 0 ? bccList : undefined,
-          originalEmailId: selectedEmail.id,
-          attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
-          mailboxSource: selectedMailbox
-        }
+      const { data, error } = await invokeSecureFunction('send-email-reply', {
+        to: replyTo,
+        subject: replySubject,
+        body: currentDraft,
+        cc: ccList.length > 0 ? ccList : undefined,
+        bcc: bccList.length > 0 ? bccList : undefined,
+        originalEmailId: selectedEmail.id,
+        attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
+        mailboxSource: selectedMailbox
       });
 
       if (error) throw error;
@@ -1269,16 +1259,14 @@ export default function EmailCopilot() {
         }
       }
 
-      const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: composeEmail.to,
-          subject: composeEmail.subject || '(No Subject)',
-          body: composeEmail.body,
-          cc: ccList.length > 0 ? ccList : undefined,
-          bcc: bccList.length > 0 ? bccList : undefined,
-          attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
-          mailboxSource: selectedMailbox
-        }
+      const { data, error } = await invokeSecureFunction('send-email-reply', {
+        to: composeEmail.to,
+        subject: composeEmail.subject || '(No Subject)',
+        body: composeEmail.body,
+        cc: ccList.length > 0 ? ccList : undefined,
+        bcc: bccList.length > 0 ? bccList : undefined,
+        attachments: attachmentsData.length > 0 ? attachmentsData : undefined,
+        mailboxSource: selectedMailbox
       });
 
       if (error) throw error;
