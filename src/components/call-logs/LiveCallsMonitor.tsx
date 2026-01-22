@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ interface LiveCall {
 }
 
 export const LiveCallsMonitor = () => {
+  const { fetchLiveCalls: fetchLiveCallsSecure } = useSecureCallLogs();
   const [liveCalls, setLiveCalls] = useState<LiveCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
@@ -75,11 +77,7 @@ export const LiveCallsMonitor = () => {
 
   const fetchLiveCalls = async () => {
     try {
-      const { data, error } = await supabase
-        .from('vapi_call_logs')
-        .select('id, vapi_call_id, agent_name, phone_number, customer_name, call_direction, call_status, started_at, is_squad_call, squad_name, call_intent')
-        .in('call_status', ['in-progress', 'ringing', 'queued'])
-        .order('started_at', { ascending: false });
+      const { data, error } = await fetchLiveCallsSecure();
 
       if (error) throw error;
       setLiveCalls(data || []);

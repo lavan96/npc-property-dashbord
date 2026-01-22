@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Tag, Plus, X, Settings, Trash2 } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 
 interface CallTag {
   id: string;
@@ -41,6 +42,7 @@ const getColorClass = (color: string) => {
 
 export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = false }: CallTaggingProps) => {
   const { toast } = useToast();
+  const { updateCallTags } = useSecureCallLogs();
   const [availableTags, setAvailableTags] = useState<CallTag[]>([]);
   const [loading, setLoading] = useState(false);
   const [showManager, setShowManager] = useState(false);
@@ -71,10 +73,7 @@ export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = fals
         ? currentTags.filter(t => t !== tagName)
         : [...currentTags, tagName];
 
-      const { error } = await supabase
-        .from('vapi_call_logs')
-        .update({ tags: newTags })
-        .eq('id', callId);
+      const { error } = await updateCallTags(callId, newTags);
 
       if (error) throw error;
 

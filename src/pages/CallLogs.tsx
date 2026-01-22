@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,6 +119,7 @@ interface CallStats {
 const CallLogs = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { fetchCallLogs } = useSecureCallLogs();
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [filteredCalls, setFilteredCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,10 +179,7 @@ const CallLogs = () => {
   const fetchCalls = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('vapi_call_logs')
-        .select('*')
-        .order('started_at', { ascending: false });
+      const { data, error } = await fetchCallLogs();
 
       if (error) throw error;
 
