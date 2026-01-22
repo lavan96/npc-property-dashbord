@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark, getHemBreakdown, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
 import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
@@ -29,75 +29,38 @@ import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
 
-// Helper to get session token for secure data fetching
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-// Secure data fetching with fallback
+// Secure data fetching via HttpOnly cookies
 async function fetchBorrowingCapacityData(clientId: string) {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: {
-            client: true,
-            properties: true,
-            income: true,
-            liabilities: true,
-            expenses: true,
-          },
-        },
-      });
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: {
+      client: true,
+      properties: true,
+      income: true,
+      liabilities: true,
+      expenses: true,
+    },
+  });
 
-      if (!error && data?.success) {
-        const totalDeclaredFromDB = (data.data?.expenses || []).reduce(
-          (sum: number, exp: any) => sum + (Number(exp.monthly_amount) || 0), 
-          0
-        );
-        return {
-          client: data.data?.client,
-          income: data.data?.income || [],
-          liabilities: data.data?.liabilities || [],
-          properties: data.data?.properties || [],
-          expenses: data.data?.expenses || [],
-          totalDeclaredExpenses: totalDeclaredFromDB,
-        };
-      }
-      
-      if (error && !error.message?.includes('401')) {
-        console.warn('Secure borrowing capacity fetch failed, falling back:', error.message);
-      }
-    } catch (err) {
-      console.warn('Edge function call failed, falling back:', err);
-    }
+  if (error) {
+    throw new Error(error.message);
   }
 
-  // Fallback: Direct Supabase queries
-  const [clientRes, incomeRes, liabilitiesRes, propertiesRes, expensesRes] = await Promise.all([
-    supabase.from('clients').select('*').eq('id', clientId).single(),
-    supabase.from('client_income').select('*').eq('client_id', clientId),
-    supabase.from('client_liabilities').select('*').eq('client_id', clientId),
-    supabase.from('client_properties').select('*').eq('client_id', clientId),
-    supabase.from('client_expenses').select('*').eq('client_id', clientId),
-  ]);
+  if (!data?.success) {
+    throw new Error(data?.error || 'Failed to fetch borrowing capacity data');
+  }
 
-  const totalDeclaredFromDB = (expensesRes.data || []).reduce(
-    (sum, exp) => sum + (Number(exp.monthly_amount) || 0), 
+  const totalDeclaredFromDB = (data.data?.expenses || []).reduce(
+    (sum: number, exp: any) => sum + (Number(exp.monthly_amount) || 0), 
     0
   );
 
   return {
-    client: clientRes.data,
-    income: incomeRes.data || [],
-    liabilities: liabilitiesRes.data || [],
-    properties: propertiesRes.data || [],
-    expenses: expensesRes.data || [],
+    client: data.data?.client,
+    income: data.data?.income || [],
+    liabilities: data.data?.liabilities || [],
+    properties: data.data?.properties || [],
+    expenses: data.data?.expenses || [],
     totalDeclaredExpenses: totalDeclaredFromDB,
   };
 }

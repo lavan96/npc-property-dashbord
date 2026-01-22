@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -73,9 +74,6 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
         const client = clients[i];
         
         try {
-          // Get session token for secure operations
-          const sessionToken = localStorage.getItem('session_token');
-
           // Prepare client data
           const clientInsertData = {
             primary_first_name: client.primaryContact.firstName || 'Unknown',
@@ -108,35 +106,18 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             created_by: user?.id
           };
 
-          // Insert client - try secure endpoint first
-          let clientData: any = null;
-          if (sessionToken) {
-            const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-              body: {
-                session_token: sessionToken,
-                operation: 'create',
-                table: 'clients',
-                clientId: '', // Not needed for create
-                data: clientInsertData,
-              },
-            });
-            if (!fnError && fnData?.success) {
-              clientData = fnData.result;
-            }
-          }
+          // Insert client via secure Edge Function
+          const { data: fnData, error: fnError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'clients',
+            clientId: '',
+            data: clientInsertData,
+          });
           
-          // Fallback to direct insert
-          if (!clientData) {
-            const { data, error: clientError } = await supabase
-              .from('clients')
-              .insert(clientInsertData)
-              .select()
-              .single();
-
-            if (clientError) throw clientError;
-            clientData = data;
-          }
+          if (fnError) throw new Error(fnError.message);
+          if (!fnData?.success) throw new Error(fnData?.error || 'Failed to create client');
           
+          const clientData = fnData.result;
           result.clientsCreated++;
           const newClientId = clientData.id;
 
@@ -165,30 +146,17 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 net_monthly_cashflow: property.netMonthlyCashflow || 0
               };
 
-              let propSuccess = false;
-              if (sessionToken) {
-                const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-                  body: {
-                    session_token: sessionToken,
-                    operation: 'create',
-                    table: 'client_properties',
-                    clientId: newClientId,
-                    data: propertyData,
-                  },
-                });
-                if (!fnError && fnData?.success) {
-                  propSuccess = true;
-                  result.propertiesCreated++;
-                }
-              }
+              const { data: propData, error: propError } = await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_properties',
+                clientId: newClientId,
+                data: propertyData,
+              });
               
-              if (!propSuccess) {
-                const { error: propError } = await supabase.from('client_properties').insert(propertyData);
-                if (propError) {
-                  result.errors.push(`Property error for ${client.primaryContact.firstName}: ${propError.message}`);
-                } else {
-                  result.propertiesCreated++;
-                }
+              if (propError || !propData?.success) {
+                result.errors.push(`Property error for ${client.primaryContact.firstName}: ${propError?.message || propData?.error}`);
+              } else {
+                result.propertiesCreated++;
               }
             }
           }
@@ -206,21 +174,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 is_current: true
               };
               
-              if (sessionToken) {
-                await supabase.functions.invoke('manage-client-data', {
-                  body: {
-                    session_token: sessionToken,
-                    operation: 'create',
-                    table: 'client_employment',
-                    clientId: newClientId,
-                    data: empData,
-                  },
-                }).catch(() => {
-                  supabase.from('client_employment').insert(empData);
-                });
-              } else {
-                await supabase.from('client_employment').insert(empData);
-              }
+              await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_employment',
+                clientId: newClientId,
+                data: empData,
+              });
             }
           }
 
@@ -240,21 +199,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 other_taxable_income: inc.otherTaxableIncome || 0
               };
               
-              if (sessionToken) {
-                await supabase.functions.invoke('manage-client-data', {
-                  body: {
-                    session_token: sessionToken,
-                    operation: 'create',
-                    table: 'client_income',
-                    clientId: newClientId,
-                    data: incData,
-                  },
-                }).catch(() => {
-                  supabase.from('client_income').insert(incData);
-                });
-              } else {
-                await supabase.from('client_income').insert(incData);
-              }
+              await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_income',
+                clientId: newClientId,
+                data: incData,
+              });
             }
           }
 
@@ -271,21 +221,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 value: asset.value || 0
               };
               
-              if (sessionToken) {
-                await supabase.functions.invoke('manage-client-data', {
-                  body: {
-                    session_token: sessionToken,
-                    operation: 'create',
-                    table: 'client_assets',
-                    clientId: newClientId,
-                    data: assetData,
-                  },
-                }).catch(() => {
-                  supabase.from('client_assets').insert(assetData);
-                });
-              } else {
-                await supabase.from('client_assets').insert(assetData);
-              }
+              await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_assets',
+                clientId: newClientId,
+                data: assetData,
+              });
             }
           }
 
@@ -303,21 +244,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 repayment_type: liability.repaymentType
               };
               
-              if (sessionToken) {
-                await supabase.functions.invoke('manage-client-data', {
-                  body: {
-                    session_token: sessionToken,
-                    operation: 'create',
-                    table: 'client_liabilities',
-                    clientId: newClientId,
-                    data: liabData,
-                  },
-                }).catch(() => {
-                  supabase.from('client_liabilities').insert(liabData);
-                });
-              } else {
-                await supabase.from('client_liabilities').insert(liabData);
-              }
+              await invokeSecureFunction('manage-client-data', {
+                operation: 'create',
+                table: 'client_liabilities',
+                clientId: newClientId,
+                data: liabData,
+              });
             }
           }
 

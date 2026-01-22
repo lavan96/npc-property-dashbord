@@ -269,41 +269,26 @@ export default function ClientTracker() {
     queryFn: async () => {
       if (activeClients.length === 0) return [];
       
-      // Try secure Edge Function first for notes
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        // Fetch notes for all active clients in parallel
-        const notesPromises = activeClients.map(async (client) => {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              session_token: sessionToken,
-              clientId: client.id,
-              include: { notes: true },
-            },
-          });
-          if (!error && data?.success && data.data?.notes) {
-            return data.data.notes;
-          }
-          return [];
-        });
-        const allNotes = await Promise.all(notesPromises);
-        const flatNotes = allNotes.flat();
-        if (flatNotes.length > 0) {
-          return flatNotes.sort((a: any, b: any) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          ) as ClientNote[];
-        }
-      }
-
-      // Fallback to direct query
-      const { data, error } = await supabase
-        .from('client_notes')
-        .select('*')
-        .in('client_id', activeClients.map(c => c.id))
-        .order('created_at', { ascending: false });
+      // Fetch notes for all active clients in parallel via secure Edge Function
+      const { invokeSecureFunction } = await import('@/lib/secureInvoke');
       
-      if (error) throw error;
-      return data as ClientNote[];
+      const notesPromises = activeClients.map(async (client) => {
+        const { data, error } = await invokeSecureFunction('get-client-data', {
+          clientId: client.id,
+          include: { notes: true },
+        });
+        if (!error && data?.success && data.data?.notes) {
+          return data.data.notes;
+        }
+        return [];
+      });
+      
+      const allNotes = await Promise.all(notesPromises);
+      const flatNotes = allNotes.flat();
+      
+      return flatNotes.sort((a: any, b: any) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ) as ClientNote[];
     },
     enabled: activeClients.length > 0,
   });

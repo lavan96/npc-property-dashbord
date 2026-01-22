@@ -283,17 +283,6 @@ export default function Integrations() {
     const integration = integrations.find(i => i.id === integrationId);
     if (!integration) return;
 
-    // Get session token from localStorage
-    const sessionToken = localStorage.getItem('session_token');
-    if (!sessionToken) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to sync secrets to Supabase.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setSyncingToSupabase(integrationId);
 
     try {
@@ -311,15 +300,13 @@ export default function Integrations() {
           description: 'Please enter API key values before syncing to Supabase.',
           variant: 'destructive',
         });
+        setSyncingToSupabase(null);
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('update-integration-secret', {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`
-        },
-        body: { secrets }
-      });
+      // Use invokeSecureFunction for cookie-based auth
+      const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+      const { data, error } = await invokeSecureFunction('update-integration-secret', { secrets });
 
       if (error) throw error;
 
