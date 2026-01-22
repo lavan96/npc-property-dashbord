@@ -135,34 +135,35 @@ serve(async (req: Request) => {
         );
       }
 
-      // Send email via Resend using verified domain
+      // Send email via Resend using REST API
       console.log(`Attempting to send OTP email to ${user.email} for user ${user.username}`);
       
-      const { data: emailData, error: emailError } = await resend.emails.send({
-        from: 'NPC Admin <admin@npcservices.com.au>',
-        to: [user.email],
-        subject: 'Password Reset OTP - NPC Dashboard',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333;">Password Reset Request</h1>
-            <p>Hello ${user.username},</p>
-            <p>Your password reset OTP is:</p>
-            <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${otp}</span>
-            </div>
-            <p>This code expires in 10 minutes.</p>
-            <p>If you didn't request this, please ignore this email.</p>
-            <p style="color: #666; font-size: 12px; margin-top: 30px;">
-              This is an automated message from NPC Dashboard.
-            </p>
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #333;">Password Reset Request</h1>
+          <p>Hello ${user.username},</p>
+          <p>Your password reset OTP is:</p>
+          <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #333;">${otp}</span>
           </div>
-        `,
-      });
+          <p>This code expires in 10 minutes.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            This is an automated message from NPC Dashboard.
+          </p>
+        </div>
+      `;
+      
+      const emailResult = await sendEmail(
+        user.email,
+        'Password Reset OTP - NPC Dashboard',
+        emailHtml
+      );
 
-      console.log('Resend email response:', JSON.stringify({ emailData, emailError }));
+      console.log('Email send result:', JSON.stringify(emailResult));
 
-      if (emailError) {
-        console.error('Failed to send email:', emailError);
+      if (!emailResult.success) {
+        console.error('Failed to send email:', emailResult.error);
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to send OTP email' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
