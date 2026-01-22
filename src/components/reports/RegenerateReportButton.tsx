@@ -50,7 +50,7 @@ export function RegenerateReportButton({
       // Fetch the full report with manual overrides
       const { data: report, error: fetchError } = await supabase
         .from('investment_reports')
-        .select('report_content, manual_overrides, financial_calculations, current_version')
+        .select('report_content, manual_overrides, financial_calculations, current_version, status, last_completed_section')
         .eq('id', reportId)
         .single();
 
@@ -62,16 +62,23 @@ export function RegenerateReportButton({
         throw new Error('Report content not found');
       }
 
-      toast.loading('Processing with Perplexity AI...', {
+      // Check if this is a resume operation (report was interrupted)
+      const isResume = report.status === 'failed' && (report.last_completed_section || 0) > 0;
+      
+      toast.loading(isResume ? 'Resuming regeneration...' : 'Processing with Perplexity AI...', {
         id: toastId,
-        description: 'Generating 4 sections with fresh qualitative analysis (this may take 3-5 minutes)...'
+        description: isResume 
+          ? `Continuing from section ${(report.last_completed_section || 0) + 1}/12...`
+          : 'Generating 12 sections with fresh qualitative analysis (this may take 3-5 minutes)...'
       });
 
       // Add "regeneration started" notification
       addNotification({
         type: 'report_regeneration_started',
-        title: 'Report Regeneration Started',
-        message: `Regenerating report for ${propertyAddress}...`,
+        title: isResume ? 'Report Resuming' : 'Report Regeneration Started',
+        message: isResume 
+          ? `Resuming regeneration for ${propertyAddress} from section ${(report.last_completed_section || 0) + 1}...`
+          : `Regenerating report for ${propertyAddress}...`,
         entityId: reportId
       });
 
@@ -83,7 +90,8 @@ export function RegenerateReportButton({
           manualOverrides: report.manual_overrides || {},
           currentReportContent: report.report_content,
           propertyAddress,
-          financialCalculations: report.financial_calculations || {}
+          financialCalculations: report.financial_calculations || {},
+          continueFrom: isResume // Enable resume mode if report was interrupted
         }
       });
 
