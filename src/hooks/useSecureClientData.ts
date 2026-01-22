@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 
 // Generic types that work with actual database schema
@@ -86,26 +87,14 @@ interface UseSecureClientDataOptions {
 }
 
 /**
- * Helper function to get session token
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
-/**
  * Fetch client data securely via Edge Function
  * All client data access is now restricted to service_role (Edge Functions) only
+ * Uses HttpOnly cookies for session authentication
  */
 async function fetchClientDataSecure(
   clientId: string,
   include: UseSecureClientDataOptions['include'] = {}
 ): Promise<SecureClientDataResponse> {
-  const sessionToken = getSessionToken();
-  
-  if (!sessionToken) {
-    throw new Error('Authentication required. Please log in to access client data.');
-  }
-
   // Default includes if not specified
   const includeConfig = {
     client: include.client !== false,
@@ -121,12 +110,9 @@ async function fetchClientDataSecure(
     borrowingCapacity: include.borrowingCapacity ?? false,
   };
 
-  const { data, error } = await supabase.functions.invoke('get-client-data', {
-    body: {
-      session_token: sessionToken,
-      clientId,
-      include: includeConfig,
-    },
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: includeConfig,
   });
 
   if (error) {
@@ -155,7 +141,7 @@ async function fetchClientDataSecure(
 
 /**
  * Hook for fetching client data securely
- * Uses Edge Function with session validation, with fallback to direct queries
+ * Uses Edge Function with HttpOnly cookie session validation
  */
 export function useSecureClientData({
   clientId,
@@ -232,28 +218,18 @@ interface ManageClientDataParams {
  * Manage client data securely via Edge Function with fallback
  */
 async function manageClientDataSecure(params: ManageClientDataParams): Promise<any> {
-  const sessionToken = getSessionToken();
-  
-  // Try secure Edge Function first if we have a session
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          ...params,
-        },
-      });
+  try {
+    const { data, error } = await invokeSecureFunction('manage-client-data', params);
 
-      if (!error && data?.success) {
-        return data.data;
-      }
-      
-      if (error && !error.message?.includes('401')) {
-        console.warn('Secure manage failed, falling back to direct query:', error.message);
-      }
-    } catch (err) {
-      console.warn('Edge function call failed, falling back to direct query:', err);
+    if (!error && data?.success) {
+      return data.data;
     }
+    
+    if (error && !error.message?.includes('401')) {
+      console.warn('Secure manage failed, falling back to direct query:', error.message);
+    }
+  } catch (err) {
+    console.warn('Edge function call failed, falling back to direct query:', err);
   }
 
   // Fallback: Direct Supabase operations (backward compatible during transition)
@@ -326,8 +302,9 @@ export function useManageClientData() {
 }
 
 /**
- * Utility to get session token for components that need it
+ * @deprecated Session tokens are now stored in HttpOnly cookies
+ * This function is kept for backward compatibility but always returns null
  */
 export function useSessionToken() {
-  return getSessionToken();
+  return null;
 }

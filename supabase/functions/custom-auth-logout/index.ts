@@ -1,12 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { extractSessionToken, createCorsHeaders, createClearSessionCookie } from "../_shared/auth.ts"
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -18,34 +17,52 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { session_token } = await req.json()
+    // Try to get session token from body for backwards compatibility
+    let sessionToken: string | null = null;
+    try {
+      const body = await req.json();
+      sessionToken = extractSessionToken(req.headers, body);
+    } catch {
+      // If body parsing fails, try to extract from headers/cookies only
+      sessionToken = extractSessionToken(req.headers);
+    }
 
-    if (!session_token) {
+    if (!sessionToken) {
+      // Still return success and clear cookie even if no token found
       return new Response(
-        JSON.stringify({ error: 'Session token is required' }), 
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true }), 
+        { 
+          status: 200, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Set-Cookie': createClearSessionCookie()
+          } 
+        }
       )
     }
 
-    // Delete the session
+    // Delete the session from database
     const { error } = await supabase
       .from('user_sessions')
       .delete()
-      .eq('session_token', session_token)
+      .eq('session_token', sessionToken)
 
     if (error) {
       console.error('Logout error:', error)
-      return new Response(
-        JSON.stringify({ error: 'Failed to logout' }), 
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      // Still clear cookie even if database delete fails
     }
 
+    // Clear the HttpOnly session cookie
     return new Response(
       JSON.stringify({ success: true }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Set-Cookie': createClearSessionCookie()
+        } 
       }
     )
 
@@ -53,7 +70,14 @@ serve(async (req) => {
     console.error('Logout error:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Set-Cookie': createClearSessionCookie()
+        } 
+      }
     )
   }
 })

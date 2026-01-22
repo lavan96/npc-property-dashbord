@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/hooks/useActivityLogger';
 
 interface User {
@@ -20,6 +19,41 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Supabase Edge Function base URL
+const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
+
+/**
+ * Invoke edge function with credentials for HttpOnly cookies
+ */
+async function invokeEdgeFunction(
+  functionName: string, 
+  body?: Record<string, any>
+): Promise<{ data: any; error: any }> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      credentials: 'include', // Required for HttpOnly cookies
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return { data, error: { message: data.error || `HTTP ${response.status}` } };
+    }
+    
+    return { data, error: null };
+  } catch (error: any) {
+    return { data: null, error: { message: error.message || 'Network error' } };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,49 +63,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperadmin = roles.includes('superadmin') || user?.role === 'super_admin';
   const isAdmin = roles.includes('admin') || isSuperadmin || user?.role === 'sub_admin';
 
-  // Check for existing session on mount and ensure Supabase Auth is signed out
+  // Check for existing session on mount
   useEffect(() => {
-    // Sign out of Supabase Auth to prevent conflicts with custom auth
-    supabase.auth.signOut({ scope: 'local' }).catch(() => {
-      // Ignore errors, we just want to ensure no Supabase auth session exists
-    });
     checkSession();
   }, []);
 
   const checkSession = async () => {
-    const sessionToken = localStorage.getItem('session_token');
-    
-    if (!sessionToken) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { data, error } = await supabase.functions.invoke('custom-auth-verify', {
-        body: { session_token: sessionToken }
-      });
+      // Session token is now in HttpOnly cookie, sent automatically with credentials: 'include'
+      const { data, error } = await invokeEdgeFunction('custom-auth-verify');
 
-      // Handle 401 errors (expired sessions) silently - this is expected behavior
-      // Only log unexpected errors
       if (error) {
-        // Check if it's a 401 (expired session) - expected, handle silently
-        if (error.message && error.message.includes('401')) {
-          // Expired session - clear silently without logging
-          localStorage.removeItem('session_token');
-          sessionStorage.removeItem('current_user');
-          setUser(null);
-          setRoles([]);
-        } else {
-          // Unexpected error - log it but still clear session
-          console.warn('Session verification error:', error.message || error);
-          localStorage.removeItem('session_token');
-          sessionStorage.removeItem('current_user');
-          setUser(null);
-          setRoles([]);
+        // Session expired or invalid - this is expected behavior
+        if (!error.message?.includes('401')) {
+          console.warn('Session verification error:', error.message);
         }
+        sessionStorage.removeItem('current_user');
+        setUser(null);
+        setRoles([]);
       } else if (!data?.valid) {
-        // Invalid session response - clear silently
-        localStorage.removeItem('session_token');
+        // Invalid session response
         sessionStorage.removeItem('current_user');
         setUser(null);
         setRoles([]);
@@ -87,12 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }));
       }
     } catch (error: any) {
-      // Network or other errors - clear session silently
-      // Don't log 401s as they're expected for expired sessions
-      if (!error?.message?.includes('401')) {
-        console.warn('Session check failed:', error?.message || 'Unknown error');
-      }
-      localStorage.removeItem('session_token');
+      // Network or other errors
+      console.warn('Session check failed:', error?.message || 'Unknown error');
       sessionStorage.removeItem('current_user');
       setUser(null);
       setRoles([]);
@@ -103,17 +110,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (username: string, password: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('custom-auth-login', {
-        body: { username, password }
+      const { data, error } = await invokeEdgeFunction('custom-auth-login', { 
+        username, 
+        password 
       });
 
       if (error || !data?.success) {
         return { error: data?.error || 'Login failed' };
       }
 
-      // Store session token
-      localStorage.setItem('session_token', data.session_token);
-      
+      // Session cookie is set automatically by the server response
       // Cache user data in sessionStorage for activity logging
       sessionStorage.setItem('current_user', JSON.stringify({
         id: data.user.id,
@@ -141,17 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    const sessionToken = localStorage.getItem('session_token');
     const currentUser = user; // Capture before clearing
     
-    if (sessionToken) {
-      try {
-        await supabase.functions.invoke('custom-auth-logout', {
-          body: { session_token: sessionToken }
-        });
-      } catch (error) {
-        console.error('Logout error:', error);
-      }
+    try {
+      // Call logout endpoint - it will clear the cookie
+      await invokeEdgeFunction('custom-auth-logout');
+    } catch (error) {
+      console.error('Logout error:', error);
     }
 
     // Log logout activity before clearing user
@@ -165,10 +167,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    // Also ensure Supabase Auth is signed out to prevent conflicts
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-
-    localStorage.removeItem('session_token');
     sessionStorage.removeItem('current_user');
     setUser(null);
     setRoles([]);
