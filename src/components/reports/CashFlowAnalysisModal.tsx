@@ -433,7 +433,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     }
   }, [toast]);
 
-  // Calculate projections for all comparison reports
+  // Calculate projections for all comparison reports (using same chained cascade logic)
   const allComparisonProjections = useMemo(() => {
     return comparisonReports.map(compReport => {
       const fc = compReport.financial_calculations || {};
@@ -455,7 +455,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const baseLandTax = mo.landTax || fc.landTax || 0;
       const marketValueNow = mo.marketValueNow || cashFlow.marketValueNow || purchasePrice;
 
-      const baseExpenses = 
+      // Fixed expenses (excluding management fee)
+      const baseFixedExpenses = 
         (mo.councilRates || fc.councilRates || 0) +
         (mo.waterRates || fc.waterRates || 0) +
         (mo.bodyCorporateFees || fc.bodyCorporateFees || 0) +
@@ -463,10 +464,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         (mo.repairsMaintenance || fc.repairsMaintenance || 0);
       const propertyManagementPercent = (mo.propertyManagementFees || fc.propertyManagementFees || 7) / 100;
       const baseAnnualRent = weeklyRent * occupancyRate;
-      const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
 
       const results: YearlyProjection[] = [];
+      
+      // Track previous year values for CHAINED cascade
       let previousPropertyValue = marketValueNow;
+      let previousRentalIncome = baseAnnualRent;
+      let previousFixedExpenses = baseFixedExpenses;
 
       for (let year = 0; year <= 10; year++) {
         const yearOverrides = cfOverrides[year] || {};
@@ -478,34 +482,57 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         const yearInterestRate = year >= 1 && yearOverrides.interestRate != null
           ? yearOverrides.interestRate / 100 : baseInterestRate;
 
+        // Property value - CHAINED cascade
         let propertyValue: number;
-        if (year === 0) propertyValue = marketValueNow;
-        else if (yearOverrides.propertyMarketValue != null) propertyValue = yearOverrides.propertyMarketValue;
-        else if (year === 1) propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
-        else propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
+        if (year === 0) {
+          propertyValue = marketValueNow;
+        } else if (yearOverrides.propertyMarketValue != null) {
+          propertyValue = yearOverrides.propertyMarketValue;
+        } else {
+          // CHAINED: Grow from previous year's actual value
+          propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
+        }
         previousPropertyValue = propertyValue;
 
         const currentLoanAmount = loanAmount;
         const equity = propertyValue - currentLoanAmount;
-        const lvr = (currentLoanAmount / propertyValue) * 100;
+        const lvr = propertyValue > 0 ? (currentLoanAmount / propertyValue) * 100 : 0;
 
+        // Rental income - CHAINED cascade
         let annualRent: number;
-        if (year === 0) annualRent = baseAnnualRent;
-        else if (yearOverrides.rentalIncome != null) annualRent = yearOverrides.rentalIncome;
-        else if (year === 1) annualRent = baseAnnualRent * (1 + baseCpiRate);
-        else annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
+        if (year === 0) {
+          annualRent = baseAnnualRent;
+        } else if (yearOverrides.rentalIncome != null) {
+          annualRent = yearOverrides.rentalIncome;
+        } else {
+          // CHAINED: Grow from previous year's actual rent using current year's CPI
+          annualRent = previousRentalIncome * (1 + yearCpiRate);
+        }
+        previousRentalIncome = annualRent;
 
+        // Property expenses - HYBRID: Fixed portion chains, mgmt fee is dynamic
         let totalExpenses: number;
-        if (year === 0) totalExpenses = basePropertyExpenses;
-        else if (yearOverrides.propertyExpenses != null) totalExpenses = yearOverrides.propertyExpenses;
-        else if (year === 1) totalExpenses = baseExpenses * (1 + baseCpiRate) + annualRent * propertyManagementPercent;
-        else totalExpenses = baseExpenses * Math.pow(1 + yearCpiRate, year) + annualRent * propertyManagementPercent;
+        let currentFixedExpenses: number;
+        if (year === 0) {
+          currentFixedExpenses = baseFixedExpenses;
+          totalExpenses = currentFixedExpenses + (annualRent * propertyManagementPercent);
+        } else if (yearOverrides.propertyExpenses != null) {
+          totalExpenses = yearOverrides.propertyExpenses;
+          currentFixedExpenses = totalExpenses - (annualRent * propertyManagementPercent);
+        } else {
+          // CHAINED: Fixed expenses grow from previous year using current year's CPI
+          currentFixedExpenses = previousFixedExpenses * (1 + yearCpiRate);
+          totalExpenses = currentFixedExpenses + (annualRent * propertyManagementPercent);
+        }
+        previousFixedExpenses = currentFixedExpenses;
 
+        // Interest & Principal (simplified for comparison - no amortization engine)
         let interestPayments = year === 0 ? 0 : 
           yearOverrides.interestPayment != null ? yearOverrides.interestPayment : 
-          year === 1 ? currentLoanAmount * baseInterestRate : currentLoanAmount * yearInterestRate;
+          currentLoanAmount * yearInterestRate;
         let principalPayments = year === 0 ? 0 : yearOverrides.principalPayment ?? 0;
-        // Depreciation - use schedule if available
+        
+        // Depreciation - LOCKED (schedule-based or direct)
         let depreciation: number;
         if (year === 0) {
           depreciation = 0;
@@ -516,13 +543,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         } else {
           depreciation = baseDepreciation;
         }
+        
+        // Land tax - LOCKED
         let landTax = year === 0 ? 0 : yearOverrides.landTax ?? baseLandTax;
 
         const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
         const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
-        // Pre-tax cash flow (includes land tax as a cash expense)
         const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments - landTax;
-        // Total deductions (includes land tax for tax calculation)
         const totalDeductions = totalExpenses + interestPayments + depreciation + landTax;
         const netProfitLoss = year === 0 ? 0 : annualRent - totalDeductions;
         const taxRefund = year === 0 ? 0 : (netProfitLoss < 0 ? Math.abs(netProfitLoss) * taxRate : 0);
@@ -651,17 +678,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       offsetBalance: baseFinancialData.offsetBalance,
     };
     
-    // Build rate changes from yearly overrides
+    // Build rate changes from yearly overrides (including Year 1)
     const rateChanges: RateChange[] = [];
     Object.entries(yearlyOverrides).forEach(([yearStr, overrides]) => {
       const year = parseInt(yearStr);
-      if (overrides.interestRate !== undefined && overrides.interestRate !== null && year >= 2) {
+      if (overrides.interestRate !== undefined && overrides.interestRate !== null && year >= 1) {
         rateChanges.push({
           effectiveFromPeriod: (year - 1) * periodsPerYear + 1,
           newAnnualRate: overrides.interestRate,
         });
       }
     });
+    // Sort rate changes by period to ensure proper application
+    rateChanges.sort((a, b) => a.effectiveFromPeriod - b.effectiveFromPeriod);
     
     return get10YearLoanProjection(mortgageInput, rateChanges);
   }, [baseFinancialData, yearlyOverrides]);
@@ -779,8 +808,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const baseCpiRate = baseFinancialData.cpiGrowthRate / 100;
     const taxRate = baseFinancialData.taxRate / 100;
 
-    // Calculate initial annual expenses
-    const baseExpenses = 
+    // Calculate initial fixed expenses (excluding property management which is rent-based)
+    const baseFixedExpenses = 
       baseFinancialData.councilRates +
       baseFinancialData.waterRates +
       baseFinancialData.bodyCorporateFees +
@@ -790,17 +819,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     // Calculate property management as percentage of rent
     const propertyManagementPercent = baseFinancialData.propertyManagementFees / 100;
 
-    // Base calculated values for Year 1
+    // Base calculated values for Year 0
     const baseAnnualRent = weeklyRent * occupancyRate;
-    const basePropertyExpenses = baseExpenses + (baseAnnualRent * propertyManagementPercent);
 
-    // Track cumulative values that can be affected by overrides
+    // Track previous year values for CHAINED cascade (not compound from base)
     let previousPropertyValue = baseFinancialData.marketValueNow || purchasePrice;
+    let previousRentalIncome = baseAnnualRent;
+    let previousFixedExpenses = baseFixedExpenses;
 
     for (let year = 0; year <= 10; year++) {
       const yearOverrides = yearlyOverrides[year] || {};
       
       // Get rates for this year (use override or base)
+      // FIX: Year 1 can now use override if provided
       const yearCapitalGrowthRate = year >= 1 && yearOverrides.capitalGrowthRate !== undefined && yearOverrides.capitalGrowthRate !== null
         ? yearOverrides.capitalGrowthRate / 100
         : baseCapitalGrowthRate;
@@ -813,21 +844,26 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         ? yearOverrides.interestRate / 100
         : baseInterestRate;
 
-      // Property value
+      // =====================================================
+      // PROPERTY VALUE - Chained cascade from previous year
+      // =====================================================
       let propertyValue: number;
       if (year === 0) {
         propertyValue = baseFinancialData.marketValueNow || purchasePrice;
       } else if (yearOverrides.propertyMarketValue !== undefined && yearOverrides.propertyMarketValue !== null) {
+        // Direct override - use it, but still chain from here for subsequent years
         propertyValue = yearOverrides.propertyMarketValue;
-      } else if (year === 1) {
-        propertyValue = purchasePrice * (1 + baseCapitalGrowthRate);
       } else {
-        // Calculate based on previous year's value and this year's growth rate
+        // CHAINED: Grow from PREVIOUS year's actual value (including any overrides)
+        // This applies the CURRENT year's growth rate to the previous year's value
         propertyValue = previousPropertyValue * (1 + yearCapitalGrowthRate);
       }
+      // Update tracker for next iteration
       previousPropertyValue = propertyValue;
 
-      // Use amortisation engine for accurate loan calculations
+      // =====================================================
+      // LOAN CALCULATIONS - Amortization engine with rate changes
+      // =====================================================
       let currentLoanAmount: number;
       let interestPayments: number;
       let principalPayments: number;
@@ -839,7 +875,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       } else if (loanProjections && loanProjections[year - 1]) {
         const yearProjection = loanProjections[year - 1];
         
-        // Use override values if provided, otherwise use amortisation engine values
+        // Use override values if provided (locked), otherwise use amortization engine values
         if (yearOverrides.interestPayment !== undefined && yearOverrides.interestPayment !== null) {
           interestPayments = yearOverrides.interestPayment;
         } else {
@@ -852,71 +888,88 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           principalPayments = yearProjection.principalPayment;
         }
         
-        // Loan balance comes from amortisation engine
+        // Loan balance comes from amortization engine (reflects rate changes)
         currentLoanAmount = yearProjection.closingBalance;
       } else {
-        // Fallback to simple calculation if amortisation engine not available
+        // Fallback to simple calculation if amortization engine not available
         currentLoanAmount = initialLoanAmount;
         interestPayments = initialLoanAmount * yearInterestRate;
         principalPayments = 0;
       }
 
-      // Equity
+      // Equity - derived from property value and loan balance
       const equity = propertyValue - currentLoanAmount;
 
-      // LVR
-      const lvr = (currentLoanAmount / propertyValue) * 100;
+      // LVR - derived from loan balance and property value
+      const lvr = propertyValue > 0 ? (currentLoanAmount / propertyValue) * 100 : 0;
 
-      // Rental income
+      // =====================================================
+      // RENTAL INCOME - Chained cascade from previous year
+      // =====================================================
       let annualRent: number;
       if (year === 0) {
         annualRent = baseAnnualRent;
       } else if (yearOverrides.rentalIncome !== undefined && yearOverrides.rentalIncome !== null) {
+        // Direct override - use it, subsequent years chain from here
         annualRent = yearOverrides.rentalIncome;
-      } else if (year === 1) {
-        annualRent = baseAnnualRent * (1 + baseCpiRate);
       } else {
-        annualRent = baseAnnualRent * Math.pow(1 + yearCpiRate, year);
+        // CHAINED: Grow from PREVIOUS year's actual rent using CURRENT year's CPI
+        annualRent = previousRentalIncome * (1 + yearCpiRate);
       }
+      // Update tracker for next iteration
+      previousRentalIncome = annualRent;
 
-      // Property expenses
+      // =====================================================
+      // PROPERTY EXPENSES - Hybrid: Fixed portion chains, Mgmt fee is dynamic
+      // =====================================================
       let totalExpenses: number;
+      let currentFixedExpenses: number;
+      
       if (year === 0) {
-        totalExpenses = basePropertyExpenses;
+        currentFixedExpenses = baseFixedExpenses;
+        const propertyManagement = annualRent * propertyManagementPercent;
+        totalExpenses = currentFixedExpenses + propertyManagement;
       } else if (yearOverrides.propertyExpenses !== undefined && yearOverrides.propertyExpenses !== null) {
+        // Direct override - LOCKED value, doesn't cascade
         totalExpenses = yearOverrides.propertyExpenses;
-      } else if (year === 1) {
-        const expenses = baseExpenses * (1 + baseCpiRate);
-        const propertyManagement = annualRent * propertyManagementPercent;
-        totalExpenses = expenses + propertyManagement;
+        // Estimate fixed expenses for tracking (approximate)
+        currentFixedExpenses = totalExpenses - (annualRent * propertyManagementPercent);
       } else {
-        const expenses = baseExpenses * Math.pow(1 + yearCpiRate, year);
+        // CHAINED: Fixed expenses grow from PREVIOUS year's fixed expenses using CURRENT year's CPI
+        currentFixedExpenses = previousFixedExpenses * (1 + yearCpiRate);
+        // Property management is ALWAYS recalculated from current year's rent
         const propertyManagement = annualRent * propertyManagementPercent;
-        totalExpenses = expenses + propertyManagement;
+        totalExpenses = currentFixedExpenses + propertyManagement;
       }
+      // Update tracker for next iteration
+      previousFixedExpenses = currentFixedExpenses;
 
-      // Gross yield
+      // Gross yield - derived from rent and property value
       const grossYield = year === 0 ? 0 : (annualRent / propertyValue) * 100;
 
-      // Net yield
+      // Net yield - derived from rent, expenses, and property value
       const netYield = year === 0 ? 0 : ((annualRent - totalExpenses) / propertyValue) * 100;
 
-      // Depreciation - use schedule if available, otherwise fallback to single value
+      // =====================================================
+      // DEPRECIATION - LOCKED (schedule-based or direct override)
+      // =====================================================
       let depreciation: number;
       if (year === 0) {
         depreciation = 0;
       } else if (yearOverrides.depreciation !== undefined && yearOverrides.depreciation !== null) {
-        // Manual per-year override takes precedence
+        // Manual per-year override takes precedence (LOCKED)
         depreciation = yearOverrides.depreciation;
       } else if (baseFinancialData.depreciationSchedule && baseFinancialData.depreciationSchedule[year]) {
         // Use year-specific value from 10-year schedule
         depreciation = baseFinancialData.depreciationSchedule[year];
       } else {
-        // Fallback to single depreciation value (Year 1 applied to all years)
+        // Fallback to single depreciation value
         depreciation = baseFinancialData.depreciation;
       }
 
-      // Land tax (can be excluded from cash flow analysis via toggle)
+      // =====================================================
+      // LAND TAX - LOCKED (direct override or base value)
+      // =====================================================
       let landTax: number;
       if (excludeLandTaxFromCashFlow) {
         landTax = 0;
@@ -928,6 +981,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         landTax = baseFinancialData.landTax;
       }
 
+      // =====================================================
+      // CASH FLOW CALCULATIONS - All derived from above values
+      // =====================================================
+      
       // Pre-tax cash flow (includes land tax as a cash expense)
       const preTaxCashFlow = year === 0 ? 0 : annualRent - totalExpenses - interestPayments - principalPayments - landTax;
 
