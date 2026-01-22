@@ -86,8 +86,10 @@ serve(async (req) => {
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
-      'Version': '2021-04-15',
+      // HighLevel Marketplace docs specify 2021-07-28 for notes endpoints
+      'Version': '2021-07-28',
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
 
     // Format the note content with type prefix
@@ -95,32 +97,25 @@ serve(async (req) => {
       ? `[${noteType.toUpperCase()}] ${noteContent}`
       : noteContent;
 
-    if (action === 'create' || action === 'update') {
-      // Create a new note in GHL (GHL doesn't support updating notes, we'll add a new one)
-      console.log(`Creating note for GHL contact ${client.ghl_contact_id}`);
+    if (action === 'create') {
+      console.log(`Creating GHL note for contact ${client.ghl_contact_id}`);
 
-      const notePayload = {
-        contactId: client.ghl_contact_id,
-        body: formattedNote,
-      };
+      // Per docs: contactId is ONLY a path param; body must contain { body }
+      const notePayload = { body: formattedNote };
 
-      const ghlResponse = await fetch(
-        `${GHL_API_BASE}/contacts/${client.ghl_contact_id}/notes`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(notePayload),
-        }
-      );
+      const ghlResponse = await fetch(`${GHL_API_BASE}/contacts/${client.ghl_contact_id}/notes`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(notePayload),
+      });
 
       if (!ghlResponse.ok) {
         const errorText = await ghlResponse.text();
         console.error('GHL note creation error:', errorText);
-        // Don't fail the local operation, just log the error
         return new Response(JSON.stringify({
           success: false,
           error: `GHL sync failed: ${errorText}`,
-          localOnly: true
+          localOnly: true,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -129,46 +124,161 @@ serve(async (req) => {
       const ghlData = await ghlResponse.json();
       console.log('GHL note created:', ghlData);
 
-      // Update local note with GHL note ID if provided
-      if (noteId && ghlData.note?.id) {
-        await supabase
+      if (noteId && ghlData?.note?.id) {
+        const { error: noteUpdateError } = await supabase
           .from('client_notes')
           .update({ ghl_note_id: ghlData.note.id })
           .eq('id', noteId);
+
+        if (noteUpdateError) {
+          console.error('Failed to store ghl_note_id on local note:', noteUpdateError);
+        }
       }
 
       return new Response(JSON.stringify({
         success: true,
-        message: 'Note synced to GHL',
-        ghlNoteId: ghlData.note?.id
+        message: 'Note created in GHL',
+        ghlNoteId: ghlData?.note?.id,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+    } else if (action === 'update') {
+      if (!noteId) {
+        return new Response(JSON.stringify({
+          error: 'Missing required field: noteId (for update)',
+          success: false,
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: localNote, error: localNoteError } = await supabase
+        .from('client_notes')
+        .select('ghl_note_id')
+        .eq('id', noteId)
+        .single();
+
+      if (localNoteError) {
+        console.error('Failed to fetch local note for update:', localNoteError);
+      }
+
+      // If we don't have a GHL note ID, fall back to create
+      if (!localNote?.ghl_note_id) {
+        console.log('No ghl_note_id found for note update; falling back to create');
+        const createRes = await fetch(`${GHL_API_BASE}/contacts/${client.ghl_contact_id}/notes`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ body: formattedNote }),
+        });
+
+        if (!createRes.ok) {
+          const errorText = await createRes.text();
+          console.error('GHL note create-on-update error:', errorText);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `GHL sync failed: ${errorText}`,
+            localOnly: true,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const created = await createRes.json();
+        if (created?.note?.id) {
+          await supabase
+            .from('client_notes')
+            .update({ ghl_note_id: created.note.id })
+            .eq('id', noteId);
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Note updated in GHL (created new note because no ghl_note_id existed)',
+          ghlNoteId: created?.note?.id,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Updating GHL note ${localNote.ghl_note_id} for contact ${client.ghl_contact_id}`);
+      const updateRes = await fetch(
+        `${GHL_API_BASE}/contacts/${client.ghl_contact_id}/notes/${localNote.ghl_note_id}`,
+        {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ body: formattedNote }),
+        }
+      );
+
+      if (!updateRes.ok) {
+        const errorText = await updateRes.text();
+        console.error('GHL note update error:', errorText);
+        return new Response(JSON.stringify({
+          success: false,
+          error: `GHL sync failed: ${errorText}`,
+          localOnly: true,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const updated = await updateRes.json();
+      console.log('GHL note updated:', updated);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Note updated in GHL',
+        ghlNoteId: localNote.ghl_note_id,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } else if (action === 'delete') {
-      // GHL notes deletion - we can try to delete if we have the GHL note ID
-      if (noteId) {
-        const { data: localNote } = await supabase
-          .from('client_notes')
-          .select('ghl_note_id')
-          .eq('id', noteId)
-          .single();
+      if (!noteId) {
+        return new Response(JSON.stringify({
+          error: 'Missing required field: noteId (for delete)',
+          success: false,
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-        if (localNote?.ghl_note_id) {
-          const ghlResponse = await fetch(
-            `${GHL_API_BASE}/contacts/${client.ghl_contact_id}/notes/${localNote.ghl_note_id}`,
-            {
-              method: 'DELETE',
-              headers,
-            }
-          );
+      const { data: localNote, error: localNoteError } = await supabase
+        .from('client_notes')
+        .select('ghl_note_id')
+        .eq('id', noteId)
+        .single();
 
-          if (!ghlResponse.ok) {
-            console.log('GHL note deletion may have failed, continuing anyway');
-          } else {
-            console.log('GHL note deleted successfully');
+      if (localNoteError) {
+        console.error('Failed to fetch local note for delete:', localNoteError);
+      }
+
+      if (localNote?.ghl_note_id) {
+        console.log(`Deleting GHL note ${localNote.ghl_note_id} for contact ${client.ghl_contact_id}`);
+        const deleteRes = await fetch(
+          `${GHL_API_BASE}/contacts/${client.ghl_contact_id}/notes/${localNote.ghl_note_id}`,
+          {
+            method: 'DELETE',
+            headers,
           }
+        );
+
+        if (!deleteRes.ok) {
+          const errorText = await deleteRes.text();
+          console.error('GHL note deletion error:', errorText);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `GHL sync failed: ${errorText}`,
+            localOnly: true,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
+      } else {
+        console.log('No ghl_note_id found for delete; local-only delete');
       }
 
       return new Response(JSON.stringify({
