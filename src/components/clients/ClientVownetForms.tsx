@@ -63,6 +63,22 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
   const { data: vownetForms = [], isLoading } = useQuery({
     queryKey: ['client-vownet-forms', clientId],
     queryFn: async () => {
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error } = await supabase.functions.invoke('get-client-data', {
+          body: {
+            session_token: sessionToken,
+            clientId,
+            include: { files: true },
+          },
+        });
+        if (!error && data?.success && data.data?.files) {
+          return (data.data.files || []).filter((f: any) => f.is_vownet_form);
+        }
+      }
+
+      // Fallback to direct query
       const { data, error } = await supabase
         .from('client_files')
         .select('*')
@@ -145,12 +161,31 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       if (parsedData.residentialStatus) clientUpdate.residential_status = parsedData.residentialStatus;
 
       if (Object.keys(clientUpdate).length > 0) {
-        const { error } = await supabase
-          .from('clients')
-          .update(clientUpdate)
-          .eq('id', clientId);
-        if (error) console.error('Error updating client details:', error);
-        else summary.personalDetailsUpdated = true;
+        // Try secure Edge Function first
+        const sessionToken = localStorage.getItem('session_token');
+        if (sessionToken) {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'update',
+              table: 'clients',
+              clientId,
+              data: clientUpdate,
+            },
+          });
+          if (!fnError && fnData?.success) {
+            summary.personalDetailsUpdated = true;
+          } else {
+            // Fallback to direct query
+            const { error } = await supabase.from('clients').update(clientUpdate).eq('id', clientId);
+            if (!error) summary.personalDetailsUpdated = true;
+            else console.error('Error updating client details:', error);
+          }
+        } else {
+          const { error } = await supabase.from('clients').update(clientUpdate).eq('id', clientId);
+          if (!error) summary.personalDetailsUpdated = true;
+          else console.error('Error updating client details:', error);
+        }
       }
       setProgress(50);
 

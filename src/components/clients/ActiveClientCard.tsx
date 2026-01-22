@@ -120,6 +120,23 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'update',
+            table: 'clients',
+            clientId: client.id,
+            data: { is_favorite: !client.is_favorite },
+          },
+        });
+        if (!fnError && data?.success) return;
+        console.warn('Secure update failed, falling back to direct query');
+      }
+
+      // Fallback to direct query
       const { error } = await supabase
         .from('clients')
         .update({ is_favorite: !client.is_favorite })
@@ -139,7 +156,39 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   // Add note mutation with GHL sync
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      // First insert locally
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'create',
+            table: 'client_notes',
+            clientId: client.id,
+            data: {
+              client_id: client.id,
+              note_type: newNoteType,
+              content: newNoteContent.trim()
+            },
+          },
+        });
+        if (!fnError && data?.success) {
+          // Sync to GHL (non-blocking)
+          supabase.functions.invoke('sync-notes-to-ghl', {
+            body: {
+              action: 'create',
+              clientId: client.id,
+              noteId: data.result?.id,
+              noteContent: newNoteContent.trim(),
+              noteType: newNoteType
+            }
+          }).catch(err => console.error('GHL note sync failed:', err));
+          return data.result;
+        }
+        console.warn('Secure create failed, falling back to direct query');
+      }
+
+      // Fallback: First insert locally
       const { data: newNote, error } = await supabase
         .from('client_notes')
         .insert({
@@ -179,6 +228,36 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   // Update note mutation with GHL sync
   const updateNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'update',
+            table: 'client_notes',
+            clientId: client.id,
+            recordId: noteId,
+            data: { content: editNoteContent.trim() },
+          },
+        });
+        if (!fnError && data?.success) {
+          // Sync update to GHL
+          supabase.functions.invoke('sync-notes-to-ghl', {
+            body: {
+              action: 'update',
+              clientId: client.id,
+              noteId,
+              noteContent: `[UPDATED] ${editNoteContent.trim()}`,
+              noteType: 'general'
+            }
+          }).catch(err => console.error('GHL note sync failed:', err));
+          return;
+        }
+        console.warn('Secure update failed, falling back to direct query');
+      }
+
+      // Fallback to direct query
       const { error } = await supabase
         .from('client_notes')
         .update({ content: editNoteContent.trim() })
@@ -207,7 +286,6 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
     }
   });
 
-  // Delete note mutation
   // Delete note mutation with GHL sync
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
@@ -220,6 +298,23 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
         }
       }).catch(err => console.error('GHL note delete sync failed:', err));
 
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'delete',
+            table: 'client_notes',
+            clientId: client.id,
+            recordId: noteId,
+          },
+        });
+        if (!fnError && data?.success) return;
+        console.warn('Secure delete failed, falling back to direct query');
+      }
+
+      // Fallback to direct query
       const { error } = await supabase
         .from('client_notes')
         .delete()

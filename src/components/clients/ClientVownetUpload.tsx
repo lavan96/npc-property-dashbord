@@ -212,6 +212,27 @@ export function ClientVownetUpload({
         };
 
         if (item.action === 'update' && item.existingMatch) {
+          // Try secure Edge Function first
+          const sessionToken = localStorage.getItem('session_token');
+          if (sessionToken) {
+            const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+              body: {
+                session_token: sessionToken,
+                operation: 'update',
+                table: 'client_properties',
+                clientId,
+                recordId: item.existingMatch.id,
+                data: propertyData,
+              },
+            });
+            if (!fnError && fnData?.success) {
+              updated++;
+              processed++;
+              setProgress((processed / selectedItems.length) * 100);
+              continue;
+            }
+          }
+          // Fallback
           const { error } = await supabase
             .from('client_properties')
             .update(propertyData)
@@ -220,6 +241,26 @@ export function ClientVownetUpload({
           if (error) throw error;
           updated++;
         } else if (item.action === 'add') {
+          // Try secure Edge Function first
+          const sessionToken = localStorage.getItem('session_token');
+          if (sessionToken) {
+            const { data: fnData, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+              body: {
+                session_token: sessionToken,
+                operation: 'create',
+                table: 'client_properties',
+                clientId,
+                data: propertyData,
+              },
+            });
+            if (!fnError && fnData?.success) {
+              added++;
+              processed++;
+              setProgress((processed / selectedItems.length) * 100);
+              continue;
+            }
+          }
+          // Fallback
           const { error } = await supabase
             .from('client_properties')
             .insert(propertyData);

@@ -188,7 +188,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       // For rental properties, we store rent paid in a special way
       const isRental = formData.property_type === 'rental';
       
-      const { error } = await supabase.from('client_properties').insert({
+      const insertData = {
         client_id: clientId,
         property_type: formData.property_type,
         address: formData.address,
@@ -219,11 +219,31 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
         smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
-      });
+      };
+
+      // Try secure Edge Function first
+      const sessionToken = localStorage.getItem('session_token');
+      if (sessionToken) {
+        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+          body: {
+            session_token: sessionToken,
+            operation: 'create',
+            table: 'client_properties',
+            clientId,
+            data: insertData,
+          },
+        });
+        if (!fnError && data?.success) return;
+        console.warn('Secure create failed, falling back to direct query');
+      }
+
+      // Fallback to direct query
+      const { error } = await supabase.from('client_properties').insert(insertData);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
       toast.success('Property added successfully');
       
       const propertyTypeLabel = 
