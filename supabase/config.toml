@@ -283,3 +283,9 @@ verify_jwt = false
 [functions.cdr-lending-rates-service]
 verify_jwt = false
 request_timeout = 120
+
+[functions.get-client-data]
+verify_jwt = false
+
+[functions.manage-client-data]
+verify_jwt = false

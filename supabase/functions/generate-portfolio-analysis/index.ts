@@ -41,6 +41,27 @@ interface ClientData {
   net_monthly_cash_flow: number | null;
 }
 
+// Session validation helper - validates custom auth tokens
+async function verifySession(supabase: any, sessionToken: string | null | undefined) {
+  if (!sessionToken) {
+    return { error: 'Authentication required', userId: null };
+  }
+  try {
+    const { data: session, error: sessionError } = await supabase
+      .from('user_sessions')
+      .select('user_id, expires_at')
+      .eq('session_token', sessionToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (sessionError || !session) {
+      return { error: 'Invalid or expired session', userId: null };
+    }
+    return { error: null, userId: session.user_id };
+  } catch (err) {
+    return { error: 'Session verification failed', userId: null };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -49,14 +70,36 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    // Initialize Supabase client first (needed for auth check)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const body = await req.json();
     const { 
       clientId,
       investorProfile = 'general',
       analysisDepth = 'comprehensive',
       includeProjections = true,
       projectionYears = 10,
-      includeOwnerOccupied = true
-    } = await req.json();
+      includeOwnerOccupied = true,
+      session_token
+    } = body;
+
+    // Validate session - currently logs warning but doesn't block for backward compatibility
+    // TODO: Make this mandatory after frontend migration is complete
+    const { error: authError, userId } = await verifySession(supabase, session_token);
+    if (authError) {
+      console.warn(`[generate-portfolio-analysis] ⚠️ UNAUTHENTICATED REQUEST for client ${clientId}`);
+      // For now, allow the request to proceed but log the security concern
+      // Uncomment the following to enforce authentication:
+      // return new Response(
+      //   JSON.stringify({ error: authError }),
+      //   { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // );
+    } else {
+      console.log(`[generate-portfolio-analysis] Authenticated user: ${userId}`);
+    }
 
     if (!clientId) {
       return new Response(
@@ -66,11 +109,6 @@ serve(async (req) => {
     }
 
     console.log(`📊 Starting portfolio analysis for client: ${clientId}`);
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch client data
     const { data: client, error: clientError } = await supabase
