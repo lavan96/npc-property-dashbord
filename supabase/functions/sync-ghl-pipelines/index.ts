@@ -203,37 +203,45 @@ serve(async (req) => {
 
     while (pageCount < maxPages) {
       pageCount++;
+
+      // Prefer the documented GET search endpoint. If GHL returns nextPageUrl, follow it.
       let url = `${GHL_API_BASE}/opportunities/search?locationId=${locationId}&limit=100`;
       if (startAfter) url += `&startAfter=${startAfter}`;
       if (startAfterId) url += `&startAfterId=${startAfterId}`;
 
       console.log(`Fetching opportunities page ${pageCount}: ${url}`);
 
-      const oppResponse = await fetch(url, { 
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          locationId,
-          limit: 100,
-        })
-      });
+      // 1) Try GET /opportunities/search
+      let oppResponse = await fetch(url, { method: 'GET', headers });
 
+      // 2) Fallback: some accounts historically required POST /opportunities/search
       if (!oppResponse.ok) {
         const errorText = await oppResponse.text();
-        console.error(`GHL opportunities API error: ${oppResponse.status} - ${errorText}`);
-        
-        // Try the GET endpoint instead
+        console.error(`GHL opportunities SEARCH(GET) error: ${oppResponse.status} - ${errorText}`);
+
+        oppResponse = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ locationId, limit: 100, startAfter, startAfterId }),
+        });
+      }
+
+      // 3) Fallback: legacy list endpoint
+      if (!oppResponse.ok) {
+        const errorText = await oppResponse.text();
+        console.error(`GHL opportunities SEARCH(POST) error: ${oppResponse.status} - ${errorText}`);
+
         const oppGetResponse = await fetch(
           `${GHL_API_BASE}/opportunities/?locationId=${locationId}&limit=100`,
           { headers }
         );
-        
+
         if (!oppGetResponse.ok) {
           const getErrorText = await oppGetResponse.text();
-          console.error(`GHL opportunities GET API error: ${oppGetResponse.status} - ${getErrorText}`);
+          console.error(`GHL opportunities LIST(GET) error: ${oppGetResponse.status} - ${getErrorText}`);
           throw new Error(`GHL API error: ${oppGetResponse.status}`);
         }
-        
+
         const oppGetData = await oppGetResponse.json();
         allOpportunities = oppGetData.opportunities || [];
         break;
@@ -248,13 +256,41 @@ serve(async (req) => {
 
       allOpportunities = [...allOpportunities, ...opportunities];
 
-      // Check for pagination
+      // Check for pagination (GHL may return either cursor fields or nextPageUrl)
+      if (oppData.meta?.nextPageUrl) {
+        // Some responses provide a fully qualified URL; others may be relative.
+        const nextUrl = oppData.meta.nextPageUrl.startsWith('http')
+          ? oppData.meta.nextPageUrl
+          : `${GHL_API_BASE}${oppData.meta.nextPageUrl}`;
+
+        // Reset cursor vars and continue with nextPageUrl on next loop iteration
+        startAfterId = null;
+        startAfter = null;
+
+        // Encode the next page cursor back into startAfter/startAfterId if present in URL,
+        // otherwise we will just fetch nextUrl directly by overwriting url building.
+        // Easiest: set startAfterId/startAfter by parsing query params.
+        try {
+          const parsed = new URL(nextUrl);
+          startAfterId = parsed.searchParams.get('startAfterId');
+          const startAfterStr = parsed.searchParams.get('startAfter');
+          startAfter = startAfterStr ? Number(startAfterStr) : null;
+        } catch (_e) {
+          // If URL parsing fails, stop pagination to avoid infinite loops.
+          break;
+        }
+
+        // Continue loop (url will be rebuilt with the cursor)
+        continue;
+      }
+
       if (oppData.meta?.startAfterId) {
         startAfterId = oppData.meta.startAfterId;
         startAfter = oppData.meta.startAfter || null;
-      } else {
-        break;
+        continue;
       }
+
+      break;
     }
 
     console.log(`Total opportunities fetched: ${allOpportunities.length}`);
