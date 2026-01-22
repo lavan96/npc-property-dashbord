@@ -131,7 +131,7 @@ serve(async (req) => {
 
     // Step 2: Sync pipelines to database
     const pipelineIdMap: Record<string, string> = {}; // ghl_id -> supabase uuid
-    const stageIdMap: Record<string, { uuid: string; stageName: string; pipelineName: string; pipelineUuid: string }> = {};
+    const stageIdMap: Record<string, { uuid: string; stageName: string; pipelineName: string; pipelineUuid: string; pipelinePosition: number; stagePosition: number }> = {};
 
     for (let pIdx = 0; pIdx < ghlPipelines.length; pIdx++) {
       const pipeline = ghlPipelines[pIdx];
@@ -186,18 +186,20 @@ serve(async (req) => {
           stageName: stage.name,
           pipelineName: pipeline.name,
           pipelineUuid: pipelineUuid,
+          pipelinePosition: pIdx,
+          stagePosition: stage.position,
         };
       }
     }
 
     console.log(`Synced ${Object.keys(stageIdMap).length} pipeline stages to database`);
 
-    // Step 3: Fetch all opportunities from GHL
+    // Step 3: Fetch all opportunities from GHL - increased limit to ensure all are fetched
     let allOpportunities: GHLOpportunity[] = [];
     let startAfterId: string | null = null;
     let startAfter: number | null = null;
     let pageCount = 0;
-    const maxPages = 20;
+    const maxPages = 50; // Increased from 20 to handle more opportunities (up to 5000)
 
     while (pageCount < maxPages) {
       pageCount++;
@@ -240,7 +242,7 @@ serve(async (req) => {
       const oppData: GHLOpportunitiesResponse = await oppResponse.json();
       const opportunities = oppData.opportunities || [];
 
-      console.log(`Received ${opportunities.length} opportunities`);
+      console.log(`Received ${opportunities.length} opportunities on page ${pageCount}`);
 
       if (opportunities.length === 0) break;
 
@@ -257,10 +259,13 @@ serve(async (req) => {
 
     console.log(`Total opportunities fetched: ${allOpportunities.length}`);
 
-    // Step 4: Update clients with pipeline data using new relational structure
-    let updatedCount = 0;
-    let notFoundCount = 0;
-    const notFoundContacts: string[] = [];
+    // Step 4: Group opportunities by contact and select the furthest-down-the-pipeline opportunity
+    // Priority: Higher pipeline position > Higher stage position within the same pipeline
+    const contactOpportunityMap: Record<string, { 
+      opp: GHLOpportunity; 
+      pipelinePosition: number; 
+      stagePosition: number;
+    }> = {};
 
     for (const opp of allOpportunities) {
       const contactId = opp.contact?.id;
@@ -269,6 +274,31 @@ serve(async (req) => {
         continue;
       }
 
+      const stageInfo = stageIdMap[opp.pipelineStageId];
+      const pipelinePosition = stageInfo?.pipelinePosition ?? -1;
+      const stagePosition = stageInfo?.stagePosition ?? -1;
+
+      const existing = contactOpportunityMap[contactId];
+      
+      // Keep the opportunity that is furthest down in the pipeline
+      // Compare by pipeline position first, then by stage position
+      const shouldReplace = !existing || 
+        pipelinePosition > existing.pipelinePosition ||
+        (pipelinePosition === existing.pipelinePosition && stagePosition > existing.stagePosition);
+
+      if (shouldReplace) {
+        contactOpportunityMap[contactId] = { opp, pipelinePosition, stagePosition };
+      }
+    }
+
+    console.log(`Grouped ${allOpportunities.length} opportunities into ${Object.keys(contactOpportunityMap).length} unique contacts (furthest stage wins)`);
+
+    // Step 5: Update clients with the selected opportunity data
+    let updatedCount = 0;
+    let notFoundCount = 0;
+    const notFoundContacts: string[] = [];
+
+    for (const [contactId, { opp }] of Object.entries(contactOpportunityMap)) {
       // Get stage info from our map
       const stageInfo = stageIdMap[opp.pipelineStageId];
       const pipelineStatus = stageInfo 
