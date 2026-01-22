@@ -44,33 +44,21 @@ function getSessionToken(): string | null {
 async function fetchNotesSecure(clientId: string) {
   const sessionToken = getSessionToken();
   
-  // Try secure Edge Function first
-  if (sessionToken) {
-    try {
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { notes: true },
-        },
-      });
-
-      if (!error && data?.success) {
-        return data.data?.notes || [];
-      }
-    } catch (err) {
-      console.warn('Secure notes fetch failed, falling back:', err);
-    }
+  if (!sessionToken) {
+    throw new Error('Not authenticated');
   }
 
-  // Fallback: Direct Supabase query
-  const { data, error } = await supabase
-    .from('client_notes')
-    .select('*')
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false });
+  const { data, error } = await supabase.functions.invoke('get-client-data', {
+    body: {
+      session_token: sessionToken,
+      clientId,
+      include: { notes: true },
+    },
+  });
+
   if (error) throw error;
-  return data;
+  if (!data?.success) throw new Error(data?.error || 'Failed to fetch notes');
+  return data.data?.notes || [];
 }
 
 export function ClientNotes({ clientId }: ClientNotesProps) {
@@ -109,18 +97,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
             return data.result;
           }
         } catch (err) {
-          console.warn('Secure note add failed, falling back:', err);
+          throw err;
         }
       }
 
-      // Fallback: Direct Supabase mutation
-      const { error } = await supabase
-        .from('client_notes')
-        .insert({
-          client_id: clientId,
-          ...payload,
-        });
-      if (error) throw error;
+      throw new Error('Not authenticated');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
@@ -154,16 +135,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
             return;
           }
         } catch (err) {
-          console.warn('Secure note delete failed, falling back:', err);
+          throw err;
         }
       }
 
-      // Fallback: Direct Supabase mutation
-      const { error } = await supabase
-        .from('client_notes')
-        .delete()
-        .eq('id', noteId);
-      if (error) throw error;
+      throw new Error('Not authenticated');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });

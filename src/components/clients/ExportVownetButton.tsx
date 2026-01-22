@@ -63,40 +63,25 @@ async function fetchClientDataForExport(clientId: string) {
       }
       
       if (error && !error.message?.includes('401')) {
-        console.warn('Secure export fetch failed, falling back:', error.message);
+        throw error;
+      }
+      
+      if (!error && data?.success) {
+        return {
+          client: data.data?.client,
+          properties: data.data?.properties || [],
+          employment: data.data?.employment || [],
+          income: data.data?.income || [],
+          assets: data.data?.assets || [],
+          liabilities: data.data?.liabilities || [],
+        };
       }
     } catch (err) {
-      console.warn('Edge function call failed, falling back:', err);
+      throw err;
     }
   }
 
-  // Fallback: Direct Supabase queries
-  const [
-    { data: client, error: clientError },
-    { data: properties },
-    { data: employment },
-    { data: income },
-    { data: assets },
-    { data: liabilities },
-  ] = await Promise.all([
-    supabase.from('clients').select('*').eq('id', clientId).single(),
-    supabase.from('client_properties').select('*').eq('client_id', clientId),
-    supabase.from('client_employment').select('*').eq('client_id', clientId),
-    supabase.from('client_income').select('*').eq('client_id', clientId),
-    supabase.from('client_assets').select('*').eq('client_id', clientId),
-    supabase.from('client_liabilities').select('*').eq('client_id', clientId),
-  ]);
-
-  if (clientError) throw clientError;
-
-  return {
-    client,
-    properties: properties || [],
-    employment: employment || [],
-    income: income || [],
-    assets: assets || [],
-    liabilities: liabilities || [],
-  };
+  throw new Error('Not authenticated');
 }
 
 export function ExportVownetButton({ 

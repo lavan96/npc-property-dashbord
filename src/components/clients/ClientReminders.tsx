@@ -61,73 +61,111 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
   const { data: reminders = [], isLoading } = useQuery({
     queryKey: ['client-reminders', clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_reminders')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('due_date', { ascending: true });
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { reminders: true },
+        },
+      });
+
       if (error) throw error;
-      return data;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch reminders');
+      return data.data?.reminders || [];
     }
   });
 
   const addReminderMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('client_reminders')
-        .insert({
-          client_id: clientId,
-          title,
-          description,
-          due_date: new Date(dueDate).toISOString(),
-          priority,
-          reminder_type: reminderType,
-        });
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase.functions.invoke('manage-client-data', {
+        body: {
+          session_token: sessionToken,
+          operation: 'create',
+          table: 'client_reminders',
+          clientId,
+          data: {
+            title,
+            description,
+            due_date: new Date(dueDate).toISOString(),
+            priority,
+            reminder_type: reminderType,
+          },
+        },
+      });
+
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to create reminder');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
       toast.success('Reminder created');
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error('Failed to create reminder: ' + error.message);
     }
   });
 
   const completeReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
-      const { error } = await supabase
-        .from('client_reminders')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', reminderId);
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase.functions.invoke('manage-client-data', {
+        body: {
+          session_token: sessionToken,
+          operation: 'update',
+          table: 'client_reminders',
+          clientId,
+          recordId: reminderId,
+          data: { 
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          },
+        },
+      });
+
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to complete reminder');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
       toast.success('Reminder completed');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error('Failed to complete reminder: ' + error.message);
     }
   });
 
   const deleteReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
-      const { error } = await supabase
-        .from('client_reminders')
-        .delete()
-        .eq('id', reminderId);
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) throw new Error('Not authenticated');
+      
+      const { data, error } = await supabase.functions.invoke('manage-client-data', {
+        body: {
+          session_token: sessionToken,
+          operation: 'delete',
+          table: 'client_reminders',
+          clientId,
+          recordId: reminderId,
+        },
+      });
+
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete reminder');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
       toast.success('Reminder deleted');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error('Failed to delete reminder: ' + error.message);
     }
   });
