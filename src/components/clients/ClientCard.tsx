@@ -82,8 +82,34 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     }).format(value);
   };
 
+  const getSessionToken = () => localStorage.getItem('session_token');
+
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              operation: 'update',
+              table: 'clients',
+              clientId: client.id,
+              data: { is_favorite: !client.is_favorite },
+              session_token: sessionToken,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Edge function failed, falling back to direct query:', err);
+        }
+      }
+      
+      // Fallback to direct query
       const { error } = await supabase
         .from('clients')
         .update({ is_favorite: !client.is_favorite })

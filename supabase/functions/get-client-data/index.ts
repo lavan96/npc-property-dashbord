@@ -10,6 +10,14 @@ const corsHeaders = {
 interface RequestBody {
   clientId?: string;
   clientIds?: string[];
+  listMode?: boolean;
+  listOptions?: {
+    select?: string;
+    orderBy?: string;
+    orderAsc?: boolean;
+    limit?: number;
+    includePropertyCount?: boolean;
+  };
   include?: {
     properties?: boolean;
     income?: boolean;
@@ -48,17 +56,36 @@ serve(async (req) => {
 
     console.log(`Authenticated user ${userId} requesting client data`);
 
-    const { clientId, clientIds, include = {} } = body;
+    const { clientId, clientIds, listMode, listOptions = {}, include = {} } = body;
 
     // Determine which clients to fetch
     const idsToFetch = clientId ? [clientId] : (clientIds || []);
 
-    if (idsToFetch.length === 0) {
-      // Return all clients if no specific IDs provided (list mode)
-      const { data: clients, error: clientsError } = await supabase
+    if (idsToFetch.length === 0 || listMode) {
+      // Return all clients (list mode)
+      const { 
+        select = '*', 
+        orderBy = 'created_at', 
+        orderAsc = false, 
+        limit,
+        includePropertyCount = false 
+      } = listOptions;
+
+      // Build select string with optional property count
+      const selectString = includePropertyCount 
+        ? `${select}, client_properties(id)` 
+        : select;
+
+      let query = supabase
         .from('clients')
-        .select('*')
-        .order('updated_at', { ascending: false });
+        .select(selectString)
+        .order(orderBy, { ascending: orderAsc });
+
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const { data: clients, error: clientsError } = await query;
 
       if (clientsError) {
         console.error('Error fetching clients list:', clientsError);

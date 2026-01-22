@@ -80,9 +80,46 @@ export function ClientBulkActions({
     onClearSelection();
   };
 
+  const getSessionToken = () => localStorage.getItem('session_token');
+
   const handleBulkDelete = async () => {
     setIsDeleting(true);
+    const sessionToken = getSessionToken();
+    
     try {
+      // Try secure Edge Function for each client
+      if (sessionToken) {
+        let allSuccess = true;
+        for (const clientId of selectedClients) {
+          try {
+            const { data, error } = await supabase.functions.invoke('manage-client-data', {
+              body: {
+                operation: 'delete',
+                table: 'clients',
+                clientId,
+                session_token: sessionToken,
+              },
+            });
+            
+            if (error || !data?.success) {
+              allSuccess = false;
+              break;
+            }
+          } catch {
+            allSuccess = false;
+            break;
+          }
+        }
+        
+        if (allSuccess) {
+          toast.success(`Deleted ${selectedCount} clients`);
+          onActionComplete();
+          onClearSelection();
+          return;
+        }
+      }
+      
+      // Fallback to direct query
       const { error } = await supabase
         .from('clients')
         .delete()

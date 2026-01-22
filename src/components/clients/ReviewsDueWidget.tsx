@@ -28,12 +28,43 @@ interface ReviewsDueClient {
 export function ReviewsDueWidget() {
   const navigate = useNavigate();
   
+  const getSessionToken = () => localStorage.getItem('session_token');
+
   const { data: clientsDue = [], isLoading } = useQuery({
     queryKey: ['clients-reviews-due'],
     queryFn: async () => {
       const today = new Date();
       const thirtyDaysFromNow = addDays(today, 30);
+      const sessionToken = getSessionToken();
       
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              listMode: true,
+              listOptions: {
+                select: 'id, primary_first_name, primary_surname, review_frequency, next_review_due, last_review_date, total_portfolio_value',
+                orderBy: 'next_review_due',
+                orderAsc: true,
+                limit: 10,
+              },
+              session_token: sessionToken,
+            },
+          });
+          
+          if (!error && data?.success) {
+            // Filter for reviews due within 30 days
+            return (data.clients || []).filter((c: ReviewsDueClient) => 
+              c.next_review_due && new Date(c.next_review_due) <= thirtyDaysFromNow
+            ) as ReviewsDueClient[];
+          }
+        } catch (err) {
+          console.warn('Edge function failed, falling back to direct query:', err);
+        }
+      }
+      
+      // Fallback to direct query
       const { data, error } = await supabase
         .from('clients')
         .select('id, primary_first_name, primary_surname, review_frequency, next_review_due, last_review_date, total_portfolio_value')

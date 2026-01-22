@@ -120,10 +120,40 @@ export default function ClientManagement() {
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch clients with property count
+  // Helper to get session token
+  const getSessionToken = () => localStorage.getItem('session_token');
+
+  // Fetch clients with property count via secure Edge Function
   const { data: clients = [], isLoading, refetch } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              listMode: true,
+              listOptions: {
+                select: '*',
+                orderBy: 'created_at',
+                orderAsc: false,
+                includePropertyCount: true,
+              },
+              session_token: sessionToken,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return data.clients as Client[];
+          }
+        } catch (err) {
+          console.warn('Edge function failed, falling back to direct query:', err);
+        }
+      }
+      
+      // Fallback to direct query (will fail with new RLS - for backward compatibility during migration)
       const { data, error } = await supabase
         .from('clients')
         .select(`
@@ -285,9 +315,32 @@ export default function ClientManagement() {
     handleImportFromGHL(true);
   };
 
-  // Delete client mutation
+  // Delete client mutation via secure Edge Function
   const deleteClientMutation = useMutation({
     mutationFn: async (clientId: string) => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              operation: 'delete',
+              table: 'clients',
+              clientId,
+              session_token: sessionToken,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Edge function failed, falling back to direct query:', err);
+        }
+      }
+      
+      // Fallback to direct query
       const { error } = await supabase
         .from('clients')
         .delete()
