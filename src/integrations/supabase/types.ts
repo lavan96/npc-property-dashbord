@@ -2695,6 +2695,7 @@ export type Database = {
           investment_score: Json | null
           is_archived: boolean
           is_client_report: boolean | null
+          last_completed_section: number | null
           location_intelligence: Json | null
           manual_overrides: Json | null
           parent_report_id: string | null
@@ -2725,6 +2726,7 @@ export type Database = {
           investment_score?: Json | null
           is_archived?: boolean
           is_client_report?: boolean | null
+          last_completed_section?: number | null
           location_intelligence?: Json | null
           manual_overrides?: Json | null
           parent_report_id?: string | null
@@ -2755,6 +2757,7 @@ export type Database = {
           investment_score?: Json | null
           is_archived?: boolean
           is_client_report?: boolean | null
+          last_completed_section?: number | null
           location_intelligence?: Json | null
           manual_overrides?: Json | null
           parent_report_id?: string | null

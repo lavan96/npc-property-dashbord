@@ -585,7 +585,7 @@ serve(async (req) => {
         // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides, report_content, property_address')
+          .select('manual_overrides, report_content, property_address, last_completed_section')
           .eq('id', reportId)
           .single();
         
@@ -594,133 +594,24 @@ serve(async (req) => {
           console.log('📝 Fetched existing manual overrides from DB:', Object.keys(existingManualOverrides).length, 'fields');
         }
         
-        // If continuing, analyze existing content to determine which sections are complete
+        // If continuing, use the stored last_completed_section index for reliable resume
         if (isContinuation && existingReport?.report_content) {
           existingReportContent = existingReport.report_content;
-          console.log('🔄 CONTINUATION MODE: Analyzing existing content...');
+          const lastCompletedSection = existingReport.last_completed_section || 0;
+          
+          console.log('🔄 CONTINUATION MODE: Using database-tracked section progress');
           console.log('   Existing content length:', existingReportContent.length, 'chars');
+          console.log('   Last completed section (from DB):', lastCompletedSection);
           
-          // Detect completed sections based on content markers - UPDATED FOR 12-SECTION ARCHITECTURE
-          // Each section needs BOTH start AND end markers to be considered complete
-          const sectionPatterns = [
-            { 
-              index: 0, 
-              startPatterns: [/##?\s*(Executive\s*Summary|Property\s*Investment\s*Report)/i],
-              endPatterns: [/##?\s*(Location\s*Overview|Suburb\s*Profile|Geographic)/i],
-              name: 'Executive Summary'
-            },
-            { 
-              index: 1, 
-              startPatterns: [/##?\s*(Location\s*Overview|Suburb\s*Profile|Geographic\s*Position)/i],
-              endPatterns: [/##?\s*(Market\s*(&|and)\s*Economics?|Current\s*Market\s*Performance)/i],
-              name: 'Location Overview'
-            },
-            { 
-              index: 2, 
-              startPatterns: [/##?\s*(Market\s*(&|and)\s*Economics?|Current\s*Market\s*Performance|Property\s*Market)/i],
-              endPatterns: [/##?\s*(Demographics?\s*(&|and)\s*Demand|Population\s*Profile)/i],
-              name: 'Market & Economics'
-            },
-            { 
-              index: 3, 
-              startPatterns: [/##?\s*(Demographics?\s*(&|and)\s*Demand|Population\s*Profile|Community\s*Profile)/i],
-              endPatterns: [/##?\s*(Education\s*(&|and)\s*Healthcare|Schools?\s*(&|and)\s*Education)/i],
-              name: 'Demographics & Demand'
-            },
-            { 
-              index: 4, 
-              startPatterns: [/##?\s*(Education\s*(&|and)\s*Healthcare|Schools?\s*(&|and)\s*Education|Educational\s*Facilities)/i],
-              endPatterns: [/##?\s*(Recreation\s*(&|and)\s*Transport|Transport\s*(&|and)\s*Connectivity)/i],
-              name: 'Education & Healthcare'
-            },
-            { 
-              index: 5, 
-              startPatterns: [/##?\s*(Recreation\s*(&|and)\s*Transport|Transport\s*(&|and)\s*Connectivity|Lifestyle\s*(&|and)\s*Amenities)/i],
-              endPatterns: [/##?\s*(Environment\s*(&|and)\s*Safety|Climate\s*(&|and)\s*Environment)/i],
-              name: 'Recreation & Transport'
-            },
-            { 
-              index: 6, 
-              startPatterns: [/##?\s*(Environment\s*(&|and)\s*Safety|Climate\s*(&|and)\s*Environment|Safety\s*(&|and)\s*Security)/i],
-              endPatterns: [/##?\s*(Property\s*(&|and)\s*Zoning|Property-Level\s*Analysis)/i],
-              name: 'Environment & Safety'
-            },
-            { 
-              index: 7, 
-              startPatterns: [/##?\s*(Property\s*(&|and)\s*Zoning|Property-Level\s*Analysis|Zoning\s*(&|and)\s*Development)/i],
-              endPatterns: [/##?\s*(Purchase\s*Costs?\s*(&|and)\s*Rental|Initial\s*Purchase\s*Costs)/i],
-              name: 'Property & Zoning'
-            },
-            { 
-              index: 8, 
-              startPatterns: [/##?\s*(Purchase\s*Costs?\s*(&|and)\s*Rental|Initial\s*Purchase\s*Costs|Acquisition\s*Costs)/i],
-              endPatterns: [/##?\s*(Loan\s*(&|and)\s*Cashflow|Financing\s*Analysis|Mortgage\s*(&|and)\s*Cash\s*Flow)/i],
-              name: 'Purchase Costs & Rental'
-            },
-            { 
-              index: 9, 
-              startPatterns: [/##?\s*(Loan\s*(&|and)\s*Cashflow|Financing\s*Analysis|Mortgage\s*(&|and)\s*Cash\s*Flow)/i],
-              endPatterns: [/##?\s*(Projections?\s*(&|and)\s*SWOT|10-Year\s*Investment\s*Projections)/i],
-              name: 'Loan & Cashflow'
-            },
-            { 
-              index: 10, 
-              startPatterns: [/##?\s*(Projections?\s*(&|and)\s*SWOT|10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i],
-              endPatterns: [/##?\s*(Risks?\s*(&|and)\s*Recommendations?|Investment\s*Recommendations?|Top\s*3\s*Risks)/i],
-              name: 'Projections & SWOT'
-            },
-            { 
-              index: 11, 
-              startPatterns: [/##?\s*(Risks?\s*(&|and)\s*Recommendations?|Investment\s*Recommendations?|Risk\s*Assessment|Top\s*3\s*Risks)/i],
-              endPatterns: [/##?\s*(Final\s*Conclusion|Data\s*Sources|Disclaimer)/i],
-              name: 'Risks & Recommendations'
-            }
-          ];
-          
-          let firstIncompleteSection = -1;
-          let incompleteStartPosition = -1;
-          
-          for (const section of sectionPatterns) {
-            // Check for start marker
-            const hasStartMarker = section.startPatterns.some(p => p.test(existingReportContent));
-            const hasEndMarker = section.endPatterns.some(p => p.test(existingReportContent));
-            
-            if (hasStartMarker && hasEndMarker) {
-              completedSectionIndices.push(section.index);
-              console.log(`   ✓ Section ${section.index}/${REPORT_SECTIONS.length - 1} (${section.name}) is complete`);
-            } else if (hasStartMarker && !hasEndMarker) {
-              console.log(`   ⚠️ Section ${section.index}/${REPORT_SECTIONS.length - 1} (${section.name}) started but INCOMPLETE`);
-              
-              // Track the first incomplete section - we need to strip from here
-              if (firstIncompleteSection === -1) {
-                firstIncompleteSection = section.index;
-                
-                // Find the position where this incomplete section starts
-                for (const pattern of section.startPatterns) {
-                  const match = existingReportContent.match(pattern);
-                  if (match && match.index !== undefined) {
-                    incompleteStartPosition = match.index;
-                    console.log(`   📍 Incomplete section starts at char position: ${incompleteStartPosition}`);
-                    break;
-                  }
-                }
-              }
-            } else {
-              console.log(`   ○ Section ${section.index}/${REPORT_SECTIONS.length - 1} (${section.name}) not started`);
-            }
-          }
-          
-          // CRITICAL FIX: Strip incomplete section content before resuming
-          // This prevents duplicate/garbled content when regenerating
-          if (firstIncompleteSection !== -1 && incompleteStartPosition > 0) {
-            const cleanedContent = existingReportContent.substring(0, incompleteStartPosition).trim();
-            console.log(`   ✂️ Stripping incomplete section ${firstIncompleteSection} content`);
-            console.log(`   📏 Content reduced from ${existingReportContent.length} to ${cleanedContent.length} chars`);
-            existingReportContent = cleanedContent;
+          // Build completed section indices from the stored value
+          // All sections from 0 to lastCompletedSection-1 are complete (0-indexed section IDs)
+          // If lastCompletedSection = 5, then sections 0,1,2,3,4 are complete
+          for (let idx = 0; idx < lastCompletedSection; idx++) {
+            completedSectionIndices.push(idx);
           }
           
           console.log(`   Completed sections: ${completedSectionIndices.length}/${REPORT_SECTIONS.length}`);
-          console.log(`   Will regenerate from section: ${completedSectionIndices.length}`);
+          console.log(`   Will resume from section: ${lastCompletedSection} (${REPORT_SECTIONS[lastCompletedSection]?.name || 'END'})`);
           
           // Use property address from existing report if not provided
           if (!propertyAddress && existingReport.property_address) {
@@ -3066,17 +2957,20 @@ YOUR DEDICATED PROPERTY PARTNER
         });
         
         // === PROGRESSIVE SAVE: Save after each section ===
+        // CRITICAL: Save last_completed_section for reliable resume functionality
         if (reportId && supabaseClient) {
           try {
-            console.log(`💾 Progressive save after section ${i + 1}...`);
+            const completedSectionIndex = i + 1; // Section i is now complete (0-indexed to 1-indexed)
+            console.log(`💾 Progressive save after section ${completedSectionIndex}/${REPORT_SECTIONS.length}...`);
             await supabaseClient
               .from('investment_reports')
               .update({
                 report_content: combinedContent,
+                last_completed_section: completedSectionIndex,
                 updated_at: new Date().toISOString()
               })
               .eq('id', reportId);
-            console.log(`✓ Progress saved: ${combinedContent.length} chars (section ${i + 1}/${REPORT_SECTIONS.length})`);
+            console.log(`✓ Progress saved: ${combinedContent.length} chars, last_completed_section=${completedSectionIndex}`);
           } catch (saveError: any) {
             console.warn(`⚠️ Progressive save failed (non-blocking):`, saveError?.message);
           }
@@ -3095,6 +2989,7 @@ YOUR DEDICATED PROPERTY PARTNER
         
         // === PROGRESSIVE SAVE ON FAILURE: Save current state even if section failed ===
         // This allows continuation from last successful section
+        // Note: last_completed_section is NOT incremented on failure (keeps last good value)
         if (reportId && supabaseClient && combinedContent.length > 0) {
           try {
             console.log(`💾 Progressive save after section ${i + 1} failure (preserving progress)...`);
@@ -3102,11 +2997,12 @@ YOUR DEDICATED PROPERTY PARTNER
               .from('investment_reports')
               .update({
                 report_content: combinedContent,
+                // Don't update last_completed_section - it should stay at the last successfully completed section
                 updated_at: new Date().toISOString(),
                 error_message: `Section ${sectionDef.name} failed to generate after ${sectionAttempts} attempts`
               })
               .eq('id', reportId);
-            console.log(`✓ Progress preserved: ${combinedContent.length} chars before failed section`);
+            console.log(`✓ Progress preserved: ${combinedContent.length} chars before failed section (last_completed_section unchanged)`);
           } catch (saveError: any) {
             console.warn(`⚠️ Failed section save error (non-blocking):`, saveError?.message);
           }
