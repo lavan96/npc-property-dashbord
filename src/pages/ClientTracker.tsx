@@ -41,6 +41,7 @@ import {
   Video,
   User
 } from 'lucide-react';
+import { ActiveClientCard } from '@/components/clients/ActiveClientCard';
 import {
   Pagination,
   PaginationContent,
@@ -1245,71 +1246,12 @@ export default function ClientTracker() {
                             const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                             
                             return (
-                              <Card key={client.id} className="flex flex-col">
-                                <CardHeader className="pb-2">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0 flex-1">
-                                      <CardTitle className="text-base truncate">
-                                        {client.primary_first_name} {client.primary_surname}
-                                      </CardTitle>
-                                      <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
-                                        {client.primary_email && (
-                                          <span className="flex items-center gap-1 truncate">
-                                            <Mail className="h-3 w-3 flex-shrink-0" />
-                                            <span className="truncate">{client.primary_email}</span>
-                                          </span>
-                                        )}
-                                        {client.primary_mobile && (
-                                          <span className="flex items-center gap-1">
-                                            <Phone className="h-3 w-3 flex-shrink-0" />
-                                            {client.primary_mobile}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <Badge 
-                                      className="text-xs flex-shrink-0"
-                                      style={{ 
-                                        backgroundColor: stageInfo.color + '20',
-                                        color: stageInfo.color,
-                                        borderColor: stageInfo.color 
-                                      }}
-                                      variant="outline"
-                                    >
-                                      {stageInfo.name}
-                                    </Badge>
-                                  </div>
-                                </CardHeader>
-                                <CardContent className="flex-1 pt-0">
-                                  {clientNotes.length > 0 ? (
-                                    <div className="space-y-2">
-                                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                                        <FileText className="h-3 w-3" />
-                                        Notes ({clientNotes.length})
-                                      </p>
-                                      <ScrollArea className="h-40">
-                                        <div className="space-y-2 pr-3">
-                                          {clientNotes.map(note => (
-                                            <div 
-                                              key={note.id} 
-                                              className="bg-muted/50 rounded-md p-2.5 text-xs"
-                                            >
-                                              <p className="whitespace-pre-wrap line-clamp-4">{note.content}</p>
-                                              <p className="text-[10px] text-muted-foreground mt-1">
-                                                {format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}
-                                              </p>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </ScrollArea>
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground italic">
-                                      No notes for this client
-                                    </p>
-                                  )}
-                                </CardContent>
-                              </Card>
+                              <ActiveClientCard
+                                key={client.id}
+                                client={client}
+                                notes={clientNotes}
+                                stageInfo={stageInfo}
+                              />
                             );
                           })}
                       </div>
