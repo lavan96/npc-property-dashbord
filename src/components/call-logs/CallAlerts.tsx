@@ -155,20 +155,18 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
     }
     
     try {
-      const response = await supabase.functions.invoke('send-call-alert-email', {
-        body: {
-          to: adminEmail,
-          alertName: rule.name,
-          callId: call.id,
-          customerName: call.customer_name,
-          phoneNumber: call.phone_number,
-          sentiment: call.sentiment,
-          duration: call.duration_seconds,
-          outcome: call.call_outcome,
-          cost: call.cost,
-          message,
-          isPositive: rule.is_positive,
-        },
+      const response = await invokeSecureFunction('send-call-alert-email', {
+        to: adminEmail,
+        alertName: rule.name,
+        callId: call.id,
+        customerName: call.customer_name,
+        phoneNumber: call.phone_number,
+        sentiment: call.sentiment,
+        duration: call.duration_seconds,
+        outcome: call.call_outcome,
+        cost: call.cost,
+        message,
+        isPositive: rule.is_positive,
       });
       
       if (response.error) {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,35 +98,34 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
   const [reportToDelete, setReportToDelete] = useState<PortfolioAnalysisReport | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch portfolio analysis reports
+  // Fetch portfolio analysis reports via secure function
   const { data: reports = [], isLoading, refetch } = useQuery({
     queryKey: ['portfolio-analysis-reports', clientId],
     queryFn: async () => {
-      // Use any cast since table was just created and types.ts is read-only
-      let query = (supabase as any)
-        .from('portfolio_analysis_reports')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (clientId) {
-        query = query.eq('client_id', clientId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as PortfolioAnalysisReport[];
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'portfolio_analysis_reports',
+          select: '*',
+          orderBy: 'created_at',
+          order_asc: false,
+          ...(clientId && { filters: { client_id: clientId } })
+        }
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records || []) as PortfolioAnalysisReport[];
     },
   });
 
-  // Delete mutation
+  // Delete mutation via secure function
   const deleteMutation = useMutation({
     mutationFn: async (reportId: string) => {
-      // Use any cast since table was just created and types.ts is read-only
-      const { error } = await (supabase as any)
-        .from('portfolio_analysis_reports')
-        .delete()
-        .eq('id', reportId);
-      if (error) throw error;
+      const { error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'portfolio_analysis_reports',
+        recordId: reportId
+      });
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-analysis-reports'] });

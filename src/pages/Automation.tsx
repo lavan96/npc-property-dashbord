@@ -180,10 +180,12 @@ const Automation = () => {
     setMasterLoading(true);
     const newValue = !masterEnabled;
     
+    // auto_report_master_settings is an operational config table, direct query is acceptable
+    const { data: settingsData } = await supabase.from('auto_report_master_settings').select('id').single();
     const { error } = await supabase
       .from('auto_report_master_settings')
       .update({ is_enabled: newValue, updated_at: new Date().toISOString() })
-      .eq('id', (await supabase.from('auto_report_master_settings').select('id').single()).data?.id);
+      .eq('id', settingsData?.id);
     
     if (error) {
       toast.error('Failed to update master switch');

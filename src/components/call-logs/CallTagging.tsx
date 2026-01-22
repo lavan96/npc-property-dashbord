@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -310,6 +311,7 @@ export const CallTagFilter = ({
 
   useEffect(() => {
     const fetchTags = async () => {
+      // call_tags is a non-sensitive lookup table, direct query is acceptable
       const { data } = await supabase.from('call_tags').select('*').order('name');
       setAvailableTags(data || []);
     };

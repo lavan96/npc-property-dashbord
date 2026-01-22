@@ -665,12 +665,16 @@ export default function ReportQA() {
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
 
-      // Save to database in background
+      // Save to database in background via secure function
       if (activeConversationId && fullContent) {
-        supabase.from('report_qa_messages').insert([
-          { conversation_id: activeConversationId, role: 'user', content: messageContent },
-          { conversation_id: activeConversationId, role: 'assistant', content: fullContent },
-        ]).then(() => {
+        invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'report_qa_messages',
+          data: [
+            { conversation_id: activeConversationId, role: 'user', content: messageContent },
+            { conversation_id: activeConversationId, role: 'assistant', content: fullContent },
+          ]
+        }).then(() => {
           console.log('[ReportQA] Messages saved to database');
         });
       }
