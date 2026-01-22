@@ -160,38 +160,92 @@ serve(async (req) => {
         break;
       }
 
-      // IMMEDIATELY save this page to DB
-      const clientsToUpsert = contacts.map((contact) => ({
-        primary_first_name: contact.firstName || 'Unknown',
-        primary_surname: contact.lastName || 'Unknown',
-        primary_email: contact.email || null,
-        primary_mobile: contact.phone || null,
-        current_address: [contact.address1, contact.city, contact.state, contact.postalCode]
-          .filter(Boolean)
-          .join(', ') || null,
-        country: contact.country || 'Australia',
-        ghl_contact_id: contact.id,
-        ghl_sync_status: 'synced',
-        ghl_last_synced_at: new Date().toISOString(),
-      }));
+      // IMMEDIATELY save this page to DB - with email deduplication
+      // First, check for existing clients by email to prevent duplicates from GHL
+      let savedCount = 0;
+      
+      for (const contact of contacts) {
+        const clientData = {
+          primary_first_name: contact.firstName || 'Unknown',
+          primary_surname: contact.lastName || 'Unknown',
+          primary_email: contact.email || null,
+          primary_mobile: contact.phone || null,
+          current_address: [contact.address1, contact.city, contact.state, contact.postalCode]
+            .filter(Boolean)
+            .join(', ') || null,
+          country: contact.country || 'Australia',
+          ghl_contact_id: contact.id,
+          ghl_sync_status: 'synced',
+          ghl_last_synced_at: new Date().toISOString(),
+        };
 
-      const { data: upsertedData, error: upsertError } = await supabase
-        .from('clients')
-        .upsert(clientsToUpsert, {
-          onConflict: 'ghl_contact_id',
-          ignoreDuplicates: false,
-        })
-        .select('id');
+        // Check if client already exists by ghl_contact_id first
+        const { data: existingByGhlId } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('ghl_contact_id', contact.id)
+          .maybeSingle();
 
-      if (upsertError) {
-        console.error(`Error upserting page ${pageCount}:`, upsertError);
-        errors.push(`Page ${pageCount}: ${upsertError.message}`);
-        totalErrors += contacts.length;
-      } else {
-        const savedCount = upsertedData?.length || contacts.length;
-        totalImported += savedCount;
-        console.log(`Saved page ${pageCount}: ${savedCount} clients (total: ${totalImported})`);
+        if (existingByGhlId) {
+          // Update existing client by ghl_contact_id
+          const { error: updateError } = await supabase
+            .from('clients')
+            .update(clientData)
+            .eq('id', existingByGhlId.id);
+
+          if (updateError) {
+            console.error(`Error updating client ${contact.id}:`, updateError);
+            errors.push(`Contact ${contact.id}: ${updateError.message}`);
+            totalErrors++;
+          } else {
+            savedCount++;
+          }
+          continue;
+        }
+
+        // Check if client exists by email (to prevent GHL duplicates)
+        if (contact.email) {
+          const { data: existingByEmail } = await supabase
+            .from('clients')
+            .select('id, ghl_contact_id')
+            .eq('primary_email', contact.email)
+            .maybeSingle();
+
+          if (existingByEmail) {
+            // Update existing client with new ghl_contact_id (newer contact takes precedence)
+            console.log(`Found existing client with email ${contact.email}, updating ghl_contact_id from ${existingByEmail.ghl_contact_id} to ${contact.id}`);
+            const { error: updateError } = await supabase
+              .from('clients')
+              .update(clientData)
+              .eq('id', existingByEmail.id);
+
+            if (updateError) {
+              console.error(`Error updating client by email ${contact.email}:`, updateError);
+              errors.push(`Contact ${contact.id}: ${updateError.message}`);
+              totalErrors++;
+            } else {
+              savedCount++;
+            }
+            continue;
+          }
+        }
+
+        // Insert new client
+        const { error: insertError } = await supabase
+          .from('clients')
+          .insert(clientData);
+
+        if (insertError) {
+          console.error(`Error inserting client ${contact.id}:`, insertError);
+          errors.push(`Contact ${contact.id}: ${insertError.message}`);
+          totalErrors++;
+        } else {
+          savedCount++;
+        }
       }
+
+      totalImported += savedCount;
+      console.log(`Saved page ${pageCount}: ${savedCount} clients (total: ${totalImported})`)
 
       const nextStartAfter = data.meta?.startAfter ?? null;
       const nextStartAfterId = data.meta?.startAfterId ?? null;
