@@ -783,11 +783,13 @@ serve(async (req) => {
     
     let enhancedData: EnhancedData = {};
     
+    // Declare suburb/state/postcode OUTSIDE try block so they're accessible in reportContent
+    let postcode = detectedPostcode;
+    let state = detectedState || 'NSW';
+    let suburb = detectedSuburb;
+    
     try {
       // Use detected values from earlier, or extract from formatted input
-      let postcode = detectedPostcode;
-      let state = detectedState || 'NSW';
-      let suburb = detectedSuburb;
       
       // If not detected earlier, try to extract from formatted input
       if (!postcode) {
