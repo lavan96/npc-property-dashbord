@@ -195,32 +195,59 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const getSessionToken = () => localStorage.getItem('session_token');
+
   const updateClientMutation = useMutation({
     mutationFn: async () => {
+      const sessionToken = getSessionToken();
+      const updateData = {
+        primary_first_name: formData.primary_first_name,
+        primary_middle_name: formData.primary_middle_name || null,
+        primary_surname: formData.primary_surname,
+        primary_mobile: formData.primary_mobile || null,
+        primary_email: formData.primary_email || null,
+        primary_gender: formData.primary_gender || null,
+        primary_dob: formData.primary_dob || null,
+        secondary_first_name: formData.secondary_first_name || null,
+        secondary_middle_name: formData.secondary_middle_name || null,
+        secondary_surname: formData.secondary_surname || null,
+        secondary_mobile: formData.secondary_mobile || null,
+        secondary_email: formData.secondary_email || null,
+        secondary_gender: formData.secondary_gender || null,
+        secondary_dob: formData.secondary_dob || null,
+        current_address: formData.current_address || null,
+        country: formData.country || null,
+        living_situation: formData.living_situation || null,
+        residential_status: formData.residential_status || null,
+        marital_status: formData.marital_status || null,
+        dependents_count: formData.dependents_count || null,
+      };
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              operation: 'update',
+              table: 'clients',
+              clientId,
+              data: updateData,
+              session_token: sessionToken,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Edge function failed, falling back to direct query:', err);
+        }
+      }
+
+      // Fallback to direct query
       const { error } = await supabase
         .from('clients')
-        .update({
-          primary_first_name: formData.primary_first_name,
-          primary_middle_name: formData.primary_middle_name || null,
-          primary_surname: formData.primary_surname,
-          primary_mobile: formData.primary_mobile || null,
-          primary_email: formData.primary_email || null,
-          primary_gender: formData.primary_gender || null,
-          primary_dob: formData.primary_dob || null,
-          secondary_first_name: formData.secondary_first_name || null,
-          secondary_middle_name: formData.secondary_middle_name || null,
-          secondary_surname: formData.secondary_surname || null,
-          secondary_mobile: formData.secondary_mobile || null,
-          secondary_email: formData.secondary_email || null,
-          secondary_gender: formData.secondary_gender || null,
-          secondary_dob: formData.secondary_dob || null,
-          current_address: formData.current_address || null,
-          country: formData.country || null,
-          living_situation: formData.living_situation || null,
-          residential_status: formData.residential_status || null,
-          marital_status: formData.marital_status || null,
-          dependents_count: formData.dependents_count || null,
-        })
+        .update(updateData)
         .eq('id', clientId);
       
       if (error) throw error;

@@ -742,16 +742,46 @@ export function useReviewWizard(
         setReviewId(result.id);
       }
 
-      // Update client's last review date and next due
+      // Update client's last review date and next due via secure Edge Function
       if (status === 'completed') {
-        await supabase
-          .from('clients')
-          .update({
-            last_review_date: new Date().toISOString(),
-            next_review_due: nextReviewDue.toISOString(),
-            review_frequency: reviewFrequency
-          })
-          .eq('id', clientId);
+        const sessionToken = localStorage.getItem('session_token');
+        const updateData = {
+          last_review_date: new Date().toISOString(),
+          next_review_due: nextReviewDue.toISOString(),
+          review_frequency: reviewFrequency
+        };
+
+        if (sessionToken) {
+          try {
+            const { data: updateResult, error: updateError } = await supabase.functions.invoke('manage-client-data', {
+              body: {
+                operation: 'update',
+                table: 'clients',
+                clientId,
+                data: updateData,
+                session_token: sessionToken,
+              },
+            });
+            
+            if (!updateError && updateResult?.success) {
+              // Success via Edge Function
+            } else {
+              throw new Error('Edge function failed');
+            }
+          } catch {
+            // Fallback to direct query
+            await supabase
+              .from('clients')
+              .update(updateData)
+              .eq('id', clientId);
+          }
+        } else {
+          // Direct query fallback
+          await supabase
+            .from('clients')
+            .update(updateData)
+            .eq('id', clientId);
+        }
       }
 
       toast.success(status === 'completed' ? 'Review completed and saved' : 'Review saved as draft');

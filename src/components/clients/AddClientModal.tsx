@@ -34,28 +34,60 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     current_address: '',
   });
 
+  const getSessionToken = () => localStorage.getItem('session_token');
+
   const createClientMutation = useMutation({
     mutationFn: async () => {
-      // Create client in Supabase
-      const { data: newClient, error } = await supabase
-        .from('clients')
-        .insert({
-          primary_first_name: formData.primary_first_name.trim(),
-          primary_surname: formData.primary_surname.trim(),
-          primary_email: formData.primary_email.trim() || null,
-          primary_mobile: formData.primary_mobile.trim() || null,
-          secondary_first_name: formData.secondary_first_name.trim() || null,
-          secondary_surname: formData.secondary_surname.trim() || null,
-          current_address: formData.current_address.trim() || null,
-          ghl_sync_status: syncToGHL ? 'pending' : null,
-          total_portfolio_value: 0,
-          total_debt: 0,
-          net_monthly_cash_flow: 0,
-        })
-        .select()
-        .single();
+      const sessionToken = getSessionToken();
+      
+      const clientData = {
+        primary_first_name: formData.primary_first_name.trim(),
+        primary_surname: formData.primary_surname.trim(),
+        primary_email: formData.primary_email.trim() || null,
+        primary_mobile: formData.primary_mobile.trim() || null,
+        secondary_first_name: formData.secondary_first_name.trim() || null,
+        secondary_surname: formData.secondary_surname.trim() || null,
+        current_address: formData.current_address.trim() || null,
+        ghl_sync_status: syncToGHL ? 'pending' : null,
+        total_portfolio_value: 0,
+        total_debt: 0,
+        net_monthly_cash_flow: 0,
+      };
 
-      if (error) throw error;
+      let newClient: any = null;
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              operation: 'create',
+              table: 'clients',
+              clientId: '', // Not needed for create
+              data: clientData,
+              session_token: sessionToken,
+            },
+          });
+          
+          if (!error && data?.success) {
+            newClient = data.result;
+          }
+        } catch (err) {
+          console.warn('Edge function failed, falling back to direct query:', err);
+        }
+      }
+      
+      // Fallback to direct query if Edge Function failed
+      if (!newClient) {
+        const { data, error } = await supabase
+          .from('clients')
+          .insert(clientData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        newClient = data;
+      }
 
       // Sync to GHL if enabled
       if (syncToGHL && newClient) {
