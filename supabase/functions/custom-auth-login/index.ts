@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { verifyPassword, isLegacyPassword, hashPassword } from "../_shared/password.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,14 +43,28 @@ serve(async (req) => {
       )
     }
 
-    // Validate password against stored password_hash
-    // Note: Using simple comparison for this custom auth system
-    if (user.password_hash !== password) {
+    // Validate password using bcrypt (with legacy plaintext fallback)
+    const isValid = await verifyPassword(password, user.password_hash);
+    
+    if (!isValid) {
       console.log(`Login failed for user ${username}: incorrect password`);
       return new Response(
         JSON.stringify({ error: 'Invalid username or password' }), 
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // If using legacy plaintext password, upgrade to bcrypt hash
+    if (isLegacyPassword(user.password_hash)) {
+      console.log(`Upgrading password hash for user ${username}`);
+      const hashedPassword = await hashPassword(password);
+      await supabase
+        .from('custom_users')
+        .update({ 
+          password_hash: hashedPassword,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
     }
 
     console.log(`Login successful for user ${username}`);

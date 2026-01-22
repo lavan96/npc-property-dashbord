@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { hashPassword, verifyPassword } from "../_shared/password.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -172,12 +173,15 @@ serve(async (req: Request) => {
       // Create user
       const username = invite.username || invite.email.split('@')[0];
       
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(finalPassword);
+      
       const { data: newUser, error: userError } = await supabase
         .from('custom_users')
         .insert({
           username,
           email: invite.email,
-          password_hash: finalPassword,
+          password_hash: hashedPassword,
           role: 'sub_admin', // All invited users are sub_admins
           is_active: true,
         })
@@ -405,8 +409,9 @@ serve(async (req: Request) => {
           );
         }
 
-        // Verify current password
-        if (currentUser.password_hash !== current_password) {
+        // Verify current password using bcrypt
+        const isValidPassword = await verifyPassword(current_password, currentUser.password_hash);
+        if (!isValidPassword) {
           return new Response(
             JSON.stringify({ success: false, error: 'Current password is incorrect' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -420,7 +425,8 @@ serve(async (req: Request) => {
           );
         }
 
-        updates.password_hash = new_password;
+        // Hash the new password before storing
+        updates.password_hash = await hashPassword(new_password);
       }
 
       // Only proceed if there are actual updates
@@ -1020,13 +1026,16 @@ serve(async (req: Request) => {
         }
       }
 
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(subadmin_data.password);
+      
       // Create user
       const { data: newUser, error: userError } = await supabase
         .from('custom_users')
         .insert({
           username: subadmin_data.username,
           email: subadmin_data.email || null,
-          password_hash: subadmin_data.password, // In production, use bcrypt
+          password_hash: hashedPassword,
           personal_mailbox: subadmin_data.personal_mailbox || null,
           role: 'admin',
           is_active: true,
