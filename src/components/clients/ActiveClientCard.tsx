@@ -31,6 +31,7 @@ import {
   Calendar,
   CheckSquare
 } from 'lucide-react';
+import { formatFullName } from '@/utils/nameFormatting';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -215,7 +216,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
             </Button>
             <div className="min-w-0 flex-1">
               <CardTitle className="text-base truncate">
-                {client.primary_first_name} {client.primary_surname}
+                {formatFullName(client.primary_first_name, client.primary_surname)}
               </CardTitle>
               <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
                 {client.primary_email && (
