@@ -34,6 +34,14 @@ interface EnhancedData {
 // Report section definitions - MUST match generate-investment-report
 const REPORT_SECTIONS = [
   {
+    id: 'section0',
+    name: 'Executive Summary',
+    sections: ['Executive Summary'],
+    maxTokens: 2500,
+    minContentLength: 3000,
+    requiredKeywords: ['investment', 'property', 'recommendation', 'yield', 'growth'],
+  },
+  {
     id: 'section1',
     name: 'Location & Market Overview',
     sections: ['Location Overview', 'Current Market Performance', 'Current Economic Context', 'Demographics & Demand Drivers'],
@@ -52,10 +60,10 @@ const REPORT_SECTIONS = [
   {
     id: 'section3',
     name: 'Property & Financial Analysis',
-    sections: ['Property-Level Information', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
-    maxTokens: 4500,
-    minContentLength: 8000,
-    requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent'],
+    sections: ['Property-Level Information', 'Zoning & Planning Analysis', 'Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation', 'Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
+    maxTokens: 5000,
+    minContentLength: 9000,
+    requiredKeywords: ['purchase', 'stamp duty', 'loan', 'yield', 'cashflow', 'rent', 'zoning'],
   },
   {
     id: 'section4',
@@ -1367,6 +1375,35 @@ YOUR DEDICATED PROPERTY PARTNER
     console.log(`  Total content length: ${combinedContent.length} chars`);
     console.log(`  Total citations: ${allCitations.length}`);
     console.log(`  Sections with errors: ${generationErrors.length}`);
+
+    // ========== POST-PROCESSING SANITIZATION ==========
+    // Fix HTML entities and formatting artifacts
+    combinedContent = combinedContent
+      // Fix common HTML entities
+      .replace(/&#x26;/g, '&')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x22;/g, '"')
+      .replace(/&#x3C;/g, '<')
+      .replace(/&#x3E;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&apos;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      // Fix erroneous semicolons in text
+      .replace(/(\w);(\s)/g, '$1,$2')
+      // Remove stray page numbers appearing as standalone lines
+      .replace(/^\d{1,3}\s*$/gm, '')
+      // Remove pagination artifacts like "Page X of Y"
+      .replace(/^Page\s+\d+\s*(of\s+\d+)?\s*$/gim, '')
+      // Remove empty methodology sections (heading with no content before next heading)
+      .replace(/#{2,3}\s*Methodology\s*Notes?\s*\n+(?=#{1,3}\s|\n*$)/gi, '')
+      // Clean up excessive whitespace left after removals
+      .replace(/\n{4,}/g, '\n\n\n')
+      .replace(/(\n---\s*){2,}/g, '\n---\n')
+      .trim();
+    console.log('✓ Post-processing sanitization complete');
+    // ========== END POST-PROCESSING SANITIZATION ==========
 
     // Build comprehensive sources section with enhanced data attribution
     combinedContent += '\n\n---\n\n## DATA SOURCES & REFERENCES\n\n';
