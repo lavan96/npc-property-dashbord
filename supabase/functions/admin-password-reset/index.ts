@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { hashPassword } from "../_shared/password.ts";
+import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -206,9 +207,11 @@ serve(async (req: Request) => {
         );
       }
 
-      if (new_password.length < 6) {
+      // Validate password strength
+      const validation = validatePasswordStrength(new_password);
+      if (!validation.isValid) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Password must be at least 6 characters' }),
+          JSON.stringify({ success: false, error: validation.error }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

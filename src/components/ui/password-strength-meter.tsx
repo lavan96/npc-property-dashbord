@@ -1,0 +1,34 @@
+import { validatePassword, getStrengthBgColor } from '@/utils/passwordValidation';
+import { cn } from '@/lib/utils';
+
+interface PasswordStrengthMeterProps {
+  password: string;
+  className?: string;
+}
+
+export function PasswordStrengthMeter({ password, className }: PasswordStrengthMeterProps) {
+  if (!password) return null;
+
+  const result = validatePassword(password);
+  const widthPercent = ((result.score + 1) / 5) * 100;
+
+  return (
+    <div className={cn("space-y-1", className)}>
+      <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+        <div 
+          className={cn("h-full transition-all duration-300", getStrengthBgColor(result.strength))}
+          style={{ width: `${widthPercent}%` }}
+        />
+      </div>
+      <p className={cn(
+        "text-xs capitalize",
+        result.strength === 'weak' && "text-red-500",
+        result.strength === 'fair' && "text-yellow-500", 
+        result.strength === 'good' && "text-blue-500",
+        result.strength === 'strong' && "text-green-500"
+      )}>
+        Password strength: {result.strength}
+      </p>
+    </div>
+  );
+}

@@ -9,6 +9,8 @@ import { User, Key, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { validatePassword } from '@/utils/passwordValidation';
+import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 
 export function ProfileCredentials() {
   const { user } = useAuth();
@@ -119,8 +121,10 @@ export function ProfileCredentials() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters');
+    // Validate password strength
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
+      setPasswordError(validation.error || 'Password does not meet requirements');
       return;
     }
 
@@ -277,9 +281,10 @@ export function ProfileCredentials() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password (min 6 characters)"
+              placeholder="Enter new password (min 8 characters)"
               disabled={updatingPassword}
             />
+            <PasswordStrengthMeter password={newPassword} />
           </div>
 
           <div className="space-y-2">

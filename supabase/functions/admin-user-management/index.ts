@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { hashPassword, verifyPassword } from "../_shared/password.ts";
+import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,11 +164,22 @@ serve(async (req: Request) => {
       if (invite.invite_type === 'temp_password' && !password) {
         finalPassword = invite.temporary_password;
       }
-      if (!finalPassword || finalPassword.length < 6) {
+      if (!finalPassword) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Password required (min 6 characters)' }),
+          JSON.stringify({ success: false, error: 'Password is required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+      
+      // Validate password strength (skip for temp passwords as they are system-generated)
+      if (invite.invite_type !== 'temp_password') {
+        const validation = validatePasswordStrength(finalPassword);
+        if (!validation.isValid) {
+          return new Response(
+            JSON.stringify({ success: false, error: validation.error }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Create user
@@ -418,9 +430,11 @@ serve(async (req: Request) => {
           );
         }
 
-        if (new_password.length < 6) {
+        // Validate password strength
+        const validation = validatePasswordStrength(new_password);
+        if (!validation.isValid) {
           return new Response(
-            JSON.stringify({ success: false, error: 'New password must be at least 6 characters' }),
+            JSON.stringify({ success: false, error: validation.error }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -989,9 +1003,11 @@ serve(async (req: Request) => {
         );
       }
 
-      if (subadmin_data.password.length < 6) {
+      // Validate password strength
+      const validation = validatePasswordStrength(subadmin_data.password);
+      if (!validation.isValid) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Password must be at least 6 characters' }),
+          JSON.stringify({ success: false, error: validation.error }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
