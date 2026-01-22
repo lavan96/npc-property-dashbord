@@ -72,7 +72,7 @@ export function ReportGenerationProgress() {
         property_address: report.property_address,
         status: report.status,
         sectionsCompleted,
-        totalSections: 4,
+        totalSections: 12, // Updated to match new granular 12-section architecture
         contentLength: content.length,
         error_message: report.error_message,
         lastUpdated: new Date(report.updated_at)
@@ -83,27 +83,46 @@ export function ReportGenerationProgress() {
   };
 
   const countSections = (content: string): number => {
-    // Count sections by detecting actual section markers in the content
-    // More accurate than length-based heuristics
+    // Count sections by detecting actual section markers matching the new 12-section architecture
     let count = 0;
     
-    // Check for section 1 markers (Location & Market Overview)
-    const hasSection1 = /##?\s*(Location\s*(Overview|&)|Current\s*Market\s*Performance|1\.\s*Location)/i.test(content);
-    if (hasSection1) count++;
+    // Section 0: Executive Summary
+    if (/##?\s*(Executive\s*Summary|Property\s*Investment\s*Report)/i.test(content)) count++;
     
-    // Check for section 2 markers (Amenities & Infrastructure)
-    const hasSection2 = /##?\s*(Amenities|Schools\s*&\s*Education|Transport\s*&|2\.\s*(Amenities|Infrastructure))/i.test(content);
-    if (hasSection2) count++;
+    // Section 1: Location Overview
+    if (/##?\s*(Location\s*Overview|Suburb\s*Profile|Geographic\s*Position)/i.test(content)) count++;
     
-    // Check for section 3 markers (Property & Financial Analysis)
-    const hasSection3 = /##?\s*(Property-Level|Purchase\s*&\s*Ongoing|Financial\s*Analysis|3\.\s*(Property|Financial))/i.test(content);
-    if (hasSection3) count++;
+    // Section 2: Market & Economics
+    if (/##?\s*(Market\s*(&|and)\s*Economics?|Current\s*Market\s*Performance|Property\s*Market)/i.test(content)) count++;
     
-    // Check for section 4 markers (Projections & Recommendations)
-    // Only count if we see BOTH the section header AND substantial content (recommendations, conclusion, etc.)
-    const hasSection4Header = /##?\s*(10-Year\s*Investment|Projections|SWOT\s*Analysis|4\.\s*(Projections|Recommendations))/i.test(content);
-    const hasSection4Conclusion = /##?\s*(Final\s*Conclusion|Investment\s*Recommendations|Data\s*Sources)/i.test(content);
-    if (hasSection4Header && hasSection4Conclusion) count++;
+    // Section 3: Demographics & Demand
+    if (/##?\s*(Demographics?\s*(&|and)\s*Demand|Population\s*Profile|Community\s*Profile)/i.test(content)) count++;
+    
+    // Section 4: Education & Healthcare
+    if (/##?\s*(Education\s*(&|and)\s*Healthcare|Schools?\s*(&|and)\s*Education|Educational\s*Facilities)/i.test(content)) count++;
+    
+    // Section 5: Recreation & Transport
+    if (/##?\s*(Recreation\s*(&|and)\s*Transport|Transport\s*(&|and)\s*Connectivity|Lifestyle\s*(&|and)\s*Amenities)/i.test(content)) count++;
+    
+    // Section 6: Environment & Safety
+    if (/##?\s*(Environment\s*(&|and)\s*Safety|Climate\s*(&|and)\s*Environment|Safety\s*(&|and)\s*Security)/i.test(content)) count++;
+    
+    // Section 7: Property & Zoning
+    if (/##?\s*(Property\s*(&|and)\s*Zoning|Property-Level\s*Analysis|Zoning\s*(&|and)\s*Development)/i.test(content)) count++;
+    
+    // Section 8: Purchase Costs & Rental
+    if (/##?\s*(Purchase\s*Costs?\s*(&|and)\s*Rental|Initial\s*Purchase\s*Costs|Acquisition\s*Costs)/i.test(content)) count++;
+    
+    // Section 9: Loan & Cashflow
+    if (/##?\s*(Loan\s*(&|and)\s*Cashflow|Financing\s*Analysis|Mortgage\s*(&|and)\s*Cash\s*Flow)/i.test(content)) count++;
+    
+    // Section 10: Projections & SWOT
+    if (/##?\s*(Projections?\s*(&|and)\s*SWOT|10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i.test(content)) count++;
+    
+    // Section 11: Risks & Recommendations (final section)
+    const hasRisks = /##?\s*(Risks?\s*(&|and)\s*Recommendations?|Investment\s*Recommendations?|Risk\s*Assessment)/i.test(content);
+    const hasConclusion = /##?\s*(Final\s*Conclusion|Data\s*Sources|Disclaimer)/i.test(content);
+    if (hasRisks && hasConclusion) count++;
     
     return count;
   };
@@ -119,34 +138,40 @@ export function ReportGenerationProgress() {
 
       if (!report) return;
 
-      // Update local state to show resuming
+      // Update local state to show resuming - keep it visible and mark as processing
       setReports(prev => prev.map(r => 
         r.id === reportId 
-          ? { ...r, status: 'processing', error_message: null }
+          ? { ...r, status: 'processing', error_message: null, lastUpdated: new Date() }
           : r
       ));
 
-      // Reset status to pending to trigger regeneration
+      // Reset status to processing (not pending) to show active state
       await supabase
         .from('investment_reports')
         .update({ 
-          status: 'pending',
+          status: 'processing',
           error_message: null,
           updated_at: new Date().toISOString()
         })
         .eq('id', reportId);
 
-      // Invoke the edge function to continue generation
-      const { error } = await supabase.functions.invoke('generate-investment-report', {
+      // Invoke the edge function to continue generation - don't await to keep UI responsive
+      supabase.functions.invoke('generate-investment-report', {
         body: {
           reportId: reportId,
           continueFrom: true  // Signal to continue from existing content
         }
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Error invoking generation:', error);
+          // Update local state to show error
+          setReports(prev => prev.map(r => 
+            r.id === reportId 
+              ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
+              : r
+          ));
+        }
       });
-      
-      if (error) {
-        console.error('Error invoking generation:', error);
-      }
       
     } catch (error) {
       console.error('Error continuing generation:', error);
