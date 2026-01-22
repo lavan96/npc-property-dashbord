@@ -604,6 +604,27 @@ function calculateBorrowingCapacity(params: {
   };
 }
 
+// Session validation helper - validates custom auth tokens
+async function verifySession(supabase: any, sessionToken: string | null | undefined) {
+  if (!sessionToken) {
+    return { error: 'Authentication required', userId: null };
+  }
+  try {
+    const { data: session, error: sessionError } = await supabase
+      .from('user_sessions')
+      .select('user_id, expires_at')
+      .eq('session_token', sessionToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (sessionError || !session) {
+      return { error: 'Invalid or expired session', userId: null };
+    }
+    return { error: null, userId: session.user_id };
+  } catch (err) {
+    return { error: 'Session verification failed', userId: null };
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -615,7 +636,23 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { clientId, overrides, saveResult = true } = await req.json();
+    const body = await req.json();
+    const { clientId, overrides, saveResult = true, session_token } = body;
+
+    // Validate session - currently logs warning but doesn't block for backward compatibility
+    // TODO: Make this mandatory after frontend migration is complete
+    const { error: authError, userId } = await verifySession(supabase, session_token);
+    if (authError) {
+      console.warn(`[calculate-borrowing-capacity] ⚠️ UNAUTHENTICATED REQUEST for client ${clientId}`);
+      // For now, allow the request to proceed but log the security concern
+      // Uncomment the following to enforce authentication:
+      // return new Response(
+      //   JSON.stringify({ success: false, error: authError }),
+      //   { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      // );
+    } else {
+      console.log(`[calculate-borrowing-capacity] Authenticated user: ${userId}`);
+    }
 
     if (!clientId) {
       return new Response(
