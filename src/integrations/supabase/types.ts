@@ -1286,6 +1286,7 @@ export type Database = {
           content: string
           created_at: string
           created_by: string | null
+          ghl_note_id: string | null
           id: string
           note_type: string
           updated_at: string
@@ -1295,6 +1296,7 @@ export type Database = {
           content: string
           created_at?: string
           created_by?: string | null
+          ghl_note_id?: string | null
           id?: string
           note_type?: string
           updated_at?: string
@@ -1304,6 +1306,7 @@ export type Database = {
           content?: string
           created_at?: string
           created_by?: string | null
+          ghl_note_id?: string | null
           id?: string
           note_type?: string
           updated_at?: string
