@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 
 export interface LendingRate {
@@ -43,9 +43,9 @@ interface UseBankLendingRatesOptions {
 }
 
 // Helper to call edge function with query params via POST body
-async function invokeEdgeFunction(action: string, params?: Record<string, string | number | undefined>) {
-  const { data, error } = await supabase.functions.invoke('cdr-lending-rates-service', {
-    body: { action, ...params },
+async function invokeEdgeFunctionSecure(action: string, params?: Record<string, string | number | undefined>) {
+  const { data, error } = await invokeSecureFunction('cdr-lending-rates-service', {
+    action, ...params,
   });
   
   if (error) throw new Error(error.message);
@@ -65,7 +65,7 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   } = useQuery({
     queryKey: ['bank-lenders'],
     queryFn: async () => {
-      const result = await invokeEdgeFunction('lenders');
+      const result = await invokeEdgeFunctionSecure('lenders');
       return result as Lender[];
     },
     staleTime: 24 * 60 * 60 * 1000, // 24 hours
@@ -79,7 +79,7 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   } = useQuery({
     queryKey: ['bank-rates-summary'],
     queryFn: async () => {
-      const result = await invokeEdgeFunction('list');
+      const result = await invokeEdgeFunctionSecure('list');
       return result as LenderSummary[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -87,7 +87,7 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
 
   // Fetch rates for a specific lender
   const fetchLenderRates = useCallback(async (lenderId: string): Promise<LendingRate[]> => {
-    const result = await invokeEdgeFunction('rates', {
+    const result = await invokeEdgeFunctionSecure('rates', {
       lender: lenderId,
       purpose: options?.loanPurpose,
       repayment: options?.repaymentType,
@@ -116,7 +116,7 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   } = useQuery({
     queryKey: ['bank-best-rates', options?.loanPurpose, options?.repaymentType, options?.lvr],
     queryFn: async () => {
-      const result = await invokeEdgeFunction('best-rates', {
+      const result = await invokeEdgeFunctionSecure('best-rates', {
         purpose: options?.loanPurpose,
         repayment: options?.repaymentType,
         lvr: options?.lvr,
@@ -129,7 +129,7 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
   // Refresh all lender caches
   const refreshAllMutation = useMutation({
     mutationFn: async () => {
-      const result = await invokeEdgeFunction('refresh-all');
+      const result = await invokeEdgeFunctionSecure('refresh-all');
       return result;
     },
     onSuccess: () => {

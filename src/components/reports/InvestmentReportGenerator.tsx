@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import type { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -445,12 +446,10 @@ export function InvestmentReportGenerator() {
             : `Statewide Analysis: ${query}`;
 
       // Start generation in background (don't await)
-      supabase.functions.invoke('generate-investment-report', {
-        body: {
-          reportId: pendingReport.id,
-          propertyAddress,
-          propertyDetails
-        }
+      invokeSecureFunction('generate-investment-report', {
+        reportId: pendingReport.id,
+        propertyAddress,
+        propertyDetails
       }).catch(error => {
         console.error('Background generation error:', error);
       });
@@ -523,8 +522,8 @@ export function InvestmentReportGenerator() {
     try {
       console.log('Scraping property URL:', propertyUrl);
       
-      const { data, error } = await supabase.functions.invoke('scrape-property-listing', {
-        body: { url: propertyUrl }
+      const { data, error } = await invokeSecureFunction('scrape-property-listing', {
+        url: propertyUrl
       });
 
       if (error) {
@@ -948,9 +947,9 @@ export function InvestmentReportGenerator() {
         throw new Error('Unsupported file type. Please upload a PDF or image file.');
       }
 
-      const { data, error } = await supabase.functions.invoke('parse-property-pdf', {
-        body: requestBody
-      });
+      const { data, error } = await invokeSecureFunction('parse-property-pdf', 
+        requestBody
+      );
 
       setConversionProgress(null);
 

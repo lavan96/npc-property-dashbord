@@ -7,6 +7,7 @@ import { chartDataService } from '@/services/chartDataService';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
@@ -435,8 +436,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
     console.log('Calling chart generation with payload:', JSON.stringify({ charts }, null, 2));
     
     // Call the chart generation function
-    const { data, error } = await supabase.functions.invoke('generate-charts-python', {
-      body: { charts }
+    const { data, error } = await invokeSecureFunction('generate-charts-python', {
+      charts
     });
 
     if (error) {
@@ -1333,12 +1334,10 @@ export function useReportGenerator() {
                     listingCount: totalListings
                   };
 
-                  const { data, error } = await supabase.functions.invoke('generate-chart-analysis', {
-                    body: {
-                      chartId: chart.id,
-                      chartData: chartDataForAnalysis,
-                      reportContext
-                    }
+                  const { data, error } = await invokeSecureFunction('generate-chart-analysis', {
+                    chartId: chart.id,
+                    chartData: chartDataForAnalysis,
+                    reportContext
                   });
 
                   if (error) {

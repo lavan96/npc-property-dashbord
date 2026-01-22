@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { SwitchConfigModal } from '@/components/automation/SwitchConfigModal';
 import { GenerationLogModal } from '@/components/automation/GenerationLogModal';
@@ -95,8 +96,8 @@ const Automation = () => {
   const runSync = async (dryRun: boolean = false) => {
     setSyncing(true);
     try {
-      const response = await supabase.functions.invoke('auto-report-sync', {
-        body: { maxRecords: 50, dryRun }
+      const response = await invokeSecureFunction('auto-report-sync', {
+        maxRecords: 50, dryRun
       });
       
       if (response.error) throw response.error;

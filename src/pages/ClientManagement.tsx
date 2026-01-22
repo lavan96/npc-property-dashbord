@@ -145,8 +145,8 @@ export default function ClientManagement() {
   const { data: ghlLocationId } = useQuery({
     queryKey: ['ghl-location-id'],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('check-integration-secrets', {
-        body: { integrationId: 'gohighlevel' }
+      const { data, error } = await invokeSecureFunction('check-integration-secrets', {
+        integrationId: 'gohighlevel'
       });
       
       if (error || !data?.configured) {
@@ -177,11 +177,9 @@ export default function ClientManagement() {
       
       setIsAutoSyncing(true);
       try {
-        const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
-          body: {
-            clearExisting: false,
-            maxPages: 5, // Lighter sync for background updates
-          },
+        const { data, error } = await invokeSecureFunction('import-clients-from-ghl', {
+          clearExisting: false,
+          maxPages: 5, // Lighter sync for background updates
         });
 
         if (!error && data?.success) {
@@ -227,13 +225,11 @@ export default function ClientManagement() {
 
       // Loop to fetch all batches automatically
       do {
-        const { data, error } = await supabase.functions.invoke('import-clients-from-ghl', {
-          body: {
-            clearExisting: isFirstBatch ? clearExisting : false,
-            resumeFromId: nextResumeId,
-            resumeFrom: nextResume,
-            maxPages: 10, // Process 10 pages (1000 contacts) per batch to avoid timeouts
-          },
+        const { data, error } = await invokeSecureFunction('import-clients-from-ghl', {
+          clearExisting: isFirstBatch ? clearExisting : false,
+          resumeFromId: nextResumeId,
+          resumeFrom: nextResume,
+          maxPages: 10, // Process 10 pages (1000 contacts) per batch to avoid timeouts
         });
 
         if (error) throw error;
@@ -396,8 +392,8 @@ export default function ClientManagement() {
 
     for (const client of pendingClients) {
       try {
-        const { data, error } = await supabase.functions.invoke('sync-client-to-ghl', {
-          body: { clientId: client.id }
+        const { data, error } = await invokeSecureFunction('sync-client-to-ghl', {
+          clientId: client.id
         });
         if (error || !data?.success) {
           errorCount++;

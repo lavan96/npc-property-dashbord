@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -160,16 +161,14 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
           description: 'Extracting text and generating embeddings for RAG',
         });
 
-        const { data: parseResult, error: parseError } = await supabase.functions.invoke(
+        const { data: parseResult, error: parseError } = await invokeSecureFunction(
           'parse-template-document',
           {
-            body: {
-              templateId: template.id,
-              filePath,
-              templateType,
-              reportTier: reportTier || undefined,
-              reportCategory: reportCategory || undefined,
-            },
+            templateId: template.id,
+            filePath,
+            templateType,
+            reportTier: reportTier || undefined,
+            reportCategory: reportCategory || undefined,
           }
         );
 

@@ -1,6 +1,6 @@
 import { PixelPerfectPDFGenerator } from './PixelPerfectPDFGenerator';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 
 interface ComparisonData {
@@ -37,8 +37,8 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
       setIsFormatting(true);
       console.log('Calling format-comparison-report edge function...');
 
-      const { data, error } = await supabase.functions.invoke('format-comparison-report', {
-        body: { comparisonData: comparison }
+      const { data, error } = await invokeSecureFunction('format-comparison-report', {
+        comparisonData: comparison
       });
 
       if (error) {

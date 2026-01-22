@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Settings2, 
@@ -159,7 +160,7 @@ export default function Integrations() {
   const checkSupabaseSecrets = async () => {
     setLoadingSecrets(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-integration-secrets');
+      const { data, error } = await invokeSecureFunction('check-integration-secrets', {});
       
       if (error) {
         console.error('Error checking Supabase secrets:', error);

@@ -164,43 +164,43 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
       });
       if (!fnError && data?.success) {
         // Sync to GHL (non-blocking)
-        supabase.functions.invoke('sync-notes-to-ghl', {
-          body: {
-            action: 'create',
-            clientId: client.id,
-            noteId: data.result?.id,
-            noteContent: newNoteContent.trim(),
-            noteType: newNoteType
-          }
+        invokeSecureFunction('sync-notes-to-ghl', {
+          action: 'create',
+          clientId: client.id,
+          noteId: data.result?.id,
+          noteContent: newNoteContent.trim(),
+          noteType: newNoteType
         }).catch(err => console.error('GHL note sync failed:', err));
         return data.result;
       }
-      console.warn('Secure create failed, falling back to direct query');
-
-      // Fallback: First insert locally
-      const { data: newNote, error } = await supabase
-        .from('client_notes')
-        .insert({
+      console.warn('Secure create failed, falling back to Edge Function');
+      
+      // Fallback still uses secure function
+      const fallbackResult = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_notes',
+        clientId: client.id,
+        data: {
           client_id: client.id,
           note_type: newNoteType,
           content: newNoteContent.trim()
-        })
-        .select()
-        .single();
-      if (error) throw error;
+        },
+      });
+      
+      if (fallbackResult.error || !fallbackResult.data?.success) {
+        throw new Error(fallbackResult.error?.message || 'Failed to create note');
+      }
 
       // Then sync to GHL (non-blocking)
-      supabase.functions.invoke('sync-notes-to-ghl', {
-        body: {
-          action: 'create',
-          clientId: client.id,
-          noteId: newNote.id,
-          noteContent: newNoteContent.trim(),
-          noteType: newNoteType
-        }
+      invokeSecureFunction('sync-notes-to-ghl', {
+        action: 'create',
+        clientId: client.id,
+        noteId: fallbackResult.data.result?.id,
+        noteContent: newNoteContent.trim(),
+        noteType: newNoteType
       }).catch(err => console.error('GHL note sync failed:', err));
 
-      return newNote;
+      return fallbackResult.data.result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
@@ -227,36 +227,16 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
       });
       if (!fnError && data?.success) {
         // Sync update to GHL
-        supabase.functions.invoke('sync-notes-to-ghl', {
-          body: {
-            action: 'update',
-            clientId: client.id,
-            noteId,
-            noteContent: `[UPDATED] ${editNoteContent.trim()}`,
-            noteType: 'general'
-          }
-        }).catch(err => console.error('GHL note sync failed:', err));
-        return;
-      }
-      console.warn('Secure update failed, falling back to direct query');
-
-      // Fallback to direct query
-      const { error } = await supabase
-        .from('client_notes')
-        .update({ content: editNoteContent.trim() })
-        .eq('id', noteId);
-      if (error) throw error;
-
-      // Sync update to GHL (creates new note since GHL doesn't support updates)
-      supabase.functions.invoke('sync-notes-to-ghl', {
-        body: {
+        invokeSecureFunction('sync-notes-to-ghl', {
           action: 'update',
           clientId: client.id,
           noteId,
           noteContent: `[UPDATED] ${editNoteContent.trim()}`,
           noteType: 'general'
-        }
-      }).catch(err => console.error('GHL note sync failed:', err));
+        }).catch(err => console.error('GHL note sync failed:', err));
+        return;
+      }
+      throw new Error(fnError?.message || 'Failed to update note');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
@@ -273,12 +253,10 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
       // Sync delete to GHL first (best effort)
-      await supabase.functions.invoke('sync-notes-to-ghl', {
-        body: {
-          action: 'delete',
-          clientId: client.id,
-          noteId
-        }
+      await invokeSecureFunction('sync-notes-to-ghl', {
+        action: 'delete',
+        clientId: client.id,
+        noteId
       }).catch(err => console.error('GHL note delete sync failed:', err));
 
       // Use secure Edge Function with HttpOnly cookie auth
@@ -289,14 +267,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
         recordId: noteId,
       });
       if (!fnError && data?.success) return;
-      console.warn('Secure delete failed, falling back to direct query');
-
-      // Fallback to direct query
-      const { error } = await supabase
-        .from('client_notes')
-        .delete()
-        .eq('id', noteId);
-      if (error) throw error;
+      throw new Error(fnError?.message || 'Failed to delete note');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });

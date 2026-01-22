@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -134,12 +135,10 @@ export default function ReportViewer() {
                   listingCount: 73
                 };
 
-                const { data: generatedAnalysis, error: generateError } = await supabase.functions.invoke('generate-chart-analysis', {
-                  body: {
-                    chartId: chart.id,
-                    chartData: chartDataForAnalysis,
-                    reportContext
-                  }
+                const { data: generatedAnalysis, error: generateError } = await invokeSecureFunction('generate-chart-analysis', {
+                  chartId: chart.id,
+                  chartData: chartDataForAnalysis,
+                  reportContext
                 });
 
                 if (!generateError && generatedAnalysis?.analysisText) {
