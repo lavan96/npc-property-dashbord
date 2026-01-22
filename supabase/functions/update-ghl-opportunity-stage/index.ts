@@ -8,6 +8,51 @@ const corsHeaders = {
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
+// Helper: search for an opportunity by contact ID and return the first match
+async function findOpportunityByContact(
+  contactId: string,
+  locationId: string,
+  headers: Record<string, string>
+): Promise<{ id: string; pipelineId: string; pipelineStageId: string } | null> {
+  try {
+    const searchUrl = `${GHL_API_BASE}/opportunities/search`;
+    const searchBody = {
+      locationId,
+      contactId,
+      limit: 10,
+    };
+
+    const res = await fetch(searchUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(searchBody),
+    });
+
+    if (!res.ok) {
+      console.error('Opportunity search failed:', await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    const opportunities = data.opportunities || [];
+
+    if (opportunities.length === 0) {
+      return null;
+    }
+
+    // Return the first opportunity (could enhance to pick best one)
+    const opp = opportunities[0];
+    return {
+      id: opp.id,
+      pipelineId: opp.pipelineId,
+      pipelineStageId: opp.pipelineStageId,
+    };
+  } catch (err) {
+    console.error('Error searching for opportunity:', err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -44,7 +89,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
-    const { clientId, newStageId, newPipelineId } = body;
+    const { clientId, newStageId } = body;
 
     if (!clientId || !newStageId) {
       return new Response(JSON.stringify({
@@ -76,10 +121,10 @@ serve(async (req) => {
       });
     }
 
-    if (!client.ghl_opportunity_id) {
-      console.log('No GHL opportunity linked to this client');
+    if (!client.ghl_contact_id) {
+      console.log('No GHL contact linked to this client');
       return new Response(JSON.stringify({
-        error: 'No GHL opportunity linked to this client',
+        error: 'No GHL contact linked to this client',
         success: false
       }), {
         status: 400,
@@ -125,9 +170,34 @@ serve(async (req) => {
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,
-      'Version': '2021-04-15',
+      'Version': '2021-07-28',
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
+
+    // Determine which opportunity ID to use
+    let opportunityId = client.ghl_opportunity_id;
+    let opportunityWasRepaired = false;
+
+    // If no opportunity ID stored, attempt to find one
+    if (!opportunityId) {
+      console.log('No ghl_opportunity_id stored; searching for opportunity by contact...');
+      const found = await findOpportunityByContact(client.ghl_contact_id, locationId, headers);
+      if (found) {
+        opportunityId = found.id;
+        opportunityWasRepaired = true;
+        console.log(`Found opportunity ${opportunityId} for contact ${client.ghl_contact_id}`);
+      } else {
+        console.log('No opportunity found for contact');
+        return new Response(JSON.stringify({
+          error: 'No GHL opportunity linked to this client',
+          success: false
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // Update the opportunity in GHL
     const updatePayload = {
@@ -135,10 +205,10 @@ serve(async (req) => {
       pipelineStageId: stage.ghl_id,
     };
 
-    console.log(`Updating GHL opportunity ${client.ghl_opportunity_id} with:`, updatePayload);
+    console.log(`Updating GHL opportunity ${opportunityId} with:`, updatePayload);
 
-    const ghlResponse = await fetch(
-      `${GHL_API_BASE}/opportunities/${client.ghl_opportunity_id}`,
+    let ghlResponse = await fetch(
+      `${GHL_API_BASE}/opportunities/${opportunityId}`,
       {
         method: 'PUT',
         headers,
@@ -146,46 +216,99 @@ serve(async (req) => {
       }
     );
 
+    // If opportunity not found (400/404), try to repair by searching for a valid one
     if (!ghlResponse.ok) {
       const errorText = await ghlResponse.text();
-      console.error('GHL update error:', errorText);
-      return new Response(JSON.stringify({
-        error: `GHL update failed: ${errorText}`,
-        success: false
-      }), {
-        status: ghlResponse.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const isNotFound = errorText.includes("doesn't exist") || errorText.includes('not found') || ghlResponse.status === 404;
+
+      if (isNotFound && !opportunityWasRepaired) {
+        console.log('Opportunity not found in GHL; attempting repair by searching for contact...');
+        const found = await findOpportunityByContact(client.ghl_contact_id, locationId, headers);
+
+        if (found) {
+          opportunityId = found.id;
+          opportunityWasRepaired = true;
+          console.log(`Repaired: found opportunity ${opportunityId} for contact ${client.ghl_contact_id}`);
+
+          // Retry the update
+          ghlResponse = await fetch(
+            `${GHL_API_BASE}/opportunities/${opportunityId}`,
+            {
+              method: 'PUT',
+              headers,
+              body: JSON.stringify(updatePayload),
+            }
+          );
+
+          if (!ghlResponse.ok) {
+            const retryError = await ghlResponse.text();
+            console.error('GHL update error after repair:', retryError);
+            return new Response(JSON.stringify({
+              error: `GHL update failed after repair: ${retryError}`,
+              success: false
+            }), {
+              status: ghlResponse.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          console.log('No opportunity found for contact during repair');
+          return new Response(JSON.stringify({
+            error: 'No GHL opportunity found for this contact',
+            success: false
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        console.error('GHL update error:', errorText);
+        return new Response(JSON.stringify({
+          error: `GHL update failed: ${errorText}`,
+          success: false
+        }), {
+          status: ghlResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const ghlData = await ghlResponse.json();
     console.log('GHL update response:', ghlData);
 
-    // Update local client record
+    // Update local client record (including repaired opportunity ID if applicable)
+    const updateFields: Record<string, any> = {
+      current_stage_id: newStageId,
+      current_pipeline_id: stage.pipeline_id,
+      pipeline_status: stage.name,
+      pipeline_updated_at: new Date().toISOString(),
+      ghl_last_synced_at: new Date().toISOString(),
+      ghl_sync_status: 'synced',
+    };
+
+    // If we repaired/found the opportunity, persist the new ID
+    if (opportunityWasRepaired && opportunityId) {
+      updateFields.ghl_opportunity_id = opportunityId;
+    }
+
     const { error: updateError } = await supabase
       .from('clients')
-      .update({
-        current_stage_id: newStageId,
-        current_pipeline_id: stage.pipeline_id,
-        pipeline_status: stage.name,
-        pipeline_updated_at: new Date().toISOString(),
-        ghl_last_synced_at: new Date().toISOString(),
-        ghl_sync_status: 'synced'
-      })
+      .update(updateFields)
       .eq('id', clientId);
 
     if (updateError) {
       console.error('Failed to update local client:', updateError);
     }
 
-    console.log(`Successfully moved opportunity to stage: ${stage.name}`);
+    console.log(`Successfully moved opportunity to stage: ${stage.name}${opportunityWasRepaired ? ' (opportunity ID was repaired)' : ''}`);
 
     return new Response(JSON.stringify({
       success: true,
       message: `Moved to ${stage.name}`,
-      ghlOpportunityId: client.ghl_opportunity_id,
+      ghlOpportunityId: opportunityId,
       newStage: stage.name,
-      newPipeline: pipeline.name
+      newPipeline: pipeline.name,
+      repaired: opportunityWasRepaired,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
