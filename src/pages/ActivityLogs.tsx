@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { useSecureActivityLogs, ActivityLog } from '@/hooks/useSecureActivityLogs';
 import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 import { 
   Activity, 
   Search, 
@@ -29,19 +30,7 @@ import {
   X
 } from 'lucide-react';
 
-interface ActivityLog {
-  id: string;
-  user_id: string | null;
-  username: string | null;
-  action_type: string;
-  entity_type: string;
-  entity_id: string | null;
-  entity_name: string | null;
-  metadata: Record<string, unknown> | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-}
+// ActivityLog interface is now imported from useSecureActivityLogs
 
 const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   // Auth
@@ -131,51 +120,34 @@ const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
 
 export default function ActivityLogs() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [uniqueUsers, setUniqueUsers] = useState<string[]>([]);
+  
+  const { fetchLogs: secureFetchLogs, loading } = useSecureActivityLogs();
 
-  const fetchLogs = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
+  const loadLogs = async () => {
+    const result = await secureFetchLogs({
+      actionFilter: actionFilter !== 'all' ? actionFilter : undefined,
+      entityFilter: entityFilter !== 'all' ? entityFilter : undefined,
+      userFilter: userFilter !== 'all' ? userFilter : undefined,
+      limit: 500
+    });
 
-      if (actionFilter !== 'all') {
-        query = query.eq('action_type', actionFilter as any);
-      }
-      if (entityFilter !== 'all') {
-        query = query.eq('entity_type', entityFilter as any);
-      }
-      if (userFilter !== 'all') {
-        query = query.eq('username', userFilter);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const typedLogs = (data || []) as unknown as ActivityLog[];
-      setLogs(typedLogs);
-
-      // Extract unique usernames for filter
-      const users = [...new Set(typedLogs.map(l => l.username).filter(Boolean))] as string[];
-      setUniqueUsers(users);
-    } catch (error) {
-      console.error('Error fetching activity logs:', error);
-    } finally {
-      setLoading(false);
+    if (result.error) {
+      toast.error(result.error);
+      setLogs([]);
+      setUniqueUsers([]);
+    } else {
+      setLogs(result.logs);
+      setUniqueUsers(result.uniqueUsers);
     }
   };
 
   useEffect(() => {
-    fetchLogs();
+    loadLogs();
   }, [actionFilter, entityFilter, userFilter]);
 
   const filteredLogs = logs.filter(log => {
@@ -247,7 +219,7 @@ export default function ActivityLogs() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchLogs}>
+          <Button variant="outline" size="sm" onClick={loadLogs}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
