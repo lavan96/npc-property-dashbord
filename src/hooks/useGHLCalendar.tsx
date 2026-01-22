@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
@@ -151,8 +151,8 @@ export function useGHLCalendar() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke<CalendarData>('ghl-calendar', {
-        body: { action: 'all', startTime, endTime, calendarId },
+      const { data, error: fetchError } = await invokeSecureFunction<CalendarData>('ghl-calendar', {
+        action: 'all', startTime, endTime, calendarId,
       });
 
       if (fetchError) {
@@ -211,8 +211,8 @@ export function useGHLCalendar() {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'events', startTime, endTime, calendarId },
+      const { data, error: fetchError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'events', startTime, endTime, calendarId,
       });
 
       if (fetchError) {
@@ -235,8 +235,8 @@ export function useGHLCalendar() {
 
   const fetchCalendarGroups = useCallback(async () => {
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'groups' },
+      const { data, error: fetchError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'groups',
       });
 
       if (fetchError) {
@@ -263,13 +263,11 @@ export function useGHLCalendar() {
     setIsUpdating(true);
 
     try {
-      const { data, error: updateError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { 
-          action: 'update',
-          eventId,
-          newStartTime,
-          newEndTime,
-        },
+      const { data, error: updateError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'update',
+        eventId,
+        newStartTime,
+        newEndTime,
       });
 
       if (updateError) {
@@ -297,13 +295,11 @@ export function useGHLCalendar() {
         // Return undo function if original times were provided
         const undoFn = originalStartTime && originalEndTime
           ? async () => {
-              const { data: undoData, error: undoError } = await supabase.functions.invoke('ghl-calendar', {
-                body: { 
-                  action: 'update',
-                  eventId,
-                  newStartTime: originalStartTime,
-                  newEndTime: originalEndTime,
-                },
+              const { data: undoData, error: undoError } = await invokeSecureFunction('ghl-calendar', {
+                action: 'update',
+                eventId,
+                newStartTime: originalStartTime,
+                newEndTime: originalEndTime,
               });
               
               if (undoError || !undoData?.success) {
@@ -354,8 +350,8 @@ export function useGHLCalendar() {
     setIsUpdating(true);
 
     try {
-      const { data, error: updateError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'update', eventId, ...updates },
+      const { data, error: updateError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'update', eventId, ...updates,
       });
 
       if (updateError) {
@@ -394,8 +390,8 @@ export function useGHLCalendar() {
     setIsUpdating(true);
 
     try {
-      const { data, error: deleteError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'delete', eventId },
+      const { data, error: deleteError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'delete', eventId,
       });
 
       if (deleteError) {
@@ -444,8 +440,8 @@ export function useGHLCalendar() {
     }
 
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'contact', contactId },
+      const { data, error: fetchError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'contact', contactId,
       });
 
       if (fetchError) {
@@ -475,8 +471,8 @@ export function useGHLCalendar() {
 
   const searchContacts = useCallback(async (query: string, limit = 10): Promise<GHLContact[]> => {
     try {
-      const { data, error: searchError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'searchContacts', query, limit },
+      const { data, error: searchError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'searchContacts', query, limit,
       });
 
       if (searchError) {
@@ -509,8 +505,8 @@ export function useGHLCalendar() {
     setIsUpdating(true);
 
     try {
-      const { data, error: blockError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'blockSlot', ...payload },
+      const { data, error: blockError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'blockSlot', ...payload,
       });
 
       if (blockError) {
@@ -546,8 +542,8 @@ export function useGHLCalendar() {
     timezone = 'Australia/Sydney'
   ): Promise<GHLFreeSlot[]> => {
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'freeSlots', calendarId, startDate, endDate, timezone },
+      const { data, error: fetchError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'freeSlots', calendarId, startDate, endDate, timezone,
       });
 
       if (fetchError) {
@@ -577,8 +573,8 @@ export function useGHLCalendar() {
     setIsUpdating(true);
 
     try {
-      const { data, error: createError } = await supabase.functions.invoke('ghl-calendar', {
-        body: { action: 'create', ...payload },
+      const { data, error: createError } = await invokeSecureFunction('ghl-calendar', {
+        action: 'create', ...payload,
       });
 
       if (createError) {

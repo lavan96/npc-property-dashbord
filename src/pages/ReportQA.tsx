@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { QAPDFGenerator } from '@/components/reports/QAPDFGenerator';
 import ReactMarkdown from 'react-markdown';
@@ -268,8 +269,8 @@ export default function ReportQA() {
 
   const loadSavedConversations = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: { action: 'get-conversations' },
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'get-conversations',
       });
       if (error) throw error;
       setSavedConversations(data.conversations || []);
@@ -376,12 +377,10 @@ export default function ReportQA() {
         updateProgress(50, 'processing');
         const base64 = e.target?.result as string;
         
-        const { data, error } = await supabase.functions.invoke('report-qa', {
-          body: {
-            action: 'extract',
-            fileData: base64,
-            fileName: file.name,
-          },
+        const { data, error } = await invokeSecureFunction('report-qa', {
+          action: 'extract',
+          fileData: base64,
+          fileName: file.name,
         });
 
         if (error) throw error;
@@ -459,13 +458,11 @@ export default function ReportQA() {
           ? `Q&A: ${uploadedReports[0].name}`
           : `Open Chat: ${new Date().toLocaleDateString()}`;
 
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          action: 'create-conversation',
-          reportNames: uploadedReports.map(r => r.name),
-          reportContents: uploadedReports.map(r => r.content),
-          title,
-        },
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'create-conversation',
+        reportNames: uploadedReports.map(r => r.name),
+        reportContents: uploadedReports.map(r => r.content),
+        title,
       });
 
       if (error) throw error;
@@ -498,8 +495,8 @@ export default function ReportQA() {
 
   const loadConversation = async (conv: SavedConversation) => {
     try {
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: { action: 'load-conversation', conversationId: conv.id },
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'load-conversation', conversationId: conv.id,
       });
 
       if (error) throw error;
@@ -785,15 +782,13 @@ export default function ReportQA() {
         .map(e => e.trim())
         .filter(e => e.length > 0);
 
-      const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: emailTo.trim(),
-          subject: emailSubject,
-          body: emailContent,
-          cc: ccEmails.length > 0 ? ccEmails : undefined,
-          bcc: bccEmails.length > 0 ? bccEmails : undefined,
-          senderMailbox: selectedSenderMailbox,
-        },
+      const { data, error } = await invokeSecureFunction('send-email-reply', {
+        to: emailTo.trim(),
+        subject: emailSubject,
+        body: emailContent,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        bcc: bccEmails.length > 0 ? bccEmails : undefined,
+        senderMailbox: selectedSenderMailbox,
       });
 
       if (error) throw error;
@@ -888,8 +883,8 @@ export default function ReportQA() {
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                   const base64 = (reader.result as string).split(',')[1];
-                  const { data } = await supabase.functions.invoke('report-qa', {
-                    body: { action: 'transcribe', audio: base64 },
+                  const { data } = await invokeSecureFunction('report-qa', {
+                    action: 'transcribe', audio: base64,
                   });
                   if (data?.success && data?.text) {
                     setLiveTranscript(data.text);
@@ -1025,11 +1020,9 @@ export default function ReportQA() {
       reader.readAsDataURL(audioBlob);
       const base64Audio = await base64Promise;
       
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          action: 'transcribe',
-          audio: base64Audio,
-        },
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'transcribe',
+        audio: base64Audio,
       });
 
       if (error) throw error;
@@ -1179,18 +1172,16 @@ export default function ReportQA() {
 
     setIsGeneratingPDF(true);
     try {
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          action: 'generate-qa-pdf',
-          conversationId,
-          messages: messages.map(m => ({
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp.toISOString(),
-          })),
-          reportNames: uploadedReports.map(r => r.name.replace('.pdf', '')),
-          title: getCurrentTitle(),
-        },
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'generate-qa-pdf',
+        conversationId,
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp.toISOString(),
+        })),
+        reportNames: uploadedReports.map(r => r.name.replace('.pdf', '')),
+        title: getCurrentTitle(),
       });
 
       if (error) throw error;
