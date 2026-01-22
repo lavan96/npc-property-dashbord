@@ -25,6 +25,56 @@ serve(async (req) => {
   }
 
   try {
+    let body: { integrationId?: string } = {};
+    try {
+      body = await req.json();
+    } catch {
+      // No body provided, return all integrations
+    }
+
+    // If specific integration requested, return just that one with extra info
+    if (body.integrationId) {
+      const integrationId = body.integrationId;
+      const secretNames = integrationSecretMap[integrationId];
+      
+      if (!secretNames) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unknown integration' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const configuredSecrets: string[] = [];
+      const missingSecrets: string[] = [];
+
+      for (const secretName of secretNames) {
+        const value = Deno.env.get(secretName);
+        if (value && value.trim() !== '') {
+          configuredSecrets.push(secretName);
+        } else {
+          missingSecrets.push(secretName);
+        }
+      }
+
+      const response: Record<string, unknown> = {
+        success: true,
+        configured: configuredSecrets.length === secretNames.length,
+        configuredSecrets,
+        missingSecrets,
+      };
+
+      // For GHL, also return the location ID (non-sensitive, needed for building URLs)
+      if (integrationId === 'gohighlevel') {
+        response.locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID') || null;
+      }
+
+      return new Response(
+        JSON.stringify(response),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Default: return all integrations status
     const results: Record<string, { configured: boolean; configuredSecrets: string[]; missingSecrets: string[] }> = {};
 
     for (const [integrationId, secretNames] of Object.entries(integrationSecretMap)) {
