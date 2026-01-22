@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -195,11 +196,8 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const getSessionToken = () => localStorage.getItem('session_token');
-
   const updateClientMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = getSessionToken();
       const updateData = {
         primary_first_name: formData.primary_first_name,
         primary_middle_name: formData.primary_middle_name || null,
@@ -223,25 +221,20 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
         dependents_count: formData.dependents_count || null,
       };
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              operation: 'update',
-              table: 'clients',
-              clientId,
-              data: updateData,
-              session_token: sessionToken,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return;
-          }
-        } catch (err) {
-          console.warn('Edge function failed, falling back to direct query:', err);
+      // Use secure Edge Function with HttpOnly cookie auth
+      try {
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'clients',
+          clientId,
+          data: updateData,
+        });
+        
+        if (!error && data?.success) {
+          return;
         }
+      } catch (err) {
+        console.warn('Edge function failed, falling back to direct query:', err);
       }
 
       // Fallback to direct query

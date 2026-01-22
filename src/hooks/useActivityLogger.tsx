@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 // Action types matching the database enum
 export type ActivityActionType =
@@ -99,11 +99,10 @@ interface UseActivityLoggerReturn {
   logActivity: (params: LogActivityParams) => Promise<void>;
 }
 
-// Get user info from localStorage session token by decoding or fetching user data
-// This needs to work with the custom auth system that stores session_token in localStorage
+// Get user info from sessionStorage (set by auth context)
 const getCurrentUser = (): { userId: string; username: string } | null => {
   try {
-    // First, check sessionStorage for cached user data (set by auth context)
+    // Check sessionStorage for cached user data (set by auth context)
     const cachedUser = sessionStorage.getItem('current_user');
     if (cachedUser) {
       const user = JSON.parse(cachedUser);
@@ -113,16 +112,6 @@ const getCurrentUser = (): { userId: string; username: string } | null => {
           username: user.username
         };
       }
-    }
-    
-    // Fallback: check localStorage for dashboard_session (legacy)
-    const sessionData = localStorage.getItem('dashboard_session');
-    if (sessionData) {
-      const session = JSON.parse(sessionData);
-      return {
-        userId: session.user?.id || session.userId,
-        username: session.user?.username || session.username || 'Unknown'
-      };
     }
     
     return null;
@@ -139,16 +128,14 @@ export function useActivityLogger(): UseActivityLoggerReturn {
       const user = getCurrentUser();
       
       // Log via edge function for better security and IP tracking
-      const { error } = await supabase.functions.invoke('log-activity', {
-        body: {
-          user_id: user?.userId || null,
-          username: user?.username || 'Unknown',
-          action_type: actionType,
-          entity_type: entityType,
-          entity_id: entityId,
-          entity_name: entityName,
-          metadata: metadata || {}
-        }
+      const { error } = await invokeSecureFunction('log-activity', {
+        user_id: user?.userId || null,
+        username: user?.username || 'Unknown',
+        action_type: actionType,
+        entity_type: entityType,
+        entity_id: entityId,
+        entity_name: entityName,
+        metadata: metadata || {}
       });
 
       if (error) {
@@ -189,16 +176,14 @@ export async function logActivity(params: DirectLogParams): Promise<void> {
       finalUsername = finalUsername || user?.username || 'Unknown';
     }
     
-    const { error } = await supabase.functions.invoke('log-activity', {
-      body: {
-        user_id: finalUserId || null,
-        username: finalUsername || 'Unknown',
-        action_type: actionType,
-        entity_type: entityType,
-        entity_id: entityId,
-        entity_name: entityName,
-        metadata: metadata || {}
-      }
+    const { error } = await invokeSecureFunction('log-activity', {
+      user_id: finalUserId || null,
+      username: finalUsername || 'Unknown',
+      action_type: actionType,
+      entity_type: entityType,
+      entity_id: entityId,
+      entity_name: entityName,
+      metadata: metadata || {}
     });
 
     if (error) {

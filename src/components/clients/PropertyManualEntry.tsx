@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -221,21 +222,15 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
       };
 
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-          body: {
-            session_token: sessionToken,
-            operation: 'create',
-            table: 'client_properties',
-            clientId,
-            data: insertData,
-          },
-        });
-        if (!fnError && data?.success) return;
-        console.warn('Secure create failed, falling back to direct query');
-      }
+      // Use secure Edge Function with HttpOnly cookie auth
+      const { data, error: fnError } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_properties',
+        clientId,
+        data: insertData,
+      });
+      if (!fnError && data?.success) return;
+      console.warn('Secure create failed, falling back to direct query');
 
       // Fallback to direct query
       const { error } = await supabase.from('client_properties').insert(insertData);

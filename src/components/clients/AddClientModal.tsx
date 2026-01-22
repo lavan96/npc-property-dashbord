@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -34,12 +35,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     current_address: '',
   });
 
-  const getSessionToken = () => localStorage.getItem('session_token');
-
   const createClientMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = getSessionToken();
-      
       const clientData = {
         primary_first_name: formData.primary_first_name.trim(),
         primary_surname: formData.primary_surname.trim(),
@@ -56,25 +53,20 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
       let newClient: any = null;
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              operation: 'create',
-              table: 'clients',
-              clientId: '', // Not needed for create
-              data: clientData,
-              session_token: sessionToken,
-            },
-          });
-          
-          if (!error && data?.success) {
-            newClient = data.result;
-          }
-        } catch (err) {
-          console.warn('Edge function failed, falling back to direct query:', err);
+      // Use secure Edge Function with HttpOnly cookie auth
+      try {
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'clients',
+          clientId: '',
+          data: clientData,
+        });
+        
+        if (!error && data?.success) {
+          newClient = data.result;
         }
+      } catch (err) {
+        console.warn('Edge function failed, falling back to direct query:', err);
       }
       
       // Fallback to direct query if Edge Function failed
