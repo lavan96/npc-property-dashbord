@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { parseExcelToClients, type ParsedClient, type ParsedProperty } from '@/utils/excelClientParser';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface ClientVownetUploadProps {
   clientId: string;
@@ -273,19 +274,19 @@ export function ClientVownetUpload({
         setProgress((processed / selectedItems.length) * 100);
       }
 
-      // Store the Vownet form in storage
+      // Store the Vownet form in secure storage
       if (uploadedFile) {
         const filePath = `${clientId}/${Date.now()}_${uploadedFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('client-documents')
-          .upload(filePath, uploadedFile);
+        const uploadResult = await secureStorageUpload('client-documents', filePath, uploadedFile, {
+          contentType: uploadedFile.type
+        });
 
-        if (!uploadError) {
+        if (uploadResult.success) {
           // Record in client_files table
           await supabase.from('client_files').insert({
             client_id: clientId,
             file_name: uploadedFile.name,
-            file_path: filePath,
+            file_path: uploadResult.path || filePath,
             file_size: uploadedFile.size,
             file_type: uploadedFile.type,
             category: 'vownet',

@@ -36,6 +36,7 @@ import { FileText, Trash2, RefreshCw, Download, Eye, Loader2, FileCode, CheckCir
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { secureStorageDownload } from '@/hooks/useSecureStorage';
 
 interface Template {
   id: string;
@@ -204,16 +205,16 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     }
   };
 
-  // Download template
+  // Download template via secure storage
   const handleDownload = async (template: Template) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('report-templates')
-        .download(template.file_path);
+      const result = await secureStorageDownload('report-templates', template.file_path);
 
-      if (error) throw error;
+      if (!result.success || !result.blob) {
+        throw new Error(result.error || 'Download failed');
+      }
 
-      const url = URL.createObjectURL(data);
+      const url = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = template.file_name;

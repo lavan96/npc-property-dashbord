@@ -28,6 +28,7 @@ import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 
 interface ClientFilesProps {
   clientId: string;
@@ -112,19 +113,19 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
     mutationFn: async ({ file, category, description }: { file: File; category: string; description: string }) => {
       setUploading(true);
       
-      // Upload to Supabase Storage
+      // Upload to secure storage via Edge Function
       const fileName = `${clientId}/${Date.now()}_${file.name}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('client-files')
-        .upload(fileName, file);
+      const uploadResult = await secureStorageUpload('client-files', fileName, file, {
+        contentType: file.type
+      });
 
-      if (uploadError) throw uploadError;
+      if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
 
       const sessionToken = getSessionToken();
       const payload = {
         file_name: file.name,
-        file_path: uploadData.path,
+        file_path: uploadResult.path || fileName,
         file_type: file.type,
         file_size: file.size,
         category,
@@ -177,12 +178,10 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
   const deleteFileMutation = useMutation({
     mutationFn: async (file: { id: string; file_path: string }) => {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('client-files')
-        .remove([file.file_path]);
+      // Delete from storage via secure Edge Function
+      const deleteResult = await secureStorageDelete('client-files', file.file_path);
 
-      if (storageError) console.warn('Storage delete failed:', storageError);
+      if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
       const sessionToken = getSessionToken();
 
@@ -241,16 +240,14 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const { data, error } = await supabase.storage
-      .from('client-files')
-      .download(file.file_path);
+    const result = await secureStorageDownload('client-files', file.file_path);
 
-    if (error) {
-      toast.error('Failed to download file');
+    if (!result.success || !result.blob) {
+      toast.error('Failed to download file: ' + (result.error || 'Unknown error'));
       return;
     }
 
-    const url = URL.createObjectURL(data);
+    const url = URL.createObjectURL(result.blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = file.file_name;

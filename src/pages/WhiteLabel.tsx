@@ -32,6 +32,7 @@ import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRem
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface LogoUploadCardProps {
   title: string;
@@ -53,18 +54,17 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
     const fileExt = fileName.split('.').pop() || 'png';
     const filePath = `${logoType}/${Date.now()}.${fileExt}`;
     
-    const { data, error } = await supabase.storage
-      .from('branding-assets')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
+    const uploadResult = await secureStorageUpload('branding-assets', filePath, file, {
+      contentType: file.type || 'image/png',
+      upsert: true
+    });
 
-    if (error) throw error;
+    if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
 
+    // Get public URL - branding-assets bucket has public read access
     const { data: urlData } = supabase.storage
       .from('branding-assets')
-      .getPublicUrl(data.path);
+      .getPublicUrl(uploadResult.path || filePath);
 
     return urlData.publicUrl;
   };
