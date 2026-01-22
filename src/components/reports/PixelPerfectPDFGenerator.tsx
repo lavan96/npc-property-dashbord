@@ -1973,95 +1973,32 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       
       console.log('Found sections to include in PDF:', allSectionNames);
       
-      // ========== TABLE OF CONTENTS PAGE ==========
-      console.log('📑 Step 5.0.5: Generating Table of Contents page...');
+      // ========== DYNAMIC TABLE OF CONTENTS - TWO-PASS APPROACH ==========
+      console.log('📑 Step 5.0.5: Preparing dynamic Table of Contents...');
       
-      // Create a new page for TOC
-      currentPage = await addContentPage();
-      yPosition = pageHeight - topMargin - 20;
+      // Track section page numbers as we render
+      const sectionPageNumbers: Map<string, number> = new Map();
       
-      // TOC Title
-      const tocTitleText = 'TABLE OF CONTENTS';
-      currentPage.drawText(tocTitleText, {
-        x: margin,
-        y: yPosition,
-        size: 20,
-        font: helveticaBold,
-        color: rgb(0.15, 0.15, 0.15),
-      });
-      yPosition -= 40;
+      // Reserve TOC pages (we'll come back and fill them in after rendering content)
+      // Estimate 1-2 pages for TOC based on section count
+      const tocEntriesPerPage = 28; // Approximate entries per TOC page
+      const estimatedTocPages = Math.ceil(allSectionNames.length / tocEntriesPerPage);
       
-      // Draw decorative line under title
-      currentPage.drawLine({
-        start: { x: margin, y: yPosition + 15 },
-        end: { x: pageWidth - margin, y: yPosition + 15 },
-        thickness: 2,
-        color: rgb(0.788, 0.647, 0.353), // Gold accent
-      });
-      yPosition -= 20;
-      
-      // List all section names with page numbers placeholder
-      let tocIndex = 1;
-      for (const sectionName of allSectionNames) {
-        // Skip sections that look like metadata
-        const cleanName = stripEmojis(
-          sectionName.replace(/^#{1,6}\s*/, '').replace(/:\s*$/, '').trim()
-        );
-        
-        if (!cleanName || cleanName.length < 3) continue;
-        
-        // Check if we need a new TOC page
-        if (yPosition < bottomMargin + 40) {
-          currentPage = await addContentPage();
-          yPosition = pageHeight - topMargin - 20;
-        }
-        
-        // Draw section number
-        const sectionNumText = `${tocIndex}.`;
-        currentPage.drawText(sectionNumText, {
-          x: margin,
-          y: yPosition,
-          size: 11,
-          font: helveticaBold,
-          color: rgb(0.3, 0.3, 0.3),
-        });
-        
-        // Draw section name
-        const maxTocWidth = pageWidth - 2 * margin - 40;
-        let displayName = cleanName;
-        while (helveticaFont.widthOfTextAtSize(displayName, 11) > maxTocWidth && displayName.length > 10) {
-          displayName = displayName.substring(0, displayName.length - 4) + '...';
-        }
-        
-        currentPage.drawText(displayName, {
-          x: margin + 25,
-          y: yPosition,
-          size: 11,
-          font: helveticaFont,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-        
-        // Draw dotted leader line
-        const nameWidth = helveticaFont.widthOfTextAtSize(displayName, 11);
-        const startX = margin + 30 + nameWidth;
-        const endX = pageWidth - margin - 10;
-        const dotSpacing = 6;
-        
-        for (let dx = startX; dx < endX; dx += dotSpacing) {
-          currentPage.drawCircle({
-            x: dx,
-            y: yPosition + 3,
-            size: 0.5,
-            color: rgb(0.5, 0.5, 0.5),
-          });
-        }
-        
-        yPosition -= 22;
-        tocIndex++;
+      // Store the TOC page indices so we can draw on them later
+      const tocPageIndices: number[] = [];
+      for (let i = 0; i < estimatedTocPages; i++) {
+        currentPage = await addContentPage();
+        tocPageIndices.push(pdfDoc.getPageCount() - 1);
       }
       
-      console.log(`✓ Table of Contents generated with ${tocIndex - 1} entries`);
-      // ========== END TABLE OF CONTENTS PAGE ==========
+      console.log(`✓ Reserved ${estimatedTocPages} TOC page(s) at indices:`, tocPageIndices);
+      
+      // Content rendering starts AFTER TOC pages
+      // The page number display will account for: cover (1) + TOC pages + content pages
+      const contentStartPageIndex = pdfDoc.getPageCount();
+      console.log(`📄 Content will start at page index ${contentStartPageIndex}`);
+      
+      // ========== END TOC RESERVATION ==========
       
       console.log('✏️ Step 5.1: Starting to render', allSectionNames.length, 'sections...');
 
@@ -2156,6 +2093,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             yPosition = pageHeight - topMargin - 20;
           }
         }
+
+        // TRACK SECTION PAGE NUMBER for TOC
+        // Record which page this section starts on (1-indexed for display)
+        const currentPageNumber = pdfDoc.getPageCount(); // Current page we're about to draw on
+        sectionPageNumbers.set(cleanSectionName, currentPageNumber);
 
         // Draw section title with word wrapping
         const titleResult = drawTextWithWrap(
@@ -2377,6 +2319,115 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
         yPosition -= 15; // Space between sections
       }
+
+      // ========== SECOND PASS: DRAW TABLE OF CONTENTS WITH ACTUAL PAGE NUMBERS ==========
+      console.log('📑 Step 5.4: Drawing Table of Contents with actual page numbers...');
+      console.log(`   Section page mappings:`, Object.fromEntries(sectionPageNumbers));
+      
+      // Draw TOC on the reserved pages
+      let tocPageIdx = 0;
+      let tocPage = pdfDoc.getPages()[tocPageIndices[tocPageIdx]];
+      let tocY = pageHeight - topMargin - 20;
+      
+      // TOC Title
+      const tocTitleText = 'TABLE OF CONTENTS';
+      tocPage.drawText(tocTitleText, {
+        x: margin,
+        y: tocY,
+        size: 20,
+        font: helveticaBold,
+        color: rgb(0.15, 0.15, 0.15),
+      });
+      tocY -= 40;
+      
+      // Draw decorative line under title
+      tocPage.drawLine({
+        start: { x: margin, y: tocY + 15 },
+        end: { x: pageWidth - margin, y: tocY + 15 },
+        thickness: 2,
+        color: rgb(0.788, 0.647, 0.353), // Gold accent
+      });
+      tocY -= 25;
+      
+      // Draw TOC entries with actual page numbers
+      let tocEntryIndex = 1;
+      for (const sectionName of allSectionNames) {
+        const cleanName = stripEmojis(
+          sectionName.replace(/^#{1,6}\s*/, '').replace(/:\s*$/, '').trim()
+        );
+        
+        if (!cleanName || cleanName.length < 3) continue;
+        
+        // Check if we need to move to next TOC page
+        if (tocY < bottomMargin + 40) {
+          tocPageIdx++;
+          if (tocPageIdx < tocPageIndices.length) {
+            tocPage = pdfDoc.getPages()[tocPageIndices[tocPageIdx]];
+            tocY = pageHeight - topMargin - 20;
+          }
+        }
+        
+        // Get the actual page number for this section
+        const actualPageNumber = sectionPageNumbers.get(cleanName) || 0;
+        
+        // Draw section number
+        const sectionNumText = `${tocEntryIndex}.`;
+        tocPage.drawText(sectionNumText, {
+          x: margin,
+          y: tocY,
+          size: 11,
+          font: helveticaBold,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        
+        // Draw section name (truncate if too long)
+        const pageNumWidth = 30; // Reserve space for page number
+        const maxTocWidth = pageWidth - 2 * margin - 60 - pageNumWidth;
+        let displayName = cleanName;
+        while (helveticaFont.widthOfTextAtSize(displayName, 11) > maxTocWidth && displayName.length > 10) {
+          displayName = displayName.substring(0, displayName.length - 4) + '...';
+        }
+        
+        tocPage.drawText(displayName, {
+          x: margin + 25,
+          y: tocY,
+          size: 11,
+          font: helveticaFont,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        
+        // Draw dotted leader line
+        const nameWidth = helveticaFont.widthOfTextAtSize(displayName, 11);
+        const startX = margin + 30 + nameWidth;
+        const endX = pageWidth - margin - pageNumWidth - 5;
+        const dotSpacing = 6;
+        
+        for (let dx = startX; dx < endX; dx += dotSpacing) {
+          tocPage.drawCircle({
+            x: dx,
+            y: tocY + 3,
+            size: 0.5,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+        }
+        
+        // Draw page number (right-aligned)
+        const pageNumText = String(actualPageNumber);
+        const pageNumTextWidth = helveticaBold.widthOfTextAtSize(pageNumText, 11);
+        tocPage.drawText(pageNumText, {
+          x: pageWidth - margin - pageNumTextWidth,
+          y: tocY,
+          size: 11,
+          font: helveticaBold,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        
+        tocY -= 22;
+        tocEntryIndex++;
+      }
+      
+      console.log(`✓ Table of Contents drawn with ${tocEntryIndex - 1} entries and page numbers`);
+      // ========== END TOC SECOND PASS ==========
 
       // Add contact/disclaimer page with global settings (replaces static template last page)
       console.log('📞 Step 5.5: Adding contact/disclaimer page with global settings...');
