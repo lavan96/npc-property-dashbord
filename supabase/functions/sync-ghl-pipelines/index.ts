@@ -428,7 +428,7 @@ serve(async (req) => {
         }
       } else {
         updatedCount++;
-        console.log(`Updated client ${updatedClient.primary_first_name} ${updatedClient.primary_surname} with pipeline: ${stageInfo?.pipelineName || 'Unknown'} / stage: ${pipelineStatus}`);
+        // Removed per-client logging to reduce noise - summary is logged at the end
       }
     }
 
