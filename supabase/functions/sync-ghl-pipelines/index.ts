@@ -204,10 +204,11 @@ serve(async (req) => {
     while (pageCount < maxPages) {
       pageCount++;
 
-      // GHL opportunities/search endpoint requires POST with body containing location_id
+      // GHL opportunities/search validation is strict; this endpoint expects `locationId` (camelCase)
+      // and rejects unknown properties.
       const searchUrl = `${GHL_API_BASE}/opportunities/search`;
       const searchBody: Record<string, any> = {
-        location_id: locationId,
+        locationId: locationId,
         limit: 100,
       };
       if (startAfterId) searchBody.startAfterId = startAfterId;
