@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
@@ -84,15 +85,13 @@ export function RegenerateReportButton({
 
       // Call the regenerate-report-qualitative edge function
       // Note: Status is set to 'processing' inside the edge function
-      const { data, error } = await supabase.functions.invoke('regenerate-report-qualitative', {
-        body: {
-          reportId,
-          manualOverrides: report.manual_overrides || {},
-          currentReportContent: report.report_content,
-          propertyAddress,
-          financialCalculations: report.financial_calculations || {},
-          continueFrom: isResume // Enable resume mode if report was interrupted
-        }
+      const { data, error } = await invokeSecureFunction('regenerate-report-qualitative', {
+        reportId,
+        manualOverrides: report.manual_overrides || {},
+        currentReportContent: report.report_content,
+        propertyAddress,
+        financialCalculations: report.financial_calculations || {},
+        continueFrom: isResume // Enable resume mode if report was interrupted
       });
 
       if (error) {

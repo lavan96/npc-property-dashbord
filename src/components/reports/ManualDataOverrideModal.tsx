@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info, FileText, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
@@ -250,13 +251,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       const purchasePrice = overrides.purchasePrice ?? report?.financial_calculations?.purchasePrice ?? report?.financial_calculations?.propertyValue ?? 0;
       const weeklyRent = overrides.weeklyRent ?? report?.financial_calculations?.weeklyRent ?? 0;
       
-      const { data, error } = await supabase.functions.invoke('estimate-property-expenses', {
-        body: {
-          propertyAddress: report.property_address,
-          purchasePrice,
-          weeklyRent,
-          propertyType: report?.financial_calculations?.propertyType || 'Unknown'
-        }
+      const { data, error } = await invokeSecureFunction('estimate-property-expenses', {
+        propertyAddress: report.property_address,
+        purchasePrice,
+        weeklyRent,
+        propertyType: report?.financial_calculations?.propertyType || 'Unknown'
       });
 
       if (error) throw error;

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Send, Loader2, CheckCircle, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
@@ -32,11 +33,9 @@ export const WeeklyReportConfig: React.FC = () => {
 
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-weekly-call-report', {
-        body: {
-          recipientEmail,
-          daysBack: parseInt(reportPeriod),
-        },
+      const { data, error } = await invokeSecureFunction('send-weekly-call-report', {
+        recipientEmail,
+        daysBack: parseInt(reportPeriod),
       });
 
       if (error) throw error;

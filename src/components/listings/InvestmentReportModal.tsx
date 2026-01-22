@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Download, Copy, Check, Eye, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -55,11 +56,9 @@ export function InvestmentReportModal({
     try {
       console.log('Calling generate-investment-report with:', { propertyAddress, propertyDetails });
       
-      const { data, error } = await supabase.functions.invoke('generate-investment-report', {
-        body: {
-          propertyAddress,
-          propertyDetails
-        }
+      const { data, error } = await invokeSecureFunction('generate-investment-report', {
+        propertyAddress,
+        propertyDetails
       });
 
       console.log('Edge function response:', { data, error });

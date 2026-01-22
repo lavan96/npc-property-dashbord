@@ -120,8 +120,8 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
   const handleSyncToGHL = async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-client-to-ghl', {
-        body: { clientId: client.id }
+      const { data, error } = await invokeSecureFunction('sync-client-to-ghl', {
+        clientId: client.id
       });
 
       if (error) throw error;

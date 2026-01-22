@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Download, FileText, Home, Loader2, Mail, Send, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
@@ -316,18 +317,16 @@ export function VownetPDFGenerator({
       }
 
       // Send email via edge function
-      const { error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: targetContact.email,
-          subject: `Vownet Form - ${clientName}`,
-          body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the Vownet form for ${clientName}.\n\nKind regards`,
-          senderMailbox: userData.personal_mailbox,
-          attachments: [{
-            name: fileName,
-            content: base64Data,
-            contentType: 'application/pdf',
-          }],
-        }
+      const { error } = await invokeSecureFunction('send-email-reply', {
+        to: targetContact.email,
+        subject: `Vownet Form - ${clientName}`,
+        body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the Vownet form for ${clientName}.\n\nKind regards`,
+        senderMailbox: userData.personal_mailbox,
+        attachments: [{
+          name: fileName,
+          content: base64Data,
+          contentType: 'application/pdf',
+        }],
       });
 
       if (error) throw error;

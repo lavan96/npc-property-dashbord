@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, XCircle, Clock, Loader2, FileText, AlertCircle, PlayCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { PropertyListing } from '@/lib/airtable';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
@@ -156,11 +157,9 @@ export function BulkGenerationModal({
       }));
 
       // Call the edge function
-      const { data, error } = await supabase.functions.invoke('generate-bulk-reports', {
-        body: {
-          properties,
-          userId: user.id,
-        },
+      const { data, error } = await invokeSecureFunction('generate-bulk-reports', {
+        properties,
+        userId: user.id,
       });
 
       if (error) {
