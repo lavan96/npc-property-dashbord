@@ -54,6 +54,48 @@ const categoryColors: Record<string, string> = {
   other: 'bg-slate-500/10 text-slate-600',
 };
 
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Secure fetch for files data with fallback
+ */
+async function fetchFilesSecure(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { files: true },
+        },
+      });
+
+      if (!error && data?.success) {
+        return data.data?.files || [];
+      }
+    } catch (err) {
+      console.warn('Secure files fetch failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase query
+  const { data, error } = await supabase
+    .from('client_files')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('uploaded_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('general');
@@ -63,15 +105,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['client-files', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_files')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('uploaded_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    }
+    queryFn: () => fetchFilesSecure(clientId),
   });
 
   const uploadFileMutation = useMutation({
@@ -79,7 +113,6 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
       setUploading(true);
       
       // Upload to Supabase Storage
-      const fileExt = file.name.split('.').pop();
       const fileName = `${clientId}/${Date.now()}_${file.name}`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -88,17 +121,43 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
       if (uploadError) throw uploadError;
 
-      // Create file record
+      const sessionToken = getSessionToken();
+      const payload = {
+        file_name: file.name,
+        file_path: uploadData.path,
+        file_type: file.type,
+        file_size: file.size,
+        category,
+        description: description || null,
+      };
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'create',
+              table: 'client_files',
+              clientId,
+              data: payload,
+            },
+          });
+
+          if (!error && data?.success) {
+            return data.result;
+          }
+        } catch (err) {
+          console.warn('Secure file record create failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error: dbError } = await supabase
         .from('client_files')
         .insert({
           client_id: clientId,
-          file_name: file.name,
-          file_path: uploadData.path,
-          file_type: file.type,
-          file_size: file.size,
-          category,
-          description: description || null,
+          ...payload,
         });
 
       if (dbError) throw dbError;
@@ -125,7 +184,30 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
       if (storageError) console.warn('Storage delete failed:', storageError);
 
-      // Delete record
+      const sessionToken = getSessionToken();
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'delete',
+              table: 'client_files',
+              clientId,
+              recordId: file.id,
+            },
+          });
+
+          if (!error && data?.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Secure file delete failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error: dbError } = await supabase
         .from('client_files')
         .delete()
@@ -272,7 +354,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
           <h4 className="text-sm font-medium">
             Files ({files.length})
           </h4>
-          {files.map((file) => {
+          {files.map((file: any) => {
             const Icon = getFileIcon(file.file_type);
             
             return (

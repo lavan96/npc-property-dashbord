@@ -31,6 +31,48 @@ const noteTypes = [
 
 type NoteType = typeof noteTypes[number]['value'];
 
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Secure fetch for notes data with fallback
+ */
+async function fetchNotesSecure(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: { notes: true },
+        },
+      });
+
+      if (!error && data?.success) {
+        return data.data?.notes || [];
+      }
+    } catch (err) {
+      console.warn('Secure notes fetch failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase query
+  const { data, error } = await supabase
+    .from('client_notes')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 export function ClientNotes({ clientId }: ClientNotesProps) {
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('general');
@@ -39,25 +81,44 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ['client-notes', clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_notes')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    }
+    queryFn: () => fetchNotesSecure(clientId),
   });
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {
+      const sessionToken = getSessionToken();
+      const payload = {
+        note_type: noteType,
+        content: newNote.trim(),
+      };
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'create',
+              table: 'client_notes',
+              clientId,
+              data: payload,
+            },
+          });
+
+          if (!error && data?.success) {
+            return data.result;
+          }
+        } catch (err) {
+          console.warn('Secure note add failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error } = await supabase
         .from('client_notes')
         .insert({
           client_id: clientId,
-          note_type: noteType,
-          content: newNote.trim()
+          ...payload,
         });
       if (error) throw error;
     },
@@ -74,6 +135,30 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
+      const sessionToken = getSessionToken();
+
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'delete',
+              table: 'client_notes',
+              clientId,
+              recordId: noteId,
+            },
+          });
+
+          if (!error && data?.success) {
+            return;
+          }
+        } catch (err) {
+          console.warn('Secure note delete failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error } = await supabase
         .from('client_notes')
         .delete()
@@ -183,7 +268,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       ) : (
         <ScrollArea className="h-[300px]">
           <div className="space-y-3 pr-4">
-            {notes.map((note) => (
+            {notes.map((note: any) => (
               <div key={note.id} className="p-3 border rounded-lg space-y-2 group">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className={getNoteColor(note.note_type)}>
