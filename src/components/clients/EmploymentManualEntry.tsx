@@ -144,6 +144,11 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
   const saveMutation = useMutation({
     mutationFn: async () => {
       const sessionToken = getSessionToken();
+      
+      if (!sessionToken) {
+        throw new Error('Authentication required. Please log in.');
+      }
+
       const payload = {
         contact_type: formData.contact_type,
         is_current: formData.is_current,
@@ -153,42 +158,22 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
         start_date: formData.start_date || null,
       };
 
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              session_token: sessionToken,
-              operation: editingId ? 'update' : 'create',
-              table: 'client_employment',
-              clientId,
-              recordId: editingId || undefined,
-              data: payload,
-            },
-          });
+      const { data, error } = await supabase.functions.invoke('manage-client-data', {
+        body: {
+          session_token: sessionToken,
+          operation: editingId ? 'update' : 'create',
+          table: 'client_employment',
+          clientId,
+          recordId: editingId || undefined,
+          data: payload,
+        },
+      });
 
-          if (!error && data?.success) {
-            return data.result;
-          }
-        } catch (err) {
-          console.warn('Secure employment save failed, falling back:', err);
-        }
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Failed to save employment');
       }
-
-      // Fallback: Direct Supabase mutation
-      if (editingId) {
-        const { error } = await supabase
-          .from('client_employment')
-          .update(payload)
-          .eq('id', editingId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('client_employment').insert({
-          client_id: clientId,
-          ...payload,
-        });
-        if (error) throw error;
-      }
+      
+      return data.result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
