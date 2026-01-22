@@ -10,6 +10,14 @@ const corsHeaders = {
 // Report section definitions for multi-call generation with CONSISTENCY THRESHOLDS
 const REPORT_SECTIONS = [
   {
+    id: 'section0',
+    name: 'Executive Summary',
+    sections: ['Executive Summary'],
+    maxTokens: 2500,
+    minContentLength: 3000,
+    requiredKeywords: ['investment', 'property', 'recommendation', 'yield', 'growth'],
+  },
+  {
     id: 'section1',
     name: 'Location & Market Overview',
     sections: ['Location Overview', 'Current Market Performance', 'Current Economic Context', 'Demographics & Demand Drivers'],
@@ -1595,6 +1603,53 @@ ${isStrataProperty ? `- Strata Property: Yes (body corporate/strata fees apply)`
 
 ---
 
+# Executive Summary
+
+**REQUIRED CONTENT (Minimum 400 words for this section):**
+
+This executive summary provides a high-level overview of the investment opportunity at ${formattedInput}.
+
+**Property Snapshot:**
+
+| Attribute | Value |
+|-----------|-------|
+| Property Address | ${formattedInput} |
+| Property Type | ${standardizedPropertyType} |
+| Purchase Price | $${effectivePurchasePrice?.toLocaleString() || 'X,XXX,XXX'} |
+| Estimated Weekly Rent | $${effectiveWeeklyRent || 'XXX'} |
+| Gross Rental Yield | ${preCalculatedGrossYield}% |
+| Net Rental Yield | ${preCalculatedNetYield}% |
+
+**Investment Highlights:**
+
+1. **Location Strength:** [Summarize key location advantages - proximity to CBD, transport, schools]
+2. **Market Position:** [Current market conditions and growth prospects]
+3. **Income Potential:** [Rental yield assessment and demand drivers]
+4. **Growth Outlook:** [Capital growth expectations based on market data]
+
+**Key Findings:**
+
+- **Strengths:** [List 2-3 key property/location strengths]
+- **Considerations:** [List 2-3 areas requiring investor attention]
+- **Overall Assessment:** [Brief investment suitability statement]
+
+**Investment Recommendation:**
+
+Based on our comprehensive analysis, this property is [suitable/moderately suitable/requires careful consideration] for investors seeking [capital growth/rental income/balanced returns]. The investment is best suited for [investor profile description].
+
+**Report Structure:**
+
+This report contains detailed analysis across the following sections:
+1. Location Overview & Market Performance
+2. Demographics & Economic Context
+3. Schools, Healthcare & Infrastructure
+4. Environmental Risks & Safety Assessment
+5. Property-Level Financial Analysis
+6. 10-Year Investment Projections
+7. SWOT Analysis & Recommendations
+
+---
+
 # Location Overview
 
 **REQUIRED OPENING LINE:** "This investment report analyzes: [FULL PROPERTY ADDRESS]"
@@ -3086,6 +3141,36 @@ YOUR DEDICATED PROPERTY PARTNER
       .replace(/First, I'll[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
       .replace(/To provide[\s\S]*?(?=\n\n|\*\*|$)/gi, '')
       .trim();
+
+    // ========== POST-PROCESSING SANITIZATION ==========
+    // Fix HTML entities that may have been introduced during generation
+    reportContent = reportContent
+      // Fix common HTML entities
+      .replace(/&#x26;/g, '&')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x22;/g, '"')
+      .replace(/&#x3C;/g, '<')
+      .replace(/&#x3E;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&apos;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      // Fix erroneous semicolons in text
+      .replace(/(\w);(\s)/g, '$1,$2')
+      // Remove stray page numbers appearing as standalone lines
+      .replace(/^\d{1,3}\s*$/gm, '')
+      // Remove pagination artifacts like "Page X of Y"
+      .replace(/^Page\s+\d+\s*(of\s+\d+)?\s*$/gim, '')
+      // Remove empty methodology sections (heading with no content before next heading)
+      .replace(/#{2,3}\s*Methodology\s*Notes?\s*\n+(?=#{1,3}\s|\n*$)/gi, '')
+      // Clean up excessive whitespace left after removals
+      .replace(/\n{4,}/g, '\n\n\n')
+      .replace(/(\n---\s*){2,}/g, '\n---\n')
+      .trim();
+    console.log('✓ Post-processing sanitization complete');
+    // ========== END POST-PROCESSING SANITIZATION ==========
+
 
     // Extract citations and sources from the response
     const citations = allCitations;
