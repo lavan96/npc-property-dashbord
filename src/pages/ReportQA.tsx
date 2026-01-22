@@ -258,6 +258,14 @@ export default function ReportQA() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-resize textarea when inputMessage changes (e.g., from transcription)
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 300) + 'px';
+    }
+  }, [inputMessage]);
+
   const loadSavedConversations = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('report-qa', {
