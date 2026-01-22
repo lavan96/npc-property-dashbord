@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, Loader2, Copy, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 
 interface Message {
@@ -45,12 +45,11 @@ export function AutoSummarize({ messages, reportNames, disabled }: AutoSummarize
     setSummary(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          action: 'chat',
-          reportContents: [],
-          reportNames,
-          question: `Please provide a concise executive summary of our entire conversation so far. Include:
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'chat',
+        reportContents: [],
+        reportNames,
+        question: `Please provide a concise executive summary of our entire conversation so far. Include:
 1. Main topics discussed
 2. Key findings and insights
 3. Important numbers or data points mentioned
@@ -58,8 +57,7 @@ export function AutoSummarize({ messages, reportNames, disabled }: AutoSummarize
 5. Any unanswered questions
 
 Keep it brief but comprehensive.`,
-          chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
-        },
+        chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
       });
 
       if (error) throw error;

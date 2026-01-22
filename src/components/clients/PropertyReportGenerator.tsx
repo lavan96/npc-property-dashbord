@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2, Download, MapPin, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
@@ -179,14 +179,12 @@ Provide a comprehensive property investment analysis. Return valid JSON:
 }`;
 
       // Call Lovable AI
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          messages: [
-            { role: 'system', content: 'You are an expert property investment analyst. Respond with valid JSON only, no markdown.' },
-            { role: 'user', content: prompt }
-          ],
-          model: 'google/gemini-2.5-flash'
-        }
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        messages: [
+          { role: 'system', content: 'You are an expert property investment analyst. Respond with valid JSON only, no markdown.' },
+          { role: 'user', content: prompt }
+        ],
+        model: 'google/gemini-2.5-flash',
       });
 
       if (error) throw error;

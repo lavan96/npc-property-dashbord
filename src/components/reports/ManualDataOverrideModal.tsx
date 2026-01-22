@@ -1192,14 +1192,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
       // Call the regenerate-report-qualitative edge function
       console.log('🔄 Calling regenerate-report-qualitative...');
-      const { data: regenData, error: regenError } = await supabase.functions.invoke('regenerate-report-qualitative', {
-        body: {
-          reportId: report.id,
-          manualOverrides: overridesWithToggles,
-          currentReportContent: currentReport.report_content,
-          propertyAddress: currentReport.property_address,
-          financialCalculations: mergedFinancialData
-        }
+      const { data: regenData, error: regenError } = await invokeSecureFunction('regenerate-report-qualitative', {
+        reportId: report.id,
+        manualOverrides: overridesWithToggles,
+        currentReportContent: currentReport.report_content,
+        propertyAddress: currentReport.property_address,
+        financialCalculations: mergedFinancialData,
       });
 
       if (regenError) {

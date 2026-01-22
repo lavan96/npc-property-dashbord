@@ -788,12 +788,10 @@ export function InvestmentReportGenerator() {
       });
 
       // Start generation in background
-      supabase.functions.invoke('generate-investment-report', {
-        body: {
-          reportId: pendingReport.id,
-          propertyAddress,
-          propertyDetails
-        }
+      invokeSecureFunction('generate-investment-report', {
+        reportId: pendingReport.id,
+        propertyAddress,
+        propertyDetails,
       }).catch(error => {
         console.error('Background generation error:', error);
       });
@@ -1219,12 +1217,10 @@ export function InvestmentReportGenerator() {
       });
 
       // Start generation in background
-      supabase.functions.invoke('generate-investment-report', {
-        body: {
-          reportId: pendingReport.id,
-          propertyAddress,
-          propertyDetails
-        }
+      invokeSecureFunction('generate-investment-report', {
+        reportId: pendingReport.id,
+        propertyAddress,
+        propertyDetails,
       }).catch(error => {
         console.error('Background generation error:', error);
       });

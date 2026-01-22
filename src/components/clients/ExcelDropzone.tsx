@@ -309,8 +309,8 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             toast.info('Syncing clients to GoHighLevel...');
             const clientIds = newClients.map(c => c.id);
             
-            const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-client-to-ghl', {
-              body: { action: 'batch', clientIds }
+            const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', {
+              action: 'batch', clientIds,
             });
             
             if (syncError) {
