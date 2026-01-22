@@ -1,11 +1,14 @@
 import { cn } from '@/lib/utils';
+import { Pause } from 'lucide-react';
 
 interface RecordingIndicatorProps {
   isRecording: boolean;
+  isPaused?: boolean;
   className?: string;
   liveTranscript?: string;
   duration?: number;
   maxDuration?: number;
+  accumulatedText?: string;
 }
 
 function formatDuration(seconds: number): string {
@@ -16,57 +19,78 @@ function formatDuration(seconds: number): string {
 
 export function RecordingIndicator({ 
   isRecording, 
+  isPaused = false,
   className,
   liveTranscript,
   duration = 0,
-  maxDuration = 480
+  maxDuration = 480,
+  accumulatedText
 }: RecordingIndicatorProps) {
-  if (!isRecording) return null;
+  if (!isRecording && !isPaused) return null;
 
   const progressPercent = Math.min((duration / maxDuration) * 100, 100);
   const isNearLimit = duration >= maxDuration - 60; // Last minute warning
 
+  // Different styling for paused vs recording state
+  const borderColor = isPaused ? 'border-orange-500/30' : 'border-red-500/30';
+  const bgColor = isPaused ? 'bg-orange-500/10' : 'bg-red-500/10';
+  const accentColor = isPaused ? 'text-orange-500' : 'text-red-500';
+  const progressBgColor = isPaused ? 'bg-orange-500/20' : 'bg-red-500/20';
+  const progressFillColor = isNearLimit ? 'bg-orange-500' : (isPaused ? 'bg-orange-500/60' : 'bg-red-500/60');
+
   return (
     <div 
       className={cn(
-        "flex flex-col gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30",
+        "flex flex-col gap-2 p-3 rounded-lg border",
+        bgColor,
+        borderColor,
         className
       )}
       role="status"
       aria-live="polite"
-      aria-label={liveTranscript ? `Recording: ${liveTranscript}` : 'Recording in progress'}
+      aria-label={isPaused ? 'Recording paused' : (liveTranscript ? `Recording: ${liveTranscript}` : 'Recording in progress')}
     >
       <div className="flex items-center gap-3">
-        {/* Recording pulse indicator */}
+        {/* Recording/Paused indicator */}
         <div className="relative" aria-hidden="true">
-          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" />
-          <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-500 animate-ping opacity-50 motion-reduce:animate-none" />
+          {isPaused ? (
+            <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center">
+              <Pause className="w-3 h-3 text-orange-500" />
+            </div>
+          ) : (
+            <>
+              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" />
+              <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-500 animate-ping opacity-50 motion-reduce:animate-none" />
+            </>
+          )}
         </div>
         
-        {/* Animated waveform bars */}
-        <div className="flex items-center gap-0.5 h-6" aria-hidden="true">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="w-1 bg-red-500/70 rounded-full motion-reduce:!transform-none"
-              style={{
-                height: '100%',
-                animation: 'waveform 1s ease-in-out infinite',
-                animationDelay: `${i * 0.05}s`,
-                transform: `scaleY(${0.3 + Math.random() * 0.7})`,
-              }}
-            />
-          ))}
-        </div>
+        {/* Animated waveform bars - only show when recording, not paused */}
+        {!isPaused && (
+          <div className="flex items-center gap-0.5 h-6" aria-hidden="true">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="w-1 bg-red-500/70 rounded-full motion-reduce:!transform-none"
+                style={{
+                  height: '100%',
+                  animation: 'waveform 1s ease-in-out infinite',
+                  animationDelay: `${i * 0.05}s`,
+                  transform: `scaleY(${0.3 + Math.random() * 0.7})`,
+                }}
+              />
+            ))}
+          </div>
+        )}
         
-        <span className="text-xs text-red-500 font-medium animate-pulse motion-reduce:animate-none">
-          Recording...
+        <span className={cn("text-xs font-medium", accentColor, !isPaused && "animate-pulse motion-reduce:animate-none")}>
+          {isPaused ? 'Paused' : 'Recording...'}
         </span>
         
         {duration > 0 && (
           <span className={cn(
             "text-xs font-mono ml-auto",
-            isNearLimit ? "text-orange-500 font-semibold" : "text-red-500/70"
+            isNearLimit ? "text-orange-500 font-semibold" : accentColor + '/70'
           )}>
             {formatDuration(duration)} / {formatDuration(maxDuration)}
           </span>
@@ -74,12 +98,9 @@ export function RecordingIndicator({
       </div>
       
       {/* Progress bar */}
-      <div className="h-1 w-full bg-red-500/20 rounded-full overflow-hidden">
+      <div className={cn("h-1 w-full rounded-full overflow-hidden", progressBgColor)}>
         <div 
-          className={cn(
-            "h-full rounded-full transition-all duration-1000",
-            isNearLimit ? "bg-orange-500" : "bg-red-500/60"
-          )}
+          className={cn("h-full rounded-full transition-all duration-1000", progressFillColor)}
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -90,14 +111,29 @@ export function RecordingIndicator({
           ⚠️ Recording will stop in {formatDuration(maxDuration - duration)}
         </p>
       )}
+
+      {/* Accumulated transcript preview (from previous segments) */}
+      {accumulatedText && (
+        <div className="text-xs text-muted-foreground border-t border-current/10 pt-2 mt-1">
+          <span className="text-muted-foreground/60 mr-1">Previous:</span>
+          <span className="italic">{accumulatedText.length > 100 ? `...${accumulatedText.slice(-100)}` : accumulatedText}</span>
+        </div>
+      )}
       
       {/* Live transcription preview */}
-      {liveTranscript && (
+      {liveTranscript && !isPaused && (
         <div className="text-sm text-muted-foreground italic border-t border-red-500/20 pt-2 mt-1">
           <span className="text-red-500/60 text-xs mr-1">Live:</span>
           {liveTranscript}
           <span className="inline-block w-1 h-4 bg-red-500/50 ml-0.5 animate-pulse motion-reduce:animate-none" />
         </div>
+      )}
+
+      {/* Paused instructions */}
+      {isPaused && (
+        <p className="text-xs text-muted-foreground mt-1">
+          Click <span className="text-orange-500 font-medium">Resume</span> to continue or <span className="text-destructive font-medium">Stop</span> to transcribe
+        </p>
       )}
       
       <style>{`

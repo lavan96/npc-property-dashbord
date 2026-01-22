@@ -40,7 +40,10 @@ import {
   MoreVertical,
   Archive,
   Loader2,
-  Pin
+  Pin,
+  Pause,
+  Play,
+  Square
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -141,7 +144,9 @@ export default function ReportQA() {
   const [availableMailboxes, setAvailableMailboxes] = useState<{id: string; username: string; personal_mailbox: string | null}[]>([]);
   const [isLoadingMailboxes, setIsLoadingMailboxes] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [accumulatedTranscript, setAccumulatedTranscript] = useState('');
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [isEditingMainTitle, setIsEditingMainTitle] = useState(false);
@@ -185,6 +190,7 @@ export default function ReportQA() {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -560,6 +566,8 @@ export default function ReportQA() {
     if (!retryContent) {
       setMessages(prev => [...prev, userMessage]);
       setInputMessage('');
+      // Clear accumulated transcript after sending
+      setAccumulatedTranscript('');
     }
     setPendingAudioUrl(null);
     setFailedMessage(null);
@@ -822,14 +830,20 @@ export default function ReportQA() {
         } 
       });
       
+      streamRef.current = stream;
+      
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
       
       mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      setLiveTranscript('');
-      setRecordingDuration(0);
+      // Don't reset audio chunks if we're resuming from a paused state
+      if (!isPaused) {
+        audioChunksRef.current = [];
+        setLiveTranscript('');
+        setRecordingDuration(0);
+      }
+      setIsPaused(false);
       
       // Start duration timer with auto-stop at max duration
       durationIntervalRef.current = setInterval(() => {
@@ -837,7 +851,7 @@ export default function ReportQA() {
           const newDuration = prev + 1;
           // Auto-stop at max duration
           if (newDuration >= MAX_RECORDING_DURATION) {
-            stopRecording();
+            finalizeRecording();
             toast({
               title: 'Maximum recording reached',
               description: 'Recording stopped after 8 minutes. Transcribing...',
@@ -893,15 +907,20 @@ export default function ReportQA() {
           liveTranscriptTimeoutRef.current = null;
         }
         
-        stream.getTracks().forEach(track => track.stop());
+        // Only stop tracks if we're finalizing (not pausing)
+        if (!isPaused && streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
         
-        if (audioChunksRef.current.length > 0) {
+        // Only transcribe if finalizing (not pausing)
+        if (!isPaused && audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           console.log(`[Recording] Final audio size: ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB, chunks: ${audioChunksRef.current.length}`);
           await transcribeAudio(audioBlob);
+          setLiveTranscript('');
+          setRecordingDuration(0);
         }
-        setLiveTranscript('');
-        setRecordingDuration(0);
       };
       
       // Request data every 500ms for chunking
@@ -918,12 +937,66 @@ export default function ReportQA() {
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+  // Pause recording - keeps audio chunks and duration intact
+  const pauseRecording = () => {
+    if (mediaRecorderRef.current && isRecording && !isPaused) {
       mediaRecorderRef.current.stop();
+      
+      // Stop the stream tracks while paused
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Clear the duration timer but keep the duration value
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
+        durationIntervalRef.current = null;
+      }
+      
+      setIsPaused(true);
+      setIsRecording(false);
+      setLiveAnnouncement('Recording paused');
+      toast({
+        title: 'Recording paused',
+        description: 'Click resume to continue recording',
+      });
+    }
+  };
+
+  // Resume recording - continues from where it left off
+  const resumeRecording = async () => {
+    if (isPaused) {
+      // Start a new recording session but keep existing chunks
+      await startRecording();
+    }
+  };
+
+  // Finalize and transcribe - this is the actual "stop"
+  const finalizeRecording = () => {
+    if (mediaRecorderRef.current && (isRecording || isPaused)) {
+      setIsPaused(false);
+      
+      if (isRecording) {
+        // If currently recording, stop the recorder (triggers onstop)
+        mediaRecorderRef.current.stop();
+      } else if (isPaused && audioChunksRef.current.length > 0) {
+        // If paused, manually transcribe since recorder is already stopped
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log(`[Recording] Final audio size: ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB, chunks: ${audioChunksRef.current.length}`);
+        transcribeAudio(audioBlob);
+        setLiveTranscript('');
+        setRecordingDuration(0);
+      }
+      
       setIsRecording(false);
       setLiveAnnouncement('Recording stopped, transcribing...');
     }
+  };
+
+  // Legacy stopRecording for backward compatibility - now calls finalizeRecording
+  const stopRecording = () => {
+    finalizeRecording();
   };
 
   const transcribeAudio = async (audioBlob: Blob) => {
@@ -954,7 +1027,15 @@ export default function ReportQA() {
       if (error) throw error;
 
       if (data.success && data.text) {
-        setInputMessage(data.text);
+        // Append to accumulated transcript instead of replacing
+        const newTranscript = accumulatedTranscript 
+          ? `${accumulatedTranscript} ${data.text}`.trim()
+          : data.text;
+        setAccumulatedTranscript(newTranscript);
+        setInputMessage(newTranscript);
+        
+        // Clear accumulated transcript and chunks after successful transcription
+        audioChunksRef.current = [];
       } else {
         throw new Error('No transcription result');
       }
@@ -970,6 +1051,12 @@ export default function ReportQA() {
     } finally {
       setIsTranscribing(false);
     }
+  };
+
+  // Clear accumulated transcript when starting fresh or sending message
+  const clearAccumulatedTranscript = () => {
+    setAccumulatedTranscript('');
+    audioChunksRef.current = [];
   };
 
   const clearAll = () => {
@@ -1735,13 +1822,15 @@ export default function ReportQA() {
               )}
             </ScrollArea>
 
-            {/* Recording indicator with live transcription */}
-            {isRecording && (
+            {/* Recording indicator with live transcription - show when recording or paused */}
+            {(isRecording || isPaused) && (
               <RecordingIndicator 
-                isRecording={isRecording} 
+                isRecording={isRecording}
+                isPaused={isPaused}
                 liveTranscript={liveTranscript}
                 duration={recordingDuration}
                 maxDuration={MAX_RECORDING_DURATION}
+                accumulatedText={accumulatedTranscript}
                 className="mb-2" 
               />
             )}
@@ -1793,22 +1882,69 @@ export default function ReportQA() {
                   className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
                   rows={1}
                 />
-              <Button
-                variant={isRecording ? "destructive" : "outline"}
-                size="icon"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isProcessing || isTranscribing}
-                title={isRecording ? 'Stop recording' : 'Voice input'}
-                className="h-10 w-10 flex-shrink-0"
-              >
-                {isTranscribing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isRecording ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
+              {/* Recording controls */}
+              {isRecording ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={pauseRecording}
+                    disabled={isProcessing || isTranscribing}
+                    title="Pause recording"
+                    className="h-10 w-10 flex-shrink-0"
+                  >
+                    <Pause className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={finalizeRecording}
+                    disabled={isProcessing || isTranscribing}
+                    title="Stop and transcribe"
+                    className="h-10 w-10 flex-shrink-0"
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : isPaused ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={resumeRecording}
+                    disabled={isProcessing || isTranscribing}
+                    title="Resume recording"
+                    className="h-10 w-10 flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={finalizeRecording}
+                    disabled={isProcessing || isTranscribing}
+                    title="Stop and transcribe"
+                    className="h-10 w-10 flex-shrink-0"
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant={isTranscribing ? "outline" : "outline"}
+                  size="icon"
+                  onClick={startRecording}
+                  disabled={isProcessing || isTranscribing}
+                  title="Start voice input"
+                  className="h-10 w-10 flex-shrink-0"
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
                 <Button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isProcessing || isRecording || inputMessage.length > MAX_MESSAGE_LENGTH}
