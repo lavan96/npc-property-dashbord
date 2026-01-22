@@ -1022,6 +1022,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         PREFER_FULL_TABLES: true, // If true, move entire table to new page rather than split
         TABLE_SAFETY_MARGIN: 40, // Extra margin to ensure table fits
       };
+      
+      // Sections that MUST start on a new page (forced page breaks)
+      const FORCED_NEW_PAGE_SECTIONS = [
+        'employment & industry breakdown',
+        'employment and industry breakdown',
+        'recreational amenities',
+        'property-level information',
+        'property level information',
+      ];
+      
+      // Headers that must stay attached to their following table (no orphan headers)
+      const KEEP_WITH_TABLE_HEADERS = [
+        'property snapshot',
+        'ongoing annual costs',
+        'ongoing annual ongoing costs',
+        'annual ongoing costs',
+        'water rates justification',
+        'yield comparison to benchmarks',
+        'interest only loan',
+        'interest-only loan',
+        'alternative structure',
+        'loan serviceability assessment',
+        'rental income projections',
+      ];
 
       let currentPage: any = null;
       let yPosition = 0;
@@ -1948,6 +1972,97 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       );
       
       console.log('Found sections to include in PDF:', allSectionNames);
+      
+      // ========== TABLE OF CONTENTS PAGE ==========
+      console.log('📑 Step 5.0.5: Generating Table of Contents page...');
+      
+      // Create a new page for TOC
+      currentPage = await addContentPage();
+      yPosition = pageHeight - topMargin - 20;
+      
+      // TOC Title
+      const tocTitleText = 'TABLE OF CONTENTS';
+      currentPage.drawText(tocTitleText, {
+        x: margin,
+        y: yPosition,
+        size: 20,
+        font: helveticaBold,
+        color: rgb(0.15, 0.15, 0.15),
+      });
+      yPosition -= 40;
+      
+      // Draw decorative line under title
+      currentPage.drawLine({
+        start: { x: margin, y: yPosition + 15 },
+        end: { x: pageWidth - margin, y: yPosition + 15 },
+        thickness: 2,
+        color: rgb(0.788, 0.647, 0.353), // Gold accent
+      });
+      yPosition -= 20;
+      
+      // List all section names with page numbers placeholder
+      let tocIndex = 1;
+      for (const sectionName of allSectionNames) {
+        // Skip sections that look like metadata
+        const cleanName = stripEmojis(
+          sectionName.replace(/^#{1,6}\s*/, '').replace(/:\s*$/, '').trim()
+        );
+        
+        if (!cleanName || cleanName.length < 3) continue;
+        
+        // Check if we need a new TOC page
+        if (yPosition < bottomMargin + 40) {
+          currentPage = await addContentPage();
+          yPosition = pageHeight - topMargin - 20;
+        }
+        
+        // Draw section number
+        const sectionNumText = `${tocIndex}.`;
+        currentPage.drawText(sectionNumText, {
+          x: margin,
+          y: yPosition,
+          size: 11,
+          font: helveticaBold,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        
+        // Draw section name
+        const maxTocWidth = pageWidth - 2 * margin - 40;
+        let displayName = cleanName;
+        while (helveticaFont.widthOfTextAtSize(displayName, 11) > maxTocWidth && displayName.length > 10) {
+          displayName = displayName.substring(0, displayName.length - 4) + '...';
+        }
+        
+        currentPage.drawText(displayName, {
+          x: margin + 25,
+          y: yPosition,
+          size: 11,
+          font: helveticaFont,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        
+        // Draw dotted leader line
+        const nameWidth = helveticaFont.widthOfTextAtSize(displayName, 11);
+        const startX = margin + 30 + nameWidth;
+        const endX = pageWidth - margin - 10;
+        const dotSpacing = 6;
+        
+        for (let dx = startX; dx < endX; dx += dotSpacing) {
+          currentPage.drawCircle({
+            x: dx,
+            y: yPosition + 3,
+            size: 0.5,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+        }
+        
+        yPosition -= 22;
+        tocIndex++;
+      }
+      
+      console.log(`✓ Table of Contents generated with ${tocIndex - 1} entries`);
+      // ========== END TABLE OF CONTENTS PAGE ==========
+      
       console.log('✏️ Step 5.1: Starting to render', allSectionNames.length, 'sections...');
 
       let sectionCount = 0;
@@ -2011,23 +2126,35 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const totalSectionHeight = sectionTitleHeight + totalContentHeight + 15; // section spacing
         
         // IMPROVED PAGE BREAK LOGIC:
-        // 1. Minimum content with heading = title + first content block (at least 120px)
-        // 2. Never leave a heading orphaned at the bottom of a page
-        const minContentWithHeading = Math.max(sectionTitleHeight + firstBlockHeight + 30, 150);
-        const remainingSpace = yPosition - bottomMargin;
+        // 1. Check for forced page break sections first
+        // 2. Minimum content with heading = title + first content block (at least 120px)
+        // 3. Never leave a heading orphaned at the bottom of a page
+        const cleanSectionLower = cleanSectionName.toLowerCase();
+        const shouldForceNewPage = FORCED_NEW_PAGE_SECTIONS.some(section => 
+          cleanSectionLower.includes(section)
+        );
         
-        // Force new page if we can't fit heading + first content block together
-        if (remainingSpace < minContentWithHeading) {
-          console.log(`     → Page break: only ${Math.round(remainingSpace)}px remaining, need ${Math.round(minContentWithHeading)}px for heading + first block`);
+        if (shouldForceNewPage) {
+          console.log(`     → FORCED page break for section: "${cleanSectionName}"`);
           currentPage = await addContentPage();
           yPosition = pageHeight - topMargin - 20;
-        }
-        // Or if entire section fits and current space is tight, start fresh
-        else if (totalSectionHeight < (pageHeight - topMargin - bottomMargin - 100) && 
-            yPosition - totalSectionHeight < bottomMargin + 40) {
-          console.log(`     → Page break: section fits on new page (${Math.round(totalSectionHeight)}px), starting fresh`);
-          currentPage = await addContentPage();
-          yPosition = pageHeight - topMargin - 20;
+        } else {
+          const minContentWithHeading = Math.max(sectionTitleHeight + firstBlockHeight + 30, 150);
+          const remainingSpace = yPosition - bottomMargin;
+          
+          // Force new page if we can't fit heading + first content block together
+          if (remainingSpace < minContentWithHeading) {
+            console.log(`     → Page break: only ${Math.round(remainingSpace)}px remaining, need ${Math.round(minContentWithHeading)}px for heading + first block`);
+            currentPage = await addContentPage();
+            yPosition = pageHeight - topMargin - 20;
+          }
+          // Or if entire section fits and current space is tight, start fresh
+          else if (totalSectionHeight < (pageHeight - topMargin - bottomMargin - 100) && 
+              yPosition - totalSectionHeight < bottomMargin + 40) {
+            console.log(`     → Page break: section fits on new page (${Math.round(totalSectionHeight)}px), starting fresh`);
+            currentPage = await addContentPage();
+            yPosition = pageHeight - topMargin - 20;
+          }
         }
 
         // Draw section title with word wrapping
@@ -2044,9 +2171,39 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         );
         yPosition = titleResult.lastY - 10;
 
-        // Draw paragraphs
-        for (const paragraph of paragraphs) {
+        // Draw paragraphs with header-table grouping
+        for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+          const paragraph = paragraphs[pIdx];
           if (!paragraph.trim()) continue;
+          
+          // Check if this paragraph is a header that should stay with its table
+          const paragraphLower = paragraph.toLowerCase().replace(/\*\*/g, '').trim();
+          const isKeepWithTableHeader = KEEP_WITH_TABLE_HEADERS.some(header => 
+            paragraphLower.includes(header)
+          );
+          
+          // If this is a "keep with table" header, check if next paragraph is a table
+          if (isKeepWithTableHeader && pIdx + 1 < paragraphs.length) {
+            const nextParagraph = paragraphs[pIdx + 1];
+            if (isMarkdownTable(nextParagraph)) {
+              // Calculate combined height of header + table
+              const headerHeight = calculateTextHeight(
+                paragraph, pageWidth - 2 * margin, helveticaFont, helveticaBold, textSize, lineHeight
+              ) + 16;
+              const tableHeight = calculateTableHeight(
+                nextParagraph, pageWidth - 2 * margin, helveticaFont, helveticaBold, textSize
+              );
+              const combinedHeight = headerHeight + tableHeight + 20;
+              const availableSpace = yPosition - bottomMargin - PAGE_BREAK_CONFIG.TABLE_SAFETY_MARGIN;
+              
+              // If combined doesn't fit but WOULD fit on new page, move to new page
+              if (combinedHeight > availableSpace && combinedHeight <= (pageHeight - topMargin - bottomMargin - 40)) {
+                console.log(`     → Keeping header "${paragraphLower.substring(0, 30)}..." with its table (${Math.round(combinedHeight)}px)`);
+                currentPage = await addContentPage();
+                yPosition = pageHeight - topMargin - 20;
+              }
+            }
+          }
 
           // Check for rank heading marker (___RANK_HEADING___) - used for comparison analysis rankings
           const isRankHeading = paragraph.includes('___RANK_HEADING___');
