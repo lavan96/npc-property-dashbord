@@ -31,17 +31,35 @@ interface EnhancedData {
   validation?: any;
 }
 
-// Report section definitions - GRANULAR STRUCTURE for better load balancing and reliability
-// Split into 12 smaller sections (~2,000-2,500 tokens each) to prevent stalling
-// MUST match generate-investment-report
-const REPORT_SECTIONS = [
+// ============================================================================
+// REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
+// ============================================================================
+// These section definitions match the "Investor Compass Structure v2" template
+// stored in report_structure_templates table. They serve as:
+// 1. Fallback when template parsing fails
+// 2. Validation reference for dynamic parsing
+// 3. Performance tuning (maxTokens, requiredKeywords)
+// ============================================================================
+
+interface ReportSectionDefinition {
+  id: string;
+  name: string;
+  sections: string[];  // H2 headings from template that belong to this group
+  maxTokens: number;
+  minContentLength: number;
+  requiredKeywords: string[];
+}
+
+// FALLBACK HARDCODED SECTIONS - Matches database template "Investor Compass Structure v2"
+// These 12 groups contain all 26 H2 sections from the template, logically grouped for generation
+const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   {
     id: 'section0',
     name: 'Executive Summary',
     sections: ['Executive Summary'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['investment', 'property', 'recommendation', 'yield'],
+    requiredKeywords: ['investment', 'property', 'recommendation', 'score'],
   },
   {
     id: 'section1',
@@ -49,7 +67,7 @@ const REPORT_SECTIONS = [
     sections: ['Location Overview'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['location', 'suburb', 'community', 'transport'],
+    requiredKeywords: ['suburb', 'community', 'transport', 'lifestyle'],
   },
   {
     id: 'section2',
@@ -57,7 +75,7 @@ const REPORT_SECTIONS = [
     sections: ['Current Market Performance', 'Current Economic Context'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['market', 'economic', 'cash rate', 'inflation'],
+    requiredKeywords: ['market', 'cash rate', 'inflation', 'growth'],
   },
   {
     id: 'section3',
@@ -65,7 +83,7 @@ const REPORT_SECTIONS = [
     sections: ['Demographics & Demand Drivers'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['demographic', 'population', 'income', 'employment'],
+    requiredKeywords: ['population', 'income', 'employment', 'household'],
   },
   {
     id: 'section4',
@@ -89,49 +107,161 @@ const REPORT_SECTIONS = [
     sections: ['Environmental Risks & Climate', 'Crime & Safety'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['flood', 'bushfire', 'crime', 'safety', 'risk'],
+    requiredKeywords: ['flood', 'bushfire', 'crime', 'safety'],
   },
   {
     id: 'section7',
     name: 'Property & Zoning',
-    sections: ['Property-Level Information', 'Zoning & Planning Analysis'],
+    sections: ['Property-Level Information'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['property', 'zoning', 'land', 'development'],
+    requiredKeywords: ['property', 'zoning', 'land', 'building'],
   },
   {
     id: 'section8',
-    name: 'Purchase Costs & Rental',
-    sections: ['Purchase & Ongoing Costs', 'Rental Assessment & Yield Calculation'],
+    name: 'Costs & Rental',
+    sections: ['Purchase & Ongoing Costs (Annual)', 'Rental Assessment & Yield Calculation'],
     maxTokens: 2500,
     minContentLength: 2500,
     requiredKeywords: ['purchase', 'stamp duty', 'rent', 'yield'],
   },
   {
     id: 'section9',
-    name: 'Loan & Cashflow',
-    sections: ['Loan Structure & Repayment Analysis', 'Cashflow Analysis'],
+    name: 'Loan & Sensitivity',
+    sections: ['Loan Structure & Repayment Analysis', 'Sensitivity Analysis'],
     maxTokens: 2500,
     minContentLength: 2500,
-    requiredKeywords: ['loan', 'repayment', 'cashflow', 'interest'],
+    requiredKeywords: ['loan', 'repayment', 'cashflow', 'sensitivity'],
   },
   {
     id: 'section10',
     name: 'Projections & SWOT',
-    sections: ['10-Year Investment Projections', 'SWOT Analysis', 'Top 3 Opportunities'],
-    maxTokens: 2500,
-    minContentLength: 2500,
-    requiredKeywords: ['projection', 'swot', 'opportunity', 'growth'],
+    sections: ['10-Year Investment Projections', 'Investment Score Analysis', 'SWOT Analysis Summary', 'Top 3 Investment Opportunities'],
+    maxTokens: 3000,
+    minContentLength: 3000,
+    requiredKeywords: ['projection', 'swot', 'opportunity', 'score'],
   },
   {
     id: 'section11',
     name: 'Risks & Recommendations',
-    sections: ['Top 3 Risks', 'Data Transparency Statement', 'Investment Recommendations', 'Investment Suitability Screening', 'Final Conclusion', 'Data Sources'],
-    maxTokens: 3000,
-    minContentLength: 3000,
-    requiredKeywords: ['risk', 'recommendation', 'conclusion', 'sources'],
+    sections: ['Top 3 Investment Risks', 'Market Data Sources & Data Transparency', 'Disclaimer & Data Limitations', 'Investment Recommendations', 'Final Conclusion', 'CONTACT US', 'PROFESSIONAL DISCLAIMER'],
+    maxTokens: 3500,
+    minContentLength: 3500,
+    requiredKeywords: ['risk', 'recommendation', 'conclusion', 'disclaimer'],
   }
 ];
+
+// Dynamic sections - populated from database template at runtime
+let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
+
+// ============================================================================
+// DYNAMIC TEMPLATE PARSING (shared with generate-investment-report)
+// ============================================================================
+
+interface ParsedTemplateStructure {
+  headings: string[];
+  sections: ReportSectionDefinition[];
+  templateName: string;
+  templateId: string;
+}
+
+/**
+ * Parses the template content to extract H2 headings and create section definitions
+ */
+function parseTemplateStructure(
+  templateContent: string,
+  templateName: string = 'Unknown',
+  templateId: string = ''
+): ParsedTemplateStructure {
+  try {
+    const h2Pattern = /^## ([^\n]+)/gm;
+    const headings: string[] = [];
+    let match;
+    
+    while ((match = h2Pattern.exec(templateContent)) !== null) {
+      const heading = match[1].trim();
+      if (heading.length > 2) {
+        headings.push(heading);
+      }
+    }
+    
+    console.log(`📋 Parsed ${headings.length} H2 headings from template "${templateName}"`);
+    
+    if (headings.length < 5) {
+      console.log('⚠️ Too few headings found, using default sections');
+      return { headings: [], sections: DEFAULT_REPORT_SECTIONS, templateName, templateId };
+    }
+    
+    const sections = groupHeadingsIntoSections(headings);
+    
+    console.log(`✓ Created ${sections.length} generation sections from template`);
+    
+    return { headings, sections, templateName, templateId };
+  } catch (error) {
+    console.error('⚠️ Template parsing error:', error);
+    return { headings: [], sections: DEFAULT_REPORT_SECTIONS, templateName, templateId };
+  }
+}
+
+/**
+ * Groups extracted headings into logical generation sections
+ */
+function groupHeadingsIntoSections(headings: string[]): ReportSectionDefinition[] {
+  const sectionKeywordMap: Record<string, { keywords: string[], name: string, requiredKeywords: string[], maxTokens: number, minContentLength: number }> = {
+    'executive': { keywords: ['executive', 'summary', 'overview report'], name: 'Executive Summary', requiredKeywords: ['investment', 'property', 'recommendation', 'score'], maxTokens: 2500, minContentLength: 2500 },
+    'location': { keywords: ['location', 'suburb character'], name: 'Location Overview', requiredKeywords: ['suburb', 'community', 'lifestyle'], maxTokens: 2500, minContentLength: 2500 },
+    'market': { keywords: ['market', 'economic', 'economy'], name: 'Market & Economics', requiredKeywords: ['market', 'cash rate', 'growth'], maxTokens: 2500, minContentLength: 2500 },
+    'demographics': { keywords: ['demographic', 'demand', 'population'], name: 'Demographics & Demand', requiredKeywords: ['population', 'income', 'employment'], maxTokens: 2500, minContentLength: 2500 },
+    'education': { keywords: ['school', 'education', 'healthcare', 'hospital', 'shopping'], name: 'Education & Healthcare', requiredKeywords: ['school', 'education', 'healthcare'], maxTokens: 2500, minContentLength: 2500 },
+    'recreation': { keywords: ['recreation', 'transport', 'accessibility', 'amenities', 'commute'], name: 'Recreation & Transport', requiredKeywords: ['recreation', 'transport', 'commute'], maxTokens: 2500, minContentLength: 2500 },
+    'environment': { keywords: ['environment', 'climate', 'crime', 'safety', 'flood', 'bushfire', 'risk'], name: 'Environment & Safety', requiredKeywords: ['flood', 'crime', 'safety'], maxTokens: 2500, minContentLength: 2500 },
+    'property': { keywords: ['property-level', 'property level', 'zoning', 'land size', 'building'], name: 'Property & Zoning', requiredKeywords: ['property', 'zoning', 'land'], maxTokens: 2500, minContentLength: 2500 },
+    'costs': { keywords: ['purchase', 'ongoing costs', 'rental', 'yield', 'stamp duty'], name: 'Costs & Rental', requiredKeywords: ['purchase', 'rent', 'yield'], maxTokens: 2500, minContentLength: 2500 },
+    'loan': { keywords: ['loan', 'repayment', 'sensitivity', 'cashflow', 'mortgage'], name: 'Loan & Sensitivity', requiredKeywords: ['loan', 'repayment', 'cashflow'], maxTokens: 2500, minContentLength: 2500 },
+    'projections': { keywords: ['projection', 'swot', 'opportunities', 'investment score', '10-year', 'ten year'], name: 'Projections & SWOT', requiredKeywords: ['projection', 'swot', 'opportunity'], maxTokens: 3000, minContentLength: 3000 },
+    'recommendations': { keywords: ['risk', 'recommendation', 'conclusion', 'disclaimer', 'data sources', 'transparency', 'contact', 'final'], name: 'Risks & Recommendations', requiredKeywords: ['risk', 'recommendation', 'conclusion'], maxTokens: 3500, minContentLength: 3500 }
+  };
+  
+  const groups: Record<string, string[]> = {};
+  const usedHeadings = new Set<string>();
+  
+  for (const heading of headings) {
+    const headingLower = heading.toLowerCase();
+    for (const [groupKey, config] of Object.entries(sectionKeywordMap)) {
+      if (config.keywords.some(kw => headingLower.includes(kw))) {
+        if (!groups[groupKey]) groups[groupKey] = [];
+        groups[groupKey].push(heading);
+        usedHeadings.add(heading);
+        break;
+      }
+    }
+  }
+  
+  for (const heading of headings) {
+    if (!usedHeadings.has(heading)) {
+      if (!groups['recommendations']) groups['recommendations'] = [];
+      groups['recommendations'].push(heading);
+    }
+  }
+  
+  const orderedKeys = ['executive', 'location', 'market', 'demographics', 'education', 'recreation', 'environment', 'property', 'costs', 'loan', 'projections', 'recommendations'];
+  const sections: ReportSectionDefinition[] = [];
+  
+  for (let i = 0; i < orderedKeys.length; i++) {
+    const key = orderedKeys[i];
+    const config = sectionKeywordMap[key];
+    const groupHeadings = groups[key] || [];
+    
+    if (groupHeadings.length > 0) {
+      sections.push({ id: `section${i}`, name: config.name, sections: groupHeadings, maxTokens: config.maxTokens, minContentLength: config.minContentLength, requiredKeywords: config.requiredKeywords });
+    } else {
+      const defaultSection = DEFAULT_REPORT_SECTIONS.find(s => s.id === `section${i}`);
+      if (defaultSection) sections.push(defaultSection);
+    }
+  }
+  
+  return sections;
+}
 
 // Helper function to fetch with timeout - MUST match generate-investment-report
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 90000): Promise<Response> {
