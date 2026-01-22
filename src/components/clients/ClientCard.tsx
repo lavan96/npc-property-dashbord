@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 // Pipeline stage colors
@@ -61,12 +61,13 @@ interface ClientCardProps {
     pipeline_status?: string | null;
     follow_up_date?: string | null;
   };
+  ghlLocationId?: string | null;
   onView: () => void;
   onDelete: () => void;
   onSyncComplete?: () => void;
 }
 
-export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientCardProps) {
+export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComplete }: ClientCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
   const propertyCount = client.client_properties?.length || 0;
@@ -194,10 +195,10 @@ export function ClientCard({ client, onView, onDelete, onSyncComplete }: ClientC
                 <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing...' : 'Sync to GHL'}
               </DropdownMenuItem>
-              {client.ghl_contact_id && (
+              {client.ghl_contact_id && ghlLocationId && (
                 <DropdownMenuItem asChild>
                   <a 
-                    href={`https://app.gohighlevel.com/contacts/${client.ghl_contact_id}`}
+                    href={`https://app.gohighlevel.com/v2/location/${ghlLocationId}/contacts/detail/${client.ghl_contact_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

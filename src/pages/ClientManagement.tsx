@@ -23,7 +23,8 @@ import {
   Zap,
   Star,
   ExternalLink,
-  Target
+  Target,
+  UserPlus
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -35,6 +36,7 @@ import { ClientBulkActions } from '@/components/clients/ClientBulkActions';
 import { ClientAnalyticsDashboard } from '@/components/clients/ClientAnalyticsDashboard';
 import { ClientComparison } from '@/components/clients/ClientComparison';
 import { PortfolioAnalysisReportsList } from '@/components/clients/PortfolioAnalysisReportsList';
+import { AddClientModal } from '@/components/clients/AddClientModal';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -115,6 +117,7 @@ export default function ClientManagement() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch clients with property count
@@ -132,6 +135,25 @@ export default function ClientManagement() {
       if (error) throw error;
       return data as Client[];
     }
+  });
+
+  // Fetch GHL Location ID via edge function
+  const { data: ghlLocationId } = useQuery({
+    queryKey: ['ghl-location-id'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('check-integration-secrets', {
+        body: { integrationId: 'gohighlevel' }
+      });
+      
+      if (error || !data?.configured) {
+        console.error('GHL not configured:', error);
+        return null;
+      }
+      // The location ID is stored as GOHIGHLEVEL_LOCATION_ID env var
+      // We need to get it from a different source - check if it was returned
+      return data?.locationId || null;
+    },
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
   // Auto-sync from GHL on first load if no clients exist
@@ -477,6 +499,14 @@ export default function ClientManagement() {
             <Trash2 className="h-4 w-4 mr-2" />
             Clear & Reimport
           </Button>
+          <Button 
+            onClick={() => setShowAddClientModal(true)} 
+            variant="default" 
+            size="sm"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Client
+          </Button>
           {pendingSyncCount > 0 && (
             <Button 
               onClick={handleSyncAllPending} 
@@ -639,6 +669,7 @@ export default function ClientManagement() {
                   </div>
                   <ClientCard
                     client={client}
+                    ghlLocationId={ghlLocationId}
                     onView={() => handleViewClient(client)}
                     onDelete={() => handleDeleteClient(client)}
                     onSyncComplete={() => refetch()}
@@ -751,6 +782,12 @@ export default function ClientManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Client Modal */}
+      <AddClientModal
+        open={showAddClientModal}
+        onOpenChange={setShowAddClientModal}
+      />
     </div>
   );
 }
