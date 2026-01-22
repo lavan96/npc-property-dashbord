@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,12 +11,92 @@ import { Download, FileSpreadsheet, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadVownetTemplate, downloadBlankVownetTemplate, type VownetExportData } from '@/utils/vownetTemplateGenerator';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExportVownetButtonProps {
   clientId: string;
   clientName: string;
   variant?: 'default' | 'outline' | 'ghost';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+}
+
+/**
+ * Helper to get session token
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+/**
+ * Fetch client data securely with fallback
+ */
+async function fetchClientDataForExport(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: {
+            client: true,
+            properties: true,
+            employment: true,
+            income: true,
+            assets: true,
+            liabilities: true,
+          },
+        },
+      });
+
+      if (!error && data?.success) {
+        return {
+          client: data.data?.client,
+          properties: data.data?.properties || [],
+          employment: data.data?.employment || [],
+          income: data.data?.income || [],
+          assets: data.data?.assets || [],
+          liabilities: data.data?.liabilities || [],
+        };
+      }
+      
+      if (error && !error.message?.includes('401')) {
+        console.warn('Secure export fetch failed, falling back:', error.message);
+      }
+    } catch (err) {
+      console.warn('Edge function call failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase queries
+  const [
+    { data: client, error: clientError },
+    { data: properties },
+    { data: employment },
+    { data: income },
+    { data: assets },
+    { data: liabilities },
+  ] = await Promise.all([
+    supabase.from('clients').select('*').eq('id', clientId).single(),
+    supabase.from('client_properties').select('*').eq('client_id', clientId),
+    supabase.from('client_employment').select('*').eq('client_id', clientId),
+    supabase.from('client_income').select('*').eq('client_id', clientId),
+    supabase.from('client_assets').select('*').eq('client_id', clientId),
+    supabase.from('client_liabilities').select('*').eq('client_id', clientId),
+  ]);
+
+  if (clientError) throw clientError;
+
+  return {
+    client,
+    properties: properties || [],
+    employment: employment || [],
+    income: income || [],
+    assets: assets || [],
+    liabilities: liabilities || [],
+  };
 }
 
 export function ExportVownetButton({ 
@@ -30,56 +108,22 @@ export function ExportVownetButton({
   const [isExporting, setIsExporting] = useState(false);
   const { addNotification } = useNotifications();
 
-  // Fetch all client data for export
-  const { data: clientData, refetch: refetchClient } = useQuery({
-    queryKey: ['client-export-data', clientId],
-    queryFn: async () => {
-      const [
-        { data: client, error: clientError },
-        { data: properties, error: propsError },
-        { data: employment, error: empError },
-        { data: income, error: incError },
-        { data: assets, error: assetsError },
-        { data: liabilities, error: liabError },
-      ] = await Promise.all([
-        supabase.from('clients').select('*').eq('id', clientId).single(),
-        supabase.from('client_properties').select('*').eq('client_id', clientId),
-        supabase.from('client_employment').select('*').eq('client_id', clientId),
-        supabase.from('client_income').select('*').eq('client_id', clientId),
-        supabase.from('client_assets').select('*').eq('client_id', clientId),
-        supabase.from('client_liabilities').select('*').eq('client_id', clientId),
-      ]);
-
-      if (clientError) throw clientError;
-
-      return {
-        client,
-        properties: properties || [],
-        employment: employment || [],
-        income: income || [],
-        assets: assets || [],
-        liabilities: liabilities || [],
-      };
-    },
-    enabled: false, // Only fetch on demand
-  });
-
   const handleExportPrefilled = async () => {
     setIsExporting(true);
     try {
-      const result = await refetchClient();
+      const data = await fetchClientDataForExport(clientId);
       
-      if (!result.data?.client) {
+      if (!data?.client) {
         throw new Error('Failed to fetch client data');
       }
 
       const exportData: VownetExportData = {
-        client: result.data.client,
-        properties: result.data.properties,
-        employment: result.data.employment,
-        income: result.data.income,
-        assets: result.data.assets,
-        liabilities: result.data.liabilities,
+        client: data.client,
+        properties: data.properties,
+        employment: data.employment,
+        income: data.income,
+        assets: data.assets,
+        liabilities: data.liabilities,
       };
 
       downloadVownetTemplate(exportData);

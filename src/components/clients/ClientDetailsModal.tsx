@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useSecureClientData } from '@/hooks/useSecureClientData';
 import {
   Dialog,
   DialogContent,
@@ -161,91 +162,37 @@ NPC Team`
     }
   };
 
-  // Fetch full client details
-  const { data: fullClient, refetch: refetchClient } = useQuery({
-    queryKey: ['client-details', client.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', client.id)
-        .single();
-      if (error) throw error;
-      return data;
+  const queryClient = useQueryClient();
+
+  // Use secure data fetching hook - fetches all client data via Edge Function with fallback
+  const { data: secureData, refetch: refetchSecureData } = useSecureClientData({
+    clientId: client.id,
+    include: {
+      client: true,
+      properties: true,
+      employment: true,
+      income: true,
+      assets: true,
+      liabilities: true,
     },
-    enabled: open
+    enabled: open,
   });
 
-  // Fetch properties
-  const { data: properties = [] } = useQuery({
-    queryKey: ['client-properties', client.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_properties')
-        .select('*')
-        .eq('client_id', client.id)
-        .order('created_at');
-      if (error) throw error;
-      return data;
-    },
-    enabled: open
-  });
+  // Extract data from secure response
+  const fullClient = secureData?.client || null;
+  const properties = secureData?.properties || [];
+  const employment = secureData?.employment || [];
+  const income = secureData?.income || [];
+  const assets = secureData?.assets || [];
+  const liabilities = secureData?.liabilities || [];
 
-  // Fetch employment
-  const { data: employment = [] } = useQuery({
-    queryKey: ['client-employment', client.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_employment')
-        .select('*')
-        .eq('client_id', client.id);
-      if (error) throw error;
-      return data;
-    },
-    enabled: open
-  });
-
-  // Fetch income
-  const { data: income = [] } = useQuery({
-    queryKey: ['client-income', client.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_income')
-        .select('*')
-        .eq('client_id', client.id);
-      if (error) throw error;
-      return data;
-    },
-    enabled: open
-  });
-
-  // Fetch assets
-  const { data: assets = [] } = useQuery({
-    queryKey: ['client-assets', client.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_assets')
-        .select('*')
-        .eq('client_id', client.id);
-      if (error) throw error;
-      return data;
-    },
-    enabled: open
-  });
-
-  // Fetch liabilities
-  const { data: liabilities = [] } = useQuery({
-    queryKey: ['client-liabilities', client.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_liabilities')
-        .select('*')
-        .eq('client_id', client.id);
-      if (error) throw error;
-      return data;
-    },
-    enabled: open
-  });
+  // Refetch function for backward compatibility
+  const refetchClient = () => {
+    refetchSecureData();
+    // Also invalidate legacy query keys for components that might still use them
+    queryClient.invalidateQueries({ queryKey: ['client-details', client.id] });
+    queryClient.invalidateQueries({ queryKey: ['client-properties', client.id] });
+  };
 
   const formatCurrency = (value: number | null) => {
     if (value === null || value === undefined) return '-';
@@ -280,18 +227,18 @@ NPC Team`
               {/* Send to Finance - Vownet Form */}
               <VownetPDFGenerator
                 data={{
-                  client: fullClient || {
+                  client: (fullClient || {
                     id: client.id,
                     primary_first_name: client.primary_first_name,
                     primary_surname: client.primary_surname,
                     primary_email: client.primary_email,
                     primary_mobile: client.primary_mobile,
-                  },
-                  properties,
-                  employment,
-                  income,
-                  assets,
-                  liabilities,
+                  }) as any,
+                  properties: properties as any[],
+                  employment: employment as any[],
+                  income: income as any[],
+                  assets: assets as any[],
+                  liabilities: liabilities as any[],
                 }}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}
                 onEmailClick={handlePdfEmailClick}
@@ -546,7 +493,7 @@ NPC Team`
                           {/* Investment Report Button - only for investment properties */}
                           {(property.property_type === 'investment' || property.property_type === 'smsf') && (
                             <ClientPropertyInvestmentReport
-                              property={property}
+                              property={property as any}
                               clientId={client.id}
                               clientName={`${client.primary_first_name} ${client.primary_surname}`}
                             />

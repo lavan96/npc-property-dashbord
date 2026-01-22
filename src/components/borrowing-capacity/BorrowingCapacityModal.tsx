@@ -29,6 +29,79 @@ import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
 
+// Helper to get session token for secure data fetching
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
+// Secure data fetching with fallback
+async function fetchBorrowingCapacityData(clientId: string) {
+  const sessionToken = getSessionToken();
+  
+  // Try secure Edge Function first
+  if (sessionToken) {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-client-data', {
+        body: {
+          session_token: sessionToken,
+          clientId,
+          include: {
+            client: true,
+            properties: true,
+            income: true,
+            liabilities: true,
+            expenses: true,
+          },
+        },
+      });
+
+      if (!error && data?.success) {
+        const totalDeclaredFromDB = (data.data?.expenses || []).reduce(
+          (sum: number, exp: any) => sum + (Number(exp.monthly_amount) || 0), 
+          0
+        );
+        return {
+          client: data.data?.client,
+          income: data.data?.income || [],
+          liabilities: data.data?.liabilities || [],
+          properties: data.data?.properties || [],
+          expenses: data.data?.expenses || [],
+          totalDeclaredExpenses: totalDeclaredFromDB,
+        };
+      }
+      
+      if (error && !error.message?.includes('401')) {
+        console.warn('Secure borrowing capacity fetch failed, falling back:', error.message);
+      }
+    } catch (err) {
+      console.warn('Edge function call failed, falling back:', err);
+    }
+  }
+
+  // Fallback: Direct Supabase queries
+  const [clientRes, incomeRes, liabilitiesRes, propertiesRes, expensesRes] = await Promise.all([
+    supabase.from('clients').select('*').eq('id', clientId).single(),
+    supabase.from('client_income').select('*').eq('client_id', clientId),
+    supabase.from('client_liabilities').select('*').eq('client_id', clientId),
+    supabase.from('client_properties').select('*').eq('client_id', clientId),
+    supabase.from('client_expenses').select('*').eq('client_id', clientId),
+  ]);
+
+  const totalDeclaredFromDB = (expensesRes.data || []).reduce(
+    (sum, exp) => sum + (Number(exp.monthly_amount) || 0), 
+    0
+  );
+
+  return {
+    client: clientRes.data,
+    income: incomeRes.data || [],
+    liabilities: liabilitiesRes.data || [],
+    properties: propertiesRes.data || [],
+    expenses: expensesRes.data || [],
+    totalDeclaredExpenses: totalDeclaredFromDB,
+  };
+}
+
 interface BorrowingCapacityModalProps {
   clientId: string;
   open: boolean;
@@ -88,33 +161,10 @@ export function BorrowingCapacityModal({
   // Computed buffer rate based on toggle
   const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
 
-  // Fetch client data INCLUDING expenses
+  // Fetch client data using secure function with fallback
   const { data: clientData } = useQuery({
     queryKey: ['borrowing-capacity-client-data', clientId],
-    queryFn: async () => {
-      const [clientRes, incomeRes, liabilitiesRes, propertiesRes, expensesRes] = await Promise.all([
-        supabase.from('clients').select('*').eq('id', clientId).single(),
-        supabase.from('client_income').select('*').eq('client_id', clientId),
-        supabase.from('client_liabilities').select('*').eq('client_id', clientId),
-        supabase.from('client_properties').select('*').eq('client_id', clientId),
-        supabase.from('client_expenses').select('*').eq('client_id', clientId),
-      ]);
-
-      // Calculate total declared expenses from database
-      const totalDeclaredFromDB = (expensesRes.data || []).reduce(
-        (sum, exp) => sum + (Number(exp.monthly_amount) || 0), 
-        0
-      );
-
-      return {
-        client: clientRes.data,
-        income: incomeRes.data || [],
-        liabilities: liabilitiesRes.data || [],
-        properties: propertiesRes.data || [],
-        expenses: expensesRes.data || [],
-        totalDeclaredExpenses: totalDeclaredFromDB,
-      };
-    },
+    queryFn: () => fetchBorrowingCapacityData(clientId),
     enabled: open,
   });
 
