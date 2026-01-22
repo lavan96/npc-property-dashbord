@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -159,17 +160,15 @@ export function ClientEmailCompose({
       const ccEmails = cc.split(',').map(e => e.trim()).filter(Boolean);
       const bccEmails = bcc.split(',').map(e => e.trim()).filter(Boolean);
 
-      const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: to.trim(),
-          cc: ccEmails,
-          bcc: bccEmails,
-          subject: subject.trim(),
-          body: body,
-          senderMailbox: selectedMailbox,
-          attachments: validAttachments,
-          clientId,
-        }
+      const { data, error } = await invokeSecureFunction('send-email-reply', {
+        to: to.trim(),
+        cc: ccEmails,
+        bcc: bccEmails,
+        subject: subject.trim(),
+        body: body,
+        senderMailbox: selectedMailbox,
+        attachments: validAttachments,
+        clientId,
       });
 
       if (error) throw error;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, AlertCircle, PlayCircle, X } from 'lucide-react';
@@ -157,11 +158,9 @@ export function ReportGenerationProgress() {
         .eq('id', reportId);
 
       // Invoke the edge function to continue generation - don't await to keep UI responsive
-      supabase.functions.invoke('generate-investment-report', {
-        body: {
-          reportId: reportId,
-          continueFrom: true  // Signal to continue from existing content
-        }
+      invokeSecureFunction('generate-investment-report', {
+        reportId: reportId,
+        continueFrom: true  // Signal to continue from existing content
       }).then(({ error }) => {
         if (error) {
           console.error('Error invoking generation:', error);

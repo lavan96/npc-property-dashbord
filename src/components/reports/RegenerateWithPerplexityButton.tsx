@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
@@ -68,14 +69,12 @@ export function RegenerateWithPerplexityButton({
       });
 
       // Call the regenerate-report-qualitative edge function
-      const { data, error } = await supabase.functions.invoke('regenerate-report-qualitative', {
-        body: {
-          reportId,
-          manualOverrides: report.manual_overrides || {},
-          currentReportContent: report.report_content,
-          propertyAddress,
-          financialCalculations: report.financial_calculations || {}
-        }
+      const { data, error } = await invokeSecureFunction('regenerate-report-qualitative', {
+        reportId,
+        manualOverrides: report.manual_overrides || {},
+        currentReportContent: report.report_content,
+        propertyAddress,
+        financialCalculations: report.financial_calculations || {}
       });
 
       if (error) {

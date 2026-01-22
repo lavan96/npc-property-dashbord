@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useSecureClientData } from '@/hooks/useSecureClientData';
 import {
   Dialog,
@@ -113,14 +114,12 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
     
     try {
       // Generate portfolio analysis
-      const { data, error } = await supabase.functions.invoke('generate-portfolio-analysis', {
-        body: {
-          clientId: client.id,
-          investorProfile: 'general',
-          analysisDepth: 'comprehensive',
-          includeProjections: true,
-          projectionYears: 10,
-        }
+      const { data, error } = await invokeSecureFunction('generate-portfolio-analysis', {
+        clientId: client.id,
+        investorProfile: 'general',
+        analysisDepth: 'comprehensive',
+        includeProjections: true,
+        projectionYears: 10,
       });
 
       if (error) throw error;

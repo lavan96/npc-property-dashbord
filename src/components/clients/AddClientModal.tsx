@@ -83,8 +83,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
       // Sync to GHL if enabled
       if (syncToGHL && newClient) {
-        const { data: syncResult, error: syncError } = await supabase.functions.invoke('sync-client-to-ghl', {
-          body: { clientId: newClient.id }
+        const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', {
+          clientId: newClient.id
         });
 
         if (syncError) {

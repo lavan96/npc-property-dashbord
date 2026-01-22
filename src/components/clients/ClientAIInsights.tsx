@@ -97,11 +97,9 @@ Provide a JSON response with this structure:
   "recommendations": ["specific recommendation 1", "specific recommendation 2", "specific recommendation 3"]
 }`;
 
-      const { data, error } = await supabase.functions.invoke('report-qa', {
-        body: {
-          messages: [{ role: 'user', content: prompt }],
-          context: `You are a property investment advisor. Analyze portfolios and provide actionable insights.`
-        }
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        messages: [{ role: 'user', content: prompt }],
+        context: `You are a property investment advisor. Analyze portfolios and provide actionable insights.`
       });
 
       if (error) throw error;

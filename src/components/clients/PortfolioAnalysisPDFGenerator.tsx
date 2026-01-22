@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, Landmark, Shield, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -331,15 +332,13 @@ export function PortfolioAnalysisPDFGenerator({
     setIsGenerating(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('generate-portfolio-analysis', {
-        body: {
-          clientId,
-          investorProfile: 'general',
-          analysisDepth: 'comprehensive',
-          includeProjections: true,
-          projectionYears: 10,
-          includeOwnerOccupied: true // Default to include; can be parameterized later
-        }
+      const { data, error } = await invokeSecureFunction('generate-portfolio-analysis', {
+        clientId,
+        investorProfile: 'general',
+        analysisDepth: 'comprehensive',
+        includeProjections: true,
+        projectionYears: 10,
+        includeOwnerOccupied: true // Default to include; can be parameterized later
       });
 
       if (error) throw error;

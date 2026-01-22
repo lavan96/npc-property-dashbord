@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -694,11 +695,9 @@ export default function GeneratedReports() {
     setGeneratingTier({ reportId: report.id, tier: targetTier });
 
     try {
-      const { data, error } = await supabase.functions.invoke('condense-investment-report', {
-        body: {
-          parentReportId: report.id,
-          targetTier,
-        }
+      const { data, error } = await invokeSecureFunction('condense-investment-report', {
+        parentReportId: report.id,
+        targetTier,
       });
 
       if (error) throw error;

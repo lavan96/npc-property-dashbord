@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Mail, FileText, Send, Loader2, X, Paperclip, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -213,22 +214,20 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
         .filter(e => e.length > 0);
 
       // Call send-email-reply edge function
-      const { data, error } = await supabase.functions.invoke('send-email-reply', {
-        body: {
-          to: emailTo.trim(),
-          subject: emailSubject,
-          body: emailBody,
-          cc: ccEmails.length > 0 ? ccEmails : undefined,
-          bcc: bccEmails.length > 0 ? bccEmails : undefined,
-          senderMailbox: selectedMailbox,
-          attachments: [
-            {
-              name: pdfFile.name,
-              contentType: 'application/pdf',
-              contentBytes: base64Content,
-            }
-          ],
-        }
+      const { data, error } = await invokeSecureFunction('send-email-reply', {
+        to: emailTo.trim(),
+        subject: emailSubject,
+        body: emailBody,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        bcc: bccEmails.length > 0 ? bccEmails : undefined,
+        senderMailbox: selectedMailbox,
+        attachments: [
+          {
+            name: pdfFile.name,
+            contentType: 'application/pdf',
+            contentBytes: base64Content,
+          }
+        ],
       });
 
       if (error) throw error;

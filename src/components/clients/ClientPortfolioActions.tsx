@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,14 +136,12 @@ export function ClientPortfolioActions({
 
     setIsComparing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('compare-investment-reports', {
-        body: {
-          reportIds: selectedReportIds,
-          analysisDepth,
-          investorProfile,
-          timeHorizon,
-          riskTolerance,
-        },
+      const { data, error } = await invokeSecureFunction('compare-investment-reports', {
+        reportIds: selectedReportIds,
+        analysisDepth,
+        investorProfile,
+        timeHorizon,
+        riskTolerance,
       });
 
       if (error) throw error;

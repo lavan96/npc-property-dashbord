@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -191,22 +192,16 @@ export function PropertyComparisonModal({
         requestBody.customWeights = customWeights;
       }
       
-      const { data, error } = await supabase.functions.invoke('compare-investment-reports', {
-        body: requestBody
-      });
+      const { data, error } = await invokeSecureFunction('compare-investment-reports', requestBody);
 
       if (error) {
         // Extract more detailed error information
         let errorMessage = error.message || 'Failed to compare properties';
         
-        // Check for specific error types in the error object
-        if (error.context?.status === 429) {
+        // Check for specific error types in the error message
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
           errorMessage = 'Rate limit exceeded. Too many comparison requests. Please wait a moment and try again.';
-        } else if (error.context?.status === 402) {
-          errorMessage = 'AI credits exhausted. Please add credits to your Lovable workspace to continue.';
-        } else if (errorMessage.includes('rate limit')) {
-          errorMessage = 'Rate limit exceeded. Please wait a moment and try again.';
-        } else if (errorMessage.includes('payment') || errorMessage.includes('credits')) {
+        } else if (errorMessage.includes('payment') || errorMessage.includes('credits') || errorMessage.includes('402')) {
           errorMessage = 'AI credits exhausted. Please add credits to your Lovable workspace.';
         }
         

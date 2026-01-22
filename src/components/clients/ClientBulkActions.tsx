@@ -62,8 +62,8 @@ export function ClientBulkActions({
 
     for (const clientId of selectedClients) {
       try {
-        const { data, error } = await supabase.functions.invoke('sync-client-to-ghl', {
-          body: { clientId }
+        const { data, error } = await invokeSecureFunction('sync-client-to-ghl', {
+          clientId
         });
         if (error || !data?.success) {
           errorCount++;

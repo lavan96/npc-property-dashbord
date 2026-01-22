@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -1360,13 +1361,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         };
       });
       
-      const { data, error } = await supabase.functions.invoke('compare-cash-flow-reports', {
-        body: {
-          reportIds: allReportIds,
-          projectionData,
-          investorProfile,
-          timeHorizon: '10 years',
-        }
+      const { data, error } = await invokeSecureFunction('compare-cash-flow-reports', {
+        reportIds: allReportIds,
+        projectionData,
+        investorProfile,
+        timeHorizon: '10 years',
       });
       
       if (error) throw error;
