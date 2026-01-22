@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ListOptions {
@@ -38,11 +39,6 @@ interface InvestmentReport {
   [key: string]: any;
 }
 
-// Helper to get session token from localStorage
-const getSessionToken = (): string | null => {
-  return localStorage.getItem('session_token');
-};
-
 export function useSecureInvestmentReports() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,23 +48,19 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
     
-    const sessionToken = getSessionToken();
-    
     try {
-      // Try secure Edge Function first
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('get-investment-reports', {
-          body: { reportId, session_token: sessionToken }
-        });
+      // Use secure Edge Function with HttpOnly cookie auth
+      const { data, error: fnError } = await invokeSecureFunction('get-investment-reports', {
+        reportId
+      });
 
-        if (!fnError && data?.success && data?.report) {
-          return data.report;
-        }
-        console.log('Secure fetch failed, falling back to direct query:', fnError?.message || data?.error);
+      if (!fnError && data?.success && data?.report) {
+        return data.report;
       }
+      console.log('Secure fetch failed, falling back to direct query:', fnError?.message || data?.error);
 
       // Fallback to direct query (will fail if RLS is strict)
-      const { data, error: queryError } = await supabase
+      const { data: fallbackData, error: queryError } = await supabase
         .from('investment_reports')
         .select('*')
         .eq('id', reportId)
@@ -80,7 +72,7 @@ export function useSecureInvestmentReports() {
         return null;
       }
 
-      return data as InvestmentReport;
+      return fallbackData as InvestmentReport;
     } catch (err: any) {
       console.error('Error fetching report:', err);
       setError(err.message);
@@ -95,22 +87,18 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('get-investment-reports', {
-          body: { reportIds, session_token: sessionToken }
-        });
+      const { data, error: fnError } = await invokeSecureFunction('get-investment-reports', {
+        reportIds
+      });
 
-        if (!fnError && data?.success && data?.reports) {
-          return data.reports;
-        }
-        console.log('Secure fetch failed, falling back:', fnError?.message || data?.error);
+      if (!fnError && data?.success && data?.reports) {
+        return data.reports;
       }
+      console.log('Secure fetch failed, falling back:', fnError?.message || data?.error);
 
       // Fallback
-      const { data, error: queryError } = await supabase
+      const { data: fallbackData, error: queryError } = await supabase
         .from('investment_reports')
         .select('*')
         .in('id', reportIds);
@@ -121,7 +109,7 @@ export function useSecureInvestmentReports() {
         return [];
       }
 
-      return (data as InvestmentReport[]) || [];
+      return (fallbackData as InvestmentReport[]) || [];
     } catch (err: any) {
       console.error('Error fetching reports:', err);
       setError(err.message);
@@ -136,19 +124,15 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('get-investment-reports', {
-          body: { listMode: true, listOptions: options, session_token: sessionToken }
-        });
+      const { data, error: fnError } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true, listOptions: options
+      });
 
-        if (!fnError && data?.success && data?.reports) {
-          return data.reports;
-        }
-        console.log('Secure list failed, falling back:', fnError?.message || data?.error);
+      if (!fnError && data?.success && data?.reports) {
+        return data.reports;
       }
+      console.log('Secure list failed, falling back:', fnError?.message || data?.error);
 
       // Fallback to direct query
       let query = supabase.from('investment_reports').select(options.select || '*');
@@ -187,7 +171,7 @@ export function useSecureInvestmentReports() {
         query = query.limit(options.limit);
       }
 
-      const { data, error: queryError } = await query;
+      const { data: fallbackData, error: queryError } = await query;
 
       if (queryError) {
         console.error('Direct query failed:', queryError);
@@ -195,7 +179,7 @@ export function useSecureInvestmentReports() {
         return [];
       }
 
-      return (data as unknown as InvestmentReport[]) || [];
+      return (fallbackData as unknown as InvestmentReport[]) || [];
     } catch (err: any) {
       console.error('Error listing reports:', err);
       setError(err.message);
@@ -210,19 +194,15 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data: result, error: fnError } = await supabase.functions.invoke('manage-investment-reports', {
-          body: { action: 'insert', data: reportData, session_token: sessionToken }
-        });
+      const { data: result, error: fnError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'insert', data: reportData
+      });
 
-        if (!fnError && result?.success && result?.report) {
-          return result.report;
-        }
-        console.log('Secure insert failed, falling back:', fnError?.message || result?.error);
+      if (!fnError && result?.success && result?.report) {
+        return result.report;
       }
+      console.log('Secure insert failed, falling back:', fnError?.message || result?.error);
 
       // Fallback
       const { data: report, error: insertError } = await supabase
@@ -252,19 +232,15 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data: result, error: fnError } = await supabase.functions.invoke('manage-investment-reports', {
-          body: { action: 'update', reportId, data: reportData, session_token: sessionToken }
-        });
+      const { data: result, error: fnError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'update', reportId, data: reportData
+      });
 
-        if (!fnError && result?.success && result?.report) {
-          return result.report;
-        }
-        console.log('Secure update failed, falling back:', fnError?.message || result?.error);
+      if (!fnError && result?.success && result?.report) {
+        return result.report;
       }
+      console.log('Secure update failed, falling back:', fnError?.message || result?.error);
 
       // Fallback
       const { data: report, error: updateError } = await supabase
@@ -295,19 +271,15 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data: result, error: fnError } = await supabase.functions.invoke('manage-investment-reports', {
-          body: { action: 'delete', reportId, session_token: sessionToken }
-        });
+      const { data: result, error: fnError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'delete', reportId
+      });
 
-        if (!fnError && result?.success) {
-          return true;
-        }
-        console.log('Secure delete failed, falling back:', fnError?.message || result?.error);
+      if (!fnError && result?.success) {
+        return true;
       }
+      console.log('Secure delete failed, falling back:', fnError?.message || result?.error);
 
       // Fallback
       const { error: deleteError } = await supabase
@@ -336,19 +308,15 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data: result, error: fnError } = await supabase.functions.invoke('manage-investment-reports', {
-          body: { action: archive ? 'archive' : 'unarchive', reportId, session_token: sessionToken }
-        });
+      const { data: result, error: fnError } = await invokeSecureFunction('manage-investment-reports', {
+        action: archive ? 'archive' : 'unarchive', reportId
+      });
 
-        if (!fnError && result?.success && result?.report) {
-          return result.report;
-        }
-        console.log('Secure archive toggle failed, falling back:', fnError?.message || result?.error);
+      if (!fnError && result?.success && result?.report) {
+        return result.report;
       }
+      console.log('Secure archive toggle failed, falling back:', fnError?.message || result?.error);
 
       // Fallback
       const { data: report, error: archiveError } = await supabase
@@ -379,19 +347,15 @@ export function useSecureInvestmentReports() {
     setLoading(true);
     setError(null);
 
-    const sessionToken = getSessionToken();
-
     try {
-      if (sessionToken) {
-        const { data: result, error: fnError } = await supabase.functions.invoke('manage-investment-reports', {
-          body: { action: 'bulkDelete', reportIds: [], data: { statusFilter }, session_token: sessionToken }
-        });
+      const { data: result, error: fnError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'bulkDelete', reportIds: [], data: { statusFilter }
+      });
 
-        if (!fnError && result?.success) {
-          return result.deletedCount || 0;
-        }
-        console.log('Secure bulk delete failed, falling back:', fnError?.message || result?.error);
+      if (!fnError && result?.success) {
+        return result.deletedCount || 0;
       }
+      console.log('Secure bulk delete failed, falling back:', fnError?.message || result?.error);
 
       // Fallback
       const { data, error: deleteError } = await supabase

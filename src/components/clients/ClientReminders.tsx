@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,18 +61,12 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
   const { data: reminders = [], isLoading } = useQuery({
     queryKey: ['client-reminders', clientId],
     queryFn: async () => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase.functions.invoke('get-client-data', {
-        body: {
-          session_token: sessionToken,
-          clientId,
-          include: { reminders: true },
-        },
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        clientId,
+        include: { reminders: true },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch reminders');
       return data.data?.reminders || [];
     }
@@ -80,26 +74,20 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
 
   const addReminderMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: 'create',
-          table: 'client_reminders',
-          clientId,
-          data: {
-            title,
-            description,
-            due_date: new Date(dueDate).toISOString(),
-            priority,
-            reminder_type: reminderType,
-          },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_reminders',
+        clientId,
+        data: {
+          title,
+          description,
+          due_date: new Date(dueDate).toISOString(),
+          priority,
+          reminder_type: reminderType,
         },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to create reminder');
     },
     onSuccess: () => {
@@ -114,24 +102,18 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
 
   const completeReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: 'update',
-          table: 'client_reminders',
-          clientId,
-          recordId: reminderId,
-          data: { 
-            status: 'completed',
-            completed_at: new Date().toISOString()
-          },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'client_reminders',
+        clientId,
+        recordId: reminderId,
+        data: { 
+          status: 'completed',
+          completed_at: new Date().toISOString()
         },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to complete reminder');
     },
     onSuccess: () => {
@@ -145,20 +127,14 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
 
   const deleteReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
-      const sessionToken = localStorage.getItem('session_token');
-      if (!sessionToken) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase.functions.invoke('manage-client-data', {
-        body: {
-          session_token: sessionToken,
-          operation: 'delete',
-          table: 'client_reminders',
-          clientId,
-          recordId: reminderId,
-        },
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_reminders',
+        clientId,
+        recordId: reminderId,
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to delete reminder');
     },
     onSuccess: () => {

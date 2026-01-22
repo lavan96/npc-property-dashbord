@@ -23,6 +23,7 @@ import {
   Star,
   Target
 } from 'lucide-react';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -82,31 +83,22 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     }).format(value);
   };
 
-  const getSessionToken = () => localStorage.getItem('session_token');
-
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
-      const sessionToken = getSessionToken();
-      
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('manage-client-data', {
-            body: {
-              operation: 'update',
-              table: 'clients',
-              clientId: client.id,
-              data: { is_favorite: !client.is_favorite },
-              session_token: sessionToken,
-            },
-          });
-          
-          if (!error && data?.success) {
-            return;
-          }
-        } catch (err) {
-          console.warn('Edge function failed, falling back to direct query:', err);
+      // Use secure Edge Function with HttpOnly cookie auth
+      try {
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'clients',
+          clientId: client.id,
+          data: { is_favorite: !client.is_favorite },
+        });
+        
+        if (!error && data?.success) {
+          return;
         }
+      } catch (err) {
+        console.warn('Edge function failed, falling back to direct query:', err);
       }
       
       // Fallback to direct query

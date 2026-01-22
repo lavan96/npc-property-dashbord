@@ -36,6 +36,7 @@ import {
 import { formatFullName } from '@/utils/nameFormatting';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -120,21 +121,15 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-          body: {
-            session_token: sessionToken,
-            operation: 'update',
-            table: 'clients',
-            clientId: client.id,
-            data: { is_favorite: !client.is_favorite },
-          },
-        });
-        if (!fnError && data?.success) return;
-        console.warn('Secure update failed, falling back to direct query');
-      }
+      // Use secure Edge Function with HttpOnly cookie auth
+      const { data, error: fnError } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'clients',
+        clientId: client.id,
+        data: { is_favorite: !client.is_favorite },
+      });
+      if (!fnError && data?.success) return;
+      console.warn('Secure update failed, falling back to direct query');
 
       // Fallback to direct query
       const { error } = await supabase
@@ -156,37 +151,31 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   // Add note mutation with GHL sync
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+      // Use secure Edge Function with HttpOnly cookie auth
+      const { data, error: fnError } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_notes',
+        clientId: client.id,
+        data: {
+          client_id: client.id,
+          note_type: newNoteType,
+          content: newNoteContent.trim()
+        },
+      });
+      if (!fnError && data?.success) {
+        // Sync to GHL (non-blocking)
+        supabase.functions.invoke('sync-notes-to-ghl', {
           body: {
-            session_token: sessionToken,
-            operation: 'create',
-            table: 'client_notes',
+            action: 'create',
             clientId: client.id,
-            data: {
-              client_id: client.id,
-              note_type: newNoteType,
-              content: newNoteContent.trim()
-            },
-          },
-        });
-        if (!fnError && data?.success) {
-          // Sync to GHL (non-blocking)
-          supabase.functions.invoke('sync-notes-to-ghl', {
-            body: {
-              action: 'create',
-              clientId: client.id,
-              noteId: data.result?.id,
-              noteContent: newNoteContent.trim(),
-              noteType: newNoteType
-            }
-          }).catch(err => console.error('GHL note sync failed:', err));
-          return data.result;
-        }
-        console.warn('Secure create failed, falling back to direct query');
+            noteId: data.result?.id,
+            noteContent: newNoteContent.trim(),
+            noteType: newNoteType
+          }
+        }).catch(err => console.error('GHL note sync failed:', err));
+        return data.result;
       }
+      console.warn('Secure create failed, falling back to direct query');
 
       // Fallback: First insert locally
       const { data: newNote, error } = await supabase
@@ -228,34 +217,28 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   // Update note mutation with GHL sync
   const updateNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
+      // Use secure Edge Function with HttpOnly cookie auth
+      const { data, error: fnError } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'client_notes',
+        clientId: client.id,
+        recordId: noteId,
+        data: { content: editNoteContent.trim() },
+      });
+      if (!fnError && data?.success) {
+        // Sync update to GHL
+        supabase.functions.invoke('sync-notes-to-ghl', {
           body: {
-            session_token: sessionToken,
-            operation: 'update',
-            table: 'client_notes',
+            action: 'update',
             clientId: client.id,
-            recordId: noteId,
-            data: { content: editNoteContent.trim() },
-          },
-        });
-        if (!fnError && data?.success) {
-          // Sync update to GHL
-          supabase.functions.invoke('sync-notes-to-ghl', {
-            body: {
-              action: 'update',
-              clientId: client.id,
-              noteId,
-              noteContent: `[UPDATED] ${editNoteContent.trim()}`,
-              noteType: 'general'
-            }
-          }).catch(err => console.error('GHL note sync failed:', err));
-          return;
-        }
-        console.warn('Secure update failed, falling back to direct query');
+            noteId,
+            noteContent: `[UPDATED] ${editNoteContent.trim()}`,
+            noteType: 'general'
+          }
+        }).catch(err => console.error('GHL note sync failed:', err));
+        return;
       }
+      console.warn('Secure update failed, falling back to direct query');
 
       // Fallback to direct query
       const { error } = await supabase
@@ -298,21 +281,15 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
         }
       }).catch(err => console.error('GHL note delete sync failed:', err));
 
-      // Try secure Edge Function first
-      const sessionToken = localStorage.getItem('session_token');
-      if (sessionToken) {
-        const { data, error: fnError } = await supabase.functions.invoke('manage-client-data', {
-          body: {
-            session_token: sessionToken,
-            operation: 'delete',
-            table: 'client_notes',
-            clientId: client.id,
-            recordId: noteId,
-          },
-        });
-        if (!fnError && data?.success) return;
-        console.warn('Secure delete failed, falling back to direct query');
-      }
+      // Use secure Edge Function with HttpOnly cookie auth
+      const { data, error: fnError } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_notes',
+        clientId: client.id,
+        recordId: noteId,
+      });
+      if (!fnError && data?.success) return;
+      console.warn('Secure delete failed, falling back to direct query');
 
       // Fallback to direct query
       const { error } = await supabase

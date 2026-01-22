@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Trash2, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -80,43 +81,35 @@ export function ClientBulkActions({
     onClearSelection();
   };
 
-  const getSessionToken = () => localStorage.getItem('session_token');
-
   const handleBulkDelete = async () => {
     setIsDeleting(true);
-    const sessionToken = getSessionToken();
     
     try {
-      // Try secure Edge Function for each client
-      if (sessionToken) {
-        let allSuccess = true;
-        for (const clientId of selectedClients) {
-          try {
-            const { data, error } = await supabase.functions.invoke('manage-client-data', {
-              body: {
-                operation: 'delete',
-                table: 'clients',
-                clientId,
-                session_token: sessionToken,
-              },
-            });
-            
-            if (error || !data?.success) {
-              allSuccess = false;
-              break;
-            }
-          } catch {
+      // Use secure Edge Function with HttpOnly cookie auth
+      let allSuccess = true;
+      for (const clientId of selectedClients) {
+        try {
+          const { data, error } = await invokeSecureFunction('manage-client-data', {
+            operation: 'delete',
+            table: 'clients',
+            clientId,
+          });
+          
+          if (error || !data?.success) {
             allSuccess = false;
             break;
           }
+        } catch {
+          allSuccess = false;
+          break;
         }
-        
-        if (allSuccess) {
-          toast.success(`Deleted ${selectedCount} clients`);
-          onActionComplete();
-          onClearSelection();
-          return;
-        }
+      }
+      
+      if (allSuccess) {
+        toast.success(`Deleted ${selectedCount} clients`);
+        onActionComplete();
+        onClearSelection();
+        return;
       }
       
       // Fallback to direct query

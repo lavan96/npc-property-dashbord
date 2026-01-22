@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { 
   calculateBorrowingCapacity as calculateLocal,
   getHemBenchmark,
@@ -30,18 +30,11 @@ interface UseBorrowingCapacityOptions {
   autoFetch?: boolean;
 }
 
-/**
- * Get session token for secure API calls
- */
-function getSessionToken(): string | null {
-  return localStorage.getItem('session_token');
-}
-
 export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowingCapacityOptions) {
   const queryClient = useQueryClient();
   const [localResult, setLocalResult] = useState<BorrowingCapacityResult | null>(null);
 
-  // Fetch latest assessment from database with secure Edge Function + fallback
+  // Fetch latest assessment from database with secure Edge Function
   const {
     data: latestAssessment,
     isLoading: isLoadingAssessment,
@@ -50,69 +43,51 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
   } = useQuery({
     queryKey: ['borrowing-capacity', clientId],
     queryFn: async () => {
-      const sessionToken = getSessionToken();
-      
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              session_token: sessionToken,
-              clientId,
-              include: { borrowingCapacity: true },
-            },
-          });
-          
-          if (!error && data?.success && data.data?.borrowingCapacity) {
-            // Return the latest assessment (already sorted by created_at desc)
-            const assessments = data.data.borrowingCapacity;
-            return assessments.length > 0 ? assessments[0] : null;
-          }
-        } catch (err) {
-          throw err;
+      try {
+        const { data, error } = await invokeSecureFunction('get-client-data', {
+          clientId,
+          include: { borrowingCapacity: true },
+        });
+        
+        if (!error && data?.success && data.data?.borrowingCapacity) {
+          // Return the latest assessment (already sorted by created_at desc)
+          const assessments = data.data.borrowingCapacity;
+          return assessments.length > 0 ? assessments[0] : null;
         }
+        throw new Error(error?.message || 'Failed to fetch borrowing capacity');
+      } catch (err) {
+        throw err;
       }
-      
-      throw new Error('Not authenticated');
     },
     enabled: autoFetch && !!clientId,
   });
 
-  // Fetch assessment history with secure Edge Function + fallback
+  // Fetch assessment history with secure Edge Function
   const {
     data: assessmentHistory,
     isLoading: isLoadingHistory,
   } = useQuery({
     queryKey: ['borrowing-capacity-history', clientId],
     queryFn: async () => {
-      const sessionToken = getSessionToken();
-      
-      // Try secure Edge Function first
-      if (sessionToken) {
-        try {
-          const { data, error } = await supabase.functions.invoke('get-client-data', {
-            body: {
-              session_token: sessionToken,
-              clientId,
-              include: { borrowingCapacity: true },
-            },
-          });
-          
-          if (!error && data?.success && data.data?.borrowingCapacity) {
-            // Return up to 10 assessments for history
-            return data.data.borrowingCapacity.slice(0, 10).map((a: any) => ({
-              id: a.id,
-              borrowing_capacity: a.borrowing_capacity,
-              serviceability_band: a.serviceability_band,
-              created_at: a.created_at,
-            }));
-          }
-        } catch (err) {
-          throw err;
+      try {
+        const { data, error } = await invokeSecureFunction('get-client-data', {
+          clientId,
+          include: { borrowingCapacity: true },
+        });
+        
+        if (!error && data?.success && data.data?.borrowingCapacity) {
+          // Return up to 10 assessments for history
+          return data.data.borrowingCapacity.slice(0, 10).map((a: any) => ({
+            id: a.id,
+            borrowing_capacity: a.borrowing_capacity,
+            serviceability_band: a.serviceability_band,
+            created_at: a.created_at,
+          }));
         }
+        throw new Error(error?.message || 'Failed to fetch assessment history');
+      } catch (err) {
+        throw err;
       }
-      
-      throw new Error('Not authenticated');
     },
     enabled: autoFetch && !!clientId,
   });
@@ -120,15 +95,13 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
   // Calculate borrowing capacity via edge function
   const calculateMutation = useMutation({
     mutationFn: async (overrides?: BorrowingCapacityOverrides) => {
-      const { data, error } = await supabase.functions.invoke('calculate-borrowing-capacity', {
-        body: {
-          clientId,
-          overrides,
-          saveResult: true,
-        },
+      const { data, error } = await invokeSecureFunction('calculate-borrowing-capacity', {
+        clientId,
+        overrides,
+        saveResult: true,
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data.success) throw new Error(data.error || 'Calculation failed');
       
       return data.data as FullAssessmentResult;
@@ -154,15 +127,13 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
   // Quick calculate using client data without saving
   const quickCalculate = useCallback(async (overrides?: BorrowingCapacityOverrides) => {
     try {
-      const { data, error } = await supabase.functions.invoke('calculate-borrowing-capacity', {
-        body: {
-          clientId,
-          overrides,
-          saveResult: false, // Don't save - just calculate
-        },
+      const { data, error } = await invokeSecureFunction('calculate-borrowing-capacity', {
+        clientId,
+        overrides,
+        saveResult: false, // Don't save - just calculate
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (!data.success) throw new Error(data.error || 'Calculation failed');
       
       return data.data as FullAssessmentResult;
