@@ -105,17 +105,33 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
     }
   });
 
-  // Add note mutation
+  // Add note mutation with GHL sync
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
+      // First insert locally
+      const { data: newNote, error } = await supabase
         .from('client_notes')
         .insert({
           client_id: client.id,
           note_type: newNoteType,
           content: newNoteContent.trim()
-        });
+        })
+        .select()
+        .single();
       if (error) throw error;
+
+      // Then sync to GHL (non-blocking)
+      supabase.functions.invoke('sync-notes-to-ghl', {
+        body: {
+          action: 'create',
+          clientId: client.id,
+          noteId: newNote.id,
+          noteContent: newNoteContent.trim(),
+          noteType: newNoteType
+        }
+      }).catch(err => console.error('GHL note sync failed:', err));
+
+      return newNote;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
@@ -129,7 +145,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
     }
   });
 
-  // Update note mutation
+  // Update note mutation with GHL sync
   const updateNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
       const { error } = await supabase
@@ -137,6 +153,17 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
         .update({ content: editNoteContent.trim() })
         .eq('id', noteId);
       if (error) throw error;
+
+      // Sync update to GHL (creates new note since GHL doesn't support updates)
+      supabase.functions.invoke('sync-notes-to-ghl', {
+        body: {
+          action: 'update',
+          clientId: client.id,
+          noteId,
+          noteContent: `[UPDATED] ${editNoteContent.trim()}`,
+          noteType: 'general'
+        }
+      }).catch(err => console.error('GHL note sync failed:', err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
@@ -150,8 +177,18 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
   });
 
   // Delete note mutation
+  // Delete note mutation with GHL sync
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
+      // Sync delete to GHL first (best effort)
+      await supabase.functions.invoke('sync-notes-to-ghl', {
+        body: {
+          action: 'delete',
+          clientId: client.id,
+          noteId
+        }
+      }).catch(err => console.error('GHL note delete sync failed:', err));
+
       const { error } = await supabase
         .from('client_notes')
         .delete()
@@ -371,7 +408,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-5 w-5 p-0 hover:bg-muted"
                               >
                                 <MoreVertical className="h-3 w-3" />
                               </Button>
