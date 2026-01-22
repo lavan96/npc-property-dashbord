@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
 import { hashPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 
@@ -9,7 +8,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Simple email sending via Resend REST API
+async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) {
+    return { success: false, error: "RESEND_API_KEY not configured" };
+  }
+  
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "NPC Admin <admin@npcservices.com.au>",
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Resend API error:", errorData);
+      return { success: false, error: errorData.message || "Failed to send email" };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Email sending error:", error);
+    return { success: false, error: "Failed to send email" };
+  }
+}
 
 interface RequestBody {
   action: 'request_otp' | 'verify_otp' | 'reset_password';
