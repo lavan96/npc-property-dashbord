@@ -67,16 +67,45 @@ const defaultFormData: LiabilityFormData = {
   repayment_type: 'principal_interest',
 };
 
+/**
+ * Get session token for secure API calls
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
 export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEntryProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<LiabilityFormData>(defaultFormData);
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing liabilities - always enabled to show summary outside sheet
+  // Fetch existing liabilities with secure Edge Function + fallback
   const { data: existingLiabilities = [] } = useQuery({
     queryKey: ['client-liabilities', clientId],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              session_token: sessionToken,
+              clientId,
+              include: { liabilities: true },
+            },
+          });
+          
+          if (!error && data?.success && data.data?.liabilities) {
+            return data.data.liabilities;
+          }
+        } catch (err) {
+          console.warn('Secure liabilities fetch failed, falling back:', err);
+        }
+      }
+      
+      // Fallback: Direct Supabase query
       const { data, error } = await supabase
         .from('client_liabilities')
         .select('*')
@@ -123,6 +152,32 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
         repayment_type: formData.repayment_type || null,
       };
 
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: editingId ? 'update' : 'create',
+              table: 'client_liabilities',
+              clientId,
+              recordId: editingId,
+              data: payload,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure save failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       if (editingId) {
         const { error } = await supabase
           .from('client_liabilities')
@@ -146,6 +201,31 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'delete',
+              table: 'client_liabilities',
+              clientId,
+              recordId: id,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure delete failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error } = await supabase.from('client_liabilities').delete().eq('id', id);
       if (error) throw error;
     },

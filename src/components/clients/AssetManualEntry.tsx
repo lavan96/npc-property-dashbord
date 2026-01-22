@@ -80,6 +80,13 @@ const defaultFormData: AssetFormData = {
   make_model: '',
 };
 
+/**
+ * Get session token for secure API calls
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
 export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('vehicle');
@@ -87,10 +94,32 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing assets - always enabled to show summary outside sheet
+  // Fetch existing assets with secure Edge Function + fallback
   const { data: existingAssets = [] } = useQuery({
     queryKey: ['client-assets', clientId],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              session_token: sessionToken,
+              clientId,
+              include: { assets: true },
+            },
+          });
+          
+          if (!error && data?.success && data.data?.assets) {
+            return data.data.assets;
+          }
+        } catch (err) {
+          console.warn('Secure assets fetch failed, falling back:', err);
+        }
+      }
+      
+      // Fallback: Direct Supabase query
       const { data, error } = await supabase
         .from('client_assets')
         .select('*')
@@ -138,10 +167,36 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
         description: formData.description || null,
         value: formData.value,
         institution_name: formData.institution_name || null,
-        vehicle_type: formData.asset_type === 'vehicle' ? formData.vehicle_type : null,
+        vehicle_type: formData.asset_type === 'vehicle' || formData.asset_type === 'alternative' ? formData.vehicle_type : null,
         make_model: formData.asset_type === 'vehicle' ? formData.make_model : null,
       };
 
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: editingId ? 'update' : 'create',
+              table: 'client_assets',
+              clientId,
+              recordId: editingId,
+              data: payload,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure save failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       if (editingId) {
         const { error } = await supabase
           .from('client_assets')
@@ -165,6 +220,31 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'delete',
+              table: 'client_assets',
+              clientId,
+              recordId: id,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure delete failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error } = await supabase.from('client_assets').delete().eq('id', id);
       if (error) throw error;
     },
