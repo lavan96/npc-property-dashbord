@@ -9,13 +9,13 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { RefreshCw, Shield, Palette, Clock, Mail, FileSignature } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
 import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
 import { FinanceAgentContacts } from '@/components/settings/FinanceAgentContacts';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -39,7 +39,6 @@ export default function Settings() {
 
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const sessionToken = localStorage.getItem('session_token');
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -58,15 +57,9 @@ export default function Settings() {
   }, []);
 
   const fetchOwnProfile = async () => {
-    if (!sessionToken) {
-      setLoadingMailbox(false);
-      setLoadingSignature(false);
-      return;
-    }
-    
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: { action: 'get_own_profile', session_token: sessionToken }
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'get_own_profile'
       });
 
       if (data?.success && data.user) {
@@ -82,16 +75,11 @@ export default function Settings() {
   };
 
   const handleSaveMailbox = async () => {
-    if (!sessionToken) return;
-    
     setSavingMailbox(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: { 
-          action: 'update_own_mailbox', 
-          session_token: sessionToken,
-          personal_mailbox: personalMailbox || null
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', { 
+        action: 'update_own_mailbox', 
+        personal_mailbox: personalMailbox || null
       });
 
       if (data?.success) {
@@ -124,16 +112,11 @@ export default function Settings() {
   };
 
   const handleSaveSignature = async () => {
-    if (!sessionToken) return;
-    
     setSavingSignature(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-user-management', {
-        body: { 
-          action: 'update_own_signature', 
-          session_token: sessionToken,
-          email_signature: emailSignature || null
-        }
+      const { data } = await invokeSecureFunction('admin-user-management', { 
+        action: 'update_own_signature', 
+        email_signature: emailSignature || null
       });
 
       if (data?.success) {
