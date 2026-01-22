@@ -56,6 +56,7 @@ import { cn } from '@/lib/utils';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
 import { toast } from 'sonner';
+import { formatFullName } from '@/utils/nameFormatting';
 
 // Types for GHL pipeline data
 interface GHLPipeline {
@@ -1028,7 +1029,7 @@ export default function ClientTracker() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-medium text-foreground">
-                                  {client.primary_first_name} {client.primary_surname}
+                                  {formatFullName(client.primary_first_name, client.primary_surname)}
                                 </h3>
                                 {pipeline && (
                                   <Badge variant="outline" className="text-xs">
@@ -1101,7 +1102,7 @@ export default function ClientTracker() {
                               <DialogContent className="max-w-lg">
                                 <DialogHeader>
                                   <DialogTitle>
-                                    Edit Pipeline: {client.primary_first_name} {client.primary_surname}
+                                    Edit Pipeline: {formatFullName(client.primary_first_name, client.primary_surname)}
                                   </DialogTitle>
                                 </DialogHeader>
                                 <ClientEditForm 
@@ -1188,7 +1189,7 @@ export default function ClientTracker() {
                               <DialogContent className="max-w-lg">
                                 <DialogHeader>
                                   <DialogTitle>
-                                    Edit: {client.primary_first_name} {client.primary_surname}
+                                    Edit: {formatFullName(client.primary_first_name, client.primary_surname)}
                                   </DialogTitle>
                                 </DialogHeader>
                                 <ClientEditForm 
@@ -1309,7 +1310,7 @@ export default function ClientTracker() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>
-                Edit: {editingClient.primary_first_name} {editingClient.primary_surname}
+                Edit: {formatFullName(editingClient.primary_first_name, editingClient.primary_surname)}
               </DialogTitle>
             </DialogHeader>
             <ClientEditForm 
@@ -1366,7 +1367,7 @@ function KanbanCard({
             <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           )}
           <h4 className="font-medium text-sm line-clamp-1">
-            {client.primary_first_name} {client.primary_surname}
+            {formatFullName(client.primary_first_name, client.primary_surname)}
           </h4>
         </div>
         {isOverdue && (
