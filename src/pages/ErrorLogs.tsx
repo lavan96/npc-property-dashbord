@@ -25,6 +25,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow, subDays } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -317,8 +318,8 @@ export default function ErrorLogs() {
         .eq('id', reportId);
 
       // Call the edge function to regenerate
-      const { error } = await supabase.functions.invoke('generate-investment-report', {
-        body: { reportId }
+      const { error } = await invokeSecureFunction('generate-investment-report', {
+        reportId
       });
 
       if (error) throw error;

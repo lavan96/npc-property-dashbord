@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Calculator, Home, DollarSign, TrendingUp, Settings2 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
@@ -504,13 +505,11 @@ export function PreGenerationOverrides({
 
     setIsEstimatingExpenses(true);
     try {
-      const { data, error } = await supabase.functions.invoke('estimate-property-expenses', {
-        body: {
-          propertyAddress,
-          purchasePrice: price,
-          weeklyRent: parseFloat(weeklyRent) || 0,
-          propertyType
-        }
+      const { data, error } = await invokeSecureFunction('estimate-property-expenses', {
+        propertyAddress,
+        purchasePrice: price,
+        weeklyRent: parseFloat(weeklyRent) || 0,
+        propertyType
       });
 
       if (error) throw error;

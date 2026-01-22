@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -170,15 +171,13 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     });
     
     try {
-      const { data, error } = await supabase.functions.invoke('parse-template-document', {
-        body: {
-          templateId: template.id,
-          filePath: template.file_path,
-          templateType: template.template_type,
-          reportTier: template.report_tier,
-          reportCategory: template.report_category,
-          useAIExtraction: true,
-        },
+      const { data, error } = await invokeSecureFunction('parse-template-document', {
+        templateId: template.id,
+        filePath: template.file_path,
+        templateType: template.template_type,
+        reportTier: template.report_tier,
+        reportCategory: template.report_category,
+        useAIExtraction: true,
       });
 
       if (error) throw error;

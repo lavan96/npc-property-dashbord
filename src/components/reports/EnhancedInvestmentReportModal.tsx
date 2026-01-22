@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Download, Copy, Check, Eye, TrendingUp, DollarSign, Home, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import jsPDF from 'jspdf';
@@ -61,11 +62,9 @@ export function EnhancedInvestmentReportModal({
       
       console.log('Calling generate-investment-report with:', { propertyAddress, propertyDetails });
       
-      const { data, error } = await supabase.functions.invoke('generate-investment-report', {
-        body: {
-          propertyAddress,
-          propertyDetails
-        }
+      const { data, error } = await invokeSecureFunction('generate-investment-report', {
+        propertyAddress,
+        propertyDetails
       });
 
       console.log('Edge function response:', { data, error });
@@ -221,37 +220,31 @@ export function EnhancedInvestmentReportModal({
       const state = stateMatch ? stateMatch[1].toUpperCase() : 'NSW';
 
       const [absResponse, rbaResponse, financialResponse, locationResponse, scoringResponse] = await Promise.all([
-        supabase.functions.invoke('abs-data-service', {
-          body: { postcode, state }
+        invokeSecureFunction('abs-data-service', {
+          postcode, state
         }),
-        supabase.functions.invoke('rba-data-service', {}),
-        propertyDetails?.price ? supabase.functions.invoke('financial-calculator-service', {
-          body: {
-            propertyValue: propertyDetails.price,
-            deposit: propertyDetails.price * 0.2,
-            interestRate: 6.5,
-            loanTerm: 30,
-            weeklyRent: propertyDetails.weeklyRent || 500,
-            state: state,
-            propertyType: propertyDetails.propertyType || 'house'
-          }
-        }) : Promise.resolve({ data: null }),
-        supabase.functions.invoke('location-intelligence-service', {
-          body: {
-            address: propertyAddress,
-            suburb: propertyAddress.split(',')[1]?.trim(),
-            postcode,
-            state
-          }
+        invokeSecureFunction('rba-data-service', {}),
+        propertyDetails?.price ? invokeSecureFunction('financial-calculator-service', {
+          propertyValue: propertyDetails.price,
+          deposit: propertyDetails.price * 0.2,
+          interestRate: 6.5,
+          loanTerm: 30,
+          weeklyRent: propertyDetails.weeklyRent || 500,
+          state: state,
+          propertyType: propertyDetails.propertyType || 'house'
+        }) : Promise.resolve({ data: null, error: null }),
+        invokeSecureFunction('location-intelligence-service', {
+          address: propertyAddress,
+          suburb: propertyAddress.split(',')[1]?.trim(),
+          postcode,
+          state
         }),
-        propertyDetails?.price && propertyDetails?.weeklyRent ? supabase.functions.invoke('investment-scoring-service', {
-          body: {
-            propertyPrice: propertyDetails.price,
-            weeklyRent: propertyDetails.weeklyRent,
-            state: state,
-            propertyType: propertyDetails.propertyType || 'house'
-          }
-        }) : Promise.resolve({ data: null })
+        propertyDetails?.price && propertyDetails?.weeklyRent ? invokeSecureFunction('investment-scoring-service', {
+          propertyPrice: propertyDetails.price,
+          weeklyRent: propertyDetails.weeklyRent,
+          state: state,
+          propertyType: propertyDetails.propertyType || 'house'
+        }) : Promise.resolve({ data: null, error: null })
       ]);
 
       return {

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -218,7 +219,7 @@ export default function ClientTracker() {
       
       setIsAutoSyncing(true);
       try {
-        const { data, error } = await supabase.functions.invoke('sync-ghl-pipelines');
+        const { data, error } = await invokeSecureFunction('sync-ghl-pipelines', {});
 
         if (!error && data?.success) {
           setLastSyncTime(new Date());
@@ -342,8 +343,8 @@ export default function ClientTracker() {
 
       // Then sync to GHL (non-blocking, but show toast on result)
       if (stageId) {
-        const { data, error } = await supabase.functions.invoke('update-ghl-opportunity-stage', {
-          body: { clientId, newStageId: stageId }
+        const { data, error } = await invokeSecureFunction('update-ghl-opportunity-stage', {
+          clientId, newStageId: stageId
         });
 
         if (error) {
@@ -509,7 +510,7 @@ export default function ClientTracker() {
   const handleSyncPipelines = async () => {
     setIsSyncingPipelines(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-ghl-pipelines');
+      const { data, error } = await invokeSecureFunction('sync-ghl-pipelines', {});
 
       if (error) throw error;
 

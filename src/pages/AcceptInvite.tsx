@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,8 +43,8 @@ export default function AcceptInvite() {
 
   const verifyInvite = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: { action: 'verify_invite', token }
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'verify_invite', token
       });
 
       if (error || !data?.success) {
@@ -78,12 +78,10 @@ export default function AcceptInvite() {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('admin-user-management', {
-        body: { 
-          action: 'accept_invite', 
-          token,
-          password: invite?.invite_type === 'magic_link' ? password : undefined
-        }
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'accept_invite', 
+        token,
+        password: invite?.invite_type === 'magic_link' ? password : undefined
       });
 
       if (error || !data?.success) {

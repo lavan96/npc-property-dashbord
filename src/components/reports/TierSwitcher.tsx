@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Loader2, ChevronDown, Compass, FileText, Zap, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { TIER_INFO, type ReportTier } from './TierBadge';
 
@@ -95,11 +96,9 @@ export function TierSwitcher({
     setLoadingTier(targetTier);
 
     try {
-      const { data, error } = await supabase.functions.invoke('condense-investment-report', {
-        body: {
-          parentReportId: compassReportId,
-          targetTier,
-        }
+      const { data, error } = await invokeSecureFunction('condense-investment-report', {
+        parentReportId: compassReportId,
+        targetTier,
       });
 
       if (error) throw error;

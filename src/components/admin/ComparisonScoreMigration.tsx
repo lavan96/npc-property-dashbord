@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Database, CheckCircle2, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 
 export function ComparisonScoreMigration() {
@@ -22,7 +22,7 @@ export function ComparisonScoreMigration() {
     setResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('migrate-comparison-scores');
+      const { data, error } = await invokeSecureFunction('migrate-comparison-scores', {});
 
       if (error) {
         throw error;

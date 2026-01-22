@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, Database, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
@@ -104,24 +105,22 @@ export default function DataImport() {
 
       if (selectedType === 'schools') {
         // Use the import-schools-data edge function
-        const { data, error } = await supabase.functions.invoke('import-schools-data', {
-          body: {
-            schools: records.map(r => ({
-              name: r.name || r.school_name,
-              suburb: r.suburb,
-              postcode: r.postcode,
-              state: selectedState || r.state,
-              school_type: r.school_type || r.type,
-              school_level: r.school_level || r.level,
-              icsea_score: r.icsea_score ? parseInt(r.icsea_score) : null,
-              student_count: r.student_count ? parseInt(r.student_count) : null,
-              latitude: r.latitude ? parseFloat(r.latitude) : null,
-              longitude: r.longitude ? parseFloat(r.longitude) : null,
-              address: r.address,
-              website_url: r.website_url || r.website,
-            })),
-            overwrite: true
-          }
+        const { data, error } = await invokeSecureFunction('import-schools-data', {
+          schools: records.map(r => ({
+            name: r.name || r.school_name,
+            suburb: r.suburb,
+            postcode: r.postcode,
+            state: selectedState || r.state,
+            school_type: r.school_type || r.type,
+            school_level: r.school_level || r.level,
+            icsea_score: r.icsea_score ? parseInt(r.icsea_score) : null,
+            student_count: r.student_count ? parseInt(r.student_count) : null,
+            latitude: r.latitude ? parseFloat(r.latitude) : null,
+            longitude: r.longitude ? parseFloat(r.longitude) : null,
+            address: r.address,
+            website_url: r.website_url || r.website,
+          })),
+          overwrite: true
         });
 
         if (error) throw error;
@@ -290,7 +289,7 @@ export default function DataImport() {
   const handleImportSuburbDirectory = async () => {
     setImportingSuburbs(true);
     try {
-      const { data, error } = await supabase.functions.invoke('import-suburb-directory', {
+      const { data, error } = await invokeSecureFunction('import-suburb-directory', {
         body: {}
       });
 

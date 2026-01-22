@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export interface PropertyListing {
   id: string;
@@ -74,13 +74,11 @@ class AirtableService {
       const { pageSize = 100, offset, sortField = 'Created', sortDirection = 'desc' } = options;
       
       // Call the Supabase edge function instead of direct Airtable API
-      const { data, error } = await supabase.functions.invoke('airtable-proxy', {
-        body: {
-          pageSize,
-          offset,
-          sortField,
-          sortDirection,
-        },
+      const { data, error } = await invokeSecureFunction('airtable-proxy', {
+        pageSize,
+        offset,
+        sortField,
+        sortDirection,
       });
 
       if (error) {

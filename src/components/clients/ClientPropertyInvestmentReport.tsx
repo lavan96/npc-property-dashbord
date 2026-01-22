@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import type { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -282,17 +283,13 @@ export function ClientPropertyInvestmentReport({
       });
 
       // Start generation in background
-      supabase.functions
-        .invoke('generate-investment-report', {
-          body: {
-            reportId: pendingReport.id,
-            propertyAddress: property.address,
-            propertyDetails,
-          },
-        })
-        .catch((error) => {
-          console.error('Background generation error:', error);
-        });
+      invokeSecureFunction('generate-investment-report', {
+        reportId: pendingReport.id,
+        propertyAddress: property.address,
+        propertyDetails,
+      }).catch((error) => {
+        console.error('Background generation error:', error);
+      });
 
       // Add notification
       addNotification({

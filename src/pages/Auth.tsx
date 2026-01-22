@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,8 +70,8 @@ export default function Auth() {
     setError('');
     setIsLoading(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-password-reset', {
-        body: { action: 'request_otp', username }
+      const { data } = await invokeSecureFunction('admin-password-reset', {
+        action: 'request_otp', username
       });
       if (data?.success) {
         setEmailHint(data.email_hint || '');
@@ -89,8 +89,8 @@ export default function Auth() {
     setError('');
     setIsLoading(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-password-reset', {
-        body: { action: 'verify_otp', username, otp }
+      const { data } = await invokeSecureFunction('admin-password-reset', {
+        action: 'verify_otp', username, otp
       });
       if (data?.success) {
         setView('reset');
@@ -118,8 +118,8 @@ export default function Auth() {
     setError('');
     setIsLoading(true);
     try {
-      const { data } = await supabase.functions.invoke('admin-password-reset', {
-        body: { action: 'reset_password', username, otp, new_password: newPassword }
+      const { data } = await invokeSecureFunction('admin-password-reset', {
+        action: 'reset_password', username, otp, new_password: newPassword
       });
       if (data?.success) {
         setSuccess('Password reset successful! Please login.');
