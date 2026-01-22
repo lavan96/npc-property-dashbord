@@ -204,47 +204,27 @@ serve(async (req) => {
     while (pageCount < maxPages) {
       pageCount++;
 
-      // Prefer the documented GET search endpoint. If GHL returns nextPageUrl, follow it.
-      let url = `${GHL_API_BASE}/opportunities/search?locationId=${locationId}&limit=100`;
-      if (startAfter) url += `&startAfter=${startAfter}`;
-      if (startAfterId) url += `&startAfterId=${startAfterId}`;
+      // GHL opportunities/search endpoint requires POST with body containing location_id
+      const searchUrl = `${GHL_API_BASE}/opportunities/search`;
+      const searchBody: Record<string, any> = {
+        location_id: locationId,
+        limit: 100,
+      };
+      if (startAfterId) searchBody.startAfterId = startAfterId;
+      if (startAfter) searchBody.startAfter = startAfter;
 
-      console.log(`Fetching opportunities page ${pageCount}: ${url}`);
+      console.log(`Fetching opportunities page ${pageCount} via POST to ${searchUrl}`);
 
-      // 1) Try GET /opportunities/search
-      let oppResponse = await fetch(url, { method: 'GET', headers });
+      const oppResponse = await fetch(searchUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(searchBody),
+      });
 
-      // 2) Fallback: some accounts historically required POST /opportunities/search
       if (!oppResponse.ok) {
         const errorText = await oppResponse.text();
-        console.error(`GHL opportunities SEARCH(GET) error: ${oppResponse.status} - ${errorText}`);
-
-        oppResponse = await fetch(url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ locationId, limit: 100, startAfter, startAfterId }),
-        });
-      }
-
-      // 3) Fallback: legacy list endpoint
-      if (!oppResponse.ok) {
-        const errorText = await oppResponse.text();
-        console.error(`GHL opportunities SEARCH(POST) error: ${oppResponse.status} - ${errorText}`);
-
-        const oppGetResponse = await fetch(
-          `${GHL_API_BASE}/opportunities/?locationId=${locationId}&limit=100`,
-          { headers }
-        );
-
-        if (!oppGetResponse.ok) {
-          const getErrorText = await oppGetResponse.text();
-          console.error(`GHL opportunities LIST(GET) error: ${oppGetResponse.status} - ${getErrorText}`);
-          throw new Error(`GHL API error: ${oppGetResponse.status}`);
-        }
-
-        const oppGetData = await oppGetResponse.json();
-        allOpportunities = oppGetData.opportunities || [];
-        break;
+        console.error(`GHL opportunities SEARCH error: ${oppResponse.status} - ${errorText}`);
+        throw new Error(`GHL API error: ${oppResponse.status} - ${errorText}`);
       }
 
       const oppData: GHLOpportunitiesResponse = await oppResponse.json();
