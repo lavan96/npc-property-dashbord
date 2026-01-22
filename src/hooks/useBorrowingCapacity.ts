@@ -30,11 +30,18 @@ interface UseBorrowingCapacityOptions {
   autoFetch?: boolean;
 }
 
+/**
+ * Get session token for secure API calls
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
 export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowingCapacityOptions) {
   const queryClient = useQueryClient();
   const [localResult, setLocalResult] = useState<BorrowingCapacityResult | null>(null);
 
-  // Fetch latest assessment from database
+  // Fetch latest assessment from database with secure Edge Function + fallback
   const {
     data: latestAssessment,
     isLoading: isLoadingAssessment,
@@ -43,6 +50,30 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
   } = useQuery({
     queryKey: ['borrowing-capacity', clientId],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              session_token: sessionToken,
+              clientId,
+              include: { borrowingCapacity: true },
+            },
+          });
+          
+          if (!error && data?.success && data.data?.borrowingCapacity) {
+            // Return the latest assessment (already sorted by created_at desc)
+            const assessments = data.data.borrowingCapacity;
+            return assessments.length > 0 ? assessments[0] : null;
+          }
+        } catch (err) {
+          console.warn('Secure borrowing capacity fetch failed, falling back:', err);
+        }
+      }
+      
+      // Fallback: Direct Supabase query
       const { data, error } = await supabase
         .from('borrowing_capacity_assessments')
         .select('*')
@@ -57,13 +88,41 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
     enabled: autoFetch && !!clientId,
   });
 
-  // Fetch assessment history
+  // Fetch assessment history with secure Edge Function + fallback
   const {
     data: assessmentHistory,
     isLoading: isLoadingHistory,
   } = useQuery({
     queryKey: ['borrowing-capacity-history', clientId],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              session_token: sessionToken,
+              clientId,
+              include: { borrowingCapacity: true },
+            },
+          });
+          
+          if (!error && data?.success && data.data?.borrowingCapacity) {
+            // Return up to 10 assessments for history
+            return data.data.borrowingCapacity.slice(0, 10).map((a: any) => ({
+              id: a.id,
+              borrowing_capacity: a.borrowing_capacity,
+              serviceability_band: a.serviceability_band,
+              created_at: a.created_at,
+            }));
+          }
+        } catch (err) {
+          console.warn('Secure borrowing capacity history fetch failed, falling back:', err);
+        }
+      }
+      
+      // Fallback: Direct Supabase query
       const { data, error } = await supabase
         .from('borrowing_capacity_assessments')
         .select('id, borrowing_capacity, serviceability_band, created_at')

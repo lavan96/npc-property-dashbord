@@ -63,6 +63,13 @@ const defaultFormData: IncomeFormData = {
   other_taxable_income: 0,
 };
 
+/**
+ * Get session token for secure API calls
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
 export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'primary' | 'secondary'>('primary');
@@ -70,10 +77,32 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing income records - always enabled to show summary outside sheet
+  // Fetch existing income records with secure Edge Function + fallback
   const { data: existingIncome = [] } = useQuery({
     queryKey: ['client-income', clientId],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              session_token: sessionToken,
+              clientId,
+              include: { income: true },
+            },
+          });
+          
+          if (!error && data?.success && data.data?.income) {
+            return data.data.income;
+          }
+        } catch (err) {
+          console.warn('Secure income fetch failed, falling back:', err);
+        }
+      }
+      
+      // Fallback: Direct Supabase query
       const { data, error } = await supabase
         .from('client_income')
         .select('*')
@@ -145,6 +174,32 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
         other_taxable_income: formData.other_taxable_income,
       };
 
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: editingId ? 'update' : 'create',
+              table: 'client_income',
+              clientId,
+              recordId: editingId,
+              data: payload,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure save failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       if (editingId) {
         const { error } = await supabase
           .from('client_income')

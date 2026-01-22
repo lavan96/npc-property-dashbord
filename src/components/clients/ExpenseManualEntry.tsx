@@ -97,16 +97,45 @@ const defaultFormData: ExpenseFormData = {
   is_essential: true,
 };
 
+/**
+ * Get session token for secure API calls
+ */
+function getSessionToken(): string | null {
+  return localStorage.getItem('session_token');
+}
+
 export function ExpenseManualEntry({ clientId, onComplete }: ExpenseManualEntryProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<ExpenseFormData>(defaultFormData);
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing expenses
+  // Fetch existing expenses with secure Edge Function + fallback
   const { data: existingExpenses = [] } = useQuery({
     queryKey: ['client-expenses', clientId],
     queryFn: async () => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('get-client-data', {
+            body: {
+              session_token: sessionToken,
+              clientId,
+              include: { expenses: true },
+            },
+          });
+          
+          if (!error && data?.success && data.data?.expenses) {
+            return data.data.expenses;
+          }
+        } catch (err) {
+          console.warn('Secure expenses fetch failed, falling back:', err);
+        }
+      }
+      
+      // Fallback: Direct Supabase query
       const { data, error } = await supabase
         .from('client_expenses')
         .select('*')
@@ -159,6 +188,32 @@ export function ExpenseManualEntry({ clientId, onComplete }: ExpenseManualEntryP
         is_essential: formData.is_essential,
       };
 
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: editingId ? 'update' : 'create',
+              table: 'client_expenses',
+              clientId,
+              recordId: editingId,
+              data: payload,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure save failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       if (editingId) {
         const { error } = await supabase
           .from('client_expenses')
@@ -183,6 +238,31 @@ export function ExpenseManualEntry({ clientId, onComplete }: ExpenseManualEntryP
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const sessionToken = getSessionToken();
+      
+      // Try secure Edge Function first
+      if (sessionToken) {
+        try {
+          const { data, error } = await supabase.functions.invoke('manage-client-data', {
+            body: {
+              session_token: sessionToken,
+              operation: 'delete',
+              table: 'client_expenses',
+              clientId,
+              recordId: id,
+            },
+          });
+          
+          if (!error && data?.success) {
+            return;
+          }
+          console.warn('Secure delete failed, falling back:', error?.message || data?.error);
+        } catch (err) {
+          console.warn('Edge function call failed, falling back:', err);
+        }
+      }
+
+      // Fallback: Direct Supabase mutation
       const { error } = await supabase.from('client_expenses').delete().eq('id', id);
       if (error) throw error;
     },
