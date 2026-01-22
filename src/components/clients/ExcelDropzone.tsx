@@ -260,15 +260,20 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
         setProgress(50 + ((i + 1) / clients.length) * 45);
       }
 
-      // Log the import
-      await supabase.from('client_import_logs').insert({
-        file_name: file.name,
-        status: result.errors.length === 0 ? 'completed' : 'completed_with_errors',
-        clients_created: result.clientsCreated,
-        properties_created: result.propertiesCreated,
-        errors: result.errors,
-        imported_by: user?.id,
-        completed_at: new Date().toISOString()
+      // Log the import via secure Edge Function
+      await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_import_logs',
+        clientId: '',
+        data: {
+          file_name: file.name,
+          status: result.errors.length === 0 ? 'completed' : 'completed_with_errors',
+          clients_created: result.clientsCreated,
+          properties_created: result.propertiesCreated,
+          errors: result.errors,
+          imported_by: user?.id,
+          completed_at: new Date().toISOString()
+        }
       });
 
       setProgress(100);
@@ -284,16 +289,23 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
           title: 'Clients Imported',
           message: `${result.clientsCreated} client(s) imported with ${result.propertiesCreated} properties`
         });
-        // Auto-sync imported clients to GHL
+        
+        // Auto-sync imported clients to GHL via secure Edge Function
         try {
-          const { data: newClients } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('ghl_sync_status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(result.clientsCreated);
+          const { data: clientsData } = await invokeSecureFunction<{ success: boolean; clients: Array<{ id: string }> }>('get-client-data', {
+            listMode: true,
+            listOptions: {
+              select: 'id',
+              filters: { ghl_sync_status: 'pending' },
+              orderBy: 'created_at',
+              order_asc: false,
+              limit: result.clientsCreated
+            }
+          });
           
-          if (newClients && newClients.length > 0) {
+          const newClients = clientsData?.clients || [];
+          
+          if (newClients.length > 0) {
             toast.info('Syncing clients to GoHighLevel...');
             const clientIds = newClients.map(c => c.id);
             

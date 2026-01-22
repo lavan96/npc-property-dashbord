@@ -229,12 +229,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         clientId,
         data: insertData,
       });
-      if (!fnError && data?.success) return;
-      console.warn('Secure create failed, falling back to direct query');
-
-      // Fallback to direct query
-      const { error } = await supabase.from('client_properties').insert(insertData);
-      if (error) throw error;
+      
+      if (fnError || !data?.success) {
+        throw new Error(fnError?.message || data?.error || 'Failed to create property');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
