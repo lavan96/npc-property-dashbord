@@ -83,45 +83,46 @@ export function ReportGenerationProgress() {
   };
 
   const countSections = (content: string): number => {
-    // Count sections by detecting actual section markers matching the new 12-section architecture
+    // Count sections by detecting actual section markers matching the backend's 12-section architecture
+    // These patterns MUST match what generate-investment-report actually outputs
     let count = 0;
     
     // Section 0: Executive Summary
-    if (/##?\s*(Executive\s*Summary|Property\s*Investment\s*Report)/i.test(content)) count++;
+    if (/##?\s*Executive\s*Summary/i.test(content)) count++;
     
     // Section 1: Location Overview
-    if (/##?\s*(Location\s*Overview|Suburb\s*Profile|Geographic\s*Position)/i.test(content)) count++;
+    if (/##?\s*Location\s*Overview/i.test(content)) count++;
     
-    // Section 2: Market & Economics
-    if (/##?\s*(Market\s*(&|and)\s*Economics?|Current\s*Market\s*Performance|Property\s*Market)/i.test(content)) count++;
+    // Section 2: Market & Economics (backend outputs "Current Market Performance" and "Current Economic Context")
+    if (/##?\s*(Current\s*Market\s*Performance|Current\s*Economic\s*Context|Market\s*(&|and)\s*Economics?)/i.test(content)) count++;
     
-    // Section 3: Demographics & Demand
-    if (/##?\s*(Demographics?\s*(&|and)\s*Demand|Population\s*Profile|Community\s*Profile)/i.test(content)) count++;
+    // Section 3: Demographics & Demand (backend outputs "Demographics & Demand Drivers")
+    if (/##?\s*(Demographics?\s*(&|and)\s*Demand|Demand\s*Drivers)/i.test(content)) count++;
     
-    // Section 4: Education & Healthcare
-    if (/##?\s*(Education\s*(&|and)\s*Healthcare|Schools?\s*(&|and)\s*Education|Educational\s*Facilities)/i.test(content)) count++;
+    // Section 4: Education & Healthcare (backend outputs "Schools & Education", "Healthcare & Shopping")
+    if (/##?\s*(Schools?\s*(&|and)\s*Education|Healthcare\s*(&|and)\s*Shopping)/i.test(content)) count++;
     
-    // Section 5: Recreation & Transport
-    if (/##?\s*(Recreation\s*(&|and)\s*Transport|Transport\s*(&|and)\s*Connectivity|Lifestyle\s*(&|and)\s*Amenities)/i.test(content)) count++;
+    // Section 5: Recreation & Transport (backend outputs "Recreational Amenities", "Transport & Accessibility")
+    if (/##?\s*(Recreational\s*Amenities|Transport\s*(&|and)\s*Accessibility)/i.test(content)) count++;
     
-    // Section 6: Environment & Safety
-    if (/##?\s*(Environment\s*(&|and)\s*Safety|Climate\s*(&|and)\s*Environment|Safety\s*(&|and)\s*Security)/i.test(content)) count++;
+    // Section 6: Environment & Safety (backend outputs "Environmental Risks & Climate", "Crime & Safety")
+    if (/##?\s*(Environmental\s*Risks?\s*(&|and)\s*Climate|Crime\s*(&|and)\s*Safety)/i.test(content)) count++;
     
-    // Section 7: Property & Zoning
-    if (/##?\s*(Property\s*(&|and)\s*Zoning|Property-Level\s*Analysis|Zoning\s*(&|and)\s*Development)/i.test(content)) count++;
+    // Section 7: Property & Zoning (backend outputs "Property-Level Information", "Zoning & Planning Analysis")
+    if (/##?\s*(Property-Level\s*Information|Zoning\s*(&|and)\s*Planning\s*Analysis)/i.test(content)) count++;
     
-    // Section 8: Purchase Costs & Rental
-    if (/##?\s*(Purchase\s*Costs?\s*(&|and)\s*Rental|Initial\s*Purchase\s*Costs|Acquisition\s*Costs)/i.test(content)) count++;
+    // Section 8: Purchase Costs & Rental (backend outputs "Purchase & Ongoing Costs", "Rental Assessment & Yield Calculation")
+    if (/##?\s*(Purchase\s*(&|and)\s*Ongoing\s*Costs|Rental\s*Assessment\s*(&|and)\s*Yield)/i.test(content)) count++;
     
-    // Section 9: Loan & Cashflow
-    if (/##?\s*(Loan\s*(&|and)\s*Cashflow|Financing\s*Analysis|Mortgage\s*(&|and)\s*Cash\s*Flow)/i.test(content)) count++;
+    // Section 9: Loan & Cashflow (backend outputs "Loan Structure & Repayment Analysis", "Cashflow Analysis")
+    if (/##?\s*(Loan\s*Structure\s*(&|and)\s*Repayment|Cashflow\s*Analysis)/i.test(content)) count++;
     
-    // Section 10: Projections & SWOT
-    if (/##?\s*(Projections?\s*(&|and)\s*SWOT|10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i.test(content)) count++;
+    // Section 10: Projections & SWOT (backend outputs "10-Year Investment Projections", "SWOT Analysis")
+    if (/##?\s*(10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i.test(content)) count++;
     
-    // Section 11: Risks & Recommendations (final section)
-    const hasRisks = /##?\s*(Risks?\s*(&|and)\s*Recommendations?|Investment\s*Recommendations?|Risk\s*Assessment)/i.test(content);
-    const hasConclusion = /##?\s*(Final\s*Conclusion|Data\s*Sources|Disclaimer)/i.test(content);
+    // Section 11: Risks & Recommendations (backend outputs "Top 3 Risks", "Investment Recommendations", "Final Conclusion")
+    const hasRisks = /##?\s*(Top\s*3\s*Risks|Investment\s*Recommendations)/i.test(content);
+    const hasConclusion = /##?\s*(Final\s*Conclusion|Data\s*Sources)/i.test(content);
     if (hasRisks && hasConclusion) count++;
     
     return count;
