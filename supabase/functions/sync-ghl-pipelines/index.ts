@@ -274,7 +274,35 @@ serve(async (req) => {
       break;
     }
 
-    console.log(`Total opportunities fetched: ${allOpportunities.length}`);
+    console.log(`========================================`);
+    console.log(`SYNC SUMMARY - OPPORTUNITIES FROM GHL`);
+    console.log(`========================================`);
+    console.log(`Total opportunities fetched from GHL: ${allOpportunities.length}`);
+    console.log(`Pages fetched: ${pageCount}`);
+    
+    // Count opportunities by pipeline for debugging
+    const oppByPipeline: Record<string, number> = {};
+    const oppByStage: Record<string, number> = {};
+    for (const opp of allOpportunities) {
+      const pipelineInfo = pipelineIdMap[opp.pipelineId] ? ghlPipelines.find(p => p.id === opp.pipelineId)?.name : opp.pipelineId;
+      const stageInfo = stageIdMap[opp.pipelineStageId];
+      const pipelineName = pipelineInfo || 'Unknown Pipeline';
+      const stageName = stageInfo?.stageName || 'Unknown Stage';
+      
+      oppByPipeline[pipelineName] = (oppByPipeline[pipelineName] || 0) + 1;
+      oppByStage[`${pipelineName} / ${stageName}`] = (oppByStage[`${pipelineName} / ${stageName}`] || 0) + 1;
+    }
+    
+    console.log(`Opportunities by pipeline:`);
+    for (const [pipeline, count] of Object.entries(oppByPipeline)) {
+      console.log(`  - ${pipeline}: ${count}`);
+    }
+    
+    console.log(`Opportunities by stage (top 20):`);
+    const sortedStages = Object.entries(oppByStage).sort((a, b) => b[1] - a[1]).slice(0, 20);
+    for (const [stage, count] of sortedStages) {
+      console.log(`  - ${stage}: ${count}`);
+    }
 
     // Step 4: Group opportunities by contact and select the furthest-down-the-pipeline opportunity
     // Priority: Higher pipeline position > Higher stage position within the same pipeline
@@ -308,7 +336,14 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Grouped ${allOpportunities.length} opportunities into ${Object.keys(contactOpportunityMap).length} unique contacts (furthest stage wins)`);
+    const uniqueContacts = Object.keys(contactOpportunityMap).length;
+    const duplicatesRemoved = allOpportunities.length - uniqueContacts;
+    console.log(`========================================`);
+    console.log(`DEDUPLICATION RESULTS`);
+    console.log(`========================================`);
+    console.log(`Unique contacts with opportunities: ${uniqueContacts}`);
+    console.log(`Duplicate opportunities removed (same contact, earlier stage): ${duplicatesRemoved}`);
+    console.log(`========================================`);
 
     // Step 5: Update clients with the selected opportunity data
     let updatedCount = 0;
