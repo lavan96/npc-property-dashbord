@@ -600,32 +600,80 @@ serve(async (req) => {
           console.log('🔄 CONTINUATION MODE: Analyzing existing content...');
           console.log('   Existing content length:', existingReportContent.length, 'chars');
           
-          // Detect completed sections based on content markers
+          // Detect completed sections based on content markers - UPDATED FOR 12-SECTION ARCHITECTURE
           // Each section needs BOTH start AND end markers to be considered complete
           const sectionPatterns = [
             { 
               index: 0, 
-              startPatterns: [/##?\s*(Location\s*(Overview|&)|Current\s*Market\s*Performance)/i],
-              endPatterns: [/##?\s*(Demographics\s*&\s*Demand|Current\s*Economic\s*Context)/i],
-              name: 'Location & Market Overview'
+              startPatterns: [/##?\s*(Executive\s*Summary|Property\s*Investment\s*Report)/i],
+              endPatterns: [/##?\s*(Location\s*Overview|Suburb\s*Profile|Geographic)/i],
+              name: 'Executive Summary'
             },
             { 
               index: 1, 
-              startPatterns: [/##?\s*(Amenities|Schools\s*&\s*Education)/i],
-              endPatterns: [/##?\s*(Crime\s*&\s*Safety|Environmental\s*Risks)/i],
-              name: 'Amenities & Infrastructure'
+              startPatterns: [/##?\s*(Location\s*Overview|Suburb\s*Profile|Geographic\s*Position)/i],
+              endPatterns: [/##?\s*(Market\s*(&|and)\s*Economics?|Current\s*Market\s*Performance)/i],
+              name: 'Location Overview'
             },
             { 
               index: 2, 
-              startPatterns: [/##?\s*(Property-Level|Zoning\s*&\s*Planning|Purchase\s*&\s*Ongoing)/i],
-              endPatterns: [/##?\s*(Cashflow\s*Analysis|Cash\s*Flow\s*Analysis)/i],
-              name: 'Property & Financial Analysis'
+              startPatterns: [/##?\s*(Market\s*(&|and)\s*Economics?|Current\s*Market\s*Performance|Property\s*Market)/i],
+              endPatterns: [/##?\s*(Demographics?\s*(&|and)\s*Demand|Population\s*Profile)/i],
+              name: 'Market & Economics'
             },
             { 
               index: 3, 
-              startPatterns: [/##?\s*(10-Year\s*Investment|SWOT\s*Analysis)/i],
-              endPatterns: [/##?\s*(Final\s*Conclusion|Data\s*Sources)/i],
-              name: 'Projections & Recommendations'
+              startPatterns: [/##?\s*(Demographics?\s*(&|and)\s*Demand|Population\s*Profile|Community\s*Profile)/i],
+              endPatterns: [/##?\s*(Education\s*(&|and)\s*Healthcare|Schools?\s*(&|and)\s*Education)/i],
+              name: 'Demographics & Demand'
+            },
+            { 
+              index: 4, 
+              startPatterns: [/##?\s*(Education\s*(&|and)\s*Healthcare|Schools?\s*(&|and)\s*Education|Educational\s*Facilities)/i],
+              endPatterns: [/##?\s*(Recreation\s*(&|and)\s*Transport|Transport\s*(&|and)\s*Connectivity)/i],
+              name: 'Education & Healthcare'
+            },
+            { 
+              index: 5, 
+              startPatterns: [/##?\s*(Recreation\s*(&|and)\s*Transport|Transport\s*(&|and)\s*Connectivity|Lifestyle\s*(&|and)\s*Amenities)/i],
+              endPatterns: [/##?\s*(Environment\s*(&|and)\s*Safety|Climate\s*(&|and)\s*Environment)/i],
+              name: 'Recreation & Transport'
+            },
+            { 
+              index: 6, 
+              startPatterns: [/##?\s*(Environment\s*(&|and)\s*Safety|Climate\s*(&|and)\s*Environment|Safety\s*(&|and)\s*Security)/i],
+              endPatterns: [/##?\s*(Property\s*(&|and)\s*Zoning|Property-Level\s*Analysis)/i],
+              name: 'Environment & Safety'
+            },
+            { 
+              index: 7, 
+              startPatterns: [/##?\s*(Property\s*(&|and)\s*Zoning|Property-Level\s*Analysis|Zoning\s*(&|and)\s*Development)/i],
+              endPatterns: [/##?\s*(Purchase\s*Costs?\s*(&|and)\s*Rental|Initial\s*Purchase\s*Costs)/i],
+              name: 'Property & Zoning'
+            },
+            { 
+              index: 8, 
+              startPatterns: [/##?\s*(Purchase\s*Costs?\s*(&|and)\s*Rental|Initial\s*Purchase\s*Costs|Acquisition\s*Costs)/i],
+              endPatterns: [/##?\s*(Loan\s*(&|and)\s*Cashflow|Financing\s*Analysis|Mortgage\s*(&|and)\s*Cash\s*Flow)/i],
+              name: 'Purchase Costs & Rental'
+            },
+            { 
+              index: 9, 
+              startPatterns: [/##?\s*(Loan\s*(&|and)\s*Cashflow|Financing\s*Analysis|Mortgage\s*(&|and)\s*Cash\s*Flow)/i],
+              endPatterns: [/##?\s*(Projections?\s*(&|and)\s*SWOT|10-Year\s*Investment\s*Projections)/i],
+              name: 'Loan & Cashflow'
+            },
+            { 
+              index: 10, 
+              startPatterns: [/##?\s*(Projections?\s*(&|and)\s*SWOT|10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i],
+              endPatterns: [/##?\s*(Risks?\s*(&|and)\s*Recommendations?|Investment\s*Recommendations?|Top\s*3\s*Risks)/i],
+              name: 'Projections & SWOT'
+            },
+            { 
+              index: 11, 
+              startPatterns: [/##?\s*(Risks?\s*(&|and)\s*Recommendations?|Investment\s*Recommendations?|Risk\s*Assessment|Top\s*3\s*Risks)/i],
+              endPatterns: [/##?\s*(Final\s*Conclusion|Data\s*Sources|Disclaimer)/i],
+              name: 'Risks & Recommendations'
             }
           ];
           
@@ -639,9 +687,9 @@ serve(async (req) => {
             
             if (hasStartMarker && hasEndMarker) {
               completedSectionIndices.push(section.index);
-              console.log(`   ✓ Section ${section.index + 1} (${section.name}) is complete`);
+              console.log(`   ✓ Section ${section.index}/${REPORT_SECTIONS.length - 1} (${section.name}) is complete`);
             } else if (hasStartMarker && !hasEndMarker) {
-              console.log(`   ⚠️ Section ${section.index + 1} (${section.name}) started but INCOMPLETE`);
+              console.log(`   ⚠️ Section ${section.index}/${REPORT_SECTIONS.length - 1} (${section.name}) started but INCOMPLETE`);
               
               // Track the first incomplete section - we need to strip from here
               if (firstIncompleteSection === -1) {
@@ -658,7 +706,7 @@ serve(async (req) => {
                 }
               }
             } else {
-              console.log(`   ○ Section ${section.index + 1} (${section.name}) not started`);
+              console.log(`   ○ Section ${section.index}/${REPORT_SECTIONS.length - 1} (${section.name}) not started`);
             }
           }
           
@@ -666,13 +714,13 @@ serve(async (req) => {
           // This prevents duplicate/garbled content when regenerating
           if (firstIncompleteSection !== -1 && incompleteStartPosition > 0) {
             const cleanedContent = existingReportContent.substring(0, incompleteStartPosition).trim();
-            console.log(`   ✂️ Stripping incomplete section ${firstIncompleteSection + 1} content`);
+            console.log(`   ✂️ Stripping incomplete section ${firstIncompleteSection} content`);
             console.log(`   📏 Content reduced from ${existingReportContent.length} to ${cleanedContent.length} chars`);
             existingReportContent = cleanedContent;
           }
           
-          console.log(`   Completed sections: ${completedSectionIndices.length}/4`);
-          console.log(`   Will regenerate from section: ${completedSectionIndices.length + 1}`);
+          console.log(`   Completed sections: ${completedSectionIndices.length}/${REPORT_SECTIONS.length}`);
+          console.log(`   Will regenerate from section: ${completedSectionIndices.length}`);
           
           // Use property address from existing report if not provided
           if (!propertyAddress && existingReport.property_address) {
