@@ -7,11 +7,14 @@ interface RequestBody {
   clientIds?: string[];
   listMode?: boolean;
   listOptions?: {
+    table?: string;
     select?: string;
     orderBy?: string;
+    order_asc?: boolean;
     orderAsc?: boolean;
     limit?: number;
     includePropertyCount?: boolean;
+    filters?: Record<string, any>;
   };
   include?: {
     properties?: boolean;
@@ -24,6 +27,7 @@ interface RequestBody {
     files?: boolean;
     activities?: boolean;
     borrowingCapacity?: boolean;
+    client?: boolean;
   };
   session_token?: string;
 }
@@ -56,18 +60,79 @@ serve(async (req) => {
 
     const { clientId, clientIds, listMode, listOptions = {}, include = {} } = body;
 
+    // Support for querying other tables (portfolio_analysis_reports, etc.)
+    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files'];
+    const targetTable = listOptions.table || 'clients';
+    
+    if (listOptions.table && !allowedTables.includes(targetTable)) {
+      return new Response(
+        JSON.stringify({ error: `Table '${targetTable}' is not allowed`, allowedTables }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Determine which clients to fetch
     const idsToFetch = clientId ? [clientId] : (clientIds || []);
+
+    // Handle custom table queries in list mode
+    if (listMode && listOptions.table && listOptions.table !== 'clients') {
+      const { 
+        select = '*', 
+        orderBy = 'created_at', 
+        order_asc,
+        orderAsc,
+        limit,
+        filters = {}
+      } = listOptions;
+
+      const isAscending = order_asc ?? orderAsc ?? false;
+
+      let query = supabase
+        .from(targetTable)
+        .select(select)
+        .order(orderBy, { ascending: isAscending });
+
+      // Apply filters
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== null) {
+          query = query.eq(key, value);
+        }
+      }
+
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const { data: records, error: recordsError } = await query;
+
+      if (recordsError) {
+        console.error(`Error fetching ${targetTable}:`, recordsError);
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch ${targetTable}`, details: recordsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`Fetched ${records?.length || 0} records from ${targetTable}`);
+
+      return new Response(
+        JSON.stringify({ success: true, records, count: records?.length || 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (idsToFetch.length === 0 || listMode) {
       // Return all clients (list mode)
       const { 
         select = '*', 
         orderBy = 'created_at', 
-        orderAsc = false, 
+        order_asc,
+        orderAsc,
         limit,
         includePropertyCount = false 
       } = listOptions;
+
+      const isAscending = order_asc ?? orderAsc ?? false;
 
       // Build select string with optional property count
       const selectString = includePropertyCount 
@@ -77,7 +142,7 @@ serve(async (req) => {
       let query = supabase
         .from('clients')
         .select(selectString)
-        .order(orderBy, { ascending: orderAsc });
+        .order(orderBy, { ascending: isAscending });
 
       if (limit) {
         query = query.limit(limit);

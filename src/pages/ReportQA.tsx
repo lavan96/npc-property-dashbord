@@ -268,13 +268,21 @@ export default function ReportQA() {
 
   const loadSavedConversations = async () => {
     try {
+      console.log('[ReportQA] Loading saved conversations...');
       const { data, error } = await invokeSecureFunction('report-qa', {
         action: 'get-conversations',
       });
-      if (error) throw error;
-      setSavedConversations(data.conversations || []);
+      
+      if (error) {
+        console.error('[ReportQA] Error loading conversations:', error);
+        throw error;
+      }
+      
+      const conversations = data?.conversations || [];
+      console.log('[ReportQA] Loaded conversations:', conversations.length);
+      setSavedConversations(conversations);
     } catch (error) {
-      console.error('Failed to load conversations:', error);
+      console.error('[ReportQA] Failed to load conversations:', error);
     }
   };
 
