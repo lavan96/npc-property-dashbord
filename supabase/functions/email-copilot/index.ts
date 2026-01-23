@@ -26,33 +26,63 @@ interface SummaryOutput {
   urgencyLevel: 'low' | 'medium' | 'high';
 }
 
+// Dynamic CORS headers for credential support
+function createCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://lovable.dev',
+  ];
+  
+  const isAllowed = origin && (
+    allowedOrigins.includes(origin) ||
+    origin.endsWith('.lovable.app') ||
+    origin.endsWith('.lovableproject.com')
+  );
+
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://lovable.dev',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, email, emailId, linkedPropertyAddress, replyContext } = await req.json();
+    const { action, email, emailId, linkedPropertyAddress, replyContext, clientId } = await req.json();
     
-    console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, Context: ${replyContext ? 'provided' : 'none'}`);
-
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
+    console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, ClientId: ${clientId || 'N/A'}`);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Handle different actions
     switch (action) {
       case 'summarize':
-        return await handleSummarize(email, emailId, supabase);
+        if (!openAIApiKey) {
+          throw new Error('OPENAI_API_KEY is not configured');
+        }
+        return await handleSummarize(email, emailId, supabase, corsHeaders);
       
       case 'draft_reply':
-        return await handleDraftReply(email, emailId, linkedPropertyAddress, supabase, replyContext);
+        if (!openAIApiKey) {
+          throw new Error('OPENAI_API_KEY is not configured');
+        }
+        return await handleDraftReply(email, emailId, linkedPropertyAddress, supabase, replyContext, corsHeaders);
       
       case 'save_email':
-        return await handleSaveEmail(email, supabase);
+        return await handleSaveEmail(email, supabase, corsHeaders);
+      
+      case 'assign_client':
+        return await handleAssignClient(emailId, clientId, supabase, corsHeaders);
       
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -67,7 +97,7 @@ serve(async (req) => {
   }
 });
 
-async function handleSummarize(email: EmailData, emailId: string | null, supabase: any): Promise<Response> {
+async function handleSummarize(email: EmailData, emailId: string | null, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
   console.log('[Email Copilot] Generating summary...');
   
   const systemPrompt = `You are an email analysis assistant for NPC Services, a property investment advisory company. 
@@ -159,7 +189,8 @@ async function handleDraftReply(
   emailId: string | null, 
   linkedPropertyAddress: string | null,
   supabase: any,
-  replyContext?: string
+  replyContext?: string,
+  corsHeaders: Record<string, string> = {}
 ): Promise<Response> {
   console.log('[Email Copilot] Generating draft reply...');
 
@@ -255,7 +286,7 @@ Please draft a suitable reply that addresses the sender's concerns or questions.
   }
 }
 
-async function handleSaveEmail(email: EmailData, supabase: any): Promise<Response> {
+async function handleSaveEmail(email: EmailData, supabase: any, corsHeaders: Record<string, string> = {}): Promise<Response> {
   console.log('[Email Copilot] Saving email...');
 
   const { data, error } = await supabase
@@ -276,6 +307,39 @@ async function handleSaveEmail(email: EmailData, supabase: any): Promise<Respons
   }
 
   console.log('[Email Copilot] Email saved with ID:', data.id);
+
+  return new Response(
+    JSON.stringify({ success: true, email: data }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+async function handleAssignClient(
+  emailId: string, 
+  clientId: string | null, 
+  supabase: any,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  console.log(`[Email Copilot] Assigning email ${emailId} to client ${clientId || 'null'}`);
+
+  if (!emailId) {
+    throw new Error('emailId is required');
+  }
+
+  // Update the email with the client_id
+  const { data, error } = await supabase
+    .from('email_copilot_emails')
+    .update({ client_id: clientId })
+    .eq('id', emailId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[Email Copilot] Assign client error:', error);
+    throw new Error(`Failed to assign client: ${error.message}`);
+  }
+
+  console.log('[Email Copilot] Email assigned to client:', clientId || 'unassigned');
 
   return new Response(
     JSON.stringify({ success: true, email: data }),

@@ -28,6 +28,7 @@ interface RequestBody {
     activities?: boolean;
     borrowingCapacity?: boolean;
     client?: boolean;
+    emails?: boolean;
   };
   session_token?: string;
 }
@@ -252,6 +253,13 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('borrowing_capacity_assessments').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)
             .then(({ data }) => { clientResult.borrowingCapacity = data?.[0] || null; })
+        );
+      }
+
+      if (include.emails) {
+        fetchPromises.push(
+          supabase.from('email_copilot_emails').select('id,sender,subject,body,received_at,status,urgency_level,summary,draft_reply,folder').eq('client_id', id).order('received_at', { ascending: false }).limit(50)
+            .then(({ data }) => { clientResult.emails = data || []; })
         );
       }
 
