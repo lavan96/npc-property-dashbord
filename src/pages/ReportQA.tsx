@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { QAPDFGenerator } from '@/components/reports/QAPDFGenerator';
@@ -287,12 +286,15 @@ export default function ReportQA() {
     }
     
     try {
-      const { error } = await supabase
-        .from('report_qa_conversations')
-        .update({ title: newTitle.trim() })
-        .eq('id', targetConversationId);
+      // Use secure edge function for update (service_role required due to RLS)
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'update-conversation',
+        conversationId: targetConversationId,
+        title: newTitle.trim(),
+      });
       
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to update');
       
       setSavedConversations(prev => 
         prev.map(c => c.id === targetConversationId ? { ...c, title: newTitle.trim() } : c)
@@ -725,15 +727,15 @@ export default function ReportQA() {
   const fetchMailboxesForEmail = async () => {
     setIsLoadingMailboxes(true);
     try {
-      const { data, error } = await supabase
-        .from('custom_users')
-        .select('id, username, personal_mailbox')
-        .eq('is_active', true)
-        .not('personal_mailbox', 'is', null);
+      // Use secure edge function for fetching mailboxes (service_role required due to RLS)
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'get-mailboxes',
+      });
 
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to fetch mailboxes');
 
-      const mailboxes = (data || []).filter(u => u.personal_mailbox);
+      const mailboxes = data.mailboxes || [];
       setAvailableMailboxes(mailboxes);
       
       if (mailboxes.length > 0 && !selectedSenderMailbox) {
@@ -1083,12 +1085,14 @@ export default function ReportQA() {
   const handleDeleteConversation = async (convId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const { error } = await supabase
-        .from('report_qa_conversations')
-        .delete()
-        .eq('id', convId);
+      // Use secure edge function for delete (service_role required due to RLS)
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'delete-conversation',
+        conversationId: convId,
+      });
       
       if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to delete');
       
       // Log conversation deleted
       const deletedConv = savedConversations.find(c => c.id === convId);

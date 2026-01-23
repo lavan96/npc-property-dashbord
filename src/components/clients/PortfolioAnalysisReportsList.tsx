@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -160,16 +160,16 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
     }
 
     try {
-      const { data, error } = await supabase.storage
-        .from('client-files')
-        .download(report.pdf_file_path);
+      // Use secure storage download (service_role required due to RLS)
+      const result = await secureStorageDownload('client-files', report.pdf_file_path);
 
-      if (error) throw error;
+      if (!result.success || !result.blob) {
+        throw new Error(result.error || 'Download failed');
+      }
 
       // Open PDF in new tab for viewing
-      const url = URL.createObjectURL(data);
+      const url = URL.createObjectURL(result.blob);
       window.open(url, '_blank');
-      // Note: URL will be revoked when the tab is closed
       toast.success('Opening report...');
     } catch (error: any) {
       toast.error('Failed to open PDF: ' + error.message);
@@ -183,13 +183,14 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
     }
 
     try {
-      const { data, error } = await supabase.storage
-        .from('client-files')
-        .download(report.pdf_file_path);
+      // Use secure storage download (service_role required due to RLS)
+      const result = await secureStorageDownload('client-files', report.pdf_file_path);
 
-      if (error) throw error;
+      if (!result.success || !result.blob) {
+        throw new Error(result.error || 'Download failed');
+      }
 
-      const url = URL.createObjectURL(data);
+      const url = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `Portfolio_Analysis_${report.client_name.replace(/\s+/g, '_')}.pdf`;
