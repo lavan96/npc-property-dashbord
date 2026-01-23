@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState, useRef } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -25,46 +24,33 @@ export function ReportGenerationProgress() {
     // Initial fetch
     fetchActiveReports();
 
-    // Poll every 3 seconds for active reports
+    // Poll every 3 seconds for active reports (realtime disabled for security model)
     const interval = setInterval(fetchActiveReports, 3000);
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('report-progress')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'investment_reports',
-          filter: 'status=in.(pending,processing)'
-        },
-        () => {
-          fetchActiveReports();
-        }
-      )
-      .subscribe();
 
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(channel);
     };
   }, []);
 
   const fetchActiveReports = async () => {
-    const { data, error } = await supabase
-      .from('investment_reports')
-      .select('id, property_address, status, report_content, error_message, updated_at')
-      .in('status', ['pending', 'processing'])
-      .order('updated_at', { ascending: false })
-      .limit(5);
+    const { data, error } = await invokeSecureFunction('get-investment-reports', {
+      listMode: true,
+      listOptions: {
+        select: 'id, property_address, status, report_content, error_message, updated_at',
+        filters: { status: ['pending', 'processing'] },
+        orderBy: 'updated_at',
+        orderAsc: false,
+        limit: 5
+      }
+    });
 
     if (error) {
       console.error('Error fetching active reports:', error);
       return;
     }
 
-    const processedReports: ReportProgress[] = (data || []).map(report => {
+    const records = data?.reports || [];
+    const processedReports: ReportProgress[] = records.map((report: any) => {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
       
@@ -131,15 +117,6 @@ export function ReportGenerationProgress() {
 
   const handleContinueGeneration = async (reportId: string) => {
     try {
-      // Get the report's current state
-      const { data: report } = await supabase
-        .from('investment_reports')
-        .select('*')
-        .eq('id', reportId)
-        .single();
-
-      if (!report) return;
-
       // Update local state to show resuming - keep it visible and mark as processing
       setReports(prev => prev.map(r => 
         r.id === reportId 
@@ -147,15 +124,16 @@ export function ReportGenerationProgress() {
           : r
       ));
 
-      // Reset status to processing (not pending) to show active state
-      await supabase
-        .from('investment_reports')
-        .update({ 
+      // Reset status to processing via secure Edge Function
+      await invokeSecureFunction('manage-investment-reports', {
+        operation: 'update',
+        reportId,
+        data: { 
           status: 'processing',
           error_message: null,
           updated_at: new Date().toISOString()
-        })
-        .eq('id', reportId);
+        }
+      });
 
       // Invoke the edge function to continue generation - don't await to keep UI responsive
       invokeSecureFunction('generate-investment-report', {

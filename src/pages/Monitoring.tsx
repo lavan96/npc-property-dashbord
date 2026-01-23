@@ -14,7 +14,7 @@ import {
   RefreshCw,
   Zap
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 
@@ -51,24 +51,30 @@ export default function Monitoring() {
   const fetchStats = async () => {
     setIsLoading(true);
     try {
-      // Fetch API health stats
-      const { data: healthData, error: healthError } = await supabase
-        .rpc('get_api_health_stats', { days_back: 7 });
+      // Fetch API health stats via secure Edge Function
+      const { data: healthResult, error: healthError } = await invokeSecureFunction('get-system-logs', {
+        operation: 'rpc',
+        rpcName: 'get_api_health_stats',
+        rpcParams: { days_back: 7 }
+      });
 
       if (healthError) {
         console.error('Error fetching API health stats:', healthError);
       } else {
-        setApiStats(healthData || []);
+        setApiStats(healthResult?.data || []);
       }
 
-      // Fetch cache stats
-      const { data: cacheData, error: cacheError } = await supabase
-        .rpc('get_all_cache_stats');
+      // Fetch cache stats via secure Edge Function
+      const { data: cacheResult, error: cacheError } = await invokeSecureFunction('get-system-logs', {
+        operation: 'rpc',
+        rpcName: 'get_all_cache_stats',
+        rpcParams: {}
+      });
 
       if (cacheError) {
         console.error('Error fetching cache stats:', cacheError);
       } else {
-        setCacheStats(cacheData || []);
+        setCacheStats(cacheResult?.data || []);
       }
 
       setLastRefresh(new Date());

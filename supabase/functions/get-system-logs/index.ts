@@ -8,10 +8,14 @@ import { verifySession, extractSessionToken, createUnauthorizedResponse, createC
  */
 
 interface RequestBody {
-  mode: 'generation_errors' | 'api_errors' | 'stuck_reports' | 'failed_reports' | 'all';
+  mode?: 'generation_errors' | 'api_errors' | 'stuck_reports' | 'failed_reports' | 'all';
   cutoffDate?: string; // ISO date string
   limit?: number;
   session_token?: string;
+  // RPC support for monitoring page
+  operation?: 'rpc';
+  rpcName?: string;
+  rpcParams?: Record<string, any>;
 }
 
 serve(async (req) => {
@@ -38,7 +42,29 @@ serve(async (req) => {
 
     console.log(`[get-system-logs] Authenticated user: ${username} (${userId})`);
 
-    const { mode = 'all', cutoffDate, limit = 100 } = body;
+    const { operation, rpcName, rpcParams, mode = 'all', cutoffDate, limit = 100 } = body;
+
+    // Handle RPC calls for monitoring page
+    if (operation === 'rpc' && rpcName) {
+      console.log(`[get-system-logs] Executing RPC: ${rpcName}`);
+      
+      const { data, error } = await supabase.rpc(rpcName, rpcParams || {});
+      
+      if (error) {
+        console.error(`[get-system-logs] RPC error for ${rpcName}:`, error);
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Standard log fetching mode
     const results: Record<string, any[]> = {};
 
     // Helper to apply date filter
