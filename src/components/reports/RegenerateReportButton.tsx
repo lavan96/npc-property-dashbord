@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,16 +47,19 @@ export function RegenerateReportButton({
         description: 'Fetching report data and manual overrides...'
       });
 
-      // Fetch the full report with manual overrides
-      const { data: report, error: fetchError } = await supabase
-        .from('investment_reports')
-        .select('report_content, manual_overrides, financial_calculations, current_version, status, last_completed_section')
-        .eq('id', reportId)
-        .single();
+      // Fetch the full report with manual overrides via secure function
+      const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
+        reportId,
+        listOptions: {
+          select: 'report_content, manual_overrides, financial_calculations, current_version, status, last_completed_section'
+        }
+      });
 
-      if (fetchError) {
-        throw fetchError;
+      if (fetchError || !reportData?.report) {
+        throw new Error(fetchError?.message || 'Failed to fetch report');
       }
+
+      const report = reportData.report;
 
       if (!report?.report_content) {
         throw new Error('Report content not found');
@@ -102,13 +104,15 @@ export function RegenerateReportButton({
         throw new Error(data.error || 'Failed to regenerate report');
       }
 
-      // Fetch the new version number after successful regeneration
-      const { data: updatedReport } = await supabase
-        .from('investment_reports')
-        .select('current_version, status')
-        .eq('id', reportId)
-        .single();
+      // Fetch the new version number after successful regeneration via secure function
+      const { data: updatedReportData } = await invokeSecureFunction('get-investment-reports', {
+        reportId,
+        listOptions: {
+          select: 'current_version, status'
+        }
+      });
 
+      const updatedReport = updatedReportData?.report;
       const newVersion = updatedReport?.current_version || (report.current_version || 1) + 1;
 
       toast.success('Report regenerated successfully', {
@@ -139,11 +143,12 @@ export function RegenerateReportButton({
         description: error.message || 'Please try again later'
       });
 
-      // Revert status to failed on error
-      await supabase
-        .from('investment_reports')
-        .update({ status: 'failed' })
-        .eq('id', reportId);
+      // Revert status to failed on error via secure function
+      await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId,
+        data: { status: 'failed' }
+      });
     } finally {
       setRegenerating(false);
     }
