@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { logActivity } from '@/hooks/useActivityLogger';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 
 interface User {
   id: string;
@@ -13,6 +15,7 @@ interface AuthContextType {
   isSuperadmin: boolean;
   isAdmin: boolean;
   roles: string[];
+  accessToken: string | null;
   signIn: (username: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
@@ -22,6 +25,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Supabase Edge Function base URL
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
+
+// Access token storage key
+const ACCESS_TOKEN_KEY = 'supabase_access_token';
 
 /**
  * Invoke edge function with credentials for HttpOnly cookies
@@ -58,6 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
+  const [accessToken, setAccessToken] = useState<string | null>(() => {
+    // Initialize from storage on mount
+    return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  });
 
   // Super admin check: either has superadmin role in user_roles OR has super_admin in custom_users.role
   const isSuperadmin = roles.includes('superadmin') || user?.role === 'super_admin';
@@ -78,18 +88,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!error.message?.includes('401')) {
           console.warn('Session verification error:', error.message);
         }
-        sessionStorage.removeItem('current_user');
-        setUser(null);
-        setRoles([]);
+        clearAuthState();
       } else if (!data?.valid) {
         // Invalid session response
-        sessionStorage.removeItem('current_user');
-        setUser(null);
-        setRoles([]);
+        clearAuthState();
       } else {
         // Valid session - set user and roles
         setUser(data.user);
         setRoles(data.roles || []);
+        
+        // Store access token for Supabase client
+        if (data.access_token) {
+          sessionStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+          setAccessToken(data.access_token);
+        }
         
         // Cache user data in sessionStorage for activity logging
         sessionStorage.setItem('current_user', JSON.stringify({
@@ -100,12 +112,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       // Network or other errors
       console.warn('Session check failed:', error?.message || 'Unknown error');
-      sessionStorage.removeItem('current_user');
-      setUser(null);
-      setRoles([]);
+      clearAuthState();
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearAuthState = () => {
+    sessionStorage.removeItem('current_user');
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    setUser(null);
+    setRoles([]);
+    setAccessToken(null);
   };
 
   const signIn = async (username: string, password: string) => {
@@ -120,6 +138,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Session cookie is set automatically by the server response
+      // Store access token for Supabase client
+      if (data.access_token) {
+        sessionStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+        setAccessToken(data.access_token);
+      }
+      
       // Cache user data in sessionStorage for activity logging
       sessionStorage.setItem('current_user', JSON.stringify({
         id: data.user.id,
@@ -167,13 +191,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    sessionStorage.removeItem('current_user');
-    setUser(null);
-    setRoles([]);
+    clearAuthState();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isSuperadmin, isAdmin, roles, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isSuperadmin, isAdmin, roles, accessToken, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

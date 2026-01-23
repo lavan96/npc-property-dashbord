@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { verifyPassword, isLegacyPassword, hashPassword } from "../_shared/password.ts"
 import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
+import { generateSupabaseJWT } from "../_shared/jwt.ts"
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -101,6 +102,23 @@ serve(async (req) => {
 
     const roles = userRoles?.map(r => r.role) || []
 
+    // Generate Supabase-compatible JWT for RLS
+    let accessToken: string | null = null;
+    try {
+      accessToken = await generateSupabaseJWT(user.id, 86400, {
+        email: user.email,
+        roles: roles,
+        userMetadata: {
+          username: user.username,
+          custom_role: user.role,
+        },
+      });
+      console.log(`Generated JWT for user ${username}`);
+    } catch (jwtError) {
+      console.error('JWT generation failed:', jwtError);
+      // Continue without JWT - session cookie still works for edge functions
+    }
+
     // Create HttpOnly session cookie
     const sessionCookie = createSessionCookie(sessionToken, expiresAt);
 
@@ -113,6 +131,7 @@ serve(async (req) => {
           role: user.role
         },
         roles,
+        access_token: accessToken,  // Supabase-compatible JWT
         expires_at: expiresAt.toISOString()
       }),
       { 
