@@ -95,14 +95,14 @@ export default function ErrorLogs() {
       const cutoffDate = subDays(new Date(), dateRange === '24h' ? 1 : dateRange === '7d' ? 7 : 30);
       const unifiedErrors: UnifiedError[] = [];
 
-      // 1. Fetch investment report generation errors
-      const { data: reportGenErrors } = await supabase
-        .from('auto_report_generation_log')
-        .select('*')
-        .eq('status', 'failed')
-        .gte('created_at', cutoffDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // 1. Fetch investment report generation errors via secure edge function
+      const { data: systemLogs } = await invokeSecureFunction('get-system-logs', {
+        mode: 'all',
+        cutoffDate: cutoffDate.toISOString(),
+        limit: 100
+      });
+
+      const reportGenErrors = systemLogs?.generationErrors;
 
       if (reportGenErrors) {
         reportGenErrors.forEach(err => {
@@ -151,14 +151,8 @@ export default function ErrorLogs() {
         });
       }
 
-      // 3. Fetch API health errors
-      const { data: apiErrors } = await supabase
-        .from('api_health_log')
-        .select('*')
-        .eq('status', 'error')
-        .gte('created_at', cutoffDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // 3. Fetch API health errors (already fetched via get-system-logs above)
+      const apiErrors = systemLogs?.apiErrors;
 
       if (apiErrors) {
         apiErrors.forEach(err => {
@@ -202,16 +196,8 @@ export default function ErrorLogs() {
         });
       }
 
-      // 5. Fetch stuck investment reports (processing for >30 min)
-      const stuckThreshold = new Date(Date.now() - 30 * 60 * 1000);
-      const { data: stuckReports } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, status, created_at, updated_at, error_message')
-        .eq('status', 'processing')
-        .lt('created_at', stuckThreshold.toISOString())
-        .gte('created_at', cutoffDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // 5. Fetch stuck investment reports (already fetched via get-system-logs above)
+      const stuckReports = systemLogs?.stuckReports;
 
       if (stuckReports) {
         stuckReports.forEach(report => {
@@ -230,14 +216,8 @@ export default function ErrorLogs() {
         });
       }
 
-      // 6. Fetch failed investment reports
-      const { data: failedReports } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, status, created_at, error_message')
-        .eq('status', 'failed')
-        .gte('created_at', cutoffDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // 6. Fetch failed investment reports (already fetched via get-system-logs above)
+      const failedReports = systemLogs?.failedReports;
 
       if (failedReports) {
         failedReports.forEach(report => {
