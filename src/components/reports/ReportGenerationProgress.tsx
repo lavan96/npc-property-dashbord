@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, AlertCircle, PlayCircle, X } from 'lucide-react';
+import { Loader2, AlertCircle, PlayCircle, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ReportProgress {
@@ -16,21 +16,228 @@ interface ReportProgress {
   lastUpdated: Date;
 }
 
+interface AutoContinueSettings {
+  enabled: boolean;
+  maxRetries: number;
+  delaySeconds: number;
+}
+
+interface RetryState {
+  [reportId: string]: {
+    attempts: number;
+    lastAttempt: number;
+    scheduledRetry?: NodeJS.Timeout;
+  };
+}
+
+function getAutoContinueSettings(): AutoContinueSettings {
+  try {
+    const saved = localStorage.getItem('dashboard-settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        enabled: parsed.autoContinueReports ?? true,
+        maxRetries: parsed.autoContinueMaxRetries ?? 3,
+        delaySeconds: parsed.autoContinueDelaySeconds ?? 15,
+      };
+    }
+  } catch (e) {
+    console.error('Failed to parse auto-continue settings:', e);
+  }
+  return { enabled: true, maxRetries: 3, delaySeconds: 15 };
+}
+
 export function ReportGenerationProgress() {
   const [reports, setReports] = useState<ReportProgress[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [autoContinueSettings, setAutoContinueSettings] = useState<AutoContinueSettings>(getAutoContinueSettings);
+  const retryStateRef = useRef<RetryState>({});
+  const autoRetryInProgressRef = useRef<Set<string>>(new Set());
+
+  // Load auto-continue settings from localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setAutoContinueSettings(getAutoContinueSettings());
+    };
+
+    // Check for settings changes periodically (localStorage doesn't trigger events in same tab)
+    const interval = setInterval(handleStorageChange, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Load retry state from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('report-retry-state');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Restore only attempt counts, not timeouts
+        Object.keys(parsed).forEach(id => {
+          retryStateRef.current[id] = {
+            attempts: parsed[id].attempts || 0,
+            lastAttempt: parsed[id].lastAttempt || 0,
+          };
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load retry state:', e);
+    }
+  }, []);
+
+  // Save retry state to localStorage
+  const saveRetryState = useCallback(() => {
+    try {
+      const toSave: Record<string, { attempts: number; lastAttempt: number }> = {};
+      Object.entries(retryStateRef.current).forEach(([id, state]) => {
+        toSave[id] = { attempts: state.attempts, lastAttempt: state.lastAttempt };
+      });
+      localStorage.setItem('report-retry-state', JSON.stringify(toSave));
+    } catch (e) {
+      console.error('Failed to save retry state:', e);
+    }
+  }, []);
+
+  const handleContinueGeneration = useCallback(async (reportId: string, isAutoRetry = false) => {
+    try {
+      // Prevent duplicate auto-retries
+      if (isAutoRetry && autoRetryInProgressRef.current.has(reportId)) {
+        console.log(`[AutoContinue] Skipping duplicate retry for ${reportId}`);
+        return;
+      }
+
+      if (isAutoRetry) {
+        autoRetryInProgressRef.current.add(reportId);
+        console.log(`[AutoContinue] Auto-retrying report ${reportId}`);
+      }
+
+      // Update local state to show resuming
+      setReports(prev => prev.map(r => 
+        r.id === reportId 
+          ? { ...r, status: 'processing', error_message: null, lastUpdated: new Date() }
+          : r
+      ));
+
+      // Reset status to processing via secure Edge Function
+      await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId,
+        data: { 
+          status: 'processing',
+          error_message: null,
+          updated_at: new Date().toISOString()
+        }
+      });
+
+      // Invoke the edge function to continue generation
+      const { error } = await invokeSecureFunction('generate-investment-report', {
+        reportId: reportId,
+        continueFrom: true
+      });
+
+      if (error) {
+        console.error('Error invoking generation:', error);
+        setReports(prev => prev.map(r => 
+          r.id === reportId 
+            ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
+            : r
+        ));
+      }
+      
+    } catch (error) {
+      console.error('Error continuing generation:', error);
+    } finally {
+      if (isAutoRetry) {
+        autoRetryInProgressRef.current.delete(reportId);
+      }
+    }
+  }, []);
+
+  const scheduleAutoRetry = useCallback((report: ReportProgress) => {
+    const { id } = report;
+    const settings = autoContinueSettings;
+    
+    if (!settings.enabled) return;
+
+    // Initialize retry state if needed
+    if (!retryStateRef.current[id]) {
+      retryStateRef.current[id] = { attempts: 0, lastAttempt: 0 };
+    }
+
+    const state = retryStateRef.current[id];
+    
+    // Check if we've exceeded max retries
+    if (state.attempts >= settings.maxRetries) {
+      console.log(`[AutoContinue] Max retries (${settings.maxRetries}) exceeded for ${id}`);
+      return;
+    }
+
+    // Check if we already have a scheduled retry
+    if (state.scheduledRetry) {
+      return;
+    }
+
+    // Check if enough time has passed since last attempt
+    const timeSinceLastAttempt = Date.now() - state.lastAttempt;
+    const delayMs = settings.delaySeconds * 1000;
+    
+    if (timeSinceLastAttempt < delayMs) {
+      // Schedule for remaining time
+      const remainingDelay = delayMs - timeSinceLastAttempt;
+      state.scheduledRetry = setTimeout(() => {
+        delete state.scheduledRetry;
+        state.attempts++;
+        state.lastAttempt = Date.now();
+        saveRetryState();
+        handleContinueGeneration(id, true);
+      }, remainingDelay);
+      return;
+    }
+
+    // Schedule the retry
+    console.log(`[AutoContinue] Scheduling retry ${state.attempts + 1}/${settings.maxRetries} for ${id} in ${settings.delaySeconds}s`);
+    
+    state.scheduledRetry = setTimeout(() => {
+      delete state.scheduledRetry;
+      state.attempts++;
+      state.lastAttempt = Date.now();
+      saveRetryState();
+      handleContinueGeneration(id, true);
+    }, delayMs);
+  }, [autoContinueSettings, handleContinueGeneration, saveRetryState]);
+
+  const cancelScheduledRetry = useCallback((reportId: string) => {
+    const state = retryStateRef.current[reportId];
+    if (state?.scheduledRetry) {
+      clearTimeout(state.scheduledRetry);
+      delete state.scheduledRetry;
+    }
+  }, []);
+
+  // Clean up retry state for completed/removed reports
+  const cleanupRetryState = useCallback((activeReportIds: Set<string>) => {
+    Object.keys(retryStateRef.current).forEach(id => {
+      if (!activeReportIds.has(id)) {
+        cancelScheduledRetry(id);
+        delete retryStateRef.current[id];
+      }
+    });
+    saveRetryState();
+  }, [cancelScheduledRetry, saveRetryState]);
 
   useEffect(() => {
     // Initial fetch
     fetchActiveReports();
 
-    // Poll every 3 seconds for active reports (realtime disabled for security model)
+    // Poll every 3 seconds for active reports
     const interval = setInterval(fetchActiveReports, 3000);
 
     return () => {
       clearInterval(interval);
+      // Clean up all scheduled retries
+      Object.keys(retryStateRef.current).forEach(cancelScheduledRetry);
     };
-  }, []);
+  }, [cancelScheduledRetry]);
 
   const fetchActiveReports = async () => {
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
@@ -51,15 +258,13 @@ export function ReportGenerationProgress() {
 
     const records = data?.reports || [];
     
-    // Filter out reports that are too old (created more than 24 hours ago and still pending/processing)
-    // These are likely stuck/abandoned and should be auto-cleaned up
+    // Filter out reports that are too old (24 hours)
     const now = Date.now();
-    const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const MAX_AGE_MS = 24 * 60 * 60 * 1000;
     
     const recentReports = records.filter((report: any) => {
       const createdAt = new Date(report.created_at).getTime();
-      const age = now - createdAt;
-      return age < MAX_AGE_MS;
+      return (now - createdAt) < MAX_AGE_MS;
     });
     
     const processedReports: ReportProgress[] = recentReports.map((report: any) => {
@@ -71,7 +276,7 @@ export function ReportGenerationProgress() {
         property_address: report.property_address,
         status: report.status,
         sectionsCompleted,
-        totalSections: 12, // Updated to match new granular 12-section architecture
+        totalSections: 12,
         contentLength: content.length,
         error_message: report.error_message,
         lastUpdated: new Date(report.updated_at)
@@ -79,47 +284,39 @@ export function ReportGenerationProgress() {
     });
 
     setReports(processedReports);
+    
+    // Clean up retry state for reports no longer active
+    cleanupRetryState(new Set(processedReports.map(r => r.id)));
+
+    // Check for stalled reports and schedule auto-retries
+    processedReports.forEach(report => {
+      const timeSinceUpdate = now - report.lastUpdated.getTime();
+      const isTimedOut = timeSinceUpdate > 120000; // 2 minutes
+      const hasPartialContent = report.contentLength > 1000;
+      const isIncomplete = report.sectionsCompleted < report.totalSections;
+      const isStuck = report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
+      
+      if (isStuck && autoContinueSettings.enabled) {
+        scheduleAutoRetry(report);
+      }
+    });
   };
 
   const countSections = (content: string): number => {
-    // Count sections by detecting actual section markers matching the backend's 12-section architecture
-    // These patterns MUST match what generate-investment-report actually outputs
     let count = 0;
     
-    // Section 0: Executive Summary
     if (/##?\s*Executive\s*Summary/i.test(content)) count++;
-    
-    // Section 1: Location Overview
     if (/##?\s*Location\s*Overview/i.test(content)) count++;
-    
-    // Section 2: Market & Economics (backend outputs "Current Market Performance" and "Current Economic Context")
     if (/##?\s*(Current\s*Market\s*Performance|Current\s*Economic\s*Context|Market\s*(&|and)\s*Economics?)/i.test(content)) count++;
-    
-    // Section 3: Demographics & Demand (backend outputs "Demographics & Demand Drivers")
     if (/##?\s*(Demographics?\s*(&|and)\s*Demand|Demand\s*Drivers)/i.test(content)) count++;
-    
-    // Section 4: Education & Healthcare (backend outputs "Schools & Education", "Healthcare & Shopping")
     if (/##?\s*(Schools?\s*(&|and)\s*Education|Healthcare\s*(&|and)\s*Shopping)/i.test(content)) count++;
-    
-    // Section 5: Recreation & Transport (backend outputs "Recreational Amenities", "Transport & Accessibility")
     if (/##?\s*(Recreational\s*Amenities|Transport\s*(&|and)\s*Accessibility)/i.test(content)) count++;
-    
-    // Section 6: Environment & Safety (backend outputs "Environmental Risks & Climate", "Crime & Safety")
     if (/##?\s*(Environmental\s*Risks?\s*(&|and)\s*Climate|Crime\s*(&|and)\s*Safety)/i.test(content)) count++;
-    
-    // Section 7: Property & Zoning (backend outputs "Property-Level Information", "Zoning & Planning Analysis")
     if (/##?\s*(Property-Level\s*Information|Zoning\s*(&|and)\s*Planning\s*Analysis)/i.test(content)) count++;
-    
-    // Section 8: Purchase Costs & Rental (backend outputs "Purchase & Ongoing Costs", "Rental Assessment & Yield Calculation")
     if (/##?\s*(Purchase\s*(&|and)\s*Ongoing\s*Costs|Rental\s*Assessment\s*(&|and)\s*Yield)/i.test(content)) count++;
-    
-    // Section 9: Loan & Cashflow (backend outputs "Loan Structure & Repayment Analysis", "Cashflow Analysis")
     if (/##?\s*(Loan\s*Structure\s*(&|and)\s*Repayment|Cashflow\s*Analysis)/i.test(content)) count++;
-    
-    // Section 10: Projections & SWOT (backend outputs "10-Year Investment Projections", "SWOT Analysis")
     if (/##?\s*(10-Year\s*Investment\s*Projections|SWOT\s*Analysis)/i.test(content)) count++;
     
-    // Section 11: Risks & Recommendations (backend outputs "Top 3 Risks", "Investment Recommendations", "Final Conclusion")
     const hasRisks = /##?\s*(Top\s*3\s*Risks|Investment\s*Recommendations)/i.test(content);
     const hasConclusion = /##?\s*(Final\s*Conclusion|Data\s*Sources)/i.test(content);
     if (hasRisks && hasConclusion) count++;
@@ -127,48 +324,18 @@ export function ReportGenerationProgress() {
     return count;
   };
 
-  const handleContinueGeneration = async (reportId: string) => {
-    try {
-      // Update local state to show resuming - keep it visible and mark as processing
-      setReports(prev => prev.map(r => 
-        r.id === reportId 
-          ? { ...r, status: 'processing', error_message: null, lastUpdated: new Date() }
-          : r
-      ));
-
-      // Reset status to processing via secure Edge Function
-      await invokeSecureFunction('manage-investment-reports', {
-        operation: 'update',
-        reportId,
-        data: { 
-          status: 'processing',
-          error_message: null,
-          updated_at: new Date().toISOString()
-        }
-      });
-
-      // Invoke the edge function to continue generation - don't await to keep UI responsive
-      invokeSecureFunction('generate-investment-report', {
-        reportId: reportId,
-        continueFrom: true  // Signal to continue from existing content
-      }).then(({ error }) => {
-        if (error) {
-          console.error('Error invoking generation:', error);
-          // Update local state to show error
-          setReports(prev => prev.map(r => 
-            r.id === reportId 
-              ? { ...r, status: 'pending', error_message: 'Failed to resume generation' }
-              : r
-          ));
-        }
-      });
-      
-    } catch (error) {
-      console.error('Error continuing generation:', error);
+  const handleManualContinue = (reportId: string) => {
+    // Reset retry count for manual continues
+    if (retryStateRef.current[reportId]) {
+      retryStateRef.current[reportId].attempts = 0;
+      saveRetryState();
     }
+    cancelScheduledRetry(reportId);
+    handleContinueGeneration(reportId, false);
   };
 
   const dismissReport = (reportId: string) => {
+    cancelScheduledRetry(reportId);
     setReports(prev => prev.filter(r => r.id !== reportId));
   };
 
@@ -192,9 +359,16 @@ export function ReportGenerationProgress() {
       ) : (
         <div className="bg-card border border-border rounded-lg shadow-xl overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
-            <span className="text-sm font-medium text-foreground">
-              Report Generation ({reports.length})
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">
+                Report Generation ({reports.length})
+              </span>
+              {autoContinueSettings.enabled && (
+                <span title="Auto-continue enabled">
+                  <Zap className="h-3.5 w-3.5 text-warning" />
+                </span>
+              )}
+            </div>
             <Button
               size="icon"
               variant="ghost"
@@ -210,7 +384,9 @@ export function ReportGenerationProgress() {
               <ReportProgressItem
                 key={report.id}
                 report={report}
-                onContinue={() => handleContinueGeneration(report.id)}
+                retryState={retryStateRef.current[report.id]}
+                autoContinueSettings={autoContinueSettings}
+                onContinue={() => handleManualContinue(report.id)}
                 onDismiss={() => dismissReport(report.id)}
               />
             ))}
@@ -223,34 +399,30 @@ export function ReportGenerationProgress() {
 
 interface ReportProgressItemProps {
   report: ReportProgress;
+  retryState?: { attempts: number; lastAttempt: number };
+  autoContinueSettings: AutoContinueSettings;
   onContinue: () => void;
   onDismiss: () => void;
 }
 
-function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressItemProps) {
+function ReportProgressItem({ report, retryState, autoContinueSettings, onContinue, onDismiss }: ReportProgressItemProps) {
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
   
-  // Calculate time since last update
   const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
   const minutesSinceUpdate = Math.floor(timeSinceUpdate / 60000);
   
-  // Determine if report is stuck - ONLY if no updates for 2+ minutes
-  // This prevents false "stalled" indicators when the report is actively progressing
-  const isTimedOut = timeSinceUpdate > 120000; // 2 minutes without update
+  const isTimedOut = timeSinceUpdate > 120000;
   const hasPartialContent = report.contentLength > 1000;
   const isIncomplete = report.sectionsCompleted < report.totalSections;
-  
-  // Only mark as stuck if there's been no database update for 2+ minutes AND has partial content
   const isStuck = report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
   
-  // Show continue button if:
-  // 1. Currently processing but timed out (actually stuck)
-  // 2. Pending with partial content (can resume)
-  const showContinueButton = isStuck || 
-    (report.status === 'pending' && report.sectionsCompleted > 0);
-
-  // Calculate which section is currently being worked on (cap at totalSections)
+  const showContinueButton = isStuck || (report.status === 'pending' && report.sectionsCompleted > 0);
   const currentSection = Math.min(report.sectionsCompleted + 1, report.totalSections);
+
+  // Check if auto-retry is active
+  const retriesUsed = retryState?.attempts || 0;
+  const maxRetriesReached = retriesUsed >= autoContinueSettings.maxRetries;
+  const hasScheduledRetry = isStuck && autoContinueSettings.enabled && !maxRetriesReached;
 
   return (
     <div className="p-3 border-b border-border last:border-b-0">
@@ -276,14 +448,25 @@ function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressIte
             )}
             {isStuck && (
               <>
-                <AlertCircle className="h-3 w-3 text-amber-500" />
-                <span className="text-xs text-amber-500 font-medium">Stalled</span>
+                {hasScheduledRetry ? (
+                  <>
+                    <Zap className="h-3 w-3 text-amber-500" />
+                    <span className="text-xs text-amber-500 font-medium">
+                      Auto-retry {retriesUsed + 1}/{autoContinueSettings.maxRetries}...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                    <span className="text-xs text-amber-500 font-medium">Stalled</span>
+                  </>
+                )}
               </>
             )}
           </div>
         </div>
         
-        {showContinueButton && (
+        {showContinueButton && !hasScheduledRetry && (
           <Button
             size="sm"
             variant="outline"
@@ -304,19 +487,42 @@ function ReportProgressItem({ report, onContinue, onDismiss }: ReportProgressIte
         </div>
       </div>
       
-      {/* Stuck indicator with explanation */}
+      {/* Stuck indicator with auto-retry info */}
       {isStuck && (
         <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600 dark:text-amber-400">
           <div className="flex items-start gap-1.5">
-            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            {hasScheduledRetry ? (
+              <Zap className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            )}
             <div>
-              <p className="font-medium">Generation stalled</p>
-              <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
-                {minutesSinceUpdate > 0 
-                  ? `No progress for ${minutesSinceUpdate} min. `
-                  : 'The server timed out. '}
-                Press <span className="font-medium">Continue</span> to resume from section {currentSection}.
-              </p>
+              {hasScheduledRetry ? (
+                <>
+                  <p className="font-medium">Auto-resuming in {autoContinueSettings.delaySeconds}s</p>
+                  <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
+                    Attempt {retriesUsed + 1} of {autoContinueSettings.maxRetries}. 
+                    Will resume from section {currentSection}.
+                  </p>
+                </>
+              ) : maxRetriesReached ? (
+                <>
+                  <p className="font-medium">Max retries reached</p>
+                  <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
+                    Tried {retriesUsed} times. Press <span className="font-medium">Continue</span> to manually retry.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium">Generation stalled</p>
+                  <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
+                    {minutesSinceUpdate > 0 
+                      ? `No progress for ${minutesSinceUpdate} min. `
+                      : 'The server timed out. '}
+                    Press <span className="font-medium">Continue</span> to resume from section {currentSection}.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
