@@ -1,18 +1,34 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { propertyAddress, purchasePrice, weeklyRent, propertyType } = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const body = await req.json();
+    const sessionToken = extractSessionToken(req.headers, body);
+
+    // Validate session
+    const { error: authError, userId } = await verifySession(supabase, sessionToken);
+    if (authError) {
+      console.log('Auth failed for estimate-property-expenses:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+
+    console.log(`Authenticated user ${userId} requesting property expense estimates`);
+
+    const { propertyAddress, purchasePrice, weeklyRent, propertyType } = body;
     
     console.log('📊 Estimating property expenses for:', propertyAddress);
     console.log('Purchase Price:', purchasePrice, 'Weekly Rent:', weeklyRent);
@@ -136,6 +152,8 @@ Respond with ONLY a valid JSON object in this exact format, no other text:
 
   } catch (error) {
     console.error('Error estimating property expenses:', error);
+    const origin = req.headers.get('origin');
+    const corsHeaders = createCorsHeaders(origin);
     return new Response(JSON.stringify({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
