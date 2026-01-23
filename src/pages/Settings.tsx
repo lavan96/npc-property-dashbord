@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { RefreshCw, Shield, Palette, Clock, Mail, FileSignature } from 'lucide-react';
+import { RefreshCw, Shield, Palette, Clock, Mail, FileSignature, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
@@ -24,6 +24,9 @@ export default function Settings() {
     notifications: true,
     autoRefresh: true,
     refreshInterval: 5,
+    autoContinueReports: true,
+    autoContinueMaxRetries: 3,
+    autoContinueDelaySeconds: 15,
   });
   const [isSaving, setIsSaving] = useState(false);
   
@@ -461,6 +464,73 @@ export default function Settings() {
                     max="60"
                     value={settings.refreshInterval}
                     onChange={(e) => handleSettingChange('refreshInterval', parseInt(e.target.value))}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Report Generation Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Report Generation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-sm font-medium">Auto-Continue Reports</h4>
+              <p className="text-xs text-muted-foreground">
+                Automatically resume stalled investment report generations
+              </p>
+            </div>
+            <Switch
+              checked={settings.autoContinueReports}
+              onCheckedChange={(checked) => handleSettingChange('autoContinueReports', checked)}
+            />
+          </div>
+
+          {settings.autoContinueReports && (
+            <>
+              <Separator />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium">Max Retry Attempts</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Maximum times to auto-retry a stalled report (1-5)
+                  </p>
+                </div>
+                <div className="w-24">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={settings.autoContinueMaxRetries}
+                    onChange={(e) => handleSettingChange('autoContinueMaxRetries', Math.min(5, Math.max(1, parseInt(e.target.value) || 3)))}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium">Retry Delay</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Seconds to wait between retry attempts (10-60)
+                  </p>
+                </div>
+                <div className="w-24">
+                  <Input
+                    type="number"
+                    min="10"
+                    max="60"
+                    value={settings.autoContinueDelaySeconds}
+                    onChange={(e) => handleSettingChange('autoContinueDelaySeconds', Math.min(60, Math.max(10, parseInt(e.target.value) || 15)))}
                   />
                 </div>
               </div>
