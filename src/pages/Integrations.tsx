@@ -179,9 +179,10 @@ export default function Integrations() {
 
   const loadIntegrationConfigs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('integration_configs' as any)
-        .select('*');
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'integration_configs'
+      });
 
       if (error) {
         console.error('Error loading integration configs:', error);
@@ -190,11 +191,11 @@ export default function Integrations() {
         return;
       }
 
-      if (data) {
+      if (data?.records) {
         const loadedValues: Record<string, string> = {};
         const loadedKeys = new Set<string>();
         
-        data.forEach((config: any) => {
+        data.records.forEach((config: any) => {
           loadedValues[config.key_name] = config.key_value || '';
           if (config.key_value) {
             loadedKeys.add(config.key_name);
@@ -230,18 +231,19 @@ export default function Integrations() {
       for (const field of integration.fields) {
         const value = values[field.key] || '';
         
-        const { error } = await supabase
-          .from('integration_configs' as any)
-          .upsert({
+        const { error } = await invokeSecureFunction('manage-templates', {
+          operation: 'upsert',
+          table: 'integration_configs',
+          data: {
             key_name: field.key,
             key_value: value,
             integration_id: integrationId,
             updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'key_name'
-          });
+          },
+          onConflict: 'key_name'
+        });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
 
         if (value) {
           setSavedKeys(prev => new Set([...prev, field.key]));

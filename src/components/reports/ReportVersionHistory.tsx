@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -74,11 +74,16 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
     try {
       setLoading(true);
       
-      // Use RPC to call the get_report_changelog function
-      const { data, error } = await supabase.rpc('get_report_changelog', {
-        p_report_id: reportId,
-        p_version_from: null,
-        p_version_to: null
+      // Use RPC via edge function
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'rpc',
+        table: 'report_structure_templates', // Not used for RPC but required
+        rpcName: 'get_report_changelog',
+        rpcParams: {
+          p_report_id: reportId,
+          p_version_from: null,
+          p_version_to: null
+        }
       });
 
       if (error) {
@@ -87,7 +92,7 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
         return;
       }
 
-      setVersions((data || []) as unknown as Version[]);
+      setVersions((data?.data || []) as unknown as Version[]);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load version history');
@@ -135,21 +140,22 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
     try {
       setRollbackLoading(true);
 
-      // Fetch the version data to rollback to
-      const { data: versionData, error: fetchError } = await supabase
-        .from('report_versions')
-        .select('*')
-        .eq('report_id', reportId)
-        .eq('version_number', rollbackVersion)
-        .single();
+      // Fetch the version data to rollback to via edge function
+      const { data: versionResult, error: fetchError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'getVersion',
+        reportId,
+        data: { versionNumber: rollbackVersion }
+      });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) throw new Error(fetchError.message);
+      const versionData = versionResult?.version;
+      if (!versionData) throw new Error('Version not found');
 
       // Update the main report with the version data
-      // Setting current_version to a lower value triggers the rollback logic in the trigger
-      const { error: updateError } = await supabase
-        .from('investment_reports')
-        .update({
+      const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId,
+        data: {
           report_content: versionData.report_content,
           sources_content: versionData.sources_content,
           property_specs: versionData.property_specs,
@@ -161,12 +167,12 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
           demographics_data: versionData.demographics_data,
           economic_data: versionData.economic_data,
           calculation_version: versionData.calculation_version,
-          current_version: rollbackVersion, // This triggers the trigger to recognize it's a rollback
+          current_version: rollbackVersion,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', reportId);
+        }
+      });
 
-      if (updateError) throw updateError;
+      if (updateError) throw new Error(updateError.message);
 
       toast.success(`Rolled back to version ${rollbackVersion}`, {
         description: 'The report has been restored to the selected version.'
@@ -175,11 +181,9 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
       setRollbackVersion(null);
       fetchVersionHistory();
       
-      // Callback to refresh parent component
       if (onVersionRestored) {
         onVersionRestored();
       } else {
-        // Fallback: reload after delay
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -194,17 +198,15 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
 
   const fetchContentPreview = async (versionNumber: number) => {
     try {
-      const { data, error } = await supabase
-        .from('report_versions')
-        .select('report_content')
-        .eq('report_id', reportId)
-        .eq('version_number', versionNumber)
-        .single();
+      const { data, error } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'getVersion',
+        reportId,
+        data: { versionNumber }
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       
-      // Get first 1000 chars as preview
-      const preview = data?.report_content?.substring(0, 1000) || '';
+      const preview = data?.version?.report_content?.substring(0, 1000) || '';
       setPreviewVersion({ version: versionNumber, content: preview });
     } catch (error) {
       console.error('Error fetching preview:', error);
