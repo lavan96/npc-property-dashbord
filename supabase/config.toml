@@ -289,3 +289,6 @@ verify_jwt = false
 
 [functions.manage-client-data]
 verify_jwt = false
+
+[functions.user-guide-assistant]
+verify_jwt = false
