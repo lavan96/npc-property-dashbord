@@ -135,8 +135,13 @@ export function createCorsHeaders(origin: string | null): Record<string, string>
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
+    // Required for browser preflight (POST + application/json)
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+    // Required for HttpOnly cookie auth
     'Access-Control-Allow-Credentials': 'true',
+    // Ensure caches/proxies don't mix CORS responses across origins
+    'Vary': 'Origin',
   };
 }
 
@@ -153,9 +158,13 @@ export function createSessionCookie(
   
   // HttpOnly: prevents JavaScript access (XSS protection)
   // Secure: only sent over HTTPS
-  // SameSite=Lax: allows normal navigation but prevents CSRF for POST requests
+  // SameSite=None: required because the app runs on a different site than *.supabase.co
+  // (cross-site fetch). We rely on:
+  //  - strict Origin allow-listing in createCorsHeaders
+  //  - required apikey header (not possible in CSRF form posts)
+  // to preserve CSRF protection.
   // Path=/: cookie available for all paths
-  return `session_token=${options?.clear ? '' : sessionToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Expires=${expires}; Path=/`;
+  return `session_token=${options?.clear ? '' : sessionToken}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}; Expires=${expires}; Path=/`;
 }
 
 /**
