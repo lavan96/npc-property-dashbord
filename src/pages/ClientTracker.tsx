@@ -279,8 +279,9 @@ export default function ClientTracker() {
           clientId: client.id,
           include: { notes: true },
         });
-        if (!error && data?.success && data.data?.notes) {
-          return data.data.notes;
+        // Response structure is { success, client, notes, ... } - notes at top level
+        if (!error && data?.success && data.notes) {
+          return data.notes;
         }
         return [];
       });
