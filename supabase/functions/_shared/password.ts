@@ -1,4 +1,4 @@
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import { compare, hash } from "https://esm.sh/bcryptjs@2.4.3";
 
 /**
  * Hash a password using bcrypt
@@ -6,7 +6,12 @@ import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
  * @returns The hashed password
  */
 export async function hashPassword(password: string): Promise<string> {
-  return await bcrypt.hash(password, 10);
+  return new Promise((resolve, reject) => {
+    hash(password, 10, (err: Error | null, hash: string) => {
+      if (err) reject(err);
+      else resolve(hash);
+    });
+  });
 }
 
 /**
@@ -16,18 +21,23 @@ export async function hashPassword(password: string): Promise<string> {
  * @param hash - The stored hash (or plaintext for legacy)
  * @returns True if password matches
  */
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   // Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
-  const isBcryptHash = /^\$2[aby]\$\d+\$/.test(hash);
+  const isBcryptHash = /^\$2[aby]\$\d+\$/.test(storedHash);
   
   if (isBcryptHash) {
-    return await bcrypt.compare(password, hash);
+    return new Promise((resolve, reject) => {
+      compare(password, storedHash, (err: Error | null, result: boolean) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
   }
   
   // Legacy plaintext comparison for migration period
   // This allows existing users to login with their old passwords
   // On successful login, the password should be re-hashed
-  return password === hash;
+  return password === storedHash;
 }
 
 /**
