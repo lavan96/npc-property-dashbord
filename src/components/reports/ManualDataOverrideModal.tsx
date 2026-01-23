@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
+
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -1152,19 +1152,19 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         reportId: report.id
       });
       
-      // Update database with merged data
-      const { error: updateError } = await supabase
-        .from('investment_reports')
-        .update({ 
+      // Update database with merged data via secure edge function
+      const { data: updateResult, error: updateError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId: report.id,
+        data: { 
           manual_overrides: overridesWithToggles,
-          financial_calculations: mergedFinancialData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', report.id);
+          financial_calculations: mergedFinancialData
+        }
+      });
 
-      if (updateError) {
-        console.error('❌ Supabase update error:', updateError);
-        throw updateError;
+      if (updateError || !updateResult?.success) {
+        console.error('❌ Update error:', updateError || updateResult?.error);
+        throw new Error(updateError?.message || updateResult?.error || 'Failed to save overrides');
       }
 
       console.log('✅ Manual overrides saved successfully');
@@ -1178,16 +1178,11 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       setSaving(false);
       setRegenerating(true);
 
-      // Fetch current report content for regeneration
-      const { data: currentReport, error: fetchError } = await supabase
-        .from('investment_reports')
-        .select('report_content, property_address')
-        .eq('id', report.id)
-        .single();
-
-      if (fetchError) {
-        console.error('❌ Error fetching report for regeneration:', fetchError);
-        throw fetchError;
+      // Use updated report data from the response
+      const currentReport = updateResult.report;
+      if (!currentReport) {
+        console.error('❌ No report data in update response');
+        throw new Error('Failed to get updated report data');
       }
 
       // Call the regenerate-report-qualitative edge function
