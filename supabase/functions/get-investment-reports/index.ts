@@ -1,13 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifySession, extractSessionToken, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
-};
+type TableName = 'investment_reports' | 'generated_reports' | 'property_comparisons';
 
 interface RequestBody {
+  // Table selection (defaults to investment_reports for backwards compatibility)
+  table?: TableName;
+  
   // Single report fetch
   reportId?: string;
   
@@ -27,12 +27,22 @@ interface RequestBody {
     orderAsc?: boolean;
     limit?: number;
     createdAfter?: string; // ISO date string
+    hasPropertyListingId?: boolean; // For filtering auto-generated reports
   };
   
   session_token?: string;
 }
 
+const DEFAULT_SELECTS: Record<TableName, string> = {
+  investment_reports: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+  generated_reports: '*',
+  property_comparisons: 'id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags',
+};
+
 serve(async (req) => {
+  const origin = req.headers.get('origin') || '';
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -49,24 +59,34 @@ serve(async (req) => {
     // Validate session
     const { error: authError, userId } = await verifySession(supabase, sessionToken);
     if (authError) {
-      console.log('Auth failed for get-investment-reports:', authError);
+      console.log('[get-investment-reports] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
 
-    console.log(`Authenticated user ${userId} requesting investment reports`);
+    console.log(`[get-investment-reports] Authenticated user ${userId}`);
 
-    const { reportId, reportIds, listMode, listOptions = {} } = body;
+    const { table = 'investment_reports', reportId, reportIds, listMode, listOptions = {} } = body;
+
+    // Validate table
+    if (!['investment_reports', 'generated_reports', 'property_comparisons'].includes(table)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid table: ${table}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Single report fetch
     if (reportId) {
+      const selectFields = listOptions.select || (table === 'investment_reports' ? '*' : DEFAULT_SELECTS[table]);
+      
       const { data: report, error: reportError } = await supabase
-        .from('investment_reports')
-        .select('*')
+        .from(table)
+        .select(selectFields)
         .eq('id', reportId)
         .single();
 
       if (reportError) {
-        console.error('Error fetching investment report:', reportError);
+        console.error(`[get-investment-reports] Error fetching ${table}:`, reportError);
         return new Response(
           JSON.stringify({ error: 'Report not found', details: reportError.message }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -81,13 +101,15 @@ serve(async (req) => {
 
     // Multiple reports fetch by IDs
     if (reportIds && reportIds.length > 0) {
+      const selectFields = listOptions.select || DEFAULT_SELECTS[table];
+      
       const { data: reports, error: reportsError } = await supabase
-        .from('investment_reports')
-        .select('*')
+        .from(table)
+        .select(selectFields)
         .in('id', reportIds);
 
       if (reportsError) {
-        console.error('Error fetching investment reports:', reportsError);
+        console.error(`[get-investment-reports] Error fetching ${table}:`, reportsError);
         return new Response(
           JSON.stringify({ error: 'Failed to fetch reports', details: reportsError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -103,7 +125,7 @@ serve(async (req) => {
     // List mode - fetch reports with filters
     if (listMode || !reportId) {
       const {
-        select = 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+        select = DEFAULT_SELECTS[table],
         status,
         isArchived,
         isClientReport,
@@ -112,44 +134,55 @@ serve(async (req) => {
         orderBy = 'created_at',
         orderAsc = false,
         limit = 100,
-        createdAfter
+        createdAfter,
+        hasPropertyListingId
       } = listOptions;
 
       let query = supabase
-        .from('investment_reports')
+        .from(table)
         .select(select);
 
-      // Apply status filter
-      if (status) {
-        if (Array.isArray(status)) {
-          query = query.in('status', status);
-        } else {
-          query = query.eq('status', status);
+      // Apply filters based on table type
+      if (table === 'investment_reports') {
+        // Apply status filter
+        if (status) {
+          if (Array.isArray(status)) {
+            query = query.in('status', status);
+          } else {
+            query = query.eq('status', status);
+          }
         }
-      }
 
-      // Apply archived filter
-      if (typeof isArchived === 'boolean') {
-        query = query.eq('is_archived', isArchived);
-      }
+        // Apply archived filter
+        if (typeof isArchived === 'boolean') {
+          query = query.eq('is_archived', isArchived);
+        }
 
-      // Apply client report filter
-      if (isClientReport === true) {
-        query = query.eq('is_client_report', true);
-      } else if (isClientReport === false) {
-        query = query.or('is_client_report.is.null,is_client_report.eq.false');
-      }
+        // Apply client report filter
+        if (isClientReport === true) {
+          query = query.eq('is_client_report', true);
+        } else if (isClientReport === false) {
+          query = query.or('is_client_report.is.null,is_client_report.eq.false');
+        }
 
-      // Apply client property filter
-      if (clientPropertyId) {
-        query = query.eq('client_property_id', clientPropertyId);
-      } else if (clientPropertyIds && clientPropertyIds.length > 0) {
-        query = query.in('client_property_id', clientPropertyIds);
-      }
+        // Apply client property filter
+        if (clientPropertyId) {
+          query = query.eq('client_property_id', clientPropertyId);
+        } else if (clientPropertyIds && clientPropertyIds.length > 0) {
+          query = query.in('client_property_id', clientPropertyIds);
+        }
 
-      // Apply date filter
-      if (createdAfter) {
-        query = query.gte('created_at', createdAfter);
+        // Apply date filter
+        if (createdAfter) {
+          query = query.gte('created_at', createdAfter);
+        }
+
+        // Filter for auto-generated reports (have property_listing_id)
+        if (hasPropertyListingId === true) {
+          query = query.not('property_listing_id', 'is', null);
+        } else if (hasPropertyListingId === false) {
+          query = query.is('property_listing_id', null);
+        }
       }
 
       // Apply ordering
@@ -163,7 +196,7 @@ serve(async (req) => {
       const { data: reports, error: reportsError } = await query;
 
       if (reportsError) {
-        console.error('Error fetching investment reports list:', reportsError);
+        console.error(`[get-investment-reports] Error fetching ${table} list:`, reportsError);
         return new Response(
           JSON.stringify({ error: 'Failed to fetch reports', details: reportsError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -182,10 +215,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in get-investment-reports:', error);
+    console.error('[get-investment-reports] Error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
 });
