@@ -256,9 +256,10 @@ export function ClientPropertyInvestmentReport({
       ) as Json;
 
       // Create the report record with client_property_id and is_client_report flag
-      const { data: pendingReport, error: insertError } = await supabase
-        .from('investment_reports')
-        .insert({
+      // Use secure edge function for insert (service_role required due to RLS)
+      const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'insert',
+        data: {
           property_address: property.address,
           report_content: 'Generating report...',
           status: 'pending',
@@ -267,14 +268,15 @@ export function ClientPropertyInvestmentReport({
           manual_overrides: cleanedOverrides,
           client_property_id: property.id,
           is_client_report: true,
-        })
-        .select()
-        .single();
+        }
+      });
 
-      if (insertError) {
-        console.error('Error creating report record:', insertError);
-        throw new Error(`Failed to create report: ${insertError.message || 'Database error'}`);
+      if (insertError || !insertResult?.success) {
+        console.error('Error creating report record:', insertError || insertResult?.error);
+        throw new Error(`Failed to create report: ${insertError?.message || insertResult?.error || 'Database error'}`);
       }
+
+      const pendingReport = insertResult.report;
 
       // Add to background job tracker
       addBackgroundJob({
