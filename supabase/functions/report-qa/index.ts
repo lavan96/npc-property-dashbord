@@ -818,6 +818,90 @@ No investment report has been uploaded. You are having an open conversation abou
       );
     }
 
+    // Handle updating conversation (e.g., title)
+    if (action === "update-conversation") {
+      const { conversationId, title } = body;
+      
+      if (!conversationId) {
+        return new Response(
+          JSON.stringify({ error: "conversationId is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const updateData: any = {};
+      if (title !== undefined) updateData.title = title;
+      updateData.updated_at = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("report_qa_conversations")
+        .update(updateData)
+        .eq("id", conversationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log(`[report-qa] Updated conversation: ${conversationId}`);
+
+      return new Response(
+        JSON.stringify({ success: true, conversation: data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle deleting conversation
+    if (action === "delete-conversation") {
+      const { conversationId } = body;
+      
+      if (!conversationId) {
+        return new Response(
+          JSON.stringify({ error: "conversationId is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Delete messages first (foreign key constraint)
+      await supabase
+        .from("report_qa_messages")
+        .delete()
+        .eq("conversation_id", conversationId);
+
+      // Delete the conversation
+      const { error } = await supabase
+        .from("report_qa_conversations")
+        .delete()
+        .eq("id", conversationId);
+
+      if (error) throw error;
+
+      console.log(`[report-qa] Deleted conversation: ${conversationId}`);
+
+      return new Response(
+        JSON.stringify({ success: true, deleted: conversationId }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle fetching available mailboxes for email
+    if (action === "get-mailboxes") {
+      const { data, error } = await supabase
+        .from("custom_users")
+        .select("id, username, personal_mailbox")
+        .eq("is_active", true)
+        .not("personal_mailbox", "is", null);
+
+      if (error) throw error;
+
+      const mailboxes = (data || []).filter((u: any) => u.personal_mailbox);
+      console.log(`[report-qa] Fetched ${mailboxes.length} mailboxes`);
+
+      return new Response(
+        JSON.stringify({ success: true, mailboxes }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle email sending
     if (action === "send-email") {
       const { to, subject, content, reportNames } = body;
