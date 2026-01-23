@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifySession, extractSessionToken, createUnauthorizedResponse } from '../_shared/auth.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
-};
+import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' | 
                  'client_assets' | 'client_liabilities' | 'client_employment' | 
@@ -36,6 +31,9 @@ const ALLOWED_TABLES: TableName[] = [
 ];
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
