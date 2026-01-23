@@ -6,6 +6,7 @@ import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
+import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
 import { 
   Mail, 
   FileText, 
@@ -114,6 +115,8 @@ interface Email {
   attachments: EmailAttachment[];
   mailbox_source: 'admin' | 'personal';
   folder: 'inbox' | 'sent';
+  client_id: string | null;
+  client_name: string | null;
 }
 
 interface SentAttachment {
@@ -693,6 +696,8 @@ export default function EmailCopilot() {
         attachments: (email.attachments as unknown as EmailAttachment[]) || [],
         mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
         folder: (email.folder as 'inbox' | 'sent') || 'inbox',
+        client_id: email.client_id || null,
+        client_name: null, // Will be populated if needed
       }));
       
       setEmails(typedEmails);
@@ -2114,6 +2119,20 @@ export default function EmailCopilot() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <EmailClientAssignment
+                      emailId={selectedEmail.id}
+                      currentClientId={selectedEmail.client_id}
+                      currentClientName={selectedEmail.client_name}
+                      onAssignmentChange={(clientId, clientName) => {
+                        // Update local state
+                        setSelectedEmail(prev => prev ? { ...prev, client_id: clientId, client_name: clientName } : null);
+                        setEmails(prev => prev.map(e => 
+                          e.id === selectedEmail.id 
+                            ? { ...e, client_id: clientId, client_name: clientName }
+                            : e
+                        ));
+                      }}
+                    />
                     {getStatusBadge(selectedEmail.status)}
                     {selectedEmail.urgency_level && getUrgencyBadge(selectedEmail.urgency_level)}
                     <DropdownMenu>

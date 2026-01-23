@@ -41,6 +41,7 @@ import {
   Edit,
   Landmark,
   ClipboardCheck,
+  Inbox,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -68,6 +69,7 @@ import { PropertyEditSheet } from './PropertyEditSheet';
 import { ClientPropertyInvestmentReport } from './ClientPropertyInvestmentReport';
 import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
+import { ClientEmailsTab } from './ClientEmailsTab';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -283,6 +285,10 @@ NPC Team`
               <TabsTrigger value="employment">Employment</TabsTrigger>
               <TabsTrigger value="financials">Financials</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>
+              <TabsTrigger value="emails">
+                <Inbox className="h-3 w-3 mr-1" />
+                Emails
+              </TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="reminders">Reminders</TabsTrigger>
               <TabsTrigger value="vownet-forms">VowNet Forms</TabsTrigger>
@@ -604,6 +610,10 @@ NPC Team`
                 onEmailClick={handlePdfEmailClick}
                 onOpenEmailCompose={() => { setPdfAttachment(null); setShowEmailCompose(true); }}
               />
+            </TabsContent>
+
+            <TabsContent value="emails" className="mt-4">
+              <ClientEmailsTab clientId={client.id} clientName={`${client.primary_first_name} ${client.primary_surname}`} />
             </TabsContent>
 
             <TabsContent value="notes" className="mt-4">
