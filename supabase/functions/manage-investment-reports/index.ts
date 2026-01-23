@@ -4,7 +4,12 @@ import { verifySession, extractSessionToken, createUnauthorizedResponse } from '
 
 // Dynamic CORS headers for credential-based requests
 function createCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = origin && (origin.endsWith('.lovable.app') || origin.includes('localhost')) 
+  // Support Lovable preview + published domains for credentialed requests
+  const allowedOrigin = origin && (
+    origin.endsWith('.lovable.app') ||
+    origin.endsWith('.lovableproject.com') ||
+    origin.includes('localhost')
+  )
     ? origin 
     : 'https://npc-property-dashbord.lovable.app';
 

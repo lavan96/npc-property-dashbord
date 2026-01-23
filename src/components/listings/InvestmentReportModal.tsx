@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Download, Copy, Check, Eye, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -93,55 +92,44 @@ export function InvestmentReportModal({
       let savedReportId: string | null = null;
       try {
         if (user) {
-          // Check if a report with this exact address already exists recently
-          const { data: existingReport } = await supabase
-            .from('investment_reports')
-            .select('id')
-            .eq('property_address', propertyAddress)
-            .gte('created_at', new Date(Date.now() - 60000).toISOString()) // Within last 60 seconds
-            .maybeSingle();
+          // Use secure edge function for insert (service_role required due to RLS)
+          // NOTE: Avoid direct client-side queries to investment_reports due to service-role-only policy.
+          const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+            action: 'insert',
+            data: {
+              property_address: propertyAddress,
+              property_listing_id: propertyDetails?.id || null,
+              report_content: data.reportContent,
+              sources_content: data.sourcesContent || '',
+              generated_by: user.id,
+              location_intelligence: data.enhancedData?.locationIntelligence || null,
+              investment_score: data.enhancedData?.investmentScore || null,
+              financial_calculations: data.enhancedData?.financials || null,
+              demographics_data: data.enhancedData?.demographics || null,
+              economic_data: data.enhancedData?.economics || null,
+              status: 'completed',
+            },
+          });
 
-          if (existingReport) {
-            console.log('Report already exists, skipping duplicate save');
-            savedReportId = existingReport.id;
-            setReportId(existingReport.id);
-          } else {
-            // Use secure edge function for insert (service_role required due to RLS)
-            const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
-              action: 'insert',
-              data: {
-                property_address: propertyAddress,
-                property_listing_id: propertyDetails?.id || null,
-                report_content: data.reportContent,
-                sources_content: data.sourcesContent || '',
-                generated_by: user.id,
-                location_intelligence: data.enhancedData?.locationIntelligence || null,
-                investment_score: data.enhancedData?.investmentScore || null,
-                financial_calculations: data.enhancedData?.financials || null,
-                demographics_data: data.enhancedData?.demographics || null,
-                economic_data: data.enhancedData?.economics || null,
-                status: 'completed'
-              }
-            });
-            
-            if (!insertError && insertResult?.success && insertResult.report) {
-              savedReportId = insertResult.report.id;
-              setReportId(insertResult.report.id);
-              console.log('Report saved with ID:', insertResult.report.id);
-              
-              // Only send success notification if save was successful
-              if (runInBackground) {
-                addNotification({
-                  type: 'report_generated',
-                  title: 'Investment Report Generated',
-                  message: `Report for ${propertyAddress} is ready to view.`,
-                  reportId: insertResult.report.id
-                });
-              }
-            } else if (insertError || !insertResult?.success) {
-              console.error('Error saving report:', insertError || insertResult?.error);
-              throw new Error(`Failed to save report: ${insertError?.message || insertResult?.error || 'Unknown error'}`);
+          if (!insertError && insertResult?.success && insertResult.report) {
+            savedReportId = insertResult.report.id;
+            setReportId(insertResult.report.id);
+            console.log('Report saved with ID:', insertResult.report.id);
+
+            // Only send success notification if save was successful
+            if (runInBackground) {
+              addNotification({
+                type: 'report_generated',
+                title: 'Investment Report Generated',
+                message: `Report for ${propertyAddress} is ready to view.`,
+                reportId: insertResult.report.id,
+              });
             }
+          } else if (insertError || !insertResult?.success) {
+            console.error('Error saving report:', insertError || insertResult?.error);
+            throw new Error(
+              `Failed to save report: ${insertError?.message || insertResult?.error || 'Unknown error'}`
+            );
           }
         } else {
           console.warn('No user found, report not saved to database');
