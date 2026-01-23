@@ -149,46 +149,47 @@ export default function ClientTracker() {
     fetchContact
   } = useGHLCalendar();
 
-  // Fetch pipelines from database
+  // Fetch pipelines from database via edge function
   const { data: pipelines = [], isLoading: pipelinesLoading } = useQuery({
     queryKey: ['ghl-pipelines'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ghl_pipelines')
-        .select('*')
-        .eq('is_active', true)
-        .order('position', { ascending: true });
+      const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'getPipelines'
+      });
       
-      if (error) throw error;
-      return data as GHLPipeline[];
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
+      return data.pipelines as GHLPipeline[];
     },
   });
 
-  // Fetch pipeline stages from database
+  // Fetch pipeline stages from database via edge function
   const { data: allStages = [], isLoading: stagesLoading } = useQuery({
     queryKey: ['ghl-pipeline-stages'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ghl_pipeline_stages')
-        .select('*')
-        .order('position', { ascending: true });
+      const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'getStages'
+      });
       
-      if (error) throw error;
-      return data as GHLPipelineStage[];
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
+      return data.stages as GHLPipelineStage[];
     },
   });
 
-  // Fetch clients with pipeline data
+  // Fetch clients with pipeline data via secure edge function
   const { data: clients = [], isLoading: clientsLoading } = useQuery({
     queryKey: ['client-tracker'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite')
-        .order('follow_up_date', { ascending: true, nullsFirst: false });
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        mode: 'list',
+        listOptions: {
+          select: 'id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite',
+          orderBy: 'follow_up_date',
+          orderAsc: true
+        }
+      });
       
-      if (error) throw error;
-      return data as TrackedClient[];
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
+      return (data.clients || []) as TrackedClient[];
     },
   });
 
@@ -301,9 +302,10 @@ export default function ClientTracker() {
   // Update client mutation
   const updateClientMutation = useMutation({
     mutationFn: async (client: Partial<TrackedClient> & { id: string }) => {
-      const { error } = await supabase
-        .from('clients')
-        .update({
+      const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'updateClientPipeline',
+        clientId: client.id,
+        data: {
           pipeline_status: client.pipeline_status,
           follow_up_date: client.follow_up_date,
           borrowing_capacity: client.borrowing_capacity,
@@ -311,10 +313,10 @@ export default function ClientTracker() {
           equity_release: client.equity_release,
           pipeline_notes: client.pipeline_notes,
           current_stage_id: client.current_stage_id,
-        })
-        .eq('id', client.id);
+        }
+      });
       
-      if (error) throw error;
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
@@ -330,16 +332,17 @@ export default function ClientTracker() {
   // Move client to different stage mutation with two-way GHL sync
   const moveClientMutation = useMutation({
     mutationFn: async ({ clientId, stageId, stageName }: { clientId: string; stageId: string | null; stageName: string }) => {
-      // First update locally for instant UI feedback
-      const { error: localError } = await supabase
-        .from('clients')
-        .update({
+      // First update locally via edge function for instant UI feedback
+      const { data: updateData, error: localError } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'updateClientPipeline',
+        clientId,
+        data: {
           current_stage_id: stageId,
           pipeline_status: stageName,
-        })
-        .eq('id', clientId);
+        }
+      });
       
-      if (localError) throw localError;
+      if (localError || !updateData?.success) throw new Error(updateData?.error || localError?.message);
 
       // Then sync to GHL (non-blocking, but show toast on result)
       if (stageId) {

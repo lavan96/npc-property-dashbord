@@ -75,22 +75,13 @@ const Automation = () => {
   }, []);
 
   const fetchSyncStats = async () => {
-    const { data, count } = await supabase
-      .from('auto_report_processed_listings')
-      .select('*', { count: 'exact', head: false })
-      .order('processed_at', { ascending: false })
-      .limit(1);
-    
-    const { count: generatedCount } = await supabase
-      .from('auto_report_processed_listings')
-      .select('*', { count: 'exact', head: true })
-      .eq('skipped', false);
-    
-    setSyncStats({
-      total: count || 0,
-      generated: generatedCount || 0,
-      lastSync: data?.[0]?.processed_at
+    const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+      operation: 'getSyncStats'
     });
+    
+    if (!error && data?.success) {
+      setSyncStats(data.stats);
+    }
   };
 
   const runSync = async (dryRun: boolean = false) => {
@@ -121,14 +112,12 @@ const Automation = () => {
   const clearQueue = async () => {
     setClearing(true);
     try {
-      // Delete reports that are stuck in processing, pending, or failed status
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .delete()
-        .in('status', ['processing', 'pending', 'failed'])
-        .select('id');
+      // Delete reports that are stuck in processing, pending, or failed status via edge function
+      const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'clearStuckReports'
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
 
       const count = data?.length || 0;
       toast.success(`Cleared ${count} report(s) from queue`);
@@ -148,27 +137,25 @@ const Automation = () => {
   };
 
   const fetchMasterSettings = async () => {
-    const { data, error } = await supabase
-      .from('auto_report_master_settings')
-      .select('*')
-      .single();
+    const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+      operation: 'getMasterSettings'
+    });
     
-    if (!error && data) {
-      setMasterEnabled(data.is_enabled);
+    if (!error && data?.success) {
+      setMasterEnabled(data.settings?.is_enabled || false);
     }
   };
 
   const fetchSwitches = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('auto_report_switches')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+      operation: 'getSwitches'
+    });
     
-    if (error) {
+    if (error || !data?.success) {
       toast.error('Failed to load switches');
     } else {
-      setSwitches((data || []).map(d => ({
+      setSwitches((data.switches || []).map((d: any) => ({
         ...d,
         criteria: parseCriteria(d.criteria)
       })));
@@ -180,14 +167,12 @@ const Automation = () => {
     setMasterLoading(true);
     const newValue = !masterEnabled;
     
-    // auto_report_master_settings is an operational config table, direct query is acceptable
-    const { data: settingsData } = await supabase.from('auto_report_master_settings').select('id').single();
-    const { error } = await supabase
-      .from('auto_report_master_settings')
-      .update({ is_enabled: newValue, updated_at: new Date().toISOString() })
-      .eq('id', settingsData?.id);
+    const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+      operation: 'updateMasterSettings',
+      data: { is_enabled: newValue }
+    });
     
-    if (error) {
+    if (error || !data?.success) {
       toast.error('Failed to update master switch');
     } else {
       setMasterEnabled(newValue);
@@ -205,12 +190,13 @@ const Automation = () => {
   const toggleSwitch = async (switchItem: AutoReportSwitch) => {
     const newValue = !switchItem.is_enabled;
     
-    const { error } = await supabase
-      .from('auto_report_switches')
-      .update({ is_enabled: newValue })
-      .eq('id', switchItem.id);
+    const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+      operation: 'updateSwitch',
+      switchId: switchItem.id,
+      data: { is_enabled: newValue }
+    });
     
-    if (error) {
+    if (error || !data?.success) {
       toast.error('Failed to update switch');
     } else {
       setSwitches(prev => prev.map(s => 
@@ -229,12 +215,12 @@ const Automation = () => {
   const deleteSwitch = async (switchItem: AutoReportSwitch) => {
     if (!confirm(`Are you sure you want to delete "${switchItem.name}"?`)) return;
     
-    const { error } = await supabase
-      .from('auto_report_switches')
-      .delete()
-      .eq('id', switchItem.id);
+    const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+      operation: 'deleteSwitch',
+      switchId: switchItem.id
+    });
     
-    if (error) {
+    if (error || !data?.success) {
       toast.error('Failed to delete switch');
     } else {
       setSwitches(prev => prev.filter(s => s.id !== switchItem.id));

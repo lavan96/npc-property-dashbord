@@ -171,16 +171,15 @@ export default function GeneratedReports() {
   };
 
   const fetchInvestmentReportDetails = async (reportId: string): Promise<InvestmentReport | null> => {
-    const { data, error } = await supabase
-      .from('investment_reports')
-      .select(
-        'id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
-      )
-      .eq('id', reportId)
-      .maybeSingle();
+    const { data, error } = await invokeSecureFunction('get-investment-reports', {
+      reportId,
+      listOptions: {
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
+      }
+    });
 
-    if (error) throw error;
-    return (data || null) as any;
+    if (error || !data?.success) throw new Error(data?.error || error?.message);
+    return (data.report || null) as any;
   };
 
   const downloadInvestmentReportText = async (report: Pick<InvestmentReport, 'id' | 'property_address' | 'created_at'>) => {
@@ -280,19 +279,18 @@ export default function GeneratedReports() {
         let report = investmentReports.find(r => r.id === reportId) as any;
         console.log('🔗 Deep-link report found in list?', { found: !!report, listCount: investmentReports.length });
 
-        // If not found in-memory (pagination / fetch limits), fetch directly by id
+        // If not found in-memory (pagination / fetch limits), fetch directly by id via edge function
         if (!report) {
-          const { data, error } = await supabase
-            .from('investment_reports')
-            .select('id')
-            .eq('id', reportId)
-            .maybeSingle();
+          const { data, error } = await invokeSecureFunction('get-investment-reports', {
+            reportId,
+            listOptions: { select: 'id' }
+          });
 
           if (error) {
             console.error('Deep-link fetch error:', error);
           }
 
-          report = data as any;
+          report = data?.report as any;
           console.log('🔗 Deep-link report fetched?', { fetched: !!report });
         }
 
@@ -408,30 +406,30 @@ export default function GeneratedReports() {
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Apply 30-day cutoff for non-archived reports to reduce payload
       // Filter out client reports (is_client_report = true) - those are only accessible from clients page
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select(
-          'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score'
-        )
-        .in('status', ['completed', 'pending'])
-        .gte('created_at', thirtyDaysAgo)
-        .eq('is_archived', false)
-        .or('is_client_report.is.null,is_client_report.eq.false') // Exclude client reports
-        .order('created_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+          status: ['completed', 'pending'],
+          createdAfter: thirtyDaysAgo,
+          isArchived: false,
+          isClientReport: false
+        }
+      });
 
-      console.log('📊 Investment reports response:', { count: data?.length, error });
+      console.log('📊 Investment reports response:', { count: data?.reports?.length, error });
 
-      if (error) {
-        console.error('❌ Error fetching investment reports:', error);
+      if (error || !data?.success) {
+        console.error('❌ Error fetching investment reports:', error || data?.error);
         toast({
           title: 'Error fetching investment reports',
-          description: error.message,
+          description: error?.message || data?.error,
           variant: 'destructive',
         });
         return;
       }
 
-      setInvestmentReports((data || []) as InvestmentReport[]);
+      setInvestmentReports((data.reports || []) as InvestmentReport[]);
     } catch (error) {
       console.error('💥 Exception:', error);
       toast({
@@ -447,25 +445,25 @@ export default function GeneratedReports() {
     try {
       console.log('📦 Fetching archived investment reports...');
       
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select(
-          'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score'
-        )
-        .in('status', ['completed', 'pending'])
-        .eq('is_archived', true)
-        .order('created_at', { ascending: false })
-        .limit(100);
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+          status: ['completed', 'pending'],
+          isArchived: true,
+          limit: 100
+        }
+      });
 
-      if (error) {
-        console.error('❌ Error fetching archived reports:', error);
+      if (error || !data?.success) {
+        console.error('❌ Error fetching archived reports:', error || data?.error);
         return;
       }
 
       // Merge with existing reports
       setInvestmentReports(prev => {
         const existingIds = new Set(prev.map(r => r.id));
-        const newArchived = (data || []).filter(r => !existingIds.has(r.id));
+        const newArchived = (data.reports || []).filter((r: InvestmentReport) => !existingIds.has(r.id));
         return [...prev, ...(newArchived as InvestmentReport[])];
       });
     } catch (error) {
@@ -479,12 +477,13 @@ export default function GeneratedReports() {
       // Get report address for notification
       const report = investmentReports.find(r => r.id === reportId);
       
-      const { error } = await supabase
-        .from('investment_reports')
-        .update({ is_archived: true })
-        .eq('id', reportId);
+      const { data, error } = await invokeSecureFunction('manage-investment-reports', {
+        operation: 'update',
+        reportId,
+        data: { is_archived: true }
+      });
       
-      if (error) throw error;
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
       
       // Update local state
       setInvestmentReports(prev => 

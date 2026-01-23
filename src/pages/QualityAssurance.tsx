@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { ValidationFlagsDisplay } from "@/components/reports/ValidationFlagsDisplay";
 import { DataQualityIndicator } from "@/components/reports/DataQualityIndicator";
 import { Loader2, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText } from "lucide-react";
@@ -46,16 +46,20 @@ export default function QualityAssurance() {
     try {
       setLoading(true);
 
-      // Fetch reports with validation data
-      const { data: reportsData, error: reportsError } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, created_at, calculation_version, validation_flags, data_sources, status')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      // Fetch reports with validation data via edge function
+      const { data, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          select: 'id, property_address, created_at, calculation_version, validation_flags, data_sources, status',
+          limit: 100
+        }
+      });
 
-      if (reportsError) throw reportsError;
+      if (reportsError || !data?.success) throw new Error(data?.error || reportsError?.message);
+      
+      const reportsData = data.reports || [];
 
-      setReports(reportsData || []);
+      setReports(reportsData);
 
       // Calculate metrics
       const totalReports = (reportsData || []).length;
