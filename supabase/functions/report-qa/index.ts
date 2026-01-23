@@ -5,10 +5,30 @@ import { Resend } from "npm:resend@2.0.0";
 import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "npm:pdf-lib@1.17.1";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Dynamic CORS headers for credentials support
+function createCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = [
+    'https://npc-property-dashbord.lovable.app',
+    'https://id-preview--7976d60b-c277-4851-889b-c170285f4be2.lovable.app',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Allow Lovable preview domains dynamically
+  const allowedOrigin = origin && (
+    allowedOrigins.includes(origin) ||
+    origin.endsWith('.lovable.app') ||
+    origin.endsWith('.lovableproject.com')
+  ) ? origin : allowedOrigins[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin',
+  };
+}
 
 // Process base64 in chunks to prevent memory issues
 function processBase64Chunks(base64String: string, chunkSize = 32768) {
@@ -269,6 +289,9 @@ function formatRetrievedContext(chunks: { chunk_text: string; document_name: str
 // ============= END RAG HELPER FUNCTIONS =============
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

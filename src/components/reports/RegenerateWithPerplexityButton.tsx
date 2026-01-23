@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -46,16 +45,19 @@ export function RegenerateWithPerplexityButton({
         description: 'Fetching report data and manual overrides...'
       });
 
-      // Fetch the full report with manual overrides
-      const { data: report, error: fetchError } = await supabase
-        .from('investment_reports')
-        .select('report_content, manual_overrides, financial_calculations')
-        .eq('id', reportId)
-        .single();
+      // Fetch the full report with manual overrides via secure function
+      const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
+        reportId,
+        listOptions: {
+          select: 'report_content, manual_overrides, financial_calculations'
+        }
+      });
 
-      if (fetchError) {
-        throw fetchError;
+      if (fetchError || !reportData?.report) {
+        throw new Error(fetchError?.message || 'Failed to fetch report');
       }
+
+      const report = reportData.report;
 
       if (!report?.report_content) {
         throw new Error('Report content not found');
@@ -85,20 +87,22 @@ export function RegenerateWithPerplexityButton({
         throw new Error(data.error || 'Failed to regenerate report');
       }
 
-      // Update status back to completed
-      await supabase
-        .from('investment_reports')
-        .update({ status: 'completed' })
-        .eq('id', reportId);
+      // Update status back to completed via secure function
+      await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId,
+        data: { status: 'completed' }
+      });
 
-      // Fetch updated version info from database (trigger bumped it)
-      const { data: updatedReport } = await supabase
-        .from('investment_reports')
-        .select('current_version')
-        .eq('id', reportId)
-        .single();
+      // Fetch updated version info from database (trigger bumped it) via secure function
+      const { data: updatedReportData } = await invokeSecureFunction('get-investment-reports', {
+        reportId,
+        listOptions: {
+          select: 'current_version'
+        }
+      });
       
-      const newVersion = updatedReport?.current_version || 'new';
+      const newVersion = updatedReportData?.report?.current_version || 'new';
 
       toast.success('Report regenerated successfully', {
         description: `Version ${newVersion} created with updated qualitative analysis reflecting your manual overrides.`
@@ -128,11 +132,12 @@ export function RegenerateWithPerplexityButton({
         description: error.message || 'Please try again later'
       });
 
-      // Revert status to completed on error
-      await supabase
-        .from('investment_reports')
-        .update({ status: 'completed' })
-        .eq('id', reportId);
+      // Revert status to completed on error via secure function
+      await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId,
+        data: { status: 'completed' }
+      });
     } finally {
       setRegenerating(false);
     }
