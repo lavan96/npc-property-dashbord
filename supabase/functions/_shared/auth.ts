@@ -124,8 +124,13 @@ export function createCorsHeaders(origin: string | null): Record<string, string>
   ];
   
   // Check if origin is allowed, default to primary domain
+  // NOTE: Lovable preview iframes often run on *.lovableproject.com.
+  // If we don't allow that, browsers will block credentialed requests (cookies)
+  // and auth/JWT issuance will silently fail with "Failed to fetch".
   const allowedOrigin = origin && allowedOrigins.some(allowed => 
-    origin === allowed || origin.endsWith('.lovable.app')
+    origin === allowed ||
+    origin.endsWith('.lovable.app') ||
+    origin.endsWith('.lovableproject.com')
   ) ? origin : allowedOrigins[0];
 
   return {
