@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { extractSessionToken, createCorsHeaders } from '../_shared/auth.ts';
 
 interface ActivityLogsRequest {
   session_token?: string;
@@ -14,6 +10,9 @@ interface ActivityLogsRequest {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -27,7 +26,10 @@ Deno.serve(async (req) => {
 
     // Get request body
     const body: ActivityLogsRequest = await req.json();
-    const { session_token, action_filter, entity_filter, user_filter, limit = 500 } = body;
+    const { action_filter, entity_filter, user_filter, limit = 500 } = body;
+
+    // Extract session token from cookie, header, or body
+    const session_token = extractSessionToken(req.headers, body);
 
     // Validate session token
     if (!session_token) {
