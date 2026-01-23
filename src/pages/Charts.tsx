@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -30,38 +30,46 @@ export default function Charts() {
     try {
       console.log('Fetching charts...');
       
-      // First, get charts with a simpler query
-      const { data: chartsData, error: chartsError } = await supabase
-        .from('charts')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch charts via Edge Function
+      const { data: chartsResult, error: chartsError } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'charts',
+        listOptions: {
+          orderBy: 'created_at',
+          orderAsc: false
+        }
+      });
 
       if (chartsError) {
         console.error('Error fetching charts:', chartsError);
         return;
       }
 
+      const chartsData = chartsResult?.records || [];
       console.log('Charts data:', chartsData);
 
       // Then get the reports separately if needed
-      const reportIds = [...new Set(chartsData?.map(chart => chart.report_id).filter(Boolean) || [])];
+      const reportIds = [...new Set(chartsData?.map((chart: any) => chart.report_id).filter(Boolean) || [])];
       let reportsMap = new Map();
 
       if (reportIds.length > 0) {
-        const { data: reportsData, error: reportsError } = await supabase
-          .from('generated_reports')
-          .select('id, title, created_at')
-          .in('id', reportIds);
+        const { data: reportsResult, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
+          table: 'generated_reports',
+          reportIds: reportIds,
+          listOptions: {
+            select: 'id, title, created_at'
+          }
+        });
 
-        if (!reportsError && reportsData) {
-          reportsData.forEach(report => {
+        if (!reportsError && reportsResult?.reports) {
+          reportsResult.reports.forEach((report: any) => {
             reportsMap.set(report.id, report);
           });
         }
       }
 
       // Transform the data to match our interface
-      const transformedData = (chartsData || []).map(chart => ({
+      const transformedData = (chartsData || []).map((chart: any) => ({
         ...chart,
         generated_reports: chart.report_id ? reportsMap.get(chart.report_id) || null : null
       }));

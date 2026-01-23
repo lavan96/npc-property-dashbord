@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,12 +70,12 @@ export default function ReportViewer() {
 
   const fetchReport = async () => {
     try {
-      // Fetch report data
-      const { data: reportData, error: reportError } = await supabase
-        .from('generated_reports')
-        .select('*')
-        .eq('id', reportId)
-        .single();
+      // Fetch report data via Edge Function
+      const { data: reportResult, error: reportError } = await invokeSecureFunction('get-investment-reports', {
+        table: 'generated_reports',
+        reportId: reportId,
+        listOptions: { select: '*' }
+      });
 
       if (reportError) {
         console.error('Error fetching report:', reportError);
@@ -88,31 +87,43 @@ export default function ReportViewer() {
         return;
       }
 
+      const reportData = reportResult?.report;
       setReport(reportData);
 
-      // Fetch associated charts
-      const { data: chartsData, error: chartsError } = await supabase
-        .from('charts')
-        .select('*')
-        .eq('report_id', reportId)
-        .order('created_at', { ascending: true });
+      // Fetch associated charts via Edge Function
+      const { data: chartsResult, error: chartsError } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'charts',
+        listOptions: {
+          filters: { report_id: reportId },
+          orderBy: 'created_at',
+          orderAsc: true
+        }
+      });
 
       if (chartsError) {
         console.error('Error fetching charts:', chartsError);
       } else {
-        setCharts(chartsData || []);
+        const chartsData = chartsResult?.records || [];
+        setCharts(chartsData);
         
         // Fetch chart analysis for each chart and generate missing analysis
         if (chartsData && chartsData.length > 0) {
-          const analysisPromises = chartsData.map(async (chart) => {
-            let { data: analysisData, error: analysisError } = await supabase
-              .from('chart_analysis')
-              .select('analysis_text')
-              .eq('chart_id', chart.id)
-              .single();
+          const analysisPromises = chartsData.map(async (chart: any) => {
+            // Fetch chart analysis via Edge Function
+            const { data: analysisResult } = await invokeSecureFunction('manage-templates', {
+              operation: 'list',
+              table: 'chart_analysis',
+              listOptions: {
+                filters: { chart_id: chart.id },
+                limit: 1
+              }
+            });
+            
+            const analysisData = analysisResult?.records?.[0];
             
             // If no analysis exists, generate it
-            if (analysisError || !analysisData) {
+            if (!analysisData) {
               console.log(`No analysis found for chart ${chart.id} (${chart.title}), generating...`);
               try {
                 // Generate analysis data based on chart title
@@ -130,8 +141,8 @@ export default function ReportViewer() {
                 };
 
                 const reportContext = {
-                  title: report.title,
-                  description: report.description || '',
+                  title: reportData.title,
+                  description: reportData.description || '',
                   listingCount: 73
                 };
 

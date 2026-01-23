@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export interface ContactDetails {
   company_name: string;
@@ -50,16 +50,19 @@ export function useGlobalReportSettings() {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('global_report_settings')
-        .select('*');
+      const { data, error: fetchError } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'global_report_settings'
+      });
 
-      if (error) throw error;
+      if (fetchError) throw new Error(fetchError.message);
+
+      const records = data?.records || [];
 
       let contactDetails = defaultContactDetails;
       let disclaimer = defaultDisclaimer;
 
-      data?.forEach((setting) => {
+      records?.forEach((setting: any) => {
         if (setting.setting_key === 'contact_details') {
           contactDetails = setting.setting_value as unknown as ContactDetails;
         } else if (setting.setting_key === 'professional_disclaimer') {
@@ -82,16 +85,19 @@ export function useGlobalReportSettings() {
 // Standalone function to fetch settings (for use in non-hook contexts)
 export async function fetchGlobalReportSettings(): Promise<GlobalReportSettings> {
   try {
-    const { data, error } = await supabase
-      .from('global_report_settings')
-      .select('*');
+    const { data, error } = await invokeSecureFunction('manage-templates', {
+      operation: 'list',
+      table: 'global_report_settings'
+    });
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
+
+    const records = data?.records || [];
 
     let contactDetails = defaultContactDetails;
     let disclaimer = defaultDisclaimer;
 
-    data?.forEach((setting) => {
+    records?.forEach((setting: any) => {
       if (setting.setting_key === 'contact_details') {
         contactDetails = setting.setting_value as unknown as ContactDetails;
       } else if (setting.setting_key === 'professional_disclaimer') {

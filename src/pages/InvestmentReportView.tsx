@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -73,13 +73,12 @@ export default function InvestmentReportView() {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('investment_reports')
-        .select(
-          'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
-        )
-        .eq('id', id)
-        .maybeSingle();
+      const { data, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
+        reportId: id,
+        listOptions: {
+          select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
+        }
+      });
 
       if (fetchError) {
         console.error('Error fetching report:', fetchError);
@@ -88,24 +87,24 @@ export default function InvestmentReportView() {
         return;
       }
 
-      if (!data) {
+      if (!data?.report) {
         setError('Report not found.');
         setLoading(false);
         return;
       }
 
-      setReport(data as InvestmentReport);
+      const reportData = data.report;
+      setReport(reportData as InvestmentReport);
       
       // If it's a client report, fetch the client info for back navigation
-      if (data.is_client_report && data.client_property_id) {
-        const { data: propertyData } = await supabase
-          .from('client_properties')
-          .select('client_id, clients(id, primary_first_name, primary_surname)')
-          .eq('id', data.client_property_id)
-          .maybeSingle();
+      if (reportData.is_client_report && reportData.client_property_id) {
+        const { data: clientData } = await invokeSecureFunction('manage-client-data', {
+          operation: 'getClientProperty',
+          clientPropertyId: reportData.client_property_id
+        });
 
-        if (propertyData?.clients) {
-          const client = propertyData.clients as unknown as ClientInfo;
+        if (clientData?.property?.clients) {
+          const client = clientData.property.clients as unknown as ClientInfo;
           setClientInfo(client);
         }
       }
@@ -117,8 +116,8 @@ export default function InvestmentReportView() {
         actionType: 'report_viewed',
         entityType: 'investment_report',
         entityId: id,
-        entityName: data.property_address,
-        metadata: { source: 'investment_report_view', isClientReport: data.is_client_report }
+        entityName: reportData.property_address,
+        metadata: { source: 'investment_report_view', isClientReport: reportData.is_client_report }
       });
     };
 
@@ -128,16 +127,15 @@ export default function InvestmentReportView() {
   const handleReportUpdate = async () => {
     if (!id) return;
 
-    const { data } = await supabase
-      .from('investment_reports')
-      .select(
-        'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
-      )
-      .eq('id', id)
-      .maybeSingle();
+    const { data } = await invokeSecureFunction('get-investment-reports', {
+      reportId: id,
+      listOptions: {
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
+      }
+    });
 
-    if (data) {
-      setReport(data as InvestmentReport);
+    if (data?.report) {
+      setReport(data.report as InvestmentReport);
     }
   };
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface BackgroundJob {
@@ -101,29 +101,29 @@ export function BackgroundJobTracker() {
   const checkBulkGenerationJob = async (jobId: string) => {
     if (processedJobsRef.current.has(jobId)) return;
 
-    const { data: job } = await supabase
-      .from('bulk_generation_jobs' as any)
-      .select('*')
-      .eq('id', jobId)
-      .single();
+    const { data, error } = await invokeSecureFunction('manage-templates', {
+      operation: 'get',
+      table: 'bulk_generation_jobs',
+      recordId: jobId
+    });
 
-    if (!job) return;
+    if (error || !data?.record) return;
 
-    const typedJob = job as any;
+    const job = data.record;
     
-    if (typedJob.status === 'completed') {
+    if (job.status === 'completed') {
       addNotification({
         type: 'info',
         title: 'Bulk Generation Complete',
-        message: `Successfully generated ${typedJob.completed_reports} of ${typedJob.total_reports} reports`
+        message: `Successfully generated ${job.completed_reports} of ${job.total_reports} reports`
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
-    } else if (typedJob.status === 'failed') {
+    } else if (job.status === 'failed') {
       addNotification({
         type: 'report_failed',
         title: 'Bulk Generation Failed',
-        message: `Failed to complete bulk generation. ${typedJob.failed_reports} reports failed.`
+        message: `Failed to complete bulk generation. ${job.failed_reports} reports failed.`
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
@@ -133,13 +133,12 @@ export function BackgroundJobTracker() {
   const checkComparisonJob = async (jobId: string) => {
     if (processedJobsRef.current.has(jobId)) return;
 
-    const { data: comparison } = await supabase
-      .from('property_comparisons' as any)
-      .select('*')
-      .eq('id', jobId)
-      .single();
+    const { data, error } = await invokeSecureFunction('get-investment-reports', {
+      table: 'property_comparisons',
+      reportId: jobId
+    });
 
-    if (comparison) {
+    if (!error && data?.report) {
       addNotification({
         type: 'info',
         title: 'Comparison Analysis Complete',
@@ -153,31 +152,31 @@ export function BackgroundJobTracker() {
   const checkInvestmentReportJob = async (jobId: string) => {
     if (processedJobsRef.current.has(jobId)) return;
 
-    const { data: report } = await supabase
-      .from('investment_reports')
-      .select('id, property_address, status, error_message')
-      .eq('id', jobId)
-      .single();
+    const { data, error } = await invokeSecureFunction('get-investment-reports', {
+      reportId: jobId,
+      listOptions: {
+        select: 'id, property_address, status, error_message'
+      }
+    });
 
-    if (!report) return;
+    if (error || !data?.report) return;
     
-    // Type assertion since types file hasn't been regenerated yet
-    const reportData = report as any;
+    const report = data.report;
     
-    if (reportData.status === 'completed') {
+    if (report.status === 'completed') {
       addNotification({
         type: 'report_generated',
         title: 'Investment Report Completed',
-        message: `Your investment report for ${reportData.property_address} has been generated successfully.`,
-        reportId: reportData.id,
+        message: `Your investment report for ${report.property_address} has been generated successfully.`,
+        reportId: report.id,
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
-    } else if (reportData.status === 'failed') {
+    } else if (report.status === 'failed') {
       addNotification({
         type: 'report_failed',
         title: 'Investment Report Failed',
-        message: `Failed to generate report for ${reportData.property_address}. ${reportData.error_message || 'Please try again.'}`,
+        message: `Failed to generate report for ${report.property_address}. ${report.error_message || 'Please try again.'}`,
       });
       processedJobsRef.current.add(jobId);
       removeJob(jobId);
