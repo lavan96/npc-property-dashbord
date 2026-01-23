@@ -1,11 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createCorsHeaders } from '../_shared/auth.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -698,6 +694,9 @@ async function markReportFailed(reportId: string | null, errorMessage: string): 
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   console.log('Investment report function invoked with method:', req.method);
   
   if (req.method === 'OPTIONS') {
