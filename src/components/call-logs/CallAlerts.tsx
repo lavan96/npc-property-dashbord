@@ -97,6 +97,111 @@ const VALUE_OPTIONS = {
   outcome: ['completed', 'failed', 'voicemail', 'no-answer', 'busy', 'cancelled'],
 };
 
+// Secure API helpers
+async function fetchRulesSecure(): Promise<AlertRule[]> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'list',
+    table: 'call_alert_rules',
+  });
+  
+  if (error || !data?.success) {
+    console.error('Error fetching rules:', error || data?.error);
+    return [];
+  }
+  return data.items || [];
+}
+
+async function fetchHistorySecure(): Promise<AlertHistory[]> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'list',
+    table: 'call_alert_history',
+    filters: { limit: 50 },
+  });
+  
+  if (error || !data?.success) {
+    console.error('Error fetching history:', error || data?.error);
+    return [];
+  }
+  return data.items || [];
+}
+
+async function createRuleSecure(ruleData: Partial<AlertRule>): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'create',
+    table: 'call_alert_rules',
+    data: ruleData,
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error };
+  return { success: true };
+}
+
+async function updateRuleSecure(ruleId: string, updateData: Partial<AlertRule>): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'update',
+    table: 'call_alert_rules',
+    recordId: ruleId,
+    data: updateData,
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error };
+  return { success: true };
+}
+
+async function deleteRuleSecure(ruleId: string): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'delete',
+    table: 'call_alert_rules',
+    recordId: ruleId,
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error };
+  return { success: true };
+}
+
+async function createAlertHistorySecure(alertData: Partial<AlertHistory>): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'create',
+    table: 'call_alert_history',
+    data: alertData,
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error };
+  return { success: true };
+}
+
+async function checkExistingAlertSecure(callId: string, ruleId: string): Promise<boolean> {
+  // We need to check if an alert already exists - use list with filters would be ideal
+  // For now, we'll fetch all and check client-side (not ideal but works)
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'list',
+    table: 'call_alert_history',
+    filters: { limit: 500 },
+  });
+  
+  if (error || !data?.success) return false;
+  
+  const items = data.items || [];
+  return items.some((item: AlertHistory) => item.call_id === callId && item.rule_id === ruleId);
+}
+
+async function markAllReadSecure(): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'update',
+    table: 'call_alert_history',
+    recordId: 'bulk',
+    data: { is_read: true },
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error };
+  return { success: true };
+}
+
 export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   const { toast } = useToast();
   const [rules, setRules] = useState<AlertRule[]>([]);
@@ -118,7 +223,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
     fetchRules();
     fetchHistory();
 
-    // Subscribe to new alerts
+    // Subscribe to new alerts (realtime still works for notifications)
     const channel = supabase
       .channel('call-alerts')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_alert_history' }, (payload) => {
@@ -146,8 +251,6 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   const sendEmailNotification = async (rule: AlertRule, call: CallLog, message: string) => {
     if (rule.notification_type !== 'email' && rule.notification_type !== 'both') return;
     
-    // Extract email from notification settings (stored as JSON in condition for simplicity)
-    // For this implementation, we'll use a default admin email or stored preference
     const adminEmail = localStorage.getItem('alertEmailRecipient') || '';
     if (!adminEmail) {
       console.log('No email recipient configured for alerts');
@@ -188,16 +291,11 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
         const triggered = evaluateRule(rule, call);
         if (triggered) {
           // Check if alert already exists for this call/rule combo
-          const { data: existing } = await supabase
-            .from('call_alert_history')
-            .select('id')
-            .eq('call_id', call.id)
-            .eq('rule_id', rule.id)
-            .single();
+          const exists = await checkExistingAlertSecure(call.id, rule.id);
           
-          if (!existing) {
+          if (!exists) {
             const message = generateAlertMessage(rule, call);
-            await supabase.from('call_alert_history').insert({
+            await createAlertHistorySecure({
               rule_id: rule.id,
               call_id: call.id,
               rule_name: rule.name,
@@ -215,9 +313,8 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
 
   useEffect(() => {
     if (calls.length > 0 && rules.length > 0) {
-      // Check only recent calls (last hour)
       const recentCalls = calls.filter(c => {
-        return true; // For simplicity, check all current calls
+        return true; // Check all current calls
       });
       checkCallsAgainstRules(recentCalls);
     }
@@ -266,44 +363,31 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   };
 
   const fetchRules = async () => {
-    const { data, error } = await supabase
-      .from('call_alert_rules')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (!error) setRules(data || []);
+    const items = await fetchRulesSecure();
+    setRules(items);
   };
 
   const fetchHistory = async () => {
-    const { data, error } = await supabase
-      .from('call_alert_history')
-      .select('*')
-      .order('triggered_at', { ascending: false })
-      .limit(50);
-    
-    if (!error) {
-      setHistory(data || []);
-      setUnreadCount((data || []).filter(a => !a.is_read).length);
-    }
+    const items = await fetchHistorySecure();
+    setHistory(items);
+    setUnreadCount(items.filter(a => !a.is_read).length);
   };
 
   const createRule = async () => {
     if (!newRuleName.trim() || !newValue) return;
     
-    // Validate email if email notifications are enabled
     if ((newNotificationType === 'email' || newNotificationType === 'both') && !emailRecipient) {
       toast({ title: 'Error', description: 'Please enter an email address for notifications', variant: 'destructive' });
       return;
     }
     
-    // Save email recipient to localStorage for use in notifications
     if (emailRecipient) {
       localStorage.setItem('alertEmailRecipient', emailRecipient);
     }
     
     setLoading(true);
     try {
-      const { error } = await supabase.from('call_alert_rules').insert({
+      const result = await createRuleSecure({
         name: newRuleName.trim(),
         condition_type: newConditionType,
         condition_operator: newOperator,
@@ -312,7 +396,10 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
         notification_type: newNotificationType,
       });
 
-      if (error) throw error;
+      if (!result.success) {
+        toast({ title: 'Error', description: result.error || 'Failed to create rule', variant: 'destructive' });
+        return;
+      }
 
       toast({ title: 'Rule created', description: `"${newRuleName}" alert rule created` });
       logActivityDirect({
@@ -326,28 +413,24 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
       setNewIsPositive(false);
       setNewNotificationType('toast');
       fetchRules();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to create rule', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
   const toggleRule = async (ruleId: string, enabled: boolean) => {
-    const { error } = await supabase
-      .from('call_alert_rules')
-      .update({ is_enabled: enabled })
-      .eq('id', ruleId);
+    const result = await updateRuleSecure(ruleId, { is_enabled: enabled });
     
-    if (!error) {
+    if (result.success) {
       setRules(prev => prev.map(r => r.id === ruleId ? { ...r, is_enabled: enabled } : r));
     }
   };
 
   const deleteRule = async (ruleId: string) => {
     const rule = rules.find(r => r.id === ruleId);
-    const { error } = await supabase.from('call_alert_rules').delete().eq('id', ruleId);
-    if (!error) {
+    const result = await deleteRuleSecure(ruleId);
+    
+    if (result.success) {
       logActivityDirect({
         actionType: 'alert_rule_deleted',
         entityType: 'call_alert_rule',
@@ -359,13 +442,12 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   };
 
   const markAllRead = async () => {
-    await supabase
-      .from('call_alert_history')
-      .update({ is_read: true })
-      .eq('is_read', false);
+    const result = await markAllReadSecure();
     
-    setHistory(prev => prev.map(a => ({ ...a, is_read: true })));
-    setUnreadCount(0);
+    if (result.success) {
+      setHistory(prev => prev.map(a => ({ ...a, is_read: true })));
+      setUnreadCount(0);
+    }
   };
 
   const getConditionIcon = (type: string) => {

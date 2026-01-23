@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { supabase } from '@/integrations/supabase/client';
 
 interface CallLogListOptions {
   orderBy?: string;
@@ -21,211 +20,150 @@ interface CallLogListOptions {
 export const useSecureCallLogs = () => {
   // Fetch all call logs with optional filters
   const fetchCallLogs = useCallback(async (options: CallLogListOptions = {}) => {
-    try {
-      const { data, error } = await invokeSecureFunction('get-call-logs', {
-        mode: 'list',
-        listOptions: options
-      });
+    const { data, error } = await invokeSecureFunction('get-call-logs', {
+      mode: 'list',
+      listOptions: options
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Fetched calls via secure Edge Function');
-        return { data: data.calls, error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed, will use fallback:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception, will use fallback:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error fetching calls:', error);
+      return { data: null, error };
     }
 
-    // Fallback to direct query (for backward compatibility during transition)
-    console.log('[useSecureCallLogs] Using direct query fallback');
-    let query = supabase
-      .from('vapi_call_logs')
-      .select('*');
-
-    if (options.status) query = query.eq('call_status', options.status);
-    if (options.outcome) query = query.eq('call_outcome', options.outcome);
-    if (options.agentId) query = query.eq('agent_id', options.agentId);
-    if (options.squadId) query = query.eq('squad_id', options.squadId);
-    if (options.direction) query = query.eq('call_direction', options.direction);
-    if (options.intent) query = query.eq('call_intent', options.intent);
-    if (options.startDate) query = query.gte('started_at', options.startDate);
-    if (options.endDate) query = query.lte('started_at', options.endDate);
-
-    query = query.order(options.orderBy || 'started_at', { ascending: options.ascending ?? false });
-    
-    if (options.limit) {
-      query = query.limit(options.limit);
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { data: null, error: { message: data?.error || 'Unknown error' } };
     }
 
-    return await query;
+    console.log('[useSecureCallLogs] Fetched calls via secure Edge Function');
+    return { data: data.calls, error: null };
   }, []);
 
   // Fetch live calls (in-progress, ringing, queued)
   const fetchLiveCalls = useCallback(async () => {
-    try {
-      const { data, error } = await invokeSecureFunction('get-call-logs', {
-        mode: 'live'
-      });
+    const { data, error } = await invokeSecureFunction('get-call-logs', {
+      mode: 'live'
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Fetched live calls via secure Edge Function');
-        return { data: data.calls, error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed for live calls:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception for live calls:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error fetching live calls:', error);
+      return { data: null, error };
     }
 
-    // Fallback
-    console.log('[useSecureCallLogs] Using direct query fallback for live calls');
-    return await supabase
-      .from('vapi_call_logs')
-      .select('id, vapi_call_id, agent_name, phone_number, customer_name, call_direction, call_status, started_at, is_squad_call, squad_name, call_intent')
-      .in('call_status', ['in-progress', 'ringing', 'queued'])
-      .order('started_at', { ascending: false });
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { data: null, error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log('[useSecureCallLogs] Fetched live calls via secure Edge Function');
+    return { data: data.calls, error: null };
   }, []);
 
   // Fetch error calls for error logs dashboard
   const fetchErrorCalls = useCallback(async (cutoffDate?: string, limit = 100) => {
-    try {
-      const { data, error } = await invokeSecureFunction('get-call-logs', {
-        mode: 'errors',
-        listOptions: { cutoffDate, limit }
-      });
+    const { data, error } = await invokeSecureFunction('get-call-logs', {
+      mode: 'errors',
+      listOptions: { cutoffDate, limit }
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Fetched error calls via secure Edge Function');
-        return { data: data.calls, error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed for error calls:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception for error calls:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error fetching error calls:', error);
+      return { data: null, error };
     }
 
-    // Fallback
-    console.log('[useSecureCallLogs] Using direct query fallback for error calls');
-    let query = supabase
-      .from('vapi_call_logs')
-      .select('*')
-      .in('call_outcome', ['failed', 'error', 'timeout', 'no-answer']);
-
-    if (cutoffDate) {
-      query = query.gte('created_at', cutoffDate);
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { data: null, error: { message: data?.error || 'Unknown error' } };
     }
 
-    return await query
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    console.log('[useSecureCallLogs] Fetched error calls via secure Edge Function');
+    return { data: data.calls, error: null };
   }, []);
 
   // Fetch a single call by ID
   const fetchCall = useCallback(async (callId: string) => {
-    try {
-      const { data, error } = await invokeSecureFunction('get-call-logs', {
-        mode: 'single',
-        callId
-      });
+    const { data, error } = await invokeSecureFunction('get-call-logs', {
+      mode: 'single',
+      callId
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Fetched call via secure Edge Function');
-        return { data: data.call, error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed for single call:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception for single call:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error fetching call:', error);
+      return { data: null, error };
     }
 
-    // Fallback
-    console.log('[useSecureCallLogs] Using direct query fallback for single call');
-    return await supabase
-      .from('vapi_call_logs')
-      .select('*')
-      .eq('id', callId)
-      .single();
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { data: null, error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log('[useSecureCallLogs] Fetched call via secure Edge Function');
+    return { data: data.call, error: null };
   }, []);
 
   // Update tags for a call
   const updateCallTags = useCallback(async (callId: string, tags: string[]) => {
-    try {
-      const { data, error } = await invokeSecureFunction('manage-call-logs', {
-        operation: 'updateTags',
-        callId,
-        data: { tags }
-      });
+    const { data, error } = await invokeSecureFunction('manage-call-logs', {
+      operation: 'updateTags',
+      callId,
+      data: { tags }
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Updated tags via secure Edge Function');
-        return { error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed for updateTags:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception for updateTags:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error updating tags:', error);
+      return { error };
     }
 
-    // Fallback
-    console.log('[useSecureCallLogs] Using direct query fallback for updateTags');
-    return await supabase
-      .from('vapi_call_logs')
-      .update({ tags })
-      .eq('id', callId);
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log('[useSecureCallLogs] Updated tags via secure Edge Function');
+    return { error: null };
   }, []);
 
   // Update call data
   const updateCall = useCallback(async (callId: string, updateData: Record<string, any>) => {
-    try {
-      const { data, error } = await invokeSecureFunction('manage-call-logs', {
-        operation: 'update',
-        callId,
-        data: updateData
-      });
+    const { data, error } = await invokeSecureFunction('manage-call-logs', {
+      operation: 'update',
+      callId,
+      data: updateData
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Updated call via secure Edge Function');
-        return { error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed for update:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception for update:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error updating call:', error);
+      return { error };
     }
 
-    // Fallback
-    console.log('[useSecureCallLogs] Using direct query fallback for update');
-    return await supabase
-      .from('vapi_call_logs')
-      .update(updateData)
-      .eq('id', callId);
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log('[useSecureCallLogs] Updated call via secure Edge Function');
+    return { error: null };
   }, []);
 
   // Delete a call
   const deleteCall = useCallback(async (callId: string) => {
-    try {
-      const { data, error } = await invokeSecureFunction('manage-call-logs', {
-        operation: 'delete',
-        callId
-      });
+    const { data, error } = await invokeSecureFunction('manage-call-logs', {
+      operation: 'delete',
+      callId
+    });
 
-      if (!error && data?.success) {
-        console.log('[useSecureCallLogs] Deleted call via secure Edge Function');
-        return { error: null };
-      }
-      
-      console.warn('[useSecureCallLogs] Edge Function failed for delete:', error || data?.error);
-    } catch (e) {
-      console.warn('[useSecureCallLogs] Edge Function exception for delete:', e);
+    if (error) {
+      console.error('[useSecureCallLogs] Error deleting call:', error);
+      return { error };
     }
 
-    // Fallback
-    console.log('[useSecureCallLogs] Using direct query fallback for delete');
-    return await supabase
-      .from('vapi_call_logs')
-      .delete()
-      .eq('id', callId);
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log('[useSecureCallLogs] Deleted call via secure Edge Function');
+    return { error: null };
   }, []);
 
   return {

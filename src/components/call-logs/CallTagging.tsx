@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +40,44 @@ const getColorClass = (color: string) => {
   return TAG_COLORS.find(c => c.name === color)?.class || TAG_COLORS[7].class;
 };
 
+// Secure API helpers
+async function fetchTagsSecure(): Promise<CallTag[]> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'list',
+    table: 'call_tags',
+  });
+  
+  if (error || !data?.success) {
+    console.error('Error fetching tags:', error || data?.error);
+    return [];
+  }
+  return data.items || [];
+}
+
+async function createTagSecure(name: string, color: string): Promise<{ success: boolean; error?: string; code?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'create',
+    table: 'call_tags',
+    data: { name, color },
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error, code: data?.code };
+  return { success: true };
+}
+
+async function deleteTagSecure(tagId: string): Promise<{ success: boolean; error?: string }> {
+  const { data, error } = await invokeSecureFunction('manage-call-settings', {
+    operation: 'delete',
+    table: 'call_tags',
+    recordId: tagId,
+  });
+  
+  if (error) return { success: false, error: error.message };
+  if (!data?.success) return { success: false, error: data?.error };
+  return { success: true };
+}
+
 export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = false }: CallTaggingProps) => {
   const { toast } = useToast();
   const { updateCallTags } = useSecureCallLogs();
@@ -55,16 +92,8 @@ export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = fals
   }, []);
 
   const fetchTags = async () => {
-    const { data, error } = await supabase
-      .from('call_tags')
-      .select('*')
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching tags:', error);
-      return;
-    }
-    setAvailableTags(data || []);
+    const tags = await fetchTagsSecure();
+    setAvailableTags(tags);
   };
 
   const toggleTag = async (tagName: string) => {
@@ -108,22 +137,21 @@ export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = fals
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('call_tags')
-        .insert({ name: newTagName.trim(), color: newTagColor });
+      const result = await createTagSecure(newTagName.trim(), newTagColor);
 
-      if (error) throw error;
+      if (!result.success) {
+        if (result.code === '23505') {
+          toast({ title: 'Tag exists', description: 'A tag with this name already exists', variant: 'destructive' });
+        } else {
+          toast({ title: 'Error', description: result.error || 'Failed to create tag', variant: 'destructive' });
+        }
+        return;
+      }
 
       toast({ title: 'Tag created', description: `"${newTagName}" tag created successfully` });
       setNewTagName('');
       setNewTagColor('blue');
       fetchTags();
-    } catch (error: any) {
-      if (error.code === '23505') {
-        toast({ title: 'Tag exists', description: 'A tag with this name already exists', variant: 'destructive' });
-      } else {
-        toast({ title: 'Error', description: 'Failed to create tag', variant: 'destructive' });
-      }
     } finally {
       setLoading(false);
     }
@@ -132,17 +160,15 @@ export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = fals
   const deleteTag = async (tagId: string, tagName: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('call_tags')
-        .delete()
-        .eq('id', tagId);
+      const result = await deleteTagSecure(tagId);
 
-      if (error) throw error;
+      if (!result.success) {
+        toast({ title: 'Error', description: result.error || 'Failed to delete tag', variant: 'destructive' });
+        return;
+      }
 
       toast({ title: 'Tag deleted', description: `"${tagName}" tag deleted` });
       fetchTags();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to delete tag', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -310,12 +336,11 @@ export const CallTagFilter = ({
   const [availableTags, setAvailableTags] = useState<CallTag[]>([]);
 
   useEffect(() => {
-    const fetchTags = async () => {
-      // call_tags is a non-sensitive lookup table, direct query is acceptable
-      const { data } = await supabase.from('call_tags').select('*').order('name');
-      setAvailableTags(data || []);
+    const loadTags = async () => {
+      const tags = await fetchTagsSecure();
+      setAvailableTags(tags);
     };
-    fetchTags();
+    loadTags();
   }, []);
 
   const toggleTag = (tagName: string) => {
