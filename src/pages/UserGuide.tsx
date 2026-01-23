@@ -47,6 +47,7 @@ import {
   LayoutDashboard,
   Mic,
   Sparkles,
+  Webhook,
 } from 'lucide-react';
 
 interface GuideSection {
@@ -580,31 +581,359 @@ export default function UserGuide() {
       ],
     },
     {
-      id: 'white-label',
-      title: 'White Label',
-      icon: Palette,
-      description: 'Customize branding for client-facing reports',
+      id: 'templates',
+      title: 'Template Management',
+      icon: FileText,
+      description: 'Manage report templates and PDF layouts',
       items: [
         {
-          title: 'Brand Settings',
-          description: 'Customize the appearance of generated reports with your company branding.',
+          title: 'Report Format Templates',
+          description: 'Configure templates for different report types including Investment Compass, Executive Brief, and Snapshot reports.',
           features: [
-            'Company logo upload',
-            'Primary and secondary color schemes',
-            'Custom font selection',
+            'Investment report templates (Compass, Executive, Snapshot)',
+            'Comparison analysis templates',
+            'Individual cash flow templates',
+            'Template priority ordering',
+            'Category-based organization',
+          ],
+        },
+        {
+          title: 'AI Structure Templates',
+          description: 'Reference documents that define report structure and content patterns for AI generation.',
+          features: [
+            'Upload reference PDFs for AI learning',
+            'Vector embedding for context injection',
+            'Template type categorization',
+            'Priority-based template selection',
+          ],
+          steps: [
+            'Navigate to "Templates" in the sidebar',
+            'Select the "AI Structure" tab',
+            'Click "Upload Template" and select your reference PDF',
+            'Configure category and priority settings',
+            'Save to enable for report generation',
+          ],
+        },
+        {
+          title: 'PDF Layout Templates',
+          description: 'HTML/CSS templates that control the visual layout and styling of generated PDF reports.',
+          features: [
+            'Custom header and footer designs',
+            'Page layout configurations',
+            'Font and color scheme settings',
+            'Section ordering and visibility',
+          ],
+        },
+        {
+          title: 'Q&A Export Templates',
+          description: 'Customize how Report Q&A conversations are exported to PDF.',
+          features: [
+            'Cover page design customization',
+            'Font and color settings',
             'Header and footer styling',
-            'Contact information display',
+            'Active template selection',
+          ],
+        },
+        {
+          title: 'Cash Flow Export Templates',
+          description: 'Customize how 10-Year Cash Flow analyses are exported.',
+          features: [
+            'Branding and logo placement',
+            'Color scheme customization',
+            'Professional PDF formatting',
+            'Template activation toggle',
           ],
         },
         {
           title: 'Client Branding Profiles',
-          description: 'Create multiple branding profiles for different clients or use cases.',
+          description: 'Create white-label branding for different clients.',
           features: [
+            'Client-specific logos and colors',
             'Multiple saved profiles',
-            'Quick profile switching',
             'Default profile setting',
-            'Preview before applying',
             'Per-report branding selection',
+          ],
+        },
+        {
+          title: 'Global Report Settings',
+          description: 'Configure default settings that apply to all reports.',
+          features: [
+            'Default assumptions and values',
+            'Standard disclaimers',
+            'Contact information',
+            'Footer content settings',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'sources',
+      title: 'Data Sources',
+      icon: Database,
+      description: 'Track and manage listing data sources',
+      items: [
+        {
+          title: 'Email Sources',
+          description: 'View and manage email sources that send property listings.',
+          features: [
+            'Email domain tracking',
+            'Listing count per source',
+            'Latest received timestamps',
+            'Source filtering and search',
+          ],
+        },
+        {
+          title: 'Agency Sources',
+          description: 'Track real estate agencies and their listing activity.',
+          features: [
+            'Agency name and contact info',
+            'Associated agents list',
+            'Listing volume tracking',
+            'Activity timeline',
+          ],
+        },
+        {
+          title: 'Agent Sources',
+          description: 'Individual agent tracking and contact management.',
+          features: [
+            'Agent contact details',
+            'Agency affiliation',
+            'Listing history',
+            'Phone and email quick actions',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'integrations',
+      title: 'Integrations',
+      icon: Webhook,
+      description: 'Configure external service connections',
+      items: [
+        {
+          title: 'Integration Overview',
+          description: 'Connect and manage external services for enhanced functionality.',
+          features: [
+            'Airtable for property listings',
+            'Vapi for voice AI and call handling',
+            'GoHighLevel for CRM sync',
+            'OpenAI for AI analysis',
+            'Microsoft/Outlook for email',
+            'Twilio for SMS communications',
+            'Make.com for workflow automation',
+          ],
+        },
+        {
+          title: 'Configuring Integrations',
+          description: 'Set up API keys and credentials for each service.',
+          steps: [
+            'Navigate to "Integrations" in the sidebar',
+            'Select the integration you want to configure',
+            'Enter the required API keys or credentials',
+            'Click "Save" to store the configuration',
+            'Use "Sync to Supabase" to enable for edge functions',
+            'Verify connection status shows "Configured"',
+          ],
+          tips: [
+            'Keep API keys secure and never share them',
+            'Use the visibility toggle to verify key values',
+            'Check documentation links for each service',
+            'Refresh Supabase status after syncing',
+          ],
+        },
+        {
+          title: 'Supabase Secrets',
+          description: 'Manage secrets for edge function access.',
+          features: [
+            'Sync API keys to Supabase secrets',
+            'Status indicators for each integration',
+            'Partial configuration warnings',
+            'One-click refresh for status',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'depreciation',
+      title: 'Depreciation Comps',
+      icon: Calculator,
+      description: 'Manage depreciation comparable data',
+      items: [
+        {
+          title: 'Depreciation Database',
+          description: 'Maintain a database of property depreciation comparables for accurate estimates.',
+          features: [
+            'Property type categorization',
+            'Build year and purchase date tracking',
+            'Finish standard classification',
+            'City-based regional data',
+            '10-year depreciation projections',
+          ],
+        },
+        {
+          title: 'Adding Comparables',
+          description: 'Add new depreciation comparable data to the system.',
+          steps: [
+            'Navigate to Admin > Depreciation Comps',
+            'Click "Add New" to create a manual entry',
+            'Fill in property details and depreciation values',
+            'Or use CSV upload for bulk imports',
+            'Review and save the data',
+          ],
+        },
+        {
+          title: 'CSV Import',
+          description: 'Bulk import depreciation data from spreadsheets.',
+          features: [
+            'Template download for correct formatting',
+            'Column mapping validation',
+            'Preview before import',
+            'Error reporting for invalid rows',
+          ],
+          tips: [
+            'Download the template first to ensure correct format',
+            'Include all 10 years of depreciation values',
+            'Specify property type and finish standard',
+            'Review preview before confirming import',
+          ],
+        },
+        {
+          title: 'Depreciation Estimator',
+          description: 'Generate depreciation estimates based on property characteristics.',
+          features: [
+            'Match against comparable properties',
+            'Confidence scoring',
+            'Plant & Equipment (P&E) estimates',
+            'Division 40/43 calculations',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      icon: Settings,
+      description: 'Configure your personal preferences',
+      items: [
+        {
+          title: 'Profile & Credentials',
+          description: 'Manage your account settings and security.',
+          features: [
+            'Password change',
+            'Profile information',
+            'Session management',
+            'Two-factor authentication setup',
+          ],
+        },
+        {
+          title: 'Personal Mailbox',
+          description: 'Configure your email settings for the Email Copilot.',
+          features: [
+            'Personal mailbox address',
+            'Email signature customization',
+            'HTML signature support',
+            'Auto-append to sent emails',
+          ],
+        },
+        {
+          title: 'Finance Agent Contacts',
+          description: 'Manage contacts for finance-related communications.',
+          features: [
+            'Add finance broker contacts',
+            'Set default recipients',
+            'Contact categorization',
+            'Quick access for report sending',
+          ],
+        },
+        {
+          title: 'Display & Preferences',
+          description: 'Customize your dashboard experience.',
+          features: [
+            'Theme selection (Light/Dark/System)',
+            'Timezone configuration',
+            'Browser notification settings',
+            'Auto-refresh intervals',
+          ],
+        },
+        {
+          title: 'Report Generation',
+          description: 'Configure automatic report generation behavior.',
+          features: [
+            'Auto-continue for stalled reports',
+            'Maximum retry attempts (1-5)',
+            'Retry delay configuration (10-60s)',
+            'Notification preferences',
+          ],
+          tips: [
+            'Enable auto-continue for unattended report generation',
+            'Set reasonable retry limits to avoid loops',
+            'Adjust delay based on network conditions',
+          ],
+        },
+        {
+          title: 'Security & Access',
+          description: 'View your permission levels and API access.',
+          features: [
+            'API token status',
+            'User permission levels',
+            'Read/write access indicators',
+            'Export permissions',
+          ],
+        },
+      ],
+    },
+    {
+      id: 'white-label',
+      title: 'Branding (White Label)',
+      icon: Palette,
+      description: 'Customize dashboard and report branding',
+      items: [
+        {
+          title: 'Dashboard Branding',
+          description: 'Customize the overall look and feel of your dashboard.',
+          features: [
+            'Auth page logo upload',
+            'Sidebar logo (expanded and collapsed)',
+            'Favicon customization',
+            'Automatic background removal for logos',
+          ],
+          steps: [
+            'Navigate to "White Label" in the sidebar',
+            'Upload logos for each placement',
+            'Use drag-and-drop or click to upload',
+            'Preview changes in real-time',
+            'Save to apply across the dashboard',
+          ],
+        },
+        {
+          title: 'Color Themes',
+          description: 'Configure your brand colors for the dashboard.',
+          features: [
+            'Primary color selection',
+            'Accent color customization',
+            'HSL format for precise control',
+            'Real-time preview',
+            'CSS variable injection',
+          ],
+        },
+        {
+          title: 'Dark Mode',
+          description: 'Control dark mode appearance.',
+          features: [
+            'Light/Dark/System theme toggle',
+            'Theme persistence across sessions',
+            'Automatic system preference detection',
+          ],
+        },
+        {
+          title: 'Report Branding',
+          description: 'White-label generated reports for clients.',
+          features: [
+            'Company logo on reports',
+            'Custom color schemes',
+            'Header and footer styling',
+            'Contact information display',
+            'Multiple branding profiles',
           ],
         },
       ],
