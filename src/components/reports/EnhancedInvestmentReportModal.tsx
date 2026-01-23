@@ -129,9 +129,10 @@ export function EnhancedInvestmentReportModal({
           setReportId(existingReport.id);
           finalReportId = existingReport.id;
         } else {
-          const { data: savedReport, error: saveError } = await supabase
-            .from('investment_reports')
-            .insert({
+          // Use secure edge function for insert (service_role required due to RLS)
+          const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+            action: 'insert',
+            data: {
               property_address: propertyAddress,
               report_content: data.reportContent,
               sources_content: data.sourcesContent || null,
@@ -141,19 +142,18 @@ export function EnhancedInvestmentReportModal({
               demographics_data: data.enhancedData?.demographics || null,
               economic_data: data.enhancedData?.economics || null,
               generated_by: user.id
-            })
-            .select()
-            .single();
+            }
+          });
 
-          if (saveError) {
-            console.error('Failed to save report to database:', saveError);
-            throw new Error(`Database error: ${saveError.message}`);
+          if (insertError || !insertResult?.success) {
+            console.error('Failed to save report to database:', insertError || insertResult?.error);
+            throw new Error(`Database error: ${insertError?.message || insertResult?.error || 'Unknown error'}`);
           }
 
-          if (savedReport) {
-            setReportId(savedReport.id);
-            finalReportId = savedReport.id;
-            console.log('Report saved successfully with ID:', savedReport.id);
+          if (insertResult.report) {
+            setReportId(insertResult.report.id);
+            finalReportId = insertResult.report.id;
+            console.log('Report saved successfully with ID:', insertResult.report.id);
           }
         }
       } catch (error) {

@@ -106,9 +106,10 @@ export function InvestmentReportModal({
             savedReportId = existingReport.id;
             setReportId(existingReport.id);
           } else {
-            const { data: savedReport, error: saveError } = await supabase
-              .from('investment_reports')
-              .insert({
+            // Use secure edge function for insert (service_role required due to RLS)
+            const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+              action: 'insert',
+              data: {
                 property_address: propertyAddress,
                 property_listing_id: propertyDetails?.id || null,
                 report_content: data.reportContent,
@@ -120,14 +121,13 @@ export function InvestmentReportModal({
                 demographics_data: data.enhancedData?.demographics || null,
                 economic_data: data.enhancedData?.economics || null,
                 status: 'completed'
-              })
-              .select()
-              .single();
+              }
+            });
             
-            if (!saveError && savedReport) {
-              savedReportId = savedReport.id;
-              setReportId(savedReport.id);
-              console.log('Report saved with ID:', savedReport.id);
+            if (!insertError && insertResult?.success && insertResult.report) {
+              savedReportId = insertResult.report.id;
+              setReportId(insertResult.report.id);
+              console.log('Report saved with ID:', insertResult.report.id);
               
               // Only send success notification if save was successful
               if (runInBackground) {
@@ -135,12 +135,12 @@ export function InvestmentReportModal({
                   type: 'report_generated',
                   title: 'Investment Report Generated',
                   message: `Report for ${propertyAddress} is ready to view.`,
-                  reportId: savedReport.id
+                  reportId: insertResult.report.id
                 });
               }
-            } else if (saveError) {
-              console.error('Error saving report:', saveError);
-              throw new Error(`Failed to save report: ${saveError.message}`);
+            } else if (insertError || !insertResult?.success) {
+              console.error('Error saving report:', insertError || insertResult?.error);
+              throw new Error(`Failed to save report: ${insertError?.message || insertResult?.error || 'Unknown error'}`);
             }
           }
         } else {
