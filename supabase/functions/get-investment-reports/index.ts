@@ -133,7 +133,7 @@ serve(async (req) => {
         clientPropertyIds,
         orderBy = 'created_at',
         orderAsc = false,
-        limit = 100,
+        limit, // No default limit - fetch all by default
         createdAfter,
         hasPropertyListingId
       } = listOptions;
