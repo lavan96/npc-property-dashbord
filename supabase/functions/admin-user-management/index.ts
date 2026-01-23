@@ -3,11 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { extractSessionToken, createCorsHeaders } from "../_shared/auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -82,6 +78,9 @@ async function verifySuperadmin(supabase: any, sessionToken: string) {
 }
 
 serve(async (req: Request) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -93,7 +92,10 @@ serve(async (req: Request) => {
     );
 
     const body: RequestBody = await req.json();
-    const { action, session_token } = body;
+    const { action } = body;
+    
+    // Extract session token from cookie, header, or body
+    const session_token = extractSessionToken(req.headers, body);
 
     // Actions that don't require superadmin auth
     if (action === 'verify_invite') {
