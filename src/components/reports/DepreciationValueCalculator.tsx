@@ -27,7 +27,7 @@ import {
   Sparkles,
   Loader2
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import {
@@ -126,42 +126,47 @@ export function DepreciationValueCalculator({
       console.group('🏠 Depreciation Calculator - Fetch & Calculate');
       console.log('Fetching comps from database...');
 
-      // IMPORTANT: Supabase/PostgREST has a default max row limit (often 1000).
-      // To avoid missing matches, we query ONLY the required matching bucket.
+      // IMPORTANT: Query via edge function to respect RLS
       const fetchBucket = async (typeToUse: PropertyType) => {
-        return supabase
-          .from('depreciation_comps')
-          .select('*', { count: 'exact' })
-          .eq('renovated', false)
-          .eq('fully_furnished', false)
-          .eq('purchase_date_category', purchaseDateCategory)
-          .eq('property_type', typeToUse)
-          .eq('finish_standard', finishStandard)
-          .eq('nearest_city', nearestCity);
+        return invokeSecureFunction('manage-templates', {
+          operation: 'list',
+          table: 'depreciation_comps',
+          listOptions: {
+            select: '*',
+            filters: {
+              renovated: false,
+              fully_furnished: false,
+              purchase_date_category: purchaseDateCategory,
+              property_type: typeToUse,
+              finish_standard: finishStandard,
+              nearest_city: nearestCity
+            }
+          }
+        });
       };
 
       const MIN_MATCHES_FOR_CALC = 5;
 
-      let { data: comps, error, count } = await fetchBucket(propertyType);
+      let result = await fetchBucket(propertyType);
+      let comps = result.data?.records || [];
+      let error = result.error;
 
       // If townhouse is selected but there is no townhouse dataset, fall back to house bucket.
-      if (!error && (comps?.length ?? 0) < MIN_MATCHES_FOR_CALC && propertyType === 'townhouse') {
+      if (!error && comps.length < MIN_MATCHES_FOR_CALC && propertyType === 'townhouse') {
         console.log('🔄 Townhouse selected but insufficient townhouse comps; falling back to house bucket query.');
         const fallback = await fetchBucket('house');
-        comps = fallback.data;
+        comps = fallback.data?.records || [];
         error = fallback.error;
-        count = fallback.count;
       }
 
       console.log('Database query result:', {
         error: error ? error.message : null,
         recordsReturned: comps?.length ?? 0,
-        totalCount: count,
       });
 
       if (error) {
-        console.error('❌ Supabase query error:', error);
-        throw error;
+        console.error('❌ Query error:', error);
+        throw new Error(error.message);
       }
       
       if (!comps || comps.length === 0) {
@@ -209,42 +214,46 @@ export function DepreciationValueCalculator({
       } else {
         setResult(calcResult);
         
-        // Log the run
-        await supabase.from('depreciation_estimator_runs').insert({
-          purchase_price: input.purchasePrice,
-          purchase_date: input.purchaseDate?.toISOString().split('T')[0],
-          purchase_date_category: input.purchaseDateCategory,
-          build_year: input.buildYear,
-          property_type: input.propertyType,
-          finish_standard: input.finishStandard,
-          nearest_city: input.nearestCity,
-          renovated: false,
-          fully_furnished: false,
-          match_count: calcResult.matchCount,
-          top_comp_ids: calcResult.topCompIds,
-          confidence_score: calcResult.confidenceScore,
-          dv_year1: calcResult.dv[0],
-          dv_year2: calcResult.dv[1],
-          dv_year3: calcResult.dv[2],
-          dv_year4: calcResult.dv[3],
-          dv_year5: calcResult.dv[4],
-          dv_year6: calcResult.dv[5],
-          dv_year7: calcResult.dv[6],
-          dv_year8: calcResult.dv[7],
-          dv_year9: calcResult.dv[8],
-          dv_year10: calcResult.dv[9],
-          pc_year1: calcResult.pc[0],
-          pc_year2: calcResult.pc[1],
-          pc_year3: calcResult.pc[2],
-          pc_year4: calcResult.pc[3],
-          pc_year5: calcResult.pc[4],
-          pc_year6: calcResult.pc[5],
-          pc_year7: calcResult.pc[6],
-          pc_year8: calcResult.pc[7],
-          pc_year9: calcResult.pc[8],
-          pc_year10: calcResult.pc[9],
-          dv_total: calcResult.dvTotal,
-          pc_total: calcResult.pcTotal,
+        // Log the run via edge function
+        await invokeSecureFunction('manage-templates', {
+          operation: 'insert',
+          table: 'depreciation_estimator_runs',
+          data: {
+            purchase_price: input.purchasePrice,
+            purchase_date: input.purchaseDate?.toISOString().split('T')[0],
+            purchase_date_category: input.purchaseDateCategory,
+            build_year: input.buildYear,
+            property_type: input.propertyType,
+            finish_standard: input.finishStandard,
+            nearest_city: input.nearestCity,
+            renovated: false,
+            fully_furnished: false,
+            match_count: calcResult.matchCount,
+            top_comp_ids: calcResult.topCompIds,
+            confidence_score: calcResult.confidenceScore,
+            dv_year1: calcResult.dv[0],
+            dv_year2: calcResult.dv[1],
+            dv_year3: calcResult.dv[2],
+            dv_year4: calcResult.dv[3],
+            dv_year5: calcResult.dv[4],
+            dv_year6: calcResult.dv[5],
+            dv_year7: calcResult.dv[6],
+            dv_year8: calcResult.dv[7],
+            dv_year9: calcResult.dv[8],
+            dv_year10: calcResult.dv[9],
+            pc_year1: calcResult.pc[0],
+            pc_year2: calcResult.pc[1],
+            pc_year3: calcResult.pc[2],
+            pc_year4: calcResult.pc[3],
+            pc_year5: calcResult.pc[4],
+            pc_year6: calcResult.pc[5],
+            pc_year7: calcResult.pc[6],
+            pc_year8: calcResult.pc[7],
+            pc_year9: calcResult.pc[8],
+            pc_year10: calcResult.pc[9],
+            dv_total: calcResult.dvTotal,
+            pc_total: calcResult.pcTotal,
+          }
         });
         
         toast({

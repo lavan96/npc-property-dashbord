@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TemplateUploader } from '@/components/templates/TemplateUploader';
@@ -13,7 +13,8 @@ import { CashFlowTemplateUploader } from '@/components/templates/CashFlowTemplat
 import { CashFlowTemplateList } from '@/components/templates/CashFlowTemplateList';
 import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-type ReportFormat = 
+
+type ReportFormat =
   | 'investment_compass' 
   | 'investment_executive' 
   | 'investment_snapshot'
@@ -86,13 +87,14 @@ export default function Templates() {
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['report-structure-templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('report_structure_templates')
-        .select('*')
-        .order('priority', { ascending: false });
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'report_structure_templates',
+        listOptions: { orderBy: 'priority', orderAsc: false }
+      });
       
-      if (error) throw error;
-      return data;
+      if (error) throw new Error(error.message);
+      return data?.records || [];
     },
   });
 
@@ -100,13 +102,14 @@ export default function Templates() {
   const { data: brandingProfiles, isLoading: brandingLoading } = useQuery({
     queryKey: ['client-branding-profiles'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_branding_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'client_branding_profiles',
+        listOptions: { orderBy: 'created_at', orderAsc: false }
+      });
       
-      if (error) throw error;
-      return data;
+      if (error) throw new Error(error.message);
+      return data?.records || [];
     },
   });
 

@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, Database, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -229,17 +228,19 @@ export default function DataImport() {
           }
         });
 
-        const { data, error } = await supabase
-          .from(dataType.table as any)
-          .insert(transformedRecords as any);
+        const { data, error } = await invokeSecureFunction('manage-data-import', {
+          operation: 'insert',
+          table: dataType.table as any,
+          data: transformedRecords
+        });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
 
         setResult({
           success: true,
           summary: {
             total: records.length,
-            imported: records.length,
+            imported: data?.summary?.imported || records.length,
             table: dataType.table
           }
         });
