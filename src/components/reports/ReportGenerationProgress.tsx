@@ -36,11 +36,11 @@ export function ReportGenerationProgress() {
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       listMode: true,
       listOptions: {
-        select: 'id, property_address, status, report_content, error_message, updated_at',
+        select: 'id, property_address, status, report_content, error_message, updated_at, created_at',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
-        limit: 5
+        limit: 10
       }
     });
 
@@ -50,7 +50,19 @@ export function ReportGenerationProgress() {
     }
 
     const records = data?.reports || [];
-    const processedReports: ReportProgress[] = records.map((report: any) => {
+    
+    // Filter out reports that are too old (created more than 24 hours ago and still pending/processing)
+    // These are likely stuck/abandoned and should be auto-cleaned up
+    const now = Date.now();
+    const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+    
+    const recentReports = records.filter((report: any) => {
+      const createdAt = new Date(report.created_at).getTime();
+      const age = now - createdAt;
+      return age < MAX_AGE_MS;
+    });
+    
+    const processedReports: ReportProgress[] = recentReports.map((report: any) => {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
       
