@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { extractSessionToken, createCorsHeaders } from "../_shared/auth.ts"
+import { generateSupabaseJWT } from "../_shared/jwt.ts"
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -65,6 +66,21 @@ serve(async (req) => {
 
     const roles = userRoles?.map(r => r.role) || []
 
+    // Generate fresh Supabase-compatible JWT for RLS
+    let accessToken: string | null = null;
+    try {
+      accessToken = await generateSupabaseJWT(session.custom_users.id, 86400, {
+        roles: roles,
+        userMetadata: {
+          username: session.custom_users.username,
+          custom_role: session.custom_users.role,
+        },
+      });
+    } catch (jwtError) {
+      console.error('JWT generation failed during verify:', jwtError);
+      // Continue without JWT - session is still valid
+    }
+
     return new Response(
       JSON.stringify({ 
         valid: true, 
@@ -73,7 +89,8 @@ serve(async (req) => {
           username: session.custom_users.username,
           role: session.custom_users.role
         },
-        roles
+        roles,
+        access_token: accessToken  // Supabase-compatible JWT for direct queries
       }),
       { 
         status: 200, 
