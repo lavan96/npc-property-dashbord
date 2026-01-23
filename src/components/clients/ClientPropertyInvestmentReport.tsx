@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import type { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
@@ -137,27 +136,36 @@ export function ClientPropertyInvestmentReport({
   const { data: existingReports = [], refetch: refetchReports } = useQuery({
     queryKey: ['client-property-reports', property.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select(`
-          id, 
-          property_address, 
-          status, 
-          created_at, 
-          report_content, 
-          manual_overrides, 
-          financial_calculations,
-          demographics_data,
-          economic_data,
-          investment_score,
-          location_intelligence,
-          current_version
-        `)
-        .eq('client_property_id', property.id)
-        .eq('is_client_report', true)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as InvestmentReportData[];
+      // Use secure edge function (service_role) due to service-role-only DB security model.
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          select: `
+            id,
+            property_address,
+            status,
+            created_at,
+            report_content,
+            manual_overrides,
+            financial_calculations,
+            demographics_data,
+            economic_data,
+            investment_score,
+            location_intelligence,
+            current_version
+          `,
+          isClientReport: true,
+          clientPropertyId: property.id,
+          orderBy: 'created_at',
+          orderAsc: false,
+        },
+      });
+
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Failed to load reports');
+      }
+
+      return (data.reports || []) as InvestmentReportData[];
     },
   });
 
@@ -327,13 +335,15 @@ export function ClientPropertyInvestmentReport({
 
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from('investment_reports')
-        .delete()
-        .eq('id', reportToDelete.id)
-        .eq('is_client_report', true); // Safety: only delete client reports
+      // Use secure edge function (service_role) due to service-role-only DB security model.
+      const { data, error } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'delete',
+        reportId: reportToDelete.id,
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || 'Failed to delete report');
+      }
 
       toast({
         title: 'Report Deleted',
@@ -345,7 +355,7 @@ export function ClientPropertyInvestmentReport({
       console.error('Error deleting report:', error);
       toast({
         title: 'Delete Failed',
-        description: 'Failed to delete the report.',
+        description: error instanceof Error ? error.message : 'Failed to delete the report.',
         variant: 'destructive',
       });
     } finally {
