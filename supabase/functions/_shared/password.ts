@@ -1,4 +1,4 @@
-import { compare, hash } from "https://esm.sh/bcryptjs@2.4.3";
+import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
 
 /**
  * Hash a password using bcrypt
@@ -7,7 +7,7 @@ import { compare, hash } from "https://esm.sh/bcryptjs@2.4.3";
  */
 export async function hashPassword(password: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    hash(password, 10, (err: Error | null, hash: string) => {
+    bcrypt.hash(password, 10, (err: Error | null, hash: string) => {
       if (err) reject(err);
       else resolve(hash);
     });
@@ -18,7 +18,7 @@ export async function hashPassword(password: string): Promise<string> {
  * Verify a password against a hash
  * Handles both bcrypt hashes and legacy plaintext passwords for migration
  * @param password - The plaintext password to verify
- * @param hash - The stored hash (or plaintext for legacy)
+ * @param storedHash - The stored hash (or plaintext for legacy)
  * @returns True if password matches
  */
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
@@ -27,7 +27,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   
   if (isBcryptHash) {
     return new Promise((resolve, reject) => {
-      compare(password, storedHash, (err: Error | null, result: boolean) => {
+      bcrypt.compare(password, storedHash, (err: Error | null, result: boolean) => {
         if (err) reject(err);
         else resolve(result);
       });
