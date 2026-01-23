@@ -2322,6 +2322,7 @@ export type Database = {
           bcc_recipients: string[] | null
           body: string
           cc_recipients: string[] | null
+          client_id: string | null
           created_at: string
           created_by: string | null
           draft_reply: string | null
@@ -2344,6 +2345,7 @@ export type Database = {
           bcc_recipients?: string[] | null
           body: string
           cc_recipients?: string[] | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           draft_reply?: string | null
@@ -2366,6 +2368,7 @@ export type Database = {
           bcc_recipients?: string[] | null
           body?: string
           cc_recipients?: string[] | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           draft_reply?: string | null
@@ -2384,6 +2387,13 @@ export type Database = {
           urgency_level?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "email_copilot_emails_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "email_copilot_emails_created_by_fkey"
             columns: ["created_by"]
