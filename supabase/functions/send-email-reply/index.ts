@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Dynamic CORS headers for credential-based requests
+function createCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin = origin && (origin.endsWith('.lovable.app') || origin.includes('localhost')) 
+    ? origin 
+    : 'https://npc-property-dashbord.lovable.app';
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
 
 const clientId = Deno.env.get('MICROSOFT_CLIENT_ID');
 const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
@@ -132,6 +141,9 @@ async function getSignatureFromDatabase(supabase: any): Promise<string> {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
