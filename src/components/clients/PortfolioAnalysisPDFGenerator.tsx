@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, Landmark, Shield, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -2941,22 +2941,22 @@ export function PortfolioAnalysisPDFGenerator({
       const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       const storagePath = `portfolio-reports/${clientId}/${fileName}`;
       
-      // Upload PDF to Supabase Storage
+      // Upload PDF to Supabase Storage via secure function
       console.log('📤 Uploading PDF to storage...');
       let uploadedFilePath: string | null = null;
       try {
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('client-files')
-          .upload(storagePath, blob, {
-            contentType: 'application/pdf',
-            upsert: true,
-          });
+        const uploadResult = await secureStorageUpload(
+          'client-files',
+          storagePath,
+          blob,
+          { contentType: 'application/pdf', upsert: true }
+        );
         
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError);
+        if (!uploadResult.success) {
+          console.error('Storage upload error:', uploadResult.error);
           toast.error('Failed to upload PDF to storage, but will still download locally');
         } else {
-          uploadedFilePath = uploadData.path;
+          uploadedFilePath = uploadResult.path || storagePath;
           console.log('✓ PDF uploaded to storage:', uploadedFilePath);
         }
       } catch (storageError) {

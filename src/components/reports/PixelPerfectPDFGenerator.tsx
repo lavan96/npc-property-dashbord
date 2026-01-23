@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 type ReportTier = 'compass' | 'briefing' | 'snapshot';
@@ -2490,41 +2491,46 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       console.log('✓ Blob created');
       
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage via secure function
       console.log('☁️ Step 7: Uploading to Supabase Storage...');
       const fileName = `${report.id}_${suburb}_${state}_${Date.now()}.pdf`;
       console.log('📤 Uploading as:', fileName);
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('investment-reports')
-        .upload(fileName, blob, {
-          contentType: 'application/pdf',
-          upsert: true,
-        });
+      const uploadResult = await secureStorageUpload(
+        'investment-reports',
+        fileName,
+        blob,
+        { contentType: 'application/pdf', upsert: true }
+      );
 
-      if (uploadError) {
-        console.error('❌ Upload failed:', uploadError);
-        throw uploadError;
+      if (!uploadResult.success) {
+        console.error('❌ Upload failed:', uploadResult.error);
+        throw new Error(uploadResult.error || 'Upload failed');
       }
-      console.log('✓ Upload successful:', uploadData);
+      console.log('✓ Upload successful:', uploadResult.path);
 
-      // Get public URL
+      // Get public URL via secure function
       console.log('🔗 Step 8: Getting public URL...');
-      const { data: { publicUrl } } = supabase.storage
-        .from('investment-reports')
-        .getPublicUrl(fileName);
+      const { data: urlResult, error: urlError } = await invokeSecureFunction('secure-storage', {
+        operation: 'publicUrl',
+        bucket: 'investment-reports',
+        path: fileName
+      });
+      
+      const publicUrl = urlResult?.data?.publicUrl || '';
       console.log('✓ Public URL:', publicUrl);
 
-      // Update the investment_reports table with the PDF URL
+      // Update the investment_reports table with the PDF URL via secure function
       console.log('💽 Step 9: Updating database...');
-      const { error: updateError } = await supabase
-        .from('investment_reports')
-        .update({ pdf_url: publicUrl })
-        .eq('id', report.id);
+      const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId: report.id,
+        data: { pdf_url: publicUrl }
+      });
 
       if (updateError) {
         console.error('❌ Database update failed:', updateError);
-        throw updateError;
+        throw new Error(updateError.message || 'Database update failed');
       }
       console.log('✓ Database updated');
 

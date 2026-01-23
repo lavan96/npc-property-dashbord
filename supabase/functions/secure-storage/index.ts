@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { extractSessionToken, createCorsHeaders } from '../_shared/auth.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -64,6 +60,9 @@ async function verifySession(supabase: any, sessionToken: string | null | undefi
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -74,7 +73,6 @@ serve(async (req) => {
     const body = await req.json();
     
     const { 
-      session_token, 
       operation,  // 'upload', 'download', 'delete', 'signedUrl', 'list'
       bucket,
       path,
@@ -83,6 +81,9 @@ serve(async (req) => {
       expires_in,     // Seconds for signed URL (default 3600)
       upsert,         // Boolean for upload
     } = body;
+
+    // Extract session token from cookie, header, or body
+    const session_token = extractSessionToken(req.headers, body);
 
     // Validate session
     const sessionResult = await verifySession(supabase, session_token);
