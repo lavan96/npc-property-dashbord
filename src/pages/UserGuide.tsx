@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -49,6 +50,7 @@ import {
   Sparkles,
   Webhook,
 } from 'lucide-react';
+import { UserGuideAssistant } from '@/components/user-guide/UserGuideAssistant';
 
 interface GuideSection {
   id: string;
@@ -68,6 +70,22 @@ interface GuideItem {
 }
 
 export default function UserGuide() {
+  const accordionRef = useRef<string[]>([]);
+  
+  const handleNavigateToSection = useCallback((sectionId: string) => {
+    // Find and scroll to the section
+    const element = document.getElementById(`section-${sectionId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Open the accordion
+      accordionRef.current = [sectionId];
+      // Trigger a click on the accordion trigger to open it
+      const trigger = element.querySelector('[data-state]');
+      if (trigger && trigger.getAttribute('data-state') === 'closed') {
+        (trigger as HTMLElement).click();
+      }
+    }
+  }, []);
   const sections: GuideSection[] = [
     {
       id: 'getting-started',
@@ -1174,6 +1192,8 @@ export default function UserGuide() {
   ];
 
   return (
+    <>
+    <UserGuideAssistant onNavigateToSection={handleNavigateToSection} />
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">User Guide</h1>
@@ -1382,5 +1402,6 @@ export default function UserGuide() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
