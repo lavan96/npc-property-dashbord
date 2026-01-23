@@ -1,8 +1,32 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+/**
+ * Create CORS headers with credentials support for cookies
+ * Uses dynamic origin for security when credentials are included
+ */
+function createCorsHeaders(origin: string | null): Record<string, string> {
+  // Allowed origins for the application
+  const allowedOrigins = [
+    'https://npc-property-dashbord.lovable.app',
+    'https://id-preview--7976d60b-c277-4851-889b-c170285f4be2.lovable.app',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ];
+  
+  // Check if origin is allowed - support Lovable preview domains
+  const allowedOrigin = origin && (
+    allowedOrigins.includes(origin) ||
+    origin.endsWith('.lovable.app') ||
+    origin.endsWith('.lovableproject.com')
+  ) ? origin : allowedOrigins[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin',
+  };
 }
 
 interface AirtableRecord {
@@ -17,6 +41,10 @@ interface AirtableResponse {
 }
 
 Deno.serve(async (req) => {
+  // Get origin for CORS headers
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
