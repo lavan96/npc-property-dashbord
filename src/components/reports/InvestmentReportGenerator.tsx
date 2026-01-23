@@ -403,23 +403,27 @@ export function InvestmentReportGenerator() {
         Object.entries(preGenData).filter(([_, v]) => v !== undefined)
       ) as Json;
       
-      const { data: pendingReport, error: insertError } = await supabase
-        .from('investment_reports')
-        .insert({
+      // Use secure edge function for insert (service_role required due to RLS)
+      const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'insert',
+        data: {
           property_address: propertyAddress,
           report_content: 'Generating report...',
           status: 'pending',
           report_scope: queryType, // Track the scope type
           generated_by: null, // Set to null to avoid foreign key constraint issues
           manual_overrides: cleanedOverrides, // Save pre-generation overrides immediately
-        })
-        .select()
-        .single();
+        },
+      });
 
-      if (insertError) {
-        console.error('Error creating report record:', insertError);
-        throw new Error(`Failed to create report: ${insertError.message || 'Database error'}`);
+      if (insertError || !insertResult?.success || !insertResult.report) {
+        console.error('Error creating report record:', insertError || insertResult?.error);
+        throw new Error(
+          `Failed to create report: ${insertError?.message || insertResult?.error || 'Database error'}`
+        );
       }
+
+      const pendingReport = insertResult.report;
 
       // Add to background job tracker
       addBackgroundJob({
@@ -765,22 +769,26 @@ export function InvestmentReportGenerator() {
         Object.entries(preGenData).filter(([_, v]) => v !== undefined)
       ) as Json;
       
-      const { data: pendingReport, error: insertError } = await supabase
-        .from('investment_reports')
-        .insert({
+      // Use secure edge function for insert (service_role required due to RLS)
+      const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'insert',
+        data: {
           property_address: propertyAddress,
           report_content: 'Generating report from scraped listing...',
           status: 'pending',
           report_scope: 'address',
           generated_by: null,
           manual_overrides: cleanedOverrides,
-        })
-        .select()
-        .single();
+        },
+      });
 
-      if (insertError) {
-        throw new Error(`Failed to create report: ${insertError.message}`);
+      if (insertError || !insertResult?.success || !insertResult.report) {
+        throw new Error(
+          `Failed to create report: ${insertError?.message || insertResult?.error || 'Database error'}`
+        );
       }
+
+      const pendingReport = insertResult.report;
 
       addBackgroundJob({
         id: pendingReport.id,
@@ -1194,22 +1202,26 @@ export function InvestmentReportGenerator() {
         Object.entries(preGenData).filter(([_, v]) => v !== undefined)
       ) as Json;
       
-      const { data: pendingReport, error: insertError } = await supabase
-        .from('investment_reports')
-        .insert({
+      // Use secure edge function for insert (service_role required due to RLS)
+      const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'insert',
+        data: {
           property_address: propertyAddress,
           report_content: 'Generating report from PDF...',
           status: 'pending',
           report_scope: 'address',
           generated_by: null,
           manual_overrides: pdfOverrides,
-        })
-        .select()
-        .single();
+        },
+      });
 
-      if (insertError) {
-        throw new Error(`Failed to create report: ${insertError.message}`);
+      if (insertError || !insertResult?.success || !insertResult.report) {
+        throw new Error(
+          `Failed to create report: ${insertError?.message || insertResult?.error || 'Database error'}`
+        );
       }
+
+      const pendingReport = insertResult.report;
 
       addBackgroundJob({
         id: pendingReport.id,
