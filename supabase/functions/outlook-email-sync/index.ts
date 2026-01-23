@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createCorsHeaders, extractSessionToken, verifySession } from "../_shared/auth.ts";
 
 const MICROSOFT_CLIENT_ID = Deno.env.get('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET = Deno.env.get('MICROSOFT_CLIENT_SECRET');
@@ -306,6 +302,9 @@ function extractEmailAddresses(recipients: EmailRecipient[]): string[] {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -313,7 +312,22 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { action, limit = 20, mailbox } = await req.json().catch(() => ({ action: 'sync', limit: 20, mailbox: null }));
+    const body = await req.json().catch(() => ({ action: 'sync', limit: 20, mailbox: null }));
+    const { action, limit = 20, mailbox } = body;
+
+    // Verify session for authenticated requests
+    const sessionToken = extractSessionToken(req.headers, body);
+    const { error: authError, userId, username } = await verifySession(supabase, sessionToken);
+
+    if (authError) {
+      console.log('[Outlook Sync] Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: authError }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[Outlook Sync] Authenticated user: ${username} (${userId})`);
     
     // Use provided mailbox or fall back to default
     const targetMailbox = mailbox || DEFAULT_MAILBOX_EMAIL;
