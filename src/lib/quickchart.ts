@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeSecureFunction } from "@/lib/secureInvoke";
 import type { PropertyListing } from "@/lib/airtable";
 
 export interface ChartData {
@@ -37,14 +37,19 @@ export class QuickChartService {
   }
 
   async getChartTemplate(templateName: string) {
-    const { data, error } = await supabase
-      .from('chart_configurations')
-      .select('*')
-      .eq('template_name', templateName)
-      .single();
+    const { data, error } = await invokeSecureFunction('manage-templates', {
+      operation: 'list',
+      table: 'chart_configurations',
+      listOptions: {
+        filters: { template_name: templateName },
+        limit: 1
+      }
+    });
     
-    if (error) throw error;
-    return data;
+    if (error) throw new Error(error.message);
+    const records = data?.records || [];
+    if (records.length === 0) throw new Error(`Template not found: ${templateName}`);
+    return records[0];
   }
 
   processSuburbData(listings: PropertyListing[]): ChartData {

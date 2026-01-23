@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export interface FinanceContact {
   id: string;
@@ -16,15 +16,18 @@ export function useFinanceContacts() {
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ['finance-agent-contacts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('finance_agent_contacts')
-        .select('*')
-        .eq('is_active', true)
-        .order('is_default', { ascending: false })
-        .order('name');
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'finance_agent_contacts',
+        listOptions: {
+          filters: { is_active: true },
+          orderBy: 'is_default',
+          orderAsc: false
+        }
+      });
       
-      if (error) throw error;
-      return data as FinanceContact[];
+      if (error) throw new Error(error.message);
+      return (data?.records || []) as FinanceContact[];
     },
   });
 

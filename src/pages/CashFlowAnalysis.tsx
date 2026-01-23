@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -108,18 +108,22 @@ export default function CashFlowAnalysis() {
       setLoading(true);
       // IMPORTANT: do not fetch report_content for the list view (very large payload)
       // Apply 30-day cutoff and exclude archived reports
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived')
-        .eq('status', 'completed')
-        .eq('is_archived', false)
-        .gte('created_at', thirtyDaysAgo.toISOString())
-        .order('created_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, investment_score, is_archived',
+          status: 'completed',
+          isArchived: false,
+          createdAfter: thirtyDaysAgo.toISOString(),
+          orderBy: 'created_at',
+          orderAsc: false
+        }
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       
       // Filter to only include reports with required cash flow data
-      const reportsWithCashFlowData = (data || []).filter(hasRequiredData);
+      const reportsWithCashFlowData = (data?.reports || []).filter(hasRequiredData);
       setReports(reportsWithCashFlowData);
     } catch (error: any) {
       console.error('Error fetching reports:', error);
@@ -347,14 +351,14 @@ export default function CashFlowAnalysis() {
             fetchReports();
             // Also update the selected report if it was modified
             if (selectedReport) {
-              supabase
-                .from('investment_reports')
-                .select('id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
-                .eq('id', selectedReport.id)
-                .single()
-                .then(({ data }) => {
-                  if (data) setSelectedReport(data);
-                });
+              invokeSecureFunction('get-investment-reports', {
+                reportId: selectedReport.id,
+                listOptions: {
+                  select: 'id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence'
+                }
+              }).then(({ data }) => {
+                if (data?.report) setSelectedReport(data.report);
+              });
             }
           }}
         />
