@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifySession, extractSessionToken, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 // Dynamic CORS headers for credential-based requests
 function createCorsHeaders(origin: string | null): Record<string, string> {
@@ -44,10 +44,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: RequestBody = await req.json();
-    const sessionToken = extractSessionToken(req.headers, body);
 
-    // Validate session
-    const { error: authError, userId } = await verifySession(supabase, sessionToken);
+    // Validate authentication (JWT first, then session token)
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('Auth failed for manage-investment-reports:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);

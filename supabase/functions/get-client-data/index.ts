@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
 interface RequestBody {
   clientId?: string;
@@ -48,10 +48,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: RequestBody = await req.json();
-    const sessionToken = extractSessionToken(req.headers, body);
 
-    // Validate session
-    const { error: authError, userId } = await verifySession(supabase, sessionToken);
+    // Validate authentication (JWT first, then session token)
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('Auth failed for get-client-data:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);

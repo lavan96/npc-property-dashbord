@@ -236,10 +236,28 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-password-reset]
-verify_jwt = false
+verify_jwt = true
 
 [functions.admin-user-management]
-verify_jwt = false
+verify_jwt = true
+
+[functions.secure-storage]
+verify_jwt = true
+
+[functions.get-investment-reports]
+verify_jwt = true
+
+[functions.manage-investment-reports]
+verify_jwt = true
+
+[functions.get-call-logs]
+verify_jwt = true
+
+[functions.manage-call-logs]
+verify_jwt = true
+
+[functions.get-activity-logs]
+verify_jwt = true
 
 [functions.regenerate-report-qualitative]
 verify_jwt = false
@@ -285,10 +303,10 @@ verify_jwt = false
 request_timeout = 120
 
 [functions.get-client-data]
-verify_jwt = false
+verify_jwt = true
 
 [functions.manage-client-data]
-verify_jwt = false
+verify_jwt = true
 
 [functions.user-guide-assistant]
 verify_jwt = false

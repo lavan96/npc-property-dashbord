@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { extractSessionToken, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
 interface ActivityLogsRequest {
   session_token?: string;
@@ -28,56 +28,18 @@ Deno.serve(async (req) => {
     const body: ActivityLogsRequest = await req.json();
     const { action_filter, entity_filter, user_filter, limit = 500 } = body;
 
-    // Extract session token from cookie, header, or body
-    const session_token = extractSessionToken(req.headers, body);
-
-    // Validate session token
-    if (!session_token) {
-      console.error('[get-activity-logs] No session token provided');
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Verify session
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('user_id, expires_at')
-      .eq('session_token', session_token)
-      .single();
-
-    if (sessionError || !sessionData) {
-      console.error('[get-activity-logs] Invalid session token');
-      return new Response(
-        JSON.stringify({ error: 'Invalid session' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Check if session is expired
-    if (new Date(sessionData.expires_at) < new Date()) {
-      console.error('[get-activity-logs] Session expired');
-      return new Response(
-        JSON.stringify({ error: 'Session expired' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    // Validate authentication (JWT first, then session token)
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.error('[get-activity-logs] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
     }
 
     // Get user info to check permissions
     const { data: userData, error: userError } = await supabase
       .from('custom_users')
       .select('id, username, role')
-      .eq('id', sessionData.user_id)
+      .eq('id', userId)
       .single();
 
     if (userError || !userData) {
@@ -95,7 +57,7 @@ Deno.serve(async (req) => {
     const { data: userRoles } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', sessionData.user_id);
+      .eq('user_id', userId);
 
     const roles = userRoles?.map(r => r.role) || [];
     const isAdmin = roles.includes('superadmin') || roles.includes('admin') || userData.role === 'superadmin' || userData.role === 'admin';

@@ -10,14 +10,20 @@ const COMMON_PASSWORDS = [
 export interface PasswordValidationResult {
   isValid: boolean;
   error: string | null;
+  isLeaked?: boolean; // Indicates if password was found in data breaches
+  leakCount?: number; // Number of times password was found in breaches
 }
 
 /**
  * Validates password strength for server-side validation
  * @param password - The password to validate
+ * @param checkLeaked - Whether to check if password has been leaked (default: true)
  * @returns Validation result with error message if invalid
  */
-export function validatePasswordStrength(password: string): PasswordValidationResult {
+export async function validatePasswordStrength(
+  password: string,
+  checkLeaked: boolean = true
+): Promise<PasswordValidationResult> {
   // Check minimum length (8 characters per industry standards)
   if (password.length < 8) {
     return {
@@ -48,6 +54,29 @@ export function validatePasswordStrength(password: string): PasswordValidationRe
       isValid: false,
       error: 'Password must include at least 2 of: lowercase, uppercase, numbers, or special characters'
     };
+  }
+
+  // Check against leaked passwords if enabled
+  if (checkLeaked) {
+    try {
+      const { checkLeakedPasswordWithTimeout } = await import('./leakedPasswordCheck.ts');
+      const leakedResult = await checkLeakedPasswordWithTimeout(password, 3000);
+      
+      if (leakedResult.isLeaked) {
+        const count = leakedResult.count || 0;
+        return {
+          isValid: false,
+          error: `This password has been found in ${count.toLocaleString()} data breaches. Please choose a different password.`,
+          isLeaked: true,
+          leakCount: count
+        };
+      }
+    } catch (error) {
+      // If leaked password check fails, log but don't block password (fail open)
+      // This ensures availability even if the service is down
+      console.warn('[Password Validation] Leaked password check failed:', error);
+      // Continue with validation - password passes other checks
+    }
   }
 
   return {

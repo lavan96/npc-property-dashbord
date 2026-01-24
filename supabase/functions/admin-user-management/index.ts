@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
-import { extractSessionToken, createCorsHeaders } from "../_shared/auth.ts";
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -39,28 +39,19 @@ interface RequestBody {
   email_signature?: string;
 }
 
-// Helper to verify session and check if user is superadmin
-async function verifySuperadmin(supabase: any, sessionToken: string) {
-  if (!sessionToken) {
-    return { error: 'Session token required', user: null };
-  }
-
-  const { data: session, error: sessionError } = await supabase
-    .from('user_sessions')
-    .select('user_id, expires_at')
-    .eq('session_token', sessionToken)
-    .gt('expires_at', new Date().toISOString())
-    .single();
-
-  if (sessionError || !session) {
-    return { error: 'Invalid or expired session', user: null };
+// Helper to verify authentication and check if user is superadmin
+async function verifySuperadmin(supabase: any, headers: Headers, body: any) {
+  // First verify authentication (JWT or session token)
+  const authResult = await verifyAuth(supabase, headers, body);
+  if (authResult.error || !authResult.userId) {
+    return { error: authResult.error || 'Authentication required', user: null };
   }
 
   // Check if user has superadmin role
   const { data: roleData, error: roleError } = await supabase
     .from('user_roles')
     .select('role')
-    .eq('user_id', session.user_id)
+    .eq('user_id', authResult.userId)
     .eq('role', 'superadmin')
     .single();
 
@@ -71,7 +62,7 @@ async function verifySuperadmin(supabase: any, sessionToken: string) {
   const { data: user } = await supabase
     .from('custom_users')
     .select('*')
-    .eq('id', session.user_id)
+    .eq('id', authResult.userId)
     .single();
 
   return { error: null, user };
@@ -93,9 +84,6 @@ serve(async (req: Request) => {
 
     const body: RequestBody = await req.json();
     const { action } = body;
-    
-    // Extract session token from cookie, header, or body
-    const session_token = extractSessionToken(req.headers, body);
 
     // Actions that don't require superadmin auth
     if (action === 'verify_invite') {
@@ -175,7 +163,7 @@ serve(async (req: Request) => {
       
       // Validate password strength (skip for temp passwords as they are system-generated)
       if (invite.invite_type !== 'temp_password') {
-        const validation = validatePasswordStrength(finalPassword);
+        const validation = await validatePasswordStrength(finalPassword);
         if (!validation.isValid) {
           return new Response(
             JSON.stringify({ success: false, error: validation.error }),
@@ -433,7 +421,7 @@ serve(async (req: Request) => {
         }
 
         // Validate password strength
-        const validation = validatePasswordStrength(new_password);
+        const validation = await validatePasswordStrength(new_password);
         if (!validation.isValid) {
           return new Response(
             JSON.stringify({ success: false, error: validation.error }),
@@ -478,7 +466,7 @@ serve(async (req: Request) => {
     }
 
     // All other actions require superadmin
-    const { error: authError, user: adminUser } = await verifySuperadmin(supabase, session_token);
+    const { error: authError, user: adminUser } = await verifySuperadmin(supabase, req.headers, body);
     if (authError) {
       return new Response(
         JSON.stringify({ success: false, error: authError }),
@@ -1006,7 +994,7 @@ serve(async (req: Request) => {
       }
 
       // Validate password strength
-      const validation = validatePasswordStrength(subadmin_data.password);
+      const validation = await validatePasswordStrength(subadmin_data.password);
       if (!validation.isValid) {
         return new Response(
           JSON.stringify({ success: false, error: validation.error }),

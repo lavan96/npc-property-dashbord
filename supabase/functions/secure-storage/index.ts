@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
-import { extractSessionToken, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -18,46 +18,6 @@ const ALLOWED_BUCKETS = [
   'email-attachments'
 ];
 
-interface SessionValidationResult {
-  error: string | null;
-  userId: string | null;
-  username: string | null;
-}
-
-async function verifySession(supabase: any, sessionToken: string | null | undefined): Promise<SessionValidationResult> {
-  if (!sessionToken) {
-    return { error: 'No session token provided', userId: null, username: null };
-  }
-
-  const { data: session, error } = await supabase
-    .from('user_sessions')
-    .select('user_id, expires_at')
-    .eq('session_token', sessionToken)
-    .maybeSingle();
-
-  if (error || !session) {
-    return { error: 'Invalid session token', userId: null, username: null };
-  }
-
-  if (new Date(session.expires_at) < new Date()) {
-    return { error: 'Session expired', userId: null, username: null };
-  }
-
-  // Optionally get username for logging
-  let username = null;
-  try {
-    const { data: user } = await supabase
-      .from('custom_users')
-      .select('username')
-      .eq('id', session.user_id)
-      .maybeSingle();
-    username = user?.username;
-  } catch (e) {
-    // Username lookup is optional
-  }
-
-  return { error: null, userId: session.user_id, username };
-}
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -82,20 +42,11 @@ serve(async (req) => {
       upsert,         // Boolean for upload
     } = body;
 
-    // Extract session token from cookie, header, or body
-    const session_token = extractSessionToken(req.headers, body);
-
-    // Validate session
-    const sessionResult = await verifySession(supabase, session_token);
+    // Validate authentication (JWT first, then session token)
+    const sessionResult = await verifyAuth(supabase, req.headers, body);
     if (sessionResult.error) {
       console.log(`[Secure Storage] Auth failed: ${sessionResult.error}`);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: sessionResult.error 
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return createUnauthorizedResponse(sessionResult.error, corsHeaders);
     }
 
     console.log(`[Secure Storage] User ${sessionResult.username || sessionResult.userId} - ${operation} on ${bucket}/${path}`);

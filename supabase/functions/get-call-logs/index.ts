@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -24,9 +24,8 @@ serve(async (req) => {
       // Empty body is allowed for list mode
     }
 
-    // Extract and verify session token
-    const sessionToken = extractSessionToken(req.headers, body);
-    const { error: authError, userId, username } = await verifySession(supabase, sessionToken);
+    // Validate authentication (JWT first, then session token)
+    const { error: authError, userId, username } = await verifyAuth(supabase, req.headers, body);
 
     if (authError) {
       console.log('[get-call-logs] Auth error:', authError);

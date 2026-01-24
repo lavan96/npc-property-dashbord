@@ -2,11 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { hashPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 
 // Simple email sending via Resend REST API
 async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
@@ -52,6 +48,9 @@ interface RequestBody {
 }
 
 serve(async (req: Request) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -64,6 +63,17 @@ serve(async (req: Request) => {
 
     const body: RequestBody = await req.json();
     const { action } = body;
+
+    // Validate authentication (JWT first, then session token)
+    // Note: For password reset, we allow unauthenticated requests for 'request_otp' and 'verify_otp'
+    // but require authentication for 'reset_password' to prevent abuse
+    if (action === 'reset_password') {
+      const { error: authError } = await verifyAuth(supabase, req.headers, body);
+      if (authError) {
+        console.log('[admin-password-reset] Auth failed for reset_password:', authError);
+        return createUnauthorizedResponse(authError, corsHeaders);
+      }
+    }
 
     if (action === 'request_otp') {
       const { username, email } = body;
@@ -241,7 +251,7 @@ serve(async (req: Request) => {
       }
 
       // Validate password strength
-      const validation = validatePasswordStrength(new_password);
+      const validation = await validatePasswordStrength(new_password);
       if (!validation.isValid) {
         return new Response(
           JSON.stringify({ success: false, error: validation.error }),
