@@ -1,6 +1,9 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
+import { installAccessErrorLogger } from './lib/security/accessLogger'
 import './index.css'
+
+installAccessErrorLogger();
 
 // Register service worker for PWA offline support
 if ('serviceWorker' in navigator) {
