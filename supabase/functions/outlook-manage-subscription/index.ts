@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,12 +40,28 @@ async function getAccessToken(): Promise<string> {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action } = await req.json();
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const body = await req.json();
+    const { action } = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[outlook-manage-subscription] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[outlook-manage-subscription] Authenticated user: ${userId}`);
 
     if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
       return new Response(JSON.stringify({ error: 'Missing Microsoft credentials' }), {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,9 @@ interface ClientData {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -60,6 +64,14 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action, clientId, clientIds } = body;
+    
+    // SECURITY: Verify authentication
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[sync-client-to-ghl] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log('[sync-client-to-ghl] Authenticated user:', userId);
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,

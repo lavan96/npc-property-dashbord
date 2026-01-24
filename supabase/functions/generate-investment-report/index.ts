@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -722,6 +722,18 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, requestBody);
+    if (authError) {
+      console.log('[generate-investment-report] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log('[generate-investment-report] Authenticated user:', userId);
     
     let { reportId, propertyAddress, propertyDetails, continueFrom } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request

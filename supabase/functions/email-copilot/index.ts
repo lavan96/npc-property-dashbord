@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,7 +51,7 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
-  const corsHeaders = createCorsHeaders(origin);
+  const corsHeaders = createAuthCorsHeaders(origin);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -58,11 +59,19 @@ serve(async (req) => {
   }
 
   try {
-    const { action, email, emailId, linkedPropertyAddress, replyContext, clientId } = await req.json();
+    const body = await req.json();
+    const { action, email, emailId, linkedPropertyAddress, replyContext, clientId } = body;
     
     console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, ClientId: ${clientId || 'N/A'}`);
 
+    // SECURITY: Verify authentication
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[email-copilot] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log('[email-copilot] Authenticated user:', userId);
 
     // Handle different actions
     switch (action) {

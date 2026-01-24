@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1308,6 +1309,9 @@ Generate the ${sectionDef.name} section now:`;
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -1324,6 +1328,7 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const body = await req.json();
     const { 
       reportId, 
       manualOverrides, 
@@ -1331,7 +1336,15 @@ serve(async (req) => {
       propertyAddress,
       financialCalculations,
       continueFrom = false
-    }: RegenerateRequest = await req.json();
+    }: RegenerateRequest = body;
+
+    // SECURITY: Verify authentication
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[regenerate-report-qualitative] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[regenerate-report-qualitative] Authenticated user: ${userId}`);
 
     console.log('=== ENHANCED MULTI-SECTION REPORT REGENERATION ===');
     console.log('📝 Report ID:', reportId);

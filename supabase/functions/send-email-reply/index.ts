@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 // Dynamic CORS headers for credential-based requests
 function createCorsHeaders(origin: string | null): Record<string, string> {
@@ -142,7 +143,7 @@ async function getSignatureFromDatabase(supabase: any): Promise<string> {
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
-  const corsHeaders = createCorsHeaders(origin);
+  const corsHeaders = createAuthCorsHeaders(origin);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -155,18 +156,26 @@ serve(async (req) => {
       throw new Error('Microsoft Graph API credentials not configured');
     }
 
-    const { to, subject, body, cc, bcc, originalEmailId, attachments, mailboxSource }: SendEmailRequest = await req.json();
+    const body = await req.json();
+    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource }: SendEmailRequest = body;
+    
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[send-email-reply] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log('[send-email-reply] Authenticated user:', userId);
 
-    if (!to || !subject || !body) {
+    if (!to || !subject || !emailBody) {
       throw new Error('Missing required fields: to, subject, body');
     }
 
     console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Attachments: ${attachments?.length || 0}`);
-
-    // Initialize Supabase client early for signature fetch
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get access token and signature in parallel
     const [accessToken, signature] = await Promise.all([
@@ -175,8 +184,8 @@ serve(async (req) => {
     ]);
     
     // Detect if the email body is already HTML
-    const isHtmlBody = body.includes('<html') || body.includes('<p>') || body.includes('<div') || 
-                       body.includes('<br') || body.includes('<table') || body.includes('<span');
+    const isHtmlBody = emailBody.includes('<html') || emailBody.includes('<p>') || emailBody.includes('<div') || 
+                       emailBody.includes('<br') || emailBody.includes('<table') || emailBody.includes('<span');
     
     // Combine body with signature
     const hasSignature = signature && signature.trim().length > 0;
@@ -298,7 +307,7 @@ serve(async (req) => {
         original_email_id: originalEmailId || null,
         recipient: to,
         subject: subject,
-        body: body,
+        body: emailBody,
         cc_recipients: cc || [],
         bcc_recipients: bcc || [],
         attachments: attachmentMetadata,

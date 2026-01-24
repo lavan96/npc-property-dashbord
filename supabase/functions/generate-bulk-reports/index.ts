@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,9 @@ interface BulkGenerationRequest {
 serve(async (req) => {
   console.log('🚀 Bulk report generation function invoked');
   
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -39,9 +43,33 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request
-    const { properties, userId }: BulkGenerationRequest = await req.json();
+    const body = await req.json();
+    const { properties, userId }: BulkGenerationRequest = body;
     
-    console.log(`📦 Received bulk request for ${properties.length} properties from user ${userId}`);
+    // SECURITY: Verify authentication and ensure userId matches authenticated user
+    const { error: authError, userId: authenticatedUserId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[generate-bulk-reports] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    
+    // CRITICAL FIX: Verify that the userId in the request matches the authenticated user
+    // This prevents users from generating reports for other users
+    if (userId && userId !== authenticatedUserId) {
+      console.log(`[generate-bulk-reports] User ID mismatch: ${userId} != ${authenticatedUserId}`);
+      return new Response(JSON.stringify({ 
+        error: 'User ID mismatch. You can only generate reports for yourself.',
+        success: false 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Use authenticated user ID instead of request body userId
+    const finalUserId = authenticatedUserId || userId;
+    
+    console.log(`📦 Received bulk request for ${properties.length} properties from user ${finalUserId}`);
 
     // Validate input
     if (!properties || properties.length === 0) {
@@ -81,7 +109,7 @@ serve(async (req) => {
     const { data: job, error: jobError } = await supabase
       .from('bulk_generation_jobs')
       .insert({
-        created_by: userId,
+        created_by: finalUserId,
         status: 'processing',
         total_reports: properties.length,
         completed_reports: 0,
@@ -131,7 +159,7 @@ serve(async (req) => {
 
     // Start background processing
     EdgeRuntime.waitUntil(
-      processReportsInBackground(supabase, job.id, properties, userId)
+      processReportsInBackground(supabase, job.id, properties, finalUserId)
     );
 
     // Return immediately with job ID

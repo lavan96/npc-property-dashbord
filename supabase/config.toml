@@ -1,7 +1,44 @@
 project_id = "dduzbchuswwbefdunfct"
 
 [functions.import-clients-from-ghl]
-verify_jwt = false
+verify_jwt = true
+
+[functions.compare-investment-reports]
+verify_jwt = true
+request_timeout = 120
+
+[functions.compare-cash-flow-reports]
+verify_jwt = true
+request_timeout = 120
+
+[functions.generate-portfolio-analysis]
+verify_jwt = true
+request_timeout = 120
+
+[functions.calculate-borrowing-capacity]
+verify_jwt = true
+
+[functions.regenerate-report-qualitative]
+verify_jwt = true
+request_timeout = 540
+
+[functions.outlook-email-sync]
+verify_jwt = true
+
+[functions.outlook-manage-subscription]
+verify_jwt = true
+
+[functions.sync-notes-to-ghl]
+verify_jwt = true
+
+[functions.manage-call-settings]
+verify_jwt = true
+
+[functions.check-integration-secrets]
+verify_jwt = true
+
+[functions.update-integration-secret]
+verify_jwt = true
 
 [api]
 enabled = true
@@ -81,7 +118,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.generate-investment-report]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 900
 
 [functions.abs-data-service]
@@ -131,7 +168,7 @@ verify_jwt = false
 request_timeout = 120
 
 [functions.generate-bulk-reports]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 150
 
 [functions.migrate-comparison-scores]
@@ -163,7 +200,7 @@ verify_jwt = false
 request_timeout = 300
 
 [functions.email-copilot]
-verify_jwt = false
+verify_jwt = true
 
 [functions.outlook-email-sync]
 verify_jwt = false
@@ -181,7 +218,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-email-reply]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sqm-rent-service]
 verify_jwt = false
@@ -279,7 +316,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sync-client-to-ghl]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-portfolio-analysis]
 verify_jwt = false

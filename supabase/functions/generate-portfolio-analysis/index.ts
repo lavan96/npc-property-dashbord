@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,28 +42,10 @@ interface ClientData {
   net_monthly_cash_flow: number | null;
 }
 
-// Session validation helper - validates custom auth tokens
-async function verifySession(supabase: any, sessionToken: string | null | undefined) {
-  if (!sessionToken) {
-    return { error: 'Authentication required', userId: null };
-  }
-  try {
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('user_id, expires_at')
-      .eq('session_token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-    if (sessionError || !session) {
-      return { error: 'Invalid or expired session', userId: null };
-    }
-    return { error: null, userId: session.user_id };
-  } catch (err) {
-    return { error: 'Session verification failed', userId: null };
-  }
-}
-
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -82,21 +65,14 @@ serve(async (req) => {
       analysisDepth = 'comprehensive',
       includeProjections = true,
       projectionYears = 10,
-      includeOwnerOccupied = true,
-      session_token
+      includeOwnerOccupied = true
     } = body;
 
-    // Validate session - currently logs warning but doesn't block for backward compatibility
-    // TODO: Make this mandatory after frontend migration is complete
-    const { error: authError, userId } = await verifySession(supabase, session_token);
+    // SECURITY: Verify authentication (enforced - TODO removed)
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
-      console.warn(`[generate-portfolio-analysis] ⚠️ UNAUTHENTICATED REQUEST for client ${clientId}`);
-      // For now, allow the request to proceed but log the security concern
-      // Uncomment the following to enforce authentication:
-      // return new Response(
-      //   JSON.stringify({ error: authError }),
-      //   { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      // );
+      console.log(`[generate-portfolio-analysis] Auth failed for client ${clientId}:`, authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
     } else {
       console.log(`[generate-portfolio-analysis] Authenticated user: ${userId}`);
     }

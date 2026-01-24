@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse, createForbiddenResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +39,9 @@ interface UpdateSecretRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -66,47 +70,32 @@ serve(async (req) => {
       );
     }
 
-    // Verify the user is authenticated (optional - add session verification)
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify session with custom auth
+    // SECURITY: Verify authentication and superadmin role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const sessionToken = authHeader.replace('Bearer ', '');
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('*, custom_users(*)')
-      .eq('session_token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
+    const body: UpdateSecretRequest = await req.json();
+    
+    const authResult = await verifyAuth(supabase, req.headers, body);
+    if (authResult.error) {
+      console.log('[update-integration-secret] Auth failed:', authResult.error);
+      return createUnauthorizedResponse(authResult.error, corsHeaders);
+    }
+    
+    // Check if user has superadmin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', authResult.userId)
+      .eq('role', 'superadmin')
       .single();
 
-    if (sessionError || !sessionData) {
-      console.error('Invalid session:', sessionError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid or expired session' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (roleError || !roleData) {
+      console.warn(`User ${authResult.userId} attempted to update integration secrets without superadmin role.`);
+      return createForbiddenResponse('Forbidden: Superadmin access required', corsHeaders);
     }
-
-    // Check if user has admin role
-    const userRole = sessionData.custom_users?.role;
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
-      console.error('User does not have admin privileges:', userRole);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Admin privileges required to update secrets' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const body: UpdateSecretRequest = await req.json();
+    console.log(`Superadmin ${authResult.userId} is updating integration secrets.`);
     
     if (!body.secrets || !Array.isArray(body.secrets) || body.secrets.length === 0) {
       return new Response(

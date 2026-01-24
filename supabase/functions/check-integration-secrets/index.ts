@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse, createForbiddenResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,17 +22,40 @@ const integrationSecretMap: Record<string, string[]> = {
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    let body: { integrationId?: string } = {};
-    try {
-      body = await req.json();
-    } catch {
-      // No body provided, return all integrations
+    // SECURITY: Verify authentication and admin role
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const body: { integrationId?: string } = await req.json().catch(() => ({}));
+    
+    const authResult = await verifyAuth(supabase, req.headers, body);
+    if (authResult.error) {
+      console.log('[check-integration-secrets] Auth failed:', authResult.error);
+      return createUnauthorizedResponse(authResult.error, corsHeaders);
     }
+    
+    // Check if user has superadmin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', authResult.userId)
+      .eq('role', 'superadmin')
+      .single();
+
+    if (roleError || !roleData) {
+      console.warn(`User ${authResult.userId} attempted to check integration secrets without superadmin role.`);
+      return createForbiddenResponse('Forbidden: Superadmin access required', corsHeaders);
+    }
+    console.log(`Superadmin ${authResult.userId} is checking integration secrets.`);
 
     // If specific integration requested, return just that one with extra info
     if (body.integrationId) {

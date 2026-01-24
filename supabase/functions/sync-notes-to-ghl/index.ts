@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,9 @@ const corsHeaders = {
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -44,6 +48,14 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action, clientId, noteId, noteContent, noteType } = body;
+
+    // SECURITY: Verify authentication
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[sync-notes-to-ghl] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[sync-notes-to-ghl] Authenticated user: ${userId}`);
 
     if (!clientId) {
       return new Response(JSON.stringify({

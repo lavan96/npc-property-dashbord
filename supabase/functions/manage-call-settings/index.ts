@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 
 type TableName = 'call_tags' | 'call_alert_rules' | 'call_alert_history';
 type Operation = 'list' | 'create' | 'update' | 'delete';
@@ -37,16 +37,15 @@ serve(async (req) => {
 
     const body: RequestBody = await req.json();
 
-    // Extract and verify session token
-    const sessionToken = extractSessionToken(req.headers, body);
-    const { error: authError, userId, username } = await verifySession(supabase, sessionToken);
+    // SECURITY: Verify authentication
+    const { error: authError, userId, username } = await verifyAuth(supabase, req.headers, body);
 
     if (authError) {
       console.log('[manage-call-settings] Auth error:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
 
-    console.log(`[manage-call-settings] Authenticated user: ${username} (${userId})`);
+    console.log(`[manage-call-settings] Authenticated user: ${username || userId} (${userId})`);
 
     const { operation, table, recordId, data, filters } = body;
 
