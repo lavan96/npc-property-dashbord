@@ -31,11 +31,20 @@ export interface StorageUploadOptions {
   upsert?: boolean;
 }
 
+function getSessionToken(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return window.localStorage.getItem('session_token');
+}
+
 async function invokeSignedStorage(
   request: SignedStorageRequest
 ): Promise<StorageResult<SignedStorageResponse>> {
+  const sessionToken = getSessionToken();
   const { data, error } = await supabase.functions.invoke(SIGNED_STORAGE_FUNCTION, {
     body: request,
+    headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined,
   });
 
   if (error) {

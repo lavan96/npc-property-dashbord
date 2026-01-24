@@ -159,7 +159,17 @@ export default function Integrations() {
   const checkSupabaseSecrets = async () => {
     setLoadingSecrets(true);
     try {
-      const { data, error } = await supabase.functions.invoke('check-integration-secrets');
+      const sessionToken = localStorage.getItem('session_token');
+      if (!sessionToken) {
+        setLoadingSecrets(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('check-integration-secrets', {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`
+        }
+      });
       
       if (error) {
         console.error('Error checking Supabase secrets:', error);

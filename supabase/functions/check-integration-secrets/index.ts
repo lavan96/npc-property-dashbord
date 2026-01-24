@@ -26,7 +26,13 @@ serve(async (req) => {
   }
 
   try {
-    await getAuthContext(req, { logTag: "check-integration-secrets" });
+    const authContext = await getAuthContext(req, { logTag: "check-integration-secrets" });
+    if (!authContext.supabaseUser && !authContext.customUser) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     let body: { integrationId?: string } = {};
     try {
       body = await req.json();
