@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const SIGNED_STORAGE_FLAG = import.meta.env.VITE_USE_SIGNED_STORAGE === 'true';
+const SIGNED_STORAGE_FLAG = import.meta.env.VITE_USE_SIGNED_STORAGE !== 'false';
 const SIGNED_STORAGE_FUNCTION = 'storage-signed-url';
 
 type StorageResult<T> = { data: T | null; error: Error | null };
@@ -38,6 +38,10 @@ function getSessionToken(): string | null {
   return window.localStorage.getItem('session_token');
 }
 
+function shouldUseSignedStorage(): boolean {
+  return SIGNED_STORAGE_FLAG && Boolean(getSessionToken());
+}
+
 async function invokeSignedStorage(
   request: SignedStorageRequest
 ): Promise<StorageResult<SignedStorageResponse>> {
@@ -66,7 +70,7 @@ export async function uploadFile(
   file: File | Blob,
   options?: StorageUploadOptions
 ): Promise<StorageResult<{ path: string; fullPath?: string }>> {
-  if (!SIGNED_STORAGE_FLAG) {
+  if (!shouldUseSignedStorage()) {
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, options);
@@ -96,7 +100,7 @@ export async function downloadFile(
   path: string,
   expiresIn = 600
 ): Promise<StorageResult<Blob>> {
-  if (!SIGNED_STORAGE_FLAG) {
+  if (!shouldUseSignedStorage()) {
     const { data, error } = await supabase.storage
       .from(bucket)
       .download(path);
@@ -128,7 +132,7 @@ export async function createSignedDownloadUrl(
   path: string,
   expiresIn = 3600
 ): Promise<StorageResult<{ signedUrl: string }>> {
-  if (!SIGNED_STORAGE_FLAG) {
+  if (!shouldUseSignedStorage()) {
     const { data, error } = await supabase.storage
       .from(bucket)
       .createSignedUrl(path, expiresIn);
@@ -153,7 +157,7 @@ export async function removeFiles(
   bucket: string,
   paths: string[]
 ): Promise<StorageResult<unknown>> {
-  if (!SIGNED_STORAGE_FLAG) {
+  if (!shouldUseSignedStorage()) {
     const { data, error } = await supabase.storage
       .from(bucket)
       .remove(paths);
