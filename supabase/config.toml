@@ -260,6 +260,9 @@ verify_jwt = false
 [functions.update-integration-secret]
 verify_jwt = false
 
+[functions.storage-signed-url]
+verify_jwt = false
+
 [functions.sync-client-to-ghl]
 verify_jwt = false
 

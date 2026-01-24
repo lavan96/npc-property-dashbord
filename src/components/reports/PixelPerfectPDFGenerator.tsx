@@ -4,6 +4,7 @@ import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadFile } from '@/lib/storage/signedStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 type ReportTier = 'compass' | 'briefing' | 'snapshot';
@@ -2495,12 +2496,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const fileName = `${report.id}_${suburb}_${state}_${Date.now()}.pdf`;
       console.log('📤 Uploading as:', fileName);
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('investment-reports')
-        .upload(fileName, blob, {
+      const { data: uploadData, error: uploadError } = await uploadFile(
+        'investment-reports',
+        fileName,
+        blob,
+        {
           contentType: 'application/pdf',
           upsert: true,
-        });
+        }
+      );
 
       if (uploadError) {
         console.error('❌ Upload failed:', uploadError);

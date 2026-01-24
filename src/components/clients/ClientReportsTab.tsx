@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadFile } from '@/lib/storage/signedStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -189,9 +190,7 @@ export function ClientReportsTab({
 
   const handleDownloadFile = async (fileUrl: string, fileName: string) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('investment-reports')
-        .download(fileUrl);
+      const { data, error } = await downloadFile('investment-reports', fileUrl);
       
       if (error) throw error;
       

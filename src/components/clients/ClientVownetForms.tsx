@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadFile, removeFiles, uploadFile } from '@/lib/storage/signedStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -286,9 +287,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       // 8. Store the file in storage
       const filePath = `${clientId}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('vownet-forms')
-        .upload(filePath, file);
+      const { error: uploadError } = await uploadFile('vownet-forms', filePath, file);
 
       if (!uploadError) {
         await supabase.from('client_files').insert({
@@ -362,9 +361,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
         .eq('id', clientId);
 
       // 3. Delete file from storage
-      const { error: storageError } = await supabase.storage
-        .from('vownet-forms')
-        .remove([file.file_path]);
+      const { error: storageError } = await removeFiles('vownet-forms', [file.file_path]);
 
       if (storageError) console.warn('Storage delete failed:', storageError);
 
@@ -416,9 +413,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const { data, error } = await supabase.storage
-      .from('vownet-forms')
-      .download(file.file_path);
+    const { data, error } = await downloadFile('vownet-forms', file.file_path);
 
     if (error) {
       toast.error('Failed to download file');

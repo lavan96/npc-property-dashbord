@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, Landmark, Shield, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadFile } from '@/lib/storage/signedStorage';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -2946,12 +2947,15 @@ export function PortfolioAnalysisPDFGenerator({
       console.log('📤 Uploading PDF to storage...');
       let uploadedFilePath: string | null = null;
       try {
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('client-files')
-          .upload(storagePath, blob, {
+        const { data: uploadData, error: uploadError } = await uploadFile(
+          'client-files',
+          storagePath,
+          blob,
+          {
             contentType: 'application/pdf',
             upsert: true,
-          });
+          }
+        );
         
         if (uploadError) {
           console.error('Storage upload error:', uploadError);

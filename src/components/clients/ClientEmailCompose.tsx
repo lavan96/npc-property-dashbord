@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { createSignedDownloadUrl } from '@/lib/storage/signedStorage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -141,9 +142,11 @@ export function ClientEmailCompose({
           const attachment = attachments.find(a => a.id === attachmentId);
           if (!attachment) return null;
 
-          const { data } = await supabase.storage
-            .from('client-documents')
-            .createSignedUrl(attachment.file_path, 3600); // 1 hour expiry
+          const { data } = await createSignedDownloadUrl(
+            'client-documents',
+            attachment.file_path,
+            3600
+          ); // 1 hour expiry
 
           return {
             name: attachment.file_name,

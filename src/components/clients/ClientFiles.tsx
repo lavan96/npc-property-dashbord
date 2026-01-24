@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadFile, removeFiles, uploadFile } from '@/lib/storage/signedStorage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -82,9 +83,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${clientId}/${Date.now()}_${file.name}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('client-files')
-        .upload(fileName, file);
+      const { data: uploadData, error: uploadError } = await uploadFile(
+        'client-files',
+        fileName,
+        file
+      );
 
       if (uploadError) throw uploadError;
 
@@ -119,9 +122,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const deleteFileMutation = useMutation({
     mutationFn: async (file: { id: string; file_path: string }) => {
       // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('client-files')
-        .remove([file.file_path]);
+      const { error: storageError } = await removeFiles('client-files', [file.file_path]);
 
       if (storageError) console.warn('Storage delete failed:', storageError);
 
@@ -159,9 +160,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const { data, error } = await supabase.storage
-      .from('client-files')
-      .download(file.file_path);
+    const { data, error } = await downloadFile('client-files', file.file_path);
 
     if (error) {
       toast.error('Failed to download file');

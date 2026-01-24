@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadFile } from '@/lib/storage/signedStorage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,9 +97,7 @@ export function QATemplateUploader({ onUploadComplete }: QATemplateUploaderProps
       const filePath = `qa_export/${Date.now()}-${file.name}`;
 
       // Upload file to storage
-      const { error: uploadError } = await supabase.storage
-        .from('report-templates')
-        .upload(filePath, file);
+      const { error: uploadError } = await uploadFile('report-templates', filePath, file);
 
       if (uploadError) throw uploadError;
 

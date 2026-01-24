@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadFile, removeFiles } from '@/lib/storage/signedStorage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -115,9 +116,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
   const deleteMutation = useMutation({
     mutationFn: async (template: Template) => {
       // Delete from storage
-      await supabase.storage
-        .from('report-templates')
-        .remove([template.file_path]);
+      await removeFiles('report-templates', [template.file_path]);
 
       // Delete document chunks (for AI templates)
       await supabase
@@ -207,9 +206,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
   // Download template
   const handleDownload = async (template: Template) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('report-templates')
-        .download(template.file_path);
+      const { data, error } = await downloadFile('report-templates', template.file_path);
 
       if (error) throw error;
 

@@ -30,6 +30,7 @@ import {
 import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
+import { removeFiles, uploadFile } from '@/lib/storage/signedStorage';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
@@ -53,12 +54,10 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
     const fileExt = fileName.split('.').pop() || 'png';
     const filePath = `${logoType}/${Date.now()}.${fileExt}`;
     
-    const { data, error } = await supabase.storage
-      .from('branding-assets')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
+    const { data, error } = await uploadFile('branding-assets', filePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
 
     if (error) throw error;
 
@@ -153,7 +152,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
       try {
         const path = currentLogo.split('branding-assets/')[1];
         if (path) {
-          await supabase.storage.from('branding-assets').remove([path]);
+          await removeFiles('branding-assets', [path]);
         }
       } catch (error) {
         console.error('Failed to delete from storage:', error);
@@ -269,12 +268,10 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
     const fileExt = fileName.split('.').pop() || 'png';
     const filePath = `email-signature/${Date.now()}.${fileExt}`;
     
-    const { data, error } = await supabase.storage
-      .from('branding-assets')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
+    const { data, error } = await uploadFile('branding-assets', filePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
 
     if (error) throw error;
 
@@ -347,7 +344,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
       try {
         const path = currentBanner.split('branding-assets/')[1];
         if (path) {
-          await supabase.storage.from('branding-assets').remove([path]);
+          await removeFiles('branding-assets', [path]);
         }
       } catch (error) {
         console.error('Failed to delete from storage:', error);

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadFile } from '@/lib/storage/signedStorage';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -235,9 +236,11 @@ export function ClientVownetUpload({
       // Store the Vownet form in storage
       if (uploadedFile) {
         const filePath = `${clientId}/${Date.now()}_${uploadedFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('client-documents')
-          .upload(filePath, uploadedFile);
+        const { error: uploadError } = await uploadFile(
+          'client-documents',
+          filePath,
+          uploadedFile
+        );
 
         if (!uploadError) {
           // Record in client_files table

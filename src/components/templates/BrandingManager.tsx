@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { removeFiles, uploadFile } from '@/lib/storage/signedStorage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -111,9 +112,7 @@ export function BrandingManager({ profiles, isLoading }: BrandingManagerProps) {
       // Upload logo if provided
       if (logoFile) {
         const filePath = `client-branding/${Date.now()}-${logoFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('report-templates')
-          .upload(filePath, logoFile);
+        const { error: uploadError } = await uploadFile('report-templates', filePath, logoFile);
 
         if (uploadError) throw uploadError;
         logoPath = filePath;
@@ -179,9 +178,7 @@ export function BrandingManager({ profiles, isLoading }: BrandingManagerProps) {
   const deleteMutation = useMutation({
     mutationFn: async (profile: BrandingProfile) => {
       if (profile.logo_path) {
-        await supabase.storage
-          .from('report-templates')
-          .remove([profile.logo_path]);
+        await removeFiles('report-templates', [profile.logo_path]);
       }
 
       const { error } = await supabase

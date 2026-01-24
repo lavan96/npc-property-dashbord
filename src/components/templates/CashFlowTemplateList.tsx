@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadFile, removeFiles } from '@/lib/storage/signedStorage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -112,9 +113,7 @@ export function CashFlowTemplateList() {
   const handleDelete = async (template: CashFlowTemplate) => {
     try {
       // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('report-templates')
-        .remove([template.file_path]);
+      const { error: storageError } = await removeFiles('report-templates', [template.file_path]);
 
       if (storageError) {
         console.warn('Storage delete warning:', storageError);
@@ -153,9 +152,7 @@ export function CashFlowTemplateList() {
 
   const handleDownload = async (template: CashFlowTemplate) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('report-templates')
-        .download(template.file_path);
+      const { data, error } = await downloadFile('report-templates', template.file_path);
 
       if (error) throw error;
 
