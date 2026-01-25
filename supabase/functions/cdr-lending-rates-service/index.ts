@@ -392,9 +392,6 @@ Deno.serve(async (req) => {
       if (body.repayment) repaymentType = body.repayment;
       if (body.lvr !== undefined) lvr = parseFloat(body.lvr);
       if (body.refresh) forceRefresh = body.refresh === true || body.refresh === 'true';
-      } catch (e) {
-        // No body or invalid JSON, continue with query params
-      }
     }
 
     console.log(`[CDR] Action: ${action}, Lender: ${lenderId}, Purpose: ${loanPurpose}, LVR: ${lvr}`);
