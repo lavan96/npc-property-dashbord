@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -353,6 +354,9 @@ async function setCachedRates(supabase: any, lenderId: string, rates: LendingRat
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -361,6 +365,15 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // SECURITY: Verify authentication
+    const body = await req.json().catch(() => ({}));
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[cdr-lending-rates-service] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[cdr-lending-rates-service] Authenticated user: ${userId}`);
 
     // Support both GET query params and POST body
     const url = new URL(req.url);
@@ -371,16 +384,14 @@ Deno.serve(async (req) => {
     let lvr = url.searchParams.get('lvr') ? parseFloat(url.searchParams.get('lvr')!) : null;
     let forceRefresh = url.searchParams.get('refresh') === 'true';
 
-    // Parse POST body if present
-    if (req.method === 'POST') {
-      try {
-        const body = await req.json();
-        if (body.action) action = body.action;
-        if (body.lender) lenderId = body.lender;
-        if (body.purpose) loanPurpose = body.purpose;
-        if (body.repayment) repaymentType = body.repayment;
-        if (body.lvr !== undefined) lvr = parseFloat(body.lvr);
-        if (body.refresh) forceRefresh = body.refresh === true || body.refresh === 'true';
+    // Parse POST body if present (body already parsed for auth, reuse it)
+    if (req.method === 'POST' && body && typeof body === 'object') {
+      if (body.action) action = body.action;
+      if (body.lender) lenderId = body.lender;
+      if (body.purpose) loanPurpose = body.purpose;
+      if (body.repayment) repaymentType = body.repayment;
+      if (body.lvr !== undefined) lvr = parseFloat(body.lvr);
+      if (body.refresh) forceRefresh = body.refresh === true || body.refresh === 'true';
       } catch (e) {
         // No body or invalid JSON, continue with query params
       }

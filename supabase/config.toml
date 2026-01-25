@@ -146,7 +146,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.abs-seifa-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.crime-statistics-service]
 verify_jwt = false
@@ -164,7 +164,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.import-schools-data]
-verify_jwt = false
+verify_jwt = true
 
 [functions.compare-investment-reports]
 verify_jwt = true
@@ -175,7 +175,7 @@ verify_jwt = true
 request_timeout = 150
 
 [functions.migrate-comparison-scores]
-verify_jwt = false
+verify_jwt = true
 
 [functions.format-comparison-report]
 verify_jwt = true
@@ -206,13 +206,13 @@ request_timeout = 300
 verify_jwt = true
 
 [functions.outlook-email-sync]
-verify_jwt = false
+verify_jwt = true
 
 [functions.outlook-email-webhook]
 verify_jwt = false
 
 [functions.outlook-manage-subscription]
-verify_jwt = false
+verify_jwt = true
 
 [functions.vapi-call-webhook]
 verify_jwt = false
@@ -224,10 +224,10 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.sqm-rent-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.import-suburb-directory]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.send-call-alert-email]
@@ -237,10 +237,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.cleanup-stale-calls]
-verify_jwt = false
+verify_jwt = true
 
 [functions.compare-cash-flow-reports]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.report-qa]
@@ -270,7 +270,7 @@ request_timeout = 120
 verify_jwt = true
 
 [functions.ghl-calendar-test]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ghl-calendar]
 verify_jwt = true
@@ -313,10 +313,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.check-integration-secrets]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-integration-secret]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sync-client-to-ghl]
 verify_jwt = true
@@ -326,7 +326,7 @@ verify_jwt = true
 request_timeout = 120
 
 [functions.clean-note-transcript]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sync-ghl-pipelines]
 verify_jwt = true
@@ -339,7 +339,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.cdr-lending-rates-service]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.get-client-data]
@@ -349,7 +349,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.user-guide-assistant]
-verify_jwt = false
+verify_jwt = true
 
 [functions.manage-automation-settings]
 verify_jwt = true

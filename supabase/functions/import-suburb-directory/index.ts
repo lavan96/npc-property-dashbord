@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse, createForbiddenResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +8,9 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,6 +19,28 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // SECURITY: Verify authentication and admin role (data import should be admin-only)
+    const body = await req.json().catch(() => ({}));
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[import-suburb-directory] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .in('role', ['superadmin', 'admin'])
+      .single();
+
+    if (roleError || !roleData) {
+      console.warn(`User ${userId} attempted to import suburb directory without admin role.`);
+      return createForbiddenResponse('Forbidden: Admin access required', corsHeaders);
+    }
+    console.log(`[import-suburb-directory] Admin user ${userId} importing suburb directory`);
 
     console.log('🌏 Fetching Australian suburb directory from Matthew Proctor dataset...');
     
