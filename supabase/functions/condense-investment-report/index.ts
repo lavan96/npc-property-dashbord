@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -209,6 +210,9 @@ REPORT STRUCTURE (~5 PAGES):
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -217,8 +221,20 @@ serve(async (req) => {
   console.log('=== Condense Investment Report Function Started ===');
 
   try {
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
     const requestBody = await req.json();
     const { parentReportId, targetTier } = requestBody;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, requestBody);
+    if (authError) {
+      console.log('[condense-investment-report] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[condense-investment-report] Authenticated user: ${userId}`);
 
     console.log('Request params:', { parentReportId, targetTier });
 

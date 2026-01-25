@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createForbiddenResponse } from '../_shared/auth.ts';
 
 type CacheTable = 
   | 'suburb_directory'
@@ -46,16 +46,27 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: RequestBody = await req.json();
-    const sessionToken = extractSessionToken(req.headers, body);
-
-    // Validate session
-    const { error: authError, userId } = await verifySession(supabase, sessionToken);
+    
+    // SECURITY: Verify authentication and admin role
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[manage-data-import] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
+    
+    // Check if user has admin role (data import should be admin-only)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .in('role', ['superadmin', 'admin'])
+      .single();
 
-    console.log(`[manage-data-import] Authenticated user ${userId}, operation: ${body.operation}, table: ${body.table}`);
+    if (roleError || !roleData) {
+      console.warn(`User ${userId} attempted to manage data import without admin role.`);
+      return createForbiddenResponse('Forbidden: Admin access required', corsHeaders);
+    }
+    console.log(`[manage-data-import] Admin user ${userId}, operation: ${body.operation}, table: ${body.table}`);
 
     const { operation, table, data, queryOptions = {} } = body;
 

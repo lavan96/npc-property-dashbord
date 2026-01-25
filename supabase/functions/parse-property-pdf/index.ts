@@ -1,5 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -560,6 +562,9 @@ function buildFullAddress(
 // ============= MAIN HANDLER =============
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   console.log('🏠 Parse property PDF function invoked');
   
   if (req.method === 'OPTIONS') {
@@ -567,7 +572,19 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
     const body = await req.json();
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[parse-property-pdf] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[parse-property-pdf] Authenticated user: ${userId}`);
     const { 
       pageImages,        // Array of page images from client-side PDF rendering
       singleImage,       // Single image file (for direct image uploads)

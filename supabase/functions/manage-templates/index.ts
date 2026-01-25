@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
 type TableName = 'report_structure_templates' | 'client_branding_profiles' | 'integration_configs' | 'depreciation_comps' | 'depreciation_estimator_runs' | 'charts' | 'chart_analysis' | 'chart_configurations' | 'global_report_settings' | 'finance_agent_contacts' | 'bulk_generation_jobs' | 'property_comparisons';
 
@@ -65,10 +65,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: RequestBody = await req.json();
-    const sessionToken = extractSessionToken(req.headers, body);
-
-    // Validate session
-    const { error: authError, userId } = await verifySession(supabase, sessionToken);
+    
+    // SECURITY: Verify authentication
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[manage-templates] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);

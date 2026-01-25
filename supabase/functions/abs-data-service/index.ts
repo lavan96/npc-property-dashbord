@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,9 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   console.log('📊 ABS data service invoked');
   
   if (req.method === 'OPTIONS') {
@@ -15,13 +19,22 @@ serve(async (req) => {
   }
 
   try {
-    const { postcode, suburb, state } = await req.json();
-    console.log('Fetching ABS data for:', { postcode, suburb, state });
-
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // SECURITY: Verify authentication
+    const body = await req.json();
+    const { postcode, suburb, state } = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[abs-data-service] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[abs-data-service] Authenticated user: ${userId}`);
+    console.log('Fetching ABS data for:', { postcode, suburb, state });
 
     const absData = await fetchABSData(supabase, postcode, suburb, state);
     

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,6 +72,9 @@ const STAGE_COLORS = [
 ];
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -80,7 +84,7 @@ serve(async (req) => {
     const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
+    
     if (!apiKey || !locationId) {
       console.error('GHL credentials not configured');
       return new Response(JSON.stringify({ 
@@ -103,7 +107,16 @@ serve(async (req) => {
       });
     }
 
+    // SECURITY: Verify authentication
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const body = await req.json().catch(() => ({}));
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[sync-ghl-pipelines] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[sync-ghl-pipelines] Authenticated user: ${userId}`);
 
     const headers = {
       'Authorization': `Bearer ${apiKey}`,

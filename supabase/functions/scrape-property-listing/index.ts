@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -299,6 +301,9 @@ Rules:
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   console.log("scrape-property-listing invoked", { method: req.method });
 
   if (req.method === "OPTIONS") {
@@ -306,7 +311,20 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json();
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const body = await req.json();
+    const { url } = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[scrape-property-listing] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[scrape-property-listing] Authenticated user: ${userId}`);
 
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {

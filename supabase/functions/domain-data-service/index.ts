@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,11 +35,28 @@ let lastSuccessfulCall: Date | null = null;
 let consecutiveFailures = 0;
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const body = await req.json();
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[domain-data-service] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[domain-data-service] Authenticated user: ${userId}`);
+    
     const domainApiKey = Deno.env.get('DOMAIN_API_KEY');
     if (!domainApiKey) {
       console.error('❌ DOMAIN_API_KEY not configured in environment');
@@ -51,7 +70,7 @@ serve(async (req) => {
       );
     }
 
-    const { suburb, state, postcode, propertyCategory = 'house', healthCheck }: DomainDataRequest = await req.json();
+    const { suburb, state, postcode, propertyCategory = 'house', healthCheck }: DomainDataRequest = body;
 
     // Health check endpoint
     if (healthCheck) {

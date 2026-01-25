@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,6 +78,9 @@ const LVR_RATE_TIERS = {
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   console.log('Financial calculator service invoked with method:', req.method);
   
   if (req.method === 'OPTIONS') {
@@ -93,7 +97,16 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
-    const input: LoanCalculationInput = await req.json();
+    // SECURITY: Verify authentication
+    const body = await req.json();
+    const input: LoanCalculationInput = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[financial-calculator-service] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[financial-calculator-service] Authenticated user: ${userId}`);
     console.log('Calculating financial projections for:', input);
 
     const calculations = await calculateFinancialProjections(input, supabase);

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -168,6 +169,9 @@ function buildAddress(listing: ListingData & { propertyName?: string; zipcode?: 
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -181,13 +185,20 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // SECURITY: Verify authentication
+    const body = await req.json();
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[auto-report-sync] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[auto-report-sync] Authenticated user: ${userId}`);
+
     // Parse request body for options
     let maxRecords = 50;
     let dryRun = false;
-    try {
-      const body = await req.json();
-      maxRecords = body.maxRecords || 50;
-      dryRun = body.dryRun || false;
+    maxRecords = body.maxRecords || 50;
+    dryRun = body.dryRun || false;
     } catch {
       // No body or invalid JSON - use defaults
     }

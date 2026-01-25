@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 interface ActivityLogRequest {
   user_id: string;
@@ -16,6 +12,9 @@ interface ActivityLogRequest {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -27,8 +26,30 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get request body
+    // SECURITY: Verify authentication
     const body: ActivityLogRequest = await req.json();
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[log-activity] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[log-activity] Authenticated user: ${userId}`);
+    
+    // Validate that the user_id in the request matches the authenticated user
+    if (body.user_id && body.user_id !== userId) {
+      console.warn(`[log-activity] User ${userId} attempted to log activity for user ${body.user_id}`);
+      return new Response(
+        JSON.stringify({ error: 'Cannot log activity for another user' }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Override user_id with authenticated user
+    body.user_id = userId;
     
     // Get IP address and user agent from headers
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 

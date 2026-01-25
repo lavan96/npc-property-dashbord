@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -23,11 +25,20 @@ interface CallAlertEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const body = await req.json();
     const {
       to,
       alertName,
@@ -40,7 +51,14 @@ const handler = async (req: Request): Promise<Response> => {
       cost,
       message,
       isPositive,
-    }: CallAlertEmailRequest = await req.json();
+    }: CallAlertEmailRequest = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[send-call-alert-email] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[send-call-alert-email] Authenticated user: ${userId}`);
 
     console.log(`Sending call alert email to ${to} for alert: ${alertName}`);
 

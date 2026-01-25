@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -313,6 +314,9 @@ async function processChunksInBatches(
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -325,6 +329,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    const body = await req.json();
     const { 
       templateId, 
       filePath, 
@@ -332,7 +337,15 @@ serve(async (req) => {
       reportTier, 
       reportCategory,
       useAIExtraction = true // Default to AI extraction for better results
-    }: TemplateParseRequest = await req.json();
+    }: TemplateParseRequest = body;
+    
+    // SECURITY: Verify authentication
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[parse-template-document] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[parse-template-document] Authenticated user: ${userId}`);
     
     console.log(`📄 Parsing template: ${templateId}, file: ${filePath}, AI extraction: ${useAIExtraction}`);
     

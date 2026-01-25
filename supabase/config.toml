@@ -111,36 +111,39 @@ verify_jwt = false
 [functions.airtable-proxy]
 verify_jwt = false
 
+[functions.generate-chart-images]
+verify_jwt = true
+
 [functions.generate-charts-python]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-chart-analysis]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-investment-report]
 verify_jwt = true
 request_timeout = 900
 
 [functions.abs-data-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.rba-data-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.financial-calculator-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.location-intelligence-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.investment-scoring-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.domain-data-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.risk-assessment-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.abs-seifa-service]
 verify_jwt = false
@@ -164,7 +167,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.compare-investment-reports]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.generate-bulk-reports]
@@ -175,20 +178,20 @@ request_timeout = 150
 verify_jwt = false
 
 [functions.format-comparison-report]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 60
 
 [functions.financial-validation-service]
-verify_jwt = false
+verify_jwt = true
 
 [functions.report-schema-validator]
-verify_jwt = false
+verify_jwt = true
 
 [functions.data-conflict-resolver]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-stamp-duty-rates]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.auto-report-webhook]
@@ -196,7 +199,7 @@ verify_jwt = false
 request_timeout = 180
 
 [functions.auto-report-sync]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 300
 
 [functions.email-copilot]
@@ -228,10 +231,10 @@ verify_jwt = false
 request_timeout = 120
 
 [functions.send-call-alert-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-weekly-call-report]
-verify_jwt = false
+verify_jwt = true
 
 [functions.cleanup-stale-calls]
 verify_jwt = false
@@ -241,36 +244,36 @@ verify_jwt = false
 request_timeout = 120
 
 [functions.report-qa]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 60
 
 [functions.condense-investment-report]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.scrape-property-listing]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 60
 
 [functions.estimate-property-expenses]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-property-pdf]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 60
 
 [functions.parse-template-document]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.retrieve-template-context]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ghl-calendar-test]
 verify_jwt = false
 
 [functions.ghl-calendar]
-verify_jwt = false
+verify_jwt = true
 
 [functions.admin-password-reset]
 verify_jwt = true
@@ -297,17 +300,17 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.regenerate-report-qualitative]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 540
 
 [functions.archive-old-reports]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fix-report-status]
-verify_jwt = false
+verify_jwt = true
 
 [functions.log-activity]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-integration-secrets]
 verify_jwt = false
@@ -319,21 +322,21 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.generate-portfolio-analysis]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.clean-note-transcript]
 verify_jwt = false
 
 [functions.sync-ghl-pipelines]
-verify_jwt = false
+verify_jwt = true
 request_timeout = 120
 
 [functions.update-ghl-opportunity-stage]
-verify_jwt = false
+verify_jwt = true
 
 [functions.calculate-borrowing-capacity]
-verify_jwt = false
+verify_jwt = true
 
 [functions.cdr-lending-rates-service]
 verify_jwt = false
@@ -347,3 +350,15 @@ verify_jwt = true
 
 [functions.user-guide-assistant]
 verify_jwt = false
+
+[functions.manage-automation-settings]
+verify_jwt = true
+
+[functions.manage-data-import]
+verify_jwt = true
+
+[functions.manage-templates]
+verify_jwt = true
+
+[functions.get-system-logs]
+verify_jwt = true

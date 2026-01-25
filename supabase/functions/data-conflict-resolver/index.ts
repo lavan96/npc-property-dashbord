@@ -1,5 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +59,9 @@ const SOURCE_PRIORITIES: Record<string, number> = {
 };
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   console.log('Data conflict resolver invoked with method:', req.method);
   
   if (req.method === 'OPTIONS') {
@@ -64,7 +69,20 @@ serve(async (req) => {
   }
 
   try {
-    const { dataSources, dataType, field } = await req.json();
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const body = await req.json();
+    const { dataSources, dataType, field } = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[data-conflict-resolver] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[data-conflict-resolver] Authenticated user: ${userId}`);
     
     if (!dataSources || !Array.isArray(dataSources) || dataSources.length === 0) {
       return new Response(JSON.stringify({ 

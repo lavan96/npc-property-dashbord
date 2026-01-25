@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createCorsHeaders } from '../_shared/auth.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -71,6 +72,11 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
     const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
     const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
     
@@ -94,6 +100,13 @@ serve(async (req) => {
     } catch {
       body = {};
     }
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[ghl-calendar] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[ghl-calendar] Authenticated user: ${userId}`);
 
     const action = url.searchParams.get('action') || body.action || 'all';
     const calendarId = url.searchParams.get('calendarId') || body.calendarId || null;

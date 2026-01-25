@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse, createForbiddenResponse } from '../_shared/auth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +62,9 @@ const STATE_CONFIGS: StateConfig[] = [
 ]
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -80,7 +84,29 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { states } = await req.json()
+    // SECURITY: Verify authentication and admin role
+    const body = await req.json();
+    const { states } = body;
+    
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[update-stamp-duty-rates] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    
+    // Check if user has admin role (rate updates should be admin-only)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .in('role', ['superadmin', 'admin'])
+      .single();
+
+    if (roleError || !roleData) {
+      console.warn(`User ${userId} attempted to update stamp duty rates without admin role.`);
+      return createForbiddenResponse('Forbidden: Admin access required', corsHeaders);
+    }
+    console.log(`[update-stamp-duty-rates] Admin user ${userId} updating stamp duty rates`);
     const statesToUpdate = states || STATE_CONFIGS.map(c => c.state)
 
     console.log(`Updating stamp duty rates for states: ${statesToUpdate.join(', ')}`)

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifySession, extractSessionToken, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createForbiddenResponse } from "../_shared/auth.ts";
 
 /**
  * Edge function to manage automation settings
@@ -49,15 +49,27 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: RequestBody = await req.json();
-    const sessionToken = extractSessionToken(req.headers, body);
-    const { error: authError, userId, username } = await verifySession(supabase, sessionToken);
-
+    
+    // SECURITY: Verify authentication and admin role
+    const { error: authError, userId, username } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[manage-automation-settings] Auth error:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
+    
+    // Check if user has admin role (automation settings should be admin-only)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .in('role', ['superadmin', 'admin'])
+      .single();
 
-    console.log(`[manage-automation-settings] User: ${username}, Operation: ${body.operation}`);
+    if (roleError || !roleData) {
+      console.warn(`User ${userId} attempted to manage automation settings without admin role.`);
+      return createForbiddenResponse('Forbidden: Admin access required', corsHeaders);
+    }
+    console.log(`[manage-automation-settings] Admin user: ${username || userId}, Operation: ${body.operation}`);
 
     const { operation, data, switchId, clientId } = body;
 
