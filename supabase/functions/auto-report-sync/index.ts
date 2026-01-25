@@ -195,13 +195,8 @@ serve(async (req) => {
     console.log(`[auto-report-sync] Authenticated user: ${userId}`);
 
     // Parse request body for options
-    let maxRecords = 50;
-    let dryRun = false;
-    maxRecords = body.maxRecords || 50;
-    dryRun = body.dryRun || false;
-    } catch {
-      // No body or invalid JSON - use defaults
-    }
+    const maxRecords = body.maxRecords || 50;
+    const dryRun = body.dryRun || false;
 
     console.log(`[Auto-Report Sync] Starting sync (maxRecords: ${maxRecords}, dryRun: ${dryRun})`);
 
