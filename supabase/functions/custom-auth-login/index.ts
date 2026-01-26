@@ -132,6 +132,7 @@ serve(async (req) => {
         },
         roles,
         access_token: accessToken,  // Supabase-compatible JWT
+        session_token: sessionToken, // Include for sessionStorage fallback (cross-origin cookie issues)
         expires_at: expiresAt.toISOString()
       }),
       { 

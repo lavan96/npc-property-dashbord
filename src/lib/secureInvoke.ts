@@ -13,11 +13,11 @@ export interface InvokeResult<T = any> {
 }
 
 /**
- * Get session token from localStorage
+ * Get session token from sessionStorage (stored during login as fallback for cross-origin cookie issues)
  */
 function getSessionToken(): string | null {
   try {
-    return localStorage.getItem('session_token');
+    return sessionStorage.getItem('session_token');
   } catch {
     return null;
   }

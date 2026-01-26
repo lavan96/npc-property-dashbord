@@ -144,6 +144,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessToken(data.access_token);
       }
       
+      // Store session token as fallback for cross-origin cookie issues
+      // This is needed because HttpOnly cookies may not be sent cross-origin in some browsers
+      if (data.session_token) {
+        sessionStorage.setItem('session_token', data.session_token);
+      }
+      
       // Cache user data in sessionStorage for activity logging
       sessionStorage.setItem('current_user', JSON.stringify({
         id: data.user.id,
