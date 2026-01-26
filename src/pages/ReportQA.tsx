@@ -599,12 +599,17 @@ export default function ReportQA() {
         ? [uploadedReports[activeReportIndex]]
         : uploadedReports;
       
+      // Get session token from sessionStorage for authentication
+      const sessionToken = sessionStorage.getItem('session_token');
+      
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_KEY}`,
+          ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
         },
+        credentials: 'include', // Required for HttpOnly cookies
         body: JSON.stringify({
           action: 'chat',
           reportContents: reportsToUse.map(r => r.content),
@@ -613,6 +618,7 @@ export default function ReportQA() {
           chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
           conversationId: activeConversationId,
           stream: true,
+          session_token: sessionToken, // Add session token to body as fallback
         }),
       });
 
