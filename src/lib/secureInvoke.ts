@@ -1,6 +1,7 @@
 /**
  * Secure Edge Function invocation helper
  * Supports HttpOnly cookies for session authentication
+ * Includes fallback session token in body for cross-origin cookie issues
  */
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
@@ -9,6 +10,17 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export interface InvokeResult<T = any> {
   data: T | null;
   error: { message: string } | null;
+}
+
+/**
+ * Get session token from localStorage
+ */
+function getSessionToken(): string | null {
+  try {
+    return localStorage.getItem('session_token');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -24,15 +36,25 @@ export async function invokeSecureFunction<T = any>(
   body?: Record<string, any>
 ): Promise<InvokeResult<T>> {
   try {
+    // Get session token as fallback for cross-origin cookie issues
+    const sessionToken = getSessionToken();
+    
+    // Include session token in body as fallback if cookies fail
+    const requestBody = body 
+      ? { ...body, session_token: sessionToken }
+      : { session_token: sessionToken };
+    
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        // Add session token as custom header for additional fallback
+        ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
       credentials: 'include', // Required for HttpOnly cookies
-      body: body ? JSON.stringify(body) : undefined,
+      body: JSON.stringify(requestBody),
     });
 
     const data = await response.json();

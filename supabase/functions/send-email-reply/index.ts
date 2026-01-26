@@ -199,13 +199,13 @@ serve(async (req) => {
       // Body is already HTML, preserve it
       if (hasSignature) {
         if (isHtmlSignature) {
-          finalBody = `${body}<br><br>${signature}`;
+          finalBody = `${emailBody}<br><br>${signature}`;
         } else {
           // Convert plain text signature to HTML
-          finalBody = `${body}<br><br>${signature.replace(/\n/g, '<br>')}`;
+          finalBody = `${emailBody}<br><br>${signature.replace(/\n/g, '<br>')}`;
         }
       } else {
-        finalBody = body;
+        finalBody = emailBody;
       }
       contentType = 'HTML';
       console.log('[Send Email] Body detected as HTML, preserving formatting');
@@ -213,7 +213,7 @@ serve(async (req) => {
       if (isHtmlSignature) {
         // Convert plain text body to HTML and append HTML signature
         // Preserve paragraphs by converting double newlines to paragraph breaks
-        const htmlBody = body
+        const htmlBody = emailBody
           .split(/\n\n+/)
           .map(para => `<p style="margin: 0 0 1em 0;">${para.replace(/\n/g, '<br>')}</p>`)
           .join('');
@@ -221,12 +221,12 @@ serve(async (req) => {
         contentType = 'HTML';
       } else {
         // Both are plain text
-        finalBody = `${body}\n\n${signature}`;
+        finalBody = `${emailBody}\n\n${signature}`;
         contentType = 'Text';
       }
       console.log('[Send Email] Appended database signature to email');
     } else {
-      finalBody = body;
+      finalBody = emailBody;
       contentType = 'Text';
     }
 
