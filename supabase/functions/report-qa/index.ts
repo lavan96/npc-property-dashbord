@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+<<<<<<< HEAD
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
@@ -29,6 +30,12 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
     'Vary': 'Origin',
   };
 }
+=======
+import { Resend } from "npm:resend@2.0.0";
+import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "npm:pdf-lib@1.17.1";
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+>>>>>>> db79c45 (Fix authentication issues in email-copilot and report-qa functions)
 
 // Process base64 in chunks to prevent memory issues
 function processBase64Chunks(base64String: string, chunkSize = 32768) {
@@ -292,6 +299,7 @@ serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -301,16 +309,25 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     
-    // SECURITY: Verify authentication
-    const body = await req.json();
-    const { action } = body;
+    // Parse body with error handling - session token may be in headers/cookies
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.log('[report-qa] Body parsing failed (may be empty), continuing with empty body:', err);
+      // Continue - session token should be in headers/cookies
+    }
     
+    // SECURITY: Verify authentication
+    // IMPORTANT: verifyAuth checks headers/cookies first, then body
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[report-qa] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log(`[report-qa] Authenticated user: ${userId}`);
+    
+    const { action } = body;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");

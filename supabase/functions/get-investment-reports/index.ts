@@ -53,9 +53,17 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const body: RequestBody = await req.json();
+    // Parse body with error handling - session token may be in headers/cookies
+    let body: RequestBody = {};
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.log('[get-investment-reports] Body parsing failed (may be empty), continuing with empty body:', err);
+      // Continue - session token should be in headers/cookies
+    }
 
     // Validate authentication (JWT first, then session token)
+    // IMPORTANT: verifyAuth checks headers/cookies first, then body
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[get-investment-reports] Auth failed:', authError);

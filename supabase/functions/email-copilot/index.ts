@@ -3,11 +3,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -27,28 +22,6 @@ interface SummaryOutput {
   urgencyLevel: 'low' | 'medium' | 'high';
 }
 
-// Dynamic CORS headers for credential support
-function createCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://lovable.dev',
-  ];
-  
-  const isAllowed = origin && (
-    allowedOrigins.includes(origin) ||
-    origin.endsWith('.lovable.app') ||
-    origin.endsWith('.lovableproject.com')
-  );
-
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://lovable.dev',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
-
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createAuthCorsHeaders(origin);
@@ -59,12 +32,21 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    // Parse body with error handling - session token may be in headers/cookies
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.log('[email-copilot] Body parsing failed (may be empty), continuing with empty body:', err);
+      // Continue - session token should be in headers/cookies
+    }
+
     const { action, email, emailId, linkedPropertyAddress, replyContext, clientId } = body;
     
     console.log(`[Email Copilot] Action: ${action}, EmailId: ${emailId || 'N/A'}, ClientId: ${clientId || 'N/A'}`);
 
     // SECURITY: Verify authentication
+    // IMPORTANT: verifyAuth checks headers/cookies first, then body
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {

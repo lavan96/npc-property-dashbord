@@ -23,8 +23,11 @@ export async function verifySession(
   sessionToken: string | null | undefined
 ): Promise<SessionValidationResult> {
   if (!sessionToken) {
+    console.log('[verifySession] No session token provided');
     return { error: 'Authentication required', userId: null, username: null };
   }
+
+  console.log('[verifySession] Verifying session token:', sessionToken.substring(0, 8) + '...');
 
   try {
     const { data: session, error: sessionError } = await supabase
@@ -34,15 +37,25 @@ export async function verifySession(
       .gt('expires_at', new Date().toISOString())
       .maybeSingle(); // Use maybeSingle() to avoid "Cannot coerce" errors
 
+    if (sessionError) {
+      console.log('[verifySession] Session query error:', sessionError.code, sessionError.message);
+    }
+
     if (sessionError || !session) {
       const errorMsg = sessionError?.message || 'Session not found or expired';
-      console.log('Session validation failed:', errorMsg);
+      console.log('[verifySession] Session validation failed:', errorMsg, {
+        errorCode: sessionError?.code,
+        hasSession: !!session,
+        sessionTokenPreview: sessionToken.substring(0, 8) + '...'
+      });
       // Provide more specific error message
       if (sessionError?.code === 'PGRST116') {
         return { error: 'Session not found', userId: null, username: null };
       }
       return { error: 'Invalid or expired session', userId: null, username: null };
     }
+
+    console.log('[verifySession] Session found, user_id:', session.user_id?.substring(0, 8) + '...');
 
     // Optionally fetch username for logging
     const { data: user } = await supabase
@@ -51,6 +64,11 @@ export async function verifySession(
       .eq('id', session.user_id)
       .maybeSingle(); // Use maybeSingle() to avoid errors if user doesn't exist
 
+    console.log('[verifySession] Session authentication successful:', {
+      userId: session.user_id?.substring(0, 8) + '...',
+      username: user?.username || 'not found'
+    });
+
     return {
       error: null,
       userId: session.user_id,
@@ -58,7 +76,7 @@ export async function verifySession(
       authMethod: 'session',
     };
   } catch (err) {
-    console.error('Session verification error:', err);
+    console.error('[verifySession] Session verification error:', err);
     return { error: 'Session verification failed', userId: null, username: null };
   }
 }
@@ -76,10 +94,23 @@ export async function verifyAuth(
   headers: Headers,
   body?: { session_token?: string }
 ): Promise<SessionValidationResult> {
+  // DIAGNOSTIC: Log all headers for debugging
+  const authHeader = headers.get('authorization');
+  const cookieHeader = headers.get('cookie');
+  const sessionHeader = headers.get('x-session-token');
+  console.log('[verifyAuth] Headers check:', {
+    hasAuthHeader: !!authHeader,
+    authHeaderPrefix: authHeader?.substring(0, 20) + '...',
+    hasCookieHeader: !!cookieHeader,
+    cookieHeaderPreview: cookieHeader ? cookieHeader.substring(0, 50) + '...' : null,
+    hasSessionHeader: !!sessionHeader,
+    hasBody: !!body,
+    bodyHasSessionToken: !!(body?.session_token)
+  });
+
   // First, try to get JWT from Authorization header (when verify_jwt is enabled in Supabase)
   // Supabase automatically validates JWT when verify_jwt=true, so if we get here,
   // the JWT is already validated. We just need to extract the user ID.
-  const authHeader = headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
     const jwtToken = authHeader.substring(7);
     try {
@@ -89,6 +120,8 @@ export async function verifyAuth(
         const payload = JSON.parse(atob(parts[1]));
         const userId = payload.sub;
         const role = payload.role;
+        
+        console.log('[verifyAuth] JWT decoded:', { userId: userId?.substring(0, 8) + '...', role });
         
         // CRITICAL FIX: Only process user JWTs, not service tokens (anon key)
         // User JWTs from Supabase have role: 'authenticated' or 'service_role'
@@ -104,6 +137,7 @@ export async function verifyAuth(
           
           // Only return success if user exists
           if (!userError && user) {
+            console.log('[verifyAuth] JWT authentication successful:', { userId: userId.substring(0, 8) + '...', username: user.username });
             return {
               error: null,
               userId: userId,
@@ -113,27 +147,32 @@ export async function verifyAuth(
           } else {
             // User JWT is valid but user doesn't exist in custom_users
             // This shouldn't happen, but log it and fall through to session token
-            console.log('JWT user not found in custom_users, falling back to session token:', userId);
+            console.log('[verifyAuth] JWT user not found in custom_users, falling back to session token:', userId?.substring(0, 8) + '...', userError?.message);
           }
         } else {
           // This is likely a service token (anon key) or invalid JWT
           // Don't treat it as a user JWT, fall through to session token check
-          console.log('JWT is not an authenticated user token (role:', role, '), falling back to session token');
+          console.log('[verifyAuth] JWT is not an authenticated user token (role:', role, '), falling back to session token');
         }
       }
     } catch (err) {
-      console.log('JWT extraction failed, falling back to session token:', err);
+      console.log('[verifyAuth] JWT extraction failed, falling back to session token:', err);
       // Fall through to session token check
     }
   }
 
   // Fall back to custom session token authentication
   // This is the primary authentication method for the custom auth system
+  console.log('[verifyAuth] Attempting session token extraction...');
   const sessionToken = extractSessionToken(headers, body);
+  console.log('[verifyAuth] Session token extracted:', sessionToken ? sessionToken.substring(0, 8) + '...' : 'null');
+  
   if (!sessionToken) {
+    console.log('[verifyAuth] No session token found - returning authentication required');
     return { error: 'Authentication required', userId: null, username: null };
   }
 
+  console.log('[verifyAuth] Verifying session token...');
   return await verifySession(supabase, sessionToken);
 }
 
@@ -170,20 +209,30 @@ export function extractSessionToken(
   const cookieHeader = headers.get('cookie');
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
+    console.log('[extractSessionToken] Cookie header found, parsed cookies:', Object.keys(cookies));
     if (cookies['session_token']) {
+      console.log('[extractSessionToken] Found session_token in cookie');
       return cookies['session_token'];
     }
+  } else {
+    console.log('[extractSessionToken] No cookie header found');
   }
 
   // Check custom session header (reliable fallback for cross-origin)
   const sessionHeader = headers.get('x-session-token');
   if (sessionHeader) {
+    console.log('[extractSessionToken] Found session_token in x-session-token header');
     return sessionHeader;
+  } else {
+    console.log('[extractSessionToken] No x-session-token header found');
   }
 
   // Check body parameter (legacy support)
   if (body?.session_token) {
+    console.log('[extractSessionToken] Found session_token in body');
     return body.session_token;
+  } else {
+    console.log('[extractSessionToken] No session_token in body');
   }
 
   // Check Authorization header LAST (only if it doesn't look like a JWT)
@@ -194,12 +243,14 @@ export function extractSessionToken(
     const token = authHeader.substring(7);
     // If it doesn't look like a JWT (no dots), treat it as a session token
     if (!token.includes('.')) {
+      console.log('[extractSessionToken] Found non-JWT token in Authorization header, treating as session token');
       return token;
+    } else {
+      console.log('[extractSessionToken] Authorization header contains JWT, not treating as session token');
     }
-    // If it looks like a JWT, don't treat it as a session token
-    // (it will be handled by verifyAuth's JWT path)
   }
 
+  console.log('[extractSessionToken] No session token found in any location');
   return null;
 }
 
