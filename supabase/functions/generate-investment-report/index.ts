@@ -116,10 +116,10 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   {
     id: 'section11',
     name: 'Risks & Recommendations',
-    sections: ['Top 3 Investment Risks', 'Market Data Sources & Data Transparency', 'Disclaimer & Data Limitations', 'Investment Recommendations', 'Final Conclusion', 'CONTACT US', 'PROFESSIONAL DISCLAIMER'],
+    sections: ['Top 3 Investment Risks', 'Investment Recommendations', 'Final Conclusion'],
     maxTokens: 3500,
-    minContentLength: 3500,
-    requiredKeywords: ['risk', 'recommendation', 'conclusion', 'disclaimer'],
+    minContentLength: 2500,
+    requiredKeywords: ['risk', 'recommendation', 'conclusion'],
   }
 ];
 
@@ -2643,25 +2643,6 @@ Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income befor
 
 ---
 
-# Disclaimer & Data Limitations
-
-**Methodology Notes:**
-- Loan calculations use standard amortization formulas; actual monthly payments will vary slightly based on lender-specific compounding methods
-- Property appreciation projections (2%, 4%, 6%) are illustrative scenarios; actual outcomes depend on macroeconomic conditions, interest rates, and market cycles
-- Cashflow calculations assume constant interest rates and rents; real-world scenarios involve rate resets, rental market fluctuations, and expense inflation
-- Employment and demographic data sourced from ABS; census data supplemented with quarterly estimates; future workforce data represents trend projections
-
-**Recommendations for Verification:**
-- Engage a professional valuer to obtain formal property valuation
-- Conduct environmental hazard verification through State RFS for bushfire risk and AFRIP for flood mapping
-- Obtain rental market assessment through local real estate agents
-- Verify financial serviceability with mortgage broker or lender
-- Conduct pest and building inspection to assess structural condition
-- Model personal tax position with accountant for negative gearing and capital gains implications
-- Obtain local council rates search to verify exact annual charges
-
----
-
 # Investment Recommendations
 
 **Short-term Actions (Prior to Purchase):**
@@ -2757,27 +2738,6 @@ This property warrants serious consideration for investors who (1) verify enviro
 **Analyst Disclaimer:**
 
 This report synthesizes publicly available data and ${documentContent ? 'provided property listing information' : 'generic suburb-level analysis'}. It does not constitute financial advice, property valuation, or legal guidance. Investors must conduct independent verification of all material facts, obtain professional appraisals, and consult with licensed real estate agents, valuers, accountants, and financial advisors prior to making investment commitments.
-
----
-
-# Data Sources
-
-**Market Data Sources:**
-| Metric | Source | URL |
-|--------|--------|-----|
-| Property Market Data | Domain | https://www.domain.com.au |
-| Suburb Statistics | Homely | https://www.homely.com.au |
-| Walk/Transport Scores | Google Maps API | https://maps.google.com |
-
-**Demographic & Economic Data:**
-| Metric | Source | URL |
-|--------|--------|-----|
-| Population & Employment | Australian Bureau of Statistics | https://www.abs.gov.au |
-| SEIFA Indices | ABS Census Data | https://www.abs.gov.au/seifa |
-| Economic Indicators | Reserve Bank of Australia | https://www.rba.gov.au |
-| Crime Statistics | Bureau of Crime Statistics and Research | https://www.bocsar.nsw.gov.au |
-| Climate Data | Bureau of Meteorology | https://www.bom.gov.au |
-| Bushfire Risk | State Rural Fire Service | https://www.rfs.nsw.gov.au |
 
 ---
 
