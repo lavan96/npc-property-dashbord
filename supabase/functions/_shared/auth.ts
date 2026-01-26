@@ -32,10 +32,15 @@ export async function verifySession(
       .select('user_id, expires_at')
       .eq('session_token', sessionToken)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .maybeSingle(); // Use maybeSingle() to avoid "Cannot coerce" errors
 
     if (sessionError || !session) {
-      console.log('Session validation failed:', sessionError?.message || 'Session not found or expired');
+      const errorMsg = sessionError?.message || 'Session not found or expired';
+      console.log('Session validation failed:', errorMsg);
+      // Provide more specific error message
+      if (sessionError?.code === 'PGRST116') {
+        return { error: 'Session not found', userId: null, username: null };
+      }
       return { error: 'Invalid or expired session', userId: null, username: null };
     }
 
@@ -44,7 +49,7 @@ export async function verifySession(
       .from('custom_users')
       .select('username')
       .eq('id', session.user_id)
-      .single();
+      .maybeSingle(); // Use maybeSingle() to avoid errors if user doesn't exist
 
     return {
       error: null,
@@ -83,21 +88,37 @@ export async function verifyAuth(
       if (parts.length === 3) {
         const payload = JSON.parse(atob(parts[1]));
         const userId = payload.sub;
+        const role = payload.role;
         
-        if (userId) {
-          // Fetch username for logging
-          const { data: user } = await supabase
+        // CRITICAL FIX: Only process user JWTs, not service tokens (anon key)
+        // User JWTs from Supabase have role: 'authenticated' or 'service_role'
+        // Service tokens (anon key) have different role claims or no role
+        // We only want to process authenticated user JWTs
+        if (userId && role === 'authenticated') {
+          // Verify the user actually exists in custom_users table
+          const { data: user, error: userError } = await supabase
             .from('custom_users')
-            .select('username')
+            .select('username, id')
             .eq('id', userId)
-            .single();
+            .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
           
-          return {
-            error: null,
-            userId: userId,
-            username: user?.username || null,
-            authMethod: 'jwt',
-          };
+          // Only return success if user exists
+          if (!userError && user) {
+            return {
+              error: null,
+              userId: userId,
+              username: user.username || null,
+              authMethod: 'jwt',
+            };
+          } else {
+            // User JWT is valid but user doesn't exist in custom_users
+            // This shouldn't happen, but log it and fall through to session token
+            console.log('JWT user not found in custom_users, falling back to session token:', userId);
+          }
+        } else {
+          // This is likely a service token (anon key) or invalid JWT
+          // Don't treat it as a user JWT, fall through to session token check
+          console.log('JWT is not an authenticated user token (role:', role, '), falling back to session token');
         }
       }
     } catch (err) {
@@ -107,6 +128,7 @@ export async function verifyAuth(
   }
 
   // Fall back to custom session token authentication
+  // This is the primary authentication method for the custom auth system
   const sessionToken = extractSessionToken(headers, body);
   if (!sessionToken) {
     return { error: 'Authentication required', userId: null, username: null };
@@ -134,8 +156,11 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
 
 /**
  * Extract session token from request headers, cookies, or body
- * Priority: Cookie > Authorization header > x-session-token header > body
+ * Priority: Cookie > x-session-token header > body > Authorization header (only if not a JWT)
  * Supports HttpOnly cookies for XSS protection
+ * 
+ * NOTE: We check Authorization header LAST and only if it doesn't look like a JWT
+ * to avoid treating the Supabase anon key as a session token
  */
 export function extractSessionToken(
   headers: Headers,
@@ -150,13 +175,7 @@ export function extractSessionToken(
     }
   }
 
-  // Check Authorization header (Bearer token)
-  const authHeader = headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-
-  // Check custom session header
+  // Check custom session header (reliable fallback for cross-origin)
   const sessionHeader = headers.get('x-session-token');
   if (sessionHeader) {
     return sessionHeader;
@@ -165,6 +184,20 @@ export function extractSessionToken(
   // Check body parameter (legacy support)
   if (body?.session_token) {
     return body.session_token;
+  }
+
+  // Check Authorization header LAST (only if it doesn't look like a JWT)
+  // JWTs have 3 parts separated by dots (header.payload.signature)
+  // Session tokens are typically UUIDs or random strings without dots
+  const authHeader = headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    // If it doesn't look like a JWT (no dots), treat it as a session token
+    if (!token.includes('.')) {
+      return token;
+    }
+    // If it looks like a JWT, don't treat it as a session token
+    // (it will be handled by verifyAuth's JWT path)
   }
 
   return null;
