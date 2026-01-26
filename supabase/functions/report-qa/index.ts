@@ -1,9 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { Resend } from "npm:resend@2.0.0";
-import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
-import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "npm:pdf-lib@1.17.1";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 // Dynamic CORS headers for credentials support
