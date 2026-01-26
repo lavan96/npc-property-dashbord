@@ -37,15 +37,25 @@ async function invokeEdgeFunction(
   body?: Record<string, any>
 ): Promise<{ data: any; error: any }> {
   try {
+    // Get session token from sessionStorage for authentication fallback
+    const sessionToken = sessionStorage.getItem('session_token');
+    
+    // Include session token in body as fallback if cookies fail
+    const requestBody = body 
+      ? { ...body, session_token: sessionToken }
+      : { session_token: sessionToken };
+    
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        // Add session token as custom header for additional fallback
+        ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
       credentials: 'include', // Required for HttpOnly cookies
-      body: body ? JSON.stringify(body) : undefined,
+      body: JSON.stringify(requestBody),
     });
 
     const data = await response.json();

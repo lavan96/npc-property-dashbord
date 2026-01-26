@@ -129,16 +129,22 @@ export function UserGuideAssistant({ onNavigateToSection }: UserGuideAssistantPr
     }));
 
     try {
+      // Get session token from sessionStorage for authentication
+      const sessionToken = sessionStorage.getItem('session_token');
+      
       const response = await fetch(`${SUPABASE_URL}/functions/v1/user-guide-assistant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
         },
+        credentials: 'include', // Required for HttpOnly cookies
         body: JSON.stringify({
           messages: apiMessages,
           knowledgeBase: knowledgeBaseRef.current,
+          session_token: sessionToken, // Add session token to body as fallback
         }),
       });
 
