@@ -34,7 +34,12 @@ interface PixelPerfectPDFGeneratorProps {
 export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report, includeSources = true, includeScoring = true, reportTier = 'compass' }) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
-  const extractSuburbState = (address: string): { suburb: string; state: string } => {
+  const extractSuburbState = (address: string | undefined | null): { suburb: string; state: string } => {
+    // Handle undefined/null address gracefully
+    if (!address || typeof address !== 'string') {
+      console.warn('extractSuburbState: Address is undefined or not a string, using fallback');
+      return { suburb: 'PROPERTY', state: '' };
+    }
     const parts = address.split(',').map(p => p.trim());
     
     // Map full state names to abbreviations
