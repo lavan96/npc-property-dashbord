@@ -166,13 +166,9 @@ export function EnhancedInvestmentReportModal({
       setReportContent(data.reportContent);
       
       if (runInBackground) {
-        // Add notification when generated in background
-        addNotification({
-          type: 'report_generated',
-          title: 'Investment Report Ready',
-          message: `Your report for ${propertyAddress} has been generated successfully.`,
-          reportId: finalReportId
-        });
+        // Notification is now handled server-side by the Edge Function to prevent duplicates
+        // The BackgroundJobTracker will also detect completion, so we skip adding notification here
+        console.log('📬 Skipping frontend notification - server-side notification will be created');
       } else {
         toast({
           title: "Enhanced Investment Report Generated",

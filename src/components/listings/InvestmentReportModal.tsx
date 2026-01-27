@@ -116,14 +116,10 @@ export function InvestmentReportModal({
             setReportId(insertResult.report.id);
             console.log('Report saved with ID:', insertResult.report.id);
 
-            // Only send success notification if save was successful
+            // Notification is now handled server-side by the Edge Function to prevent duplicates
+            // The BackgroundJobTracker will also detect completion, so we skip adding notification here
             if (runInBackground) {
-              addNotification({
-                type: 'report_generated',
-                title: 'Investment Report Generated',
-                message: `Report for ${propertyAddress} is ready to view.`,
-                reportId: insertResult.report.id,
-              });
+              console.log('📬 Skipping frontend notification - server-side notification will be created');
             }
           } else if (insertError || !insertResult?.success) {
             console.error('Error saving report:', insertError || insertResult?.error);
