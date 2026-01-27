@@ -2,9 +2,10 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, PlayCircle, X, Zap, Clock, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Loader2, AlertCircle, PlayCircle, X, Zap, Clock, RefreshCw, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ReportProgress {
   id: string;
@@ -53,9 +54,11 @@ function getAutoContinueSettings(): AutoContinueSettings {
 export function ReportGenerationProgress() {
   const [reports, setReports] = useState<ReportProgress[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // For mobile: expand/collapse list
   const [autoContinueSettings, setAutoContinueSettings] = useState<AutoContinueSettings>(getAutoContinueSettings);
   const retryStateRef = useRef<RetryState>({});
   const autoRetryInProgressRef = useRef<Set<string>>(new Set());
+  const isMobile = useIsMobile();
 
   // Load auto-continue settings from localStorage
   useEffect(() => {
@@ -347,6 +350,58 @@ export function ReportGenerationProgress() {
 
   if (reports.length === 0) return null;
 
+  // Mobile: show compact bar at bottom
+  if (isMobile) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg">
+        {/* Header bar - always visible */}
+        <div 
+          className="flex items-center justify-between px-3 py-2 bg-muted/50 cursor-pointer"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm font-medium text-foreground">
+              Reports ({reports.length})
+            </span>
+            {autoContinueSettings.enabled && (
+              <Zap className="h-3.5 w-3.5 text-warning" />
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Quick progress summary */}
+            <span className="text-xs text-muted-foreground">
+              {reports[0]?.sectionsCompleted || 0}/{reports[0]?.totalSections || 12}
+            </span>
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+        </div>
+        
+        {/* Expandable list */}
+        {isExpanded && (
+          <div className="max-h-64 overflow-y-auto">
+            {reports.map((report) => (
+              <ReportProgressItem
+                key={report.id}
+                report={report}
+                retryState={retryStateRef.current[report.id]}
+                autoContinueSettings={autoContinueSettings}
+                onContinue={() => handleManualContinue(report.id)}
+                onDismiss={() => dismissReport(report.id)}
+                isMobile={true}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop: floating card in corner
   return (
     <div className={cn(
       "fixed bottom-4 right-4 z-50 transition-all duration-300",
@@ -394,6 +449,7 @@ export function ReportGenerationProgress() {
                 autoContinueSettings={autoContinueSettings}
                 onContinue={() => handleManualContinue(report.id)}
                 onDismiss={() => dismissReport(report.id)}
+                isMobile={false}
               />
             ))}
           </div>
@@ -409,9 +465,10 @@ interface ReportProgressItemProps {
   autoContinueSettings: AutoContinueSettings;
   onContinue: () => void;
   onDismiss: () => void;
+  isMobile?: boolean;
 }
 
-function ReportProgressItem({ report, retryState, autoContinueSettings, onContinue, onDismiss }: ReportProgressItemProps) {
+function ReportProgressItem({ report, retryState, autoContinueSettings, onContinue, onDismiss, isMobile = false }: ReportProgressItemProps) {
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
   
   const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
@@ -443,10 +500,10 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
   };
 
   return (
-    <div className="p-3 border-b border-border last:border-b-0">
+    <div className={cn("p-3 border-b border-border last:border-b-0", isMobile && "px-4 py-2")}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-foreground truncate" title={report.property_address}>
+          <p className={cn("font-medium text-foreground truncate", isMobile ? "text-sm" : "text-xs")} title={report.property_address}>
             {report.property_address}
           </p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -462,9 +519,11 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
                 <span className="text-xs text-primary">
                   Section {currentSection}/{report.totalSections}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  • {formatElapsedTime(timeSinceCreation)}
-                </span>
+                {!isMobile && (
+                  <span className="text-xs text-muted-foreground">
+                    • {formatElapsedTime(timeSinceCreation)}
+                  </span>
+                )}
               </>
             )}
             {isStuck && (
@@ -473,14 +532,14 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
                   <>
                     <Zap className="h-3 w-3 text-warning" />
                     <span className="text-xs text-warning font-medium">
-                      Auto-retry {retriesUsed + 1}/{autoContinueSettings.maxRetries}
+                      {isMobile ? `Retry ${retriesUsed + 1}/${autoContinueSettings.maxRetries}` : `Auto-retry ${retriesUsed + 1}/${autoContinueSettings.maxRetries}`}
                     </span>
                   </>
                 ) : maxRetriesReached ? (
                   <>
                     <AlertCircle className="h-3 w-3 text-destructive" />
                     <span className="text-xs text-destructive font-medium">
-                      Failed ({retriesUsed} retries)
+                      Failed ({retriesUsed})
                     </span>
                   </>
                 ) : (
@@ -499,11 +558,11 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
             <Button
               size="sm"
               variant="outline"
-              className="h-6 px-2 text-xs"
+              className={cn("h-6 text-xs", isMobile ? "px-3" : "px-2")}
               onClick={onContinue}
             >
               <PlayCircle className="h-3 w-3 mr-1" />
-              Continue
+              {isMobile ? "Resume" : "Continue"}
             </Button>
           )}
           <Button

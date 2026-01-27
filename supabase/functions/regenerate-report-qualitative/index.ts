@@ -1227,7 +1227,7 @@ ${overrideSummary}
 ${investmentScoreContext}
 
 ${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency only - DO NOT repeat this content):**
-${previousSections.substring(0, 1500)}...
+${previousSections.substring(0, 4000)}...
 ` : ''}
 
 **CRITICAL INSTRUCTIONS:**

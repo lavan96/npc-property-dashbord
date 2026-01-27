@@ -77,8 +77,8 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
     id: 'section6',
     name: 'Environment & Safety',
     sections: ['Environmental Risks & Climate', 'Crime & Safety'],
-    maxTokens: 2500,
-    minContentLength: 2500,
+    maxTokens: 4000,
+    minContentLength: 3500,
     requiredKeywords: ['flood', 'bushfire', 'crime', 'safety'],
   },
   {
@@ -116,9 +116,9 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   {
     id: 'section11',
     name: 'Risks & Recommendations',
-    sections: ['Top 3 Investment Risks', 'Investment Recommendations', 'Final Conclusion'],
-    maxTokens: 3500,
-    minContentLength: 2500,
+    sections: ['Top 3 Investment Risks', 'Investment Recommendations', 'Final Conclusion', 'PROFESSIONAL DISCLAIMER'],
+    maxTokens: 5000,
+    minContentLength: 4000,
     requiredKeywords: ['risk', 'recommendation', 'conclusion'],
   }
 ];
@@ -581,7 +581,7 @@ You are generating ONLY the following sections of a comprehensive investment rep
 ${sectionDef.sections.map(s => `- ${s}`).join('\n')}
 
 ${investmentScoreContext}${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency, DO NOT repeat this content):**
-${previousSections.substring(0, 3000)}...
+${previousSections.substring(0, 4000)}...
 ` : ''}
 
 **CRITICAL INSTRUCTIONS:**
