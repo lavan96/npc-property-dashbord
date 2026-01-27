@@ -123,10 +123,21 @@ export async function verifyAuth(
         
         console.log('[verifyAuth] JWT decoded:', { userId: userId?.substring(0, 8) + '...', role });
         
-        // CRITICAL FIX: Only process user JWTs, not service tokens (anon key)
-        // User JWTs from Supabase have role: 'authenticated' or 'service_role'
-        // Service tokens (anon key) have different role claims or no role
-        // We only want to process authenticated user JWTs
+        // CRITICAL: Allow service_role tokens for internal service-to-service calls
+        // This enables edge functions to call other edge functions securely
+        if (role === 'service_role') {
+          console.log('[verifyAuth] Service role token detected - allowing internal service call');
+          return {
+            error: null,
+            userId: 'service_role',
+            username: 'system',
+            authMethod: 'service_role',
+          };
+        }
+        
+        // Process authenticated user JWTs
+        // User JWTs from Supabase have role: 'authenticated'
+        // Anon tokens have role: 'anon' and should fall through to session token check
         if (userId && role === 'authenticated') {
           // Verify the user actually exists in custom_users table
           const { data: user, error: userError } = await supabase
@@ -150,7 +161,7 @@ export async function verifyAuth(
             console.log('[verifyAuth] JWT user not found in custom_users, falling back to session token:', userId?.substring(0, 8) + '...', userError?.message);
           }
         } else {
-          // This is likely a service token (anon key) or invalid JWT
+          // This is likely an anon token or invalid JWT
           // Don't treat it as a user JWT, fall through to session token check
           console.log('[verifyAuth] JWT is not an authenticated user token (role:', role, '), falling back to session token');
         }
