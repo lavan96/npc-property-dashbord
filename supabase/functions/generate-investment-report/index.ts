@@ -253,8 +253,8 @@ function groupHeadingsIntoSections(headings: string[]): ReportSectionDefinition[
       keywords: ['environment', 'climate', 'crime', 'safety', 'flood', 'bushfire', 'risk'],
       name: 'Environment & Safety',
       requiredKeywords: ['flood', 'crime', 'safety'],
-      maxTokens: 2500,
-      minContentLength: 2500
+      maxTokens: 4000,
+      minContentLength: 3500
     },
     'property': {
       keywords: ['property-level', 'property level', 'zoning', 'land size', 'building'],
