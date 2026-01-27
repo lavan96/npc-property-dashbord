@@ -14,6 +14,7 @@ interface RegenerateRequest {
   propertyAddress: string;
   financialCalculations?: Record<string, any>;
   continueFrom?: boolean; // Resume from last completed section
+  singleSection?: boolean; // Generate only ONE section then return (chunked mode)
 }
 
 // Enhanced data interface - matches generate-investment-report
@@ -1335,7 +1336,8 @@ serve(async (req) => {
       currentReportContent, 
       propertyAddress,
       financialCalculations,
-      continueFrom = false
+      continueFrom = false,
+      singleSection = false // NEW: chunked mode - only one section per call
     }: RegenerateRequest = body;
 
     // SECURITY: Verify authentication
@@ -1352,6 +1354,7 @@ serve(async (req) => {
     console.log('📊 Manual overrides:', Object.keys(manualOverrides).length, 'fields');
     console.log('📄 Original content length:', currentReportContent?.length || 0, 'chars');
     console.log('🔄 Continue from last section:', continueFrom);
+    console.log('🔧 Single section mode:', singleSection);
 
     // ========== RESUME LOGIC ==========
     let resumeFromSection = 0;
@@ -1629,10 +1632,36 @@ YOUR DEDICATED PROPERTY PARTNER
         } else {
           console.log(`✓ Progress saved: ${combinedContent.length} chars (section ${i + 1}/${REPORT_SECTIONS.length})`);
         }
+
+        // === SINGLE SECTION MODE: Return after completing one section ===
+        if (singleSection) {
+          const completedSection = i + 1;
+          const isFullyComplete = completedSection >= REPORT_SECTIONS.length;
+          
+          console.log(`🔧 Single-section mode: Completed section ${completedSection}/${REPORT_SECTIONS.length}`);
+          
+          // If all sections done, mark as completed and add sources
+          if (isFullyComplete) {
+            console.log('✅ All sections complete in single-section mode, finalizing...');
+            // Will continue to post-processing below
+          } else {
+            // Return immediately - UI will call again for next section
+            return new Response(JSON.stringify({
+              success: true,
+              message: `Section ${completedSection}/${REPORT_SECTIONS.length} completed`,
+              sectionCompleted: completedSection,
+              totalSections: REPORT_SECTIONS.length,
+              isComplete: false,
+              contentLength: combinedContent.length
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
       }
       
       // Small delay between sections to avoid rate limiting
-      if (i < REPORT_SECTIONS.length - 1) {
+      if (!singleSection && i < REPORT_SECTIONS.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
@@ -1647,8 +1676,8 @@ YOUR DEDICATED PROPERTY PARTNER
     console.log(`Sections regenerated: ${sectionResults.length}/${REPORT_SECTIONS.length}`);
     console.log(`Enhanced data sources used: ${Object.keys(enhancedData).filter(k => enhancedData[k as keyof EnhancedData]).length}`);
 
-    // Check if we have substantial content
-    if (combinedContent.length < 5000) {
+    // Check if we have substantial content (skip check for single-section mode partial completion)
+    if (!singleSection && combinedContent.length < 5000) {
       const errorMsg = `Regeneration produced insufficient content (${combinedContent.length} chars). Errors: ${generationErrors.join('; ')}`;
       console.error('❌', errorMsg);
       throw new Error(errorMsg);
