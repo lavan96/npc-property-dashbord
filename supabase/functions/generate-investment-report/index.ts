@@ -909,10 +909,24 @@ serve(async (req) => {
     // ============================================================================
     const effectivePurchasePrice = mergedOverrides.purchasePrice || propertyDetails?.price || 0;
     const effectiveWeeklyRent = mergedOverrides.weeklyRent || propertyDetails?.weeklyRent || 0;
-    const effectiveLvr = mergedOverrides.loanToValueRatio || 80;
-    const effectiveDepositValue = mergedOverrides.depositValue || (effectivePurchasePrice * ((100 - effectiveLvr) / 100));
-    const effectiveInterestRate = mergedOverrides.interestRate || 6.5;
-    const effectiveLoanTerm = mergedOverrides.loanTermYears || 30;
+    const effectiveLvr = mergedOverrides.loanToValueRatio || propertyDetails?.loanToValueRatio || 80;
+    
+    // CRITICAL: Deposit value handling - check both mergedOverrides and propertyDetails
+    // Parse as number since frontend may send as string
+    const rawDepositValue = mergedOverrides.depositValue ?? propertyDetails?.depositValue ?? null;
+    const parsedDepositValue = rawDepositValue !== null ? parseFloat(String(rawDepositValue)) : NaN;
+    const effectiveDepositValue = !isNaN(parsedDepositValue) && parsedDepositValue > 0 
+      ? parsedDepositValue 
+      : (effectivePurchasePrice * ((100 - effectiveLvr) / 100));
+    
+    console.log('📦 Deposit Value Debug:');
+    console.log(`  Raw from mergedOverrides: ${mergedOverrides.depositValue}`);
+    console.log(`  Raw from propertyDetails: ${propertyDetails?.depositValue}`);
+    console.log(`  Parsed value: ${parsedDepositValue}`);
+    console.log(`  Effective deposit: $${effectiveDepositValue?.toLocaleString()}`);
+    
+    const effectiveInterestRate = mergedOverrides.interestRate || propertyDetails?.interestRate || 6.5;
+    const effectiveLoanTerm = mergedOverrides.loanTermYears || propertyDetails?.loanTermYears || 30;
     const effectiveIsFirstHomeBuyer = mergedOverrides.isFirstHomeBuyer || false;
     const effectiveIsNewBuild = mergedOverrides.buildType === 'new_build' || propertyDetails?.isNewBuild || false;
     const effectiveLandSizeSqm = mergedOverrides.landSizeSqm || propertyDetails?.landSizeSqm || null;
