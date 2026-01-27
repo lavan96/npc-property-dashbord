@@ -3233,13 +3233,43 @@ YOUR DEDICATED PROPERTY PARTNER
           try {
             const completedSectionIndex = i + 1; // Section i is now complete (0-indexed to 1-indexed)
             console.log(`💾 Progressive save after section ${completedSectionIndex}/${REPORT_SECTIONS.length}...`);
+            
+            // Build progressive update payload
+            const progressiveUpdatePayload: any = {
+              report_content: combinedContent,
+              last_completed_section: completedSectionIndex,
+              updated_at: new Date().toISOString()
+            };
+            
+            // CRITICAL: Save enhanced data (including investment_score) on FIRST section completion
+            // This ensures scores are persisted early, even if chunked generation is interrupted
+            if (completedSectionIndex === 1 && enhancedData) {
+              console.log('📊 First section complete - saving enhanced data to DB...');
+              if (enhancedData.investmentScore) {
+                progressiveUpdatePayload.investment_score = enhancedData.investmentScore;
+                console.log('  ✓ Saving investment_score:', enhancedData.investmentScore?.grade, enhancedData.investmentScore?.totalScore);
+              }
+              if (enhancedData.financials) {
+                progressiveUpdatePayload.financial_calculations = enhancedData.financials;
+                console.log('  ✓ Saving financial_calculations');
+              }
+              if (enhancedData.demographics) {
+                progressiveUpdatePayload.demographics_data = enhancedData.demographics;
+                console.log('  ✓ Saving demographics_data');
+              }
+              if (enhancedData.economics) {
+                progressiveUpdatePayload.economic_data = enhancedData.economics;
+                console.log('  ✓ Saving economic_data');
+              }
+              if (enhancedData.locationIntelligence) {
+                progressiveUpdatePayload.location_intelligence = enhancedData.locationIntelligence;
+                console.log('  ✓ Saving location_intelligence');
+              }
+            }
+            
             await supabaseClient
               .from('investment_reports')
-              .update({
-                report_content: combinedContent,
-                last_completed_section: completedSectionIndex,
-                updated_at: new Date().toISOString()
-              })
+              .update(progressiveUpdatePayload)
               .eq('id', reportId);
             console.log(`✓ Progress saved: ${combinedContent.length} chars, last_completed_section=${completedSectionIndex}`);
             
