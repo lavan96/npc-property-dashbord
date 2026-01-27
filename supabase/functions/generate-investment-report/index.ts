@@ -735,12 +735,14 @@ serve(async (req) => {
     }
     console.log('[generate-investment-report] Authenticated user:', userId);
     
-    let { reportId, propertyAddress, propertyDetails, continueFrom } = requestBody;
+    let { reportId, propertyAddress, propertyDetails, continueFrom, singleSection } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
     
     // Flag to indicate if we're continuing from existing content
     const isContinuation = continueFrom === true;
-    console.log('Continuation mode:', isContinuation);
+    // Flag for chunked mode - generate one section per call to avoid platform timeouts
+    const isSingleSectionMode = singleSection === true;
+    console.log('Continuation mode:', isContinuation, '| Single-section mode:', isSingleSectionMode);
     
     // UNIFIED DOCUMENT CONTENT: Accept both scrapedContent (URL scrape) AND pdfContent (PDF upload)
     // This ensures consistent content injection regardless of the input source
@@ -3240,6 +3242,30 @@ YOUR DEDICATED PROPERTY PARTNER
               })
               .eq('id', reportId);
             console.log(`✓ Progress saved: ${combinedContent.length} chars, last_completed_section=${completedSectionIndex}`);
+            
+            // === SINGLE-SECTION MODE: Return immediately after saving one section ===
+            // This allows the frontend to call again for the next section, avoiding platform timeouts
+            if (isSingleSectionMode) {
+              const isFullyComplete = completedSectionIndex >= REPORT_SECTIONS.length;
+              console.log(`🔧 Single-section mode: Completed section ${completedSectionIndex}/${REPORT_SECTIONS.length}`);
+              
+              if (!isFullyComplete) {
+                // Return immediately - UI will call again for next section
+                return new Response(JSON.stringify({
+                  success: true,
+                  message: `Section ${completedSectionIndex}/${REPORT_SECTIONS.length} completed`,
+                  sectionCompleted: completedSectionIndex,
+                  totalSections: REPORT_SECTIONS.length,
+                  isComplete: false,
+                  contentLength: combinedContent.length
+                }), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+              }
+              // If all sections complete, continue to post-processing below
+              console.log('✅ All sections complete in single-section mode, proceeding to finalization...');
+            }
+            // === END SINGLE-SECTION MODE ===
           } catch (saveError: any) {
             console.warn(`⚠️ Progressive save failed (non-blocking):`, saveError?.message);
           }

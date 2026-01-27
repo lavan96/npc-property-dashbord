@@ -53,11 +53,11 @@ export function useChunkedRegeneration() {
     });
 
     try {
-      // Fetch current report state to get last_completed_section
+      // Fetch current report state to get data for regeneration
       const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status'
+          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address'
         }
       });
 
@@ -68,20 +68,26 @@ export function useChunkedRegeneration() {
       const report = reportData?.report;
       let startSection = 0;
       
-      // If report was in progress, resume from last completed section
-      if (report?.status === 'processing' || report?.status === 'failed') {
-        startSection = report.last_completed_section || 0;
-        if (startSection > 0) {
-          console.log(`[ChunkedRegeneration] Resuming from section ${startSection + 1}`);
-        }
+      // For regeneration, we want to start fresh - reset last_completed_section to 0
+      // But first, archive the current version
+      if (report?.report_content && report?.current_version) {
+        console.log(`[ChunkedRegeneration] Archiving current version ${report.current_version} before regeneration`);
+        // The version archiving is handled by the edge function when it detects existing content
       }
 
-      // Mark report as processing
+      // Reset for fresh regeneration - set last_completed_section to 0
       await invokeSecureFunction('manage-investment-reports', {
         action: 'update',
         reportId,
-        data: { status: 'processing', error_message: null }
+        data: { 
+          status: 'processing', 
+          error_message: null,
+          last_completed_section: 0 // Reset for fresh generation
+        }
       });
+      
+      // Use property address from existing report if not provided
+      const effectivePropertyAddress = propertyAddress || report?.property_address || '';
 
       // Generate sections one at a time
       for (let section = startSection; section < TOTAL_SECTIONS; section++) {
@@ -107,14 +113,17 @@ export function useChunkedRegeneration() {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
 
-          const { data, error } = await invokeSecureFunction('regenerate-report-qualitative', {
+          // Use the main generate-investment-report function with singleSection mode
+          const { data, error } = await invokeSecureFunction('generate-investment-report', {
             reportId,
-            manualOverrides: manualOverrides || report?.manual_overrides || {},
-            currentReportContent: currentReportContent || report?.report_content || '',
-            propertyAddress,
-            financialCalculations: financialCalculations || report?.financial_calculations || {},
+            propertyAddress: effectivePropertyAddress,
+            propertyDetails: {
+              manualOverrides: manualOverrides || report?.manual_overrides || {},
+              ...financialCalculations,
+              ...(report?.financial_calculations || {})
+            },
             continueFrom: true,
-            singleSection: true // Key flag for chunked mode
+            singleSection: true // Key flag for chunked mode - generates one section per call
           });
 
           if (error) {
