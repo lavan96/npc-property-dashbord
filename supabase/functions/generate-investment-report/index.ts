@@ -861,22 +861,34 @@ serve(async (req) => {
         
         // If continuing, use the stored last_completed_section index for reliable resume
         if (isContinuation && existingReport?.report_content) {
-          existingReportContent = existingReport.report_content;
           const lastCompletedSection = existingReport.last_completed_section || 0;
           
-          console.log('🔄 CONTINUATION MODE: Using database-tracked section progress');
-          console.log('   Existing content length:', existingReportContent.length, 'chars');
+          console.log('🔄 CONTINUATION MODE: Checking section progress');
+          console.log('   Existing content length:', existingReport.report_content.length, 'chars');
           console.log('   Last completed section (from DB):', lastCompletedSection);
           
-          // Build completed section indices from the stored value
-          // All sections from 0 to lastCompletedSection-1 are complete (0-indexed section IDs)
-          // If lastCompletedSection = 5, then sections 0,1,2,3,4 are complete
-          for (let idx = 0; idx < lastCompletedSection; idx++) {
-            completedSectionIndices.push(idx);
+          // CRITICAL FIX: Only use existing content for TRUE resume (last_completed_section > 0)
+          // If last_completed_section is 0, this is a FRESH REGENERATION - do NOT prepend old content
+          if (lastCompletedSection > 0) {
+            existingReportContent = existingReport.report_content;
+            console.log('   ✓ RESUME mode: Using existing content as base');
+            
+            // Build completed section indices from the stored value
+            // All sections from 0 to lastCompletedSection-1 are complete (0-indexed section IDs)
+            // If lastCompletedSection = 5, then sections 0,1,2,3,4 are complete
+            for (let idx = 0; idx < lastCompletedSection; idx++) {
+              completedSectionIndices.push(idx);
+            }
+            
+            console.log(`   Completed sections: ${completedSectionIndices.length}/${REPORT_SECTIONS.length}`);
+            console.log(`   Will resume from section: ${lastCompletedSection} (${REPORT_SECTIONS[lastCompletedSection]?.name || 'END'})`);
+          } else {
+            // Fresh regeneration: last_completed_section was reset to 0
+            // Do NOT use existing content - start completely fresh
+            existingReportContent = '';
+            console.log('   🔄 FRESH REGENERATION mode: Starting from scratch (last_completed_section=0)');
+            console.log('   Old content will be discarded, generating all sections fresh');
           }
-          
-          console.log(`   Completed sections: ${completedSectionIndices.length}/${REPORT_SECTIONS.length}`);
-          console.log(`   Will resume from section: ${lastCompletedSection} (${REPORT_SECTIONS[lastCompletedSection]?.name || 'END'})`);
           
           // Use property address from existing report if not provided
           if (!propertyAddress && existingReport.property_address) {
