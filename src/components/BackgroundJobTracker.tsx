@@ -150,7 +150,12 @@ export function BackgroundJobTracker() {
   };
 
   const checkInvestmentReportJob = async (jobId: string) => {
+    // Check if already processed BEFORE making any async calls
     if (processedJobsRef.current.has(jobId)) return;
+    
+    // CRITICAL: Add to processed set IMMEDIATELY to prevent race conditions
+    // This prevents duplicate notifications when polling overlaps
+    processedJobsRef.current.add(jobId);
 
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       reportId: jobId,
@@ -159,27 +164,31 @@ export function BackgroundJobTracker() {
       }
     });
 
-    if (error || !data?.report) return;
+    if (error || !data?.report) {
+      // If fetch failed, remove from processed so it can be retried
+      processedJobsRef.current.delete(jobId);
+      return;
+    }
     
     const report = data.report;
     
     if (report.status === 'completed') {
-      addNotification({
-        type: 'report_generated',
-        title: 'Investment Report Completed',
-        message: `Your investment report for ${report.property_address} has been generated successfully.`,
-        reportId: report.id,
-      });
-      processedJobsRef.current.add(jobId);
+      // Server-side Edge Function already creates a notification in the database
+      // We just need to clean up the background job tracking
+      // Skip adding duplicate notification here - the NotificationsContext will fetch from DB
+      console.log(`[BackgroundJobTracker] Report ${jobId} completed - cleaning up job (notification from server)`);
       removeJob(jobId);
     } else if (report.status === 'failed') {
+      // For failures, we DO add a notification since the server might not
       addNotification({
         type: 'report_failed',
         title: 'Investment Report Failed',
         message: `Failed to generate report for ${report.property_address}. ${report.error_message || 'Please try again.'}`,
       });
-      processedJobsRef.current.add(jobId);
       removeJob(jobId);
+    } else {
+      // Still in progress - remove from processed set so we check again
+      processedJobsRef.current.delete(jobId);
     }
   };
 

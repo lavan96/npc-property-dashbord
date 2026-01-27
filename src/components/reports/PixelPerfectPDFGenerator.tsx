@@ -751,35 +751,97 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     return updatedContent;
   };
 
+  // Structure to track section hierarchy for TOC
+  interface ParsedSection {
+    content: string;
+    level: number; // 2 = H2 (main section), 3 = H3 (subsection)
+    parentSection?: string;
+  }
+  
+  // Store section metadata for TOC hierarchy
+  const sectionMetadata = React.useRef<Map<string, ParsedSection>>(new Map());
+
   const parseReportContent = (content: string): Record<string, string> => {
     const sections: Record<string, string> = {};
     const lines = content.split('\n');
-    let currentSection = '';
+    let currentH2Section = '';
+    let currentH3Subsection = '';
     let currentContent: string[] = [];
+    
+    // Clear previous metadata
+    sectionMetadata.current.clear();
+
+    const saveCurrentSection = () => {
+      if (currentH2Section && currentContent.length > 0) {
+        const sectionKey = currentH3Subsection || currentH2Section;
+        sections[sectionKey] = currentContent.join('\n').trim();
+        
+        // Store metadata for TOC hierarchy
+        sectionMetadata.current.set(sectionKey, {
+          content: sections[sectionKey],
+          level: currentH3Subsection ? 3 : 2,
+          parentSection: currentH3Subsection ? currentH2Section : undefined
+        });
+      }
+    };
 
     for (const line of lines) {
-      // Handle both ## and # headers, remove numbering like "1. "
-      if (line.match(/^#{1,6}\s*/)) {
-        if (currentSection && currentContent.length > 0) {
-          sections[currentSection] = currentContent.join('\n').trim();
-        }
-        // Remove all leading hashtags, spaces, and optional numbering
-        currentSection = line
-          .replace(/^#{1,6}\s*/, '') // Remove hashtags
+      // Check for H2 heading (## Heading) - Main sections
+      const h2Match = line.match(/^##\s+(.+)$/);
+      // Check for H3 heading (### Heading) - Subsections
+      const h3Match = line.match(/^###\s+(.+)$/);
+      // Check for H1 heading (# Heading) - Treat as H2 for compatibility
+      const h1Match = line.match(/^#\s+(.+)$/);
+      
+      if (h2Match || h1Match) {
+        // Save previous section before starting new one
+        saveCurrentSection();
+        
+        // Extract section name
+        const rawName = (h2Match?.[1] || h1Match?.[1] || '').trim();
+        currentH2Section = rawName
+          .replace(/^\d+\.\s*/, '') // Remove numbering
+          .replace(/:\s*$/, '') // Remove trailing colon
+          .trim();
+        currentH3Subsection = ''; // Reset subsection
+        currentContent = [];
+        
+        // Store H2 metadata
+        sectionMetadata.current.set(currentH2Section, {
+          content: '',
+          level: 2,
+          parentSection: undefined
+        });
+      } else if (h3Match && currentH2Section) {
+        // Save previous section/subsection before starting new subsection
+        saveCurrentSection();
+        
+        // Extract subsection name
+        currentH3Subsection = h3Match[1]
           .replace(/^\d+\.\s*/, '') // Remove numbering
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
         currentContent = [];
-      } else if (currentSection && line.trim()) {
+      } else if (currentH2Section && line.trim()) {
+        // Regular content line - add to current section
         currentContent.push(line);
       }
     }
 
-    if (currentSection && currentContent.length > 0) {
-      sections[currentSection] = currentContent.join('\n').trim();
-    }
+    // Don't forget the last section
+    saveCurrentSection();
 
     return sections;
+  };
+  
+  // Helper to get section level for TOC rendering
+  const getSectionLevel = (sectionName: string): number => {
+    return sectionMetadata.current.get(sectionName)?.level || 2;
+  };
+  
+  // Helper to get parent section for TOC hierarchy
+  const getParentSection = (sectionName: string): string | undefined => {
+    return sectionMetadata.current.get(sectionName)?.parentSection;
   };
 
   const findSection = (sections: Record<string, string>, possibleNames: string[]): string => {
@@ -2393,14 +2455,51 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         });
         tocY -= 25;
         
-        // Draw TOC entries with actual page numbers
-        let tocEntryIndex = 1;
+        // Draw TOC entries with hierarchical numbering
+        // Track H2 sections for hierarchical numbering
+        let h2Index = 0;
+        let h3Index = 0;
+        let lastParentSection = '';
+        
         for (const sectionName of allSectionNames) {
           const cleanName = stripEmojis(
             sectionName.replace(/^#{1,6}\s*/, '').replace(/:\s*$/, '').trim()
           );
           
           if (!cleanName || cleanName.length < 3) continue;
+          
+          // Determine section level and numbering
+          const sectionLevel = getSectionLevel(cleanName);
+          const parentSection = getParentSection(cleanName);
+          
+          // Update numbering based on hierarchy
+          let sectionNumText: string;
+          let indentation: number;
+          let fontSize: number;
+          let fontToUse: typeof helveticaFont;
+          
+          if (sectionLevel === 2) {
+            // H2 = Main section
+            h2Index++;
+            h3Index = 0; // Reset subsection counter
+            lastParentSection = cleanName;
+            sectionNumText = `${h2Index}.`;
+            indentation = 0;
+            fontSize = 11;
+            fontToUse = helveticaBold;
+          } else {
+            // H3 = Subsection
+            // Check if this is a new parent section
+            if (parentSection && parentSection !== lastParentSection) {
+              // This shouldn't happen often, but handle it gracefully
+              h3Index = 0;
+            }
+            h3Index++;
+            sectionNumText = `${h2Index}.${h3Index}`;
+            indentation = 15; // Indent subsections
+            fontSize = 10;
+            fontToUse = helveticaFont;
+          }
           
           // Check if we need to move to next TOC page
           if (tocY < bottomMargin + 40) {
@@ -2414,35 +2513,38 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           // Get the actual page number for this section
           const actualPageNumber = sectionPageNumbers.get(cleanName) || 0;
           
-          // Draw section number
-          const sectionNumText = `${tocEntryIndex}.`;
+          // Draw section number with indentation
           tocPage.drawText(sectionNumText, {
-            x: margin,
+            x: margin + indentation,
             y: tocY,
-            size: 11,
-            font: helveticaBold,
+            size: fontSize,
+            font: fontToUse,
             color: rgb(0.3, 0.3, 0.3),
           });
           
+          // Calculate number text width for positioning
+          const numWidth = fontToUse.widthOfTextAtSize(sectionNumText, fontSize);
+          
           // Draw section name (truncate if too long)
           const pageNumWidth = 30; // Reserve space for page number
-          const maxTocWidth = pageWidth - 2 * margin - 60 - pageNumWidth;
+          const textStartX = margin + indentation + numWidth + 8;
+          const maxTocWidth = pageWidth - margin - pageNumWidth - textStartX - 10;
           let displayName = cleanName;
-          while (helveticaFont.widthOfTextAtSize(displayName, 11) > maxTocWidth && displayName.length > 10) {
+          while (helveticaFont.widthOfTextAtSize(displayName, fontSize) > maxTocWidth && displayName.length > 10) {
             displayName = displayName.substring(0, displayName.length - 4) + '...';
           }
           
           tocPage.drawText(displayName, {
-            x: margin + 25,
+            x: textStartX,
             y: tocY,
-            size: 11,
-            font: helveticaFont,
-            color: rgb(0.2, 0.2, 0.2),
+            size: fontSize,
+            font: sectionLevel === 2 ? helveticaFont : helveticaFont,
+            color: sectionLevel === 2 ? rgb(0.2, 0.2, 0.2) : rgb(0.35, 0.35, 0.35),
           });
           
           // Draw dotted leader line
-          const nameWidth = helveticaFont.widthOfTextAtSize(displayName, 11);
-          const startX = margin + 30 + nameWidth;
+          const nameWidth = helveticaFont.widthOfTextAtSize(displayName, fontSize);
+          const startX = textStartX + nameWidth + 5;
           const endX = pageWidth - margin - pageNumWidth - 5;
           const dotSpacing = 6;
           
@@ -2457,20 +2559,20 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           // Draw page number (right-aligned)
           const pageNumText = String(actualPageNumber);
-          const pageNumTextWidth = helveticaBold.widthOfTextAtSize(pageNumText, 11);
+          const pageNumTextWidth = helveticaBold.widthOfTextAtSize(pageNumText, fontSize);
           tocPage.drawText(pageNumText, {
             x: pageWidth - margin - pageNumTextWidth,
             y: tocY,
-            size: 11,
+            size: fontSize,
             font: helveticaBold,
             color: rgb(0.3, 0.3, 0.3),
           });
           
-          tocY -= 22;
-          tocEntryIndex++;
+          // Adjust vertical spacing based on section level
+          tocY -= sectionLevel === 2 ? 24 : 18;
         }
         
-        console.log(`✓ Table of Contents drawn with ${tocEntryIndex - 1} entries and page numbers`);
+        console.log(`✓ Table of Contents drawn with ${h2Index} main sections and page numbers`);
       } else {
         console.log(`📑 Step 5.4: Skipping TOC rendering (${reportTier} tier)`);
       }
