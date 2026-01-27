@@ -107,8 +107,8 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
     id: 'section6',
     name: 'Environment & Safety',
     sections: ['Environmental Risks & Climate', 'Crime & Safety'],
-    maxTokens: 2500,
-    minContentLength: 2500,
+    maxTokens: 4000,
+    minContentLength: 3500,
     requiredKeywords: ['flood', 'bushfire', 'crime', 'safety'],
   },
   {
@@ -146,10 +146,10 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   {
     id: 'section11',
     name: 'Risks & Recommendations',
-    sections: ['Top 3 Investment Risks', 'Market Data Sources & Data Transparency', 'Disclaimer & Data Limitations', 'Investment Recommendations', 'Final Conclusion', 'CONTACT US', 'PROFESSIONAL DISCLAIMER'],
-    maxTokens: 3500,
-    minContentLength: 3500,
-    requiredKeywords: ['risk', 'recommendation', 'conclusion', 'disclaimer'],
+    sections: ['Top 3 Investment Risks', 'Investment Recommendations', 'Final Conclusion', 'PROFESSIONAL DISCLAIMER'],
+    maxTokens: 5000,
+    minContentLength: 4000,
+    requiredKeywords: ['risk', 'recommendation', 'conclusion'],
   }
 ];
 
@@ -216,12 +216,12 @@ function groupHeadingsIntoSections(headings: string[]): ReportSectionDefinition[
     'demographics': { keywords: ['demographic', 'demand', 'population'], name: 'Demographics & Demand', requiredKeywords: ['population', 'income', 'employment'], maxTokens: 2500, minContentLength: 2500 },
     'education': { keywords: ['school', 'education', 'healthcare', 'hospital', 'shopping'], name: 'Education & Healthcare', requiredKeywords: ['school', 'education', 'healthcare'], maxTokens: 2500, minContentLength: 2500 },
     'recreation': { keywords: ['recreation', 'transport', 'accessibility', 'amenities', 'commute'], name: 'Recreation & Transport', requiredKeywords: ['recreation', 'transport', 'commute'], maxTokens: 2500, minContentLength: 2500 },
-    'environment': { keywords: ['environment', 'climate', 'crime', 'safety', 'flood', 'bushfire', 'risk'], name: 'Environment & Safety', requiredKeywords: ['flood', 'crime', 'safety'], maxTokens: 2500, minContentLength: 2500 },
+    'environment': { keywords: ['environment', 'climate', 'crime', 'safety', 'flood', 'bushfire', 'risk'], name: 'Environment & Safety', requiredKeywords: ['flood', 'crime', 'safety'], maxTokens: 4000, minContentLength: 3500 },
     'property': { keywords: ['property-level', 'property level', 'zoning', 'land size', 'building'], name: 'Property & Zoning', requiredKeywords: ['property', 'zoning', 'land'], maxTokens: 2500, minContentLength: 2500 },
     'costs': { keywords: ['purchase', 'ongoing costs', 'rental', 'yield', 'stamp duty'], name: 'Costs & Rental', requiredKeywords: ['purchase', 'rent', 'yield'], maxTokens: 2500, minContentLength: 2500 },
     'loan': { keywords: ['loan', 'repayment', 'sensitivity', 'cashflow', 'mortgage'], name: 'Loan & Sensitivity', requiredKeywords: ['loan', 'repayment', 'cashflow'], maxTokens: 2500, minContentLength: 2500 },
     'projections': { keywords: ['projection', 'swot', 'opportunities', 'investment score', '10-year', 'ten year'], name: 'Projections & SWOT', requiredKeywords: ['projection', 'swot', 'opportunity'], maxTokens: 3000, minContentLength: 3000 },
-    'recommendations': { keywords: ['risk', 'recommendation', 'conclusion', 'disclaimer', 'data sources', 'transparency', 'contact', 'final'], name: 'Risks & Recommendations', requiredKeywords: ['risk', 'recommendation', 'conclusion'], maxTokens: 3500, minContentLength: 3500 }
+    'recommendations': { keywords: ['risk', 'recommendation', 'conclusion', 'final', 'swot'], name: 'Risks & Recommendations', requiredKeywords: ['risk', 'recommendation', 'conclusion'], maxTokens: 5000, minContentLength: 4000 }
   };
   
   const groups: Record<string, string[]> = {};
