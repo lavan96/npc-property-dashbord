@@ -78,10 +78,11 @@ export function ClientPDFGenerator({ report, includeSources = true, includeScori
   })();
 
   // Transform the report data to match PixelPerfectPDFGenerator expectations
+  // Ensure address has a fallback to prevent .trim() errors in PDF generation
   const transformedReport = {
     id: report.id,
-    address: report.property_address,
-    content: report.report_content,
+    address: report.property_address || 'Property Report',
+    content: report.report_content || '',
     created_at: new Date().toISOString(),
     enhanced_data: {
       domainData: null,

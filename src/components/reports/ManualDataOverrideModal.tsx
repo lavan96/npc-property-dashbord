@@ -1171,51 +1171,16 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
       toast({
         title: "Overrides saved",
-        description: "Regenerating qualitative analysis with updated figures...",
+        description: "Your manual overrides have been applied. Use the 'Regenerate with Perplexity' button to update the qualitative analysis.",
       });
 
       setHasChanges(false);
       setSaving(false);
-      setRegenerating(true);
-
-      // Use updated report data from the response
-      const currentReport = updateResult.report;
-      if (!currentReport) {
-        console.error('❌ No report data in update response');
-        throw new Error('Failed to get updated report data');
-      }
-
-      // Call the regenerate-report-qualitative edge function
-      console.log('🔄 Calling regenerate-report-qualitative...');
-      const { data: regenData, error: regenError } = await invokeSecureFunction('regenerate-report-qualitative', {
-        reportId: report.id,
-        manualOverrides: overridesWithToggles,
-        currentReportContent: currentReport.report_content,
-        propertyAddress: currentReport.property_address,
-        financialCalculations: mergedFinancialData,
-      });
-
-      if (regenError) {
-        console.error('❌ Regeneration error:', regenError);
-        toast({
-          title: "Partial Success",
-          description: "Overrides saved but qualitative regeneration failed. The numerical changes have been applied.",
-          variant: "destructive",
-        });
-      } else if (regenData?.success) {
-        console.log('✅ Qualitative analysis regenerated successfully');
-        toast({
-          title: "Report Updated",
-          description: "Overrides applied and qualitative analysis regenerated to reflect new figures.",
-        });
-      } else {
-        console.error('❌ Regeneration returned error:', regenData?.error);
-        toast({
-          title: "Partial Success",
-          description: regenData?.error || "Overrides saved but qualitative regeneration encountered an issue.",
-          variant: "destructive",
-        });
-      }
+      
+      // NOTE: Removed automatic regeneration call to prevent duplicate content.
+      // The unified regeneration approach now requires using the "Regenerate with Perplexity" button
+      // which uses useChunkedRegeneration hook pointing to generate-investment-report edge function.
+      console.log('✅ Overrides saved. User should use Regenerate button to update qualitative analysis.');
       
       // Call onSave callback and wait for it to complete (refetches data)
       await onSave?.();

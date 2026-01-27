@@ -36,11 +36,19 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
   const extractSuburbState = (address: string | undefined | null): { suburb: string; state: string } => {
     // Handle undefined/null address gracefully
-    if (!address || typeof address !== 'string') {
-      console.warn('extractSuburbState: Address is undefined or not a string, using fallback');
+    if (!address || typeof address !== 'string' || address.trim() === '') {
+      console.warn('extractSuburbState: Address is undefined, not a string, or empty, using fallback');
       return { suburb: 'PROPERTY', state: '' };
     }
-    const parts = address.split(',').map(p => p.trim());
+    
+    // Safe split with null-check on each element
+    const parts = address.split(',').map(p => (p ?? '').trim()).filter(p => p.length > 0);
+    
+    // If no valid parts after filtering, return fallback
+    if (parts.length === 0) {
+      console.warn('extractSuburbState: No valid address parts found, using fallback');
+      return { suburb: 'PROPERTY', state: '' };
+    }
     
     // Map full state names to abbreviations
     const stateMapping: Record<string, string> = {
@@ -75,7 +83,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     // Extract suburb - find the first meaningful part that's not a postcode, state, or "Australia"
     let suburb = '';
     for (const part of parts) {
-      const trimmedPart = part.trim();
+      // part is guaranteed to be a non-empty string due to filter above
+      const trimmedPart = part;
       const partLower = trimmedPart.toLowerCase();
       
       // Skip if it's "Australia", a postcode (4 digits), or contains the state
@@ -103,7 +112,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     
     // Fallback: use first part if nothing else worked
     if (!suburb && parts.length > 0) {
-      suburb = parts[0].replace(/\b\d{4}\b/, '').replace(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/gi, '').trim();
+      const firstPart = parts[0] || '';
+      suburb = firstPart.replace(/\b\d{4}\b/, '').replace(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/gi, '').trim();
+    }
+    
+    // Final fallback if suburb is still empty
+    if (!suburb) {
+      suburb = 'PROPERTY';
     }
     
     return { suburb: suburb.toUpperCase(), state };
@@ -1416,8 +1431,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
             // Note: The content might have partial bold markers like "$8,908**" or "**Sum of..."
             // Strip bold markers before checking
-            const firstCellClean = cells[0].trim().replace(/\*+/g, '');
-            const secondCellClean = cells.length >= 2 ? cells[1].replace(/\*+/g, '').toLowerCase() : '';
+            const firstCellClean = (cells[0] ?? '').trim().replace(/\*+/g, '');
+            const secondCellClean = cells.length >= 2 ? (cells[1] ?? '').replace(/\*+/g, '').toLowerCase() : '';
             const firstCellIsDollarAmount = /^\$[\d,\.]+$/.test(firstCellClean);
             const secondCellIsOngoingCosts = secondCellClean.includes('sum of') || secondCellClean.includes('ongoing costs');
             
