@@ -22,7 +22,7 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
 }
 
 interface RequestBody {
-  action: 'insert' | 'update' | 'delete' | 'archive' | 'unarchive' | 'bulkDelete';
+  action: 'insert' | 'update' | 'delete' | 'archive' | 'unarchive' | 'bulkDelete' | 'getVersion';
   reportId?: string;
   reportIds?: string[];
   data?: Record<string, any>;
@@ -230,6 +230,52 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, report }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'getVersion': {
+        if (!reportId) {
+          return new Response(
+            JSON.stringify({ error: 'reportId is required for getVersion' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const versionNumber = data?.versionNumber;
+        if (!versionNumber) {
+          return new Response(
+            JSON.stringify({ error: 'versionNumber is required for getVersion' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`Fetching version ${versionNumber} for report ${reportId}`);
+
+        const { data: version, error: versionError } = await supabase
+          .from('report_versions')
+          .select('*')
+          .eq('report_id', reportId)
+          .eq('version_number', versionNumber)
+          .single();
+
+        if (versionError) {
+          console.error('Error fetching version:', versionError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch version', details: versionError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!version) {
+          return new Response(
+            JSON.stringify({ error: 'Version not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, version }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
