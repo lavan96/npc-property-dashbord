@@ -410,7 +410,7 @@ export default function GeneratedReports() {
         listMode: true,
         listOptions: {
           select: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
-          status: ['completed', 'pending'],
+          status: ['completed', 'pending', 'failed', 'processing'],
           createdAfter: thirtyDaysAgo,
           isArchived: false,
           isClientReport: false

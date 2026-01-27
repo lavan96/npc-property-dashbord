@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, PlayCircle, X, Zap } from 'lucide-react';
+import { Loader2, AlertCircle, PlayCircle, X, Zap, Clock, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ReportProgress {
   id: string;
@@ -14,6 +15,8 @@ interface ReportProgress {
   contentLength: number;
   error_message?: string | null;
   lastUpdated: Date;
+  lastCompletedSection: number; // From database
+  createdAt: Date;
 }
 
 interface AutoContinueSettings {
@@ -243,7 +246,7 @@ export function ReportGenerationProgress() {
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       listMode: true,
       listOptions: {
-        select: 'id, property_address, status, report_content, error_message, updated_at, created_at',
+        select: 'id, property_address, status, report_content, error_message, updated_at, created_at, last_completed_section',
         filters: { status: ['pending', 'processing'] },
         orderBy: 'updated_at',
         orderAsc: false,
@@ -270,16 +273,19 @@ export function ReportGenerationProgress() {
     const processedReports: ReportProgress[] = recentReports.map((report: any) => {
       const content = report.report_content || '';
       const sectionsCompleted = countSections(content);
+      const dbSection = report.last_completed_section || 0;
       
       return {
         id: report.id,
         property_address: report.property_address,
         status: report.status,
-        sectionsCompleted,
+        sectionsCompleted: Math.max(sectionsCompleted, dbSection), // Use higher of regex vs DB
         totalSections: 12,
         contentLength: content.length,
         error_message: report.error_message,
-        lastUpdated: new Date(report.updated_at)
+        lastUpdated: new Date(report.updated_at),
+        lastCompletedSection: dbSection,
+        createdAt: new Date(report.created_at)
       };
     });
 
@@ -409,7 +415,9 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
   const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
   
   const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
+  const timeSinceCreation = Date.now() - report.createdAt.getTime();
   const minutesSinceUpdate = Math.floor(timeSinceUpdate / 60000);
+  const secondsSinceUpdate = Math.floor(timeSinceUpdate / 1000);
   
   const isTimedOut = timeSinceUpdate > 120000;
   const hasPartialContent = report.contentLength > 1000;
@@ -424,6 +432,16 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
   const maxRetriesReached = retriesUsed >= autoContinueSettings.maxRetries;
   const hasScheduledRetry = isStuck && autoContinueSettings.enabled && !maxRetriesReached;
 
+  // Calculate elapsed time for display
+  const formatElapsedTime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    }
+    return `${seconds}s`;
+  };
+
   return (
     <div className="p-3 border-b border-border last:border-b-0">
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -431,7 +449,7 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
           <p className="text-xs font-medium text-foreground truncate" title={report.property_address}>
             {report.property_address}
           </p>
-          <div className="flex items-center gap-1.5 mt-1">
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             {report.status === 'pending' && !isStuck && (
               <>
                 <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />
@@ -444,21 +462,31 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
                 <span className="text-xs text-primary">
                   Section {currentSection}/{report.totalSections}
                 </span>
+                <span className="text-xs text-muted-foreground">
+                  • {formatElapsedTime(timeSinceCreation)}
+                </span>
               </>
             )}
             {isStuck && (
               <>
                 {hasScheduledRetry ? (
                   <>
-                    <Zap className="h-3 w-3 text-amber-500" />
-                    <span className="text-xs text-amber-500 font-medium">
-                      Auto-retry {retriesUsed + 1}/{autoContinueSettings.maxRetries}...
+                    <Zap className="h-3 w-3 text-warning" />
+                    <span className="text-xs text-warning font-medium">
+                      Auto-retry {retriesUsed + 1}/{autoContinueSettings.maxRetries}
+                    </span>
+                  </>
+                ) : maxRetriesReached ? (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-destructive" />
+                    <span className="text-xs text-destructive font-medium">
+                      Failed ({retriesUsed} retries)
                     </span>
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="h-3 w-3 text-amber-500" />
-                    <span className="text-xs text-amber-500 font-medium">Stalled</span>
+                    <AlertCircle className="h-3 w-3 text-warning" />
+                    <span className="text-xs text-warning font-medium">Stalled</span>
                   </>
                 )}
               </>
@@ -466,61 +494,114 @@ function ReportProgressItem({ report, retryState, autoContinueSettings, onContin
           </div>
         </div>
         
-        {showContinueButton && !hasScheduledRetry && (
+        <div className="flex items-center gap-1">
+          {showContinueButton && !hasScheduledRetry && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 px-2 text-xs"
+              onClick={onContinue}
+            >
+              <PlayCircle className="h-3 w-3 mr-1" />
+              Continue
+            </Button>
+          )}
           <Button
             size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs"
-            onClick={onContinue}
+            variant="ghost"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            onClick={onDismiss}
+            title="Dismiss"
           >
-            <PlayCircle className="h-3 w-3 mr-1" />
-            Continue
+            <X className="h-3 w-3" />
           </Button>
-        )}
+        </div>
       </div>
       
       <div className="space-y-1">
         <Progress value={percentage} className="h-1.5" />
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{report.sectionsCompleted}/{report.totalSections} sections</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help underline decoration-dotted">
+                  {report.sectionsCompleted}/{report.totalSections} sections
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <div className="space-y-1 text-xs">
+                  <p><strong>DB Saved:</strong> Section {report.lastCompletedSection}/12</p>
+                  <p><strong>Content Detected:</strong> Section {report.sectionsCompleted}/12</p>
+                  <p><strong>Content Size:</strong> {(report.contentLength / 1024).toFixed(1)} KB</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <span>{percentage}%</span>
         </div>
       </div>
+
+      {/* Retry status summary */}
+      {retriesUsed > 0 && (
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <RefreshCw className="h-3 w-3" />
+          <span>
+            {retriesUsed} auto-retry attempt{retriesUsed > 1 ? 's' : ''} used
+            {maxRetriesReached && ' (max reached)'}
+          </span>
+        </div>
+      )}
       
-      {/* Stuck indicator with auto-retry info */}
+      {/* Stuck indicator with enhanced info */}
       {isStuck && (
-        <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600 dark:text-amber-400">
+        <div className={cn(
+          "mt-2 p-2 rounded text-xs border",
+          maxRetriesReached 
+            ? "bg-destructive/10 border-destructive/20 text-destructive" 
+            : "bg-warning/10 border-warning/20 text-warning"
+        )}>
           <div className="flex items-start gap-1.5">
             {hasScheduledRetry ? (
               <Zap className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            ) : (
+            ) : maxRetriesReached ? (
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : (
+              <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             )}
-            <div>
+            <div className="space-y-0.5">
               {hasScheduledRetry ? (
                 <>
                   <p className="font-medium">Auto-resuming in {autoContinueSettings.delaySeconds}s</p>
-                  <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
-                    Attempt {retriesUsed + 1} of {autoContinueSettings.maxRetries}. 
-                    Will resume from section {currentSection}.
+                  <p className="opacity-80">
+                    Attempt {retriesUsed + 1} of {autoContinueSettings.maxRetries} • 
+                    Resume from section {currentSection}
                   </p>
                 </>
               ) : maxRetriesReached ? (
                 <>
                   <p className="font-medium">Max retries reached</p>
-                  <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
-                    Tried {retriesUsed} times. Press <span className="font-medium">Continue</span> to manually retry.
+                  <p className="opacity-80">
+                    Tried {retriesUsed} times • Last update {minutesSinceUpdate}m ago
+                  </p>
+                  <p className="opacity-80">
+                    Press <span className="font-medium">Continue</span> to manually retry from section {currentSection}
                   </p>
                 </>
               ) : (
                 <>
                   <p className="font-medium">Generation stalled</p>
-                  <p className="mt-0.5 text-amber-600/80 dark:text-amber-400/80">
-                    {minutesSinceUpdate > 0 
-                      ? `No progress for ${minutesSinceUpdate} min. `
-                      : 'The server timed out. '}
-                    Press <span className="font-medium">Continue</span> to resume from section {currentSection}.
+                  <p className="opacity-80">
+                    No progress for {minutesSinceUpdate > 0 ? `${minutesSinceUpdate} min` : `${secondsSinceUpdate}s`}
                   </p>
+                  {autoContinueSettings.enabled ? (
+                    <p className="opacity-80">
+                      Auto-continue will retry shortly...
+                    </p>
+                  ) : (
+                    <p className="opacity-80">
+                      Press <span className="font-medium">Continue</span> to resume from section {currentSection}
+                    </p>
+                  )}
                 </>
               )}
             </div>
