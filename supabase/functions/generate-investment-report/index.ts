@@ -285,11 +285,11 @@ function groupHeadingsIntoSections(headings: string[]): ReportSectionDefinition[
       minContentLength: 3000
     },
     'recommendations': {
-      keywords: ['risk', 'recommendation', 'conclusion', 'disclaimer', 'data sources', 'transparency', 'contact', 'final'],
+      keywords: ['risk', 'recommendation', 'conclusion', 'final', 'swot'],
       name: 'Risks & Recommendations',
       requiredKeywords: ['risk', 'recommendation', 'conclusion'],
-      maxTokens: 3500,
-      minContentLength: 3500
+      maxTokens: 5000,
+      minContentLength: 4000
     }
   };
   
