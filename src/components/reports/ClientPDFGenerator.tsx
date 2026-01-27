@@ -52,7 +52,10 @@ export function ClientPDFGenerator({ report, includeSources = true, includeScori
       'lettingFees': 'annualCosts.lettingFees',
       'capitalGrowth': 'assumptions.capitalGrowth',
       'buildPrice': 'initialCosts.buildPrice',
-      'landPrice': 'initialCosts.landPrice'
+      'landPrice': 'initialCosts.landPrice',
+      // Cash flow specific fields
+      'marketValueNow': 'cashFlow.marketValueNow',
+      'cpiGrowthRate': 'cashFlow.cpiGrowthRate',
     };
     
     // Apply overrides to the nested structure

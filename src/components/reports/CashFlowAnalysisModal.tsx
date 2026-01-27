@@ -440,30 +440,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const fc = compReport.financial_calculations || {};
       const mo = compReport.manual_overrides || {};
       const cashFlow = fc.cashFlow || {};
+      const assumptions = fc.assumptions || {};
+      const initialCosts = fc.initialCosts || {};
       const cfOverrides = mo.cashFlowYearlyOverrides || {};
       const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
 
-      const purchasePrice = mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0;
-      const loanAmount = mo.loanAmount || cashFlow.loanAmount || (purchasePrice * ((mo.loanToValueRatio || fc.loanToValueRatio || 80) / 100));
-      const weeklyRent = mo.weeklyRent || fc.weeklyRent || 0;
-      const occupancyRate = mo.occupancyRate || cashFlow.occupancyRate || 52;
-      const baseCapitalGrowthRate = (mo.capitalGrowth || fc.capitalGrowth || 5) / 100;
-      const baseInterestRate = (mo.interestRate || fc.interestRate || 5.5) / 100;
-      const baseCpiRate = (mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3) / 100;
-      const taxRate = (mo.taxRate || cashFlow.taxRate || 30) / 100;
-      const baseDepreciation = includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0;
+      // CRITICAL: Use same fallback paths as baseFinancialData
+      const purchasePrice = mo.purchasePrice ?? initialCosts.propertyValue ?? fc.purchasePrice ?? fc.propertyValue ?? 0;
+      const loanAmount = mo.loanAmount ?? cashFlow.loanAmount ?? (purchasePrice * ((mo.loanToValueRatio ?? fc.loanToValueRatio ?? 80) / 100));
+      const weeklyRent = mo.weeklyRent ?? fc.weeklyRent ?? 0;
+      const occupancyRate = mo.occupancyRate ?? cashFlow.occupancyRate ?? 52;
+      // CRITICAL: capitalGrowth may be in assumptions.capitalGrowth (nested) or fc.capitalGrowth (root)
+      const baseCapitalGrowthRate = (mo.capitalGrowth ?? assumptions.capitalGrowth ?? fc.capitalGrowth ?? 5) / 100;
+      const baseInterestRate = (mo.interestRate ?? fc.interestRate ?? 5.5) / 100;
+      const baseCpiRate = (mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? 3) / 100;
+      const taxRate = (mo.taxRate ?? cashFlow.taxRate ?? 30) / 100;
+      const baseDepreciation = includeDepreciation ? (mo.depreciation ?? cashFlow.depreciation ?? 6000) : 0;
       const depreciationSchedule = mo.depreciationSchedule as Record<number, number> | undefined;
-      const baseLandTax = mo.landTax || fc.landTax || 0;
-      const marketValueNow = mo.marketValueNow || cashFlow.marketValueNow || purchasePrice;
+      const baseLandTax = mo.landTax ?? fc.landTax ?? 0;
+      const marketValueNow = mo.marketValueNow ?? cashFlow.marketValueNow ?? purchasePrice;
 
       // Fixed expenses (excluding management fee)
       const baseFixedExpenses = 
-        (mo.councilRates || fc.councilRates || 0) +
-        (mo.waterRates || fc.waterRates || 0) +
-        (mo.bodyCorporateFees || fc.bodyCorporateFees || 0) +
-        (mo.buildingLandlordInsurance || fc.buildingLandlordInsurance || 0) +
-        (mo.repairsMaintenance || fc.repairsMaintenance || 0);
-      const propertyManagementPercent = (mo.propertyManagementFees || fc.propertyManagementFees || 7) / 100;
+        (mo.councilRates ?? fc.councilRates ?? 0) +
+        (mo.waterRates ?? fc.waterRates ?? 0) +
+        (mo.bodyCorporateFees ?? fc.bodyCorporateFees ?? 0) +
+        (mo.buildingLandlordInsurance ?? fc.buildingLandlordInsurance ?? 0) +
+        (mo.repairsMaintenance ?? fc.repairsMaintenance ?? 0);
+      const propertyManagementPercent = (mo.propertyManagementFees ?? fc.propertyManagementFees ?? 7) / 100;
       const baseAnnualRent = weeklyRent * occupancyRate;
 
       const results: YearlyProjection[] = [];
@@ -593,61 +597,78 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     const fc = report.financial_calculations || {};
     const mo = report.manual_overrides || {};
     const cashFlow = fc.cashFlow || {};
+    const assumptions = fc.assumptions || {};
+    const initialCosts = fc.initialCosts || {};
 
     // Check if depreciation should be included in cash flow analysis
     const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
 
+    // CRITICAL: capitalGrowth may be stored in multiple locations:
+    // 1. manual_overrides.capitalGrowth (flat override - highest priority)
+    // 2. financial_calculations.assumptions.capitalGrowth (nested from save mapping)
+    // 3. financial_calculations.capitalGrowth (root - legacy)
+    const capitalGrowthValue = mo.capitalGrowth ?? assumptions.capitalGrowth ?? fc.capitalGrowth ?? 5;
+    
+    // CRITICAL: marketValueNow/propertyValue may be stored in multiple locations:
+    // 1. manual_overrides.marketValueNow (flat override - highest priority for current value)
+    // 2. cashFlow.marketValueNow (nested)
+    // 3. manual_overrides.purchasePrice (purchase time value)
+    // 4. initialCosts.propertyValue (nested from save mapping)
+    // 5. financial_calculations.purchasePrice (root - legacy)
+    const purchasePrice = mo.purchasePrice ?? initialCosts.propertyValue ?? fc.purchasePrice ?? fc.propertyValue ?? 0;
+    const marketValueNow = mo.marketValueNow ?? cashFlow.marketValueNow ?? purchasePrice;
+
     return {
       // Purchase & Loan
-      purchasePrice: mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0,
-      landPrice: mo.landPrice || fc.landPrice || 0,
-      buildPrice: mo.buildPrice || fc.buildPrice || 0,
-      marketValueNow: mo.marketValueNow || cashFlow.marketValueNow || mo.purchasePrice || fc.purchasePrice || 0,
-      depositValue: mo.depositValue || fc.depositValue || 0,
+      purchasePrice,
+      landPrice: mo.landPrice ?? initialCosts.landPrice ?? fc.landPrice ?? 0,
+      buildPrice: mo.buildPrice ?? initialCosts.buildPrice ?? fc.buildPrice ?? 0,
+      marketValueNow,
+      depositValue: mo.depositValue ?? initialCosts.deposit ?? fc.depositValue ?? 0,
       // Loan amount: use override, or cash flow value, or dynamically calculate from purchase price × LVR
-      loanAmount: mo.loanAmount || cashFlow.loanAmount || 
-        ((mo.purchasePrice || fc.purchasePrice || fc.propertyValue || 0) * ((mo.loanToValueRatio || fc.loanToValueRatio || 80) / 100)),
-      loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
-      loanType: (mo.loanType || cashFlow.loanType || 'interest_only') as LoanType,
-      loanTermYears: mo.loanTermYears || cashFlow.loanTermYears || 30,
-      interestRate: mo.interestRate || fc.interestRate || 5.5,
-      capitalGrowth: mo.capitalGrowth || fc.capitalGrowth || 5,
+      loanAmount: mo.loanAmount ?? cashFlow.loanAmount ?? 
+        (purchasePrice * ((mo.loanToValueRatio ?? fc.loanToValueRatio ?? 80) / 100)),
+      loanToValueRatio: mo.loanToValueRatio ?? fc.loanToValueRatio ?? 80,
+      loanType: (mo.loanType ?? cashFlow.loanType ?? 'interest_only') as LoanType,
+      loanTermYears: mo.loanTermYears ?? cashFlow.loanTermYears ?? 30,
+      interestRate: mo.interestRate ?? fc.interestRate ?? 5.5,
+      capitalGrowth: capitalGrowthValue,
       
       // New mortgage calculator fields
-      interestOnlyPeriodYears: mo.interestOnlyPeriodYears || 0,
-      repaymentFrequency: (mo.repaymentFrequency || 'monthly') as RepaymentFrequency,
-      extraRepaymentPerMonth: mo.extraRepaymentPerMonth || 0,
-      offsetBalance: mo.offsetBalance || 0,
+      interestOnlyPeriodYears: mo.interestOnlyPeriodYears ?? 0,
+      repaymentFrequency: (mo.repaymentFrequency ?? 'monthly') as RepaymentFrequency,
+      extraRepaymentPerMonth: mo.extraRepaymentPerMonth ?? 0,
+      offsetBalance: mo.offsetBalance ?? 0,
 
       // Rental Income
-      weeklyRent: mo.weeklyRent || fc.weeklyRent || 0,
-      occupancyRate: mo.occupancyRate || cashFlow.occupancyRate || 52,
+      weeklyRent: mo.weeklyRent ?? fc.weeklyRent ?? 0,
+      occupancyRate: mo.occupancyRate ?? cashFlow.occupancyRate ?? 52,
 
       // Expenses
-      stampDuty: mo.stampDuty || fc.stampDuty || 0,
-      bodyCorporateFees: mo.bodyCorporateFees || fc.bodyCorporateFees || 0,
-      landTax: mo.landTax || fc.landTax || 0,
-      councilRates: mo.councilRates || fc.councilRates || 0,
-      waterRates: mo.waterRates || fc.waterRates || 0,
-      solicitorFees: mo.solicitorFees || fc.solicitorFees || 0,
-      buildingLandlordInsurance: mo.buildingLandlordInsurance || fc.buildingLandlordInsurance || 0,
-      propertyManagementFees: mo.propertyManagementFees || fc.propertyManagementFees || 7,
-      repairsMaintenance: mo.repairsMaintenance || fc.repairsMaintenance || 0,
-      lettingFees: mo.lettingFees || fc.lettingFees || 0,
-      agentFee: mo.agentFee || fc.agentFee || 0,
+      stampDuty: mo.stampDuty ?? fc.stampDuty ?? 0,
+      bodyCorporateFees: mo.bodyCorporateFees ?? fc.bodyCorporateFees ?? 0,
+      landTax: mo.landTax ?? fc.landTax ?? 0,
+      councilRates: mo.councilRates ?? fc.councilRates ?? 0,
+      waterRates: mo.waterRates ?? fc.waterRates ?? 0,
+      solicitorFees: mo.solicitorFees ?? fc.solicitorFees ?? 0,
+      buildingLandlordInsurance: mo.buildingLandlordInsurance ?? fc.buildingLandlordInsurance ?? 0,
+      propertyManagementFees: mo.propertyManagementFees ?? fc.propertyManagementFees ?? 7,
+      repairsMaintenance: mo.repairsMaintenance ?? fc.repairsMaintenance ?? 0,
+      lettingFees: mo.lettingFees ?? fc.lettingFees ?? 0,
+      agentFee: mo.agentFee ?? fc.agentFee ?? 0,
 
       // Tax & Growth
-      cpiGrowthRate: mo.cpiGrowthRate || cashFlow.cpiGrowthRate || 3,
-      depreciation: includeDepreciation ? (mo.depreciation || cashFlow.depreciation || 6000) : 0,
-      taxRate: mo.taxRate || cashFlow.taxRate || 30,
-      constructionYear: mo.constructionYear || cashFlow.constructionYear || new Date().getFullYear(),
+      cpiGrowthRate: mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? 3,
+      depreciation: includeDepreciation ? (mo.depreciation ?? cashFlow.depreciation ?? 6000) : 0,
+      taxRate: mo.taxRate ?? cashFlow.taxRate ?? 30,
+      constructionYear: mo.constructionYear ?? cashFlow.constructionYear ?? new Date().getFullYear(),
       
       // 10-Year Depreciation Schedule (from calculator)
       depreciationSchedule: mo.depreciationSchedule as Record<number, number> | undefined,
       depreciationMethod: mo.depreciationMethod as 'dv' | 'pc' | undefined,
       
       // Construction Settings
-      constructionDurationMonths: mo.constructionDurationMonths || 7,
+      constructionDurationMonths: mo.constructionDurationMonths ?? 7,
       
       // Toggle state
       includeDepreciationInCashFlow: includeDepreciation,
