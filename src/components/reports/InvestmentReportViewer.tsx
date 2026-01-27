@@ -461,26 +461,22 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     )}
                   </CardTitle>
                   <div className="flex items-center gap-4">
-                    {report.investment_score && (
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-3 w-3" />
-                        <span className="text-sm text-muted-foreground">Include scoring</span>
-                        <Switch
-                          checked={includeScoring}
-                          onCheckedChange={setIncludeScoring}
-                        />
-                      </div>
-                    )}
-                    {report.sources_content && (
-                      <div className="flex items-center gap-2">
-                        <Link className="h-3 w-3" />
-                        <span className="text-sm text-muted-foreground">Include sources</span>
-                        <Switch
-                          checked={includeSources}
-                          onCheckedChange={setIncludeSources}
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-3 w-3" />
+                      <span className="text-sm text-muted-foreground">Include scoring</span>
+                      <Switch
+                        checked={includeScoring}
+                        onCheckedChange={setIncludeScoring}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link className="h-3 w-3" />
+                      <span className="text-sm text-muted-foreground">Include sources</span>
+                      <Switch
+                        checked={includeSources}
+                        onCheckedChange={setIncludeSources}
+                      />
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         variant="ghost"
