@@ -10,11 +10,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { RefreshCw, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useChunkedRegeneration } from '@/hooks/useChunkedRegeneration';
 
 interface RegenerateReportButtonProps {
   reportId: string;
@@ -34,124 +33,46 @@ export function RegenerateReportButton({
   className = ''
 }: RegenerateReportButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
   const { logActivity } = useActivityLogger();
   const { addNotification } = useNotifications();
+  
+  const { 
+    isRegenerating, 
+    currentSection, 
+    totalSections, 
+    regenerate 
+  } = useChunkedRegeneration();
 
   const handleRegenerate = async () => {
-    try {
-      setRegenerating(true);
-      setShowConfirm(false);
+    setShowConfirm(false);
 
-      const toastId = toast.loading('Regenerating report...', {
-        description: 'Fetching report data and manual overrides...'
-      });
+    addNotification({
+      type: 'report_regeneration_started',
+      title: 'Report Regeneration Started',
+      message: `Regenerating report for ${propertyAddress} (chunked mode)...`,
+      entityId: reportId
+    });
 
-      // Fetch the full report with manual overrides via secure function
-      const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
-        reportId,
-        listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, current_version, status, last_completed_section'
-        }
-      });
-
-      if (fetchError || !reportData?.report) {
-        throw new Error(fetchError?.message || 'Failed to fetch report');
+    await regenerate({
+      reportId,
+      propertyAddress,
+      onProgress: (section, total) => {
+        console.log(`[RegenerateReportButton] Progress: ${section}/${total}`);
+      },
+      onComplete: () => {
+        logActivity({
+          actionType: 'report_regenerated',
+          entityType: 'investment_report',
+          entityId: reportId,
+          entityName: propertyAddress,
+          metadata: { regenerationType: 'chunked' }
+        });
+        onRegenerated?.();
+      },
+      onError: (error) => {
+        console.error('[RegenerateReportButton] Error:', error);
       }
-
-      const report = reportData.report;
-
-      if (!report?.report_content) {
-        throw new Error('Report content not found');
-      }
-
-      // Check if this is a resume operation (report was interrupted)
-      const isResume = report.status === 'failed' && (report.last_completed_section || 0) > 0;
-      
-      toast.loading(isResume ? 'Resuming regeneration...' : 'Processing with Perplexity AI...', {
-        id: toastId,
-        description: isResume 
-          ? `Continuing from section ${(report.last_completed_section || 0) + 1}/12...`
-          : 'Generating 12 sections with fresh qualitative analysis (this may take 3-5 minutes)...'
-      });
-
-      // Add "regeneration started" notification
-      addNotification({
-        type: 'report_regeneration_started',
-        title: isResume ? 'Report Resuming' : 'Report Regeneration Started',
-        message: isResume 
-          ? `Resuming regeneration for ${propertyAddress} from section ${(report.last_completed_section || 0) + 1}...`
-          : `Regenerating report for ${propertyAddress}...`,
-        entityId: reportId
-      });
-
-      // Call the regenerate-report-qualitative edge function
-      // Note: Status is set to 'processing' inside the edge function
-      const { data, error } = await invokeSecureFunction('regenerate-report-qualitative', {
-        reportId,
-        manualOverrides: report.manual_overrides || {},
-        currentReportContent: report.report_content,
-        propertyAddress,
-        financialCalculations: report.financial_calculations || {},
-        continueFrom: isResume // Enable resume mode if report was interrupted
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to regenerate report');
-      }
-
-      // Fetch the new version number after successful regeneration via secure function
-      const { data: updatedReportData } = await invokeSecureFunction('get-investment-reports', {
-        reportId,
-        listOptions: {
-          select: 'current_version, status'
-        }
-      });
-
-      const updatedReport = updatedReportData?.report;
-      const newVersion = updatedReport?.current_version || (report.current_version || 1) + 1;
-
-      toast.success('Report regenerated successfully', {
-        id: toastId,
-        description: `Version ${newVersion} created with updated qualitative analysis.`
-      });
-
-      // Log report regeneration activity
-      logActivity({
-        actionType: 'report_regenerated',
-        entityType: 'investment_report',
-        entityId: reportId,
-        entityName: propertyAddress,
-        metadata: {
-          version: newVersion,
-          hasManualOverrides: Object.keys(report.manual_overrides || {}).length > 0
-        }
-      });
-
-      // Callback to refresh the parent component
-      if (onRegenerated) {
-        onRegenerated();
-      }
-
-    } catch (error: any) {
-      console.error('Error regenerating report:', error);
-      toast.error('Failed to regenerate report', {
-        description: error.message || 'Please try again later'
-      });
-
-      // Revert status to failed on error via secure function
-      await invokeSecureFunction('manage-investment-reports', {
-        action: 'update',
-        reportId,
-        data: { status: 'failed' }
-      });
-    } finally {
-      setRegenerating(false);
-    }
+    });
   };
 
   return (
@@ -161,12 +82,12 @@ export function RegenerateReportButton({
         size={size}
         className={className}
         onClick={() => setShowConfirm(true)}
-        disabled={regenerating}
+        disabled={isRegenerating}
       >
-        {regenerating ? (
+        {isRegenerating ? (
           <>
             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-            Regenerating...
+            {currentSection}/{totalSections}
           </>
         ) : (
           <>
