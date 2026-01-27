@@ -291,11 +291,35 @@ export function InvestmentReportGenerator() {
       }
 
       // Build property details object with pre-generation overrides
+      // CRITICAL: Convert string values to numbers for proper override cascade
+      const sanitizedPreGenData = { ...preGenData };
+      
+      // Ensure numeric fields are actually numbers, not strings
+      const numericFields = [
+        'purchasePrice', 'weeklyRent', 'depositValue', 'loanToValueRatio', 
+        'interestRate', 'capitalGrowth', 'stampDuty', 'bodyCorporateFees',
+        'landTax', 'councilRates', 'waterRates', 'solicitorFees',
+        'buildingLandlordInsurance', 'propertyManagementFees', 'repairsMaintenance',
+        'lettingFees', 'strataAdminFund', 'strataSinkingFund', 'strataSpecialLevies',
+        'landPrice', 'buildPrice', 'agentFee', 'cpiGrowthRate', 'depreciation',
+        'taxRate', 'occupancyRate', 'loanTermYears', 'marketValueNow', 'loanAmount'
+      ];
+      
+      numericFields.forEach(field => {
+        const val = (sanitizedPreGenData as any)[field];
+        if (val !== undefined && val !== null && val !== '') {
+          const numVal = parseFloat(val.toString());
+          if (!isNaN(numVal)) {
+            (sanitizedPreGenData as any)[field] = numVal;
+          }
+        }
+      });
+      
       const propertyDetails: any = { 
         queryType, 
         originalQuery: query,
         // Include pre-generation manual overrides for context injection
-        manualOverrides: preGenData,
+        manualOverrides: sanitizedPreGenData,
       };
       
       // Add optional property details if provided (form values take precedence over preGenData)
