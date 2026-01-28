@@ -1567,11 +1567,29 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         // Calculate dynamic column widths based on content
         const calculateColumnWidths = (): number[] => {
-          const minColWidth = 60; // Minimum column width
+          const minColWidth = 45; // Reduced minimum column width for better fit
           const contentWidths: number[] = [];
+          
+          // Detect if this is a scenario table (Conservative/Base Case/Optimistic)
+          const headerRow = rows[0] || [];
+          const isScenarioTable = headerRow.some((cell: string) => 
+            cell?.toLowerCase().includes('conservative') || 
+            cell?.toLowerCase().includes('base case') || 
+            cell?.toLowerCase().includes('optimistic')
+          );
+          
+          // Detect if first column is "Year" - these can be much narrower
+          const firstColHeader = (headerRow[0] || '').toLowerCase().trim();
+          const isFirstColYear = firstColHeader === 'year' || firstColHeader.includes('year');
           
           // Calculate content width for each column
           for (let col = 0; col < columnCount; col++) {
+            // For Year columns, use a fixed narrow width
+            if (col === 0 && isFirstColYear) {
+              contentWidths.push(35); // Fixed narrow width for Year column
+              continue;
+            }
+            
             let maxContentWidth = minColWidth;
             
             for (const row of rows) {
@@ -1598,15 +1616,31 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           // Calculate total desired width
           const totalDesiredWidth = contentWidths.reduce((sum, w) => sum + w, 0);
           
+          // For scenario tables, ensure equal distribution for scenario columns
+          if (isScenarioTable && columnCount >= 4) {
+            const yearColWidth = isFirstColYear ? 35 : contentWidths[0];
+            const remainingWidth = maxWidth - yearColWidth;
+            const scenarioColCount = columnCount - 1;
+            const scenarioColWidth = remainingWidth / scenarioColCount;
+            
+            return contentWidths.map((w, i) => {
+              if (i === 0 && isFirstColYear) return yearColWidth;
+              return Math.max(minColWidth, scenarioColWidth);
+            });
+          }
+          
           // If desired width fits, use it; otherwise scale proportionally
           if (totalDesiredWidth <= maxWidth) {
             // Distribute extra space proportionally
             const extraSpace = maxWidth - totalDesiredWidth;
             return contentWidths.map(w => w + (w / totalDesiredWidth) * extraSpace);
           } else {
-            // Scale down proportionally to fit
+            // Scale down proportionally to fit, but preserve Year column narrow width
             const scale = maxWidth / totalDesiredWidth;
-            return contentWidths.map(w => Math.max(minColWidth, w * scale));
+            return contentWidths.map((w, i) => {
+              if (i === 0 && isFirstColYear) return Math.max(35, w * scale);
+              return Math.max(minColWidth, w * scale);
+            });
           }
         };
         

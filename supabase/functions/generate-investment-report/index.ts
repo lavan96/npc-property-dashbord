@@ -3055,8 +3055,53 @@ ${overrideLines.join('\n')}
         prompt = overridesSection + prompt;
         console.log(`✓ Manual overrides injected (${overrideLines.length} values). New prompt length:`, prompt.length);
       }
+      
+      // If capital growth was NOT manually overridden, instruct Perplexity to dynamically research it
+      if (!manualOverrides.capitalGrowth) {
+        const capitalGrowthResearchInstruction = `
+---
+**CAPITAL GROWTH RATE - REQUIRED RESEARCH:**
+
+The capital growth rate was NOT provided by the user. You MUST:
+1. Research and fetch the historical capital growth rate for this specific suburb/area
+2. Use reliable sources like CoreLogic, PropTrack, Domain, or local council data
+3. Calculate an appropriate capital growth projection based on:
+   - Historical 5-10 year median price trends for the suburb
+   - Current market conditions and growth trajectory
+   - Comparison to broader metropolitan/regional averages
+4. Cite the source and timeframe of your capital growth data
+5. Use this researched value in ALL financial calculations and 10-year projections
+
+DO NOT default to 0% or any arbitrary value. The capital growth rate is critical for accurate investment analysis.
+
+---
+
+`;
+        prompt = capitalGrowthResearchInstruction + prompt;
+        console.log('✓ Capital growth research instruction injected (no manual override provided)');
+      }
     } else {
       console.log('ℹ️ No manual overrides provided');
+      
+      // When no overrides at all, still instruct Perplexity to research capital growth
+      const capitalGrowthResearchInstruction = `
+---
+**CAPITAL GROWTH RATE - REQUIRED RESEARCH:**
+
+No capital growth rate was provided. You MUST research and determine an appropriate capital growth rate for this property's suburb/area:
+1. Fetch historical capital growth data from CoreLogic, PropTrack, Domain, or similar reliable sources
+2. Analyze 5-10 year median price trends for the suburb
+3. Consider current market conditions and growth trajectory
+4. Use this researched value in ALL financial calculations and 10-year projections
+5. Cite your source and the timeframe of the data
+
+DO NOT default to 0% or any arbitrary value. The capital growth rate is critical for accurate investment analysis.
+
+---
+
+`;
+      prompt = capitalGrowthResearchInstruction + prompt;
+      console.log('✓ Capital growth research instruction injected (no overrides provided)');
     }
 
     // ========== DIRECT TEMPLATE INJECTION (Hard Enforced) ==========
