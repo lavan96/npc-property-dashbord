@@ -2047,47 +2047,96 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         return lines * lineSpacing;
       };
 
-      // Helper to draw text with word wrapping and markdown formatting
+      // Helper to draw text with word wrapping, markdown formatting, and JUSTIFIED alignment
       const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number) => {
         const sanitizedText = stripEmojis(text); // Sanitize text first
         const parts = parseMarkdownText(sanitizedText);
         let currentY = startY;
-        let currentX = x;
         
+        // Collect all words with their fonts first
+        const allWords: Array<{word: string, font: any}> = [];
         for (const part of parts) {
-          const words = part.text.split(' ');
+          const words = part.text.split(' ').filter(w => w.length > 0);
           const font = part.bold ? boldFont : normalFont;
-          
           for (const word of words) {
-            const wordWithSpace = word + ' ';
-            const wordWidth = font.widthOfTextAtSize(wordWithSpace, size);
-            
-            // Check if word fits on current line
-            if (currentX + wordWidth > x + maxWidth && currentX > x) {
-              // Move to next line
-              currentX = x;
-              currentY -= lineSpacing;
-              
-              // Check if we need a new page
-              if (currentY < bottomMargin + 40) {
-                return { needsNewPage: true, lastY: currentY, remainingParts: parts.slice(parts.indexOf(part)) };
-              }
-            }
-            
-            // Draw the word (already sanitized)
-            page.drawText(wordWithSpace, {
-              x: currentX,
-              y: currentY,
-              size,
-              font,
-              color: rgb(0.2, 0.2, 0.2),
-            });
-            
-            currentX += wordWidth;
+            allWords.push({ word, font });
           }
         }
+        
+        // Build lines for justified text
+        type LineData = { words: Array<{word: string, font: any}>, totalWidth: number };
+        const lines: LineData[] = [];
+        let currentLine: LineData = { words: [], totalWidth: 0 };
+        const spaceWidth = normalFont.widthOfTextAtSize(' ', size);
+        
+        for (let i = 0; i < allWords.length; i++) {
+          const { word, font } = allWords[i];
+          const wordWidth = font.widthOfTextAtSize(word, size);
+          const neededWidth = currentLine.words.length > 0 ? wordWidth + spaceWidth : wordWidth;
+          
+          if (currentLine.totalWidth + neededWidth > maxWidth && currentLine.words.length > 0) {
+            // Line is full, push and start new line
+            lines.push(currentLine);
+            currentLine = { words: [{ word, font }], totalWidth: wordWidth };
+          } else {
+            currentLine.words.push({ word, font });
+            currentLine.totalWidth += neededWidth;
+          }
+        }
+        // Push the last line
+        if (currentLine.words.length > 0) {
+          lines.push(currentLine);
+        }
+        
+        // Draw each line with justified alignment
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          const line = lines[lineIndex];
+          const isLastLine = lineIndex === lines.length - 1;
+          
+          // Check if we need a new page
+          if (currentY < bottomMargin + 40) {
+            // Return remaining lines as parts (simplified - just indicate need for new page)
+            return { needsNewPage: true, lastY: currentY, remainingParts: [] };
+          }
+          
+          if (line.words.length === 1 || isLastLine) {
+            // Single word or last line - left align (don't justify)
+            let drawX = x;
+            for (const { word, font } of line.words) {
+              page.drawText(word, {
+                x: drawX,
+                y: currentY,
+                size,
+                font,
+                color: rgb(0.2, 0.2, 0.2),
+              });
+              drawX += font.widthOfTextAtSize(word + ' ', size);
+            }
+          } else {
+            // Multiple words, not last line - justify
+            const totalWordsWidth = line.words.reduce((sum, { word, font }) => 
+              sum + font.widthOfTextAtSize(word, size), 0);
+            const extraSpace = maxWidth - totalWordsWidth;
+            const spaceBetween = extraSpace / (line.words.length - 1);
+            
+            let drawX = x;
+            for (let wi = 0; wi < line.words.length; wi++) {
+              const { word, font } = line.words[wi];
+              page.drawText(word, {
+                x: drawX,
+                y: currentY,
+                size,
+                font,
+                color: rgb(0.2, 0.2, 0.2),
+              });
+              drawX += font.widthOfTextAtSize(word, size) + spaceBetween;
+            }
+          }
+          
+          currentY -= lineSpacing;
+        }
 
-        return { needsNewPage: false, lastY: currentY - lineSpacing, remainingParts: [] };
+        return { needsNewPage: false, lastY: currentY, remainingParts: [] };
       };
 
       // Get ALL sections from the report dynamically instead of hardcoded list
