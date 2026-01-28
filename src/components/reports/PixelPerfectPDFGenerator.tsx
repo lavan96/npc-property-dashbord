@@ -155,6 +155,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       /data.*sourcing/i,
       /methodology\s*notes?/i,
       /data\s*transparency/i,
+      /data\s*limitations?/i,
+      /limitations?\s*(&|and)?\s*transparency/i,
       /demographic.*economic data/i,
       /economic data sources?/i,
       /sources?$/i
@@ -2482,6 +2484,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         let h3Index = 0;
         let lastParentSection = '';
         
+        // Track which parent sections we've seen to properly reset h3Index
+        const parentToH3Count = new Map<string, number>();
+        
         for (const sectionName of allSectionNames) {
           const cleanName = stripEmojis(
             sectionName.replace(/^#{1,6}\s*/, '').replace(/:\s*$/, '').trim()
@@ -2502,20 +2507,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           if (sectionLevel === 2) {
             // H2 = Main section
             h2Index++;
-            h3Index = 0; // Reset subsection counter
+            h3Index = 0; // Reset subsection counter for new H2
             lastParentSection = cleanName;
+            parentToH3Count.set(cleanName, 0); // Initialize h3 counter for this parent
             sectionNumText = `${h2Index}.`;
             indentation = 0;
             fontSize = 11;
             fontToUse = helveticaBold;
           } else {
             // H3 = Subsection
-            // Check if this is a new parent section
-            if (parentSection && parentSection !== lastParentSection) {
-              // This shouldn't happen often, but handle it gracefully
+            // Use the parent section to get the correct h3 index
+            const effectiveParent = parentSection || lastParentSection;
+            
+            if (effectiveParent !== lastParentSection) {
+              // Parent section changed - reset h3Index
+              lastParentSection = effectiveParent;
               h3Index = 0;
             }
-            h3Index++;
+            
+            // Get and increment the h3 count for this parent
+            const currentCount = parentToH3Count.get(effectiveParent) || 0;
+            const newCount = currentCount + 1;
+            parentToH3Count.set(effectiveParent, newCount);
+            h3Index = newCount;
+            
             sectionNumText = `${h2Index}.${h3Index}`;
             indentation = 15; // Indent subsections
             fontSize = 10;
