@@ -93,23 +93,41 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
   // Toggle active status
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase
-        .from('report_structure_templates')
-        .update({ is_active: isActive, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      
-      if (error) throw error;
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'report_structure_templates',
+        recordId: id,
+        data: { is_active: isActive, updated_at: new Date().toISOString() },
+      });
+
+      if (error) throw new Error(error.message || 'Failed to update template');
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['report-structure-templates'] });
-      toast({ title: 'Template status updated' });
+    onMutate: async ({ id, isActive }) => {
+      await queryClient.cancelQueries({ queryKey: ['report-structure-templates'] });
+      const previous = queryClient.getQueryData<Template[]>(['report-structure-templates']);
+
+      // Optimistically update UI so Switch flips immediately
+      queryClient.setQueryData<Template[]>(['report-structure-templates'], (old) =>
+        (old || []).map((t) => (t.id === id ? { ...t, is_active: isActive } : t))
+      );
+
+      return { previous };
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['report-structure-templates'], context.previous);
+      }
       toast({
         title: 'Update failed',
         description: error.message,
         variant: 'destructive',
       });
+    },
+    onSuccess: () => {
+      toast({ title: 'Template status updated' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['report-structure-templates'] });
     },
   });
 

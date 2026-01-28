@@ -52,35 +52,52 @@ export function QATemplateList() {
   const { data: templates, isLoading } = useQuery({
     queryKey: ['qa-export-templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('report_structure_templates')
-        .select('*')
-        .eq('template_type', 'qa_export')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as QATemplate[];
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'report_structure_templates',
+        listOptions: {
+          orderBy: 'created_at',
+          orderAsc: false,
+          filters: { template_type: 'qa_export' },
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      return ((data as any)?.records || []) as QATemplate[];
     },
   });
 
   const handleToggleActive = async (template: QATemplate) => {
     setActivatingId(template.id);
+    let previous: QATemplate[] | undefined;
     try {
-      if (!template.is_active) {
-        // Deactivate all other qa_export templates first
-        // Get all active qa_export templates and deactivate them
-        const otherActiveTemplates = templates?.filter(t => t.is_active && t.id !== template.id) || [];
-        for (const otherTemplate of otherActiveTemplates) {
-          await invokeSecureFunction('manage-templates', {
-            operation: 'update',
-            table: 'report_structure_templates',
-            recordId: otherTemplate.id,
-            data: { is_active: false },
-          });
+      // Optimistic UI update so the Switch flips immediately
+      previous = queryClient.getQueryData<QATemplate[]>(['qa-export-templates']);
+      queryClient.setQueryData<QATemplate[]>(['qa-export-templates'], (old) => {
+        const current = old || [];
+        if (template.is_active) {
+          return current.map((t) => (t.id === template.id ? { ...t, is_active: false } : t));
         }
+        // Activating one template deactivates the rest
+        return current.map((t) => ({ ...t, is_active: t.id === template.id }));
+      });
+
+      if (!template.is_active) {
+        const otherActiveTemplates = (templates || []).filter((t) => t.is_active && t.id !== template.id);
+        const results = await Promise.all(
+          otherActiveTemplates.map((t) =>
+            invokeSecureFunction('manage-templates', {
+              operation: 'update',
+              table: 'report_structure_templates',
+              recordId: t.id,
+              data: { is_active: false },
+            })
+          )
+        );
+        const failed = results.find((r) => r.error);
+        if (failed?.error) throw new Error(failed.error.message);
       }
 
-      // Toggle the selected template via secure edge function
       const { error } = await invokeSecureFunction('manage-templates', {
         operation: 'update',
         table: 'report_structure_templates',
@@ -92,7 +109,7 @@ export function QATemplateList() {
 
       toast({
         title: template.is_active ? 'Template deactivated' : 'Template activated',
-        description: template.is_active 
+        description: template.is_active
           ? 'The default template will be used for Q&A exports'
           : `"${template.name}" will now be used for Q&A exports`,
       });
@@ -107,6 +124,9 @@ export function QATemplateList() {
 
       queryClient.invalidateQueries({ queryKey: ['qa-export-templates'] });
     } catch (error: any) {
+      if (previous) {
+        queryClient.setQueryData(['qa-export-templates'], previous);
+      }
       toast({
         title: 'Error',
         description: error.message || 'Failed to update template status',

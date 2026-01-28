@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,37 +51,60 @@ export function CashFlowTemplateList() {
   const { data: templates, isLoading } = useQuery({
     queryKey: ['cashflow-export-templates'],
     queryFn: async () => {
-      // Cast to 'any' because the TypeScript types may not include the new enum value yet
-      const { data, error } = await supabase
-        .from('report_structure_templates')
-        .select('*')
-        .eq('template_type', 'cashflow_export' as any)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as CashFlowTemplate[];
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'report_structure_templates',
+        listOptions: {
+          orderBy: 'created_at',
+          orderAsc: false,
+          filters: { template_type: 'cashflow_export' },
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      return ((data as any)?.records || []) as CashFlowTemplate[];
     },
   });
 
   const handleToggleActive = async (template: CashFlowTemplate) => {
     setActivatingId(template.id);
+    let previous: CashFlowTemplate[] | undefined;
     try {
+      // Optimistic UI update
+      previous = queryClient.getQueryData<CashFlowTemplate[]>(['cashflow-export-templates']);
+      queryClient.setQueryData<CashFlowTemplate[]>(['cashflow-export-templates'], (old) => {
+        const current = old || [];
+        if (template.is_active) {
+          return current.map((t) => (t.id === template.id ? { ...t, is_active: false } : t));
+        }
+        // Activating one template deactivates the rest
+        return current.map((t) => ({ ...t, is_active: t.id === template.id }));
+      });
+
       if (!template.is_active) {
-        // Deactivate all other cashflow_export templates first
-        // Cast to 'any' because the TypeScript types may not include the new enum value yet
-        await supabase
-          .from('report_structure_templates')
-          .update({ is_active: false })
-          .eq('template_type', 'cashflow_export' as any);
+        const otherActiveTemplates = (templates || []).filter((t) => t.is_active && t.id !== template.id);
+        const results = await Promise.all(
+          otherActiveTemplates.map((t) =>
+            invokeSecureFunction('manage-templates', {
+              operation: 'update',
+              table: 'report_structure_templates',
+              recordId: t.id,
+              data: { is_active: false },
+            })
+          )
+        );
+        const failed = results.find((r) => r.error);
+        if (failed?.error) throw new Error(failed.error.message);
       }
 
-      // Toggle the selected template
-      const { error } = await supabase
-        .from('report_structure_templates')
-        .update({ is_active: !template.is_active })
-        .eq('id', template.id);
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'report_structure_templates',
+        recordId: template.id,
+        data: { is_active: !template.is_active },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to update template');
 
       toast({
         title: template.is_active ? 'Template deactivated' : 'Template activated',
@@ -99,6 +123,11 @@ export function CashFlowTemplateList() {
 
       queryClient.invalidateQueries({ queryKey: ['cashflow-export-templates'] });
     } catch (error: any) {
+      // Roll back optimistic update
+      if (previous) {
+        queryClient.setQueryData(['cashflow-export-templates'], previous);
+      }
+      queryClient.invalidateQueries({ queryKey: ['cashflow-export-templates'] });
       toast({
         title: 'Error',
         description: error.message || 'Failed to update template status',
