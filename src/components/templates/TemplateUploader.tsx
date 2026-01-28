@@ -156,7 +156,7 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
 
       if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
 
-      // Create database record - cast enums properly for Supabase
+      // Create database record via secure edge function (service-role-only RLS model)
       const insertData = {
         name,
         description: description || null,
@@ -171,13 +171,15 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
         priority: 0,
       };
 
-      const { data: template, error: dbError } = await supabase
-        .from('report_structure_templates')
-        .insert(insertData)
-        .select()
-        .single();
+      const { data: templateResult, error: dbError } = await invokeSecureFunction('manage-templates', {
+        operation: 'insert',
+        table: 'report_structure_templates',
+        data: insertData,
+      });
 
-      if (dbError) throw dbError;
+      if (dbError) throw new Error(dbError.message || 'Failed to create template record');
+      
+      const template = templateResult?.record;
 
       // Log activity
       logActivityDirect({
