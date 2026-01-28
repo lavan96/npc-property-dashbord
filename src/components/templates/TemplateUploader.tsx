@@ -61,11 +61,12 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
   const getAcceptedFileTypes = () => {
     switch (templateType) {
       case 'ai_structure':
-        return '.pdf,.txt,.md,.json';
+        // Include both extensions and MIME types for better cross-browser compatibility
+        return '.pdf,.txt,.md,.json,text/plain,text/markdown,text/x-markdown,application/pdf,application/json';
       case 'pdf_layout':
-        return '.html,.css,.json';
+        return '.html,.css,.json,text/html,text/css,application/json';
       case 'client_branding':
-        return '.png,.jpg,.jpeg,.svg,.json';
+        return '.png,.jpg,.jpeg,.svg,.json,image/png,image/jpeg,image/svg+xml,application/json';
       default:
         return '*';
     }
