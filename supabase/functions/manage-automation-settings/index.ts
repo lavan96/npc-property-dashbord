@@ -58,17 +58,20 @@ serve(async (req) => {
     }
     
     // Check if user has admin role (automation settings should be admin-only)
-    // Use maybeSingle() instead of single() to handle users with multiple roles
-    const { data: roleData, error: roleError } = await supabase
+    // IMPORTANT: Do NOT use .single()/.maybeSingle() here because some users legitimately
+    // have multiple roles (e.g. both admin and superadmin). We just need to know whether
+    // at least one allowed role exists.
+    const { data: roleRows, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .in('role', ['superadmin', 'admin'])
-      .limit(1)
-      .maybeSingle();
+      .in('role', ['superadmin', 'admin']);
 
-    if (roleError || !roleData) {
-      console.warn(`User ${userId} attempted to manage automation settings without admin role. Error: ${roleError?.message || 'No matching role found'}`);
+    if (roleError || !roleRows || roleRows.length === 0) {
+      console.warn(
+        `User ${userId} attempted to manage automation settings without admin role. ` +
+          `Error: ${roleError?.message || 'No matching role found'}`
+      );
       return createForbiddenResponse('Forbidden: Admin access required', corsHeaders);
     }
     console.log(`[manage-automation-settings] Admin user: ${username || userId}, Operation: ${body.operation}`);
