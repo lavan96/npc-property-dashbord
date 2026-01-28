@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,19 +68,27 @@ export function QATemplateList() {
     try {
       if (!template.is_active) {
         // Deactivate all other qa_export templates first
-        await supabase
-          .from('report_structure_templates')
-          .update({ is_active: false })
-          .eq('template_type', 'qa_export');
+        // Get all active qa_export templates and deactivate them
+        const otherActiveTemplates = templates?.filter(t => t.is_active && t.id !== template.id) || [];
+        for (const otherTemplate of otherActiveTemplates) {
+          await invokeSecureFunction('manage-templates', {
+            operation: 'update',
+            table: 'report_structure_templates',
+            recordId: otherTemplate.id,
+            data: { is_active: false },
+          });
+        }
       }
 
-      // Toggle the selected template
-      const { error } = await supabase
-        .from('report_structure_templates')
-        .update({ is_active: !template.is_active })
-        .eq('id', template.id);
+      // Toggle the selected template via secure edge function
+      const { error } = await invokeSecureFunction('manage-templates', {
+        operation: 'update',
+        table: 'report_structure_templates',
+        recordId: template.id,
+        data: { is_active: !template.is_active },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to update template');
 
       toast({
         title: template.is_active ? 'Template deactivated' : 'Template activated',
