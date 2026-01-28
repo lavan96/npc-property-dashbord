@@ -133,11 +133,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     console.log('🚫 Filtering out sources sections from PDF (toggle is OFF)');
     console.log('📋 Available sections before filtering:', Object.keys(sections));
     
-    // Create a new object without source-related sections
+    // Create a new object without source-related and methodology sections
+    // These sections have been removed from the report structure per user request
     const filteredSections: Record<string, string> = {};
     const sourceSectionPatterns = [
       /market data sources?/i,
       /data sources?/i,
+      /data availability/i,
+      /data.*sourcing/i,
+      /methodology\s*notes?/i,
+      /data\s*transparency/i,
       /demographic.*economic data/i,
       /economic data sources?/i,
       /sources?$/i
