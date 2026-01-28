@@ -2281,38 +2281,105 @@ This valuation reflects typical [Suburb] [property type] prices for [configurati
 
 ${hasZoningData ? `**Zoning Classification:**
 
-| Zoning Attribute | Value |
-|-----------------|-------|
+| Zoning Attribute | Details |
+|-----------------|---------|
 | Zoning Code | ${effectiveZoningCode || 'Not specified'} |
 | Category | ${effectiveZoningDescription || 'Not specified'} |
 | Permitted Uses | ${effectivePermittedUses ? effectivePermittedUses.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Standard residential uses'} |
 | Development Potential | ${effectiveDevelopmentPotential ? effectiveDevelopmentPotential.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Subject to council approval'} |
 | Planning Overlays | ${effectiveZoningOverlays ? effectiveZoningOverlays.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No significant overlays identified'} |
+| Heritage Status | [Confirm heritage overlay status with local council] |
+| Conservation Areas | [Identify any environmental conservation restrictions] |
 
 **Development Controls:**
 
-| Control | Value |
-|---------|-------|
-| Minimum Lot Size | ${effectiveMinimumLotSize ? effectiveMinimumLotSize + ' m²' : 'Refer to LEP'} |
-| Maximum Building Height | ${effectiveMaximumHeight ? effectiveMaximumHeight + ' m' : 'Refer to LEP'} |
-| Floor Space Ratio (FSR) | ${effectiveFloorSpaceRatio ? effectiveFloorSpaceRatio + ':1' : 'Refer to LEP'} |
+| Control | Value | Investment Implication |
+|---------|-------|------------------------|
+| Minimum Lot Size | ${effectiveMinimumLotSize ? effectiveMinimumLotSize + ' m²' : 'Refer to LEP'} | [Assess subdivision feasibility] |
+| Maximum Building Height | ${effectiveMaximumHeight ? effectiveMaximumHeight + ' m' : 'Refer to LEP'} | [Multi-storey development potential] |
+| Floor Space Ratio (FSR) | ${effectiveFloorSpaceRatio ? effectiveFloorSpaceRatio + ':1' : 'Refer to LEP'} | [Maximum buildable area ratio] |
+| Site Coverage | [XX]% | [Permissible building footprint] |
+| Setbacks (Front) | [X]m | [Building positioning constraints] |
+| Setbacks (Side/Rear) | [X]m / [X]m | [Side and rear boundary requirements] |
+| Landscaping Requirements | [XX]% minimum | [Green space allocation] |
+
+**Local Environmental Plan (LEP) Analysis:**
+
+The property falls under the [Council Name] Local Environmental Plan [Year]. Key considerations:
+
+- **Principal Permitted Uses:** Dwelling houses, secondary dwellings (granny flats), home occupations, home businesses
+- **Uses Requiring Consent:** Dual occupancy, attached dwellings, boarding houses, child care centres
+- **Prohibited Uses:** Commercial retail, industrial, intensive agriculture
+
+**Development Control Plan (DCP) Requirements:**
+
+- **Dwelling Design:** Character requirements, articulation, façade treatment
+- **Landscaping:** Deep soil zones, tree retention, canopy coverage targets
+- **Parking:** Minimum [X] off-street spaces per dwelling
+- **Stormwater:** On-site detention requirements, water sensitive urban design
+- **Private Open Space:** Minimum [XX]m² principal private open space
+
+**Strategic Planning Context:**
+
+- **Growth Corridor Status:** [Is the area within a designated growth corridor?]
+- **Urban Renewal Precinct:** [Proximity to renewal areas with potential upzoning]
+- **State Significant Development:** [Any state-level planning schemes affecting the area]
+- **Future Rezoning Potential:** [Analysis of strategic planning documents for potential uplift]
 
 **Zoning Investment Implications:**
 
-The ${effectiveZoningCode || 'residential'} zoning ${effectiveDevelopmentPotential && effectiveDevelopmentPotential !== 'none' ? 'provides potential for ' + effectiveDevelopmentPotential.replace(/_/g, ' ') + ', which could enhance long-term investment value' : 'is typical for the area and supports standard residential use'}. ${effectiveZoningOverlays && effectiveZoningOverlays !== 'none' ? 'The ' + effectiveZoningOverlays.replace(/_/g, ' ') + ' overlay may impact development options and should be factored into renovation or development plans.' : 'No significant planning overlays were identified that would restrict development.'}
+The ${effectiveZoningCode || 'residential'} zoning ${effectiveDevelopmentPotential && effectiveDevelopmentPotential !== 'none' ? 'provides potential for ' + effectiveDevelopmentPotential.replace(/_/g, ' ') + ', which could enhance long-term investment value through development upside' : 'is typical for the area and supports standard residential use, with limited immediate development potential'}. ${effectiveZoningOverlays && effectiveZoningOverlays !== 'none' ? 'The ' + effectiveZoningOverlays.replace(/_/g, ' ') + ' overlay may impact development options and should be factored into renovation or development plans. Additional consultant reports may be required for development applications.' : 'No significant planning overlays were identified that would restrict standard residential development.'}
 
-${effectivePermittedUses && (effectivePermittedUses.includes('dual') || effectivePermittedUses.includes('secondary') || effectivePermittedUses.includes('multi')) ? '**Value-Add Opportunity:** The permitted uses include options for additional dwelling(s), which could provide future income diversification or development upside.' : ''}
+${effectivePermittedUses && (effectivePermittedUses.includes('dual') || effectivePermittedUses.includes('secondary') || effectivePermittedUses.includes('multi')) ? `**Value-Add Development Opportunities:**
 
-**Recommendation:** Verify all zoning information with the local council planning portal before proceeding with any development applications.` : `**Zoning Information:**
+1. **Secondary Dwelling (Granny Flat):** Subject to lot size requirements, a secondary dwelling up to 60m² could provide rental income of approximately $[XXX]/week
+2. **Dual Occupancy Conversion:** If lot size permits, conversion to dual occupancy could increase property value by 30-50%
+3. **Subdivision Potential:** [Assess whether lot size supports Torrens title or strata subdivision]
 
-Specific zoning data was not provided for this property. For investment analysis purposes, please verify the following with the local council:
+These development options require detailed feasibility analysis and council pre-lodgement consultation.` : ''}
 
-- Current zoning classification and permitted uses
-- Any planning overlays (heritage, flood, bushfire zones)
-- Development controls including minimum lot size, height limits, and FSR
-- Future rezoning potential in the area's strategic planning documents
+**Planning Risk Assessment:**
 
-**Note:** Zoning can significantly impact development potential and long-term investment value. We recommend obtaining a Section 10.7 (formerly Section 149) Planning Certificate from the local council for comprehensive zoning information.`}
+| Risk Factor | Assessment | Mitigation Strategy |
+|-------------|------------|---------------------|
+| Rezoning Risk | Low/Medium/High | Monitor council strategic planning updates |
+| Heritage Overlay | [Confirm with council] | Obtain heritage impact assessment if required |
+| Bushfire Prone Land | [BAL rating if applicable] | Comply with AS3959 construction standards |
+| Flood Affectation | [Check flood maps] | Obtain flood certificate, confirm habitable floor levels |
+
+**Recommendation:** Verify all zoning information with the [Council Name] planning portal before proceeding with any development applications. Obtain a Section 10.7 (formerly Section 149) Planning Certificate for comprehensive zoning confirmation.` : `**Zoning Information:**
+
+Specific zoning data was not provided for this property. For comprehensive investment analysis, verify the following with the local council:
+
+**Planning Certificate Requirements (Section 10.7):**
+
+| Certificate Type | Information Provided |
+|-----------------|---------------------|
+| Section 10.7(2) | Basic zoning classification |
+| Section 10.7(2)+(5) | Comprehensive: all planning restrictions, overlays, development contributions |
+
+**Key Zoning Verification Items:**
+
+1. **Current Zoning Classification:** Confirm zone code (e.g., R2, R3, R4 for residential)
+2. **Permitted Land Uses:** Primary and secondary dwelling entitlements
+3. **Development Controls:** Height limits, FSR, setbacks, minimum lot size
+4. **Planning Overlays:** Heritage, conservation, bushfire, flood, acoustic
+
+**Future Planning Considerations:**
+
+- Review council's Local Strategic Planning Statement (LSPS)
+- Check Housing Strategy for density targets
+- Identify proximity to nominated urban renewal precincts
+- Monitor state government planning initiatives (e.g., transit-oriented development, housing policy changes)
+
+**Development Potential Assessment:**
+
+- **Secondary Dwelling:** Check minimum lot size requirements (typically 450m²)
+- **Dual Occupancy:** Assess zoning permissions and lot size requirements
+- **Subdivision:** Review minimum lot sizes for new allotments
+- **Multi-Unit Development:** Confirm if R3/R4 rezoning potential exists
+
+**Note:** Zoning can significantly impact both development potential and long-term investment value. Strategic rezoning can deliver substantial capital uplift. We strongly recommend obtaining a Section 10.7(2)+(5) Planning Certificate and reviewing the council's strategic planning documents before finalising investment decisions.`}
 
 ---
 

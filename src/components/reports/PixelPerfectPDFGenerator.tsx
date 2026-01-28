@@ -124,6 +124,18 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     return { suburb: suburb.toUpperCase(), state };
   };
 
+  // Helper to strip word count markers from content - these are AI instruction artifacts
+  const stripWordCountMarkers = (text: string): string => {
+    return text
+      // Remove patterns like "(500 words)", "(500-1000 words)", "(min 500 words)"
+      .replace(/\(\s*(?:minimum|min|max|maximum)?\s*\d+\s*(?:\+|-|\s*-\s*\d+)?\s*words?\s*(?:required|minimum|min|max|maximum)?\s*\)/gi, '')
+      // Remove patterns like "(Minimum 400 words for this section)"
+      .replace(/\(\s*[^)]*\d+\s*words?\s*[^)]*\)/gi, '')
+      // Clean up any double spaces left behind
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
+
   const filterSourcesSections = (sections: Record<string, string>): Record<string, string> => {
     if (includeSources) {
       console.log('✓ Including sources in PDF (toggle is ON)');
@@ -779,7 +791,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const saveCurrentSection = () => {
       if (currentH2Section && currentContent.length > 0) {
         const sectionKey = currentH3Subsection || currentH2Section;
-        sections[sectionKey] = currentContent.join('\n').trim();
+        // Strip word count markers from content before saving
+        const rawContent = currentContent.join('\n').trim();
+        sections[sectionKey] = stripWordCountMarkers(rawContent);
         
         // Store metadata for TOC hierarchy
         sectionMetadata.current.set(sectionKey, {
@@ -802,9 +816,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         // Save previous section before starting new one
         saveCurrentSection();
         
-        // Extract section name
+        // Extract section name and strip word count markers
         const rawName = (h2Match?.[1] || h1Match?.[1] || '').trim();
-        currentH2Section = rawName
+        currentH2Section = stripWordCountMarkers(rawName)
           .replace(/^\d+\.\s*/, '') // Remove numbering
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
@@ -821,8 +835,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         // Save previous section/subsection before starting new subsection
         saveCurrentSection();
         
-        // Extract subsection name
-        currentH3Subsection = h3Match[1]
+        // Extract subsection name and strip word count markers
+        currentH3Subsection = stripWordCountMarkers(h3Match[1])
           .replace(/^\d+\.\s*/, '') // Remove numbering
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
@@ -1004,9 +1018,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
                            text.trim().length > 50 && text.includes('dolor sit amet');
       
       if (matchesIdentifier || isPlaceholder) {
-        // Clean markdown and bullets from content
+        // Clean markdown, bullets, and word count markers from content
         const cleanContent = content
           .replace(/^[#*\-•]\s*/gm, '') // Remove markdown headers and bullets
+          .replace(/\(\s*\d+\s*(?:-\s*\d+)?\s*words?\s*\)/gi, '') // Remove word count markers like "(500 words)" or "(500-1000 words)"
+          .replace(/\(\s*(?:minimum|min|max|maximum)?\s*\d+\s*(?:\+|-)?\s*words?\s*(?:required|minimum|min)?\s*\)/gi, '') // Remove "(min 500 words)" variants
           .replace(/\n+/g, ' ') // Replace newlines with spaces
           .trim()
           .substring(0, maxLength);
