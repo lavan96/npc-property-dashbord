@@ -32,6 +32,31 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const allowedExtensionsByType: Record<TemplateUploaderProps['templateType'], string[]> = {
+    ai_structure: ['pdf', 'txt', 'md', 'json'],
+    pdf_layout: ['html', 'css', 'json'],
+    client_branding: ['png', 'jpg', 'jpeg', 'svg', 'json'],
+  };
+
+  const getFileExtension = (fileName: string): string => {
+    const parts = fileName.split('.');
+    return (parts.length > 1 ? parts[parts.length - 1] : '').toLowerCase();
+  };
+
+  const setFileIfAllowed = (nextFile: File) => {
+    const ext = getFileExtension(nextFile.name);
+    const allowed = allowedExtensionsByType[templateType];
+    if (!allowed.includes(ext)) {
+      toast({
+        title: 'Invalid file type',
+        description: `Please upload one of: ${allowed.map((e) => `.${e}`).join(', ')}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setFile(nextFile);
+  };
+
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -48,21 +73,25 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
+      setFileIfAllowed(e.dataTransfer.files[0]);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateType]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      setFileIfAllowed(e.target.files[0]);
+      // Allow re-selecting the same file by clearing input value
+      e.target.value = '';
     }
   };
 
-  const getAcceptedFileTypes = () => {
+  const getAcceptedFileTypes = (): string | undefined => {
     switch (templateType) {
       case 'ai_structure':
-        // Include both extensions and MIME types for better cross-browser compatibility
-        return '.pdf,.txt,.md,.json,text/plain,text/markdown,text/x-markdown,application/pdf,application/json';
+        // Some browsers/OS file pickers hide .md/.txt despite accept filters.
+        // Let the picker show all files and validate extensions ourselves.
+        return undefined;
       case 'pdf_layout':
         return '.html,.css,.json,text/html,text/css,application/json';
       case 'client_branding':
@@ -255,7 +284,7 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
                 Drag and drop or click to upload
               </p>
               <p className="text-xs text-muted-foreground">
-                Accepted: {getAcceptedFileTypes()}
+                 Accepted: {allowedExtensionsByType[templateType].map((e) => `.${e}`).join(', ')}
               </p>
             </div>
           )}
