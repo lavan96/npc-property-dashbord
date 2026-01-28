@@ -79,10 +79,20 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
   }, [templateType]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[TemplateUploader] handleFileChange triggered');
     if (e.target.files && e.target.files[0]) {
-      setFileIfAllowed(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      console.log('[TemplateUploader] File selected:', {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        extension: getFileExtension(selectedFile.name)
+      });
+      setFileIfAllowed(selectedFile);
       // Allow re-selecting the same file by clearing input value
       e.target.value = '';
+    } else {
+      console.log('[TemplateUploader] No files in event');
     }
   };
 
@@ -262,7 +272,7 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
         >
           <input
             type="file"
-            accept={getAcceptedFileTypes()}
+            {...(getAcceptedFileTypes() ? { accept: getAcceptedFileTypes() } : {})}
             onChange={handleFileChange}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
