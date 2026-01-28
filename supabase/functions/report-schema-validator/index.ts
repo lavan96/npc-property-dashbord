@@ -103,6 +103,7 @@ function validateReportSchema(reportContent: string): SchemaValidationResult {
   const incompleteTables: string[] = [];
 
   // Define required sections in expected order
+  // NOTE: Data Sources, Market Data Sources, and Methodology sections have been removed
   const requiredSections = [
     { id: 'executive_summary', title: 'Executive Summary', order: 1 },
     { id: 'property_details', title: 'Property Details', order: 2 },
@@ -112,8 +113,7 @@ function validateReportSchema(reportContent: string): SchemaValidationResult {
     { id: 'demographics', title: 'Demographics', order: 6 },
     { id: 'risk_assessment', title: 'Risk Assessment', order: 7 },
     { id: 'investment_score', title: 'Investment Score', order: 8 },
-    { id: 'projections', title: 'Projections', order: 9 },
-    { id: 'data_sources', title: 'Data Sources', order: 10 }
+    { id: 'projections', title: 'Projections', order: 9 }
   ];
 
   // Check for required sections

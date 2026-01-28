@@ -333,35 +333,7 @@ export const INVESTMENT_REPORT_SCHEMA: ReportSection[] = [
       }
     ]
   },
-  {
-    id: 'data_sources',
-    title: 'Data Sources & Methodology',
-    required: true,
-    order: 10,
-    subsections: [
-      {
-        id: 'data_providers',
-        title: 'Data Providers',
-        required: true,
-        order: 1,
-        minLength: 100
-      },
-      {
-        id: 'calculation_methodology',
-        title: 'Calculation Methodology',
-        required: true,
-        order: 2,
-        minLength: 150
-      },
-      {
-        id: 'data_quality_notes',
-        title: 'Data Quality & Limitations',
-        required: true,
-        order: 3,
-        minLength: 100
-      }
-    ]
-  },
+  // REMOVED: Data Sources & Methodology section (no longer part of report structure)
   {
     id: 'disclaimer',
     title: 'Disclaimer',

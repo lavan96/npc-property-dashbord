@@ -84,10 +84,11 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   {
     id: 'section7',
     name: 'Property & Zoning',
-    sections: ['Property-Level Information'],
-    maxTokens: 2500,
-    minContentLength: 2500,
-    requiredKeywords: ['property', 'zoning', 'land', 'building'],
+    // Updated: Strategic Assessment, Top 3 Opportunities, and Top 3 Risks now under Property-Level Information
+    sections: ['Property-Level Information', 'Strategic Assessment', 'Capital Appreciation Potential', 'Leveraged Equity Accumulation', 'Sustained Employment Growth', 'Structural Cashflow Deficit', 'Interest Rate Sensitivity', 'Environmental Risk'],
+    maxTokens: 5000,
+    minContentLength: 4500,
+    requiredKeywords: ['property', 'zoning', 'land', 'strategic', 'opportunity', 'risk'],
   },
   {
     id: 'section8',
@@ -108,18 +109,20 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   {
     id: 'section10',
     name: 'Projections & SWOT',
-    sections: ['10-Year Investment Projections', 'Investment Score Analysis', 'SWOT Analysis Summary', 'Top 3 Investment Opportunities'],
+    // Removed: Top 3 Opportunities (moved to Property-Level Information)
+    sections: ['10-Year Investment Projections', 'Investment Score Analysis', 'SWOT Analysis Summary'],
     maxTokens: 3000,
     minContentLength: 3000,
-    requiredKeywords: ['projection', 'swot', 'opportunity', 'score'],
+    requiredKeywords: ['projection', 'swot', 'score'],
   },
   {
     id: 'section11',
     name: 'Risks & Recommendations',
-    sections: ['Top 3 Investment Risks', 'Investment Recommendations', 'Final Conclusion', 'PROFESSIONAL DISCLAIMER'],
-    maxTokens: 5000,
-    minContentLength: 4000,
-    requiredKeywords: ['risk', 'recommendation', 'conclusion'],
+    // Removed: Top 3 Risks (moved to Property-Level Information)
+    sections: ['Investment Recommendations', 'Final Conclusion', 'PROFESSIONAL DISCLAIMER'],
+    maxTokens: 4000,
+    minContentLength: 3000,
+    requiredKeywords: ['recommendation', 'conclusion'],
   }
 ];
 
@@ -257,11 +260,12 @@ function groupHeadingsIntoSections(headings: string[]): ReportSectionDefinition[
       minContentLength: 3500
     },
     'property': {
-      keywords: ['property-level', 'property level', 'zoning', 'land size', 'building'],
+      // Updated: Property section now includes Strategic Assessment, Opportunities, and Risks subsections
+      keywords: ['property-level', 'property level', 'zoning', 'land size', 'building', 'strategic assessment', 'capital appreciation', 'leveraged equity', 'employment growth', 'cashflow deficit', 'interest rate sensitivity', 'environmental risk'],
       name: 'Property & Zoning',
-      requiredKeywords: ['property', 'zoning', 'land'],
-      maxTokens: 2500,
-      minContentLength: 2500
+      requiredKeywords: ['property', 'zoning', 'strategic', 'opportunity', 'risk'],
+      maxTokens: 5000,
+      minContentLength: 4500
     },
     'costs': {
       keywords: ['purchase', 'ongoing costs', 'rental', 'yield', 'stamp duty'],
@@ -278,18 +282,20 @@ function groupHeadingsIntoSections(headings: string[]): ReportSectionDefinition[
       minContentLength: 2500
     },
     'projections': {
-      keywords: ['projection', 'swot', 'opportunities', 'investment score', '10-year', 'ten year'],
+      // Removed: Top 3 Opportunities (now under Property section)
+      keywords: ['projection', 'swot', 'investment score', '10-year', 'ten year'],
       name: 'Projections & SWOT',
-      requiredKeywords: ['projection', 'swot', 'opportunity'],
+      requiredKeywords: ['projection', 'swot'],
       maxTokens: 3000,
       minContentLength: 3000
     },
     'recommendations': {
-      keywords: ['risk', 'recommendation', 'conclusion', 'final', 'swot'],
+      // Removed: Top 3 Risks (now under Property section)
+      keywords: ['recommendation', 'conclusion', 'final', 'suitability'],
       name: 'Risks & Recommendations',
-      requiredKeywords: ['risk', 'recommendation', 'conclusion'],
-      maxTokens: 5000,
-      minContentLength: 4000
+      requiredKeywords: ['recommendation', 'conclusion'],
+      maxTokens: 4000,
+      minContentLength: 3000
     }
   };
   
@@ -2625,7 +2631,13 @@ The optimistic scenario (6% growth) projects Year 10 value of $[X,XXX,XXX], with
 
 **SWOT Analysis Summary (200+ words required):**
 
-**Strategic Assessment:**
+This is a summary of the Strengths, Weaknesses, Opportunities, and Threats analyzed above. Investors should consider these factors holistically when making their investment decision.
+
+---
+
+**Note: The following Strategic Assessment, Investment Opportunities, and Investment Risks are detailed subsections of Property-Level Information above. They provide property-specific strategic analysis.**
+
+### Strategic Assessment
 
 The [Property Address] investment presents a growth-focused opportunity suitable for investors with long-term capital, capacity to absorb negative cashflow, and confidence in [X-X]% annual [City] property appreciation. The property is structurally unsuitable for income-focused investors or those dependent on rental cashflow.
 
@@ -2637,35 +2649,27 @@ Financial structure is inherently cashflow-negative, requiring approximately $[X
 
 Best suited to investors who (1) have secure employment supporting annual $[XX]k+ cashflow contributions, (2) seek wealth accumulation through capital appreciation rather than income generation, (3) possess long-term 10+ year investment horizon, (4) can tolerate leverage and interest rate sensitivity, and (5) believe in [X]%+ annual appreciation through multiple economic cycles.
 
----
-
-# Top 3 Investment Opportunities
-
-**1. Capital Appreciation Potential - $${Math.round((enhancedData.financials?.projections?.moderate?.[9]?.propertyValue || 0) - (effectivePurchasePrice || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'XXX,XXX'} to $${Math.round((enhancedData.financials?.projections?.optimistic?.[9]?.propertyValue || 0) - (effectivePurchasePrice || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'X,XXX,XXX'} (10-Year Projection)**
+### Capital Appreciation Potential - $${Math.round((enhancedData.financials?.projections?.moderate?.[9]?.propertyValue || 0) - (effectivePurchasePrice || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'XXX,XXX'} to $${Math.round((enhancedData.financials?.projections?.optimistic?.[9]?.propertyValue || 0) - (effectivePurchasePrice || enhancedData.financials?.initialCosts?.propertyValue || 0)).toLocaleString() || 'X,XXX,XXX'} (10-Year Projection)
 
 Base case scenario projects Property Value of $[X,XXX,XXX] at Year 10, representing capital gains of $[XXX,XXX] ([XX.X]% total return). Optimistic scenario delivers $[X,XXX,XXX] value with gains of $[X,XXX,XXX] ([XX.X]% return). These projections assume [X-X]% annual appreciation, consistent with historical [City] metropolitan trends and supported by [Suburb]'s improving infrastructure, employment growth, and population inflows. Leverage amplifies returns: $[XXX,XXX] equity deployed generates $[XXX,XXX]+ appreciation, producing [X.X]x to [X.X]x return on equity invested. This capital appreciation fundamentally underwrites the investment case and offsets negative cashflow across projection period.
 
-**2. Leveraged Equity Accumulation Through Debt Reduction**
+### Leveraged Equity Accumulation Through Debt Reduction
 
 Over 10 years, principal repayment reduces loan balance from $[X,XXX,XXX] to approximately $[XXX,XXX], building equity of $[XXX,XXX] independent of property appreciation. Combined with capital appreciation, total wealth accumulation reaches $[XXX,XXX]-$[X,XXX,XXX] across projection scenarios. This debt reduction is automatic and inevitable, creating forced savings discipline. Accumulated equity provides optionality for future portfolio expansion, home renovation, or accessing capital during market stress periods.
 
-**3. Sustained Employment Growth Driving Rental Demand (+[X.X]% annually, +[XX.X]% over 5 years)**
+### Sustained Employment Growth Driving Rental Demand (+[X.X]% annually, +[XX.X]% over 5 years)
 
 Strong local job growth across professional services (+[X.X]%), healthcare (+[X.X]%), and education (+[X.X]%) creates sustained demand for rental properties from employed professionals. Labor force participation rate of [XX.X]% and unemployment rate of [X.X]% indicate tight labor market supporting wage growth and rental affordability. Median income of $[XX,XXX] annually positions renters comfortably within serviceability parameters for $[XXX]/week rental commitments. Continued population growth driven by employment expansion supports rental demand resilience, reducing vacancy risk and providing uplift potential as rents normalize toward market levels.
 
----
-
-# Top 3 Investment Risks
-
-**1. Structural Cashflow Deficit Requiring Ongoing Investor Capital Support**
+### Structural Cashflow Deficit Requiring Ongoing Investor Capital Support
 
 The property generates negative cashflow of ($[XX,XXX]) annually under base assumptions, with cumulative 10-year shortfalls of ($[XXX,XXX]). This structure requires investors to contribute approximately $[X,XXX] monthly (P&I scenario) or $[X,XXX] monthly (IO scenario) in addition to deposit capital. Investors with insufficient liquid capital, unstable employment, or income constraints cannot sustain this commitment. Life events (job loss, income reduction, health crisis) that impact investor capital capacity create forced-sale risk or default risk. The property is unsuitable for self-funding through rental income and represents a capital commitment, not an income stream.
 
-**2. Interest Rate Sensitivity and Debt Serviceability Pressure**
+### Interest Rate Sensitivity and Debt Serviceability Pressure
 
 Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income before accounting for property management, rates, insurance, and maintenance. A 1% rate increase (to [X.X]%) increases annual repayments by $[X,XXX], pushing negative cashflow to ($[XX,XXX])-a [XX]% increase in annual capital requirement. RBA maintains potential for further rate increases if inflation remains sticky; even modest tightening creates material cashflow deterioration. Investors with limited capital buffers face refinancing stress or forced sale risk if rates spike. Conversely, rate reductions provide primary cashflow improvement pathway; any base case reliance on rate cuts represents uncontrollable external dependency.
 
-**3. Environmental Risk: [High/Moderate] Bushfire Rating and Unverified Flood Risk**
+### Environmental Risk: [High/Moderate] Bushfire Rating and Unverified Flood Risk
 
 [State] experiences regular bushfire seasons, and [Suburb] is rated [LEVEL] for bushfire risk. Specific property-level risk assessment requires verification with [State] Rural Fire Service (RFS); properties in extreme fire risk zones face insurance unavailability or extreme premium escalation. Flood risk is currently [verified/unverified] and requires property coordinates for accurate assessment; potential flooding exposure could impact insurability, lender appetite, or development constraints. Combined environmental risks create tail-risk exposure: (1) insurance premium spikes reducing net yields further, (2) uninsurable property becoming unmarketable, (3) damage events creating unexpected capital calls for repairs, or (4) regulatory evacuation requirements constraining usage or rental marketability. Hazard verification is essential precondition to purchase commitment.
 
