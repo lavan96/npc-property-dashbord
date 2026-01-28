@@ -375,9 +375,21 @@ serve(async (req) => {
       extractedText = await extractTextBasic(textContent, fileName);
     }
     
-    if (!extractedText || extractedText.length < 50) {
-      throw new Error('Insufficient text extracted from template. Please ensure the file contains readable content.');
-    }
+     // For text-based files (.md/.txt), templates can be concise (e.g. outline-only).
+     // Use a smaller minimum and measure non-whitespace characters to avoid false failures.
+     const trimmedExtracted = (extractedText || '').trim();
+     extractedText = trimmedExtracted;
+
+     const isPdf = fileName.endsWith('.pdf');
+     const meaningfulChars = trimmedExtracted.replace(/\s+/g, '').length;
+     const minMeaningfulChars = isPdf ? 50 : 10;
+
+     if (!trimmedExtracted || meaningfulChars < minMeaningfulChars) {
+       throw new Error(
+         `Insufficient text extracted from template (got ${meaningfulChars} meaningful chars). ` +
+           `Please ensure the file contains readable content.`
+       );
+     }
     
     console.log(`📝 Extracted ${extractedText.length} characters`);
     console.log(`📄 Preview: ${extractedText.substring(0, 300)}...`);
