@@ -112,12 +112,11 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
   };
 
   const getMimeType = (file: File): string => {
-    // Browser may return empty MIME type for some files (like .md)
-    if (file.type) return file.type;
-    
+    // Map extensions to MIME types that Supabase Storage supports
+    // Note: text/markdown is NOT supported by Supabase Storage, use text/plain instead
     const ext = file.name.split('.').pop()?.toLowerCase();
     const mimeMap: Record<string, string> = {
-      'md': 'text/markdown',
+      'md': 'text/plain', // Supabase doesn't support text/markdown
       'txt': 'text/plain',
       'pdf': 'application/pdf',
       'json': 'application/json',
@@ -128,6 +127,8 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
       'jpeg': 'image/jpeg',
       'svg': 'image/svg+xml',
     };
+    
+    // Always use our mapping to ensure compatible MIME types
     return mimeMap[ext || ''] || 'application/octet-stream';
   };
 
