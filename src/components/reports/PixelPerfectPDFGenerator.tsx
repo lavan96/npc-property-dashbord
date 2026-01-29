@@ -2567,9 +2567,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         let h3Index = 0;
         
         for (const sectionName of allSectionNames) {
+          // sectionName is already cleaned (no ## or ### prefix) - it's the key from sections object
           const cleanName = stripEmojis(
             sectionName
-              .replace(/^#{1,6}\s*/, '') // Remove markdown heading prefix
+              .replace(/^#{1,6}\s*/, '') // Remove markdown heading prefix (if any remaining)
               .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove all numbered prefixes (e.g., "1 ", "1. ", "11.1 ")
               .replace(/:\s*$/, '') // Remove trailing colon
               .trim()
@@ -2577,11 +2578,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           if (!cleanName || cleanName.length < 3) continue;
           
-          // Determine section level from raw markdown prefix (positional detection)
-          // This avoids metadata lookup mismatches and ensures sequential numbering
-          const isH3 = /^###\s/.test(sectionName);
-          const isH2 = !isH3 && /^##?\s/.test(sectionName);
-          const sectionLevel = isH3 ? 3 : 2;
+          // Use the sectionMetadata populated during parsing to get the correct level
+          // The sectionName IS the key used in sectionMetadata (both come from sections object)
+          const metadata = sectionMetadata.current.get(sectionName);
+          const sectionLevel = metadata?.level ?? 2; // Default to H2 if not found
           
           // Update numbering based on hierarchy - pure sequential counters
           let sectionNumText: string;
