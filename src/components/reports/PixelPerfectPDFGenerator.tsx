@@ -2562,13 +2562,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         tocY -= 25;
         
         // Draw TOC entries with hierarchical numbering
-        // Track H2 sections for hierarchical numbering
+        // Pure sequential counters - no metadata lookup needed
         let h2Index = 0;
         let h3Index = 0;
-        let lastParentSection = '';
-        
-        // Track which parent sections we've seen to properly reset h3Index
-        const parentToH3Count = new Map<string, number>();
         
         for (const sectionName of allSectionNames) {
           const cleanName = stripEmojis(
@@ -2581,11 +2577,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           if (!cleanName || cleanName.length < 3) continue;
           
-          // Determine section level and numbering
-          const sectionLevel = getSectionLevel(cleanName);
-          const parentSection = getParentSection(cleanName);
+          // Determine section level from raw markdown prefix (positional detection)
+          // This avoids metadata lookup mismatches and ensures sequential numbering
+          const isH3 = /^###\s/.test(sectionName);
+          const isH2 = !isH3 && /^##?\s/.test(sectionName);
+          const sectionLevel = isH3 ? 3 : 2;
           
-          // Update numbering based on hierarchy
+          // Update numbering based on hierarchy - pure sequential counters
           let sectionNumText: string;
           let indentation: number;
           let fontSize: number;
@@ -2595,29 +2593,13 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             // H2 = Main section
             h2Index++;
             h3Index = 0; // Reset subsection counter for new H2
-            lastParentSection = cleanName;
-            parentToH3Count.set(cleanName, 0); // Initialize h3 counter for this parent
             sectionNumText = `${h2Index}.`;
             indentation = 0;
             fontSize = 11;
             fontToUse = helveticaBold;
           } else {
-            // H3 = Subsection
-            // Use the parent section to get the correct h3 index
-            const effectiveParent = parentSection || lastParentSection;
-            
-            if (effectiveParent !== lastParentSection) {
-              // Parent section changed - reset h3Index
-              lastParentSection = effectiveParent;
-              h3Index = 0;
-            }
-            
-            // Get and increment the h3 count for this parent
-            const currentCount = parentToH3Count.get(effectiveParent) || 0;
-            const newCount = currentCount + 1;
-            parentToH3Count.set(effectiveParent, newCount);
-            h3Index = newCount;
-            
+            // H3 = Subsection - simple sequential increment
+            h3Index++;
             sectionNumText = `${h2Index}.${h3Index}`;
             indentation = 15; // Indent subsections
             fontSize = 10;
