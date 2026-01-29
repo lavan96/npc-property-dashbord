@@ -9,7 +9,7 @@ export interface SessionValidationResult {
   error: string | null;
   userId: string | null;
   username: string | null;
-  authMethod?: 'jwt' | 'session'; // Track which auth method was used
+  authMethod?: 'jwt' | 'session' | 'service_role'; // Track which auth method was used
 }
 
 /**

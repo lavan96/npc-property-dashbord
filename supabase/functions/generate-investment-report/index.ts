@@ -1542,6 +1542,10 @@ serve(async (req) => {
             const scoreData = await scoreResponse.json();
             enhancedData = { ...enhancedData, investmentScore: scoreData.data };
             console.log('✓ Investment score calculated successfully using effective values');
+          } else {
+            // Log the actual error response to diagnose scoring failures
+            const errorText = await scoreResponse.text();
+            console.error('❌ Investment scoring service returned error:', scoreResponse.status, errorText);
           }
         } catch (error: any) {
           console.log('Investment score calculation failed:', error?.message || 'Unknown error');
