@@ -821,7 +821,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         // Extract section name and strip word count markers
         const rawName = (h2Match?.[1] || h1Match?.[1] || '').trim();
         currentH2Section = stripWordCountMarkers(rawName)
-          .replace(/^\d+\.\s*/, '') // Remove numbering
+          .replace(/^\d+(\.\d+)*\.\s*/, '') // Remove numbering (e.g., "1.", "11.", "11.1.", "11.1.1.")
+          .replace(/^\d+(\.\d+)+\s+/, '') // Remove numbering without trailing dot (e.g., "11.1 ", "11.1.1 ")
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
         currentH3Subsection = ''; // Reset subsection
@@ -839,7 +840,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         // Extract subsection name and strip word count markers
         currentH3Subsection = stripWordCountMarkers(h3Match[1])
-          .replace(/^\d+\.\s*/, '') // Remove numbering
+          .replace(/^\d+(\.\d+)*\.\s*/, '') // Remove numbering (e.g., "1.", "11.", "11.1.", "11.1.1.")
+          .replace(/^\d+(\.\d+)+\s+/, '') // Remove numbering without trailing dot (e.g., "11.1 ", "11.1.1 ")
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
         currentContent = [];
