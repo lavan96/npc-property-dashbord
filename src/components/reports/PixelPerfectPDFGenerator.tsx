@@ -821,8 +821,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         // Extract section name and strip word count markers
         const rawName = (h2Match?.[1] || h1Match?.[1] || '').trim();
         currentH2Section = stripWordCountMarkers(rawName)
-          .replace(/^\d+(\.\d+)*\.\s*/, '') // Remove numbering (e.g., "1.", "11.", "11.1.", "11.1.1.")
-          .replace(/^\d+(\.\d+)+\s+/, '') // Remove numbering without trailing dot (e.g., "11.1 ", "11.1.1 ")
+          .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove all numbered prefixes (e.g., "1 ", "1. ", "11 ", "11. ", "11.1 ", "11.1. ", "11.1.1 ")
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
         currentH3Subsection = ''; // Reset subsection
@@ -840,8 +839,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         // Extract subsection name and strip word count markers
         currentH3Subsection = stripWordCountMarkers(h3Match[1])
-          .replace(/^\d+(\.\d+)*\.\s*/, '') // Remove numbering (e.g., "1.", "11.", "11.1.", "11.1.1.")
-          .replace(/^\d+(\.\d+)+\s+/, '') // Remove numbering without trailing dot (e.g., "11.1 ", "11.1.1 ")
+          .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove all numbered prefixes (e.g., "1 ", "1. ", "11 ", "11. ", "11.1 ", "11.1. ", "11.1.1 ")
           .replace(/:\s*$/, '') // Remove trailing colon
           .trim();
         currentContent = [];
@@ -2574,7 +2572,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         
         for (const sectionName of allSectionNames) {
           const cleanName = stripEmojis(
-            sectionName.replace(/^#{1,6}\s*/, '').replace(/:\s*$/, '').trim()
+            sectionName
+              .replace(/^#{1,6}\s*/, '') // Remove markdown heading prefix
+              .replace(/^\d+(\.\d+)*\.?\s+/, '') // Remove all numbered prefixes (e.g., "1 ", "1. ", "11.1 ")
+              .replace(/:\s*$/, '') // Remove trailing colon
+              .trim()
           );
           
           if (!cleanName || cleanName.length < 3) continue;
