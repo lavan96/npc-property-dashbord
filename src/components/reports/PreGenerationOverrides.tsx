@@ -540,9 +540,13 @@ export function PreGenerationOverrides({
       }
     } catch (error) {
       console.error('Error estimating expenses:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to estimate expenses";
+      const isAuthError = errorMessage.includes('401') || errorMessage.includes('Authentication') || errorMessage.includes('Unauthorized');
       toast({
         title: "Estimation Failed",
-        description: error instanceof Error ? error.message : "Failed to estimate expenses",
+        description: isAuthError 
+          ? "Session expired. Please log out and log back in, then try again."
+          : errorMessage,
         variant: "destructive"
       });
     } finally {

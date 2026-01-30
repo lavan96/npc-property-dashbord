@@ -293,9 +293,13 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       }
     } catch (error) {
       console.error('Error estimating expenses:', error);
+      const errorMessage = error instanceof Error ? error.message : "Could not estimate expenses. Please try again.";
+      const isAuthError = errorMessage.includes('401') || errorMessage.includes('Authentication') || errorMessage.includes('Unauthorized');
       toast({
         title: "Estimation Failed",
-        description: error instanceof Error ? error.message : "Could not estimate expenses. Please try again.",
+        description: isAuthError 
+          ? "Session expired. Please log out and log back in, then try again."
+          : errorMessage,
         variant: "destructive"
       });
     } finally {
