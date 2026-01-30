@@ -646,12 +646,39 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       
       // Fix malformed Stamp Duty row where amount is merged into category name
       {
-        pattern: /\|\s*Stamp Duty:\s*\$[\d,]+\s*\|[^\n]*/gi,
+        pattern: /\|\s*Stamp Duty:\s*\$[\d,]+\.?\d*\s*\|[^\n]*/gi,
         getValue: () => stampDuty,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
           return '| Stamp Duty | $' + str + ' | State Revenue Office calculator (2025) |';
         },
+        isFullLineReplacement: true
+      },
+      // Fix malformed Purchase Price row where value is merged into attribute name
+      {
+        pattern: /\|\s*(?:Estimated\s+)?Purchase Price:\s*\$[\d,]+\.?\d*\s*\|[^\n]*/gi,
+        getValue: () => propertyValue,
+        format: (v) => {
+          const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          return '| Estimated Purchase Price | $' + str + ' |';
+        },
+        isFullLineReplacement: true
+      },
+      // Fix Net Rental Yield showing formula instead of percentage
+      {
+        pattern: /\|\s*Net Rental Yield\s*\|\s*\$[\d,]+\.?\d*\s*[÷\/]\s*\$[\d,]+\.?\d*\s*[×x\*]\s*\d+[^\n]*/gi,
+        getValue: () => financialData?.keyMetrics?.netRentalYield,
+        format: (v) => {
+          const yieldVal = parseFloat(v) || 0;
+          return '| Net Rental Yield | ' + yieldVal.toFixed(2) + '% |';
+        },
+        isFullLineReplacement: true
+      },
+      // Fix malformed Property Type row
+      {
+        pattern: /\|\s*Property Type:\s*[^\|]+\|[^\n]*/gi,
+        getValue: () => 'Residential Property',
+        format: (v) => '| Property Type | ' + v + ' |',
         isFullLineReplacement: true
       },
       {
