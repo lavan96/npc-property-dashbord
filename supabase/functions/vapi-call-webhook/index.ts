@@ -100,12 +100,24 @@ interface VapiWebhookPayload {
   };
 }
 
+interface NegativeSentimentMoment {
+  timestamp: number | null;
+  transcriptSegment: string;
+  triggerPhrase: string;
+}
+
 interface AIAnalysis {
   customerName: string | null;
   sentiment: string;
   keyTopics: string[];
   actionItems: string[];
   callIntent: string | null;
+  // New fields for negative call analysis
+  rootCauseCategory: string | null;
+  escalationSeverity: number | null;
+  aiRecommendations: string[];
+  negativeSentimentMoment: NegativeSentimentMoment | null;
+  recoveryPriority: number | null;
 }
 
 // Fetch customer name from GoHighLevel using contact ID (primary fallback)
@@ -331,22 +343,29 @@ async function updateCallCostInBackground(
   }
 }
 
-// Use AI to analyze transcript for missing data
+// Use AI to analyze transcript for missing data (enhanced with negative call analysis)
 async function analyzeTranscriptWithAI(transcript: string, summary: string | null, isSquadCall: boolean): Promise<AIAnalysis> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   
+  const defaultResult: AIAnalysis = {
+    customerName: null,
+    sentiment: 'neutral',
+    keyTopics: [],
+    actionItems: [],
+    callIntent: null,
+    rootCauseCategory: null,
+    escalationSeverity: null,
+    aiRecommendations: [],
+    negativeSentimentMoment: null,
+    recoveryPriority: null,
+  };
+  
   if (!openaiApiKey || !transcript || transcript.length < 50) {
-    return {
-      customerName: null,
-      sentiment: 'neutral',
-      keyTopics: [],
-      actionItems: [],
-      callIntent: null,
-    };
+    return defaultResult;
   }
 
   try {
-    console.log('[Vapi Webhook] Analyzing transcript with AI...');
+    console.log('[Vapi Webhook] Analyzing transcript with AI (enhanced)...');
     
     const intentInstructions = isSquadCall 
       ? `5. Call intent - what type of appointment/service was the caller interested in (e.g., "discovery_booking", "strategy_booking", "finance_consult", "general_inquiry"). Return null if unclear.`
@@ -367,19 +386,35 @@ async function analyzeTranscriptWithAI(transcript: string, summary: string | nul
         messages: [
           {
             role: 'system',
-            content: `You are an expert call analyst. Analyze the following call transcript and extract:
+            content: `You are an expert call analyst specializing in customer sentiment and issue resolution. Analyze the following call transcript and extract:
+
 1. Customer name (if mentioned by the user or asked for) - return null if not found
 2. Overall sentiment (positive, negative, neutral, mixed)
 3. Key topics discussed (max 5 topics, short phrases)
 4. Action items or follow-ups needed (max 5 items)
 ${intentInstructions}
 
+FOR NEGATIVE OR MIXED SENTIMENT CALLS, also extract:
+6. Root cause category - ONE of: "pricing_objection", "service_complaint", "agent_confusion", "long_hold_time", "unresolved_query", "technical_issue", "miscommunication", "customer_frustration", "wrong_transfer", "information_gap". Return null for positive/neutral calls.
+7. Escalation severity (1-5 scale): 1=minor issue, 2=moderate concern, 3=significant problem, 4=serious complaint, 5=critical/angry customer. Return null for positive calls.
+8. Recovery priority (1-5 scale): How urgently should this customer be followed up? 1=low, 5=urgent. Consider customer value, issue severity, and whether they seemed likely to churn. Return null for positive calls.
+9. AI recommendations - 2-4 specific, actionable recommendations for how to handle/recover this situation. E.g., "Schedule callback within 24 hours to address pricing concerns", "Offer service credit to compensate for wait time". Empty array for positive calls.
+10. Negative sentiment moment - identify the exact phrase or moment where the call turned negative. Include a short transcript segment (max 100 chars) showing this. Return null for positive calls.
+
 Respond ONLY with valid JSON in this exact format:
 {
   "customerName": "Name or null",
   "sentiment": "positive|negative|neutral|mixed",
   "keyTopics": ["topic1", "topic2"],
-  "actionItems": ["action1", "action2"]${intentFormat}
+  "actionItems": ["action1", "action2"]${intentFormat},
+  "rootCauseCategory": "category or null",
+  "escalationSeverity": 1-5 or null,
+  "recoveryPriority": 1-5 or null,
+  "aiRecommendations": ["recommendation1", "recommendation2"],
+  "negativeSentimentMoment": {
+    "transcriptSegment": "short excerpt where negativity started",
+    "triggerPhrase": "specific phrase that triggered negative sentiment"
+  } or null
 }`
           },
           {
@@ -387,14 +422,14 @@ Respond ONLY with valid JSON in this exact format:
             content: `Transcript:\n${transcript.substring(0, 8000)}${summary ? `\n\nSummary:\n${summary}` : ''}`
           }
         ],
-        max_tokens: 500,
+        max_tokens: 800,
         temperature: 0.3,
       }),
     });
 
     if (!response.ok) {
       console.error('[Vapi Webhook] OpenAI API error:', response.status);
-      return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [], callIntent: null };
+      return defaultResult;
     }
 
     const data = await response.json();
@@ -405,13 +440,29 @@ Respond ONLY with valid JSON in this exact format:
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        console.log('[Vapi Webhook] AI analysis result:', parsed);
+        console.log('[Vapi Webhook] AI analysis result (enhanced):', parsed);
+        
+        // Parse negative sentiment moment
+        let negativeMoment: NegativeSentimentMoment | null = null;
+        if (parsed.negativeSentimentMoment && typeof parsed.negativeSentimentMoment === 'object') {
+          negativeMoment = {
+            timestamp: null, // Could be enhanced later with audio timestamps
+            transcriptSegment: parsed.negativeSentimentMoment.transcriptSegment || '',
+            triggerPhrase: parsed.negativeSentimentMoment.triggerPhrase || '',
+          };
+        }
+        
         return {
           customerName: parsed.customerName === 'null' ? null : parsed.customerName,
           sentiment: parsed.sentiment || 'neutral',
           keyTopics: Array.isArray(parsed.keyTopics) ? parsed.keyTopics.slice(0, 5) : [],
           actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems.slice(0, 5) : [],
           callIntent: parsed.callIntent === 'null' ? null : (parsed.callIntent || null),
+          rootCauseCategory: parsed.rootCauseCategory === 'null' ? null : (parsed.rootCauseCategory || null),
+          escalationSeverity: typeof parsed.escalationSeverity === 'number' ? Math.min(5, Math.max(1, parsed.escalationSeverity)) : null,
+          recoveryPriority: typeof parsed.recoveryPriority === 'number' ? Math.min(5, Math.max(1, parsed.recoveryPriority)) : null,
+          aiRecommendations: Array.isArray(parsed.aiRecommendations) ? parsed.aiRecommendations.slice(0, 4) : [],
+          negativeSentimentMoment: negativeMoment,
         };
       }
     }
@@ -419,7 +470,7 @@ Respond ONLY with valid JSON in this exact format:
     console.error('[Vapi Webhook] AI analysis error:', error);
   }
 
-  return { customerName: null, sentiment: 'neutral', keyTopics: [], actionItems: [], callIntent: null };
+  return defaultResult;
 }
 
 // Extract handoff sequence from transcript messages
@@ -843,6 +894,12 @@ serve(async (req) => {
     let keyTopics: string[] = [];
     let actionItems: string[] = [];
     let callIntent: string | null = null;
+    // New negative call analysis fields
+    let rootCauseCategory: string | null = null;
+    let escalationSeverity: number | null = null;
+    let aiRecommendations: string[] = [];
+    let negativeSentimentMoment: NegativeSentimentMoment | null = null;
+    let recoveryPriority: number | null = null;
 
     // Only do AI analysis and agent lookup for end-of-call-report (final event)
     const isEndOfCall = message.type === 'end-of-call-report';
@@ -878,6 +935,22 @@ serve(async (req) => {
         keyTopics = aiAnalysis.keyTopics.map(capitalizeFirst);
         actionItems = aiAnalysis.actionItems.map(capitalizeFirst);
         callIntent = aiAnalysis.callIntent;
+        
+        // Extract negative call analysis fields
+        rootCauseCategory = aiAnalysis.rootCauseCategory;
+        escalationSeverity = aiAnalysis.escalationSeverity;
+        aiRecommendations = aiAnalysis.aiRecommendations.map(capitalizeFirst);
+        negativeSentimentMoment = aiAnalysis.negativeSentimentMoment;
+        recoveryPriority = aiAnalysis.recoveryPriority;
+        
+        console.log('[Vapi Webhook] Negative call analysis:', {
+          sentiment,
+          rootCauseCategory,
+          escalationSeverity,
+          recoveryPriority,
+          recommendationsCount: aiRecommendations.length,
+          hasNegativeMoment: !!negativeSentimentMoment,
+        });
         
         // For inbound squad calls, populate assistants and handoff based on detected intent
         if (isInboundCall && isSquadCall && assistantsInvolved.length === 0) {
@@ -923,6 +996,14 @@ serve(async (req) => {
       assistants_involved: assistantsInvolved,
       handoff_sequence: handoffSequence,
       structured_data_multi: structuredDataMulti,
+      // Negative call analysis fields
+      root_cause_category: rootCauseCategory,
+      escalation_severity: escalationSeverity,
+      ai_recommendations: aiRecommendations,
+      negative_sentiment_moment: negativeSentimentMoment,
+      recovery_priority: recoveryPriority,
+      // Only set resolution_status for negative/mixed calls that need review
+      resolution_status: (sentiment === 'negative' || sentiment === 'mixed') ? 'needs_review' : null,
       metadata: {
         orgId: call.orgId,
         endedReason: rawEndedReason,
