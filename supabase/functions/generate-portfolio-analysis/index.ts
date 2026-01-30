@@ -65,9 +65,25 @@ serve(async (req) => {
       analysisDepth = 'comprehensive',
       includeProjections = true,
       projectionYears = 10,
-      includeOwnerOccupied = true
+      includeOwnerOccupied = true,
+      // New configuration parameters
+      analysisConfig = {}
     } = body;
 
+    // Extract configuration settings with defaults
+    const {
+      riskTolerance = null,
+      investmentStrategy = null,
+      timeHorizon = null,
+      growthRateAssumption = null,
+      interestRateScenario = null,
+      equityStrategy = null,
+      debtReductionPriority = null,
+      nextPropertyPreference = null,
+      taxOptimizationPriority = null,
+      retirementTimeline = null,
+      marketOutlook = null
+    } = analysisConfig;
     // SECURITY: Verify authentication (enforced - TODO removed)
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
@@ -245,6 +261,39 @@ serve(async (req) => {
       };
     });
 
+    // Build configuration context for the AI
+    const configLabels = {
+      riskTolerance: { conservative: 'Conservative', moderate: 'Moderate', aggressive: 'Aggressive' },
+      investmentStrategy: { capital_growth: 'Capital Growth', cash_flow: 'Cash Flow', balanced: 'Balanced', wealth_accumulation: 'Wealth Accumulation' },
+      timeHorizon: { short: 'Short-term (1-3 years)', medium: 'Medium-term (3-7 years)', long: 'Long-term (7-15 years)', multi_generational: 'Multi-generational (15+ years)' },
+      growthRateAssumption: { conservative: 'Conservative (3-4%)', moderate: 'Moderate (5-6%)', optimistic: 'Optimistic (7-8%)' },
+      interestRateScenario: { current: 'Current Rates', plus_1: '+1% Stress Test', plus_2: '+2% Stress Test' },
+      equityStrategy: { aggressive: 'Aggressive Leveraging', moderate: 'Moderate Redeployment', conservative: 'Conservative (Low LVR)' },
+      debtReductionPriority: { aggressive: 'Aggressive Paydown', interest_only: 'Interest-Only Focus', balanced: 'Balanced Approach' },
+      nextPropertyPreference: { growth: 'Growth Suburbs', yield: 'High Yield Areas', regional: 'Regional Focus', metro: 'Metro Focus', none: 'No Recommendation Needed' },
+      taxOptimizationPriority: { high: 'High (Maximize Deductions)', medium: 'Medium', low: 'Low (Focus on Cash Flow)' },
+      marketOutlook: { bullish: 'Bullish', neutral: 'Neutral', bearish: 'Bearish' }
+    };
+
+    // Build configuration context string
+    let configContext = '';
+    if (riskTolerance) configContext += `- Risk Tolerance: ${configLabels.riskTolerance[riskTolerance]}\n`;
+    if (investmentStrategy) configContext += `- Investment Strategy: ${configLabels.investmentStrategy[investmentStrategy]}\n`;
+    if (timeHorizon) configContext += `- Time Horizon: ${configLabels.timeHorizon[timeHorizon]}\n`;
+    if (growthRateAssumption) configContext += `- Growth Rate Assumption: ${configLabels.growthRateAssumption[growthRateAssumption]}\n`;
+    if (interestRateScenario) configContext += `- Interest Rate Scenario: ${configLabels.interestRateScenario[interestRateScenario]}\n`;
+    if (equityStrategy) configContext += `- Equity Strategy: ${configLabels.equityStrategy[equityStrategy]}\n`;
+    if (debtReductionPriority) configContext += `- Debt Reduction Priority: ${configLabels.debtReductionPriority[debtReductionPriority]}\n`;
+    if (nextPropertyPreference) configContext += `- Next Property Preference: ${configLabels.nextPropertyPreference[nextPropertyPreference]}\n`;
+    if (taxOptimizationPriority) configContext += `- Tax Optimization Priority: ${configLabels.taxOptimizationPriority[taxOptimizationPriority]}\n`;
+    if (retirementTimeline) configContext += `- Years Until Retirement: ${retirementTimeline} years\n`;
+    if (marketOutlook) configContext += `- Market Outlook: ${configLabels.marketOutlook[marketOutlook]}\n`;
+
+    // Calculate growth rate for projections
+    let growthRate = 5; // default
+    if (growthRateAssumption === 'conservative') growthRate = 3.5;
+    else if (growthRateAssumption === 'optimistic') growthRate = 7.5;
+
     // Build AI analysis prompt
     const prompt = `You are an expert Australian property portfolio analyst. Analyze this client's entire property portfolio and provide strategic recommendations.
 
@@ -253,7 +302,12 @@ serve(async (req) => {
 - Total Monthly Income (Personal): $${(client.total_monthly_income || 0).toLocaleString()}
 - Investor Profile: ${investorProfile}
 
-**PORTFOLIO SUMMARY:**
+${configContext ? `**ANALYSIS CONFIGURATION:**
+The following preferences have been set to tailor this analysis:
+${configContext}
+IMPORTANT: You MUST incorporate these preferences into your analysis, recommendations, and projections. Adjust your risk assessments, strategy suggestions, and growth assumptions accordingly.
+
+` : ''}**PORTFOLIO SUMMARY:**
 - Total Properties: ${portfolioMetrics.totalProperties}
 - Investment Properties: ${portfolioMetrics.investmentCount}
 - Owner Occupied: ${portfolioMetrics.ownerOccupiedCount}
@@ -313,9 +367,9 @@ Provide a comprehensive portfolio analysis with these sections:
    - Portfolio optimization strategies
 
 7. ${projectionYears}-YEAR PROJECTIONS
-   - Portfolio value projections (assume 5% growth)
+   - Portfolio value projections (assume ${growthRate}% annual growth${growthRateAssumption ? ` based on ${configLabels.growthRateAssumption[growthRateAssumption]} assumption` : ''})
    - Equity growth trajectory
-   - Cashflow improvement path
+   - Cashflow improvement path${interestRateScenario && interestRateScenario !== 'current' ? `\n   - Include stress test analysis for ${configLabels.interestRateScenario[interestRateScenario]} scenario` : ''}
 
 8. STRATEGIC RECOMMENDATIONS
    - Short-term actions (0-12 months)

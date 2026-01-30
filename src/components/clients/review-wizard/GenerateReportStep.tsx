@@ -29,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { PortfolioAnalysisConfig, PortfolioAnalysisSettings } from './PortfolioAnalysisConfig';
 
 interface GenerateReportStepProps {
   clientName: string;
@@ -44,6 +45,8 @@ interface GenerateReportStepProps {
   onIncludeOwnerOccupiedChange: (include: boolean) => void;
   includeBorrowingCapacity: boolean;
   onIncludeBorrowingCapacityChange: (include: boolean) => void;
+  analysisConfig: PortfolioAnalysisSettings;
+  onAnalysisConfigChange: (config: PortfolioAnalysisSettings) => void;
   ownerOccupiedCount: number;
   investmentCount: number;
   onSaveDraft: () => Promise<void>;
@@ -65,6 +68,8 @@ export function GenerateReportStep({
   onIncludeOwnerOccupiedChange,
   includeBorrowingCapacity,
   onIncludeBorrowingCapacityChange,
+  analysisConfig,
+  onAnalysisConfigChange,
   ownerOccupiedCount,
   investmentCount,
   onSaveDraft,
@@ -238,6 +243,12 @@ export function GenerateReportStep({
           )}
         </CardContent>
       </Card>
+
+      {/* AI Analysis Configuration */}
+      <PortfolioAnalysisConfig
+        settings={analysisConfig}
+        onChange={onAnalysisConfigChange}
+      />
 
       {/* Review Frequency */}
       <Card>

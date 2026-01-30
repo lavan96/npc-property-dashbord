@@ -129,10 +129,27 @@ interface PortfolioAnalysisData {
   generatedAt: string;
 }
 
+interface PortfolioAnalysisSettings {
+  riskTolerance?: 'conservative' | 'moderate' | 'aggressive' | null;
+  investmentStrategy?: 'capital_growth' | 'cash_flow' | 'balanced' | 'wealth_accumulation' | null;
+  timeHorizon?: 'short' | 'medium' | 'long' | 'multi_generational' | null;
+  projectionPeriod?: 5 | 10 | 15 | 20 | null;
+  growthRateAssumption?: 'conservative' | 'moderate' | 'optimistic' | null;
+  interestRateScenario?: 'current' | 'plus_1' | 'plus_2' | null;
+  equityStrategy?: 'aggressive' | 'conservative' | 'moderate' | null;
+  debtReductionPriority?: 'aggressive' | 'interest_only' | 'balanced' | null;
+  nextPropertyPreference?: 'growth' | 'yield' | 'regional' | 'metro' | 'none' | null;
+  taxOptimizationPriority?: 'high' | 'medium' | 'low' | null;
+  retirementTimeline?: number | null;
+  marketOutlook?: 'bullish' | 'neutral' | 'bearish' | null;
+}
+
 interface PortfolioAnalysisPDFGeneratorProps {
   clientId: string;
   clientName: string;
   includeBorrowingCapacity?: boolean;
+  includeOwnerOccupied?: boolean;
+  analysisConfig?: PortfolioAnalysisSettings;
   onComplete?: () => void;
 }
 
@@ -321,6 +338,8 @@ export function PortfolioAnalysisPDFGenerator({
   clientId, 
   clientName,
   includeBorrowingCapacity = true,
+  includeOwnerOccupied = true,
+  analysisConfig = {},
   onComplete 
 }: PortfolioAnalysisPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -337,8 +356,9 @@ export function PortfolioAnalysisPDFGenerator({
         investorProfile: 'general',
         analysisDepth: 'comprehensive',
         includeProjections: true,
-        projectionYears: 10,
-        includeOwnerOccupied: true // Default to include; can be parameterized later
+        projectionYears: analysisConfig?.projectionPeriod || 10,
+        includeOwnerOccupied,
+        analysisConfig
       });
 
       if (error) throw error;
