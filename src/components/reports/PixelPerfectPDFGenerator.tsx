@@ -1562,7 +1562,30 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       };
 
       // Helper to parse and draw markdown table
-      const drawTable = (page: any, tableText: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number): { lastY: number; needsNewPage: boolean } => {
+      const buildMarkdownTableFromRows = (tableRows: string[][]): string => {
+        if (!tableRows.length) return '';
+        const colCount = Math.max(...tableRows.map(r => r.length));
+        const normalized = tableRows.map(r => {
+          const padded = [...r];
+          while (padded.length < colCount) padded.push('');
+          return padded;
+        });
+        const header = `| ${normalized[0].join(' | ')} |`;
+        const separator = `| ${Array(colCount).fill('---').join(' | ')} |`;
+        const body = normalized.slice(1).map(r => `| ${r.join(' | ')} |`);
+        return [header, separator, ...body].join('\n');
+      };
+
+      const drawTable = (
+        page: any,
+        tableText: string,
+        x: number,
+        startY: number,
+        maxWidth: number,
+        normalFont: any,
+        boldFont: any,
+        size: number
+      ): { lastY: number; needsNewPage: boolean; remainingTableText?: string } => {
         const lines = tableText.trim().split('\n').map(l => l.trim()).filter(l => l);
         if (lines.length === 0) return { lastY: startY, needsNewPage: false };
 
@@ -1947,7 +1970,11 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           // Check if we need a new page
           if (currentY - rowHeight < bottomMargin + 40) {
-            return { lastY: currentY, needsNewPage: true };
+            // IMPORTANT: Return the remaining table content so it can continue on the next page
+            // Re-include the header row on the next page for readability.
+            const remainingRows = [rows[0], ...rows.slice(i)];
+            const remainingTableText = buildMarkdownTableFromRows(remainingRows);
+            return { lastY: currentY, needsNewPage: true, remainingTableText };
           }
 
           // Draw cell backgrounds (alternating for readability)
@@ -2190,8 +2217,22 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           
           // Check if we need a new page
           if (currentY < bottomMargin + 40) {
-            // Return remaining lines as parts (simplified - just indicate need for new page)
-            return { needsNewPage: true, lastY: currentY, remainingParts: [] };
+            // CRITICAL FIX: Do NOT drop the rest of the paragraph.
+            // Return the remaining text as markdown parts so the caller can continue on the next page.
+            const remainingWords = lines
+              .slice(lineIndex)
+              .flatMap(l => l.words);
+
+            // Reconstruct a markdown-ish string that preserves bold styling (italic is not rendered anyway).
+            const remainingText = remainingWords
+              .map(({ word, font }) => (font === boldFont ? `**${word}**` : word))
+              .join(' ');
+
+            return {
+              needsNewPage: true,
+              lastY: currentY,
+              remainingParts: parseMarkdownText(remainingText),
+            };
           }
           
           if (line.words.length === 1 || isLastLine) {
@@ -2285,7 +2326,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       const tierPrefix = reportTier === 'compass' ? 'Investment Report' : 
                          reportTier === 'briefing' ? 'Executive Brief' : 'Snapshot Report';
       const titleText = stripEmojis(`${tierPrefix}: ${report.address}`);
-      const titleResult = drawTextWithWrap(
+      let titleResult = drawTextWithWrap(
         currentPage,
         `**${titleText}**`,
         margin,
@@ -2296,6 +2337,21 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         18,
         24
       );
+      if (titleResult.needsNewPage) {
+        currentPage = await addContentPage();
+        yPosition = pageHeight - topMargin - 20;
+        titleResult = drawTextWithWrap(
+          currentPage,
+          `**${titleText}**`,
+          margin,
+          yPosition,
+          pageWidth - 2 * margin,
+          helveticaFont,
+          helveticaBold,
+          18,
+          24
+        );
+      }
       yPosition = titleResult.lastY - 25;
       
       console.log('✏️ Step 5.1: Starting to render', allSectionNames.length, 'sections...');
@@ -2405,7 +2461,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         sectionPageNumbers.set(cleanSectionName, currentPageNumber);
 
         // Draw section title with word wrapping
-        const titleResult = drawTextWithWrap(
+        let titleResult = drawTextWithWrap(
           currentPage,
           `**${stripEmojis(cleanSectionName)}**`,
           margin,
@@ -2416,6 +2472,21 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           titleSize,
           20
         );
+        if (titleResult.needsNewPage) {
+          currentPage = await addContentPage();
+          yPosition = pageHeight - topMargin - 20;
+          titleResult = drawTextWithWrap(
+            currentPage,
+            `**${stripEmojis(cleanSectionName)}**`,
+            margin,
+            yPosition,
+            pageWidth - 2 * margin,
+            helveticaFont,
+            helveticaBold,
+            titleSize,
+            20
+          );
+        }
         yPosition = titleResult.lastY - 10;
 
         // Draw paragraphs with header-table grouping
@@ -2541,25 +2612,14 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
                 yPosition = pageHeight - topMargin - 20;
               }
 
-              const tableResult = drawTable(
-                currentPage,
-                paragraph,
-                margin,
-                yPosition,
-                pageWidth - 2 * margin,
-                helveticaFont,
-                helveticaBold,
-                textSize
-              );
-
-              if (tableResult.needsNewPage) {
-                // Table got split during drawing (very large table), continue on new page
-                currentPage = await addContentPage();
-                yPosition = pageHeight - topMargin - 20;
-                // Retry drawing the remaining table content on new page
-                const retryResult = drawTable(
+              // Render tables across pages if needed.
+              let tableToRender = paragraph;
+              let guard = 0;
+              while (guard < 20) {
+                guard++;
+                const tableResult = drawTable(
                   currentPage,
-                  paragraph,
+                  tableToRender,
                   margin,
                   yPosition,
                   pageWidth - 2 * margin,
@@ -2567,9 +2627,20 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
                   helveticaBold,
                   textSize
                 );
-                yPosition = retryResult.lastY;
-              } else {
+
+                if (tableResult.needsNewPage) {
+                  currentPage = await addContentPage();
+                  yPosition = pageHeight - topMargin - 20;
+                  if (tableResult.remainingTableText && tableResult.remainingTableText.trim().length > 0) {
+                    tableToRender = tableResult.remainingTableText;
+                    continue;
+                  }
+                  // Safety: if we can't compute remaining content, stop to avoid infinite loops.
+                  break;
+                }
+
                 yPosition = tableResult.lastY;
+                break;
               }
               console.log('     ✓ Table rendered successfully with smart page breaking');
             } catch (tableError) {
