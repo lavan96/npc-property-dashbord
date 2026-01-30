@@ -837,6 +837,14 @@ serve(async (req) => {
     // Initialize Supabase client for database updates
     let supabaseClient = null;
     let existingManualOverrides = null;
+    // Track which enhanced fields are already persisted on the report (so we don't overwrite them)
+    let existingEnhancedFields: {
+      investmentScore?: any;
+      financials?: any;
+      demographics?: any;
+      economics?: any;
+      locationIntelligence?: any;
+    } = {};
     
     // Get pre-generation overrides from request (passed from frontend)
     const frontendManualOverrides = propertyDetails?.manualOverrides || null;
@@ -858,13 +866,24 @@ serve(async (req) => {
         // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides, report_content, property_address, last_completed_section')
+          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence')
           .eq('id', reportId)
           .single();
         
         if (existingReport?.manual_overrides) {
           existingManualOverrides = existingReport.manual_overrides;
           console.log('📝 Fetched existing manual overrides from DB:', Object.keys(existingManualOverrides).length, 'fields');
+        }
+
+        // Capture existing enhanced fields so we can avoid overwriting already-persisted values
+        if (existingReport) {
+          existingEnhancedFields = {
+            investmentScore: (existingReport as any).investment_score,
+            financials: (existingReport as any).financial_calculations,
+            demographics: (existingReport as any).demographics_data,
+            economics: (existingReport as any).economic_data,
+            locationIntelligence: (existingReport as any).location_intelligence,
+          };
         }
         
         // If continuing, use the stored last_completed_section index for reliable resume
@@ -3308,6 +3327,8 @@ ${templateContext}
     let combinedContent = '';
     let allCitations: any[] = [];
     let generationErrors: string[] = [];
+    // Ensures enhanced data (score/financials/etc.) is persisted once per request in chunked mode
+    let enhancedDataPersisted = false;
     
     // Handle continuation mode: start with existing content if available
     if (isContinuation && existingReportContent && existingReportContent.length > 0) {
@@ -3334,6 +3355,58 @@ YOUR DEDICATED PROPERTY PARTNER
 
     // Track section quality for final validation
     const sectionResults: Array<{ id: string; name: string; content: string; valid: boolean; score: number; attempts: number }> = [];
+
+    // ============================================================================
+    // EARLY ENHANCED DATA PERSISTENCE
+    // Persist scoring + calculations before section generation so chunked/resume calls
+    // don't miss the one-time "first section" persistence condition.
+    // ============================================================================
+    if (reportId && supabaseClient) {
+      try {
+        const earlyUpdate: any = { updated_at: new Date().toISOString() };
+
+        // Only write fields that are currently missing on the report row
+        if (!existingEnhancedFields.investmentScore && enhancedData?.investmentScore) {
+          earlyUpdate.investment_score = enhancedData.investmentScore;
+        }
+        if (!existingEnhancedFields.financials && enhancedData?.financials) {
+          earlyUpdate.financial_calculations = enhancedData.financials;
+        }
+        if (!existingEnhancedFields.demographics && enhancedData?.demographics) {
+          earlyUpdate.demographics_data = enhancedData.demographics;
+        }
+        if (!existingEnhancedFields.economics && enhancedData?.economics) {
+          earlyUpdate.economic_data = enhancedData.economics;
+        }
+        if (!existingEnhancedFields.locationIntelligence && enhancedData?.locationIntelligence) {
+          earlyUpdate.location_intelligence = enhancedData.locationIntelligence;
+        }
+
+        const hasAnyEnhancedField = Object.keys(earlyUpdate).length > 1;
+        const alreadyHasAnyEnhancedField = !!(
+          existingEnhancedFields.investmentScore ||
+          existingEnhancedFields.financials ||
+          existingEnhancedFields.demographics ||
+          existingEnhancedFields.economics ||
+          existingEnhancedFields.locationIntelligence
+        );
+
+        if (hasAnyEnhancedField) {
+          console.log('💾 Early persistence: saving enhanced data to DB before section generation...');
+          await supabaseClient
+            .from('investment_reports')
+            .update(earlyUpdate)
+            .eq('id', reportId);
+          enhancedDataPersisted = true;
+          console.log('✓ Early enhanced data saved:', Object.keys(earlyUpdate).filter(k => k !== 'updated_at').join(', '));
+        } else {
+          // If the DB already has enhanced fields, treat them as persisted for this run
+          enhancedDataPersisted = alreadyHasAnyEnhancedField;
+        }
+      } catch (earlyPersistError: any) {
+        console.warn('⚠️ Early enhanced data persistence failed (non-blocking):', earlyPersistError?.message);
+      }
+    }
     
     for (let i = 0; i < REPORT_SECTIONS.length; i++) {
       const sectionDef = REPORT_SECTIONS[i];
@@ -3449,32 +3522,33 @@ YOUR DEDICATED PROPERTY PARTNER
             
             // CRITICAL: Save enhanced data (including investment_score) on FIRST section completion
             // This ensures scores are persisted early, even if chunked generation is interrupted
-            if (completedSectionIndex === 1 && enhancedData) {
-              console.log('📊 First section complete - saving enhanced data to DB...');
+            let didAttachEnhancedData = false;
+            if (!enhancedDataPersisted && enhancedData) {
+              console.log('📊 First generated section in this run - saving enhanced data to DB...');
               if (enhancedData.investmentScore) {
                 progressiveUpdatePayload.investment_score = enhancedData.investmentScore;
                 console.log('  ✓ Saving investment_score:', enhancedData.investmentScore?.grade, enhancedData.investmentScore?.totalScore);
+                didAttachEnhancedData = true;
               }
               if (enhancedData.financials) {
                 progressiveUpdatePayload.financial_calculations = enhancedData.financials;
                 console.log('  ✓ Saving financial_calculations');
+                didAttachEnhancedData = true;
               }
               if (enhancedData.demographics) {
                 progressiveUpdatePayload.demographics_data = enhancedData.demographics;
                 console.log('  ✓ Saving demographics_data');
+                didAttachEnhancedData = true;
               }
               if (enhancedData.economics) {
                 progressiveUpdatePayload.economic_data = enhancedData.economics;
                 console.log('  ✓ Saving economic_data');
+                didAttachEnhancedData = true;
               }
               if (enhancedData.locationIntelligence) {
                 progressiveUpdatePayload.location_intelligence = enhancedData.locationIntelligence;
                 console.log('  ✓ Saving location_intelligence');
-              }
-              // CRITICAL: Save investment_score in progressive updates to prevent data loss in chunked mode
-              if (enhancedData.investmentScore) {
-                progressiveUpdatePayload.investment_score = enhancedData.investmentScore;
-                console.log('  ✓ Saving investment_score');
+                didAttachEnhancedData = true;
               }
             }
             
@@ -3483,6 +3557,10 @@ YOUR DEDICATED PROPERTY PARTNER
               .update(progressiveUpdatePayload)
               .eq('id', reportId);
             console.log(`✓ Progress saved: ${combinedContent.length} chars, last_completed_section=${completedSectionIndex}`);
+
+            if (didAttachEnhancedData) {
+              enhancedDataPersisted = true;
+            }
             
             // === SINGLE-SECTION MODE: Return immediately after saving one section ===
             // This allows the frontend to call again for the next section, avoiding platform timeouts
