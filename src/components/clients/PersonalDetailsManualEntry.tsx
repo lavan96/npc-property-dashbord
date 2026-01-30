@@ -25,10 +25,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, User, Users, MapPin, IdCard, Heart, Loader2, Phone, Mail, Calendar } from 'lucide-react';
+import { Edit, User, Users, MapPin, IdCard, Heart, Loader2, Phone, Mail, Calendar, Plus, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { format } from 'date-fns';
+import { AdditionalContactCard, AdditionalContact, relationshipOptions } from './AdditionalContactCard';
 
 interface PersonalDetailsManualEntryProps {
   clientId: string;
@@ -54,6 +55,7 @@ interface PersonalDetailsManualEntryProps {
     marital_status: string | null;
     dependents_count: number | null;
   };
+  additionalContacts?: AdditionalContact[];
   onComplete: () => void;
 }
 
@@ -136,10 +138,14 @@ const formatDate = (dateStr: string | null | undefined): string => {
   }
 };
 
-export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }: PersonalDetailsManualEntryProps) {
+export function PersonalDetailsManualEntry({ clientId, clientData, additionalContacts: initialAdditionalContacts = [], onComplete }: PersonalDetailsManualEntryProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
+  
+  // State for additional contacts
+  const [additionalContacts, setAdditionalContacts] = useState<AdditionalContact[]>([]);
+  const [deletedContactIds, setDeletedContactIds] = useState<string[]>([]);
   
   const [formData, setFormData] = useState<FormData>({
     primary_first_name: '',
@@ -189,11 +195,44 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
         marital_status: clientData.marital_status || '',
         dependents_count: clientData.dependents_count || 0,
       });
+      // Initialize additional contacts
+      setAdditionalContacts(initialAdditionalContacts.map(c => ({ ...c })));
+      setDeletedContactIds([]);
     }
-  }, [open, clientData]);
+  }, [open, clientData, initialAdditionalContacts]);
 
   const updateField = (field: keyof FormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Additional contacts management
+  const handleAddContact = () => {
+    const newContact: AdditionalContact = {
+      relationship: 'Additional Applicant',
+      first_name: '',
+      surname: '',
+      middle_name: '',
+      email: '',
+      mobile: '',
+      dob: '',
+      gender: '',
+      display_order: additionalContacts.length + 1,
+      isNew: true,
+    };
+    setAdditionalContacts([...additionalContacts, newContact]);
+  };
+
+  const handleUpdateContact = (index: number, updatedContact: AdditionalContact) => {
+    setAdditionalContacts(prev => prev.map((c, i) => i === index ? updatedContact : c));
+  };
+
+  const handleRemoveContact = (index: number) => {
+    const contactToRemove = additionalContacts[index];
+    if (contactToRemove.id && !contactToRemove.isNew) {
+      // Track existing contacts for deletion
+      setDeletedContactIds(prev => [...prev, contactToRemove.id!]);
+    }
+    setAdditionalContacts(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateClientMutation = useMutation({
@@ -221,7 +260,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
         dependents_count: formData.dependents_count || null,
       };
 
-      // Use secure Edge Function with HttpOnly cookie auth
+      // 1. Update client data
       try {
         const { data, error } = await invokeSecureFunction('manage-client-data', {
           operation: 'update',
@@ -230,23 +269,76 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
           data: updateData,
         });
         
-        if (!error && data?.success) {
-          return;
+        if (error && !error.message?.includes('401')) {
+          console.warn('Edge function failed for client update:', error);
         }
       } catch (err) {
         console.warn('Edge function failed, falling back to direct query:', err);
+        const { error } = await supabase
+          .from('clients')
+          .update(updateData)
+          .eq('id', clientId);
+        if (error) throw error;
       }
 
-      // Fallback to direct query
-      const { error } = await supabase
-        .from('clients')
-        .update(updateData)
-        .eq('id', clientId);
-      
-      if (error) throw error;
+      // 2. Handle additional contacts - delete removed ones
+      for (const contactId of deletedContactIds) {
+        try {
+          await invokeSecureFunction('manage-client-data', {
+            operation: 'delete',
+            table: 'client_additional_contacts',
+            clientId,
+            recordId: contactId,
+          });
+        } catch (err) {
+          console.warn('Failed to delete contact via edge function:', err);
+        }
+      }
+
+      // 3. Handle additional contacts - create new or update existing
+      for (let i = 0; i < additionalContacts.length; i++) {
+        const contact = additionalContacts[i];
+        if (!contact.first_name.trim() || !contact.surname.trim()) continue;
+
+        const contactData = {
+          relationship: contact.relationship,
+          first_name: contact.first_name.trim(),
+          surname: contact.surname.trim(),
+          middle_name: contact.middle_name?.trim() || null,
+          email: contact.email?.trim() || null,
+          mobile: contact.mobile?.trim() || null,
+          dob: contact.dob || null,
+          gender: contact.gender || null,
+          display_order: i + 1,
+        };
+
+        try {
+          if (contact.id && !contact.isNew) {
+            // Update existing
+            await invokeSecureFunction('manage-client-data', {
+              operation: 'update',
+              table: 'client_additional_contacts',
+              clientId,
+              recordId: contact.id,
+              data: contactData,
+            });
+          } else {
+            // Create new
+            await invokeSecureFunction('manage-client-data', {
+              operation: 'create',
+              table: 'client_additional_contacts',
+              clientId,
+              data: contactData,
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to save additional contact:', err);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-details', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Personal details updated successfully');
       
@@ -422,6 +514,37 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
                   <Separator className="my-4" />
                   
                   <ContactFields prefix="secondary" title="Secondary Contact" />
+
+                  {/* Additional Contacts Section */}
+                  {additionalContacts.length > 0 && (
+                    <>
+                      <Separator className="my-4" />
+                      <div className="space-y-4">
+                        {additionalContacts.map((contact, index) => (
+                          <AdditionalContactCard
+                            key={contact.id || `new-${index}`}
+                            contact={contact}
+                            index={index}
+                            onChange={handleUpdateContact}
+                            onRemove={handleRemoveContact}
+                            isEditing={true}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Add Contact Button */}
+                  <Separator className="my-4" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleAddContact}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Additional Contact
+                  </Button>
                 </TabsContent>
 
                 <TabsContent value="address" className="space-y-4 mt-4">
@@ -602,6 +725,26 @@ export function PersonalDetailsManualEntry({ clientId, clientData, onComplete }:
           <DisplayItem label="Dependents" value={clientData?.dependents_count?.toString() || '0'} />
         </DisplayCard>
       </div>
+
+      {/* Additional Contacts Display */}
+      {initialAdditionalContacts.length > 0 && (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium text-muted-foreground mb-3">Additional Contacts</h4>
+          <div className="grid gap-4 md:grid-cols-2">
+            {initialAdditionalContacts.map((contact, index) => (
+              <DisplayCard key={contact.id} title={`${contact.relationship}`} icon={UserPlus}>
+                <DisplayItem 
+                  label="Name" 
+                  value={[contact.first_name, contact.middle_name, contact.surname].filter(Boolean).join(' ') || '-'} 
+                />
+                <DisplayItem label="Mobile" value={contact.mobile || '-'} />
+                <DisplayItem label="Email" value={contact.email || '-'} />
+                <DisplayItem label="Date of Birth" value={formatDate(contact.dob)} />
+              </DisplayCard>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

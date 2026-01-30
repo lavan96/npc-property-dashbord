@@ -867,6 +867,65 @@ export type Database = {
           },
         ]
       }
+      client_additional_contacts: {
+        Row: {
+          client_id: string
+          created_at: string
+          display_order: number
+          dob: string | null
+          email: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          middle_name: string | null
+          mobile: string | null
+          notes: string | null
+          relationship: string
+          surname: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          display_order?: number
+          dob?: string | null
+          email?: string | null
+          first_name: string
+          gender?: string | null
+          id?: string
+          middle_name?: string | null
+          mobile?: string | null
+          notes?: string | null
+          relationship?: string
+          surname: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          display_order?: number
+          dob?: string | null
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          middle_name?: string | null
+          mobile?: string | null
+          notes?: string | null
+          relationship?: string
+          surname?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_additional_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_assets: {
         Row: {
           asset_type: string
