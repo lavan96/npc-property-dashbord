@@ -3397,6 +3397,11 @@ YOUR DEDICATED PROPERTY PARTNER
                 progressiveUpdatePayload.location_intelligence = enhancedData.locationIntelligence;
                 console.log('  ✓ Saving location_intelligence');
               }
+              // CRITICAL: Save investment_score in progressive updates to prevent data loss in chunked mode
+              if (enhancedData.investmentScore) {
+                progressiveUpdatePayload.investment_score = enhancedData.investmentScore;
+                console.log('  ✓ Saving investment_score');
+              }
             }
             
             await supabaseClient
