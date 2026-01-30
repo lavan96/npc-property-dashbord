@@ -2159,10 +2159,11 @@ ${enhancedData.schoolData?.allSchools?.slice(0, 7).map((s: any) => `| ${s.name} 
 
 **Shopping & Dining Facilities:**
 
-| Category | Facilities Count | Nearest Facility |
-|----------|-----------------|------------------|
-| Shopping | ${enhancedData.locationIntelligence?.lifestyle?.shoppingCenters || 'XX'} | ${enhancedData.locationIntelligence?.lifestyle?.nearestShopping || '[Shopping Centre]'} |
-| Restaurants & Cafes | XX | Multiple Precincts |
+| Category | Facilities Count | Nearest Facility | Distance |
+|----------|-----------------|------------------|----------|
+| Supermarkets | ${enhancedData.locationIntelligence?.lifestyle?.supermarkets || 'X'} | ${enhancedData.locationIntelligence?.lifestyle?.nearestSupermarket || '[Supermarket Name]'} | X.X km |
+| Shopping Centres | ${enhancedData.locationIntelligence?.lifestyle?.shoppingCenters || 'X'} | ${enhancedData.locationIntelligence?.lifestyle?.nearestShopping || '[Shopping Centre]'} | X.X km |
+| Restaurants & Cafes | XX | Multiple Precincts | Within X km |
 
 [Shopping centre] serves as the central shopping hub, located [X.XX] km away, offering [stores - supermarkets, specialty stores, dining options][citation]. [Secondary shopping description]. Nearby dining precincts in [Area 1], [Area 2], and [Area 3] extend culinary choices[citation].
 
