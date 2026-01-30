@@ -12,6 +12,7 @@ import type {
   ValidationFlag,
   Scenario
 } from './types';
+import { PortfolioAnalysisSettings, DEFAULT_SETTINGS } from './PortfolioAnalysisConfig';
 
 // Required fields for investment properties (rental income related)
 const REQUIRED_INVESTMENT_FIELDS = [
@@ -73,6 +74,7 @@ export function useReviewWizard(
   );
   const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
   const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(true);
+  const [analysisConfig, setAnalysisConfig] = useState<PortfolioAnalysisSettings>(DEFAULT_SETTINGS);
 
   // Calculate data completeness for each property
   const dataCompleteness = useMemo(() => {
@@ -787,6 +789,8 @@ export function useReviewWizard(
     setIncludeOwnerOccupied,
     includeBorrowingCapacity,
     setIncludeBorrowingCapacity,
+    analysisConfig,
+    setAnalysisConfig,
     
     // Calculated data
     dataCompleteness,
