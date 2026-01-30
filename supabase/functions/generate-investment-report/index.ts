@@ -1540,15 +1540,20 @@ serve(async (req) => {
           
           if (scoreResponse.ok) {
             const scoreData = await scoreResponse.json();
-            enhancedData = { ...enhancedData, investmentScore: scoreData.data };
-            console.log('✓ Investment score calculated successfully using effective values');
+            if (scoreData?.success && scoreData?.data) {
+              enhancedData = { ...enhancedData, investmentScore: scoreData.data };
+              console.log('✓ Investment score calculated:', scoreData.data?.grade, scoreData.data?.totalScore);
+            } else if (scoreData) {
+              // Direct response without wrapper
+              enhancedData = { ...enhancedData, investmentScore: scoreData };
+              console.log('✓ Investment score (direct):', scoreData?.grade, scoreData?.totalScore);
+            }
           } else {
-            // Log the actual error response to diagnose scoring failures
             const errorText = await scoreResponse.text();
-            console.error('❌ Investment scoring service returned error:', scoreResponse.status, errorText);
+            console.error('❌ Investment scoring service error:', scoreResponse.status, errorText);
           }
         } catch (error: any) {
-          console.log('Investment score calculation failed:', error?.message || 'Unknown error');
+          console.error('❌ Investment score calculation failed:', error?.message || 'Unknown error');
         }
       }
 
@@ -2602,6 +2607,27 @@ This sensitivity analysis demonstrates that the property's cashflow profile is i
 - Base Case Scenario: 4% annual price growth, 3% annual rent growth
 - Optimistic Scenario: 6% annual price growth, 4% annual rent growth
 
+**Annual Operating Costs Projections (AUD):**
+
+The following table shows year-by-year escalation of operating costs assuming CPI growth of 2.5% annually.
+
+| Year | Council Rates | Water Rates | Insurance | Land Tax | Maintenance | Property Mgmt | Total |
+|------|--------------|-------------|-----------|----------|-------------|---------------|-------|
+| 1 | $${effectiveCouncilRates?.toLocaleString() || '2,500'} | $${effectiveWaterRates?.toLocaleString() || '1,000'} | $${effectiveLandlordInsurance?.toLocaleString() || '1,800'} | $${effectiveLandTax?.toLocaleString() || '0'} | $${effectiveMaintenance?.toLocaleString() || '0'} | $${effectivePmDollar?.toLocaleString() || '1,500'} | $${((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveLandTax || 0) + (effectiveMaintenance || 0) + (effectivePmDollar || 0)).toLocaleString()} |
+| 2 | $${Math.round((effectiveCouncilRates || 2500) * 1.025).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.025).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.025).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.025).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.02).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.025 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.02).toLocaleString()} |
+| 3 | $${Math.round((effectiveCouncilRates || 2500) * 1.051).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.051).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.051).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.051).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.04).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.051 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.04).toLocaleString()} |
+| 4 | $${Math.round((effectiveCouncilRates || 2500) * 1.077).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.077).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.077).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.077).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.06).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.077 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.06).toLocaleString()} |
+| 5 | $${Math.round((effectiveCouncilRates || 2500) * 1.104).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.104).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.104).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.104).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.08).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.104 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.08).toLocaleString()} |
+| 6 | $${Math.round((effectiveCouncilRates || 2500) * 1.131).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.131).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.131).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.131).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.10).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.131 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.10).toLocaleString()} |
+| 7 | $${Math.round((effectiveCouncilRates || 2500) * 1.159).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.159).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.159).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.159).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.12).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.159 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.12).toLocaleString()} |
+| 8 | $${Math.round((effectiveCouncilRates || 2500) * 1.188).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.188).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.188).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.188).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.14).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.188 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.14).toLocaleString()} |
+| 9 | $${Math.round((effectiveCouncilRates || 2500) * 1.218).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.218).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.218).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.218).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.16).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.218 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.16).toLocaleString()} |
+| 10 | $${Math.round((effectiveCouncilRates || 2500) * 1.249).toLocaleString()} | $${Math.round((effectiveWaterRates || 1000) * 1.249).toLocaleString()} | $${Math.round((effectiveLandlordInsurance || 1800) * 1.249).toLocaleString()} | $${(effectiveLandTax || 0).toLocaleString()} | $${Math.round((effectiveMaintenance || 0) * 1.249).toLocaleString()} | $${Math.round((effectivePmDollar || 1500) * 1.18).toLocaleString()} | $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.249 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.18).toLocaleString()} |
+
+**Operating Costs Analysis:**
+
+Annual operating costs escalate from $${((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveLandTax || 0) + (effectiveMaintenance || 0) + (effectivePmDollar || 0)).toLocaleString()} in Year 1 to approximately $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.249 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.18).toLocaleString()} in Year 10, representing cumulative increase of approximately 21.4% over the period. This escalation is driven by CPI-linked increases in council rates, insurance premiums, and property management fees.
+
 **Property Value Projections (AUD):**
 
 | Year | Conservative (2%) | Base Case (4%) | Optimistic (6%) |
@@ -2623,8 +2649,9 @@ ${enhancedData.financials?.projections?.conservative ? enhancedData.financials.p
 
 Cashflow = Annual Rental Income - Annual Operating Costs - Annual Loan Repayments
 
-**Annual Operating Costs (excluding loan repayment):** $${enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax?.toLocaleString() || 'X,XXX'}
-**Annual P&I Repayment:** $${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} (Year 1, declining as principal portion increases)
+**Annual Operating Costs (excluding loan repayment):** $${enhancedData.financials?.annualCosts?.totalAnnualExcludingLandTax?.toLocaleString() || 'X,XXX'} Year 1, escalating to $${Math.round(((effectiveCouncilRates || 0) + (effectiveWaterRates || 0) + (effectiveLandlordInsurance || 0) + (effectiveMaintenance || 0)) * 1.249 + (effectiveLandTax || 0) + (effectivePmDollar || 0) * 1.18).toLocaleString()} Year 10 (as detailed in table above)
+
+**Annual P&I Repayment:** $${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'} Year 1 (declining to $${Math.round((enhancedData.financials?.loanDetails?.monthlyPayment || 0) * 12 * 0.95).toLocaleString()} Year 10 as interest component decreases and principal portion increases through amortization)
 
 | Year | Conservative (2%) | Base Case (3%) | Optimistic (4%) |
 |------|-------------------|----------------|-----------------|
