@@ -669,8 +669,8 @@ async function markReportFailed(reportId: string | null, errorMessage: string): 
   if (!reportId) return;
   
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
     if (supabaseUrl && supabaseKey) {
       const client = createClient(supabaseUrl, supabaseKey);
       await client
@@ -730,8 +730,10 @@ serve(async (req) => {
     }
     
     // SECURITY: Verify authentication
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // IMPORTANT: trim() secrets to avoid subtle "Invalid JWT" errors if newline/whitespace was copied into env vars.
+    const supabaseUrl = (Deno.env.get('SUPABASE_URL') || '').trim();
+    const supabaseServiceKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
+    const supabaseAnonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, requestBody);
@@ -1297,7 +1299,8 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+                ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
               suburb: suburb.replace(/-/g, ' '),
@@ -1343,7 +1346,8 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
               propertyValue: effectivePurchasePrice,
@@ -1481,7 +1485,8 @@ serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
           },
           body: JSON.stringify({
             address: formattedInput,
@@ -1522,7 +1527,8 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
               property: {
@@ -1858,6 +1864,13 @@ Produce a comprehensive suburb investment snapshot following the structure above
     // ============================================================================
     const effectiveOccupancyRate = mergedOverrides.occupancyRate || 52; // weeks per year
     const annualRentIncome = effectiveWeeklyRent * effectiveOccupancyRate;
+
+    // Coerce potentially string-based overrides to numbers (prevents incorrect totals like "1000" + "1500")
+    const toNumberOr = (value: any, fallback: number): number => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      const n = parseFloat(String(value));
+      return Number.isFinite(n) ? n : fallback;
+    };
     
     // Calculate Gross Yield from overridden values
     const preCalculatedGrossYield = effectivePurchasePrice > 0 
@@ -1867,13 +1880,13 @@ Produce a comprehensive suburb investment snapshot following the structure above
     // CRITICAL FIX: Recalculate Net Yield using OVERRIDDEN expense values
     // Net Yield = (Annual Rent - Total Annual Costs) / Purchase Price * 100
     // Extract effective annual costs from merged overrides (use ?? to respect explicit 0)
-    const effectiveCouncilRates = mergedOverrides.councilRates ?? enhancedData.financials?.annualCosts?.councilRates ?? 2500;
-    const effectiveWaterRates = mergedOverrides.waterRates ?? enhancedData.financials?.annualCosts?.waterRates ?? 1000;
-    const effectiveStrataFees = mergedOverrides.bodyCorporateFees ?? enhancedData.financials?.annualCosts?.strataFees ?? 0;
-    const effectiveLandlordInsurance = mergedOverrides.buildingLandlordInsurance ?? enhancedData.financials?.annualCosts?.landlordInsurance ?? 1800;
-    const effectiveMaintenance = mergedOverrides.repairsMaintenance ?? enhancedData.financials?.annualCosts?.maintenance ?? 1500;
-    const effectiveLandTax = mergedOverrides.landTax ?? enhancedData.financials?.annualCosts?.landTax ?? 0;
-    const effectivePmPercent = mergedOverrides.propertyManagementFees ?? enhancedData.financials?.annualCosts?.propertyManagementPercent ?? 8;
+    const effectiveCouncilRates = toNumberOr(mergedOverrides.councilRates ?? enhancedData.financials?.annualCosts?.councilRates, 2500);
+    const effectiveWaterRates = toNumberOr(mergedOverrides.waterRates ?? enhancedData.financials?.annualCosts?.waterRates, 1000);
+    const effectiveStrataFees = toNumberOr(mergedOverrides.bodyCorporateFees ?? enhancedData.financials?.annualCosts?.strataFees, 0);
+    const effectiveLandlordInsurance = toNumberOr(mergedOverrides.buildingLandlordInsurance ?? enhancedData.financials?.annualCosts?.landlordInsurance, 1800);
+    const effectiveMaintenance = toNumberOr(mergedOverrides.repairsMaintenance ?? enhancedData.financials?.annualCosts?.maintenance, 1500);
+    const effectiveLandTax = toNumberOr(mergedOverrides.landTax ?? enhancedData.financials?.annualCosts?.landTax, 0);
+    const effectivePmPercent = toNumberOr(mergedOverrides.propertyManagementFees ?? enhancedData.financials?.annualCosts?.propertyManagementPercent, 8);
     const effectivePmDollar = Math.round(annualRentIncome * (effectivePmPercent / 100));
     
     // Total annual costs for net yield calculation (excluding land tax per standard practice)
