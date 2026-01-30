@@ -50,6 +50,7 @@ export function ClientPDFGenerator({ report, includeSources = true, includeScori
       'solicitorFees': 'initialCosts.legalFees',
       'repairsMaintenance': 'annualCosts.maintenance',
       'lettingFees': 'annualCosts.lettingFees',
+      'landTax': 'annualCosts.landTax',
       'capitalGrowth': 'assumptions.capitalGrowth',
       'buildPrice': 'initialCosts.buildPrice',
       'landPrice': 'initialCosts.landPrice',
