@@ -136,6 +136,78 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       .trim();
   };
 
+  // Helper to sanitize AI-generated content - fix word merges, duplicates, and malformed text
+  const sanitizeAIContent = (text: string): string => {
+    return text
+      // Fix word merges caused by missing spaces after common words/punctuation
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase splits: "WyndhamVale" -> "Wyndham Vale"
+      .replace(/([a-z])(\d)/g, '$1 $2') // letter-number: "Year1" -> "Year 1"
+      .replace(/(\d)([A-Za-z])/g, '$1 $2') // number-letter: "100km" stays, but "2024The" -> "2024 The"
+      .replace(/([.!?:])([A-Z])/g, '$1 $2') // punctuation-capital: "done.The" -> "done. The"
+      .replace(/([a-z])'s([A-Z])/g, "$1's $2") // possessive merge: "Vale'sdemographic" -> "Vale's demographic"
+      .replace(/(\))([A-Za-z])/g, '$1 $2') // paren-letter: "Truganina(68" stays but ")The" -> ") The"
+      // Remove duplicate percentage/ratio patterns like "LVR:90%:90%" or "80% LVR:90%"
+      .replace(/(\d+%?\s*(?:LVR|lvr))\s*:\s*\d+%?\s*(?:LVR|lvr)?\s*:\s*\d+%/gi, '$1')
+      .replace(/(\d+%\s+LVR)\s*:\s*\d+%\s*LVR/gi, '$1')
+      // Clean up any resulting double spaces
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
+
+  // Helper to truncate text at word boundary for TOC entries
+  const truncateAtWordBoundary = (text: string, maxWidth: number, font: any, fontSize: number): string => {
+    if (font.widthOfTextAtSize(text, fontSize) <= maxWidth) {
+      return text;
+    }
+    
+    const words = text.split(' ');
+    let result = '';
+    const ellipsis = '...';
+    const ellipsisWidth = font.widthOfTextAtSize(ellipsis, fontSize);
+    
+    for (let i = 0; i < words.length; i++) {
+      const testText = result ? `${result} ${words[i]}` : words[i];
+      const testWidth = font.widthOfTextAtSize(testText + ellipsis, fontSize);
+      
+      if (testWidth > maxWidth) {
+        break;
+      }
+      result = testText;
+    }
+    
+    return result ? `${result}${ellipsis}` : `${text.substring(0, 20)}${ellipsis}`;
+  };
+
+  // Helper to break long words that exceed maxWidth
+  const breakLongWord = (word: string, maxWidth: number, font: any, fontSize: number): string[] => {
+    const wordWidth = font.widthOfTextAtSize(word, fontSize);
+    if (wordWidth <= maxWidth) {
+      return [word];
+    }
+    
+    // Break the word into chunks that fit
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    for (const char of word) {
+      const testChunk = currentChunk + char;
+      const testWidth = font.widthOfTextAtSize(testChunk + '-', fontSize);
+      
+      if (testWidth > maxWidth && currentChunk.length > 0) {
+        chunks.push(currentChunk + '-');
+        currentChunk = char;
+      } else {
+        currentChunk = testChunk;
+      }
+    }
+    
+    if (currentChunk) {
+      chunks.push(currentChunk);
+    }
+    
+    return chunks;
+  };
+
   const filterSourcesSections = (sections: Record<string, string>): Record<string, string> => {
     if (includeSources) {
       console.log('✓ Including sources in PDF (toggle is ON)');
@@ -1458,7 +1530,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           let maxRowHeight = tableLineHeight + 8;
           
           for (let j = 0; j < row.length; j++) {
-            const cellText = stripEmojis(row[j] || '');
+            const cellText = sanitizeAIContent(stripEmojis(row[j] || ''));
             const maxCellWidth = colWidth - 2 * cellPadding;
             
             // Estimate lines needed
@@ -1658,7 +1730,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           isHeader: boolean
         ): number => {
           const maxCellWidth = cellWidth - 2 * cellPadding;
-          const parts = parseMarkdownText(stripEmojis(cellText));
+          const parts = parseMarkdownText(sanitizeAIContent(stripEmojis(cellText)));
           
           let currentLineY = cellY;
           let currentLineX = cellX + cellPadding;
@@ -2049,7 +2121,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Helper to draw text with word wrapping, markdown formatting, and JUSTIFIED alignment
       const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number) => {
-        const sanitizedText = stripEmojis(text); // Sanitize text first
+        // Sanitize text: strip emojis AND fix AI content issues (word merges, duplicates)
+        const sanitizedText = sanitizeAIContent(stripEmojis(text));
         const parts = parseMarkdownText(sanitizedText);
         let currentY = startY;
         
@@ -2072,6 +2145,20 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         for (let i = 0; i < allWords.length; i++) {
           const { word, font } = allWords[i];
           const wordWidth = font.widthOfTextAtSize(word, size);
+          
+          // Handle words that are wider than maxWidth by breaking them
+          if (wordWidth > maxWidth) {
+            const brokenParts = breakLongWord(word, maxWidth, font, size);
+            for (const part of brokenParts) {
+              const partWidth = font.widthOfTextAtSize(part, size);
+              if (currentLine.words.length > 0) {
+                lines.push(currentLine);
+              }
+              currentLine = { words: [{ word: part, font }], totalWidth: partWidth };
+            }
+            continue;
+          }
+          
           const neededWidth = currentLine.words.length > 0 ? wordWidth + spaceWidth : wordWidth;
           
           if (currentLine.totalWidth + neededWidth > maxWidth && currentLine.words.length > 0) {
@@ -2634,10 +2721,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           const pageNumWidth = 30; // Reserve space for page number
           const textStartX = margin + indentation + numWidth + 8;
           const maxTocWidth = pageWidth - margin - pageNumWidth - textStartX - 10;
-          let displayName = cleanName;
-          while (helveticaFont.widthOfTextAtSize(displayName, fontSize) > maxTocWidth && displayName.length > 10) {
-            displayName = displayName.substring(0, displayName.length - 4) + '...';
-          }
+          // Use word-boundary truncation instead of mid-character truncation
+          const displayName = truncateAtWordBoundary(cleanName, maxTocWidth, helveticaFont, fontSize);
           
           tocPage.drawText(displayName, {
             x: textStartX,
