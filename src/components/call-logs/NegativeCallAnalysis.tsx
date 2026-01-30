@@ -32,6 +32,10 @@ import {
   X,
   PhoneCall
 } from 'lucide-react';
+import { CriticalMomentDetection } from './CriticalMomentDetection';
+import { AgentPerformanceFlags } from './AgentPerformanceFlags';
+import { TrendAlerts } from './TrendAlerts';
+import { ComparativeCoaching } from './ComparativeCoaching';
 
 interface NegativeSentimentMoment {
   timestamp: number | null;
@@ -42,6 +46,7 @@ interface NegativeSentimentMoment {
 interface CallLog {
   id: string;
   vapi_call_id: string;
+  agent_id: string | null;
   agent_name: string | null;
   phone_number: string | null;
   customer_name: string | null;
@@ -63,6 +68,7 @@ interface CallLog {
   recovery_priority: number | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  recording_url: string | null;
 }
 
 interface NegativeCallAnalysisProps {
@@ -284,25 +290,43 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
       </div>
 
       <Tabs defaultValue="issues" className="w-full">
-        <TabsList>
-          <TabsTrigger value="issues" className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            All Issues
-          </TabsTrigger>
-          <TabsTrigger value="recovery" className="flex items-center gap-2">
-            <PhoneCall className="w-4 h-4" />
-            Recovery Queue
-            {recoveryQueue.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                {recoveryQueue.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="breakdown" className="flex items-center gap-2">
-            <TrendingDown className="w-4 h-4" />
-            Root Cause Breakdown
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="inline-flex w-auto min-w-max">
+            <TabsTrigger value="issues" className="flex items-center gap-2 text-xs md:text-sm">
+              <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">All</span> Issues
+            </TabsTrigger>
+            <TabsTrigger value="critical-moments" className="flex items-center gap-2 text-xs md:text-sm">
+              <Zap className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Critical</span> Moments
+            </TabsTrigger>
+            <TabsTrigger value="recovery" className="flex items-center gap-2 text-xs md:text-sm">
+              <PhoneCall className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              Recovery
+              {recoveryQueue.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {recoveryQueue.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="flex items-center gap-2 text-xs md:text-sm">
+              <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Agent</span> Flags
+            </TabsTrigger>
+            <TabsTrigger value="trends" className="flex items-center gap-2 text-xs md:text-sm">
+              <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Trend</span> Alerts
+            </TabsTrigger>
+            <TabsTrigger value="coaching" className="flex items-center gap-2 text-xs md:text-sm">
+              <Lightbulb className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              Coaching
+            </TabsTrigger>
+            <TabsTrigger value="breakdown" className="flex items-center gap-2 text-xs md:text-sm">
+              <Target className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Root Cause</span> Breakdown
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="issues" className="mt-4">
           {/* Filters */}
@@ -518,6 +542,26 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Critical Moment Detection Tab */}
+        <TabsContent value="critical-moments" className="mt-4">
+          <CriticalMomentDetection calls={calls} />
+        </TabsContent>
+
+        {/* Agent Performance Flags Tab */}
+        <TabsContent value="agents" className="mt-4">
+          <AgentPerformanceFlags calls={calls} />
+        </TabsContent>
+
+        {/* Trend Alerts Tab */}
+        <TabsContent value="trends" className="mt-4">
+          <TrendAlerts calls={calls} />
+        </TabsContent>
+
+        {/* Comparative Coaching Tab */}
+        <TabsContent value="coaching" className="mt-4">
+          <ComparativeCoaching calls={calls} />
         </TabsContent>
 
         <TabsContent value="breakdown" className="mt-4">
