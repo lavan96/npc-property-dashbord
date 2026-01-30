@@ -1497,15 +1497,17 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             const isSeparator = /^[\s\-:]+$/.test(withoutPipes);
             return !isSeparator;
           })
-          .map(line => {
+          .map((line, lineIndex) => {
             const cells = line.split('|')
               .map(cell => cell.trim())
               .filter(cell => cell.length > 0);
             
             const lineText = line.toLowerCase();
             const isTotalRow = lineText.includes('total') && /\$[\d,]+/.test(line);
+            const isHeaderRow = lineIndex === 0;
             
-            if (!isTotalRow && cells.length > 3) {
+            // Don't remove columns from header row - this causes missing headers
+            if (!isTotalRow && !isHeaderRow && cells.length > 3) {
               return cells.slice(0, -1);
             }
             return cells;
@@ -1567,6 +1569,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         console.log('Drawing table with lines:', lines);
 
         // Parse table structure - filter out separator lines more carefully
+        // Track if first row is header for column removal logic
+        let isFirstDataRow = true;
         const rows = lines
           .filter(line => {
             // Keep lines that have content other than just |, -, :, and spaces
@@ -1574,7 +1578,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             const isSeparator = /^[\s\-:]+$/.test(withoutPipes);
             return !isSeparator;
           })
-          .map(line => {
+          .map((line, lineIndex) => {
             // Split by | and clean up cells - don't strip emojis yet, we'll do it when drawing
             const cells = line.split('|')
               .map(cell => cell.trim())
@@ -1583,6 +1587,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             // Check if this is a total row (contains "Total" and has amount in the text)
             const lineText = line.toLowerCase();
             const isTotalRow = lineText.includes('total') && /\$[\d,]+\.?\d*/.test(line);
+            
+            // Determine if this is the header row (first row after filtering)
+            const isHeaderRow = lineIndex === 0;
             
             // FIX: Handle malformed Total row where amount is in first cell and description in second
             // Pattern: | $X,XXX | Sum of ALL ongoing costs | (empty) |
@@ -1611,8 +1618,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             }
             
             // For total rows, preserve all cells including amounts
-            // For normal rows, remove the last column (Source/Methodology) to simplify layout
-            if (!isTotalRow && cells.length > 3) {
+            // For normal data rows (NOT headers), remove the last column (Source/Methodology) to simplify layout
+            // IMPORTANT: Never remove columns from the header row - this causes missing headers
+            if (!isTotalRow && !isHeaderRow && cells.length > 3) {
               // Only remove last column if we have more than 3 columns (Cost Type, Calculation, Amount, Source)
               return cells.slice(0, -1);
             }
