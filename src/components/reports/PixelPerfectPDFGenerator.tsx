@@ -393,11 +393,26 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
     // Calculate loan amount from property value and deposit
     const propertyValue = financialData?.initialCosts?.propertyValue || 0;
-    const depositValue = financialData?.initialCosts?.deposit || 0;
     const stampDuty = financialData?.initialCosts?.stampDuty || 0;
-    const loanAmount = propertyValue - depositValue;
     const interestRate = financialData?.loanDetails?.interestRate || 6;
     const loanTerm = financialData?.loanDetails?.loanTerm || 30;
+    
+    // Calculate deposit: use explicit value if set, otherwise derive from LVR
+    // Formula: Deposit = Purchase Price × (100% - LVR%)
+    const lvr = financialData?.keyMetrics?.lvr || financialData?.loanDetails?.lvr || 80;
+    const explicitDeposit = financialData?.initialCosts?.deposit;
+    const depositValue = (explicitDeposit !== undefined && explicitDeposit !== null && explicitDeposit !== 0)
+      ? Number(explicitDeposit)
+      : Math.round(propertyValue * (1 - lvr / 100));
+    const loanAmount = propertyValue - depositValue;
+    
+    console.log('💰 Deposit calculation:', {
+      propertyValue,
+      lvr,
+      explicitDeposit,
+      calculatedDeposit: depositValue,
+      loanAmount
+    });
 
     // Map of field paths to regex patterns that match them in markdown tables
     const fieldReplacements: Array<{ pattern: RegExp; getValue: () => any; format: (v: any) => string; isFullLineReplacement?: boolean }> = [
