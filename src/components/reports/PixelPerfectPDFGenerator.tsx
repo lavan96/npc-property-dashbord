@@ -139,16 +139,44 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
   // Helper to sanitize AI-generated content - fix word merges, duplicates, and malformed text
   const sanitizeAIContent = (text: string): string => {
     return text
-      // Fix word merges caused by missing spaces after common words/punctuation
-      .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase splits: "WyndhamVale" -> "Wyndham Vale"
-      .replace(/([a-z])(\d)/g, '$1 $2') // letter-number: "Year1" -> "Year 1"
-      .replace(/(\d)([A-Za-z])/g, '$1 $2') // number-letter: "100km" stays, but "2024The" -> "2024 The"
-      .replace(/([.!?:])([A-Z])/g, '$1 $2') // punctuation-capital: "done.The" -> "done. The"
-      .replace(/([a-z])'s([A-Z])/g, "$1's $2") // possessive merge: "Vale'sdemographic" -> "Vale's demographic"
-      .replace(/(\))([A-Za-z])/g, '$1 $2') // paren-letter: "Truganina(68" stays but ")The" -> ") The"
+      // ===== ISSUE 8 FIX: Comprehensive word merge corrections =====
+      // Fix camelCase splits: "WyndhamVale" -> "Wyndham Vale", "FreewayUpgrades" -> "Freeway Upgrades"
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      // Fix letter-number merges: "Year1" -> "Year 1", "Section2" -> "Section 2"
+      .replace(/([a-z])(\d)/g, '$1 $2')
+      // Fix number-letter merges (but preserve units like "100km"): "2024The" -> "2024 The"
+      .replace(/(\d)([A-Z])/g, '$1 $2')
+      // Fix punctuation-capital merges: "done.The" -> "done. The", "finished:Next" -> "finished: Next"
+      .replace(/([.!?:,;])([A-Za-z])/g, '$1 $2')
+      // Fix possessive merges: "Vale'sdemographic" -> "Vale's demographic", "City'sinfrastructure" -> "City's infrastructure"
+      .replace(/([a-z])'s([a-z])/gi, "$1's $2")
+      // Fix closing paren merges: ")The" -> ") The", ")and" -> ") and"
+      .replace(/(\))([A-Za-z])/g, '$1 $2')
+      // Fix opening paren merges after words: "word(example" -> "word (example"
+      .replace(/([a-z])(\([A-Za-z])/g, '$1 $2')
+      // Fix hyphen merges for compound words that got mashed: "Western-Freewayupgrades" or "Westernfreeway" patterns
+      .replace(/([a-z]{3,})(freeway|highway|road|street|avenue|drive|boulevard|upgrades?|improvements?|developments?)/gi, '$1 $2')
+      // Fix common infrastructure word merges
+      .replace(/(infrastructure|developments?|projects?|investments?)([A-Z])/g, '$1 $2')
+      // ===== ISSUE 3 FIX: Remove broken/repeated phrases with data =====
+      // Remove duplicate "Purchase Price: $X" patterns: "Purchase Price: $717,400 median" or "Purchase Price: $X, Purchase Price: $Y"
+      .replace(/Purchase Price:\s*\$[\d,]+\s*(?:Purchase Price:\s*\$[\d,]+|median)/gi, (match) => {
+        const priceMatch = match.match(/\$[\d,]+/);
+        return priceMatch ? `Purchase Price: ${priceMatch[0]}` : match;
+      })
       // Remove duplicate percentage/ratio patterns like "LVR:90%:90%" or "80% LVR:90%"
       .replace(/(\d+%?\s*(?:LVR|lvr))\s*:\s*\d+%?\s*(?:LVR|lvr)?\s*:\s*\d+%/gi, '$1')
       .replace(/(\d+%\s+LVR)\s*:\s*\d+%\s*LVR/gi, '$1')
+      // Remove repeated field patterns like "Interest Rate: 6% Interest Rate: 6%"
+      .replace(/(Interest Rate:\s*[\d.]+%)\s+Interest Rate:\s*[\d.]+%/gi, '$1')
+      .replace(/(Loan Term:\s*\d+\s*years?)\s+Loan Term:\s*\d+\s*years?/gi, '$1')
+      .replace(/(Weekly Rent:\s*\$[\d,]+)\s+Weekly Rent:\s*\$[\d,]+/gi, '$1')
+      // Remove "At $X, the [Field]: $X" redundancy: "At $717,400, the Purchase Price: $717,400"
+      .replace(/At\s+\$[\d,]+,?\s*the\s+(Purchase Price|Property Value|Loan Amount):\s*\$[\d,]+/gi, (match) => {
+        const priceMatch = match.match(/\$[\d,]+/);
+        const fieldMatch = match.match(/(Purchase Price|Property Value|Loan Amount)/i);
+        return priceMatch && fieldMatch ? `${fieldMatch[0]}: ${priceMatch[0]}` : match;
+      })
       // Clean up any resulting double spaces
       .replace(/\s{2,}/g, ' ')
       .trim();
@@ -1501,22 +1529,29 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             const cells = line.split('|')
               .map(cell => cell.trim())
               .filter(cell => cell.length > 0);
-            
-            const lineText = line.toLowerCase();
-            const isTotalRow = lineText.includes('total') && /\$[\d,]+/.test(line);
-            const isHeaderRow = lineIndex === 0;
-            
-            // Don't remove columns from header row - this causes missing headers
-            if (!isTotalRow && !isHeaderRow && cells.length > 3) {
-              return cells.slice(0, -1);
-            }
             return cells;
           })
           .filter(row => row.length > 0);
 
         if (rows.length === 0) return 0;
 
-        const columnCount = Math.max(...rows.map(r => r.length));
+        // ===== ISSUE 6 FIX: Apply same column normalization as drawTable =====
+        const dataRowColumnCounts = rows.slice(1).map(r => r.length);
+        const mostCommonCount = dataRowColumnCounts.length > 0 
+          ? dataRowColumnCounts.sort((a, b) => 
+              dataRowColumnCounts.filter(v => v === b).length - dataRowColumnCounts.filter(v => v === a).length
+            )[0]
+          : rows[0]?.length || 0;
+        
+        const normalizedRows = rows.map((row) => {
+          if (row.length === mostCommonCount) return row;
+          if (row.length > mostCommonCount) return row.slice(0, mostCommonCount);
+          const padded = [...row];
+          while (padded.length < mostCommonCount) padded.push('');
+          return padded;
+        });
+
+        const columnCount = Math.max(...normalizedRows.map(r => r.length));
         const cellPadding = 5;
         const tableLineHeight = size + 4;
         
@@ -1526,8 +1561,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         let totalHeight = 0;
         
         // Calculate height for each row
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
+        for (let i = 0; i < normalizedRows.length; i++) {
+          const row = normalizedRows[i];
           const isHeader = i === 0;
           let maxRowHeight = tableLineHeight + 8;
           
@@ -1642,11 +1677,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             // For total rows, preserve all cells including amounts
             // For normal data rows (NOT headers), remove the last column (Source/Methodology) to simplify layout
-            // IMPORTANT: Never remove columns from the header row - this causes missing headers
-            if (!isTotalRow && !isHeaderRow && cells.length > 3) {
-              // Only remove last column if we have more than 3 columns (Cost Type, Calculation, Amount, Source)
-              return cells.slice(0, -1);
-            }
+            // ISSUE 6 FIX: When we remove the last column from data rows, we must also remove it from the header
+            // to keep column counts aligned. Track this via a flag we'll apply after the map.
+            // For now, return all cells - we'll normalize column counts after parsing all rows.
             
             // For rows with amount in first cell like "Total Initial Costs $48,269", split it properly
             if (isTotalRow && cells.length === 1 && cells[0].includes('$')) {
@@ -1660,11 +1693,41 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           })
           .filter(row => row.length > 0);
 
-        console.log('Parsed table rows:', rows);
+        console.log('Parsed table rows (before normalization):', rows);
 
         if (rows.length === 0) return { lastY: startY, needsNewPage: false };
 
-        const columnCount = Math.max(...rows.map(r => r.length));
+        // ===== ISSUE 6 FIX: Normalize column counts across all rows =====
+        // Find the most common column count among data rows (skip header for this calculation)
+        // This ensures headers and data rows have matching column counts
+        const dataRowColumnCounts = rows.slice(1).map(r => r.length);
+        const mostCommonCount = dataRowColumnCounts.length > 0 
+          ? dataRowColumnCounts.sort((a, b) => 
+              dataRowColumnCounts.filter(v => v === b).length - dataRowColumnCounts.filter(v => v === a).length
+            )[0]
+          : rows[0]?.length || 0;
+        
+        // Normalize all rows to the most common column count
+        const normalizedRows = rows.map((row, rowIndex) => {
+          if (row.length === mostCommonCount) return row;
+          
+          // If row has more columns than expected, trim from the end (removes Source/Methodology columns)
+          if (row.length > mostCommonCount) {
+            console.log(`  Trimming row ${rowIndex} from ${row.length} to ${mostCommonCount} columns`);
+            return row.slice(0, mostCommonCount);
+          }
+          
+          // If row has fewer columns, pad with empty strings
+          const padded = [...row];
+          while (padded.length < mostCommonCount) {
+            padded.push('');
+          }
+          return padded;
+        });
+        
+        console.log('Normalized table rows:', normalizedRows);
+
+        const columnCount = Math.max(...normalizedRows.map(r => r.length));
         const cellPadding = 5;
         const lineHeight = size + 4;
         
@@ -1674,7 +1737,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           const contentWidths: number[] = [];
           
           // Detect if this is a scenario table (Conservative/Base Case/Optimistic)
-          const headerRow = rows[0] || [];
+          const headerRow = normalizedRows[0] || [];
           const isScenarioTable = headerRow.some((cell: string) => 
             cell?.toLowerCase().includes('conservative') || 
             cell?.toLowerCase().includes('base case') || 
@@ -1695,7 +1758,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             
             let maxContentWidth = minColWidth;
             
-            for (const row of rows) {
+            for (const row of normalizedRows) {
               if (row[col]) {
                 const cellText = stripEmojis(row[col]);
                 const parts = parseMarkdownText(cellText);
@@ -1947,8 +2010,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         };
 
         // Draw each row
-        for (let i = 0; i < rows.length; i++) {
-          let row = rows[i];
+        for (let i = 0; i < normalizedRows.length; i++) {
+          let row = normalizedRows[i];
           const isHeader = i === 0;
           
           // BACKUP FIX: Check for malformed Total row right before drawing
@@ -1972,7 +2035,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           if (currentY - rowHeight < bottomMargin + 40) {
             // IMPORTANT: Return the remaining table content so it can continue on the next page
             // Re-include the header row on the next page for readability.
-            const remainingRows = [rows[0], ...rows.slice(i)];
+            const remainingRows = [normalizedRows[0], ...normalizedRows.slice(i)];
             const remainingTableText = buildMarkdownTableFromRows(remainingRows);
             return { lastY: currentY, needsNewPage: true, remainingTableText };
           }
