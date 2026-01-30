@@ -2448,13 +2448,13 @@ Specific zoning data was not provided for this property. For comprehensive inves
 
 | Cost Category | Amount (AUD) | Calculation Method |
 |---------------|--------------|-------------------|
-| Council Rates | $${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'} | Local council rates notice |
-| Water Rates | $${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'} | Estimated based on local water authority |
-| Property Management Fee | $${effectivePmDollar?.toLocaleString() || enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'} | ${effectivePmPercent}% × annual rent |
-| Property Insurance | $${effectiveLandlordInsurance?.toLocaleString() || enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'} | Typical comprehensive home insurance |
+| Council Rates | $${effectiveCouncilRates?.toLocaleString() || '2,500'} | Local council rates notice |
+| Water Rates | $${effectiveWaterRates?.toLocaleString() || '1,000'} | Estimated based on local water authority |
+| Property Management Fee | $${effectivePmDollar?.toLocaleString() || '1,500'} | ${effectivePmPercent}% × annual rent |
+| Property Insurance | $${effectiveLandlordInsurance?.toLocaleString() || '1,200'} | Typical comprehensive home insurance |
 | Maintenance | $${effectiveMaintenance?.toLocaleString() || '0'} | User-specified maintenance cost |
-| Land Tax | $${effectiveLandTax?.toLocaleString() || enhancedData.financials?.annualCosts?.landTax?.toLocaleString() || '0'} | State land tax (pre-calculated) |
-| **Total Annual Costs** | **$${(totalAnnualCostsForNetYield + effectiveLandTax)?.toLocaleString() || enhancedData.financials?.annualCosts?.totalAnnual?.toLocaleString() || 'X,XXX'}** | Sum of ALL ongoing costs |
+| Land Tax | $${effectiveLandTax?.toLocaleString() || '0'} | State land tax (pre-calculated) |
+| **Total Annual Costs** | **$${(totalAnnualCostsForNetYield + effectiveLandTax)?.toLocaleString() || '0'}** | Sum of ALL ongoing costs |
 
 **Land Tax Calculation (Information Only):**
 
