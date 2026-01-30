@@ -4076,6 +4076,7 @@ export type Database = {
           action_items: string[] | null
           agent_id: string | null
           agent_name: string | null
+          ai_recommendations: string[] | null
           assistants_involved: Json | null
           call_direction: string | null
           call_intent: string | null
@@ -4086,13 +4087,21 @@ export type Database = {
           customer_name: string | null
           duration_seconds: number | null
           ended_at: string | null
+          escalation_severity: number | null
           handoff_sequence: Json | null
           id: string
           is_squad_call: boolean | null
           key_topics: string[] | null
           metadata: Json | null
+          negative_sentiment_moment: Json | null
           phone_number: string | null
           recording_url: string | null
+          recovery_priority: number | null
+          resolution_notes: string | null
+          resolution_status: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          root_cause_category: string | null
           sentiment: string | null
           squad_id: string | null
           squad_name: string | null
@@ -4108,6 +4117,7 @@ export type Database = {
           action_items?: string[] | null
           agent_id?: string | null
           agent_name?: string | null
+          ai_recommendations?: string[] | null
           assistants_involved?: Json | null
           call_direction?: string | null
           call_intent?: string | null
@@ -4118,13 +4128,21 @@ export type Database = {
           customer_name?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
+          escalation_severity?: number | null
           handoff_sequence?: Json | null
           id?: string
           is_squad_call?: boolean | null
           key_topics?: string[] | null
           metadata?: Json | null
+          negative_sentiment_moment?: Json | null
           phone_number?: string | null
           recording_url?: string | null
+          recovery_priority?: number | null
+          resolution_notes?: string | null
+          resolution_status?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          root_cause_category?: string | null
           sentiment?: string | null
           squad_id?: string | null
           squad_name?: string | null
@@ -4140,6 +4158,7 @@ export type Database = {
           action_items?: string[] | null
           agent_id?: string | null
           agent_name?: string | null
+          ai_recommendations?: string[] | null
           assistants_involved?: Json | null
           call_direction?: string | null
           call_intent?: string | null
@@ -4150,13 +4169,21 @@ export type Database = {
           customer_name?: string | null
           duration_seconds?: number | null
           ended_at?: string | null
+          escalation_severity?: number | null
           handoff_sequence?: Json | null
           id?: string
           is_squad_call?: boolean | null
           key_topics?: string[] | null
           metadata?: Json | null
+          negative_sentiment_moment?: Json | null
           phone_number?: string | null
           recording_url?: string | null
+          recovery_priority?: number | null
+          resolution_notes?: string | null
+          resolution_status?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          root_cause_category?: string | null
           sentiment?: string | null
           squad_id?: string | null
           squad_name?: string | null
@@ -4168,7 +4195,15 @@ export type Database = {
           updated_at?: string
           vapi_call_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vapi_call_logs_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whitelabel_settings: {
         Row: {
