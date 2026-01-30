@@ -395,7 +395,9 @@ IMPORTANT:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash',
+        // NOTE: Must be a model supported by the Lovable AI gateway.
+        // See edge function logs for the current allowlist.
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
