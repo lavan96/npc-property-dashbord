@@ -4,7 +4,7 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_s
 
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' | 
                  'client_assets' | 'client_liabilities' | 'client_employment' | 
-                 'client_notes' | 'client_files' | 'client_activities';
+                 'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts';
 
 type Operation = 'create' | 'update' | 'delete';
 
@@ -28,6 +28,7 @@ const ALLOWED_TABLES: TableName[] = [
   'client_notes',
   'client_files',
   'client_activities',
+  'client_additional_contacts',
 ];
 
 serve(async (req) => {

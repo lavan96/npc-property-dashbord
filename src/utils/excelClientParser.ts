@@ -91,9 +91,22 @@ export interface ParsedPortfolioSummary {
   netMonthlyCashFlow: number;
 }
 
+export interface ParsedAdditionalContact {
+  relationship: string;
+  firstName: string | null;
+  middleName: string | null;
+  surname: string | null;
+  mobile: string | null;
+  email: string | null;
+  gender: string | null;
+  dob: string | null;
+  displayOrder: number;
+}
+
 export interface ParsedClient {
   primaryContact: ParsedContact;
   secondaryContact?: ParsedContact;
+  additionalContacts?: ParsedAdditionalContact[];
   address?: ParsedAddress;
   residentialStatus?: string;
   familyRelations?: ParsedFamilyRelations;

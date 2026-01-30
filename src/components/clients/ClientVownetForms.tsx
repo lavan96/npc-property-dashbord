@@ -44,6 +44,7 @@ type UploadStatus = 'idle' | 'parsing' | 'importing' | 'complete' | 'error';
 
 interface ImportSummary {
   personalDetailsUpdated: boolean;
+  additionalContactsImported: number;
   employmentRecords: number;
   incomeRecords: number;
   assetRecords: number;
@@ -105,6 +106,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       const summary: ImportSummary = {
         personalDetailsUpdated: false,
+        additionalContactsImported: 0,
         employmentRecords: 0,
         incomeRecords: 0,
         assetRecords: 0,
@@ -158,6 +160,37 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
           summary.personalDetailsUpdated = true;
         } else {
           console.error('Error updating client details:', fnError?.message);
+        }
+      }
+      
+      // 1b. Import additional contacts if present
+      if (parsedData.additionalContacts && parsedData.additionalContacts.length > 0) {
+        // Delete existing additional contacts first
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table: 'client_additional_contacts',
+          clientId,
+        });
+        
+        for (const contact of parsedData.additionalContacts) {
+          const { data: contactResult, error: contactError } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_additional_contacts',
+            clientId,
+            data: {
+              client_id: clientId,
+              relationship: contact.relationship,
+              first_name: contact.firstName,
+              surname: contact.surname,
+              middle_name: contact.middleName,
+              email: contact.email,
+              mobile: contact.mobile,
+              dob: contact.dob,
+              gender: contact.gender,
+              display_order: contact.displayOrder,
+            }
+          });
+          if (!contactError && contactResult?.success) summary.additionalContactsImported++;
         }
       }
       setProgress(50);

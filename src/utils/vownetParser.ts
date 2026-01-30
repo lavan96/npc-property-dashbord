@@ -9,7 +9,8 @@ import {
   ParsedAsset,
   ParsedLiability,
   ParsedAddress,
-  ParsedFamilyRelations
+  ParsedFamilyRelations,
+  ParsedAdditionalContact
 } from './excelClientParser';
 
 // Helper to safely get cell value
@@ -376,6 +377,113 @@ function parsePersonalDetails(sheet: XLSX.WorkSheet): { primary: ParsedContact; 
   }
 
   return { primary, secondary, address, family, residentialStatus };
+}
+
+// Parse additional contacts (beyond primary and secondary)
+function parseAdditionalContacts(sheet: XLSX.WorkSheet): ParsedAdditionalContact[] {
+  const additionalContacts: ParsedAdditionalContact[] = [];
+  
+  // Common patterns for additional contacts in Vownet forms:
+  // - "Third Contact", "3rd Contact", "Contact 3"
+  // - "Fourth Contact", "4th Contact", "Contact 4"
+  // - "Applicant 3", "Borrower 3"
+  // - "Guarantor", "Co-borrower"
+  const additionalContactPatterns = [
+    { pattern: /third\s*contact|3rd\s*contact|contact\s*3|applicant\s*3|borrower\s*3/i, order: 1, defaultRelation: 'Additional Applicant' },
+    { pattern: /fourth\s*contact|4th\s*contact|contact\s*4|applicant\s*4|borrower\s*4/i, order: 2, defaultRelation: 'Additional Applicant' },
+    { pattern: /fifth\s*contact|5th\s*contact|contact\s*5|applicant\s*5|borrower\s*5/i, order: 3, defaultRelation: 'Additional Applicant' },
+    { pattern: /guarantor/i, order: 10, defaultRelation: 'Guarantor' },
+    { pattern: /co-?borrower/i, order: 11, defaultRelation: 'Additional Applicant' },
+    { pattern: /trustee/i, order: 12, defaultRelation: 'Trustee' },
+    { pattern: /director/i, order: 13, defaultRelation: 'Director' },
+  ];
+
+  for (const { pattern, order, defaultRelation } of additionalContactPatterns) {
+    const sectionRow = findRowByLabelPattern(sheet, pattern);
+    if (sectionRow) {
+      const contact = parseContactSection(sheet, sectionRow, defaultRelation, order);
+      if (contact && (contact.firstName || contact.surname)) {
+        additionalContacts.push(contact);
+      }
+    }
+  }
+
+  // Sort by display order
+  return additionalContacts.sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+// Helper to find a row by regex pattern
+function findRowByLabelPattern(sheet: XLSX.WorkSheet, pattern: RegExp, startRow: number = 1, endRow: number = 300): number | null {
+  for (let row = startRow; row <= endRow; row++) {
+    for (const col of ['A', 'B', 'C', 'D', 'E', 'F']) {
+      const value = getCellValue(sheet, `${col}${row}`);
+      if (value && typeof value === 'string' && pattern.test(value)) {
+        return row;
+      }
+    }
+  }
+  return null;
+}
+
+// Parse a contact section starting from a given row
+function parseContactSection(sheet: XLSX.WorkSheet, startRow: number, relationship: string, displayOrder: number): ParsedAdditionalContact | null {
+  const contact: ParsedAdditionalContact = {
+    relationship,
+    firstName: null,
+    middleName: null,
+    surname: null,
+    mobile: null,
+    email: null,
+    gender: null,
+    dob: null,
+    displayOrder
+  };
+
+  // Search for contact fields within 20 rows of the section header
+  const searchEnd = startRow + 20;
+  
+  for (let row = startRow; row <= searchEnd; row++) {
+    const labelA = getCellValue(sheet, `A${row}`)?.toString().toLowerCase() || '';
+    const labelB = getCellValue(sheet, `B${row}`)?.toString().toLowerCase() || '';
+    const valueB = getCellValue(sheet, `B${row}`);
+    const valueC = getCellValue(sheet, `C${row}`);
+    
+    // Use value from column B or C depending on where the label is
+    const value = labelA.includes('first') || labelA.includes('surname') || labelA.includes('name') ? valueB : 
+                  (labelB.includes('first') || labelB.includes('surname') ? valueC : valueB);
+
+    if (labelA.includes('first') && labelA.includes('name') && !contact.firstName) {
+      contact.firstName = valueB?.toString() || null;
+    }
+    if ((labelA.includes('middle') || labelA.includes('second name')) && !contact.middleName) {
+      contact.middleName = valueB?.toString() || null;
+    }
+    if ((labelA.includes('surname') || labelA.includes('last name') || labelA.includes('family name')) && !contact.surname) {
+      contact.surname = valueB?.toString() || null;
+    }
+    if ((labelA.includes('mobile') || labelA.includes('phone') || labelA.includes('contact number')) && !contact.mobile) {
+      contact.mobile = valueB?.toString() || null;
+    }
+    if (labelA.includes('email') && !contact.email) {
+      contact.email = valueB?.toString() || null;
+    }
+    if (labelA.includes('gender') && !contact.gender) {
+      const genderVal = validateTextField(valueB, 'gender');
+      contact.gender = genderVal;
+    }
+    if ((labelA.includes('dob') || labelA.includes('date of birth') || labelA.includes('birth')) && !contact.dob) {
+      if (valueB) {
+        if (typeof valueB === 'number') {
+          const date = XLSX.SSF.parse_date_code(valueB);
+          contact.dob = `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+        } else {
+          contact.dob = parseTextDate(valueB?.toString());
+        }
+      }
+    }
+  }
+
+  return (contact.firstName || contact.surname) ? contact : null;
 }
 
 // Parse employment data
@@ -1224,6 +1332,7 @@ export function parseVownetForm(workbook: XLSX.WorkBook): ParsedClient | null {
   try {
     // Parse all sections
     const { primary, secondary, address, family, residentialStatus } = parsePersonalDetails(sheet);
+    const additionalContacts = parseAdditionalContacts(sheet);
     const employment = parseEmployment(sheet);
     const income = parseIncome(sheet);
     const assets = parseAssets(sheet);
@@ -1239,6 +1348,7 @@ export function parseVownetForm(workbook: XLSX.WorkBook): ParsedClient | null {
     return {
       primaryContact: primary,
       secondaryContact: secondary,
+      additionalContacts: additionalContacts.length > 0 ? additionalContacts : undefined,
       address,
       residentialStatus,
       familyRelations: family,

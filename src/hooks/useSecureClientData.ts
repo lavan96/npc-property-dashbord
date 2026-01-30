@@ -66,6 +66,24 @@ export interface SecureClientDataResponse {
   files?: any[];
   activities?: any[];
   borrowingCapacity?: any;
+  additionalContacts?: AdditionalContactData[];
+}
+
+export interface AdditionalContactData {
+  id: string;
+  client_id: string;
+  relationship: string;
+  first_name: string;
+  surname: string;
+  middle_name?: string;
+  email?: string;
+  mobile?: string;
+  dob?: string;
+  gender?: string;
+  notes?: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 interface UseSecureClientDataOptions {
@@ -82,6 +100,7 @@ interface UseSecureClientDataOptions {
     files?: boolean;
     activities?: boolean;
     borrowingCapacity?: boolean;
+    additionalContacts?: boolean;
   };
   enabled?: boolean;
 }
@@ -108,6 +127,7 @@ async function fetchClientDataSecure(
     files: include.files ?? false,
     activities: include.activities ?? false,
     borrowingCapacity: include.borrowingCapacity ?? false,
+    additionalContacts: include.additionalContacts ?? false,
   };
 
   const { data, error } = await invokeSecureFunction('get-client-data', {
@@ -136,6 +156,7 @@ async function fetchClientDataSecure(
     files: data.files || [],
     activities: data.activities || [],
     borrowingCapacity: data.borrowingCapacity || null,
+    additionalContacts: data.additionalContacts || [],
   };
 }
 

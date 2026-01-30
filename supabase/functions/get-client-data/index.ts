@@ -29,6 +29,7 @@ interface RequestBody {
     borrowingCapacity?: boolean;
     client?: boolean;
     emails?: boolean;
+    additionalContacts?: boolean;
   };
   session_token?: string;
 }
@@ -61,7 +62,7 @@ serve(async (req) => {
     const { clientId, clientIds, listMode, listOptions = {}, include = {} } = body;
 
     // Support for querying other tables (portfolio_analysis_reports, etc.)
-    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files'];
+    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts'];
     const targetTable = listOptions.table || 'clients';
     
     if (listOptions.table && !allowedTables.includes(targetTable)) {
@@ -259,6 +260,13 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('email_copilot_emails').select('id,sender,subject,body,received_at,status,urgency_level,summary,draft_reply,folder').eq('client_id', id).order('received_at', { ascending: false }).limit(50)
             .then(({ data }) => { clientResult.emails = data || []; })
+        );
+      }
+
+      if (include.additionalContacts) {
+        fetchPromises.push(
+          supabase.from('client_additional_contacts').select('*').eq('client_id', id).order('display_order', { ascending: true })
+            .then(({ data }) => { clientResult.additionalContacts = data || []; })
         );
       }
 
