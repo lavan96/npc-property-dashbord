@@ -349,8 +349,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     const strataFees = financialData?.annualCosts?.strataFees ?? 0;
     const landlordInsurance = financialData?.annualCosts?.landlordInsurance ?? 0;
     const propertyManagement = propertyManagementFee; // Use dynamically calculated value
-    // Use ?? 1500 so that explicit 0 override is respected, only null/undefined falls back to 1500
-    const maintenance = financialData?.annualCosts?.maintenance ?? 1500;
+    // CRITICAL FIX: Use ?? 0 to respect explicit $0 override, don't default to 1500
+    // The 1500 default was causing conflicts with user-specified $0 maintenance
+    const maintenance = financialData?.annualCosts?.maintenance ?? 0;
     const landTax = financialData?.annualCosts?.landTax ?? 0;
     
     // Total annual costs WITHOUT land tax - used for net yield calculation (pages 14-15)

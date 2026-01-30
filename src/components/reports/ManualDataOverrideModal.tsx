@@ -1132,11 +1132,12 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       });
       
       // Recalculate totalAnnual after applying overrides (excluding letting fees)
-      const councilRates = mergedFinancialData.annualCosts.councilRates || 0;
-      const waterRates = mergedFinancialData.annualCosts.waterRates || 0;
-      const strataFees = mergedFinancialData.annualCosts.strataFees || 0;
-      const landlordInsurance = mergedFinancialData.annualCosts.landlordInsurance || 0;
-      const maintenance = mergedFinancialData.annualCosts.maintenance || 1500;
+      // CRITICAL FIX: Use ?? operator to respect explicit $0 overrides (|| treats 0 as falsy)
+      const councilRates = mergedFinancialData.annualCosts.councilRates ?? 0;
+      const waterRates = mergedFinancialData.annualCosts.waterRates ?? 0;
+      const strataFees = mergedFinancialData.annualCosts.strataFees ?? 0;
+      const landlordInsurance = mergedFinancialData.annualCosts.landlordInsurance ?? 0;
+      const maintenance = mergedFinancialData.annualCosts.maintenance ?? 0; // Respect $0 override, don't default to 1500
       
       mergedFinancialData.annualCosts.totalAnnual = councilRates + waterRates + strataFees + landlordInsurance + propertyManagement + maintenance;
       

@@ -1848,19 +1848,42 @@ Produce a comprehensive suburb investment snapshot following the structure above
     console.log(`🏠 Property Type Standardization: "${rawPropertyType}" → "${standardizedPropertyType}" (isStrata: ${isStrataProperty})`);
     
     // ============================================================================
-    // PRE-CALCULATED YIELD VALUES - Single source of truth from financial service
+    // PRE-CALCULATED YIELD VALUES - Recalculated using OVERRIDDEN expense values
     // These values MUST be used exactly in the report, not recalculated by AI
     // ============================================================================
     const effectiveOccupancyRate = mergedOverrides.occupancyRate || 52; // weeks per year
     const annualRentIncome = effectiveWeeklyRent * effectiveOccupancyRate;
+    
+    // Calculate Gross Yield from overridden values
     const preCalculatedGrossYield = effectivePurchasePrice > 0 
       ? ((annualRentIncome / effectivePurchasePrice) * 100).toFixed(2)
       : enhancedData.financials?.keyMetrics?.grossRentalYield || '0.00';
-    const preCalculatedNetYield = enhancedData.financials?.keyMetrics?.netRentalYield || '0.00';
+    
+    // CRITICAL FIX: Recalculate Net Yield using OVERRIDDEN expense values
+    // Net Yield = (Annual Rent - Total Annual Costs) / Purchase Price * 100
+    // Extract effective annual costs from merged overrides (use ?? to respect explicit 0)
+    const effectiveCouncilRates = mergedOverrides.councilRates ?? enhancedData.financials?.annualCosts?.councilRates ?? 2500;
+    const effectiveWaterRates = mergedOverrides.waterRates ?? enhancedData.financials?.annualCosts?.waterRates ?? 1000;
+    const effectiveStrataFees = mergedOverrides.bodyCorporateFees ?? enhancedData.financials?.annualCosts?.strataFees ?? 0;
+    const effectiveLandlordInsurance = mergedOverrides.buildingLandlordInsurance ?? enhancedData.financials?.annualCosts?.landlordInsurance ?? 1800;
+    const effectiveMaintenance = mergedOverrides.repairsMaintenance ?? enhancedData.financials?.annualCosts?.maintenance ?? 1500;
+    const effectiveLandTax = mergedOverrides.landTax ?? enhancedData.financials?.annualCosts?.landTax ?? 0;
+    const effectivePmPercent = mergedOverrides.propertyManagementFees ?? enhancedData.financials?.annualCosts?.propertyManagementPercent ?? 8;
+    const effectivePmDollar = Math.round(annualRentIncome * (effectivePmPercent / 100));
+    
+    // Total annual costs for net yield calculation (excluding land tax per standard practice)
+    const totalAnnualCostsForNetYield = effectiveCouncilRates + effectiveWaterRates + effectiveStrataFees + 
+      effectiveLandlordInsurance + effectiveMaintenance + effectivePmDollar;
+    
+    const preCalculatedNetYield = effectivePurchasePrice > 0
+      ? (((annualRentIncome - totalAnnualCostsForNetYield) / effectivePurchasePrice) * 100).toFixed(2)
+      : enhancedData.financials?.keyMetrics?.netRentalYield || '0.00';
     
     console.log(`📊 Pre-calculated Yields: Gross=${preCalculatedGrossYield}%, Net=${preCalculatedNetYield}%`);
+    console.log(`📊 Net Yield Calculation: ($${annualRentIncome} rent - $${totalAnnualCostsForNetYield} costs) / $${effectivePurchasePrice} = ${preCalculatedNetYield}%`);
+    console.log(`📊 Annual Costs Breakdown: Council=$${effectiveCouncilRates}, Water=$${effectiveWaterRates}, Strata=$${effectiveStrataFees}, Insurance=$${effectiveLandlordInsurance}, Maintenance=$${effectiveMaintenance}, PM=$${effectivePmDollar}`);
     console.log(`📅 Occupancy: ${effectiveOccupancyRate} weeks/year (${((effectiveOccupancyRate/52)*100).toFixed(0)}%)`);
-    
+    console.log(`📊 Land Tax Override: $${effectiveLandTax} (will be injected into prompt)`);
     const propertyPrompt = `You are an expert Australian property investment analyst for Naidu Property Consulting Services.
 Your role is to produce comprehensive, professional-grade investment reports following the EXACT structure, length, and format of our reference template.
 
@@ -1874,6 +1897,16 @@ Your role is to produce comprehensive, professional-grade investment reports fol
 - Net Rental Yield: ${preCalculatedNetYield}%
 - Annual Rental Income: $${annualRentIncome.toLocaleString()} (based on ${effectiveOccupancyRate} weeks @ $${effectiveWeeklyRent}/week)
 - Occupancy Rate: ${effectiveOccupancyRate} weeks per year (${((effectiveOccupancyRate/52)*100).toFixed(0)}% occupancy)
+
+**PRE-CALCULATED ANNUAL COSTS (USE THESE EXACTLY - DO NOT SUBSTITUTE WITH DEFAULTS):**
+- Council Rates: $${effectiveCouncilRates.toLocaleString()}/year
+- Water Rates: $${effectiveWaterRates.toLocaleString()}/year
+- Strata/Body Corporate: $${effectiveStrataFees.toLocaleString()}/year
+- Landlord Insurance: $${effectiveLandlordInsurance.toLocaleString()}/year
+- Repairs & Maintenance: $${effectiveMaintenance.toLocaleString()}/year
+- Property Management: $${effectivePmDollar.toLocaleString()}/year (${effectivePmPercent}% of rent)
+- Land Tax: $${effectiveLandTax.toLocaleString()}/year
+- Total Annual Costs (excl. Land Tax): $${totalAnnualCostsForNetYield.toLocaleString()}/year
 
 **PROPERTY ADDRESS TO ANALYZE: ${formattedInput}**
 
@@ -2412,11 +2445,11 @@ Specific zoning data was not provided for this property. For comprehensive inves
 |---------------|--------------|-------------------|
 | Council Rates | $${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'} | Local council rates notice |
 | Water Rates | $${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'} | Estimated based on local water authority |
-| Property Management Fee | $${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'} | 7% × annual rent |
-| Property Insurance | $${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'} | Typical comprehensive home insurance |
-| Maintenance | $1,500 | Fixed amount per instructions |
-| Land Tax | $${enhancedData.financials?.annualCosts?.landTax?.toLocaleString() || 'X,XXX'} | State land tax threshold for investors |
-| **Total Annual Costs** | **$${enhancedData.financials?.annualCosts?.totalAnnual?.toLocaleString() || 'X,XXX'}** | Sum of ALL ongoing costs |
+| Property Management Fee | $${effectivePmDollar?.toLocaleString() || enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'} | ${effectivePmPercent}% × annual rent |
+| Property Insurance | $${effectiveLandlordInsurance?.toLocaleString() || enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'} | Typical comprehensive home insurance |
+| Maintenance | $${effectiveMaintenance?.toLocaleString() || '0'} | User-specified maintenance cost |
+| Land Tax | $${effectiveLandTax?.toLocaleString() || enhancedData.financials?.annualCosts?.landTax?.toLocaleString() || '0'} | State land tax (pre-calculated) |
+| **Total Annual Costs** | **$${(totalAnnualCostsForNetYield + effectiveLandTax)?.toLocaleString() || enhancedData.financials?.annualCosts?.totalAnnual?.toLocaleString() || 'X,XXX'}** | Sum of ALL ongoing costs |
 
 **Land Tax Calculation (Information Only):**
 
@@ -2512,12 +2545,12 @@ Note: Blended calculation for annual presentation; actual P&I repayments decline
 |------|--------------|
 | Gross Rental Income (${effectiveOccupancyRate} weeks @ $${effectiveWeeklyRent}/wk) | $${annualRentIncome.toLocaleString() || 'XX,XXX'} |
 | Less: P&I Loan Repayment | ($${(enhancedData.financials?.loanDetails?.monthlyPayment ? enhancedData.financials.loanDetails.monthlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
-| Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
-| Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
-| Less: Property Management (7%) | ($${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
-| Less: Insurance | ($${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
-| Less: Maintenance | ($1,500) |
-${isStrataProperty ? `| Less: Body Corporate/Strata | ($${enhancedData.financials?.annualCosts?.bodyCorporate?.toLocaleString() || mergedOverrides.bodyCorporateFees?.toLocaleString() || '3,000'}) |` : ''}
+| Less: Council Rates | ($${effectiveCouncilRates?.toLocaleString() || enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
+| Less: Water Rates | ($${effectiveWaterRates?.toLocaleString() || enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
+| Less: Property Management (${effectivePmPercent}%) | ($${effectivePmDollar?.toLocaleString() || enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
+| Less: Insurance | ($${effectiveLandlordInsurance?.toLocaleString() || enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
+| Less: Maintenance | ($${effectiveMaintenance?.toLocaleString() || '0'}) |
+${isStrataProperty ? `| Less: Body Corporate/Strata | ($${effectiveStrataFees?.toLocaleString() || enhancedData.financials?.annualCosts?.bodyCorporate?.toLocaleString() || mergedOverrides.bodyCorporateFees?.toLocaleString() || '3,000'}) |` : ''}
 | **Net Cashflow Before Tax** | **($${Math.abs(enhancedData.financials?.keyMetrics?.annualNet || 0).toLocaleString() || 'XX,XXX'})** |
 
 **Cashflow Analysis - Interest-Only Scenario (Year 1):**
@@ -2526,12 +2559,12 @@ ${isStrataProperty ? `| Less: Body Corporate/Strata | ($${enhancedData.financial
 |------|--------------|
 | Gross Rental Income (${effectiveOccupancyRate} weeks @ $${effectiveWeeklyRent}/wk) | $${annualRentIncome.toLocaleString() || 'XX,XXX'} |
 | Less: Interest-Only Repayment | ($${(enhancedData.financials?.loanDetails?.interestOnlyPayment ? enhancedData.financials.loanDetails.interestOnlyPayment * 12 : 0).toLocaleString() || 'XX,XXX'}) |
-| Less: Council Rates | ($${enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
-| Less: Water Rates | ($${enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
-| Less: Property Management (7%) | ($${enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
-| Less: Insurance | ($${enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
-| Less: Maintenance | ($1,500) |
-${isStrataProperty ? `| Less: Body Corporate/Strata | ($${enhancedData.financials?.annualCosts?.bodyCorporate?.toLocaleString() || mergedOverrides.bodyCorporateFees?.toLocaleString() || '3,000'}) |` : ''}
+| Less: Council Rates | ($${effectiveCouncilRates?.toLocaleString() || enhancedData.financials?.annualCosts?.councilRates?.toLocaleString() || 'X,XXX'}) |
+| Less: Water Rates | ($${effectiveWaterRates?.toLocaleString() || enhancedData.financials?.annualCosts?.waterRates?.toLocaleString() || 'XXX'}) |
+| Less: Property Management (${effectivePmPercent}%) | ($${effectivePmDollar?.toLocaleString() || enhancedData.financials?.annualCosts?.propertyManagement?.toLocaleString() || 'X,XXX'}) |
+| Less: Insurance | ($${effectiveLandlordInsurance?.toLocaleString() || enhancedData.financials?.annualCosts?.landlordInsurance?.toLocaleString() || '1,200'}) |
+| Less: Maintenance | ($${effectiveMaintenance?.toLocaleString() || '0'}) |
+${isStrataProperty ? `| Less: Body Corporate/Strata | ($${effectiveStrataFees?.toLocaleString() || enhancedData.financials?.annualCosts?.bodyCorporate?.toLocaleString() || mergedOverrides.bodyCorporateFees?.toLocaleString() || '3,000'}) |` : ''}
 | **Net Cashflow Before Tax** | **($${Math.abs((enhancedData.financials?.keyMetrics?.annualNet || 0) - ((enhancedData.financials?.loanDetails?.monthlyPayment || 0) - (enhancedData.financials?.loanDetails?.interestOnlyPayment || 0)) * 12).toLocaleString() || 'XX,XXX'})** |
 
 **IMPORTANT NOTE:** Gross Rental Income assumes ${effectiveOccupancyRate} weeks per year occupancy (${((effectiveOccupancyRate/52)*100).toFixed(0)}%), which is industry standard for investment analysis.
@@ -2858,7 +2891,7 @@ This report synthesizes publicly available data and ${documentContent ? 'provide
 8. **CITATIONS**: Include [citation] markers where data is sourced from external references
 9. **HORIZONTAL RULES**: Use --- between ALL major sections for visual separation
 10. **PROFESSIONAL LANGUAGE**: Data-driven, specific, actionable insights throughout
-11. **MAINTENANCE FIXED**: Always use exactly $1,500 for annual maintenance - this is a fixed cost
+11. **EXPENSE VALUES**: Use the EXACT expense values provided in PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults
 12. **COMPLETE SWOT**: Minimum 10 detailed bullet points per SWOT category with 2-3 sentence explanations each
 13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts`;
 
@@ -3218,7 +3251,7 @@ ${templateContext}
     
     const systemMessage = reportScope === 'suburb' 
       ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
-      : 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Maintenance is ALWAYS fixed at $1,500 annually. This is a premium client-facing report - be thorough, professional, and data-driven.';
+      : 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.';
 
     console.log('=== MULTI-SECTION REPORT GENERATION ===');
     console.log('Report scope:', reportScope);
