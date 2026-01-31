@@ -4,16 +4,17 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_s
 
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' | 
                  'client_assets' | 'client_liabilities' | 'client_employment' | 
-                 'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts';
+                 'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts' |
+                 'report_qa_messages' | 'report_qa_conversations';
 
 type Operation = 'create' | 'update' | 'delete';
 
 interface RequestBody {
   operation: Operation;
   table: TableName;
-  clientId: string;
+  clientId?: string; // Optional for report_qa tables
   recordId?: string;
-  data?: Record<string, any>;
+  data?: Record<string, any> | Record<string, any>[]; // Allow array for batch inserts
   session_token?: string;
 }
 
@@ -29,6 +30,8 @@ const ALLOWED_TABLES: TableName[] = [
   'client_files',
   'client_activities',
   'client_additional_contacts',
+  'report_qa_messages',
+  'report_qa_conversations',
 ];
 
 serve(async (req) => {
@@ -74,8 +77,11 @@ serve(async (req) => {
       );
     }
 
-    // Validate clientId for non-client tables
-    if (table !== 'clients' && !clientId) {
+    // Tables that don't require clientId
+    const STANDALONE_TABLES = ['clients', 'report_qa_messages', 'report_qa_conversations'];
+    
+    // Validate clientId for client-related tables only
+    if (!STANDALONE_TABLES.includes(table) && !clientId) {
       return new Response(
         JSON.stringify({ error: 'clientId is required for related tables' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -94,17 +100,27 @@ serve(async (req) => {
           );
         }
 
-        const insertData = table === 'clients' 
-          ? data 
-          : { ...data, client_id: clientId };
+        // Handle batch inserts (array) or single inserts
+        const isArray = Array.isArray(data);
+        let insertData: Record<string, any> | Record<string, any>[];
+        
+        if (STANDALONE_TABLES.includes(table)) {
+          // For standalone tables, use data as-is
+          insertData = data;
+        } else {
+          // For client-related tables, add client_id
+          insertData = isArray 
+            ? data.map((item: Record<string, any>) => ({ ...item, client_id: clientId }))
+            : { ...data, client_id: clientId };
+        }
 
+        // Use .select() without .single() to handle both array and single inserts
         const { data: inserted, error: insertError } = await supabase
           .from(table)
           .insert(insertData)
-          .select()
-          .single();
+          .select();
 
-        result = inserted;
+        result = isArray ? inserted : inserted?.[0];
         error = insertError;
         break;
       }
@@ -169,19 +185,21 @@ serve(async (req) => {
       );
     }
 
-    // Log the activity
-    try {
-      await supabase.from('client_activities').insert({
-        client_id: clientId,
-        activity_type: `${table}_${operation}`,
-        title: `${operation.charAt(0).toUpperCase() + operation.slice(1)}d ${table.replace('client_', '').replace('_', ' ')}`,
-        description: `Record ${operation}d via secure API`,
-        created_by: userId,
-        metadata: { table, operation, recordId: recordId || result?.id },
-      });
-    } catch (logError) {
-      console.warn('Failed to log activity:', logError);
-      // Don't fail the main operation due to logging failure
+    // Log the activity (only for client-related tables)
+    if (clientId && !['report_qa_messages', 'report_qa_conversations'].includes(table)) {
+      try {
+        await supabase.from('client_activities').insert({
+          client_id: clientId,
+          activity_type: `${table}_${operation}`,
+          title: `${operation.charAt(0).toUpperCase() + operation.slice(1)}d ${table.replace('client_', '').replace('_', ' ')}`,
+          description: `Record ${operation}d via secure API`,
+          created_by: userId,
+          metadata: { table, operation, recordId: recordId || result?.id },
+        });
+      } catch (logError) {
+        console.warn('Failed to log activity:', logError);
+        // Don't fail the main operation due to logging failure
+      }
     }
 
     return new Response(
