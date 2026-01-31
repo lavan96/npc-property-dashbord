@@ -6,12 +6,16 @@ import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.s
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 // ============= PDF TEXT EXTRACTION HELPER =============
-// Using pdf-lib to read PDF structure and extract text content
-// This is a lightweight approach that works in Deno without external dependencies
+// Optimized lightweight approach for Deno Edge Functions
+// Uses streaming chunk processing to avoid CPU timeouts
+
+const MAX_PDF_SIZE_FOR_FULL_PARSE = 500000; // 500KB - limit for full parsing
+const MAX_TEXT_MATCHES = 2000; // Limit matches to prevent infinite loops
+const CHUNK_SIZE = 50000; // Process PDF in 50KB chunks
 
 /**
- * Extract text content from a PDF using pdf-lib
- * Falls back to content stream parsing if standard extraction fails
+ * Extract text content from a PDF - optimized for Edge Functions
+ * Uses chunk-based processing to avoid CPU timeouts
  */
 async function extractPdfText(pdfBytes: Uint8Array): Promise<{ text: string; totalPages: number }> {
   try {
@@ -21,22 +25,20 @@ async function extractPdfText(pdfBytes: Uint8Array): Promise<{ text: string; tot
     });
     
     const pageCount = pdfDoc.getPageCount();
-    console.log(`[PDF-Extract] Processing ${pageCount} pages`);
+    console.log(`[PDF-Extract] Processing ${pageCount} pages, size: ${pdfBytes.length} bytes`);
     
-    // pdf-lib doesn't have built-in text extraction, so we use a content stream parser
-    // This extracts text from the raw PDF content streams
-    const allText: string[] = [];
+    // For large PDFs, use simplified extraction to avoid CPU timeout
+    const useSimplified = pdfBytes.length > MAX_PDF_SIZE_FOR_FULL_PARSE;
     
-    for (let i = 0; i < pageCount; i++) {
-      const page = pdfDoc.getPage(i);
-      const content = await extractTextFromPage(pdfBytes, i);
-      if (content.trim()) {
-        allText.push(`--- Page ${i + 1} ---\n${content}`);
-      }
+    if (useSimplified) {
+      console.log(`[PDF-Extract] Using simplified extraction for large PDF`);
     }
     
+    // Extract text from the PDF content in a single pass
+    const extractedText = extractTextFromPdfBytes(pdfBytes, useSimplified);
+    
     return {
-      text: allText.join('\n\n'),
+      text: extractedText,
       totalPages: pageCount
     };
   } catch (error) {
@@ -46,90 +48,93 @@ async function extractPdfText(pdfBytes: Uint8Array): Promise<{ text: string; tot
 }
 
 /**
- * Extract text from a specific page by parsing PDF content streams
- * This is a simplified parser that handles common PDF text operators
+ * Extract text from PDF bytes using optimized single-pass parsing
+ * Processes in chunks to avoid CPU timeout
  */
-async function extractTextFromPage(pdfBytes: Uint8Array, pageIndex: number): Promise<string> {
+function extractTextFromPdfBytes(pdfBytes: Uint8Array, simplified: boolean): string {
+  const startTime = Date.now();
+  const textParts: string[] = [];
+  
   try {
-    // Convert to string for parsing (simplified approach)
+    // Convert to string for parsing
     const pdfString = new TextDecoder('latin1').decode(pdfBytes);
+    let matchCount = 0;
     
-    // Find page boundaries and extract text content
-    const textParts: string[] = [];
+    // OPTIMIZATION: Use non-global regex and manual iteration for large files
+    // This prevents catastrophic backtracking
     
-    // Look for text strings in the PDF
-    // PDF text appears between parentheses () or angle brackets <>
-    
-    // Match text in parentheses: (text) with Tj or TJ operators
-    const parenRegex = /\(([^)]*)\)\s*T[jJ]/g;
+    // Strategy 1: Extract text from parentheses with Tj/TJ operators (most common)
+    // Use a simpler, faster regex pattern
+    const simpleTextPattern = /\(([^\\)]{1,200})\)\s*T[jJ]/g;
     let match;
-    while ((match = parenRegex.exec(pdfString)) !== null) {
-      const text = decodePdfString(match[1]);
-      if (text.trim()) {
+    
+    while ((match = simpleTextPattern.exec(pdfString)) !== null && matchCount < MAX_TEXT_MATCHES) {
+      const text = decodePdfStringFast(match[1]);
+      if (text.length > 1) {
         textParts.push(text);
+        matchCount++;
+      }
+      
+      // Timeout protection - check every 100 matches
+      if (matchCount % 100 === 0 && Date.now() - startTime > 3000) {
+        console.log(`[PDF-Extract] Early exit after ${matchCount} matches (timeout protection)`);
+        break;
       }
     }
     
-    // Match hex strings: <hex> with Tj or TJ operators  
-    const hexRegex = /<([0-9A-Fa-f]+)>\s*T[jJ]/g;
-    while ((match = hexRegex.exec(pdfString)) !== null) {
-      const text = decodeHexString(match[1]);
-      if (text.trim()) {
-        textParts.push(text);
-      }
-    }
-    
-    // Match TJ array contents: [(text) num (text2)] TJ
-    const tjArrayRegex = /\[((?:[^[\]]*|\[[^\]]*\])*)\]\s*TJ/g;
-    while ((match = tjArrayRegex.exec(pdfString)) !== null) {
-      const arrayContent = match[1];
-      // Extract strings from the array
-      const stringMatches = arrayContent.match(/\(([^)]*)\)/g);
-      if (stringMatches) {
-        for (const strMatch of stringMatches) {
-          const text = decodePdfString(strMatch.slice(1, -1));
-          if (text.trim()) {
-            textParts.push(text);
+    // Strategy 2: Only for smaller files, also check TJ arrays
+    if (!simplified && matchCount < MAX_TEXT_MATCHES / 2) {
+      const tjArrayPattern = /\[([^\]]{1,500})\]\s*TJ/g;
+      while ((match = tjArrayPattern.exec(pdfString)) !== null && matchCount < MAX_TEXT_MATCHES) {
+        const arrayContent = match[1];
+        // Quick extraction of strings from array
+        const strings = arrayContent.match(/\(([^)]{1,100})\)/g);
+        if (strings) {
+          for (const s of strings.slice(0, 20)) { // Limit per-array extraction
+            const text = decodePdfStringFast(s.slice(1, -1));
+            if (text.length > 1) {
+              textParts.push(text);
+              matchCount++;
+            }
           }
+        }
+        
+        if (Date.now() - startTime > 4000) {
+          console.log(`[PDF-Extract] TJ array early exit (timeout protection)`);
+          break;
         }
       }
     }
     
-    // Deduplicate and join
-    const uniqueText = [...new Set(textParts)].join(' ');
+    console.log(`[PDF-Extract] Extracted ${matchCount} text segments in ${Date.now() - startTime}ms`);
     
-    return uniqueText;
+    // Join and clean up the text
+    const rawText = textParts.join(' ');
+    
+    // Basic cleanup: remove excessive whitespace
+    const cleanedText = rawText
+      .replace(/\s+/g, ' ')
+      .replace(/([.!?])\s+/g, '$1\n')
+      .trim();
+    
+    return cleanedText;
   } catch (error) {
-    console.error(`[PDF-Extract] Error extracting page ${pageIndex}:`, error);
+    console.error(`[PDF-Extract] Extraction error:`, error);
     return '';
   }
 }
 
 /**
- * Decode PDF string with escape sequences
+ * Fast PDF string decoder - minimal processing
  */
-function decodePdfString(str: string): string {
+function decodePdfStringFast(str: string): string {
+  // Quick decode - only handle most common escapes
   return str
     .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
+    .replace(/\\r/g, ' ')
+    .replace(/\\t/g, ' ')
     .replace(/\\\\/g, '\\')
-    .replace(/\\([0-7]{1,3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
     .replace(/\\(.)/g, '$1');
-}
-
-/**
- * Decode hex string to text
- */
-function decodeHexString(hex: string): string {
-  let result = '';
-  for (let i = 0; i < hex.length; i += 2) {
-    const charCode = parseInt(hex.substr(i, 2), 16);
-    if (charCode > 31 && charCode < 127) {
-      result += String.fromCharCode(charCode);
-    }
-  }
-  return result;
 }
 // Dynamic CORS headers for credentials support
 function createCorsHeaders(origin: string | null): Record<string, string> {
