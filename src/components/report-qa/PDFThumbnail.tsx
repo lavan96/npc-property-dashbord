@@ -9,6 +9,8 @@ interface PDFThumbnailProps {
   fileName: string;
   content: string;
   uploadedAt: Date;
+  fileSizeBytes?: number;
+  totalPages?: number;
   onRemove?: () => void;
   isActive?: boolean;
   onClick?: () => void;
@@ -19,20 +21,31 @@ export function PDFThumbnail({
   fileName,
   content,
   uploadedAt,
+  fileSizeBytes,
+  totalPages,
   onRemove,
   isActive,
   onClick,
   className
 }: PDFThumbnailProps) {
   const [showPreview, setShowPreview] = useState(false);
+
+  const formatBytes = (bytes: number): string => {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  };
   
   // Extract first ~500 chars as preview text
   const previewText = content.substring(0, 500).replace(/\n+/g, ' ').trim();
   const wordCount = content.split(/\s+/).length;
   const pageEstimate = Math.ceil(wordCount / 300); // Rough estimate: ~300 words per page
+  const displayPages = totalPages && totalPages > 0 ? totalPages : pageEstimate;
   
   // Get file size estimate based on content length
   const contentSizeKB = Math.round(content.length / 1024);
+  const displaySize = fileSizeBytes && fileSizeBytes > 0 ? formatBytes(fileSizeBytes) : `${contentSizeKB}KB`;
   
   return (
     <div 
@@ -120,7 +133,7 @@ export function PDFThumbnail({
               {fileName.replace('.pdf', '')}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              ~{pageEstimate} pages • {contentSizeKB}KB
+              {displayPages} pages • {displaySize}
             </p>
           </div>
           {onRemove && (

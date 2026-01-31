@@ -8,12 +8,20 @@ import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
 // Uses streaming chunk processing to avoid CPU timeouts
-// Supports OCR for embedded images via OpenAI Vision API
+// Supports OCR for scanned/image-based PDFs via OpenAI Vision API
 
 const MAX_PDF_SIZE_FOR_FULL_PARSE = 500000; // 500KB - limit for full parsing
 const MAX_TEXT_MATCHES = 2000; // Limit matches to prevent infinite loops
-const MAX_IMAGES_TO_OCR = 5; // Limit number of images to process for OCR
+const MAX_IMAGES_TO_OCR = 5; // Limit number of page images to process for OCR
 const MAX_IMAGE_SIZE_FOR_OCR = 2000000; // 2MB max per image
+
+type PageImageInput = {
+  pageNumber: number;
+  base64: string; // base64 WITHOUT data url prefix
+  mimeType?: string; // e.g. image/png
+  width?: number;
+  height?: number;
+};
 
 /**
  * Extract text content from a PDF - optimized for Edge Functions
@@ -22,7 +30,8 @@ const MAX_IMAGE_SIZE_FOR_OCR = 2000000; // 2MB max per image
  */
 async function extractPdfText(
   pdfBytes: Uint8Array, 
-  openaiApiKey?: string
+  openaiApiKey?: string,
+  pageImages?: PageImageInput[]
 ): Promise<{ text: string; totalPages: number; imagesProcessed: number }> {
   try {
     const pdfDoc = await PDFDocument.load(pdfBytes, { 
@@ -43,18 +52,27 @@ async function extractPdfText(
     // Extract text from the PDF content in a single pass
     const extractedText = extractTextFromPdfBytes(pdfBytes, useSimplified);
     
-    // If we got very little text, try OCR on embedded images
+    // If we got very little text, try OCR on provided page images (client-rendered)
     let ocrText = '';
     let imagesProcessed = 0;
     
     if (openaiApiKey && extractedText.length < 500) {
-      console.log(`[PDF-Extract] Low text content (${extractedText.length} chars), attempting OCR on pages...`);
-      const ocrResult = await extractTextFromImages(pdfDoc, pdfBytes, openaiApiKey);
-      ocrText = ocrResult.text;
-      imagesProcessed = ocrResult.imagesProcessed;
-      
-      if (ocrText) {
-        console.log(`[PDF-Extract] OCR extracted ${ocrText.length} chars from ${imagesProcessed} images`);
+      if (pageImages && pageImages.length > 0) {
+        console.log(
+          `[PDF-Extract] Low text content (${extractedText.length} chars), attempting OCR on ${pageImages.length} provided page images...`
+        );
+
+        const ocrResult = await extractTextFromProvidedImages(pageImages, openaiApiKey);
+        ocrText = ocrResult.text;
+        imagesProcessed = ocrResult.imagesProcessed;
+
+        if (ocrText) {
+          console.log(`[PDF-Extract] OCR extracted ${ocrText.length} chars from ${imagesProcessed} images`);
+        }
+      } else {
+        console.log(
+          `[PDF-Extract] Low text content (${extractedText.length} chars) but no pageImages provided; skipping OCR.`
+        );
       }
     }
     
@@ -73,79 +91,64 @@ async function extractPdfText(
 }
 
 /**
- * Extract text from scanned/image-based PDFs using OpenAI Vision API
- * For scanned PDFs, we send the raw PDF bytes to be processed page-by-page
- * This is more robust than trying to extract embedded image objects
+ * OCR provided page images using OpenAI Vision API.
+ * NOTE: OpenAI Vision only accepts image mime-types, not PDFs.
  */
-async function extractTextFromImages(
-  pdfDoc: PDFDocument,
-  pdfBytes: Uint8Array,
-  openaiApiKey: string
-): Promise<{ text: string; imagesProcessed: number }> {
-  const ocrTexts: string[] = [];
-  let pagesProcessed = 0;
-  
-  try {
-    const pageCount = pdfDoc.getPageCount();
-    const pagesToProcess = Math.min(pageCount, MAX_IMAGES_TO_OCR);
-    
-    console.log(`[PDF-OCR] Processing ${pagesToProcess} pages for OCR out of ${pageCount} total`);
-    
-    // Process each page by creating a single-page PDF and sending to Vision API
-    for (let pageIndex = 0; pageIndex < pagesToProcess; pageIndex++) {
-      try {
-        // Create a new PDF with just this page
-        const singlePagePdf = await PDFDocument.create();
-        const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [pageIndex]);
-        singlePagePdf.addPage(copiedPage);
-        
-        // Serialize to bytes
-        const singlePageBytes = await singlePagePdf.save();
-        
-        // Skip if too large
-        if (singlePageBytes.length > MAX_IMAGE_SIZE_FOR_OCR) {
-          console.log(`[PDF-OCR] Page ${pageIndex + 1} too large (${singlePageBytes.length} bytes), skipping`);
-          continue;
-        }
-        
-        // Convert to base64 for Vision API (send as PDF, GPT-4o can handle PDFs)
-        const base64Pdf = btoa(String.fromCharCode(...singlePageBytes));
-        
-        // Call OpenAI Vision API for OCR
-        const ocrResult = await performOcrOnPage(base64Pdf, pageIndex + 1, openaiApiKey);
-        
-        if (ocrResult && ocrResult.trim().length > 10) {
-          ocrTexts.push(`[Page ${pageIndex + 1}]\n${ocrResult}`);
-          pagesProcessed++;
-          console.log(`[PDF-OCR] Page ${pageIndex + 1}: extracted ${ocrResult.length} chars`);
-        } else {
-          console.log(`[PDF-OCR] Page ${pageIndex + 1}: no meaningful text extracted`);
-        }
-      } catch (pageError) {
-        console.log(`[PDF-OCR] Could not process page ${pageIndex + 1}:`, pageError.message);
-      }
-    }
-    
-    if (pagesProcessed === 0) {
-      console.log(`[PDF-OCR] No text could be extracted from any pages`);
-    } else {
-      console.log(`[PDF-OCR] Successfully processed ${pagesProcessed}/${pagesToProcess} pages`);
-    }
-  } catch (error) {
-    console.error('[PDF-OCR] OCR extraction error:', error);
-  }
-  
-  return {
-    text: ocrTexts.join('\n\n'),
-    imagesProcessed: pagesProcessed
-  };
+function estimateBytesFromBase64Length(base64: string): number {
+  // Base64 size ≈ (len * 3) / 4 - padding
+  const len = base64.length;
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+  return Math.floor((len * 3) / 4) - padding;
 }
 
-/**
- * Perform OCR on a single PDF page using OpenAI Vision API
- * GPT-4o can process PDF content directly when sent as base64
- */
-async function performOcrOnPage(base64Pdf: string, pageNumber: number, openaiApiKey: string): Promise<string | null> {
+async function extractTextFromProvidedImages(
+  pageImages: PageImageInput[],
+  openaiApiKey: string
+): Promise<{ text: string; imagesProcessed: number }> {
+  const start = Date.now();
+  const ocrTexts: string[] = [];
+  let processed = 0;
+
+  const imagesToUse = pageImages
+    .filter((img) => !!img?.base64)
+    .slice(0, MAX_IMAGES_TO_OCR);
+
+  console.log(`[PDF-OCR] OCR on provided images: ${imagesToUse.length} images`);
+
+  for (const img of imagesToUse) {
+    // Hard guard to avoid long executions (platform may kill ~150s)
+    if (Date.now() - start > 90_000) {
+      console.log('[PDF-OCR] Timeout guard hit; stopping OCR loop early');
+      break;
+    }
+
+    const approxBytes = estimateBytesFromBase64Length(img.base64);
+    if (approxBytes > MAX_IMAGE_SIZE_FOR_OCR) {
+      console.log(
+        `[PDF-OCR] Skipping page ${img.pageNumber} image (too large: ~${approxBytes} bytes)`
+      );
+      continue;
+    }
+
+    const mimeType = img.mimeType || 'image/png';
+    const pageNumber = img.pageNumber || 0;
+
+    const ocrResult = await performOcrOnImage(img.base64, mimeType, pageNumber, openaiApiKey);
+    if (ocrResult && ocrResult.trim().length > 10) {
+      ocrTexts.push(`[Page ${pageNumber}]\n${ocrResult}`);
+      processed++;
+    }
+  }
+
+  return { text: ocrTexts.join('\n\n'), imagesProcessed: processed };
+}
+
+async function performOcrOnImage(
+  base64Image: string,
+  mimeType: string,
+  pageNumber: number,
+  openaiApiKey: string
+): Promise<string | null> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -161,27 +164,26 @@ async function performOcrOnPage(base64Pdf: string, pageNumber: number, openaiApi
             content: [
               {
                 type: 'text',
-                text: `Extract ALL text visible on this PDF page (page ${pageNumber}). Include:
+                text: `Extract ALL text visible on this page image (page ${pageNumber}). Include:
 - All headings, titles, and labels
 - All body text and paragraphs
 - All numbers, prices, and data
-- All table content (preserve structure with | separators)
+- All table content (format as markdown tables)
 - All bullet points and lists
-- Any text in images, charts, or diagrams
 
-Format the text clearly, preserving the document structure. If there are tables, format them as markdown tables.`,
+Return plain text/markdown only (no JSON).`,
               },
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${base64Pdf}`,
+                  url: `data:${mimeType};base64,${base64Image}`,
                   detail: 'high',
                 },
               },
             ],
           },
         ],
-        max_tokens: 2000,
+        max_tokens: 1200,
       }),
     });
 
@@ -192,9 +194,7 @@ Format the text clearly, preserving the document structure. If there are tables,
     }
 
     const data = await response.json();
-    const extractedText = data.choices?.[0]?.message?.content;
-    
-    return extractedText || null;
+    return data.choices?.[0]?.message?.content || null;
   } catch (error) {
     console.error('[PDF-OCR] Vision API call failed:', error);
     return null;
@@ -667,13 +667,18 @@ serve(async (req) => {
 
     // Handle PDF text extraction with RAG storage (Step 5)
     if (action === "extract") {
-      const { fileData, fileName, conversationId, enableRAG = true, enableOCR = true } = body;
+      const { fileData, fileName, conversationId, enableRAG = true, enableOCR = true, pageImages } = body;
       console.log(`[report-qa] Extracting text from: ${fileName}, RAG enabled: ${enableRAG}, OCR enabled: ${enableOCR}`);
       
-      const base64Data = fileData.replace(/^data:application\/pdf;base64,/, "");
+      // Accept either a full data URL or raw base64.
+      const base64Data = (typeof fileData === 'string' && fileData.includes(','))
+        ? (fileData.split(',').pop() || '')
+        : (fileData || '');
       
       let extractedText = "";
       let imagesProcessed = 0;
+      let totalPages = 0;
+      let fileSizeBytes = 0;
       
       try {
         // Convert base64 to Uint8Array for PDF parsing
@@ -683,12 +688,15 @@ serve(async (req) => {
           bytes[i] = binaryString.charCodeAt(i);
         }
         
-        console.log(`[report-qa] PDF size: ${bytes.length} bytes`);
+        fileSizeBytes = bytes.length;
+        console.log(`[report-qa] PDF size: ${fileSizeBytes} bytes`);
         
         // Use our custom PDF text extraction function with optional OCR
         const ocrKey = enableOCR ? OPENAI_API_KEY : undefined;
-        const { text, totalPages, imagesProcessed: imgCount } = await extractPdfText(bytes, ocrKey);
+        const result = await extractPdfText(bytes, ocrKey, Array.isArray(pageImages) ? pageImages : undefined);
+        const { text, totalPages: pages, imagesProcessed: imgCount } = result;
         imagesProcessed = imgCount;
+        totalPages = pages;
         
         console.log(`[report-qa] Extracted text from ${totalPages} pages, OCR'd ${imagesProcessed} images`);
         
@@ -738,6 +746,8 @@ serve(async (req) => {
           ragEnabled,
           chunksStored: ragEnabled ? chunkText(extractedText).length : 0,
           imagesProcessed,
+          totalPages,
+          fileSizeBytes,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
