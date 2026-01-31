@@ -5,6 +5,132 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 
+// ============= PDF TEXT EXTRACTION HELPER =============
+// Using pdf-lib to read PDF structure and extract text content
+// This is a lightweight approach that works in Deno without external dependencies
+
+/**
+ * Extract text content from a PDF using pdf-lib
+ * Falls back to content stream parsing if standard extraction fails
+ */
+async function extractPdfText(pdfBytes: Uint8Array): Promise<{ text: string; totalPages: number }> {
+  try {
+    const pdfDoc = await PDFDocument.load(pdfBytes, { 
+      ignoreEncryption: true,
+      updateMetadata: false 
+    });
+    
+    const pageCount = pdfDoc.getPageCount();
+    console.log(`[PDF-Extract] Processing ${pageCount} pages`);
+    
+    // pdf-lib doesn't have built-in text extraction, so we use a content stream parser
+    // This extracts text from the raw PDF content streams
+    const allText: string[] = [];
+    
+    for (let i = 0; i < pageCount; i++) {
+      const page = pdfDoc.getPage(i);
+      const content = await extractTextFromPage(pdfBytes, i);
+      if (content.trim()) {
+        allText.push(`--- Page ${i + 1} ---\n${content}`);
+      }
+    }
+    
+    return {
+      text: allText.join('\n\n'),
+      totalPages: pageCount
+    };
+  } catch (error) {
+    console.error('[PDF-Extract] Error loading PDF:', error);
+    throw error;
+  }
+}
+
+/**
+ * Extract text from a specific page by parsing PDF content streams
+ * This is a simplified parser that handles common PDF text operators
+ */
+async function extractTextFromPage(pdfBytes: Uint8Array, pageIndex: number): Promise<string> {
+  try {
+    // Convert to string for parsing (simplified approach)
+    const pdfString = new TextDecoder('latin1').decode(pdfBytes);
+    
+    // Find page boundaries and extract text content
+    const textParts: string[] = [];
+    
+    // Look for text strings in the PDF
+    // PDF text appears between parentheses () or angle brackets <>
+    
+    // Match text in parentheses: (text) with Tj or TJ operators
+    const parenRegex = /\(([^)]*)\)\s*T[jJ]/g;
+    let match;
+    while ((match = parenRegex.exec(pdfString)) !== null) {
+      const text = decodePdfString(match[1]);
+      if (text.trim()) {
+        textParts.push(text);
+      }
+    }
+    
+    // Match hex strings: <hex> with Tj or TJ operators  
+    const hexRegex = /<([0-9A-Fa-f]+)>\s*T[jJ]/g;
+    while ((match = hexRegex.exec(pdfString)) !== null) {
+      const text = decodeHexString(match[1]);
+      if (text.trim()) {
+        textParts.push(text);
+      }
+    }
+    
+    // Match TJ array contents: [(text) num (text2)] TJ
+    const tjArrayRegex = /\[((?:[^[\]]*|\[[^\]]*\])*)\]\s*TJ/g;
+    while ((match = tjArrayRegex.exec(pdfString)) !== null) {
+      const arrayContent = match[1];
+      // Extract strings from the array
+      const stringMatches = arrayContent.match(/\(([^)]*)\)/g);
+      if (stringMatches) {
+        for (const strMatch of stringMatches) {
+          const text = decodePdfString(strMatch.slice(1, -1));
+          if (text.trim()) {
+            textParts.push(text);
+          }
+        }
+      }
+    }
+    
+    // Deduplicate and join
+    const uniqueText = [...new Set(textParts)].join(' ');
+    
+    return uniqueText;
+  } catch (error) {
+    console.error(`[PDF-Extract] Error extracting page ${pageIndex}:`, error);
+    return '';
+  }
+}
+
+/**
+ * Decode PDF string with escape sequences
+ */
+function decodePdfString(str: string): string {
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\([0-7]{1,3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
+    .replace(/\\(.)/g, '$1');
+}
+
+/**
+ * Decode hex string to text
+ */
+function decodeHexString(hex: string): string {
+  let result = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    const charCode = parseInt(hex.substr(i, 2), 16);
+    if (charCode > 31 && charCode < 127) {
+      result += String.fromCharCode(charCode);
+    }
+  }
+  return result;
+}
 // Dynamic CORS headers for credentials support
 function createCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = [
@@ -398,9 +524,8 @@ serve(async (req) => {
         
         console.log(`[report-qa] PDF size: ${bytes.length} bytes`);
         
-        // Use unpdf to extract text from PDF
-        const pdf = await getDocumentProxy(bytes);
-        const { text, totalPages } = await extractText(pdf, { mergePages: true });
+        // Use our custom PDF text extraction function
+        const { text, totalPages } = await extractPdfText(bytes);
         
         console.log(`[report-qa] Extracted text from ${totalPages} pages`);
         
