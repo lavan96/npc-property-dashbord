@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { QAPDFGenerator } from '@/components/reports/QAPDFGenerator';
+import { convertPdfToImages } from '@/utils/pdfToImages';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
@@ -111,6 +112,9 @@ interface UploadedReport {
   name: string;
   content: string;
   uploadedAt: Date;
+  fileSizeBytes?: number;
+  totalPages?: number;
+  imagesProcessed?: number;
 }
 
 interface SavedConversation {
@@ -386,11 +390,42 @@ export default function ReportQA() {
       reader.onload = async (e) => {
         updateProgress(50, 'processing');
         const base64 = e.target?.result as string;
+
+        if (!base64 || typeof base64 !== 'string') {
+          throw new Error('Failed to read PDF file');
+        }
+
+        // Pre-render first pages to images for robust OCR of scanned PDFs
+        // (Edge Functions cannot render PDFs to images, and OpenAI Vision requires image mime types)
+        let pageImages: Array<{ pageNumber: number; base64: string; width: number; height: number; mimeType: string }> = [];
+        try {
+          const conv = await convertPdfToImages(file, (current, total) => {
+            // Map conversion progress into 50% -> 80% range
+            const pct = 50 + Math.round((current / Math.max(total, 1)) * 30);
+            updateProgress(Math.min(pct, 80), 'processing');
+          });
+
+          if (conv.success) {
+            // Keep payload bounded
+            pageImages = conv.images
+              .slice(0, 4)
+              .map((img) => ({
+                pageNumber: img.pageNumber,
+                base64: img.base64,
+                width: img.width,
+                height: img.height,
+                mimeType: 'image/png',
+              }));
+          }
+        } catch (err) {
+          console.warn('PDF page image pre-render failed (continuing without OCR images):', err);
+        }
         
         const { data, error } = await invokeSecureFunction('report-qa', {
           action: 'extract',
           fileData: base64,
           fileName: file.name,
+          pageImages,
         });
 
         if (error) throw error;
@@ -402,6 +437,9 @@ export default function ReportQA() {
             name: file.name,
             content: data.extractedText,
             uploadedAt: new Date(),
+            fileSizeBytes: file.size,
+            totalPages: data.totalPages,
+            imagesProcessed: data.imagesProcessed,
           };
           
           setUploadedReports(prev => [...prev, newReport]);
@@ -1513,6 +1551,8 @@ export default function ReportQA() {
                       fileName={report.name}
                       content={report.content}
                       uploadedAt={report.uploadedAt}
+                      fileSizeBytes={report.fileSizeBytes}
+                      totalPages={report.totalPages}
                       isActive={activeReportIndex === index}
                       onClick={() => setActiveReportIndex(
                         activeReportIndex === index ? null : index
