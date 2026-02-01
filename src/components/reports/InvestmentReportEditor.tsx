@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/integrations/supabase/client';
+import { useSecureInvestmentReports } from '@/hooks/useSecureInvestmentReports';
 import { format } from 'date-fns';
 import { Save, Eye, MapPin, Calendar, FileText, AlertCircle, CheckCircle, Type, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -21,15 +21,17 @@ interface InvestmentReport {
   report_content: string;
   sources_content?: string | null;
   created_at: string;
+  [key: string]: any;
 }
 
 interface InvestmentReportEditorProps {
   report: InvestmentReport | null;
   isOpen: boolean;
   onClose: () => void;
+  onSave?: (updatedReport: InvestmentReport) => void;
 }
 
-export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentReportEditorProps) {
+export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: InvestmentReportEditorProps) {
   const [editedContent, setEditedContent] = useState('');
   const [editedSources, setEditedSources] = useState('');
   const [editedPropertyAddress, setEditedPropertyAddress] = useState('');
@@ -37,6 +39,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState('content');
   const { toast } = useToast();
+  const { updateReport } = useSecureInvestmentReports();
 
   useEffect(() => {
     if (report) {
@@ -77,7 +80,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
   };
 
   const handleSave = async () => {
-    if (!hasChanges) {
+    if (!hasChanges || !report) {
       toast({
         title: "No changes to save",
         description: "The report content hasn't been modified.",
@@ -87,18 +90,15 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('investment_reports')
-        .update({ 
-          property_address: editedPropertyAddress,
-          report_content: editedContent,
-          sources_content: editedSources || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', report.id);
+      // Use the secure hook to update via edge function (bypasses RLS)
+      const updatedReport = await updateReport(report.id, { 
+        property_address: editedPropertyAddress,
+        report_content: editedContent,
+        sources_content: editedSources || null,
+      });
 
-      if (error) {
-        throw error;
+      if (!updatedReport) {
+        throw new Error('Failed to update report');
       }
 
       toast({
@@ -108,12 +108,10 @@ export function InvestmentReportEditor({ report, isOpen, onClose }: InvestmentRe
       
       setHasChanges(false);
       
-      // Update the original report object
-      Object.assign(report, { 
-        property_address: editedPropertyAddress,
-        report_content: editedContent,
-        sources_content: editedSources 
-      });
+      // Notify parent of the update with the full updated report
+      if (onSave) {
+        onSave(updatedReport as InvestmentReport);
+      }
       
     } catch (error) {
       console.error('Error saving report:', error);
