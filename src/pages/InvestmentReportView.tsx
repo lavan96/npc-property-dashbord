@@ -421,9 +421,10 @@ export default function InvestmentReportView() {
       <InvestmentReportEditor
         report={report}
         isOpen={editorOpen}
-        onClose={() => {
-          setEditorOpen(false);
-          handleReportUpdate();
+        onClose={() => setEditorOpen(false)}
+        onSave={(updatedReport) => {
+          // Immutably update state so PDF generator receives fresh data
+          setReport(updatedReport);
         }}
       />
 
