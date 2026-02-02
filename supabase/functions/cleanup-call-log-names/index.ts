@@ -201,7 +201,7 @@ serve(async (req) => {
     // Fetch call logs that need updating
     let query = supabase
       .from('vapi_call_logs')
-      .select('id, customer_phone, customer_name, ghl_contact_id')
+      .select('id, phone_number, customer_name, ghl_contact_id')
       .order('created_at', { ascending: false })
       .range(offset, offset + batchSize - 1);
     
@@ -255,8 +255,8 @@ serve(async (req) => {
         }
 
         // Priority 2: Search by phone number if no name yet
-        if (!newName && call.customer_phone) {
-          const ghlResult = await fetchCustomerFromGoHighLevel(call.customer_phone, ghlApiKey, ghlLocationId);
+        if (!newName && call.phone_number) {
+          const ghlResult = await fetchCustomerFromGoHighLevel(call.phone_number, ghlApiKey, ghlLocationId);
           if (ghlResult.firstName || ghlResult.lastName) {
             newName = formatFullName(ghlResult.firstName, ghlResult.lastName);
           } else if (ghlResult.name) {
