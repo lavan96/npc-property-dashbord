@@ -19,6 +19,11 @@ interface LoanCalculationInput {
   isFirstHomeBuyer?: boolean;
   isNewBuild?: boolean;
   borrowerType?: 'owner_occupier' | 'investor';
+  // Capital growth rate - if provided, uses this instead of hardcoded scenarios
+  // This allows researched capital growth from Perplexity to cascade into projections
+  capitalGrowthRate?: number;
+  // Rent growth rate (CPI) - optional override
+  rentGrowthRate?: number;
 }
 
 interface FinancialProjection {
@@ -172,7 +177,18 @@ async function calculateFinancialProjections(input: LoanCalculationInput, supaba
   const annualCosts = calculateAnnualCosts(propertyValue, weeklyRent, state, propertyType);
   
   // Generate 10-year projections with scenarios
-  const scenarios = {
+  // If a custom capital growth rate is provided (e.g., from Perplexity research), use it
+  // Otherwise, use standard scenario-based rates
+  const customCapitalGrowth = input.capitalGrowthRate ? input.capitalGrowthRate / 100 : null;
+  const customRentGrowth = input.rentGrowthRate ? input.rentGrowthRate / 100 : null;
+  
+  const scenarios = customCapitalGrowth !== null ? {
+    // When custom rate provided, use it as the "moderate" scenario with ±2% for conservative/optimistic
+    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, Math.max(0, customCapitalGrowth - 0.02), customRentGrowth || 0.025),
+    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth, customRentGrowth || 0.03),
+    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth + 0.02, customRentGrowth || 0.035)
+  } : {
+    // Default scenario-based rates when no custom rate provided
     conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.02, 0.02),
     moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.04, 0.03),
     optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.06, 0.04)
