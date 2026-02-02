@@ -4088,6 +4088,7 @@ export type Database = {
           duration_seconds: number | null
           ended_at: string | null
           escalation_severity: number | null
+          ghl_contact_id: string | null
           handoff_sequence: Json | null
           id: string
           is_squad_call: boolean | null
@@ -4129,6 +4130,7 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           escalation_severity?: number | null
+          ghl_contact_id?: string | null
           handoff_sequence?: Json | null
           id?: string
           is_squad_call?: boolean | null
@@ -4170,6 +4172,7 @@ export type Database = {
           duration_seconds?: number | null
           ended_at?: string | null
           escalation_severity?: number | null
+          ghl_contact_id?: string | null
           handoff_sequence?: Json | null
           id?: string
           is_squad_call?: boolean | null

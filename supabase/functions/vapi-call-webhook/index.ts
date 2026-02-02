@@ -925,9 +925,19 @@ serve(async (req) => {
         const aiAnalysis = await analyzeTranscriptWithAI(transcript, summary, isSquadCall);
         
         // Priority 3: Only use AI customer name if not already set from GoHighLevel
-        if (!customerName && aiAnalysis.customerName) {
+        // Also validate that the AI didn't return a phone number as the customer name
+        const isPhoneNumber = (name: string | null): boolean => {
+          if (!name) return false;
+          // Check if it looks like a phone number (starts with + or contains mostly digits)
+          const digitsOnly = name.replace(/[\s\-\(\)]/g, '');
+          return digitsOnly.startsWith('+') || /^\d{8,}$/.test(digitsOnly);
+        };
+        
+        if (!customerName && aiAnalysis.customerName && !isPhoneNumber(aiAnalysis.customerName)) {
           customerName = aiAnalysis.customerName;
           console.log('[Vapi Webhook] Using customer name from AI analysis (GHL fallback not available):', customerName);
+        } else if (aiAnalysis.customerName && isPhoneNumber(aiAnalysis.customerName)) {
+          console.log('[Vapi Webhook] AI returned phone number as customer name, ignoring:', aiAnalysis.customerName);
         }
         
         sentiment = aiAnalysis.sentiment;
@@ -975,6 +985,7 @@ serve(async (req) => {
       agent_name: agentName,
       phone_number: phoneNumber,
       customer_name: customerName,
+      ghl_contact_id: ghlContactId, // Store GHL contact ID for future lookups
       call_direction: getCallDirection(),
       call_status: finalCallStatus,
       call_outcome: getCallOutcome(rawEndedReason),
@@ -1012,7 +1023,6 @@ serve(async (req) => {
         webCallUrl: call.webCallUrl,
         aiAnalyzed: isEndOfCall && !!transcript,
         isSquadCall: isSquadCall,
-        ghlContactId: ghlContactId,
         customerNameSource: ghlContactId ? 'gohighlevel' : (customerName ? 'ai_analysis' : 'none'),
       },
     };
