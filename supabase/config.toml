@@ -362,3 +362,7 @@ verify_jwt = true
 
 [functions.get-system-logs]
 verify_jwt = true
+
+[functions.cleanup-call-log-names]
+verify_jwt = true
+request_timeout = 300
