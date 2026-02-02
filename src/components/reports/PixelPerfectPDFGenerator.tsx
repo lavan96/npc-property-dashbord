@@ -2261,7 +2261,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       };
 
       // Helper to draw text with word wrapping, markdown formatting, and JUSTIFIED alignment
-      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number) => {
+      const drawTextWithWrap = (page: any, text: string, x: number, startY: number, maxWidth: number, normalFont: any, boldFont: any, size: number, lineSpacing: number, align: 'left' | 'justify' = 'justify') => {
         // Sanitize text: strip emojis AND fix AI content issues (word merges, duplicates)
         const sanitizedText = sanitizeAIContent(stripEmojis(text));
         const parts = parseMarkdownText(sanitizedText);
@@ -2277,7 +2277,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           }
         }
         
-        // Build lines for justified text
+        // Build lines for text wrapping
         type LineData = { words: Array<{word: string, font: any}>, totalWidth: number };
         const lines: LineData[] = [];
         let currentLine: LineData = { words: [], totalWidth: 0 };
@@ -2316,7 +2316,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           lines.push(currentLine);
         }
         
-        // Draw each line with justified alignment
+        // Draw each line with appropriate alignment
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
           const line = lines[lineIndex];
           const isLastLine = lineIndex === lines.length - 1;
@@ -2341,8 +2341,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             };
           }
           
-          if (line.words.length === 1 || isLastLine) {
-            // Single word or last line - left align (don't justify)
+          // For left alignment OR single word OR last line of justified text - use left alignment
+          if (align === 'left' || line.words.length === 1 || isLastLine) {
             let drawX = x;
             for (const { word, font } of line.words) {
               page.drawText(word, {
@@ -2355,7 +2355,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               drawX += font.widthOfTextAtSize(word + ' ', size);
             }
           } else {
-            // Multiple words, not last line - justify
+            // Multiple words, not last line, justify alignment - distribute space evenly
             const totalWordsWidth = line.words.reduce((sum, { word, font }) => 
               sum + font.widthOfTextAtSize(word, size), 0);
             const extraSpace = maxWidth - totalWordsWidth;
@@ -2441,7 +2441,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         helveticaFont,
         helveticaBold,
         18,
-        24
+        24,
+        'left' // Report title should be left-aligned
       );
       if (titleResult.needsNewPage) {
         currentPage = await addContentPage();
@@ -2455,7 +2456,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           helveticaFont,
           helveticaBold,
           18,
-          24
+          24,
+          'left' // Report title should be left-aligned
         );
       }
       yPosition = titleResult.lastY - 25;
@@ -2566,7 +2568,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         const currentPageNumber = pdfDoc.getPageCount(); // Current page we're about to draw on
         sectionPageNumbers.set(cleanSectionName, currentPageNumber);
 
-        // Draw section title with word wrapping
+        // Draw section title with word wrapping (left-aligned for headings)
         let titleResult = drawTextWithWrap(
           currentPage,
           `**${stripEmojis(cleanSectionName)}**`,
@@ -2576,7 +2578,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           helveticaFont,
           helveticaBold,
           titleSize,
-          20
+          20,
+          'left' // Section headings should be left-aligned
         );
         if (titleResult.needsNewPage) {
           currentPage = await addContentPage();
@@ -2590,7 +2593,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
             helveticaFont,
             helveticaBold,
             titleSize,
-            20
+            20,
+            'left' // Section headings should be left-aligned
           );
         }
         yPosition = titleResult.lastY - 10;
