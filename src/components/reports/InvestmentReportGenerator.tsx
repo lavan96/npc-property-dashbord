@@ -57,7 +57,7 @@ export function InvestmentReportGenerator() {
   // Property details state
   const [propertyPrice, setPropertyPrice] = useState('');
   const [weeklyRent, setWeeklyRent] = useState('');
-  const [propertyType, setPropertyType] = useState<'house' | 'apartment' | 'townhouse'>('house');
+  const [propertyType, setPropertyType] = useState<string>('house');
   const [beds, setBeds] = useState('');
   const [baths, setBaths] = useState('');
   const [carSpaces, setCarSpaces] = useState('');
@@ -1532,14 +1532,19 @@ export function InvestmentReportGenerator() {
 
                   <div className="space-y-2">
                     <Label htmlFor="propertyType">Property Type</Label>
-                    <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                    <Select value={propertyType} onValueChange={setPropertyType}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background z-50">
                         <SelectItem value="house">House</SelectItem>
-                        <SelectItem value="apartment">Apartment</SelectItem>
+                        <SelectItem value="apartment">Apartment/Unit</SelectItem>
                         <SelectItem value="townhouse">Townhouse</SelectItem>
+                        <SelectItem value="villa">Villa</SelectItem>
+                        <SelectItem value="duplex">Duplex</SelectItem>
+                        <SelectItem value="terrace">Terrace</SelectItem>
+                        <SelectItem value="acreage">Acreage/Rural</SelectItem>
+                        <SelectItem value="land">Vacant Land</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1916,14 +1921,19 @@ export function InvestmentReportGenerator() {
 
                       <div className="space-y-2">
                         <Label htmlFor="urlPropertyType">Property Type</Label>
-                        <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                        <Select value={propertyType} onValueChange={setPropertyType}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-background z-50">
                             <SelectItem value="house">House</SelectItem>
-                            <SelectItem value="apartment">Apartment</SelectItem>
+                            <SelectItem value="apartment">Apartment/Unit</SelectItem>
                             <SelectItem value="townhouse">Townhouse</SelectItem>
+                            <SelectItem value="villa">Villa</SelectItem>
+                            <SelectItem value="duplex">Duplex</SelectItem>
+                            <SelectItem value="terrace">Terrace</SelectItem>
+                            <SelectItem value="acreage">Acreage/Rural</SelectItem>
+                            <SelectItem value="land">Vacant Land</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2260,14 +2270,19 @@ export function InvestmentReportGenerator() {
 
                       <div className="space-y-2">
                         <Label htmlFor="pdfPropertyType">Property Type</Label>
-                        <Select value={propertyType} onValueChange={(value: 'house' | 'apartment' | 'townhouse') => setPropertyType(value)}>
+                        <Select value={propertyType} onValueChange={setPropertyType}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-background z-50">
                             <SelectItem value="house">House</SelectItem>
-                            <SelectItem value="apartment">Apartment</SelectItem>
+                            <SelectItem value="apartment">Apartment/Unit</SelectItem>
                             <SelectItem value="townhouse">Townhouse</SelectItem>
+                            <SelectItem value="villa">Villa</SelectItem>
+                            <SelectItem value="duplex">Duplex</SelectItem>
+                            <SelectItem value="terrace">Terrace</SelectItem>
+                            <SelectItem value="acreage">Acreage/Rural</SelectItem>
+                            <SelectItem value="land">Vacant Land</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
