@@ -246,6 +246,9 @@ export function PropertyTab({
                       <SelectItem value="apartment">Apartment/Unit</SelectItem>
                       <SelectItem value="townhouse">Townhouse</SelectItem>
                       <SelectItem value="villa">Villa</SelectItem>
+                      <SelectItem value="duplex">Duplex</SelectItem>
+                      <SelectItem value="terrace">Terrace</SelectItem>
+                      <SelectItem value="acreage">Acreage/Rural</SelectItem>
                       <SelectItem value="land">Vacant Land</SelectItem>
                     </SelectContent>
                   </Select>
