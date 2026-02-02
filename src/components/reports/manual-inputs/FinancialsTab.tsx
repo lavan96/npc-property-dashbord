@@ -15,12 +15,13 @@ import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber
 import { MortgageRepaymentCalculator } from '../MortgageRepaymentCalculator';
 import { useToast } from '@/hooks/use-toast';
 import { LoanType, RepaymentFrequency } from '@/utils/mortgageCalculations';
+import { BuildType } from '@/types/overrideFields';
 
 export type StampDutyPropertyType = 'primary_residence' | 'investment';
 export type StampDutyPurchaseType = 'established_home' | 'new_home' | 'vacant_land';
 
 interface FinancialsTabProps {
-  buildType: 'new_build' | 'existing_property';
+  buildType: BuildType;
   purchasePrice: string;
   depositValue: string;
   setDepositValue: (value: string) => void;

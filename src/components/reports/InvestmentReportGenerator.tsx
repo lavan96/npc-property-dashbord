@@ -1418,6 +1418,18 @@ export function InvestmentReportGenerator() {
                         />
                         <span className="text-sm">New Build</span>
                       </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="buildType"
+                          value="land_only"
+                          checked={preGenData.buildType === 'land_only'}
+                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'land_only' }))}
+                          className="h-4 w-4 text-primary"
+                          disabled={isGenerating}
+                        />
+                        <span className="text-sm">Land Only</span>
+                      </label>
                     </div>
                   </div>
 

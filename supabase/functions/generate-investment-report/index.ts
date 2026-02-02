@@ -1027,11 +1027,13 @@ serve(async (req) => {
     const effectiveInterestRate = mergedOverrides.interestRate || propertyDetails?.interestRate || 6.5;
     const effectiveLoanTerm = mergedOverrides.loanTermYears || propertyDetails?.loanTermYears || 30;
     const effectiveIsFirstHomeBuyer = mergedOverrides.isFirstHomeBuyer || false;
-    const effectiveIsNewBuild = mergedOverrides.buildType === 'new_build' || propertyDetails?.isNewBuild || false;
+    const effectiveBuildType = mergedOverrides.buildType || (propertyDetails?.isNewBuild ? 'new_build' : 'existing_property');
+    const effectiveIsNewBuild = effectiveBuildType === 'new_build';
+    const effectiveIsLandOnly = effectiveBuildType === 'land_only';
     const effectiveLandSizeSqm = mergedOverrides.landSizeSqm || propertyDetails?.landSizeSqm || null;
-    const effectiveBuildSizeSqm = mergedOverrides.buildSizeSqm || propertyDetails?.buildSizeSqm || null;
-    const effectiveBeds = mergedOverrides.bedrooms || propertyDetails?.beds || 3;
-    const effectiveBaths = mergedOverrides.bathrooms || propertyDetails?.baths || 2;
+    const effectiveBuildSizeSqm = effectiveIsLandOnly ? null : (mergedOverrides.buildSizeSqm || propertyDetails?.buildSizeSqm || null);
+    const effectiveBeds = effectiveIsLandOnly ? 0 : (mergedOverrides.bedrooms || propertyDetails?.beds || 3);
+    const effectiveBaths = effectiveIsLandOnly ? 0 : (mergedOverrides.bathrooms || propertyDetails?.baths || 2);
     
     // Zoning effective values
     const effectiveZoningCode = mergedOverrides.zoningCode || null;
@@ -1049,7 +1051,9 @@ serve(async (req) => {
     console.log(`  Weekly Rent: $${effectiveWeeklyRent} ${mergedOverrides.weeklyRent ? '(OVERRIDE)' : '(from property)'}`);
     console.log(`  LVR: ${effectiveLvr}% ${mergedOverrides.loanToValueRatio ? '(OVERRIDE)' : '(default)'}`);
     console.log(`  Interest Rate: ${effectiveInterestRate}% ${mergedOverrides.interestRate ? '(OVERRIDE)' : '(default)'}`);
+    console.log(`  Build Type: ${effectiveBuildType}`);
     console.log(`  Is New Build: ${effectiveIsNewBuild}`);
+    console.log(`  Is Land Only: ${effectiveIsLandOnly}`);
 
     // Check for Perplexity API key
     const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
@@ -3097,7 +3101,12 @@ ${sourceSpecificInstructions}
       
       // Build Type
       if (manualOverrides.buildType) {
-        overrideLines.push(`Build Type: ${manualOverrides.buildType === 'new_build' ? 'New Build (House & Land Package)' : 'Existing Property'}`);
+        const buildTypeLabels: Record<string, string> = {
+          'new_build': 'New Build (House & Land Package)',
+          'existing_property': 'Existing Property',
+          'land_only': 'Land Only (Vacant Land - No Structure)'
+        };
+        overrideLines.push(`Build Type: ${buildTypeLabels[manualOverrides.buildType] || manualOverrides.buildType}`);
       }
       
       // Property Values
@@ -3191,6 +3200,19 @@ ${sourceSpecificInstructions}
             overrideLines.push(`Custom Stage Timing: ${stageTiming.join(', ')}`);
           }
         }
+      }
+      
+      // Land Only Specifics - Add special instructions
+      if (manualOverrides.buildType === 'land_only') {
+        overrideLines.push(`\n**LAND ONLY PROPERTY ANALYSIS NOTES:**`);
+        overrideLines.push(`- This is VACANT LAND with no existing structure`);
+        overrideLines.push(`- NO rental income should be calculated (no dwelling exists)`);
+        overrideLines.push(`- NO depreciation applies (no building to depreciate)`);
+        overrideLines.push(`- Focus on DEVELOPMENT POTENTIAL and zoning analysis`);
+        overrideLines.push(`- Use VACANT LAND stamp duty rates (often different from residential)`);
+        overrideLines.push(`- Key metrics: Land value appreciation, holding costs, development feasibility`);
+        if (manualOverrides.zoningCode) overrideLines.push(`- Zoning Code: ${manualOverrides.zoningCode}`);
+        if (manualOverrides.developmentPotential) overrideLines.push(`- Development Potential: ${manualOverrides.developmentPotential}`);
       }
       
       if (overrideLines.length > 0) {

@@ -9,9 +9,11 @@ import { useCallback } from 'react';
 import { BuildTypeSelector } from '../shared/BuildTypeSelector';
 import { ZoningSection } from './ZoningSection';
 
+import { BuildType } from '@/types/overrideFields';
+
 interface PropertyTabProps {
-  buildType: 'new_build' | 'existing_property';
-  onBuildTypeChange: (value: 'new_build' | 'existing_property') => void;
+  buildType: BuildType;
+  onBuildTypeChange: (value: BuildType) => void;
   purchasePrice: string;
   setPurchasePrice: (value: string) => void;
   propertyValue: string;
@@ -87,7 +89,7 @@ export function PropertyTab({
   disabled = false
 }: PropertyTabProps) {
   const isNewBuild = buildType === 'new_build';
-
+  const isLandOnly = buildType === 'land_only';
   const handleCurrencyChange = useCallback((setter: (value: string) => void) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawValue = removeCommas(e.target.value);
@@ -174,9 +176,9 @@ export function PropertyTab({
             </div>
           </div>
 
-          {/* Land Price and Build Price - Only shown for New Builds */}
-          {isNewBuild && (
-            <div className="grid grid-cols-2 gap-4">
+          {/* Land Price - shown for New Builds AND Land Only */}
+          {(isNewBuild || isLandOnly) && (
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="landPrice" className="text-sm font-medium">Land Price</Label>
                 <div className="relative">
@@ -193,29 +195,32 @@ export function PropertyTab({
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="buildPrice" className="text-sm font-medium">Build Price</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="buildPrice"
-                    type="text"
-                    inputMode="numeric"
-                    value={formatForDisplay(buildPrice)}
-                    onChange={handleCurrencyChange(setBuildPrice)}
-                    placeholder="400,000"
-                    disabled={disabled}
-                    className="pl-7"
-                  />
+              {/* Build Price - only shown for New Builds */}
+              {isNewBuild && (
+                <div className="space-y-2">
+                  <Label htmlFor="buildPrice" className="text-sm font-medium">Build Price</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="buildPrice"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatForDisplay(buildPrice)}
+                      onChange={handleCurrencyChange(setBuildPrice)}
+                      placeholder="400,000"
+                      disabled={disabled}
+                      className="pl-7"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Property Specifications - New Section */}
-      {(setPropertyType || setCarSpaces || setLandSizeSqm || setBuildSizeSqm) && (
+      {/* Property Specifications - Hide for Land Only (except land size) */}
+      {(setPropertyType || setCarSpaces || setLandSizeSqm || setBuildSizeSqm) && !isLandOnly && (
         <Card>
           <CardContent className="pt-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">

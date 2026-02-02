@@ -324,7 +324,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       type: 'select',
       options: [
         { value: 'new_build', label: 'New Build' },
-        { value: 'existing_property', label: 'Existing Property' }
+        { value: 'existing_property', label: 'Existing Property' },
+        { value: 'land_only', label: 'Land Only' }
       ]
     },
     {
