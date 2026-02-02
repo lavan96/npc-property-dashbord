@@ -2561,7 +2561,9 @@ Note: Land tax is highly property-specific and depends on aggregated landholding
 
 # Rental Assessment & Yield Calculation
 
-**Comparable Rental Evidence:**
+**Rental Market Assessment:**
+
+The rental analysis below is based on suburb-level median rental data and the specific property configuration. For detailed comparable rental evidence with specific addresses and lease dates, consult a local property manager or licensed real estate agent.
 
 | Property Type | Estimated Weekly Rent | Annual Rental Income |
 |--------------|----------------------|---------------------|
@@ -2907,7 +2909,8 @@ Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income befor
 
 - Engage professional valuer to obtain formal property valuation for [Property Address]; assess whether ${documentContent ? 'the listed price' : 'estimated reference price'} of $[X,XXX,XXX] accurately reflects current market conditions and property-specific features
 - Conduct environmental hazard verification through [State] RFS for bushfire risk assessment and AFRIP for flood risk mapping; make fire/flood insurance availability and cost confirmation conditional to purchase commitment
-- Obtain local real estate agent market analysis including recent 12-month comparable sales data, rental market evidence, and suburb price forecasts from licensed agents familiar with [Street/Area]
+- Request local real estate agent market analysis for suburb price forecasts and trends from licensed agents familiar with [Street/Area]
+- NOTE: Specific comparable sales data should be obtained directly from agents or property data providers (CoreLogic, RP Data)
 - Verify financial serviceability with mortgage broker or bank; confirm loan approval capacity at current [X.X]% rate AND at stressed [X.X]% rate (RBA upside scenario)
 - Confirm liquid capital reserves capable of supporting ($[XX,XXX]) annual negative cashflow over minimum 10-year investment period; calculate capacity to sustain scenario with [X.X]%+ rates producing ($[XX,XXX]) annual shortfalls
 
@@ -2918,7 +2921,7 @@ Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income befor
 - AFRIP flood mapping using property coordinates to assess flooding exposure
 - Local council rates search to verify exact annual council and water charges
 - Rental market assessment through local real estate agents to validate $[XXX]/week rental estimate
-- Comparative sales analysis through licensed real estate agent or valuer for recent 12-month transactions
+- Request comparative sales analysis from licensed real estate agents or property data providers for recent transaction evidence
 - Pest and building inspection to assess structural condition and maintenance requirements
 - Lender pre-approval to confirm serviceability assessment and loan terms at current interest rates
 - Model personal tax position with accountant to quantify benefit of negative gearing deductions and capital gains tax treatment on projected appreciation
@@ -3205,12 +3208,15 @@ ${sourceSpecificInstructions}
       // Land Only Specifics - Add special instructions
       if (manualOverrides.buildType === 'land_only') {
         overrideLines.push(`\n**LAND ONLY PROPERTY ANALYSIS NOTES:**`);
-        overrideLines.push(`- This is VACANT LAND with no existing structure`);
-        overrideLines.push(`- NO rental income should be calculated (no dwelling exists)`);
+        overrideLines.push(`- This is VACANT LAND with no existing structure - use "Vacant Land" as the Property Type throughout`);
+        overrideLines.push(`- NO rental income should be calculated (no dwelling exists) - DO NOT include Weekly Rent, Rental Yield, Occupancy rows in any tables`);
         overrideLines.push(`- NO depreciation applies (no building to depreciate)`);
+        overrideLines.push(`- REMOVE all rental-related rows from Property Snapshot and financial tables (Weekly Rent, Gross Rental Yield, Net Rental Yield, Rental Income, Occupancy Rate)`);
         overrideLines.push(`- Focus on DEVELOPMENT POTENTIAL and zoning analysis`);
         overrideLines.push(`- Use VACANT LAND stamp duty rates (often different from residential)`);
-        overrideLines.push(`- Key metrics: Land value appreciation, holding costs, development feasibility`);
+        overrideLines.push(`- Key metrics: Land value appreciation, holding costs (council rates, land tax), development feasibility`);
+        overrideLines.push(`- SKIP the entire "Rental Assessment & Yield Calculation" section - this section does not apply to vacant land`);
+        overrideLines.push(`- SKIP the "Cashflow Analysis" section - vacant land generates no rental cashflow`);
         if (manualOverrides.zoningCode) overrideLines.push(`- Zoning Code: ${manualOverrides.zoningCode}`);
         if (manualOverrides.developmentPotential) overrideLines.push(`- Development Potential: ${manualOverrides.developmentPotential}`);
       }

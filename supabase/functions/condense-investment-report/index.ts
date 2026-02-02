@@ -26,8 +26,8 @@ const TIER_CONFIG = {
       'Crime Statistics',
       'Property-Level Information',
       'Purchase & Ongoing Costs',
-      'Recent Comparable Sales',
-      'Recent Comparable Rentals',
+      // NOTE: Comparable Sales and Rentals sections removed - requires paid API integration (CoreLogic/RP Data)
+      // TODO: Re-enable when transaction data APIs are integrated
       'Financial Analysis (Yields, Loan Analysis, Sensitivity)',
       'Property Value & Rental Projections',
       'Investment Score Breakdown',
@@ -95,14 +95,6 @@ REPORT STRUCTURE (~20 PAGES):
 ## Purchase & Ongoing Costs
 | Cost Category | Amount | Calculation |
 - All annual costs itemized
-
-## Recent Comparable Sales
-| Address | Sale Price | Sale Date | Beds/Baths |
-- 5 comparable sales
-
-## Recent Comparable Rentals
-| Address | Weekly Rent | Property Type |
-- 3-5 comparable rentals
 
 ## Base Assumptions
 - Bullet list of all financial assumptions
