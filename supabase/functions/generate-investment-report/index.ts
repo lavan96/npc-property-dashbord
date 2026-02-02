@@ -130,6 +130,64 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
 let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
 
 // ============================================================================
+// CAPITAL GROWTH EXTRACTION - Extract researched capital growth from AI content
+// ============================================================================
+// Perplexity is instructed to research capital growth when not provided.
+// This function extracts that researched value from the generated content.
+// ============================================================================
+
+/**
+ * Extracts capital growth rate from AI-generated report content
+ * Looks for patterns like "5.2% capital growth", "capital appreciation of 4.5%", etc.
+ * Returns null if no valid rate is found
+ */
+function extractCapitalGrowthFromContent(content: string): number | null {
+  if (!content) return null;
+  
+  // Pattern priority order - most specific first
+  const patterns = [
+    // "capital growth rate of X%", "capital growth of X%"
+    /capital\s+growth\s+(?:rate\s+)?(?:of\s+)?(\d+(?:\.\d+)?)\s*%/gi,
+    // "X% capital growth", "X% annual capital growth"
+    /(\d+(?:\.\d+)?)\s*%\s*(?:annual\s+)?capital\s+growth/gi,
+    // "annual appreciation of X%", "property appreciation of X%"
+    /(?:annual|property)\s+appreciation\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*%/gi,
+    // "X% annual appreciation"
+    /(\d+(?:\.\d+)?)\s*%\s*annual\s+(?:property\s+)?appreciation/gi,
+    // "median price growth of X%", "historical growth of X%"
+    /(?:median\s+price|historical)\s+growth\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*%/gi,
+    // "X-X% annual growth" - take the average
+    /(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*%\s*(?:annual\s+)?(?:capital\s+)?growth/gi,
+  ];
+  
+  for (const pattern of patterns) {
+    const matches = content.matchAll(pattern);
+    for (const match of matches) {
+      // Handle range patterns (e.g., "4-6%")
+      if (match[2] !== undefined) {
+        const low = parseFloat(match[1]);
+        const high = parseFloat(match[2]);
+        if (!isNaN(low) && !isNaN(high) && low >= 0 && low <= 20 && high >= 0 && high <= 20) {
+          const avg = (low + high) / 2;
+          console.log(`📊 Extracted capital growth range: ${low}%-${high}%, using average: ${avg}%`);
+          return avg;
+        }
+      } else {
+        const rate = parseFloat(match[1]);
+        // Validate: capital growth should typically be between 0% and 15%
+        if (!isNaN(rate) && rate >= 0 && rate <= 15) {
+          console.log(`📊 Extracted capital growth rate: ${rate}%`);
+          return rate;
+        }
+      }
+    }
+  }
+  
+  console.log('⚠️ Could not extract capital growth rate from content');
+  return null;
+}
+
+// ============================================================================
 // DYNAMIC TEMPLATE PARSING
 // ============================================================================
 // Extracts H2 section headings from database template and groups them
@@ -3495,6 +3553,27 @@ YOUR DEDICATED PROPERTY PARTNER
       
       // Use best content from all attempts
       if (bestContent) {
+        // === CAPITAL GROWTH EXTRACTION: Extract researched capital growth from content ===
+        // If capital growth was not manually overridden, try to extract the researched value from the AI-generated content
+        if (!hasOverrides || !manualOverrides?.capitalGrowth) {
+          const extractedCapitalGrowth = extractCapitalGrowthFromContent(bestContent);
+          if (extractedCapitalGrowth !== null && enhancedData?.financials) {
+            console.log(`📈 Extracted researched capital growth rate: ${extractedCapitalGrowth}%`);
+            
+            // Ensure assumptions object exists
+            if (!enhancedData.financials.assumptions) {
+              enhancedData.financials.assumptions = {};
+            }
+            
+            // Only set if not already set by manual override
+            if (!enhancedData.financials.assumptions.capitalGrowth) {
+              enhancedData.financials.assumptions.capitalGrowth = extractedCapitalGrowth;
+              console.log(`✓ Capital growth rate set in financials: ${extractedCapitalGrowth}%`);
+            }
+          }
+        }
+        // === END CAPITAL GROWTH EXTRACTION ===
+        
         combinedContent += bestContent + '\n\n---\n\n';
         
         sectionResults.push({

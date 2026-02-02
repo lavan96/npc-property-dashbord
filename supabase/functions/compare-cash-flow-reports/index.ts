@@ -82,7 +82,8 @@ serve(async (req) => {
         // Financial Metrics
         purchasePrice: mo.purchasePrice || fc.purchasePrice || 0,
         weeklyRent: mo.weeklyRent || fc.weeklyRent || 0,
-        capitalGrowthRate: mo.capitalGrowth || fc.capitalGrowth || 5,
+        // IMPORTANT: Do not default to 5% - use researched/overridden value or null
+        capitalGrowthRate: mo.capitalGrowth || fc.capitalGrowth || fc.assumptions?.capitalGrowth || null,
         interestRate: mo.interestRate || fc.interestRate || 5.5,
         loanToValueRatio: mo.loanToValueRatio || fc.loanToValueRatio || 80,
         
