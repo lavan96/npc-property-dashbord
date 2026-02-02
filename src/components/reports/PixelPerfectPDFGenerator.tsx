@@ -2764,6 +2764,10 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
           // Regular paragraph with text wrapping
           let remainingParts = parseMarkdownText(paragraph);
           
+          // Detect if this paragraph is an H3/H4 subsection heading
+          const isSubsectionHeading = paragraph.trim().match(/^#{3,4}\s+/);
+          const paragraphAlignment: 'left' | 'justify' = isSubsectionHeading ? 'left' : 'justify';
+          
           while (remainingParts.length > 0) {
             // Check if we need a new page before starting paragraph
             if (yPosition < bottomMargin + 60) {
@@ -2787,7 +2791,8 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
               helveticaFont,
               helveticaBold,
               textSize,
-              lineHeight
+              lineHeight,
+              paragraphAlignment // Left-align H3/H4 headings, justify body text
             );
 
             if (result.needsNewPage) {
