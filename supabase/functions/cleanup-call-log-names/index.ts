@@ -145,6 +145,36 @@ async function fetchCustomerFromGoHighLevelById(
   return { name: null, firstName: null, lastName: null };
 }
 
+/**
+ * Check if a string looks like a phone number (not a real name)
+ */
+function looksLikePhoneNumber(value: string | null | undefined): boolean {
+  if (!value) return false;
+  // Remove all spaces and check if it's mostly digits with optional + prefix
+  const cleaned = value.replace(/[\s\-\(\)]/g, '');
+  return /^\+?\d{7,}$/.test(cleaned);
+}
+
+/**
+ * Check if a name needs improvement (missing full name, is a phone number, etc.)
+ */
+function needsNameImprovement(customerName: string | null | undefined, ghlContactId: string | null | undefined): boolean {
+  // No name at all
+  if (!customerName || customerName.trim() === '') return true;
+  
+  // Name is actually a phone number
+  if (looksLikePhoneNumber(customerName)) return true;
+  
+  // Missing GHL contact ID (could get better data)
+  if (!ghlContactId) return true;
+  
+  // Single word name (likely only first name)
+  const trimmedName = customerName.trim();
+  if (!trimmedName.includes(' ') && trimmedName.length < 20) return true;
+  
+  return false;
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -194,23 +224,15 @@ serve(async (req) => {
     // Get batch parameters
     const batchSize = body.batchSize || 50;
     const offset = body.offset || 0;
-    const forceUpdate = body.forceUpdate || false; // If true, update even if name exists
+    const forceUpdate = body.forceUpdate || false;
 
     console.log(`[cleanup-call-log-names] Processing batch: offset=${offset}, size=${batchSize}, forceUpdate=${forceUpdate}`);
 
-    // Fetch call logs that need updating
-    let query = supabase
+    // Fetch ALL call logs and filter in code for more robust logic
+    const { data: allCallLogs, error: fetchError } = await supabase
       .from('vapi_call_logs')
       .select('id, phone_number, customer_name, ghl_contact_id')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + batchSize - 1);
-    
-    // If not forcing update, only get records with missing/problematic names
-    if (!forceUpdate) {
-      query = query.or('customer_name.is.null,customer_name.eq.,ghl_contact_id.is.null');
-    }
-
-    const { data: callLogs, error: fetchError } = await query;
+      .order('created_at', { ascending: false });
 
     if (fetchError) {
       console.error('[cleanup-call-log-names] Error fetching call logs:', fetchError);
@@ -220,11 +242,11 @@ serve(async (req) => {
       );
     }
 
-    if (!callLogs || callLogs.length === 0) {
+    if (!allCallLogs || allCallLogs.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'No call logs to process',
+          message: 'No call logs found',
           processed: 0,
           updated: 0,
           hasMore: false
@@ -233,67 +255,143 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[cleanup-call-log-names] Found ${callLogs.length} call logs to process`);
+    // Filter records that need improvement
+    const callLogsNeedingWork = forceUpdate 
+      ? allCallLogs 
+      : allCallLogs.filter(call => needsNameImprovement(call.customer_name, call.ghl_contact_id));
+
+    const totalNeedingWork = callLogsNeedingWork.length;
+    
+    // Apply pagination to the filtered list
+    const callLogs = callLogsNeedingWork.slice(offset, offset + batchSize);
+
+    console.log(`[cleanup-call-log-names] Total records: ${allCallLogs.length}, Needing work: ${totalNeedingWork}, This batch: ${callLogs.length}`);
+
+    if (callLogs.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'No call logs need processing',
+          processed: 0,
+          updated: 0,
+          hasMore: false,
+          totalRecords: allCallLogs.length,
+          totalNeedingWork: 0
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     let updated = 0;
     let skipped = 0;
-    const results: Array<{ id: string; status: string; name?: string }> = [];
+    const results: Array<{ id: string; status: string; name?: string; reason?: string }> = [];
+
+    // Build a cache of phone -> GHL contact to reduce API calls
+    const phoneToContact = new Map<string, { name: string | null; contactId: string | null; firstName: string | null; lastName: string | null }>();
 
     for (const call of callLogs) {
       try {
         let newName: string | null = null;
         let newGhlContactId: string | null = call.ghl_contact_id;
+        let lookupSource = '';
 
         // Priority 1: If we have GHL contact ID, fetch directly
         if (call.ghl_contact_id) {
           const ghlResult = await fetchCustomerFromGoHighLevelById(call.ghl_contact_id, ghlApiKey);
           if (ghlResult.firstName || ghlResult.lastName) {
             newName = formatFullName(ghlResult.firstName, ghlResult.lastName);
+            lookupSource = 'ghl_id';
           } else if (ghlResult.name) {
             newName = smartCapitalize(ghlResult.name);
+            lookupSource = 'ghl_id_name';
           }
         }
 
         // Priority 2: Search by phone number if no name yet
         if (!newName && call.phone_number) {
-          const ghlResult = await fetchCustomerFromGoHighLevel(call.phone_number, ghlApiKey, ghlLocationId);
-          if (ghlResult.firstName || ghlResult.lastName) {
-            newName = formatFullName(ghlResult.firstName, ghlResult.lastName);
-          } else if (ghlResult.name) {
-            newName = smartCapitalize(ghlResult.name);
-          }
-          if (ghlResult.contactId) {
-            newGhlContactId = ghlResult.contactId;
-          }
-        }
-
-        // Priority 3: If we have existing name but no GHL match, just capitalize it
-        if (!newName && call.customer_name) {
-          newName = smartCapitalize(call.customer_name);
-        }
-
-        // Update if we have a new name or GHL contact ID
-        if (newName || newGhlContactId !== call.ghl_contact_id) {
-          const updateData: Record<string, any> = {};
-          if (newName) updateData.customer_name = newName;
-          if (newGhlContactId) updateData.ghl_contact_id = newGhlContactId;
-
-          const { error: updateError } = await supabase
-            .from('vapi_call_logs')
-            .update(updateData)
-            .eq('id', call.id);
-
-          if (updateError) {
-            console.error(`[cleanup-call-log-names] Error updating call ${call.id}:`, updateError);
-            results.push({ id: call.id, status: 'error' });
+          // Check cache first
+          const cached = phoneToContact.get(call.phone_number);
+          if (cached) {
+            if (cached.firstName || cached.lastName) {
+              newName = formatFullName(cached.firstName, cached.lastName);
+              lookupSource = 'cache';
+            } else if (cached.name) {
+              newName = smartCapitalize(cached.name);
+              lookupSource = 'cache_name';
+            }
+            if (cached.contactId && !newGhlContactId) {
+              newGhlContactId = cached.contactId;
+            }
           } else {
-            updated++;
-            results.push({ id: call.id, status: 'updated', name: newName || undefined });
-            console.log(`[cleanup-call-log-names] Updated call ${call.id}: ${newName}`);
+            // Fetch from GHL
+            const ghlResult = await fetchCustomerFromGoHighLevel(call.phone_number, ghlApiKey, ghlLocationId);
+            // Cache the result
+            phoneToContact.set(call.phone_number, ghlResult);
+            
+            if (ghlResult.firstName || ghlResult.lastName) {
+              newName = formatFullName(ghlResult.firstName, ghlResult.lastName);
+              lookupSource = 'ghl_phone';
+            } else if (ghlResult.name) {
+              newName = smartCapitalize(ghlResult.name);
+              lookupSource = 'ghl_phone_name';
+            }
+            if (ghlResult.contactId) {
+              newGhlContactId = ghlResult.contactId;
+            }
+          }
+        }
+
+        // Priority 3: If existing name is a phone number, clear it when we couldn't find a real name
+        const existingIsPhoneNumber = looksLikePhoneNumber(call.customer_name);
+        
+        // Priority 4: Capitalize existing name if no GHL match but name exists and isn't a phone number
+        if (!newName && call.customer_name && !existingIsPhoneNumber) {
+          newName = smartCapitalize(call.customer_name);
+          lookupSource = 'existing_capitalized';
+        }
+
+        // Determine if we should update
+        const shouldUpdate = 
+          (newName && newName !== call.customer_name) || 
+          (newGhlContactId && newGhlContactId !== call.ghl_contact_id) ||
+          (existingIsPhoneNumber && !newName); // Clear phone number names
+
+        if (shouldUpdate) {
+          const updateData: Record<string, any> = {};
+          
+          // Only update name if we have a better one, or if current is a phone number
+          if (newName && !looksLikePhoneNumber(newName)) {
+            updateData.customer_name = newName;
+          } else if (existingIsPhoneNumber && !newName) {
+            // If current name is phone number and we found nothing better, set to null
+            updateData.customer_name = null;
+          }
+          
+          if (newGhlContactId && newGhlContactId !== call.ghl_contact_id) {
+            updateData.ghl_contact_id = newGhlContactId;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            const { error: updateError } = await supabase
+              .from('vapi_call_logs')
+              .update(updateData)
+              .eq('id', call.id);
+
+            if (updateError) {
+              console.error(`[cleanup-call-log-names] Error updating call ${call.id}:`, updateError);
+              results.push({ id: call.id, status: 'error', reason: updateError.message });
+            } else {
+              updated++;
+              results.push({ id: call.id, status: 'updated', name: updateData.customer_name || '[cleared]', reason: lookupSource });
+              console.log(`[cleanup-call-log-names] Updated call ${call.id}: ${updateData.customer_name || '[cleared]'} (source: ${lookupSource})`);
+            }
+          } else {
+            skipped++;
+            results.push({ id: call.id, status: 'skipped', reason: 'no_changes' });
           }
         } else {
           skipped++;
-          results.push({ id: call.id, status: 'skipped' });
+          results.push({ id: call.id, status: 'skipped', reason: 'no_improvement' });
         }
 
         // Add a small delay to avoid rate limiting GHL API
@@ -301,19 +399,14 @@ serve(async (req) => {
         
       } catch (error) {
         console.error(`[cleanup-call-log-names] Error processing call ${call.id}:`, error);
-        results.push({ id: call.id, status: 'error' });
+        results.push({ id: call.id, status: 'error', reason: String(error) });
       }
     }
 
-    // Check if there are more records to process
-    const { count } = await supabase
-      .from('vapi_call_logs')
-      .select('id', { count: 'exact', head: true });
-
-    const hasMore = offset + batchSize < (count || 0);
+    const hasMore = offset + batchSize < totalNeedingWork;
     const nextOffset = hasMore ? offset + batchSize : null;
 
-    console.log(`[cleanup-call-log-names] Batch complete: updated=${updated}, skipped=${skipped}, hasMore=${hasMore}`);
+    console.log(`[cleanup-call-log-names] Batch complete: updated=${updated}, skipped=${skipped}, hasMore=${hasMore}, remaining=${totalNeedingWork - offset - callLogs.length}`);
 
     return new Response(
       JSON.stringify({ 
@@ -324,7 +417,8 @@ serve(async (req) => {
         skipped,
         hasMore,
         nextOffset,
-        totalRecords: count,
+        totalRecords: allCallLogs.length,
+        totalNeedingWork,
         results
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
