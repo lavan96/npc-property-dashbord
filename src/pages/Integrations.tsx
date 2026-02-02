@@ -29,6 +29,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PlannedIntegrations } from '@/components/integrations/PlannedIntegrations';
 
 interface IntegrationConfig {
   id: string;
@@ -501,6 +502,7 @@ export default function Integrations() {
           <TabsTrigger value="all">All Integrations</TabsTrigger>
           <TabsTrigger value="configured">Configured</TabsTrigger>
           <TabsTrigger value="pending">Pending Setup</TabsTrigger>
+          <TabsTrigger value="planned">Roadmap</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
@@ -851,6 +853,11 @@ export default function Integrations() {
                 );
               })}
           </div>
+        </TabsContent>
+
+        {/* Planned Integrations Roadmap */}
+        <TabsContent value="planned" className="mt-6">
+          <PlannedIntegrations />
         </TabsContent>
       </Tabs>
     </div>
