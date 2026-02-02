@@ -303,6 +303,7 @@ export default function ClientTracker() {
   // Update client mutation
   const updateClientMutation = useMutation({
     mutationFn: async (client: Partial<TrackedClient> & { id: string }) => {
+      // First update locally via edge function
       const { data, error } = await invokeSecureFunction('manage-automation-settings', {
         operation: 'updateClientPipeline',
         clientId: client.id,
@@ -318,6 +319,28 @@ export default function ClientTracker() {
       });
       
       if (error || !data?.success) throw new Error(data?.error || error?.message);
+
+      // Sync stage change to GHL if a stage is set
+      if (client.current_stage_id) {
+        const { data: ghlData, error: ghlError } = await invokeSecureFunction('update-ghl-opportunity-stage', {
+          clientId: client.id,
+          newStageId: client.current_stage_id
+        });
+
+        if (ghlError) {
+          console.error('GHL sync failed:', ghlError);
+          // Don't throw - local update succeeded, just log GHL failure
+        } else if (!ghlData?.success) {
+          // If GHL sync fails with a specific error (like no opportunity linked), just log it
+          if (ghlData?.error?.includes('No GHL opportunity linked') || ghlData?.error?.includes('No GHL contact linked')) {
+            console.log('Client has no GHL opportunity/contact, local update only');
+          } else {
+            console.error('GHL sync error:', ghlData?.error);
+          }
+        } else {
+          console.log('GHL stage sync successful');
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
