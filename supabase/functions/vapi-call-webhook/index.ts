@@ -7,6 +7,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Smart capitalization for names - handles edge cases like:
+ * - All uppercase or all lowercase names
+ * - Special prefixes: Mc, Mac, O'
+ * - Hyphenated names
+ * - Already properly capitalized names (left unchanged)
+ */
+function smartCapitalize(name: string | null | undefined): string {
+  if (!name) return '';
+  
+  // Handle already properly capitalized names
+  if (name !== name.toLowerCase() && name !== name.toUpperCase()) {
+    return name;
+  }
+  
+  return name
+    .toLowerCase()
+    .split(/(\s+|-|')/)
+    .map((part) => {
+      // Keep separators as-is
+      if (/^(\s+|-|')$/.test(part)) return part;
+      
+      // Handle special prefixes like Mc, Mac, O'
+      if (part.startsWith('mc') && part.length > 2) {
+        return 'Mc' + part.charAt(2).toUpperCase() + part.slice(3);
+      }
+      if (part.startsWith('mac') && part.length > 3) {
+        return 'Mac' + part.charAt(3).toUpperCase() + part.slice(4);
+      }
+      
+      // Standard capitalization
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join('');
+}
+
+/**
+ * Format a full name from first and last name parts with smart capitalization
+ */
+function formatFullName(firstName: string | null | undefined, lastName: string | null | undefined): string {
+  const first = smartCapitalize(firstName);
+  const last = smartCapitalize(lastName);
+  return [first, last].filter(Boolean).join(' ');
+}
+
 // Vapi Squad assistant info
 interface SquadAssistant {
   id: string;
@@ -151,14 +196,15 @@ async function fetchCustomerFromGoHighLevelById(contactId: string): Promise<{ na
     
     if (contact) {
       const firstName = contact.firstName || null;
-      const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
+      // Use formatFullName for proper capitalization
+      const fullName = formatFullName(contact.firstName, contact.lastName);
       console.log('[Vapi Webhook] GoHighLevel: Found contact by ID:', { 
         id: contactId, 
         firstName,
         fullName,
       });
       return { 
-        name: fullName || contact.name || null,
+        name: fullName || smartCapitalize(contact.name) || null,
         firstName,
       };
     }
@@ -221,7 +267,8 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
       }) || data.contacts[0];
       
       const firstName = matchingContact.firstName || null;
-      const fullName = [matchingContact.firstName, matchingContact.lastName].filter(Boolean).join(' ').trim();
+      // Use formatFullName for proper capitalization
+      const fullName = formatFullName(matchingContact.firstName, matchingContact.lastName);
       console.log('[Vapi Webhook] GoHighLevel: Found contact:', { 
         id: matchingContact.id, 
         name: fullName,
@@ -229,7 +276,7 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
         lastName: matchingContact.lastName 
       });
       return { 
-        name: fullName || matchingContact.name || null, 
+        name: fullName || smartCapitalize(matchingContact.name) || null, 
         contactId: matchingContact.id || null,
         firstName,
       };
