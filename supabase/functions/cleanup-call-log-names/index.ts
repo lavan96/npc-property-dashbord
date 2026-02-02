@@ -60,10 +60,12 @@ async function fetchCustomerFromGoHighLevel(
   }
 
   try {
-    // Clean up phone number
-    let cleanedPhone = phoneNumber.replace(/\s+/g, '').replace(/[^\\d+]/g, '');
+    // Clean up phone number - remove everything except digits and +
+    const cleanedPhone = phoneNumber.replace(/[^\d+]/g, '');
     
-    const searchUrl = `https://services.leadconnectorhq.com/contacts/?locationId=${ghlLocationId}&query=${encodeURIComponent(cleanedPhone)}&limit=1`;
+    const searchUrl = `https://services.leadconnectorhq.com/contacts/?locationId=${ghlLocationId}&query=${encodeURIComponent(cleanedPhone)}&limit=10`;
+    
+    console.log(`[Cleanup] GHL search URL: ${searchUrl.substring(0, 80)}...`);
     
     const response = await fetch(searchUrl, {
       method: 'GET',
@@ -75,18 +77,21 @@ async function fetchCustomerFromGoHighLevel(
     });
 
     if (!response.ok) {
-      console.log('[Cleanup] GHL API error:', response.status);
+      console.log(`[Cleanup] GHL API error: ${response.status} ${response.statusText}`);
       return { name: null, contactId: null, firstName: null, lastName: null };
     }
 
     const data = await response.json();
+    console.log(`[Cleanup] GHL returned ${data.contacts?.length || 0} contacts for phone ${cleanedPhone}`);
 
     if (data.contacts && data.contacts.length > 0) {
       // Find the contact that matches the phone number
       const matchingContact = data.contacts.find((c: any) => {
-        const contactPhone = (c.phone || '').replace(/\s+/g, '').replace(/[^\\d+]/g, '');
+        const contactPhone = (c.phone || '').replace(/[^\d+]/g, '');
         return contactPhone === cleanedPhone || contactPhone.endsWith(cleanedPhone.slice(-9));
       }) || data.contacts[0];
+      
+      console.log(`[Cleanup] GHL matched contact: ${matchingContact.firstName || ''} ${matchingContact.lastName || ''} (${matchingContact.name || 'no name'})`);
       
       return { 
         name: matchingContact.name || null,
@@ -94,6 +99,8 @@ async function fetchCustomerFromGoHighLevel(
         firstName: matchingContact.firstName || null,
         lastName: matchingContact.lastName || null,
       };
+    } else {
+      console.log(`[Cleanup] No GHL contacts found for ${cleanedPhone}`);
     }
   } catch (error) {
     console.error('[Cleanup] GHL error:', error);
