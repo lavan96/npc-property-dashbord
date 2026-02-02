@@ -813,9 +813,12 @@ serve(async (req) => {
     }
 
     const phoneNumber = call.customer?.number || call.phoneNumber?.number || null;
-    let customerName = call.customer?.name || null;
+    // Don't initialize from Vapi's customer.name - it often contains transcript-extracted names
+    // GHL is the authoritative source for customer names
+    let customerName: string | null = null;
     let ghlContactId: string | null = null;
     let ghlFirstName: string | null = null;
+    const vapiCustomerName = call.customer?.name || null; // Keep as fallback only
 
     // Get agent info - for inbound squad calls, always use NPC inbound agent as primary
     const agentId = call.assistant?.id || call.assistantId || (assistantsInvolved[0]?.id) || null;
@@ -853,19 +856,31 @@ serve(async (req) => {
       }
     }
     
-    // Priority 2: If no contact ID was found, search by phone number
-    if (!customerName && phoneNumber) {
+    // Priority 2: If no GHL contact ID was found in database, search GHL API by phone number
+    if (!ghlContactId && phoneNumber) {
       const ghlResult = await fetchCustomerFromGoHighLevel(phoneNumber);
-      if (ghlResult.firstName) {
-        // Use first name as the customer name (per user request)
-        customerName = ghlResult.firstName;
-        ghlFirstName = ghlResult.firstName;
+      if (ghlResult.contactId) {
         ghlContactId = ghlResult.contactId;
-        console.log('[Vapi Webhook] Using GHL first name from phone search:', customerName);
-      } else if (ghlResult.name) {
-        customerName = ghlResult.name;
-        ghlContactId = ghlResult.contactId;
-        console.log('[Vapi Webhook] Using GHL full name from phone search:', customerName);
+        if (ghlResult.firstName) {
+          // Use first name as the customer name (per user request)
+          customerName = ghlResult.firstName;
+          ghlFirstName = ghlResult.firstName;
+          console.log('[Vapi Webhook] Using GHL first name from phone search:', customerName);
+        } else if (ghlResult.name) {
+          customerName = ghlResult.name;
+          console.log('[Vapi Webhook] Using GHL full name from phone search:', customerName);
+        }
+      }
+    }
+    
+    // Priority 3: If GHL lookup found no contact, use Vapi's customer name as fallback
+    // but only if it doesn't look like a phone number
+    if (!customerName && vapiCustomerName) {
+      const digitsOnly = vapiCustomerName.replace(/[\s\-\(\)]/g, '');
+      const isPhoneNumber = digitsOnly.startsWith('+') || /^\d{8,}$/.test(digitsOnly);
+      if (!isPhoneNumber) {
+        customerName = vapiCustomerName;
+        console.log('[Vapi Webhook] Using Vapi customer name as fallback (no GHL contact):', customerName);
       }
     }
 
