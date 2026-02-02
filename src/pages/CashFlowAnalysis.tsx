@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CashFlowAnalysisModal } from '@/components/reports/CashFlowAnalysisModal';
 import { format } from 'date-fns';
-import { Calculator, Search, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home } from 'lucide-react';
+import { Calculator, Search, FileText, TrendingUp, DollarSign, ArrowRight, Building, Home, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
@@ -30,7 +30,7 @@ interface InvestmentReport {
   location_intelligence?: any;
 }
 
-type BuildTypeFilter = 'all' | 'new_build' | 'existing_property';
+type BuildTypeFilter = 'all' | 'new_build' | 'existing_property' | 'land_only';
 
 export default function CashFlowAnalysis() {
   const navigate = useNavigate();
@@ -99,8 +99,10 @@ export default function CashFlowAnalysis() {
     return !!hasPrice;
   };
 
-  const getBuildType = (report: InvestmentReport): 'new_build' | 'existing_property' => {
-    return report.manual_overrides?.buildType === 'new_build' ? 'new_build' : 'existing_property';
+  const getBuildType = (report: InvestmentReport): 'new_build' | 'existing_property' | 'land_only' => {
+    const buildType = report.manual_overrides?.buildType;
+    if (buildType === 'new_build' || buildType === 'land_only') return buildType;
+    return 'existing_property';
   };
 
   const fetchReports = async () => {
@@ -227,6 +229,7 @@ export default function CashFlowAnalysis() {
               <SelectItem value="all">All Build Types</SelectItem>
               <SelectItem value="new_build">New Build</SelectItem>
               <SelectItem value="existing_property">Existing Property</SelectItem>
+              <SelectItem value="land_only">Land Only</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -270,6 +273,7 @@ export default function CashFlowAnalysis() {
               const weeklyRent = mo.weeklyRent || fc.weeklyRent || 0;
               const buildType = getBuildType(report);
               const isNewBuild = buildType === 'new_build';
+              const isLandOnly = buildType === 'land_only';
 
               return (
                 <Card key={report.id} className="hover:shadow-md transition-shadow">
@@ -280,11 +284,13 @@ export default function CashFlowAnalysis() {
                       </CardTitle>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Badge 
-                          variant={isNewBuild ? "default" : "secondary"}
+                          variant={isNewBuild ? "default" : isLandOnly ? "outline" : "secondary"}
                           className="text-xs"
                         >
                           {isNewBuild ? (
                             <><Building className="h-3 w-3 mr-1" />New Build</>
+                          ) : isLandOnly ? (
+                            <><MapPin className="h-3 w-3 mr-1" />Land Only</>
                           ) : (
                             <><Home className="h-3 w-3 mr-1" />Existing</>
                           )}

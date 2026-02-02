@@ -15,9 +15,10 @@ import {
 } from 'lucide-react';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { DepreciationValueCalculator } from '../DepreciationValueCalculator';
+import { BuildType } from '@/types/overrideFields';
 
 interface AdvancedTabProps {
-  buildType: 'new_build' | 'existing_property';
+  buildType: BuildType;
   cpiGrowthRate: string;
   setCpiGrowthRate: (value: string) => void;
   depreciation: string;

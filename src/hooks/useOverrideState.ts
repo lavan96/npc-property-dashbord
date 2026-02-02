@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   UnifiedOverrideData, 
   OVERRIDE_FIELD_CONFIG, 
-  getFieldConfig 
+  getFieldConfig,
+  BuildType
 } from '@/types/overrideFields';
 
 type OverrideValues = Record<string, string | number | boolean | undefined | { [key: number]: number }>;
@@ -94,7 +95,7 @@ export function useOverrideState(options: UseOverrideStateOptions = {}) {
   }, [getDefaultValues]);
 
   // Get current build type
-  const buildType = (values.buildType as 'new_build' | 'existing_property') || 'existing_property';
+  const buildType = (values.buildType as BuildType) || 'existing_property';
 
   // Get value with proper type conversion
   const getValue = useCallback((key: string): string | number | boolean | { [key: number]: number } | undefined => {
@@ -134,7 +135,8 @@ export function useOverrideState(options: UseOverrideStateOptions = {}) {
     getStringValue,
     getBooleanValue,
     // Computed values
-    isNewBuild: buildType === 'new_build'
+    isNewBuild: buildType === 'new_build',
+    isLandOnly: buildType === 'land_only'
   };
 }
 
@@ -143,7 +145,7 @@ export function useOverrideState(options: UseOverrideStateOptions = {}) {
  */
 export function convertToUnifiedData(values: OverrideValues): UnifiedOverrideData {
   const data: UnifiedOverrideData = {
-    buildType: (values.buildType as 'new_build' | 'existing_property') || 'existing_property'
+    buildType: (values.buildType as BuildType) || 'existing_property'
   };
 
   // Convert each field based on its type in config
@@ -173,7 +175,7 @@ export function useComputedOverrides(
   values: OverrideValues,
   setValue: (key: string, value: string | number | boolean) => void
 ) {
-  const buildType = values.buildType as 'new_build' | 'existing_property';
+  const buildType = values.buildType as BuildType;
   const purchasePrice = parseFloat(values.purchasePrice?.toString() || '0') || 0;
   const loanToValueRatio = parseFloat(values.loanToValueRatio?.toString() || '80') || 80;
   const weeklyRent = parseFloat(values.weeklyRent?.toString() || '0') || 0;
@@ -181,9 +183,9 @@ export function useComputedOverrides(
   const strataSinkingFund = parseFloat(values.strataSinkingFund?.toString() || '0') || 0;
   const strataSpecialLevies = parseFloat(values.strataSpecialLevies?.toString() || '0') || 0;
 
-  // Auto-calculate deposit from Purchase Price and LVR (only for existing properties)
+  // Auto-calculate deposit from Purchase Price and LVR (for existing properties and land only)
   useEffect(() => {
-    if (buildType === 'existing_property' && purchasePrice > 0) {
+    if ((buildType === 'existing_property' || buildType === 'land_only') && purchasePrice > 0) {
       const deposit = purchasePrice * ((100 - loanToValueRatio) / 100);
       const depositStr = Math.round(deposit).toString();
       const currentDeposit = values.depositValue?.toString() || '';

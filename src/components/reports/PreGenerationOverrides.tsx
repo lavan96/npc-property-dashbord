@@ -8,11 +8,12 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Calculator, Home, DollarSign, TrendingUp, Settings2 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
+import { BuildType } from '@/types/overrideFields';
 
 import { PropertyTab, FinancialsTab, IncomeExpensesTab, AdvancedTab } from './manual-inputs';
 
 export interface PreGenerationData {
-  buildType: 'new_build' | 'existing_property';
+  buildType: BuildType;
   purchasePrice?: number;
   propertyValue?: number;
   landPrice?: number;
@@ -95,8 +96,8 @@ interface PreGenerationOverridesProps {
   propertyAddress?: string;
   onDataChange: (data: PreGenerationData) => void;
   disabled?: boolean;
-  buildType?: 'new_build' | 'existing_property';
-  onBuildTypeChange?: (buildType: 'new_build' | 'existing_property') => void;
+  buildType?: BuildType;
+  onBuildTypeChange?: (buildType: BuildType) => void;
   externalPurchasePrice?: number;
   externalPropertyValue?: number;
   externalLandPrice?: number;
@@ -140,10 +141,10 @@ export function PreGenerationOverrides({
   const [activeTab, setActiveTab] = useState('property');
   
   // Build type selection
-  const [internalBuildType, setInternalBuildType] = useState<'new_build' | 'existing_property'>(externalBuildType || 'existing_property');
+  const [internalBuildType, setInternalBuildType] = useState<BuildType>(externalBuildType || 'existing_property');
   const buildType = externalBuildType !== undefined ? externalBuildType : internalBuildType;
   
-  const handleBuildTypeChange = (value: 'new_build' | 'existing_property') => {
+  const handleBuildTypeChange = (value: BuildType) => {
     setInternalBuildType(value);
     if (onBuildTypeChange) {
       onBuildTypeChange(value);

@@ -6,6 +6,8 @@
 /**
  * Represents a single override field configuration
  */
+export type BuildType = 'new_build' | 'existing_property' | 'land_only';
+
 export interface OverrideFieldConfig {
   key: string;
   label: string;
@@ -17,8 +19,8 @@ export interface OverrideFieldConfig {
   tooltip?: string;
   defaultValue?: string | number | boolean;
   options?: { value: string; label: string }[];
-  // Visibility conditions
-  showForBuildType?: 'new_build' | 'existing_property' | 'both';
+  // Visibility conditions - supports array for multiple build types
+  showForBuildType?: BuildType | BuildType[] | 'both';
   showInPreGen?: boolean;
   showInManualOverride?: boolean;
   isCashFlowField?: boolean;
@@ -51,7 +53,7 @@ export type OverrideCategory =
  */
 export interface UnifiedOverrideData {
   // Build type
-  buildType: 'new_build' | 'existing_property';
+  buildType: BuildType;
   
   // Property Details
   purchasePrice?: number;
@@ -146,7 +148,8 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'select',
     options: [
       { value: 'new_build', label: 'New Build' },
-      { value: 'existing_property', label: 'Existing Property' }
+      { value: 'existing_property', label: 'Existing Property' },
+      { value: 'land_only', label: 'Land Only' }
     ],
     showForBuildType: 'both',
     showInPreGen: true,
@@ -183,7 +186,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '350,000',
-    showForBuildType: 'new_build',
+    showForBuildType: ['new_build', 'land_only'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -204,7 +207,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     category: 'property',
     type: 'number',
     placeholder: '2',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -221,7 +224,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
       { value: 'land', label: 'Vacant Land' }
     ],
     defaultValue: 'house',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -243,7 +246,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'number',
     suffix: 'sqm',
     placeholder: '180',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -417,7 +420,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     tooltip: 'Auto-calculated from Purchase Price × (100% - LVR)',
     isComputed: true,
     computeFrom: ['purchasePrice', 'loanToValueRatio'],
-    showForBuildType: 'existing_property',
+    showForBuildType: ['existing_property', 'land_only'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -547,7 +550,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '550',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -562,7 +565,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     tooltip: 'Expected weeks of tenancy per year',
     min: 0,
     max: 52,
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -586,7 +589,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '1,200',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -612,7 +615,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     placeholder: '3,000',
     isComputed: true,
     computeFrom: ['strataAdminFund', 'strataSinkingFund', 'strataSpecialLevies'],
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -623,7 +626,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '1,800',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -634,7 +637,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '900',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -645,7 +648,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '300',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -658,7 +661,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '1,800',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -672,7 +675,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     suffix: '%',
     placeholder: '8',
     defaultValue: '8',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -683,7 +686,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     type: 'currency',
     prefix: '$',
     placeholder: '2,000',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -697,7 +700,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     tooltip: 'Usually 1 week\'s rent',
     isComputed: true,
     computeFrom: ['weeklyRent'],
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true
   },
@@ -782,7 +785,7 @@ export const OVERRIDE_FIELD_CONFIG: OverrideFieldConfig[] = [
     prefix: '$',
     placeholder: '6,000',
     tooltip: 'Year 1 depreciation deduction for tax',
-    showForBuildType: 'both',
+    showForBuildType: ['new_build', 'existing_property'],
     showInPreGen: true,
     showInManualOverride: true,
     isCashFlowField: true
@@ -936,13 +939,19 @@ export function getFieldsByCategory(category: OverrideCategory): OverrideFieldCo
  * Helper function to get fields visible for a specific build type
  */
 export function getFieldsForBuildType(
-  buildType: 'new_build' | 'existing_property',
+  buildType: BuildType,
   context: 'pregen' | 'manual'
 ): OverrideFieldConfig[] {
   return OVERRIDE_FIELD_CONFIG.filter(field => {
-    const buildTypeMatch = 
-      field.showForBuildType === 'both' || 
-      field.showForBuildType === buildType;
+    // Handle array of build types, 'both', or single build type
+    let buildTypeMatch = false;
+    if (field.showForBuildType === 'both') {
+      buildTypeMatch = true;
+    } else if (Array.isArray(field.showForBuildType)) {
+      buildTypeMatch = field.showForBuildType.includes(buildType);
+    } else {
+      buildTypeMatch = field.showForBuildType === buildType;
+    }
     
     const contextMatch = context === 'pregen' 
       ? field.showInPreGen 

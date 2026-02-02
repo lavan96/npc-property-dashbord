@@ -1,12 +1,13 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Building2, Home } from 'lucide-react';
+import { Building2, Home, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BuildType } from '@/types/overrideFields';
 
 interface BuildTypeSelectorProps {
-  value: 'new_build' | 'existing_property';
-  onChange: (value: 'new_build' | 'existing_property') => void;
+  value: BuildType;
+  onChange: (value: BuildType) => void;
   disabled?: boolean;
   showCard?: boolean;
   size?: 'sm' | 'default';
@@ -21,21 +22,20 @@ export function BuildTypeSelector({
   size = 'default',
   className
 }: BuildTypeSelectorProps) {
-  const isNewBuild = value === 'new_build';
-
   const content = (
     <RadioGroup
       value={value}
-      onValueChange={(v) => onChange(v as 'new_build' | 'existing_property')}
-      className="grid grid-cols-2 gap-4"
+      onValueChange={(v) => onChange(v as BuildType)}
+      className="grid grid-cols-3 gap-4"
       disabled={disabled}
     >
+      {/* Existing Property */}
       <Label
         htmlFor="existing_property"
         className={cn(
           "flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
-          size === 'sm' ? 'p-4' : 'p-6',
-          !isNewBuild 
+          size === 'sm' ? 'p-3' : 'p-5',
+          value === 'existing_property'
             ? 'border-primary bg-primary/5 shadow-md' 
             : 'border-border hover:border-primary/50 hover:bg-muted/50',
           disabled && 'opacity-50 cursor-not-allowed'
@@ -43,29 +43,31 @@ export function BuildTypeSelector({
       >
         <RadioGroupItem value="existing_property" id="existing_property" className="sr-only" />
         <Home className={cn(
-          !isNewBuild ? 'text-primary' : 'text-muted-foreground',
-          size === 'sm' ? 'h-8 w-8 mb-2' : 'h-10 w-10 mb-3'
+          value === 'existing_property' ? 'text-primary' : 'text-muted-foreground',
+          size === 'sm' ? 'h-7 w-7 mb-1.5' : 'h-9 w-9 mb-2'
         )} />
         <span className={cn(
-          "font-semibold",
-          size === 'sm' ? 'text-base' : 'text-lg',
-          !isNewBuild ? 'text-primary' : 'text-foreground'
+          "font-semibold text-center",
+          size === 'sm' ? 'text-sm' : 'text-base',
+          value === 'existing_property' ? 'text-primary' : 'text-foreground'
         )}>
           Existing Property
         </span>
         <span className={cn(
-          "text-muted-foreground mt-1",
-          size === 'sm' ? 'text-xs' : 'text-sm'
+          "text-muted-foreground mt-0.5 text-center",
+          size === 'sm' ? 'text-[10px]' : 'text-xs'
         )}>
-          Established home or apartment
+          Established home
         </span>
       </Label>
+
+      {/* New Build */}
       <Label
         htmlFor="new_build"
         className={cn(
           "flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
-          size === 'sm' ? 'p-4' : 'p-6',
-          isNewBuild 
+          size === 'sm' ? 'p-3' : 'p-5',
+          value === 'new_build'
             ? 'border-primary bg-primary/5 shadow-md' 
             : 'border-border hover:border-primary/50 hover:bg-muted/50',
           disabled && 'opacity-50 cursor-not-allowed'
@@ -73,21 +75,53 @@ export function BuildTypeSelector({
       >
         <RadioGroupItem value="new_build" id="new_build" className="sr-only" />
         <Building2 className={cn(
-          isNewBuild ? 'text-primary' : 'text-muted-foreground',
-          size === 'sm' ? 'h-8 w-8 mb-2' : 'h-10 w-10 mb-3'
+          value === 'new_build' ? 'text-primary' : 'text-muted-foreground',
+          size === 'sm' ? 'h-7 w-7 mb-1.5' : 'h-9 w-9 mb-2'
         )} />
         <span className={cn(
-          "font-semibold",
-          size === 'sm' ? 'text-base' : 'text-lg',
-          isNewBuild ? 'text-primary' : 'text-foreground'
+          "font-semibold text-center",
+          size === 'sm' ? 'text-sm' : 'text-base',
+          value === 'new_build' ? 'text-primary' : 'text-foreground'
         )}>
           New Build
         </span>
         <span className={cn(
-          "text-muted-foreground mt-1",
-          size === 'sm' ? 'text-xs' : 'text-sm'
+          "text-muted-foreground mt-0.5 text-center",
+          size === 'sm' ? 'text-[10px]' : 'text-xs'
         )}>
           House & land package
+        </span>
+      </Label>
+
+      {/* Land Only */}
+      <Label
+        htmlFor="land_only"
+        className={cn(
+          "flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
+          size === 'sm' ? 'p-3' : 'p-5',
+          value === 'land_only'
+            ? 'border-primary bg-primary/5 shadow-md' 
+            : 'border-border hover:border-primary/50 hover:bg-muted/50',
+          disabled && 'opacity-50 cursor-not-allowed'
+        )}
+      >
+        <RadioGroupItem value="land_only" id="land_only" className="sr-only" />
+        <MapPin className={cn(
+          value === 'land_only' ? 'text-primary' : 'text-muted-foreground',
+          size === 'sm' ? 'h-7 w-7 mb-1.5' : 'h-9 w-9 mb-2'
+        )} />
+        <span className={cn(
+          "font-semibold text-center",
+          size === 'sm' ? 'text-sm' : 'text-base',
+          value === 'land_only' ? 'text-primary' : 'text-foreground'
+        )}>
+          Land Only
+        </span>
+        <span className={cn(
+          "text-muted-foreground mt-0.5 text-center",
+          size === 'sm' ? 'text-[10px]' : 'text-xs'
+        )}>
+          Vacant land
         </span>
       </Label>
     </RadioGroup>
