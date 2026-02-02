@@ -307,10 +307,16 @@ serve(async (req) => {
           }
         }
 
-        // Priority 2: Search by phone number if no name yet
-        if (!newName && call.phone_number) {
+        // Priority 2: Check if existing customer_name is actually a phone number - use it for lookup
+        const existingIsPhoneNumber = looksLikePhoneNumber(call.customer_name);
+        const lookupPhone = call.phone_number || (existingIsPhoneNumber ? call.customer_name : null);
+        
+        if (!newName && lookupPhone) {
+          // Normalize the phone number for lookup
+          const normalizedPhone = lookupPhone.replace(/[\s\-\(\)]/g, '');
+          
           // Check cache first
-          const cached = phoneToContact.get(call.phone_number);
+          const cached = phoneToContact.get(normalizedPhone);
           if (cached) {
             if (cached.firstName || cached.lastName) {
               newName = formatFullName(cached.firstName, cached.lastName);
@@ -323,28 +329,26 @@ serve(async (req) => {
               newGhlContactId = cached.contactId;
             }
           } else {
-            // Fetch from GHL
-            const ghlResult = await fetchCustomerFromGoHighLevel(call.phone_number, ghlApiKey, ghlLocationId);
+            // Fetch from GHL using the phone number
+            console.log(`[cleanup-call-log-names] Looking up phone: ${normalizedPhone}${existingIsPhoneNumber ? ' (extracted from customer_name)' : ''}`);
+            const ghlResult = await fetchCustomerFromGoHighLevel(normalizedPhone, ghlApiKey, ghlLocationId);
             // Cache the result
-            phoneToContact.set(call.phone_number, ghlResult);
+            phoneToContact.set(normalizedPhone, ghlResult);
             
             if (ghlResult.firstName || ghlResult.lastName) {
               newName = formatFullName(ghlResult.firstName, ghlResult.lastName);
-              lookupSource = 'ghl_phone';
+              lookupSource = existingIsPhoneNumber ? 'phone_swap' : 'ghl_phone';
             } else if (ghlResult.name) {
               newName = smartCapitalize(ghlResult.name);
-              lookupSource = 'ghl_phone_name';
+              lookupSource = existingIsPhoneNumber ? 'phone_swap_name' : 'ghl_phone_name';
             }
             if (ghlResult.contactId) {
               newGhlContactId = ghlResult.contactId;
             }
           }
         }
-
-        // Priority 3: If existing name is a phone number, clear it when we couldn't find a real name
-        const existingIsPhoneNumber = looksLikePhoneNumber(call.customer_name);
         
-        // Priority 4: Capitalize existing name if no GHL match but name exists and isn't a phone number
+        // Priority 3: Capitalize existing name if no GHL match but name exists and isn't a phone number
         if (!newName && call.customer_name && !existingIsPhoneNumber) {
           newName = smartCapitalize(call.customer_name);
           lookupSource = 'existing_capitalized';
