@@ -174,31 +174,35 @@ async function fetchCustomerFromGoHighLevelById(contactId: string): Promise<{ na
 // Fetch customer name from GoHighLevel using phone number
 async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name: string | null; contactId: string | null; firstName: string | null }> {
   const ghlApiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
+  const ghlLocationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+  
   if (!ghlApiKey || !phoneNumber) {
     console.log('[Vapi Webhook] GoHighLevel: Missing API key or phone number');
     return { name: null, contactId: null, firstName: null };
   }
+  
+  if (!ghlLocationId) {
+    console.log('[Vapi Webhook] GoHighLevel: Missing location ID - required for contact search');
+    return { name: null, contactId: null, firstName: null };
+  }
 
   try {
-    // Clean up phone number - remove spaces and ensure it has country code
+    // Clean up phone number - remove spaces and non-digit chars except +
     let cleanedPhone = phoneNumber.replace(/\s+/g, '').replace(/[^\d+]/g, '');
     
     console.log('[Vapi Webhook] GoHighLevel: Searching for contact with phone:', cleanedPhone);
     
-    // GoHighLevel API v2 - Search contacts by phone
-    const searchUrl = `https://services.leadconnectorhq.com/contacts/search`;
+    // GoHighLevel API v2 - Use GET contacts endpoint with query parameter
+    // This is more reliable than the search endpoint for phone lookups
+    const searchUrl = `https://services.leadconnectorhq.com/contacts/?locationId=${ghlLocationId}&query=${encodeURIComponent(cleanedPhone)}&limit=1`;
     
     const response = await fetch(searchUrl, {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${ghlApiKey}`,
         'Content-Type': 'application/json',
         'Version': '2021-07-28',
       },
-      body: JSON.stringify({
-        phone: cleanedPhone,
-        limit: 1,
-      }),
     });
 
     if (!response.ok) {
@@ -207,21 +211,26 @@ async function fetchCustomerFromGoHighLevel(phoneNumber: string): Promise<{ name
     }
 
     const data = await response.json();
-    console.log('[Vapi Webhook] GoHighLevel: Search response:', JSON.stringify(data));
+    console.log('[Vapi Webhook] GoHighLevel: Search response contacts count:', data.contacts?.length || 0);
 
     if (data.contacts && data.contacts.length > 0) {
-      const contact = data.contacts[0];
-      const firstName = contact.firstName || null;
-      const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
+      // Find the contact that matches the phone number
+      const matchingContact = data.contacts.find((c: any) => {
+        const contactPhone = (c.phone || '').replace(/\s+/g, '').replace(/[^\d+]/g, '');
+        return contactPhone === cleanedPhone || contactPhone.endsWith(cleanedPhone.slice(-9));
+      }) || data.contacts[0];
+      
+      const firstName = matchingContact.firstName || null;
+      const fullName = [matchingContact.firstName, matchingContact.lastName].filter(Boolean).join(' ').trim();
       console.log('[Vapi Webhook] GoHighLevel: Found contact:', { 
-        id: contact.id, 
+        id: matchingContact.id, 
         name: fullName,
-        firstName: contact.firstName,
-        lastName: contact.lastName 
+        firstName: matchingContact.firstName,
+        lastName: matchingContact.lastName 
       });
       return { 
-        name: fullName || contact.name || null, 
-        contactId: contact.id || null,
+        name: fullName || matchingContact.name || null, 
+        contactId: matchingContact.id || null,
         firstName,
       };
     }
