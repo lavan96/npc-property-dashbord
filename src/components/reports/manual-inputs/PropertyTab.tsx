@@ -219,8 +219,8 @@ export function PropertyTab({
         </CardContent>
       </Card>
 
-      {/* Property Specifications - Hide for Land Only (except land size) */}
-      {(setPropertyType || setCarSpaces || setLandSizeSqm || setBuildSizeSqm) && !isLandOnly && (
+      {/* Property Specifications - Show Property Type always, hide other fields for Land Only */}
+      {(setPropertyType || setCarSpaces || setLandSizeSqm || setBuildSizeSqm) && (
         <Card>
           <CardContent className="pt-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
@@ -229,14 +229,14 @@ export function PropertyTab({
             </h3>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Property Type */}
+              {/* Property Type - Always visible, auto-set to 'land' for Land Only */}
               {setPropertyType && (
                 <div className="space-y-2">
                   <Label htmlFor="propertyType" className="text-sm font-medium">Property Type</Label>
                   <Select 
-                    value={propertyType || 'house'} 
+                    value={isLandOnly ? 'land' : (propertyType || 'house')} 
                     onValueChange={setPropertyType}
-                    disabled={disabled}
+                    disabled={disabled || isLandOnly}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
@@ -255,8 +255,8 @@ export function PropertyTab({
                 </div>
               )}
 
-              {/* Car Spaces */}
-              {setCarSpaces && (
+              {/* Car Spaces - Hide for Land Only */}
+              {setCarSpaces && !isLandOnly && (
                 <div className="space-y-2">
                   <Label htmlFor="carSpaces" className="text-sm font-medium flex items-center gap-1">
                     <Car className="h-3 w-3" />
@@ -294,8 +294,8 @@ export function PropertyTab({
                 </div>
               )}
 
-              {/* Build Size */}
-              {setBuildSizeSqm && (
+              {/* Build Size - Hide for Land Only */}
+              {setBuildSizeSqm && !isLandOnly && (
                 <div className="space-y-2">
                   <Label htmlFor="buildSizeSqm" className="text-sm font-medium">Build Size</Label>
                   <div className="relative">
