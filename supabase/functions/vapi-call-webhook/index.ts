@@ -853,13 +853,10 @@ serve(async (req) => {
         
         // Fetch the contact's name directly from GHL using the contact ID
         const ghlByIdResult = await fetchCustomerFromGoHighLevelById(ghlContactId);
-        if (ghlByIdResult.firstName) {
-          // Use first name as the customer name (per user request)
-          customerName = ghlByIdResult.firstName;
-          ghlFirstName = ghlByIdResult.firstName;
-          console.log('[Vapi Webhook] Using GHL first name from contact ID lookup:', customerName);
-        } else if (ghlByIdResult.name) {
+        if (ghlByIdResult.name) {
+          // Use full name as the customer name
           customerName = ghlByIdResult.name;
+          ghlFirstName = ghlByIdResult.firstName;
           console.log('[Vapi Webhook] Using GHL full name from contact ID lookup:', customerName);
         }
       }
@@ -870,13 +867,10 @@ serve(async (req) => {
       const ghlResult = await fetchCustomerFromGoHighLevel(phoneNumber);
       if (ghlResult.contactId) {
         ghlContactId = ghlResult.contactId;
-        if (ghlResult.firstName) {
-          // Use first name as the customer name (per user request)
-          customerName = ghlResult.firstName;
-          ghlFirstName = ghlResult.firstName;
-          console.log('[Vapi Webhook] Using GHL first name from phone search:', customerName);
-        } else if (ghlResult.name) {
+        if (ghlResult.name) {
+          // Use full name as the customer name
           customerName = ghlResult.name;
+          ghlFirstName = ghlResult.firstName;
           console.log('[Vapi Webhook] Using GHL full name from phone search:', customerName);
         }
       }
