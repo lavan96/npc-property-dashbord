@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
-import { CallRecordingPlayer } from '@/components/call-logs/CallRecordingPlayer';
+import { CallRecordingPlayer, CallRecordingPlayerHandle } from '@/components/call-logs/CallRecordingPlayer';
 import { CallLogsExport } from '@/components/call-logs/CallLogsExport';
 import { LiveCallsMonitor } from '@/components/call-logs/LiveCallsMonitor';
 import { CallAnalyticsTrends } from '@/components/call-logs/CallAnalyticsTrends';
@@ -145,6 +145,7 @@ const CallLogs = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { fetchCallLogs } = useSecureCallLogs();
+  const recordingPlayerRef = useRef<CallRecordingPlayerHandle>(null);
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [filteredCalls, setFilteredCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,6 +173,14 @@ const CallLogs = () => {
     voicemails: 0,
     squadCalls: 0,
   });
+
+  // Handle modal close - stop recording playback
+  const handleModalOpenChange = useCallback((open: boolean) => {
+    if (!open && recordingPlayerRef.current) {
+      recordingPlayerRef.current.stop();
+    }
+    setShowCallDetail(open);
+  }, []);
 
   useEffect(() => {
     fetchCalls();
@@ -961,7 +970,7 @@ const CallLogs = () => {
       </Tabs>
 
       {/* Call Detail Modal */}
-      <Dialog open={showCallDetail} onOpenChange={setShowCallDetail}>
+      <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1092,6 +1101,8 @@ const CallLogs = () => {
 
                   {selectedCall.recording_url && (
                     <CallRecordingPlayer 
+                      ref={recordingPlayerRef}
+                      key={selectedCall.id}
                       recordingUrl={selectedCall.recording_url} 
                       duration={selectedCall.duration_seconds}
                     />
