@@ -26,6 +26,7 @@ import { CallAlerts } from '@/components/call-logs/CallAlerts';
 import { CallQualityScore, CallQualityBadge } from '@/components/call-logs/CallQualityScore';
 import { WeeklyReportConfig } from '@/components/call-logs/WeeklyReportConfig';
 import { CleanupContactNames } from '@/components/call-logs/CleanupContactNames';
+import { CleanupTestCalls } from '@/components/call-logs/CleanupTestCalls';
 import { NegativeCallAnalysis } from '@/components/call-logs/NegativeCallAnalysis';
 import { 
   Phone, 
@@ -406,6 +407,7 @@ const CallLogs = () => {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {!isMobile && <WeeklyReportConfig />}
+          {!isMobile && <CleanupTestCalls onComplete={fetchCalls} />}
           {!isMobile && <CleanupContactNames onComplete={fetchCalls} />}
           {!isMobile && <CallAlerts calls={filteredCalls} />}
           <CallLogsExport calls={filteredCalls} stats={stats} />

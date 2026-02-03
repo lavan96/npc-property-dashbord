@@ -127,6 +127,55 @@ serve(async (req) => {
       );
     }
 
+    // Operation: cleanupTestCalls - delete all calls from specified test phone numbers
+    if (operation === 'cleanupTestCalls') {
+      const { testNumbers } = data || {};
+      
+      if (!testNumbers || !Array.isArray(testNumbers) || testNumbers.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'testNumbers array is required for cleanupTestCalls' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[manage-call-logs] Cleaning up test calls for numbers:`, testNumbers);
+      
+      // First, count how many calls will be deleted
+      const { count, error: countError } = await supabase
+        .from('vapi_call_logs')
+        .select('*', { count: 'exact', head: true })
+        .in('phone_number', testNumbers);
+
+      if (countError) {
+        console.error('[manage-call-logs] Error counting test calls:', countError);
+        return new Response(
+          JSON.stringify({ success: false, error: countError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Delete all calls matching the test numbers
+      const { error: deleteError } = await supabase
+        .from('vapi_call_logs')
+        .delete()
+        .in('phone_number', testNumbers);
+
+      if (deleteError) {
+        console.error('[manage-call-logs] Error deleting test calls:', deleteError);
+        return new Response(
+          JSON.stringify({ success: false, error: deleteError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[manage-call-logs] Successfully deleted ${count} test calls`);
+
+      return new Response(
+        JSON.stringify({ success: true, deletedCount: count || 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ success: false, error: `Unknown operation: ${operation}` }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
