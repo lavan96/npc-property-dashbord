@@ -16,6 +16,10 @@ interface RequestBody {
     includePropertyCount?: boolean;
     filters?: Record<string, any>;
   };
+  notesOptions?: {
+    limit?: number;
+    offset?: number;
+  };
   include?: {
     properties?: boolean;
     income?: boolean;
@@ -59,7 +63,7 @@ serve(async (req) => {
 
     console.log(`Authenticated user ${userId} requesting client data`);
 
-    const { clientId, clientIds, listMode, listOptions = {}, include = {} } = body;
+    const { clientId, clientIds, listMode, listOptions = {}, notesOptions = {}, include = {} } = body;
 
     // Support for querying other tables (portfolio_analysis_reports, etc.)
     const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts'];
@@ -230,8 +234,19 @@ serve(async (req) => {
 
       if (include.notes) {
         fetchPromises.push(
-          supabase.from('client_notes').select('*').eq('client_id', id).order('created_at', { ascending: false })
-            .then(({ data }) => { clientResult.notes = data || []; })
+          (async () => {
+            let query = supabase.from('client_notes').select('*').eq('client_id', id).order('created_at', { ascending: false });
+            
+            // Apply pagination if notesOptions provided
+            if (notesOptions.limit !== undefined && notesOptions.offset !== undefined) {
+              const start = notesOptions.offset;
+              const end = notesOptions.offset + notesOptions.limit - 1;
+              query = query.range(start, end);
+            }
+            
+            const { data } = await query;
+            clientResult.notes = data || [];
+          })()
         );
       }
 
