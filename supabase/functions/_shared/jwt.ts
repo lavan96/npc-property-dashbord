@@ -50,9 +50,11 @@ export async function generateSupabaseJWT(
     appMetadata?: Record<string, any>;
   }
 ): Promise<string> {
-  const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET');
+  // Supabase Edge Runtime typically exposes the project JWT secret as JWT_SECRET.
+  // Some environments may expose it as SUPABASE_JWT_SECRET.
+  const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET') ?? Deno.env.get('JWT_SECRET');
   if (!jwtSecret) {
-    throw new Error('SUPABASE_JWT_SECRET is not configured');
+    throw new Error('JWT secret is not configured (expected JWT_SECRET or SUPABASE_JWT_SECRET)');
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -106,9 +108,9 @@ export async function generateSupabaseJWT(
  * @returns Decoded payload or null if invalid
  */
 export async function verifySupabaseJWT(token: string): Promise<JWTPayload | null> {
-  const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET');
+  const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET') ?? Deno.env.get('JWT_SECRET');
   if (!jwtSecret) {
-    console.error('SUPABASE_JWT_SECRET is not configured');
+    console.error('JWT secret is not configured (expected JWT_SECRET or SUPABASE_JWT_SECRET)');
     return null;
   }
 
