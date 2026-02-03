@@ -13,6 +13,48 @@ interface VoiceNoteRecorderProps {
 
 const MAX_RECORDING_DURATION = 300; // 5 minutes max for notes
 
+function getSupportedAudioMimeType(): string | null {
+  // Prefer opus/webm, but fall back to whatever the browser supports.
+  // Safari often does not support webm, so we allow mp4 as a fallback.
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+  ];
+
+  if (typeof MediaRecorder === 'undefined') return null;
+
+  for (const type of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(type)) return type;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Returning null means we will create MediaRecorder without specifying mimeType,
+  // letting the browser choose a default.
+  return null;
+}
+
+function getMicErrorMessage(error: any): string {
+  const name = error?.name as string | undefined;
+  switch (name) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
+      return 'Microphone permission was blocked. Please allow mic access in your browser/site settings.';
+    case 'NotFoundError':
+      return 'No microphone device found.';
+    case 'NotReadableError':
+      return 'Your microphone is in use by another app/tab.';
+    case 'OverconstrainedError':
+      return 'Microphone constraints could not be satisfied on this device.';
+    default:
+      return 'Failed to access microphone. Please check permissions and try again.';
+  }
+}
+
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -29,27 +71,81 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const liveTranscriptTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const liveTranscriptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopModeRef = useRef<'pause' | 'finalize' | null>(null);
+  const recorderMimeTypeRef = useRef<string | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    if (liveTranscriptTimeoutRef.current) {
+      clearTimeout(liveTranscriptTimeoutRef.current);
+      liveTranscriptTimeoutRef.current = null;
+    }
+  }, []);
+
+  const stopAndReleaseStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
+      if (disabled || isProcessing) return;
+
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        toast.error('Your browser does not support microphone recording.');
+        return;
+      }
+      if (typeof MediaRecorder === 'undefined') {
+        toast.error('Your browser does not support audio recording (MediaRecorder).');
+        return;
+      }
+
+      // Clear any previous timers/state (prevents double intervals)
+      clearTimers();
+      stopModeRef.current = null;
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
+        // Use *ideal* constraints for maximum compatibility (hard constraints can fail on some devices/browsers)
         audio: {
-          sampleRate: 16000,
-          channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true,
-        } 
+          autoGainControl: true,
+          sampleRate: { ideal: 16000 },
+          channelCount: { ideal: 1 },
+        },
       });
       
       streamRef.current = stream;
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-          ? 'audio/webm;codecs=opus' 
-          : 'audio/webm'
+
+      // If the mic stream ends unexpectedly, reflect that in UI (this prevents the timer getting stuck at 0)
+      stream.getTracks().forEach((track) => {
+        track.addEventListener('ended', () => {
+          // If we didn't explicitly pause/finalize, treat this as an unexpected stop.
+          if (!stopModeRef.current) {
+            clearTimers();
+            setIsRecording(false);
+            setIsPaused(false);
+            toast.error('Microphone stopped unexpectedly. Please try again.');
+          }
+        });
       });
+      
+      const chosenMimeType = getSupportedAudioMimeType();
+      recorderMimeTypeRef.current = chosenMimeType;
+
+      const mediaRecorder = chosenMimeType
+        ? new MediaRecorder(stream, { mimeType: chosenMimeType })
+        : new MediaRecorder(stream);
+
+      // Prefer browser-reported mimeType when we didn't explicitly set one.
+      recorderMimeTypeRef.current = recorderMimeTypeRef.current || mediaRecorder.mimeType || null;
       
       mediaRecorderRef.current = mediaRecorder;
       
@@ -60,18 +156,6 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
         setRecordingDuration(0);
       }
       setIsPaused(false);
-      
-      // Start duration timer with auto-stop at max
-      durationIntervalRef.current = setInterval(() => {
-        setRecordingDuration(prev => {
-          const newDuration = prev + 1;
-          if (newDuration >= MAX_RECORDING_DURATION) {
-            finalizeRecording();
-            toast.info('Maximum recording reached (5 min). Transcribing...');
-          }
-          return newDuration;
-        });
-      }, 1000);
       
       mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
@@ -85,11 +169,16 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
             liveTranscriptTimeoutRef.current = setTimeout(async () => {
               try {
                 const recentChunks = chunksRef.current.slice(-40);
-                const partialBlob = new Blob(recentChunks, { type: 'audio/webm' });
+                const blobType = recorderMimeTypeRef.current || mediaRecorderRef.current?.mimeType || 'audio/webm';
+                const partialBlob = new Blob(recentChunks, { type: blobType });
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                   const base64 = (reader.result as string).split(',')[1];
-                  const { data } = await invokeSecureFunction('voice-to-text', { audio: base64 });
+                  const { data } = await invokeSecureFunction('voice-to-text', {
+                    audio: base64,
+                    mimeType: blobType,
+                    fileName: blobType.includes('mp4') ? 'audio.mp4' : (blobType.includes('ogg') ? 'audio.ogg' : 'audio.webm'),
+                  });
                   if (data?.text) {
                     setLiveTranscript(data.text);
                   }
@@ -102,27 +191,39 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
           }
         }
       };
+
+      mediaRecorder.onerror = (event: any) => {
+        console.error('[VoiceNoteRecorder] MediaRecorder error:', event);
+        clearTimers();
+        setIsRecording(false);
+        setIsPaused(false);
+        stopAndReleaseStream();
+        toast.error('Recording failed. Please try again.');
+      };
       
       mediaRecorder.onstop = async () => {
-        // Clean up timers
-        if (durationIntervalRef.current) {
-          clearInterval(durationIntervalRef.current);
-          durationIntervalRef.current = null;
+        clearTimers();
+
+        const stopMode = stopModeRef.current;
+        stopModeRef.current = null;
+
+        // Always release the mic after any stop (pause or finalize)
+        stopAndReleaseStream();
+
+        // Ensure UI reflects the stopped recorder
+        setIsRecording(false);
+
+        // If pausing, do NOT transcribe and do NOT reset duration/chunks
+        if (stopMode === 'pause') {
+          setIsPaused(true);
+          return;
         }
-        if (liveTranscriptTimeoutRef.current) {
-          clearTimeout(liveTranscriptTimeoutRef.current);
-          liveTranscriptTimeoutRef.current = null;
-        }
-        
-        // Only stop tracks if finalizing (not pausing)
-        if (!isPaused && streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-        
-        // Only transcribe if finalizing
-        if (!isPaused && chunksRef.current.length > 0) {
-          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+
+        // Finalize: transcribe the full recording
+        setIsPaused(false);
+        if (chunksRef.current.length > 0) {
+          const blobType = recorderMimeTypeRef.current || 'audio/webm';
+          const audioBlob = new Blob(chunksRef.current, { type: blobType });
           await processAudio(audioBlob);
           setLiveTranscript('');
           setRecordingDuration(0);
@@ -131,35 +232,60 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
       
       // Request data every 500ms for chunking
       mediaRecorder.start(500);
+
+      // Start duration timer only once recorder has started
+      durationIntervalRef.current = setInterval(() => {
+        setRecordingDuration(prev => {
+          const newDuration = prev + 1;
+          if (newDuration >= MAX_RECORDING_DURATION) {
+            // Avoid relying on stale hook closures; directly stop as finalize.
+            stopModeRef.current = 'finalize';
+            try {
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+              }
+            } catch {
+              // ignore
+            }
+            toast.info('Maximum recording reached (5 min). Transcribing...');
+          }
+          return newDuration;
+        });
+      }, 1000);
+
       setIsRecording(true);
       toast.info('Recording started...', { duration: 2000 });
     } catch (error: any) {
       console.error('Failed to start recording:', error);
-      toast.error('Failed to access microphone. Please check permissions.');
+      clearTimers();
+      stopAndReleaseStream();
+      setIsRecording(false);
+      setIsPaused(false);
+      toast.error(getMicErrorMessage(error));
     }
-  }, [isPaused]);
+  }, [clearTimers, disabled, isPaused, isProcessing, stopAndReleaseStream]);
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording && !isPaused) {
-      mediaRecorderRef.current.stop();
-      
-      // Stop stream tracks while paused
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      
+      stopModeRef.current = 'pause';
       // Clear timer but keep duration
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-        durationIntervalRef.current = null;
+      clearTimers();
+
+      try {
+        if (mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+      } catch (e) {
+        console.warn('[VoiceNoteRecorder] pause stop failed:', e);
+        // Ensure mic released even if recorder is already inactive
+        stopAndReleaseStream();
       }
-      
+
       setIsPaused(true);
       setIsRecording(false);
       toast.info('Recording paused');
     }
-  }, [isRecording, isPaused]);
+  }, [clearTimers, isPaused, isRecording, stopAndReleaseStream]);
 
   const resumeRecording = useCallback(async () => {
     if (isPaused) {
@@ -169,13 +295,24 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
 
   const finalizeRecording = useCallback(() => {
     if (mediaRecorderRef.current && (isRecording || isPaused)) {
+      stopModeRef.current = 'finalize';
       setIsPaused(false);
       
       if (isRecording) {
-        mediaRecorderRef.current.stop();
+        try {
+          if (mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+          }
+        } catch (e) {
+          console.warn('[VoiceNoteRecorder] finalize stop failed:', e);
+          stopAndReleaseStream();
+        }
       } else if (isPaused && chunksRef.current.length > 0) {
         // If paused, manually process since recorder already stopped
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        clearTimers();
+        stopAndReleaseStream();
+        const blobType = recorderMimeTypeRef.current || 'audio/webm';
+        const audioBlob = new Blob(chunksRef.current, { type: blobType });
         processAudio(audioBlob);
         setLiveTranscript('');
         setRecordingDuration(0);
@@ -183,7 +320,7 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
       
       setIsRecording(false);
     }
-  }, [isRecording, isPaused]);
+  }, [clearTimers, isPaused, isRecording, stopAndReleaseStream]);
 
   const processAudio = async (audioBlob: Blob) => {
     setIsProcessing(true);
@@ -203,7 +340,11 @@ export function VoiceNoteRecorder({ onTranscriptReady, noteType, disabled }: Voi
 
       // Step 1: Transcribe audio
       const { data: transcribeData, error: transcribeError } = await invokeSecureFunction('voice-to-text', {
-        audio: base64Audio
+        audio: base64Audio,
+        mimeType: audioBlob.type || recorderMimeTypeRef.current || undefined,
+        fileName: (audioBlob.type || '').includes('mp4')
+          ? 'audio.mp4'
+          : ((audioBlob.type || '').includes('ogg') ? 'audio.ogg' : 'audio.webm'),
       });
 
       if (transcribeError || !transcribeData?.text) {
