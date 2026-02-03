@@ -266,35 +266,7 @@ export default function ClientTracker() {
       .slice(0, 10); // Show top 10
   }, [ghlEvents]);
 
-  const { data: activeClientNotes = [], isLoading: notesLoading } = useQuery({
-    queryKey: ['active-client-notes', activeClients.map(c => c.id)],
-    queryFn: async () => {
-      if (activeClients.length === 0) return [];
-      
-      // Fetch notes for all active clients in parallel via secure Edge Function
-      const { invokeSecureFunction } = await import('@/lib/secureInvoke');
-      
-      const notesPromises = activeClients.map(async (client) => {
-        const { data, error } = await invokeSecureFunction('get-client-data', {
-          clientId: client.id,
-          include: { notes: true },
-        });
-        // Response structure is { success, client, notes, ... } - notes at top level
-        if (!error && data?.success && data.notes) {
-          return data.notes;
-        }
-        return [];
-      });
-      
-      const allNotes = await Promise.all(notesPromises);
-      const flatNotes = allNotes.flat();
-      
-      return flatNotes.sort((a: any, b: any) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ) as ClientNote[];
-    },
-    enabled: activeClients.length > 0,
-  });
+  // Notes are now fetched directly within each ActiveClientCard using infinite scroll
 
   // State for drag and drop
   const [draggedClient, setDraggedClient] = useState<TrackedClient | null>(null);
@@ -1269,11 +1241,7 @@ export default function ClientTracker() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  {notesLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : filteredActiveClients.length === 0 ? (
+                  {filteredActiveClients.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       {searchQuery ? 'No matching active clients found' : 'No active clients found'}
                     </div>
@@ -1284,14 +1252,12 @@ export default function ClientTracker() {
                         {filteredActiveClients
                           .slice((activeNotesPage - 1) * NOTES_PER_PAGE, activeNotesPage * NOTES_PER_PAGE)
                           .map(client => {
-                            const clientNotes = activeClientNotes.filter(n => n.client_id === client.id);
                             const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                             
                             return (
                               <ActiveClientCard
                                 key={client.id}
                                 client={client}
-                                notes={clientNotes}
                                 stageInfo={stageInfo}
                               />
                             );

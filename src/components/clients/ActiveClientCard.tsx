@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,11 +35,12 @@ import {
 } from 'lucide-react';
 import { formatFullName } from '@/utils/nameFormatting';
 import { format } from 'date-fns';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 
 interface ClientNote {
   id: string;
@@ -67,7 +68,6 @@ interface StageInfo {
 
 interface ActiveClientCardProps {
   client: TrackedClient;
-  notes: ClientNote[];
   stageInfo: StageInfo;
 }
 
@@ -83,15 +83,56 @@ type NoteType = typeof noteTypes[number]['value'];
 
 // Character limit for note truncation
 const NOTE_TRUNCATE_LENGTH = 150;
+const PAGE_SIZE = 10;
 
-export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardProps) {
+/**
+ * Fetch notes with pagination for infinite scrolling
+ */
+async function fetchNotesSecure(clientId: string, page: number) {
+  const { data, error } = await invokeSecureFunction('get-client-data', {
+    clientId,
+    include: { notes: true },
+    notesOptions: {
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+    },
+  });
+
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error(data?.error || 'Failed to fetch notes');
+  
+  const notes = data.notes || [];
+  return {
+    notes,
+    nextPage: notes.length === PAGE_SIZE ? page + 1 : undefined,
+  };
+}
+
+export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
   const queryClient = useQueryClient();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteType, setNewNoteType] = useState<NoteType>('general');
   const [editNoteContent, setEditNoteContent] = useState('');
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  // Infinite query for notes
+  const {
+    data,
+    isLoading: notesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['active-client-notes', client.id],
+    queryFn: ({ pageParam = 0 }) => fetchNotesSecure(client.id, pageParam),
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 0,
+  });
+
+  const notes = data?.pages.flatMap((page) => page.notes) || [];
 
   // Toggle note expansion
   const toggleNoteExpansion = (noteId: string) => {
@@ -203,7 +244,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
       return fallbackResult.data.result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['active-client-notes', client.id] });
       setNewNoteContent('');
       setNewNoteType('general');
       setIsAddingNote(false);
@@ -239,7 +280,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
       throw new Error(fnError?.message || 'Failed to update note');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['active-client-notes', client.id] });
       setEditingNoteId(null);
       setEditNoteContent('');
       toast.success('Note updated');
@@ -270,7 +311,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
       throw new Error(fnError?.message || 'Failed to delete note');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['active-client-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['active-client-notes', client.id] });
       toast.success('Note deleted');
     },
     onError: (error: any) => {
@@ -301,6 +342,14 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
       case 'meeting': return 'text-purple-600';
       case 'task': return 'text-orange-600';
       default: return 'text-muted-foreground';
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const scrolledToBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50;
+    if (scrolledToBottom && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
   };
 
@@ -362,7 +411,7 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
         {/* Add Note Section */}
         {isAddingNote ? (
           <div className="space-y-2 p-2 border rounded-md bg-muted/30">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Select value={newNoteType} onValueChange={(v: NoteType) => setNewNoteType(v)}>
                 <SelectTrigger className="w-28 h-7 text-xs">
                   <SelectValue />
@@ -378,6 +427,11 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
                   ))}
                 </SelectContent>
               </Select>
+              <VoiceNoteRecorder
+                noteType={newNoteType}
+                onTranscriptReady={(text) => setNewNoteContent(prev => prev ? `${prev}\n\n${text}` : text)}
+                disabled={addNoteMutation.isPending}
+              />
             </div>
             <Textarea
               placeholder="Enter your note..."
@@ -422,16 +476,24 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
           </Button>
         )}
 
-        {/* Notes List */}
-        {notes.length > 0 ? (
+        {/* Notes List with Infinite Scroll */}
+        {notesLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : notes.length > 0 ? (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
               <FileText className="h-3 w-3" />
-              Notes ({notes.length})
+              Notes ({notes.length}{hasNextPage ? '+' : ''})
             </p>
             <ScrollArea className="h-40">
-              <div className="space-y-2 pr-3">
-                {notes.map(note => (
+              <div 
+                ref={scrollRef}
+                className="space-y-2 pr-3"
+                onScroll={handleScroll}
+              >
+                {notes.map((note: ClientNote) => (
                   <div 
                     key={note.id} 
                     className="bg-muted/50 rounded-md p-2.5 text-xs group relative"
@@ -527,6 +589,11 @@ export function ActiveClientCard({ client, notes, stageInfo }: ActiveClientCardP
                     )}
                   </div>
                 ))}
+                {isFetchingNextPage && (
+                  <div className="flex justify-center py-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </div>
