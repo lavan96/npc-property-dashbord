@@ -166,6 +166,27 @@ export const useSecureCallLogs = () => {
     return { error: null };
   }, []);
 
+  // Cleanup test calls - delete all calls from specified test phone numbers
+  const cleanupTestCalls = useCallback(async (testNumbers: string[]) => {
+    const { data, error } = await invokeSecureFunction('manage-call-logs', {
+      operation: 'cleanupTestCalls',
+      data: { testNumbers }
+    });
+
+    if (error) {
+      console.error('[useSecureCallLogs] Error cleaning up test calls:', error);
+      return { deletedCount: 0, error };
+    }
+
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { deletedCount: 0, error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log(`[useSecureCallLogs] Cleaned up ${data.deletedCount} test calls via secure Edge Function`);
+    return { deletedCount: data.deletedCount || 0, error: null };
+  }, []);
+
   return {
     fetchCallLogs,
     fetchLiveCalls,
@@ -173,6 +194,7 @@ export const useSecureCallLogs = () => {
     fetchCall,
     updateCallTags,
     updateCall,
-    deleteCall
+    deleteCall,
+    cleanupTestCalls
   };
 };
