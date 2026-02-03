@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -31,18 +31,29 @@ const noteTypes = [
 
 type NoteType = typeof noteTypes[number]['value'];
 
+const PAGE_SIZE = 10;
+
 /**
- * Secure fetch for notes data using HttpOnly cookies
+ * Secure fetch for notes data using HttpOnly cookies with pagination
  */
-async function fetchNotesSecure(clientId: string) {
+async function fetchNotesSecure(clientId: string, page: number) {
   const { data, error } = await invokeSecureFunction('get-client-data', {
     clientId,
     include: { notes: true },
+    notesOptions: {
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+    },
   });
 
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error(data?.error || 'Failed to fetch notes');
-  return data.data?.notes || [];
+  
+  const notes = data.data?.notes || [];
+  return {
+    notes,
+    nextPage: notes.length === PAGE_SIZE ? page + 1 : undefined,
+  };
 }
 
 export function ClientNotes({ clientId }: ClientNotesProps) {
@@ -50,11 +61,22 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
   const [noteType, setNoteType] = useState<NoteType>('general');
   const [isAdding, setIsAdding] = useState(false);
   const queryClient = useQueryClient();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: notes = [], isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['client-notes', clientId],
-    queryFn: () => fetchNotesSecure(clientId),
+    queryFn: ({ pageParam = 0 }) => fetchNotesSecure(clientId, pageParam),
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 0,
   });
+
+  const notes = data?.pages.flatMap((page) => page.notes) || [];
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {
@@ -199,7 +221,17 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         </div>
       ) : (
         <ScrollArea className="h-[300px]">
-          <div className="space-y-3 pr-4">
+          <div 
+            ref={scrollRef}
+            className="space-y-3 pr-4"
+            onScroll={(e) => {
+              const target = e.currentTarget;
+              const scrolledToBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50;
+              if (scrolledToBottom && hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+          >
             {notes.map((note: any) => (
               <div key={note.id} className="p-3 border rounded-lg space-y-2 group">
                 <div className="flex items-center justify-between">
@@ -224,6 +256,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                 <p className="text-sm whitespace-pre-wrap">{note.content}</p>
               </div>
             ))}
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
         </ScrollArea>
       )}
