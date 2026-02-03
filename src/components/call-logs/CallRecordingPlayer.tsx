@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -10,7 +10,12 @@ interface CallRecordingPlayerProps {
   duration?: number | null;
 }
 
-export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPlayerProps) => {
+export interface CallRecordingPlayerHandle {
+  stop: () => void;
+}
+
+export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRecordingPlayerProps>(
+  ({ recordingUrl, duration }, ref) => {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const isInitializedRef = useRef(false);
@@ -22,6 +27,17 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
+
+  // Expose stop method to parent
+  useImperativeHandle(ref, () => ({
+    stop: () => {
+      if (wavesurferRef.current) {
+        wavesurferRef.current.stop();
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }
+    }
+  }), []);
 
   // Initialize WaveSurfer
   useEffect(() => {
@@ -257,4 +273,6 @@ export const CallRecordingPlayer = ({ recordingUrl, duration }: CallRecordingPla
       </CardContent>
     </Card>
   );
-};
+});
+
+CallRecordingPlayer.displayName = 'CallRecordingPlayer';
