@@ -53,6 +53,7 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
 };
 
 serve(async (req) => {
+  // IMPORTANT: Declare corsHeaders BEFORE try block so it's available in catch
   const origin = req.headers.get('origin') || '';
   const corsHeaders = createCorsHeaders(origin);
 
@@ -261,7 +262,7 @@ serve(async (req) => {
     console.error('[manage-templates] Error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

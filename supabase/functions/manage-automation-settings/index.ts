@@ -36,6 +36,7 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  // IMPORTANT: Declare corsHeaders BEFORE try block so it's available in catch
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 
@@ -363,7 +364,7 @@ serve(async (req) => {
     console.error('[manage-automation-settings] Unexpected error:', error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
