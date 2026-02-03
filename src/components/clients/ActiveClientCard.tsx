@@ -345,8 +345,12 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
     }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
+  // Use onScrollCapture to capture scroll events from the inner viewport
+  const handleScrollCapture = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    // Only handle scroll events from the actual scrollable viewport
+    if (!target.classList.contains('h-full')) return;
+    
     const scrolledToBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50;
     if (scrolledToBottom && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -487,11 +491,10 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               <FileText className="h-3 w-3" />
               Notes ({notes.length}{hasNextPage ? '+' : ''})
             </p>
-            <ScrollArea className="h-40">
+            <ScrollArea className="h-40" onScrollCapture={handleScrollCapture}>
               <div 
                 ref={scrollRef}
                 className="space-y-2 pr-3"
-                onScroll={handleScroll}
               >
                 {notes.map((note: ClientNote) => (
                   <div 
