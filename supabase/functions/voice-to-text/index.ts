@@ -7,36 +7,23 @@ const corsHeaders = {
 };
 
 /**
- * Process base64 in chunks to avoid memory issues with large audio files
- * Same implementation as working report-qa function
+ * Decode base64 to Uint8Array - simple and reliable approach
+ * Uses atob for the full string (works fine for audio files up to ~50MB)
  */
-function processBase64Chunks(base64String: string, chunkSize = 32768): Uint8Array {
-  const chunks: Uint8Array[] = [];
-  let position = 0;
+function decodeBase64ToUint8Array(base64String: string): Uint8Array {
+  // Clean up the base64 string - remove any whitespace or newlines
+  const cleanBase64 = base64String.replace(/\s/g, '');
   
-  while (position < base64String.length) {
-    const chunk = base64String.slice(position, position + chunkSize);
-    const binaryChunk = atob(chunk);
-    const bytes = new Uint8Array(binaryChunk.length);
-    
-    for (let i = 0; i < binaryChunk.length; i++) {
-      bytes[i] = binaryChunk.charCodeAt(i);
-    }
-    
-    chunks.push(bytes);
-    position += chunkSize;
+  // Decode base64 to binary string
+  const binaryString = atob(cleanBase64);
+  
+  // Convert binary string to Uint8Array
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
-
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
+  
+  return bytes;
 }
 
 serve(async (req) => {
@@ -61,10 +48,10 @@ serve(async (req) => {
       console.log('[Voice to Text] Stripped data URL prefix, new length:', base64Data.length);
     }
 
-    // Decode base64 to binary using chunked processing (matches report-qa implementation)
+    // Decode base64 to binary using simple atob approach
     let binaryAudio: Uint8Array;
     try {
-      binaryAudio = processBase64Chunks(base64Data);
+      binaryAudio = decodeBase64ToUint8Array(base64Data);
       console.log('[Voice to Text] Decoded audio size:', binaryAudio.length, 'bytes');
     } catch (decodeError) {
       console.error('[Voice to Text] Base64 decode error:', decodeError);
