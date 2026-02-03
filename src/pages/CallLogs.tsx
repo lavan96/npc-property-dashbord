@@ -10,7 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, isWithinInterval } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
 import { CallRecordingPlayer } from '@/components/call-logs/CallRecordingPlayer';
@@ -50,7 +54,8 @@ import {
   LineChart,
   Tag,
   SlidersHorizontal,
-  AlertTriangle
+  AlertTriangle,
+  CalendarIcon
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -149,6 +154,7 @@ const CallLogs = () => {
   const [selectedSquad, setSelectedSquad] = useState<string>('all');
   const [selectedIntent, setSelectedIntent] = useState<string>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -189,7 +195,7 @@ const CallLogs = () => {
 
   useEffect(() => {
     filterCalls();
-  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedSquad, selectedIntent, selectedTags]);
+  }, [calls, searchQuery, selectedAgent, selectedOutcome, selectedSquadType, selectedSquad, selectedIntent, selectedTags, dateRange]);
 
   useEffect(() => {
     calculateStats();
@@ -288,6 +294,19 @@ const CallLogs = () => {
       filtered = filtered.filter(call => 
         selectedTags.some(tag => call.tags?.includes(tag))
       );
+    }
+
+    // Date range filter - use started_at if available, otherwise fall back to created_at
+    if (dateRange?.from) {
+      const fromDate = startOfDay(dateRange.from);
+      const toDate = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+      
+      filtered = filtered.filter(call => {
+        // Use started_at if available, otherwise use created_at (for failed/unanswered calls)
+        const callDate = call.started_at ? new Date(call.started_at) : (call.created_at ? new Date(call.created_at) : null);
+        if (!callDate) return false;
+        return isWithinInterval(callDate, { start: fromDate, end: toDate });
+      });
     }
 
     setFilteredCalls(filtered);
@@ -636,6 +655,78 @@ const CallLogs = () => {
               </SelectContent>
             </Select>
             <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
+            
+            {/* Date Range Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d, yyyy")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "MMM d, yyyy")
+                    )
+                  ) : (
+                    <span>Filter by date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <div className="p-3 border-b space-y-2">
+                  <p className="text-sm font-medium">Quick Select</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: new Date(), to: new Date() })}
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}
+                    >
+                      Last 7 days
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
+                    >
+                      Last 30 days
+                    </Button>
+                    {dateRange && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDateRange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </CardContent>
       </Card>
@@ -657,11 +748,20 @@ const CallLogs = () => {
               </CardDescription>
             </div>
             {/* Active filters summary */}
-            {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery) && (
+            {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery || dateRange) && (
               <div className="flex items-center gap-2 flex-wrap">
                 {searchQuery && (
                   <Badge variant="secondary" className="text-xs">
                     Search: "{searchQuery}"
+                  </Badge>
+                )}
+                {dateRange?.from && (
+                  <Badge variant="secondary" className="text-xs">
+                    <CalendarIcon className="w-3 h-3 mr-1" />
+                    {dateRange.to 
+                      ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
+                      : format(dateRange.from, "MMM d, yyyy")
+                    }
                   </Badge>
                 )}
                 {selectedSquad !== 'all' && (
@@ -685,6 +785,7 @@ const CallLogs = () => {
                     setSelectedSquadType('all');
                     setSelectedSquad('all');
                     setSelectedIntent('all');
+                    setDateRange(undefined);
                   }}
                 >
                   Clear filters
@@ -722,6 +823,7 @@ const CallLogs = () => {
                     setSelectedSquadType('all');
                     setSelectedSquad('all');
                     setSelectedIntent('all');
+                    setDateRange(undefined);
                   }}
                 >
                   Clear all filters
@@ -814,7 +916,12 @@ const CallLogs = () => {
                           )}
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {call.started_at ? format(new Date(call.started_at), 'MMM d, h:mm a') : '-'}
+                            {call.started_at 
+                              ? format(new Date(call.started_at), 'MMM d, h:mm a')
+                              : call.created_at 
+                                ? <span className="text-muted-foreground/70">{format(new Date(call.created_at), 'MMM d, h:mm a')} (initiated)</span>
+                                : '-'
+                            }
                           </span>
                           <span className="flex items-center gap-1 font-medium">
                             {formatDuration(call.duration_seconds)}
