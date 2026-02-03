@@ -963,7 +963,7 @@ No investment report has been uploaded. You are having an open conversation abou
             body: JSON.stringify({
               model: "openai/gpt-5.2",
               messages,
-              max_tokens: 4096,
+              max_completion_tokens: 4096,
               stream: true,
             }),
           });
@@ -1028,7 +1028,7 @@ No investment report has been uploaded. You are having an open conversation abou
           body: JSON.stringify({
             model: "openai/gpt-5.2",
             messages,
-            max_tokens: 4096,
+            max_completion_tokens: 4096,
           }),
         });
       }
