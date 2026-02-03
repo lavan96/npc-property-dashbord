@@ -1695,6 +1695,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_favorite: boolean
+          last_note_at: string | null
           last_review_date: string | null
           living_situation: string | null
           marital_status: string | null
@@ -1747,6 +1748,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_favorite?: boolean
+          last_note_at?: string | null
           last_review_date?: string | null
           living_situation?: string | null
           marital_status?: string | null
@@ -1799,6 +1801,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_favorite?: boolean
+          last_note_at?: string | null
           last_review_date?: string | null
           living_situation?: string | null
           marital_status?: string | null
