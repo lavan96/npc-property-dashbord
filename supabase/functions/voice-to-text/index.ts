@@ -6,6 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
+/**
+ * Process base64 in chunks to avoid memory issues with large audio files
+ * Same implementation as working report-qa function
+ */
+function processBase64Chunks(base64String: string, chunkSize = 32768): Uint8Array {
+  const chunks: Uint8Array[] = [];
+  let position = 0;
+  
+  while (position < base64String.length) {
+    const chunk = base64String.slice(position, position + chunkSize);
+    const binaryChunk = atob(chunk);
+    const bytes = new Uint8Array(binaryChunk.length);
+    
+    for (let i = 0; i < binaryChunk.length; i++) {
+      bytes[i] = binaryChunk.charCodeAt(i);
+    }
+    
+    chunks.push(bytes);
+    position += chunkSize;
+  }
+
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -19,16 +52,19 @@ serve(async (req) => {
       throw new Error('No audio data provided');
     }
 
-    console.log('[Voice to Text] Processing audio, length:', audio.length);
+    console.log('[Voice to Text] Processing audio, base64 length:', audio.length);
 
-    // Decode base64 to binary using standard atob
+    // Strip data URL prefix if present (e.g., "data:audio/webm;base64,...")
+    let base64Data = audio;
+    if (audio.includes(',')) {
+      base64Data = audio.split(',')[1];
+      console.log('[Voice to Text] Stripped data URL prefix, new length:', base64Data.length);
+    }
+
+    // Decode base64 to binary using chunked processing (matches report-qa implementation)
     let binaryAudio: Uint8Array;
     try {
-      const binaryString = atob(audio);
-      binaryAudio = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        binaryAudio[i] = binaryString.charCodeAt(i);
-      }
+      binaryAudio = processBase64Chunks(base64Data);
       console.log('[Voice to Text] Decoded audio size:', binaryAudio.length, 'bytes');
     } catch (decodeError) {
       console.error('[Voice to Text] Base64 decode error:', decodeError);

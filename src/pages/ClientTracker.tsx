@@ -43,14 +43,7 @@ import {
   User
 } from 'lucide-react';
 import { ActiveClientCard } from '@/components/clients/ActiveClientCard';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+// Pagination imports removed - using infinite scroll now
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -127,8 +120,9 @@ export default function ClientTracker() {
   const [activeTab, setActiveTab] = useState('kanban');
   const [isSyncingPipelines, setIsSyncingPipelines] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [activeNotesPage, setActiveNotesPage] = useState(1);
-  const NOTES_PER_PAGE = 9;
+  // Infinite scroll for active clients
+  const [displayedActiveCount, setDisplayedActiveCount] = useState(12);
+  const LOAD_MORE_COUNT = 12;
   
   // Event details modal state
   const [selectedEvent, setSelectedEvent] = useState<GHLEvent | null>(null);
@@ -216,9 +210,9 @@ export default function ClientTracker() {
     });
   }, [activeClients, searchQuery, activeTab]);
 
-  // Reset pagination when search changes
+  // Reset displayed count when search changes
   useEffect(() => {
-    setActiveNotesPage(1);
+    setDisplayedActiveCount(12);
   }, [searchQuery]);
 
   // Auto-sync from GHL periodically
@@ -1257,10 +1251,10 @@ export default function ClientTracker() {
                     </div>
                   ) : (
                     <>
-                      {/* Grid of client cards */}
+                      {/* Grid of client cards with infinite scroll */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredActiveClients
-                          .slice((activeNotesPage - 1) * NOTES_PER_PAGE, activeNotesPage * NOTES_PER_PAGE)
+                          .slice(0, displayedActiveCount)
                           .map(client => {
                             const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                             
@@ -1274,42 +1268,17 @@ export default function ClientTracker() {
                           })}
                       </div>
 
-                      {/* Pagination */}
-                      {filteredActiveClients.length > NOTES_PER_PAGE && (
-                        <div className="mt-6">
-                          <Pagination>
-                            <PaginationContent>
-                              <PaginationItem>
-                                <PaginationPrevious 
-                                  onClick={() => setActiveNotesPage(p => Math.max(1, p - 1))}
-                                  className={cn(
-                                    "cursor-pointer",
-                                    activeNotesPage === 1 && "pointer-events-none opacity-50"
-                                  )}
-                                />
-                              </PaginationItem>
-                              {Array.from({ length: Math.ceil(filteredActiveClients.length / NOTES_PER_PAGE) }).map((_, i) => (
-                                <PaginationItem key={i}>
-                                  <PaginationLink
-                                    onClick={() => setActiveNotesPage(i + 1)}
-                                    isActive={activeNotesPage === i + 1}
-                                    className="cursor-pointer"
-                                  >
-                                    {i + 1}
-                                  </PaginationLink>
-                                </PaginationItem>
-                              ))}
-                              <PaginationItem>
-                                <PaginationNext 
-                                  onClick={() => setActiveNotesPage(p => Math.min(Math.ceil(filteredActiveClients.length / NOTES_PER_PAGE), p + 1))}
-                                  className={cn(
-                                    "cursor-pointer",
-                                    activeNotesPage >= Math.ceil(filteredActiveClients.length / NOTES_PER_PAGE) && "pointer-events-none opacity-50"
-                                  )}
-                                />
-                              </PaginationItem>
-                            </PaginationContent>
-                          </Pagination>
+                      {/* Load More Button */}
+                      {filteredActiveClients.length > displayedActiveCount && (
+                        <div className="mt-6 flex justify-center">
+                          <Button
+                            variant="outline"
+                            onClick={() => setDisplayedActiveCount(prev => prev + LOAD_MORE_COUNT)}
+                            className="gap-2"
+                          >
+                            <Loader2 className="h-4 w-4" />
+                            Load More ({filteredActiveClients.length - displayedActiveCount} remaining)
+                          </Button>
                         </div>
                       )}
                     </>
