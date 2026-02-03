@@ -32,7 +32,7 @@ serve(async (req) => {
   }
 
   try {
-    const { audio } = await req.json();
+    const { audio, mimeType, fileName } = await req.json();
     
     if (!audio) {
       console.error('[Voice to Text] No audio data provided');
@@ -65,9 +65,14 @@ serve(async (req) => {
     }
 
     // Prepare form data
+    const contentType = (typeof mimeType === 'string' && mimeType.trim()) ? mimeType.trim() : 'audio/webm';
+    const resolvedFileName = (typeof fileName === 'string' && fileName.trim())
+      ? fileName.trim()
+      : (contentType.includes('mp4') ? 'audio.mp4' : (contentType.includes('ogg') ? 'audio.ogg' : 'audio.webm'));
+
     const formData = new FormData();
-    const blob = new Blob([binaryAudio], { type: 'audio/webm' });
-    formData.append('file', blob, 'audio.webm');
+    const blob = new Blob([binaryAudio], { type: contentType });
+    formData.append('file', blob, resolvedFileName);
     formData.append('model', 'whisper-1');
 
     console.log('[Voice to Text] Sending to OpenAI Whisper API...');
