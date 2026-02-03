@@ -122,6 +122,14 @@ serve(async (req) => {
 
         result = isArray ? inserted : inserted?.[0];
         error = insertError;
+
+        // Update last_note_at on the client when a note is created
+        if (!error && table === 'client_notes' && clientId) {
+          await supabase
+            .from('clients')
+            .update({ last_note_at: new Date().toISOString() })
+            .eq('id', clientId);
+        }
         break;
       }
 
