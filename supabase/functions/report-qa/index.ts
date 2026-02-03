@@ -1172,7 +1172,7 @@ No investment report has been uploaded. You are having an open conversation abou
       );
     }
 
-    // Handle fetching conversation history
+    // Handle fetching conversation history (no limit - return all)
     if (action === "get-conversations") {
       const { data, error } = await supabase
         .from("report_qa_conversations")
@@ -1180,8 +1180,7 @@ No investment report has been uploaded. You are having an open conversation abou
           *,
           messages:report_qa_messages(*)
         `)
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
