@@ -83,6 +83,10 @@ import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report
 import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySettings';
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
+import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
+import { ModelBadge } from '@/components/report-qa/ModelBadge';
+import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
+import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
 
 interface UploadProgress {
   fileName: string;
@@ -106,6 +110,8 @@ interface ChatMessage {
   timestamp: Date;
   audioUrl?: string; // For voice messages
   attachments?: PDFAttachment[]; // For PDF attachments
+  modelProvider?: ModelProvider | null; // Which AI model generated this message
+  citations?: string[]; // Perplexity citations
 }
 
 interface UploadedReport {
@@ -167,6 +173,7 @@ export default function ReportQA() {
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
   const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<ModelProvider>('openai');
   const [showInPlaceEmailCompose, setShowInPlaceEmailCompose] = useState(false);
   const [emailContext, setEmailContext] = useState<{
     title: string;
@@ -657,6 +664,7 @@ export default function ReportQA() {
           conversationId: activeConversationId,
           stream: true,
           session_token: sessionToken, // Add session token to body as fallback
+          modelProvider: selectedModel,
         }),
       });
 
@@ -714,6 +722,7 @@ export default function ReportQA() {
         role: 'assistant',
         content: fullContent || 'I couldn\'t generate a response. Please try again.',
         timestamp: new Date(),
+        modelProvider: selectedModel,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -726,7 +735,7 @@ export default function ReportQA() {
           table: 'report_qa_messages',
           data: [
             { conversation_id: activeConversationId, role: 'user', content: messageContent },
-            { conversation_id: activeConversationId, role: 'assistant', content: fullContent },
+            { conversation_id: activeConversationId, role: 'assistant', content: fullContent, model_provider: selectedModel },
           ]
         }).then(() => {
           console.log('[ReportQA] Messages saved to database');
@@ -1658,6 +1667,13 @@ export default function ReportQA() {
               
               {/* Action bar */}
               <div className="flex items-center gap-1">
+                {/* Model Selector */}
+                <ModelSelector
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  disabled={isProcessing}
+                />
+                <Separator orientation="vertical" className="h-6 mx-1" />
                 {conversationId && (
                   <>
                     <PinConversation
@@ -1758,6 +1774,9 @@ export default function ReportQA() {
                           <span className="text-xs opacity-40">
                             {message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                           </span>
+                          {message.role === 'assistant' && message.modelProvider && (
+                            <ModelBadge provider={message.modelProvider} />
+                          )}
                         </div>
                         {message.role === 'assistant' ? (
                           <div className="qa-markdown">

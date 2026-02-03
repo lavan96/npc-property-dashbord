@@ -611,6 +611,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -755,9 +756,9 @@ serve(async (req) => {
 
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true } = body;
+      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai' } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
-      console.log(`[report-qa] Reports count: ${reportContents?.length || 0}, RAG: ${useRAG}`);
+      console.log(`[report-qa] Reports count: ${reportContents?.length || 0}, RAG: ${useRAG}, Provider: ${modelProvider}`);
 
       const hasReports = reportContents && reportContents.length > 0;
       const isMultiReport = reportContents && reportContents.length > 1;
@@ -927,25 +928,50 @@ No investment report has been uploaded. You are having an open conversation abou
       const streamingEnabled = body.stream === true;
       
       if (streamingEnabled) {
-        console.log(`[report-qa] Streaming mode enabled`);
+        console.log(`[report-qa] Streaming mode enabled, provider: ${modelProvider}`);
         
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages,
-            max_tokens: 4096,
-            stream: true,
-          }),
-        });
+        let response: Response;
+        let citations: string[] = [];
+        
+        if (modelProvider === 'perplexity') {
+          // Use Perplexity API directly
+          if (!PERPLEXITY_API_KEY) {
+            throw new Error("PERPLEXITY_API_KEY is not configured");
+          }
+          
+          response = await fetch("https://api.perplexity.ai/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "sonar-pro",
+              messages,
+              max_tokens: 4096,
+              stream: true,
+            }),
+          });
+        } else {
+          // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
+          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "openai/gpt-5.2",
+              messages,
+              max_tokens: 4096,
+              stream: true,
+            }),
+          });
+        }
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`[report-qa] Chat error: ${response.status} - ${errorText}`);
+          console.error(`[report-qa] Chat error (${modelProvider}): ${response.status} - ${errorText}`);
           
           if (response.status === 429) {
             return new Response(
@@ -970,22 +996,46 @@ No investment report has been uploaded. You are having an open conversation abou
       }
       
       // Non-streaming mode (original behavior)
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages,
-          max_tokens: 4096,
-        }),
-      });
+      let response: Response;
+      let citations: string[] = [];
+      
+      if (modelProvider === 'perplexity') {
+        // Use Perplexity API directly
+        if (!PERPLEXITY_API_KEY) {
+          throw new Error("PERPLEXITY_API_KEY is not configured");
+        }
+        
+        response = await fetch("https://api.perplexity.ai/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "sonar-pro",
+            messages,
+            max_tokens: 4096,
+          }),
+        });
+      } else {
+        // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-5.2",
+            messages,
+            max_tokens: 4096,
+          }),
+        });
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[report-qa] Chat error: ${response.status} - ${errorText}`);
+        console.error(`[report-qa] Chat error (${modelProvider}): ${response.status} - ${errorText}`);
         
         if (response.status === 429) {
           return new Response(
@@ -1004,7 +1054,13 @@ No investment report has been uploaded. You are having an open conversation abou
       }
 
       const aiResponse = await response.json();
-      console.log(`[report-qa] AI Response structure:`, JSON.stringify(aiResponse, null, 2));
+      console.log(`[report-qa] AI Response structure (${modelProvider}):`, JSON.stringify(aiResponse, null, 2));
+      
+      // Extract citations from Perplexity response
+      if (modelProvider === 'perplexity' && aiResponse.citations) {
+        citations = aiResponse.citations;
+        console.log(`[report-qa] Perplexity citations: ${citations.length}`);
+      }
       
       // GPT-5 may return content in different paths
       let responseText = 
@@ -1023,7 +1079,7 @@ No investment report has been uploaded. You are having an open conversation abou
       if (conversationId) {
         await supabase.from("report_qa_messages").insert([
           { conversation_id: conversationId, role: "user", content: question },
-          { conversation_id: conversationId, role: "assistant", content: responseText },
+          { conversation_id: conversationId, role: "assistant", content: responseText, model_provider: modelProvider },
         ]);
 
         // Check if this is the first message and generate a dynamic title
@@ -1079,12 +1135,14 @@ No investment report has been uploaded. You are having an open conversation abou
         }
       }
 
-      console.log(`[report-qa] Generated response: ${responseText.length} characters`);
+      console.log(`[report-qa] Generated response (${modelProvider}): ${responseText.length} characters`);
 
       return new Response(
         JSON.stringify({ 
           response: responseText,
           ragUsed: ragContext.length > 0,
+          modelProvider,
+          citations: citations.length > 0 ? citations : undefined,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
