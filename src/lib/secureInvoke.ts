@@ -72,7 +72,12 @@ export async function invokeSecureFunction<T = any>(
         // Add session token as custom header for additional fallback
         ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
-      credentials: 'include', // Required for HttpOnly cookies
+      // Do NOT include cross-site cookies here.
+      // Using `credentials: 'include'` makes this a credentialed CORS request, which is
+      // incompatible with wildcard CORS (`Access-Control-Allow-Origin: *`) and surfaces as
+      // a browser-level "Failed to fetch".
+      // We authenticate via Bearer token instead.
+      credentials: 'omit',
       body: JSON.stringify(requestBody),
     });
 
