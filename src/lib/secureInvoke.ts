@@ -7,6 +7,9 @@
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
+// Matches src/hooks/useAuth.tsx
+const ACCESS_TOKEN_KEY = 'supabase_access_token';
+
 export interface InvokeResult<T = any> {
   data: T | null;
   error: { message: string } | null;
@@ -18,6 +21,17 @@ export interface InvokeResult<T = any> {
 function getSessionToken(): string | null {
   try {
     return sessionStorage.getItem('session_token');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get access token from sessionStorage (set by custom auth flow)
+ */
+function getAccessToken(): string | null {
+  try {
+    return sessionStorage.getItem(ACCESS_TOKEN_KEY);
   } catch {
     return null;
   }
@@ -38,6 +52,10 @@ export async function invokeSecureFunction<T = any>(
   try {
     // Get session token as fallback for cross-origin cookie issues
     const sessionToken = getSessionToken();
+
+    // Prefer bearer access token when available (avoids cross-site cookie issues)
+    const accessToken = getAccessToken();
+    const bearerToken = accessToken || SUPABASE_ANON_KEY;
     
     // Include session token in body as fallback if cookies fail
     const requestBody = body 
@@ -49,7 +67,8 @@ export async function invokeSecureFunction<T = any>(
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        // Use real user token when available; fall back to anon for public functions.
+        'Authorization': `Bearer ${bearerToken}`,
         // Add session token as custom header for additional fallback
         ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
@@ -60,6 +79,13 @@ export async function invokeSecureFunction<T = any>(
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('[invokeSecureFunction] Request failed', {
+        functionName,
+        status: response.status,
+        data,
+        hasAccessToken: Boolean(accessToken),
+        hasSessionToken: Boolean(sessionToken),
+      });
       return { 
         data: data as T, 
         error: { message: data.error || `HTTP ${response.status}` } 
