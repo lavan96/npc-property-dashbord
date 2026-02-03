@@ -98,6 +98,7 @@ interface TrackedClient {
   current_stage_id: string | null;
   opportunity_status: string | null;
   is_favorite?: boolean;
+  last_note_at?: string | null;
 }
 
 interface ClientNote {
@@ -182,7 +183,7 @@ export default function ClientTracker() {
       const { data, error } = await invokeSecureFunction('get-client-data', {
         mode: 'list',
         listOptions: {
-          select: 'id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite',
+          select: 'id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite, last_note_at',
           orderBy: 'follow_up_date',
           orderAsc: true
         }
@@ -193,8 +194,17 @@ export default function ClientTracker() {
     },
   });
 
-  // Fetch active clients (marked as favorite) and their notes
-  const activeClients = useMemo(() => clients.filter(c => c.is_favorite), [clients]);
+  // Fetch active clients (marked as favorite) and sort by most recent note activity
+  const activeClients = useMemo(() => {
+    return clients
+      .filter(c => c.is_favorite)
+      .sort((a, b) => {
+        // Sort by last_note_at descending (most recent first), nulls last
+        const aTime = a.last_note_at ? new Date(a.last_note_at).getTime() : 0;
+        const bTime = b.last_note_at ? new Date(b.last_note_at).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [clients]);
   // Filter active clients by search query
   const filteredActiveClients = useMemo(() => {
     if (activeTab !== 'active' || searchQuery === '') return activeClients;
