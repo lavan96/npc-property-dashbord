@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -120,7 +120,7 @@ export function ExpenseManualEntry({ clientId, onComplete }: ExpenseManualEntryP
     },
   });
 
-  const updateField = (field: keyof ExpenseFormData, value: any) => {
+  const updateField = useCallback((field: keyof ExpenseFormData, value: any) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
       // Auto-set essential based on category
@@ -130,7 +130,7 @@ export function ExpenseManualEntry({ clientId, onComplete }: ExpenseManualEntryP
       }
       return updated;
     });
-  };
+  }, []);
 
   const resetForm = () => {
     setFormData(defaultFormData);

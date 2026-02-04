@@ -1,16 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -21,11 +13,11 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Plus, Briefcase, Loader2, Trash2, Edit } from 'lucide-react';
+import { Plus, Briefcase, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmploymentFormFields } from './EmploymentFormFields';
 
 interface EmploymentManualEntryProps {
   clientId: string;
@@ -92,9 +84,9 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
   const secondaryEmployment = existingEmployment.filter((e: any) => e.contact_type === 'secondary' && e.is_current);
   const previousEmployment = existingEmployment.filter((e: any) => !e.is_current);
 
-  const updateField = (field: keyof EmploymentFormData, value: any) => {
+  const updateField = useCallback((field: keyof EmploymentFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   const resetForm = () => {
     setFormData({ ...defaultFormData, contact_type: activeTab });
@@ -224,84 +216,6 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
     </Card>
   );
 
-  const EmploymentForm = () => (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">
-          {editingId ? 'Edit Employment' : 'Add New Employment'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm">Current Employer</Label>
-          <Switch
-            checked={formData.is_current}
-            onCheckedChange={(v) => updateField('is_current', v)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Employment Type</Label>
-          <Select
-            value={formData.employment_type}
-            onValueChange={(v) => updateField('employment_type', v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {employmentTypeOptions.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Occupation/Role</Label>
-          <Input
-            value={formData.occupation_role}
-            onChange={(e) => updateField('occupation_role', e.target.value)}
-            placeholder="Software Engineer"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Employer Name *</Label>
-          <Input
-            value={formData.employer_name}
-            onChange={(e) => updateField('employer_name', e.target.value)}
-            placeholder="Company Pty Ltd"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label className="text-xs">Start Date</Label>
-          <Input
-            type="date"
-            value={formData.start_date}
-            onChange={(e) => updateField('start_date', e.target.value)}
-          />
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          {editingId && (
-            <Button variant="outline" onClick={resetForm} className="flex-1">
-              Cancel
-            </Button>
-          )}
-          <Button 
-            onClick={handleSubmit} 
-            disabled={saveMutation.isPending}
-            className="flex-1"
-          >
-            {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {editingId ? 'Update' : 'Add'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   return (
     <div className="space-y-4">
@@ -379,7 +293,14 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
                     ))}
                   </div>
                 )}
-                <EmploymentForm />
+                <EmploymentFormFields
+                  formData={formData}
+                  updateField={updateField}
+                  onSubmit={handleSubmit}
+                  onCancel={resetForm}
+                  isPending={saveMutation.isPending}
+                  isEditing={!!editingId}
+                />
               </TabsContent>
 
               <TabsContent value="secondary" className="space-y-4 mt-4">
@@ -391,7 +312,14 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
                     ))}
                   </div>
                 )}
-                <EmploymentForm />
+                <EmploymentFormFields
+                  formData={formData}
+                  updateField={updateField}
+                  onSubmit={handleSubmit}
+                  onCancel={resetForm}
+                  isPending={saveMutation.isPending}
+                  isEditing={!!editingId}
+                />
               </TabsContent>
 
               <TabsContent value="previous" className="space-y-4 mt-4">

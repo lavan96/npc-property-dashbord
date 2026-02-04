@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -126,13 +126,13 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
     }
   });
 
-  const updateField = (field: keyof IncomeFormData, value: any) => {
+  const updateField = useCallback((field: keyof IncomeFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const updateNumberField = (field: keyof IncomeFormData, value: string) => {
-    updateField(field, parseFloat(value) || 0);
-  };
+  const updateNumberField = useCallback((field: keyof IncomeFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
+  }, []);
 
   const saveMutation = useMutation({
     mutationFn: async () => {

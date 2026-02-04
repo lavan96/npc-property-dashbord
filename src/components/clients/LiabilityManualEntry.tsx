@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -90,9 +90,9 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
     },
   });
 
-  const updateField = (field: keyof LiabilityFormData, value: any) => {
+  const updateField = useCallback((field: keyof LiabilityFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   const resetForm = () => {
     setFormData(defaultFormData);

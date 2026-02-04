@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,16 +59,16 @@ const relationshipOptions = [
   { value: 'Other', label: 'Other' },
 ];
 
-export function AdditionalContactCard({
+export const AdditionalContactCard = memo(function AdditionalContactCard({
   contact,
   index,
   onChange,
   onRemove,
   isEditing = true,
 }: AdditionalContactCardProps) {
-  const updateField = (field: keyof AdditionalContact, value: string) => {
+  const updateField = useCallback((field: keyof AdditionalContact, value: string) => {
     onChange(index, { ...contact, [field]: value });
-  };
+  }, [onChange, index, contact]);
 
   const ordinalLabel = getOrdinalLabel(index + 3); // +3 because Primary=1, Secondary=2
 
@@ -203,7 +203,7 @@ export function AdditionalContactCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 // Helper function for ordinal labels
 function getOrdinalLabel(n: number): string {
