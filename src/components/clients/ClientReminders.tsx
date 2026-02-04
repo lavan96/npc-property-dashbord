@@ -68,7 +68,7 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
 
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch reminders');
-      return data.data?.reminders || [];
+      return data.reminders || [];
     }
   });
 

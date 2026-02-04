@@ -72,7 +72,7 @@ async function fetchEmploymentSecure(clientId: string) {
 
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error('Failed to fetch employment');
-  return data.data?.employment || [];
+  return data.employment || [];
 }
 
 export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManualEntryProps) {

@@ -86,7 +86,7 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
       
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error('Failed to fetch liabilities');
-      return data.data?.liabilities || [];
+      return data.liabilities || [];
     },
   });
 

@@ -49,7 +49,7 @@ async function fetchNotesSecure(clientId: string, page: number) {
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error(data?.error || 'Failed to fetch notes');
   
-  const notes = data.data?.notes || [];
+  const notes = data.notes || [];
   return {
     notes,
     nextPage: notes.length === PAGE_SIZE ? page + 1 : undefined,

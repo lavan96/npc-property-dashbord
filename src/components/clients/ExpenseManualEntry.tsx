@@ -116,7 +116,7 @@ export function ExpenseManualEntry({ clientId, onComplete }: ExpenseManualEntryP
       
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error('Failed to fetch expenses');
-      return data.data?.expenses || [];
+      return data.expenses || [];
     },
   });
 
