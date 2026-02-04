@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { format } from 'date-fns';
 import { AdditionalContactCard, AdditionalContact, relationshipOptions } from './AdditionalContactCard';
+import { ContactFields } from './ContactFields';
 
 interface PersonalDetailsManualEntryProps {
   clientId: string;
@@ -201,9 +202,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
     }
   }, [open, clientData, initialAdditionalContacts]);
 
-  const updateField = (field: keyof FormData, value: string | number) => {
+  const updateField = useCallback((field: keyof FormData | string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   // Additional contacts management
   const handleAddContact = () => {
@@ -222,18 +223,19 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
     setAdditionalContacts([...additionalContacts, newContact]);
   };
 
-  const handleUpdateContact = (index: number, updatedContact: AdditionalContact) => {
+  const handleUpdateContact = useCallback((index: number, updatedContact: AdditionalContact) => {
     setAdditionalContacts(prev => prev.map((c, i) => i === index ? updatedContact : c));
-  };
+  }, []);
 
-  const handleRemoveContact = (index: number) => {
-    const contactToRemove = additionalContacts[index];
-    if (contactToRemove.id && !contactToRemove.isNew) {
-      // Track existing contacts for deletion
-      setDeletedContactIds(prev => [...prev, contactToRemove.id!]);
-    }
-    setAdditionalContacts(prev => prev.filter((_, i) => i !== index));
-  };
+  const handleRemoveContact = useCallback((index: number) => {
+    setAdditionalContacts(prev => {
+      const contactToRemove = prev[index];
+      if (contactToRemove.id && !contactToRemove.isNew) {
+        setDeletedContactIds(d => [...d, contactToRemove.id!]);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
 
   const updateClientMutation = useMutation({
     mutationFn: async () => {
@@ -365,93 +367,6 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
     updateClientMutation.mutate();
   };
 
-  const ContactFields = ({ prefix, title }: { prefix: 'primary' | 'secondary'; title: string }) => (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <User className="h-4 w-4" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-2">
-            <Label className="text-xs">First Name {prefix === 'primary' && '*'}</Label>
-            <Input
-              value={formData[`${prefix}_first_name`]}
-              onChange={(e) => updateField(`${prefix}_first_name`, e.target.value)}
-              placeholder="John"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Middle Name</Label>
-            <Input
-              value={formData[`${prefix}_middle_name`]}
-              onChange={(e) => updateField(`${prefix}_middle_name`, e.target.value)}
-              placeholder=""
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Surname {prefix === 'primary' && '*'}</Label>
-            <Input
-              value={formData[`${prefix}_surname`]}
-              onChange={(e) => updateField(`${prefix}_surname`, e.target.value)}
-              placeholder="Smith"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label className="text-xs">Mobile</Label>
-            <Input
-              type="tel"
-              value={formData[`${prefix}_mobile`]}
-              onChange={(e) => updateField(`${prefix}_mobile`, e.target.value)}
-              placeholder="0400 000 000"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Email</Label>
-            <Input
-              type="email"
-              value={formData[`${prefix}_email`]}
-              onChange={(e) => updateField(`${prefix}_email`, e.target.value)}
-              placeholder="email@example.com"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label className="text-xs">Gender</Label>
-            <Select
-              value={formData[`${prefix}_gender`]}
-              onValueChange={(v) => updateField(`${prefix}_gender`, v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                {genderOptions.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Date of Birth</Label>
-            <Input
-              type="date"
-              value={formData[`${prefix}_dob`]}
-              onChange={(e) => updateField(`${prefix}_dob`, e.target.value)}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   // Read-only display component for when sheet is closed
   const DisplayCard = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
     <Card>
@@ -509,11 +424,11 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                 </TabsList>
 
                 <TabsContent value="contacts" className="space-y-4 mt-4">
-                  <ContactFields prefix="primary" title="Primary Contact" />
+                  <ContactFields prefix="primary" title="Primary Contact" formData={formData} updateField={updateField} />
                   
                   <Separator className="my-4" />
                   
-                  <ContactFields prefix="secondary" title="Secondary Contact" />
+                  <ContactFields prefix="secondary" title="Secondary Contact" formData={formData} updateField={updateField} />
 
                   {/* Additional Contacts Section */}
                   {additionalContacts.length > 0 && (

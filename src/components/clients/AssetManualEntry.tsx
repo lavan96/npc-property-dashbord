@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -110,9 +110,9 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
   const alternativeAssets = existingAssets.filter(a => a.asset_type === 'alternative');
   const otherAssets = existingAssets.filter(a => a.asset_type === 'other');
 
-  const updateField = (field: keyof AssetFormData, value: any) => {
+  const updateField = useCallback((field: keyof AssetFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   const resetForm = () => {
     setFormData({ ...defaultFormData, asset_type: activeTab });
