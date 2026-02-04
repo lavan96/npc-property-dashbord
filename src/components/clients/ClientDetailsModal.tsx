@@ -175,6 +175,7 @@ NPC Team`
       income: true,
       assets: true,
       liabilities: true,
+      additionalContacts: true,
     },
     enabled: open,
   });
@@ -186,6 +187,7 @@ NPC Team`
   const income = secureData?.income || [];
   const assets = secureData?.assets || [];
   const liabilities = secureData?.liabilities || [];
+  const additionalContacts = secureData?.additionalContacts || [];
 
   // Refetch function for backward compatibility
   const refetchClient = () => {
@@ -410,6 +412,19 @@ NPC Team`
                   marital_status: fullClient.marital_status,
                   dependents_count: fullClient.dependents_count,
                 } : undefined}
+                additionalContacts={additionalContacts.map(c => ({
+                  id: c.id,
+                  client_id: c.client_id,
+                  relationship: c.relationship,
+                  first_name: c.first_name,
+                  surname: c.surname,
+                  middle_name: c.middle_name,
+                  email: c.email,
+                  mobile: c.mobile,
+                  dob: c.dob,
+                  gender: c.gender,
+                  display_order: c.display_order,
+                }))}
                 onComplete={() => refetchClient()} 
               />
             </TabsContent>
