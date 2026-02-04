@@ -49,9 +49,9 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
           include: { borrowingCapacity: true },
         });
         
-        if (!error && data?.success && data.data?.borrowingCapacity) {
+        if (!error && data?.success && data.borrowingCapacity) {
           // Return the latest assessment (already sorted by created_at desc)
-          const assessments = data.data.borrowingCapacity;
+          const assessments = data.borrowingCapacity;
           return assessments.length > 0 ? assessments[0] : null;
         }
         throw new Error(error?.message || 'Failed to fetch borrowing capacity');
@@ -75,9 +75,9 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
           include: { borrowingCapacity: true },
         });
         
-        if (!error && data?.success && data.data?.borrowingCapacity) {
+        if (!error && data?.success && data.borrowingCapacity) {
           // Return up to 10 assessments for history
-          return data.data.borrowingCapacity.slice(0, 10).map((a: any) => ({
+          return data.borrowingCapacity.slice(0, 10).map((a: any) => ({
             id: a.id,
             borrowing_capacity: a.borrowing_capacity,
             serviceability_band: a.serviceability_band,

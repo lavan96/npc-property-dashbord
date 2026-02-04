@@ -74,7 +74,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch vownet forms');
       
-      return (data.data?.files || []).filter((f: any) => f.is_vownet_form);
+      return (data.files || []).filter((f: any) => f.is_vownet_form);
     }
   });
 

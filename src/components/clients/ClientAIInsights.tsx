@@ -40,8 +40,8 @@ async function fetchAIInsightsDataSecure(clientId: string) {
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error('Failed to fetch client data');
   
-  const client = data.data?.client;
-  const properties = data.data?.properties || [];
+  const client = data.client;
+  const properties = data.properties || [];
   return {
     clientName: `${client?.primary_first_name} ${client?.primary_surname}`,
     portfolioValue: Number(client?.total_portfolio_value) || 0,

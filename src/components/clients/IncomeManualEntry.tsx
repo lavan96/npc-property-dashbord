@@ -83,7 +83,7 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
       
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error('Failed to fetch income');
-      return data.data?.income || [];
+      return data.income || [];
     },
   });
 

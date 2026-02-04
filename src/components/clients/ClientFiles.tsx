@@ -66,7 +66,7 @@ async function fetchFilesSecure(clientId: string) {
 
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error('Failed to fetch files');
-  return data.data?.files || [];
+  return data.files || [];
 }
 
 export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {

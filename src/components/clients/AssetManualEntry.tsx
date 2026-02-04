@@ -100,7 +100,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
       
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error('Failed to fetch assets');
-      return data.data?.assets || [];
+      return data.assets || [];
     },
   });
 

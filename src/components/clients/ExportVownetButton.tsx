@@ -41,12 +41,12 @@ async function fetchClientDataForExport(clientId: string) {
   }
   
   return {
-    client: data.data?.client,
-    properties: data.data?.properties || [],
-    employment: data.data?.employment || [],
-    income: data.data?.income || [],
-    assets: data.data?.assets || [],
-    liabilities: data.data?.liabilities || [],
+    client: data.client,
+    properties: data.properties || [],
+    employment: data.employment || [],
+    income: data.income || [],
+    assets: data.assets || [],
+    liabilities: data.liabilities || [],
   };
 }
 

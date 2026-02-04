@@ -88,7 +88,7 @@ export function ClientReportsTab({
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch report files');
       
       // Filter for report files
-      return (data.data?.files || []).filter((f: any) => f.is_vownet_form || f.report_type);
+      return (data.files || []).filter((f: any) => f.is_vownet_form || f.report_type);
     },
   });
 

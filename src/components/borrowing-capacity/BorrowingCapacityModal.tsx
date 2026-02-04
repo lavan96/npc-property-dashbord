@@ -50,17 +50,17 @@ async function fetchBorrowingCapacityData(clientId: string) {
     throw new Error(data?.error || 'Failed to fetch borrowing capacity data');
   }
 
-  const totalDeclaredFromDB = (data.data?.expenses || []).reduce(
+  const totalDeclaredFromDB = (data.expenses || []).reduce(
     (sum: number, exp: any) => sum + (Number(exp.monthly_amount) || 0), 
     0
   );
 
   return {
-    client: data.data?.client,
-    income: data.data?.income || [],
-    liabilities: data.data?.liabilities || [],
-    properties: data.data?.properties || [],
-    expenses: data.data?.expenses || [],
+    client: data.client,
+    income: data.income || [],
+    liabilities: data.liabilities || [],
+    properties: data.properties || [],
+    expenses: data.expenses || [],
     totalDeclaredExpenses: totalDeclaredFromDB,
   };
 }

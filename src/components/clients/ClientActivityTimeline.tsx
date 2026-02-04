@@ -68,7 +68,7 @@ async function fetchActivitiesSecure(clientId: string) {
 
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error('Failed to fetch activities');
-  return data.data?.activities || [];
+  return data.activities || [];
 }
 
 export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps) {
