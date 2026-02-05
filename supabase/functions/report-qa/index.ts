@@ -316,34 +316,25 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
-// Process base64 in chunks to prevent memory issues
-function processBase64Chunks(base64String: string, chunkSize = 32768) {
-  const chunks: Uint8Array[] = [];
-  let position = 0;
+/**
+ * Decode base64 to Uint8Array - simple and reliable approach
+ * Uses atob for the full string (works fine for audio files up to ~50MB)
+ * IMPORTANT: Do NOT split base64 at arbitrary boundaries - base64 works in 4-char groups
+ */
+function decodeBase64ToUint8Array(base64String: string): Uint8Array {
+  // Clean up the base64 string - remove any whitespace or newlines
+  const cleanBase64 = base64String.replace(/\s/g, '');
   
-  while (position < base64String.length) {
-    const chunk = base64String.slice(position, position + chunkSize);
-    const binaryChunk = atob(chunk);
-    const bytes = new Uint8Array(binaryChunk.length);
-    
-    for (let i = 0; i < binaryChunk.length; i++) {
-      bytes[i] = binaryChunk.charCodeAt(i);
-    }
-    
-    chunks.push(bytes);
-    position += chunkSize;
+  // Decode base64 to binary string
+  const binaryString = atob(cleanBase64);
+  
+  // Convert binary string to Uint8Array
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
-
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
+  
+  return bytes;
 }
 
 // ============= RAG HELPER FUNCTIONS =============
@@ -633,8 +624,9 @@ serve(async (req) => {
 
       console.log(`[report-qa] Processing voice transcription...`);
 
-      // Process audio in chunks
-      const binaryAudio = processBase64Chunks(audio);
+      // Decode base64 audio to binary
+      const binaryAudio = decodeBase64ToUint8Array(audio);
+      console.log(`[report-qa] Decoded audio size: ${binaryAudio.length} bytes`);
       
       // Prepare form data
       const formData = new FormData();
