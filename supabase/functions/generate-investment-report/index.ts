@@ -1200,9 +1200,15 @@ serve(async (req) => {
       
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      // IMPORTANT: Use service role key for internal service-to-service calls
+      // The anon key has role='anon' which fails verifyAuth in sub-functions
+      // Service role is recognized by verifyAuth as a valid internal caller
       const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
       };
 
       // Define all Phase 1 fetch promises
