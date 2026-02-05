@@ -267,8 +267,8 @@ serve(async (req) => {
 
       if (include.borrowingCapacity) {
         fetchPromises.push(
-          supabase.from('borrowing_capacity_assessments').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(1)
-            .then(({ data }) => { clientResult.borrowingCapacity = data?.[0] || null; })
+          supabase.from('borrowing_capacity_assessments').select('*').eq('client_id', id).order('created_at', { ascending: false }).limit(10)
+            .then(({ data }) => { clientResult.borrowingCapacity = data || []; })
         );
       }
 
