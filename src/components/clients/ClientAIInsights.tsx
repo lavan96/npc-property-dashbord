@@ -98,7 +98,11 @@ Provide a JSON response with this structure:
 }`;
 
       const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'chat',
         messages: [{ role: 'user', content: prompt }],
+        question: prompt,
+        reportContents: [],
+        reportNames: [],
         context: `You are a property investment advisor. Analyze portfolios and provide actionable insights.`
       });
 
