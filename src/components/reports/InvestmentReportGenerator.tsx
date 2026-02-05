@@ -20,6 +20,8 @@ import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, 
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
+import { BuildTypeSelector } from './shared/BuildTypeSelector';
+import { BuildType } from '@/types/overrideFields';
 
 interface RecentReport {
   id: string;
@@ -1776,32 +1778,13 @@ export function InvestmentReportGenerator() {
                   {/* Build Type Radio Selection */}
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">Build Type</Label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="urlBuildType"
-                          value="existing_property"
-                          checked={preGenData.buildType === 'existing_property'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isScraping}
-                        />
-                        <span className="text-sm">Existing Property</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="urlBuildType"
-                          value="new_build"
-                          checked={preGenData.buildType === 'new_build'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isScraping}
-                        />
-                        <span className="text-sm">New Build</span>
-                      </label>
-                    </div>
+                    <BuildTypeSelector
+                      value={preGenData.buildType as BuildType}
+                      onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
+                      disabled={isScraping}
+                      showCard={false}
+                      size="sm"
+                    />
                   </div>
 
                   <Separator />
@@ -2075,32 +2058,13 @@ export function InvestmentReportGenerator() {
                   {/* Build Type Radio Selection */}
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">Build Type</Label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="pdfBuildType"
-                          value="existing_property"
-                          checked={preGenData.buildType === 'existing_property'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isParsing}
-                        />
-                        <span className="text-sm">Existing Property</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="pdfBuildType"
-                          value="new_build"
-                          checked={preGenData.buildType === 'new_build'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isParsing}
-                        />
-                        <span className="text-sm">New Build</span>
-                      </label>
-                    </div>
+                    <BuildTypeSelector
+                      value={preGenData.buildType as BuildType}
+                      onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
+                      disabled={isParsing}
+                      showCard={false}
+                      size="sm"
+                    />
                   </div>
 
                   <Separator />
