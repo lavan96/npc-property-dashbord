@@ -2,10 +2,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' | 
-                 'client_assets' | 'client_liabilities' | 'client_employment' | 
+type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' |
+                 'client_assets' | 'client_liabilities' | 'client_employment' |
                  'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts' |
-                 'report_qa_messages' | 'report_qa_conversations';
+                 'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews';
 
 type Operation = 'create' | 'update' | 'delete';
 
@@ -32,6 +32,7 @@ const ALLOWED_TABLES: TableName[] = [
   'client_additional_contacts',
   'report_qa_messages',
   'report_qa_conversations',
+  'portfolio_reviews',
 ];
 
 serve(async (req) => {
