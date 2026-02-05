@@ -725,23 +725,25 @@ export function useReviewWizard(
       let result: { id: string } | null = null;
       if (reviewId) {
         // Update existing review
-        const { data, error } = await supabase
-          .from('portfolio_reviews')
-          .update(reviewData as any)
-          .eq('id', reviewId)
-          .select('id')
-          .single();
-        if (error) throw error;
-        result = data;
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'portfolio_reviews',
+          clientId,
+          recordId: reviewId,
+          data: reviewData,
+        });
+        if (error || !data?.success) throw new Error(error?.message || data?.error || 'Failed to update review');
+        result = data.result;
       } else {
         // Create new review
-        const { data, error } = await supabase
-          .from('portfolio_reviews')
-          .insert(reviewData as any)
-          .select('id')
-          .single();
-        if (error) throw error;
-        result = data;
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'portfolio_reviews',
+          clientId,
+          data: reviewData,
+        });
+        if (error || !data?.success) throw new Error(error?.message || data?.error || 'Failed to create review');
+        result = data.result;
         setReviewId(result.id);
       }
 
