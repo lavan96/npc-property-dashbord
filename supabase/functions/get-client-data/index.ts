@@ -34,6 +34,7 @@ interface RequestBody {
     client?: boolean;
     emails?: boolean;
     additionalContacts?: boolean;
+    scores?: boolean;
   };
   session_token?: string;
 }
@@ -282,6 +283,13 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('client_additional_contacts').select('*').eq('client_id', id).order('display_order', { ascending: true })
             .then(({ data }) => { clientResult.additionalContacts = data || []; })
+        );
+      }
+
+      if (include.scores) {
+        fetchPromises.push(
+          supabase.from('client_scores').select('*').eq('client_id', id).maybeSingle()
+            .then(({ data }) => { clientResult.scores = data || null; })
         );
       }
 
