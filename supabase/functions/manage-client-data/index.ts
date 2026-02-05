@@ -5,9 +5,9 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_s
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' |
                  'client_assets' | 'client_liabilities' | 'client_employment' |
                  'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts' |
-                 'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews';
+                 'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews' | 'client_scores';
 
-type Operation = 'create' | 'update' | 'delete';
+type Operation = 'create' | 'update' | 'delete' | 'upsert';
 
 interface RequestBody {
   operation: Operation;
@@ -33,6 +33,7 @@ const ALLOWED_TABLES: TableName[] = [
   'report_qa_messages',
   'report_qa_conversations',
   'portfolio_reviews',
+  'client_scores',
 ];
 
 serve(async (req) => {
@@ -71,7 +72,7 @@ serve(async (req) => {
     }
 
     // Validate operation
-    if (!['create', 'update', 'delete'].includes(operation)) {
+    if (!['create', 'update', 'delete', 'upsert'].includes(operation)) {
       return new Response(
         JSON.stringify({ error: `Invalid operation: ${operation}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -182,6 +183,31 @@ serve(async (req) => {
 
         result = { deleted: true, id: idToDelete };
         error = deleteError;
+        break;
+      }
+
+      case 'upsert': {
+        if (!data) {
+          return new Response(
+            JSON.stringify({ error: 'data is required for upsert operation' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // For client-related tables, add client_id
+        const upsertData = STANDALONE_TABLES.includes(table)
+          ? { ...data as Record<string, any> }
+          : { ...data as Record<string, any>, client_id: clientId };
+
+        // Upsert using client_id as the conflict target for client-related tables
+        const { data: upserted, error: upsertError } = await supabase
+          .from(table)
+          .upsert(upsertData, { onConflict: 'client_id' })
+          .select()
+          .single();
+
+        result = upserted;
+        error = upsertError;
         break;
       }
     }
