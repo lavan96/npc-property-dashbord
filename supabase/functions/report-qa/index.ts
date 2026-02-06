@@ -922,17 +922,17 @@ No investment report has been uploaded. You are having an open conversation abou
           sanitizedHistory.push({ role: msg.role, content: msg.content });
         }
       }
-      // If last history message is 'user', remove it to avoid double-user with the new question
+      // If last history message is 'user', merge it into the current question
+      let finalQuestion = question;
       if (sanitizedHistory.length > 0 && sanitizedHistory[sanitizedHistory.length - 1].role === 'user') {
         const lastUserMsg = sanitizedHistory.pop()!;
-        // Prepend its content to the current question so nothing is lost
-        question = lastUserMsg.content + '\n\n' + question;
+        finalQuestion = lastUserMsg.content + '\n\n' + question;
       }
       
       const messages = [
         { role: "system", content: systemPrompt },
         ...sanitizedHistory,
-        { role: "user", content: question },
+        { role: "user", content: finalQuestion },
       ];
 
       // Check if streaming is requested
