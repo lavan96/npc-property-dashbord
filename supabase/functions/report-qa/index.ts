@@ -910,9 +910,28 @@ ${ragContext}`;
 No investment report has been uploaded. You are having an open conversation about property investment. If the user wants specific property analysis, encourage them to upload a report.`;
       }
 
+      // Build messages ensuring strict alternation (required by Perplexity)
+      const rawHistory = chatHistory || [];
+      const sanitizedHistory: { role: string; content: string }[] = [];
+      for (const msg of rawHistory) {
+        // Skip if same role as previous (merge or drop to maintain alternation)
+        if (sanitizedHistory.length > 0 && sanitizedHistory[sanitizedHistory.length - 1].role === msg.role) {
+          // Merge consecutive same-role messages
+          sanitizedHistory[sanitizedHistory.length - 1].content += '\n\n' + msg.content;
+        } else {
+          sanitizedHistory.push({ role: msg.role, content: msg.content });
+        }
+      }
+      // If last history message is 'user', remove it to avoid double-user with the new question
+      if (sanitizedHistory.length > 0 && sanitizedHistory[sanitizedHistory.length - 1].role === 'user') {
+        const lastUserMsg = sanitizedHistory.pop()!;
+        // Prepend its content to the current question so nothing is lost
+        question = lastUserMsg.content + '\n\n' + question;
+      }
+      
       const messages = [
         { role: "system", content: systemPrompt },
-        ...(chatHistory || []),
+        ...sanitizedHistory,
         { role: "user", content: question },
       ];
 
