@@ -9,7 +9,7 @@ import {
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ModelProvider = 'openai' | 'perplexity';
+export type ModelProvider = 'openai' | 'openai-direct' | 'perplexity';
 
 interface ModelSelectorProps {
   selectedModel: ModelProvider;
@@ -49,6 +49,12 @@ const MODEL_OPTIONS = [
     id: 'openai' as ModelProvider,
     name: 'OpenAI GPT-5.2',
     description: 'Advanced reasoning & analysis',
+    Icon: OpenAILogo,
+  },
+  {
+    id: 'openai-direct' as ModelProvider,
+    name: 'OpenAI Direct',
+    description: 'Direct API — bypasses gateway',
     Icon: OpenAILogo,
   },
   {

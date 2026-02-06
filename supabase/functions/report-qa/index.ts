@@ -963,6 +963,26 @@ No investment report has been uploaded. You are having an open conversation abou
               stream: true,
             }),
           });
+        } else if (modelProvider === 'openai-direct') {
+          // Use OpenAI API directly (bypasses Lovable AI Gateway)
+          if (!OPENAI_API_KEY) {
+            throw new Error("OPENAI_API_KEY is not configured");
+          }
+          
+          console.log(`[report-qa] Using direct OpenAI API`);
+          response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${OPENAI_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "gpt-4.1",
+              messages,
+              max_completion_tokens: 4096,
+              stream: true,
+            }),
+          });
         } else {
           // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
           response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -1026,6 +1046,25 @@ No investment report has been uploaded. You are having an open conversation abou
             model: "sonar-pro",
             messages,
             max_tokens: 4096,
+          }),
+        });
+      } else if (modelProvider === 'openai-direct') {
+        // Use OpenAI API directly (bypasses Lovable AI Gateway)
+        if (!OPENAI_API_KEY) {
+          throw new Error("OPENAI_API_KEY is not configured");
+        }
+        
+        console.log(`[report-qa] Using direct OpenAI API (non-streaming)`);
+        response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4.1",
+            messages,
+            max_completion_tokens: 4096,
           }),
         });
       } else {
