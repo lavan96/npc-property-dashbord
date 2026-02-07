@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { format, addMinutes } from 'date-fns';
+import { toSydneyISO } from '@/lib/sydneyTime';
 import { 
   Calendar, 
   Clock, 
@@ -163,16 +164,22 @@ export function EventTemplates({
       const targetDate = selectedDate || new Date();
       const [hours, minutes] = customTime.split(':').map(Number);
       
-      const startTime = new Date(targetDate);
-      startTime.setHours(hours, minutes, 0, 0);
-      
-      const endTime = addMinutes(startTime, selectedTemplate.duration);
+      // Calculate end time
+      const durationMinutes = selectedTemplate.duration;
+      const endTotalMinutes = hours * 60 + minutes + durationMinutes;
+      const endHours = Math.floor(endTotalMinutes / 60) % 24;
+      const endMins = endTotalMinutes % 60;
 
+      const dateStr = format(targetDate, 'yyyy-MM-dd');
+      const startTimeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+
+      // Treat selected time as Australia/Sydney wall-clock time
       const result = await onCreateAppointment({
         calendarId: selectedCalendarId,
         title: customTitle || selectedTemplate.defaultTitle,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: toSydneyISO(dateStr, startTimeStr),
+        endTime: toSydneyISO(dateStr, endTimeStr),
         notes: customNotes || undefined,
       });
 
@@ -182,7 +189,7 @@ export function EventTemplates({
         setConfirmModalOpen(false);
         toast({
           title: 'Appointment created',
-          description: `"${customTitle || selectedTemplate.defaultTitle}" scheduled for ${format(startTime, 'h:mm a')}`,
+          description: `"${customTitle || selectedTemplate.defaultTitle}" scheduled for ${startTimeStr}`,
         });
       }
     } catch (error: any) {

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
+import { toSydneyISO } from '@/lib/sydneyTime';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
@@ -205,16 +206,23 @@ export function QuickAddAppointmentModal({
     if (!selectedCalendarId || !date || !time || !title.trim()) return;
 
     const [hours, minutes] = time.split(':').map(Number);
-    const startDate = new Date(date);
-    startDate.setHours(hours, minutes, 0, 0);
+    const durationMinutes = parseInt(duration, 10);
 
-    const endDate = addMinutes(startDate, parseInt(duration, 10));
+    // Calculate end time parts (handle hour overflow)
+    const endTotalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(endTotalMinutes / 60) % 24;
+    const endMins = endTotalMinutes % 60;
+    const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+
+    // Treat selected time as Australia/Sydney wall-clock time
+    const startTimeISO = toSydneyISO(date, time);
+    const endTimeISO = toSydneyISO(date, endTimeStr);
 
     const success = await onSubmit({
       calendarId: selectedCalendarId,
       title: title.trim(),
-      startTime: startDate.toISOString(),
-      endTime: endDate.toISOString(),
+      startTime: startTimeISO,
+      endTime: endTimeISO,
       contactId: selectedContact?.id,
       notes: notes.trim() || undefined,
     });
