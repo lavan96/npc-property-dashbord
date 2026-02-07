@@ -262,7 +262,16 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
     </Card>
   );
 
-  const VehicleForm = () => (
+  const getAssetLabel = (asset: any) => {
+    if (asset.asset_type === 'vehicle') return asset.make_model || 'Vehicle';
+    if (asset.asset_type === 'savings') return asset.institution_name || 'Savings/Deposit';
+    if (asset.asset_type === 'superfund') return asset.institution_name || 'Superfund';
+    if (asset.asset_type === 'alternative') return getAlternativeAssetLabel(asset.vehicle_type);
+    return asset.description || 'Other Asset';
+  };
+
+  // Vehicle form JSX (inline to prevent focus loss from component remounting)
+  const vehicleFormJSX = (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -330,7 +339,8 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
     </Card>
   );
 
-  const SavingsForm = () => (
+  // Savings form JSX
+  const savingsFormJSX = (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -381,7 +391,8 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
     </Card>
   );
 
-  const SuperfundForm = () => (
+  // Superfund form JSX
+  const superfundFormJSX = (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -432,15 +443,8 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
     </Card>
   );
 
-  const getAssetLabel = (asset: any) => {
-    if (asset.asset_type === 'vehicle') return asset.make_model || 'Vehicle';
-    if (asset.asset_type === 'savings') return asset.institution_name || 'Savings/Deposit';
-    if (asset.asset_type === 'superfund') return asset.institution_name || 'Superfund';
-    if (asset.asset_type === 'alternative') return getAlternativeAssetLabel(asset.vehicle_type);
-    return asset.description || 'Other Asset';
-  };
-
-  const AlternativeForm = () => (
+  // Alternative/Other form JSX
+  const alternativeFormJSX = (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -605,7 +609,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                     ))}
                   </div>
                 )}
-                <VehicleForm />
+                {vehicleFormJSX}
               </TabsContent>
 
               <TabsContent value="savings" className="space-y-4 mt-4">
@@ -617,7 +621,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                     ))}
                   </div>
                 )}
-                <SavingsForm />
+                {savingsFormJSX}
               </TabsContent>
 
               <TabsContent value="superfund" className="space-y-4 mt-4">
@@ -629,7 +633,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                     ))}
                   </div>
                 )}
-                <SuperfundForm />
+                {superfundFormJSX}
               </TabsContent>
 
               <TabsContent value="alternative" className="space-y-4 mt-4">
@@ -641,7 +645,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                     ))}
                   </div>
                 )}
-                <AlternativeForm />
+                {alternativeFormJSX}
               </TabsContent>
             </Tabs>
           </ScrollArea>

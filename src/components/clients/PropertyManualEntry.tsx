@@ -286,31 +286,11 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
     }).format(value);
   };
 
-  const FrequencySelect = ({ value, onChange }: { value: FrequencyType; onChange: (v: FrequencyType) => void }) => (
-    <Select value={value} onValueChange={(v) => onChange(v as FrequencyType)}>
-      <SelectTrigger className="w-[100px]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="weekly">Weekly</SelectItem>
-        <SelectItem value="monthly">Monthly</SelectItem>
-        <SelectItem value="quarterly">Quarterly</SelectItem>
-        <SelectItem value="annually">Annually</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-
-  const ExpenseInput = ({
-    label,
-    field,
-    defaultFrequency = 'monthly',
+  const renderExpenseInput = (
+    label: string,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'property_management' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
     showMonthlyEquivalent = true,
-  }: {
-    label: string;
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'property_management' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>;
-    defaultFrequency?: FrequencyType;
-    showMonthlyEquivalent?: boolean;
-  }) => {
+  ) => {
     const expense = formData[field];
     return (
       <div className="space-y-2">
@@ -326,10 +306,17 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
               placeholder="0"
             />
           </div>
-          <FrequencySelect 
-            value={expense.frequency} 
-            onChange={(v) => updateExpenseField(field, 'frequency', v)} 
-          />
+          <Select value={expense.frequency} onValueChange={(v) => updateExpenseField(field, 'frequency', v as FrequencyType)}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="annually">Annually</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {showMonthlyEquivalent && expense.frequency !== 'monthly' && expense.value > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -536,11 +523,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                       This property is where you currently live and pay rent. The rent you pay will be treated as a personal expense in borrowing capacity calculations.
                     </p>
                     
-                    <ExpenseInput 
-                      label="Rent You Pay" 
-                      field="rental_income" 
-                      defaultFrequency="weekly" 
-                    />
+                    {renderExpenseInput("Rent You Pay", "rental_income")}
                   </div>
                 </CardContent>
               </Card>
@@ -671,41 +654,13 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                   <h4 className="text-sm font-medium">Monthly Expenses (with frequency conversion)</h4>
                   
                   <div className="grid gap-4">
-                    <ExpenseInput 
-                      label="Body Corporate/Strata Fees" 
-                      field="body_corporate" 
-                      defaultFrequency="quarterly" 
-                    />
-                    <ExpenseInput 
-                      label="Council Rate Charges" 
-                      field="council_rates" 
-                      defaultFrequency="quarterly" 
-                    />
-                    <ExpenseInput 
-                      label="Water Rate Charges" 
-                      field="water_rates" 
-                      defaultFrequency="quarterly" 
-                    />
-                    <ExpenseInput 
-                      label="Repairs & Maintenance" 
-                      field="repairs_maintenance" 
-                      defaultFrequency="annually" 
-                    />
-                    <ExpenseInput 
-                      label="Property Management Fees" 
-                      field="property_management" 
-                      defaultFrequency="monthly" 
-                    />
-                    <ExpenseInput 
-                      label="Landlord Insurance" 
-                      field="landlord_insurance" 
-                      defaultFrequency="annually" 
-                    />
-                    <ExpenseInput 
-                      label="Building Insurance" 
-                      field="building_insurance" 
-                      defaultFrequency="annually" 
-                    />
+                    {renderExpenseInput("Body Corporate/Strata Fees", "body_corporate")}
+                    {renderExpenseInput("Council Rate Charges", "council_rates")}
+                    {renderExpenseInput("Water Rate Charges", "water_rates")}
+                    {renderExpenseInput("Repairs & Maintenance", "repairs_maintenance")}
+                    {renderExpenseInput("Property Management Fees", "property_management")}
+                    {renderExpenseInput("Landlord Insurance", "landlord_insurance")}
+                    {renderExpenseInput("Building Insurance", "building_insurance")}
                   </div>
                 </div>
 
@@ -714,11 +669,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                 {/* Rental Income */}
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium">Rental Income</h4>
-                  <ExpenseInput 
-                    label="Rental Income" 
-                    field="rental_income" 
-                    defaultFrequency="weekly" 
-                  />
+                  {renderExpenseInput("Rental Income", "rental_income")}
                 </div>
               </>
             )}
