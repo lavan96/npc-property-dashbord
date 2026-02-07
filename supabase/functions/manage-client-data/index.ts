@@ -7,7 +7,7 @@ type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_exp
                  'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts' |
                  'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews' | 'client_scores';
 
-type Operation = 'create' | 'update' | 'delete' | 'upsert';
+type Operation = 'create' | 'update' | 'delete' | 'upsert' | 'bulkDelete';
 
 interface RequestBody {
   operation: Operation;
@@ -72,7 +72,7 @@ serve(async (req) => {
     }
 
     // Validate operation
-    if (!['create', 'update', 'delete', 'upsert'].includes(operation)) {
+    if (!['create', 'update', 'delete', 'upsert', 'bulkDelete'].includes(operation)) {
       return new Response(
         JSON.stringify({ error: `Invalid operation: ${operation}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -208,6 +208,35 @@ serve(async (req) => {
 
         result = upserted;
         error = upsertError;
+        break;
+      }
+
+      case 'bulkDelete': {
+        // Delete ALL records for a given client_id in the specified table
+        if (!clientId) {
+          return new Response(
+            JSON.stringify({ error: 'clientId is required for bulkDelete operation' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Only allow bulkDelete on client-related tables (not standalone)
+        if (STANDALONE_TABLES.includes(table)) {
+          return new Response(
+            JSON.stringify({ error: `bulkDelete is not supported for ${table}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: bulkDeleted, error: bulkDeleteError } = await supabase
+          .from(table)
+          .delete()
+          .eq('client_id', clientId)
+          .select('id');
+
+        result = { deleted: true, count: bulkDeleted?.length || 0 };
+        error = bulkDeleteError;
+        console.log(`bulkDelete on ${table} for client ${clientId}: removed ${bulkDeleted?.length || 0} records`);
         break;
       }
     }

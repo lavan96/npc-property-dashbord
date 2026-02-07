@@ -104,6 +104,21 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       setUploadStatus('importing');
       setProgress(40);
 
+      // Helper to perform bulkDelete with error handling
+      const bulkDeleteTable = async (table: string) => {
+        const { data: delData, error: delError } = await invokeSecureFunction('manage-client-data', {
+          operation: 'bulkDelete',
+          table,
+          clientId,
+        });
+        if (delError || !delData?.success) {
+          const msg = delError?.message || delData?.error || `Failed to clear existing ${table}`;
+          console.error(`bulkDelete failed for ${table}:`, msg);
+          throw new Error(msg);
+        }
+        console.log(`bulkDelete ${table}: removed ${delData.result?.count || 0} records`);
+      };
+
       const summary: ImportSummary = {
         personalDetailsUpdated: false,
         additionalContactsImported: 0,
@@ -166,11 +181,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       // 1b. Import additional contacts if present
       if (parsedData.additionalContacts && parsedData.additionalContacts.length > 0) {
         // Delete existing additional contacts first
-        await invokeSecureFunction('manage-client-data', {
-          operation: 'bulkDelete',
-          table: 'client_additional_contacts',
-          clientId,
-        });
+        await bulkDeleteTable('client_additional_contacts');
         
         for (const contact of parsedData.additionalContacts) {
           const { data: contactResult, error: contactError } = await invokeSecureFunction('manage-client-data', {
@@ -197,12 +208,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       // 2. Import employment records (delete existing first to avoid duplicates)
       if (parsedData.employment && parsedData.employment.length > 0) {
-        // Delete existing employment records for this client via secure function
-        await invokeSecureFunction('manage-client-data', {
-          operation: 'bulkDelete',
-          table: 'client_employment',
-          clientId,
-        });
+        // Delete existing employment records for this client
+        await bulkDeleteTable('client_employment');
         
         for (const emp of parsedData.employment) {
           const { data: empResult, error: empError } = await invokeSecureFunction('manage-client-data', {
@@ -226,11 +233,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       // 3. Import income records
       if (parsedData.income && parsedData.income.length > 0) {
-        await invokeSecureFunction('manage-client-data', {
-          operation: 'bulkDelete',
-          table: 'client_income',
-          clientId,
-        });
+        await bulkDeleteTable('client_income');
         
         for (const inc of parsedData.income) {
           const { data: incResult, error: incError } = await invokeSecureFunction('manage-client-data', {
@@ -257,11 +260,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       // 4. Import assets
       if (parsedData.assets && parsedData.assets.length > 0) {
-        await invokeSecureFunction('manage-client-data', {
-          operation: 'bulkDelete',
-          table: 'client_assets',
-          clientId,
-        });
+        await bulkDeleteTable('client_assets');
         
         for (const asset of parsedData.assets) {
           const { data: assetResult, error: assetError } = await invokeSecureFunction('manage-client-data', {
@@ -285,11 +284,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
       // 5. Import liabilities
       if (parsedData.liabilities && parsedData.liabilities.length > 0) {
-        await invokeSecureFunction('manage-client-data', {
-          operation: 'bulkDelete',
-          table: 'client_liabilities',
-          clientId,
-        });
+        await bulkDeleteTable('client_liabilities');
         
         for (const liability of parsedData.liabilities) {
           const { data: liabResult, error: liabError } = await invokeSecureFunction('manage-client-data', {
@@ -315,11 +310,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       // 6. Import properties
       if (parsedData.properties && parsedData.properties.length > 0) {
         // Delete existing properties to avoid duplicates
-        await invokeSecureFunction('manage-client-data', {
-          operation: 'bulkDelete',
-          table: 'client_properties',
-          clientId,
-        });
+        await bulkDeleteTable('client_properties');
         
         for (const prop of parsedData.properties) {
           const { data: propResult, error: propError } = await invokeSecureFunction('manage-client-data', {
