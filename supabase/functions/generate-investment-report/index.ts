@@ -2074,17 +2074,6 @@ This executive summary provides a high-level overview of the investment opportun
 
 Based on our comprehensive analysis, this property is [suitable/moderately suitable/requires careful consideration] for investors seeking [capital growth/rental income/balanced returns]. The investment is best suited for [investor profile description].
 
-**Report Structure:**
-
-This report contains detailed analysis across the following sections:
-1. Location Overview & Market Performance
-2. Demographics & Economic Context
-3. Schools, Healthcare & Infrastructure
-4. Environmental Risks & Safety Assessment
-5. Property-Level Financial Analysis
-6. 10-Year Investment Projections
-7. SWOT Analysis & Recommendations
-
 ---
 
 # Location Overview
@@ -2940,16 +2929,6 @@ Loan repayments at current [X.X]% rate absorb [XX]% of gross rental income befor
 - Maintain comprehensive property insurance including home and landlord liability; given [LEVEL] bushfire risk rating, confirm policy includes fire damage coverage and evacuation expense reimbursement
 - Monitor local infrastructure developments including [Transport] extensions, school expansions, and commercial developments; infrastructure improvements provide capital appreciation catalysts
 - Build equity buffer through principal repayment; accumulated equity after 10 years ($[XXX,XXX]-$[XXX,XXX] range across growth scenarios) provides optionality for portfolio expansion or capital access without forced sales
-
-**Key Considerations for Monitoring:**
-
-- Interest rate movements: [X]% increase/decrease materially impacts annual cashflow by ±$[X,XXX]. Rising rate environment creates refinancing stress; rate cuts provide primary improvement pathway
-- Employment market durability: Strong local job growth (+[X.X]% annually) underpins rental demand; economic downturn reducing local employment would compress rents and weaken capital growth assumptions
-- Rental market supply/demand balance: Monitor new residential development pipeline in [Suburb]; oversupply of rental properties could suppress rent growth and compress gross yields below [X.XX]% projection
-- [City] property market valuations: [Suburb]'s premium positioning assumes sustained metropolitan appreciation; prolonged period of stagnant or negative capital growth would invalidate investment thesis
-- Climate hazard events: Track bushfire season intensity and flooding occurrences; severe fire/flood events trigger insurance premium escalation or coverage restrictions affecting ongoing costs and marketability
-- Family demographic trends: [Suburb]'s appeal targets family cohorts; demographic aging or migration patterns reducing family-formation rates would reduce demand drivers
-- Leverage and debt serviceability: Annual negative cashflow of $[XX,XXX] represents [XX]% of estimated deposit annually; confirm capacity to sustain this cost indefinitely remains intact through employment stability
 
 ---
 
