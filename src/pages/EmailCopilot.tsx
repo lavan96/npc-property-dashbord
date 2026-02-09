@@ -1733,20 +1733,18 @@ export default function EmailCopilot() {
                                 </span>
                               </div>
                               
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <div className="flex items-center justify-between gap-2 mb-0.5">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
-                                      {extractSenderName(latestEmail.sender)}
-                                    </span>
-                                    {isThreaded && (
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-                                        <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
-                                        {threadEmails.length}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                                    {extractSenderName(latestEmail.sender)}
+                                  </span>
+                                  {isThreaded && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+                                      <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
+                                      {threadEmails.length}
+                                    </Badge>
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap ml-auto">
                                     {formatEmailDate(latestEmail.received_at)}
                                   </span>
                                 </div>
@@ -1754,11 +1752,11 @@ export default function EmailCopilot() {
                                   {latestEmail.subject || '(No Subject)'}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {latestEmail.body?.slice(0, 80).replace(/\n/g, ' ')}…
+                                  {latestEmail.body?.slice(0, 60).replace(/\n/g, ' ')}…
                                 </p>
                                 
                                 {/* Status indicators */}
-                                <div className="flex items-center gap-1.5 mt-2">
+                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                   {latestEmail.urgency_level && latestEmail.urgency_level !== 'low' && (
                                     <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
                                       latestEmail.urgency_level === 'high' ? 'text-destructive border-destructive/30' : 'text-warning border-warning/30'
@@ -1768,7 +1766,7 @@ export default function EmailCopilot() {
                                   )}
                                   {hasSummary && (
                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
-                                      <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Summary
+                                      <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI
                                     </Badge>
                                   )}
                                   {hasDraft && (
@@ -1812,29 +1810,27 @@ export default function EmailCopilot() {
                                     selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                        <span className="text-[10px] font-semibold text-primary">
-                                          {getSenderInitials(email.sender)}
-                                        </span>
-                                      </div>
-                                      <span className={`text-xs truncate ${email.status === 'unread' ? 'font-semibold' : ''}`}>
-                                        {extractSenderName(email.sender)}
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-[10px] font-semibold text-primary">
+                                        {getSenderInitials(email.sender)}
                                       </span>
-                                      {email.summary && (
-                                        <Sparkles className="h-3 w-3 text-green-500 flex-shrink-0" />
-                                      )}
-                                      {email.draft_reply && (
-                                        <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
-                                      )}
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground">
+                                    <span className={`text-xs truncate flex-1 min-w-0 ${email.status === 'unread' ? 'font-semibold' : ''}`}>
+                                      {extractSenderName(email.sender)}
+                                    </span>
+                                    {email.summary && (
+                                      <Sparkles className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                    )}
+                                    {email.draft_reply && (
+                                      <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                                    )}
+                                    <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap">
                                       {formatEmailDate(email.received_at)}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-muted-foreground truncate mt-1 pl-8">
-                                    {email.body?.slice(0, 60).replace(/\n/g, ' ')}…
+                                  <p className="text-xs text-muted-foreground truncate mt-0.5 pl-8">
+                                    {email.body?.slice(0, 50).replace(/\n/g, ' ')}…
                                   </p>
                                 </div>
                               ))}
