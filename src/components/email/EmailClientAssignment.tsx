@@ -68,7 +68,7 @@ export function EmailClientAssignment({
 
       if (error) throw error;
 
-      setClients(data?.records || []);
+      setClients(data?.clients || data?.records || []);
     } catch (err) {
       console.error('Error fetching clients:', err);
       toast.error('Failed to load clients');
