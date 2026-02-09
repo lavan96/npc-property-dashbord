@@ -1733,24 +1733,29 @@ export default function EmailCopilot() {
                                 </span>
                               </div>
                               
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className={`text-sm min-w-0 truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
-                                    {extractSenderName(latestEmail.sender)}
-                                  </span>
-                                  {isThreaded && (
-                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">
-                                      <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
-                                      {threadEmails.length}
-                                    </Badge>
-                                  )}
-                                  <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap ml-auto">
+                              <div className="flex-1 min-w-0">
+                                {/* Row 1: Sender + Date — date always visible */}
+                                <div className="flex items-center mb-0.5">
+                                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                                    <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                                      {extractSenderName(latestEmail.sender)}
+                                    </span>
+                                    {isThreaded && (
+                                      <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">
+                                        <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
+                                        {threadEmails.length}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap pl-2">
                                     {formatEmailDate(latestEmail.received_at)}
                                   </span>
                                 </div>
+                                {/* Row 2: Subject */}
                                 <p className={`text-sm truncate ${hasUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                                   {latestEmail.subject || '(No Subject)'}
                                 </p>
+                                {/* Row 3: Body preview */}
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                                   {latestEmail.body?.slice(0, 50).replace(/\n/g, ' ')}…
                                 </p>
@@ -1816,16 +1821,18 @@ export default function EmailCopilot() {
                                         {getSenderInitials(email.sender)}
                                       </span>
                                     </div>
-                                    <span className={`text-xs truncate flex-1 min-w-0 ${email.status === 'unread' ? 'font-semibold' : ''}`}>
-                                      {extractSenderName(email.sender)}
-                                    </span>
-                                    {email.summary && (
-                                      <Sparkles className="h-3 w-3 text-green-500 flex-shrink-0" />
-                                    )}
-                                    {email.draft_reply && (
-                                      <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
-                                    )}
-                                    <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap">
+                                    <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
+                                      <span className={`text-xs truncate ${email.status === 'unread' ? 'font-semibold' : ''}`}>
+                                        {extractSenderName(email.sender)}
+                                      </span>
+                                      {email.summary && (
+                                        <Sparkles className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                      )}
+                                      {email.draft_reply && (
+                                        <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap pl-2">
                                       {formatEmailDate(email.received_at)}
                                     </span>
                                   </div>
