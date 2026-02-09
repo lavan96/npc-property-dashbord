@@ -1733,7 +1733,7 @@ export default function EmailCopilot() {
                                 </span>
                               </div>
                               
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 overflow-hidden">
                                 <div className="flex items-center justify-between gap-2 mb-0.5">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
@@ -1746,7 +1746,7 @@ export default function EmailCopilot() {
                                       </Badge>
                                     )}
                                   </div>
-                                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                                  <span className="text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap">
                                     {formatEmailDate(latestEmail.received_at)}
                                   </span>
                                 </div>
@@ -1754,7 +1754,7 @@ export default function EmailCopilot() {
                                   {latestEmail.subject || '(No Subject)'}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {latestEmail.body.slice(0, 80).replace(/\n/g, ' ')}...
+                                  {latestEmail.body?.slice(0, 80).replace(/\n/g, ' ')}…
                                 </p>
                                 
                                 {/* Status indicators */}
@@ -1834,7 +1834,7 @@ export default function EmailCopilot() {
                                     </span>
                                   </div>
                                   <p className="text-xs text-muted-foreground truncate mt-1 pl-8">
-                                    {email.body.slice(0, 60).replace(/\n/g, ' ')}...
+                                    {email.body?.slice(0, 60).replace(/\n/g, ' ')}…
                                   </p>
                                 </div>
                               ))}
@@ -1876,7 +1876,7 @@ export default function EmailCopilot() {
                             <Send className="h-4 w-4 text-primary" />
                           </div>
                           
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center justify-between gap-2 mb-0.5">
                               <span className="text-sm font-medium truncate">
                                 To: {email.to_recipients?.[0] || 'Unknown'}
@@ -1890,7 +1890,7 @@ export default function EmailCopilot() {
                               {email.subject || '(No Subject)'}
                             </p>
                             <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {email.body.slice(0, 80).replace(/\n/g, ' ')}...
+                              {email.body?.slice(0, 80).replace(/\n/g, ' ')}…
                             </p>
                             <div className="flex items-center gap-1.5 mt-2">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-primary border-primary/30">
@@ -1930,7 +1930,7 @@ export default function EmailCopilot() {
                             <Send className="h-4 w-4 text-green-600" />
                           </div>
                           
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center justify-between gap-2 mb-0.5">
                               <span className="text-sm font-medium truncate">
                                 To: {reply.recipient}
@@ -1943,7 +1943,7 @@ export default function EmailCopilot() {
                               {reply.subject || '(No Subject)'}
                             </p>
                             <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {reply.body.slice(0, 80).replace(/\n/g, ' ')}...
+                              {reply.body?.slice(0, 80).replace(/\n/g, ' ')}…
                             </p>
                             <div className="flex items-center gap-1.5 mt-2">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/30">
