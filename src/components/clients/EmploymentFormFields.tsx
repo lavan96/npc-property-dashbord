@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Loader2, ChevronDown, ChevronRight, DollarSign } from 'lucide-react';
+import { convertToAnnual, FREQUENCY_OPTIONS, formatCurrency } from './income/incomeSourceTypes';
 
 const employmentTypeOptions = [
   { value: 'permanent', label: 'Permanent' },
@@ -20,7 +27,7 @@ const employmentTypeOptions = [
   { value: 'self_employed', label: 'Self Employed' },
 ];
 
-interface EmploymentFormData {
+export interface EmploymentFormData {
   id?: string;
   contact_type: 'primary' | 'secondary';
   is_current: boolean;
@@ -28,6 +35,16 @@ interface EmploymentFormData {
   occupation_role: string;
   employer_name: string;
   start_date: string;
+  // Income fields
+  salary_amount: number;
+  salary_frequency: string;
+  gross_annual_salary: number;
+  bonus: number;
+  commission: number;
+  overtime_essential: number;
+  overtime_non_essential: number;
+  allowance: number;
+  other_taxable_income: number;
 }
 
 interface EmploymentFormFieldsProps {
@@ -47,6 +64,20 @@ export function EmploymentFormFields({
   isPending,
   isEditing,
 }: EmploymentFormFieldsProps) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const grossAnnual = formData.gross_annual_salary || convertToAnnual(formData.salary_amount || 0, formData.salary_frequency || 'annual');
+  const totalAnnual = grossAnnual + (formData.bonus || 0) + (formData.commission || 0) + 
+    (formData.overtime_essential || 0) + (formData.overtime_non_essential || 0) + 
+    (formData.allowance || 0) + (formData.other_taxable_income || 0);
+
+  const handleSalaryChange = (field: 'salary_amount' | 'salary_frequency', value: any) => {
+    updateField(field, value);
+    const amount = field === 'salary_amount' ? (parseFloat(value) || 0) : formData.salary_amount;
+    const freq = field === 'salary_frequency' ? value : formData.salary_frequency;
+    updateField('gross_annual_salary', convertToAnnual(amount, freq));
+  };
+
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
@@ -105,6 +136,83 @@ export function EmploymentFormFields({
             value={formData.start_date}
             onChange={(e) => updateField('start_date', e.target.value)}
           />
+        </div>
+
+        {/* Salary / Income Section */}
+        <div className="border-t pt-4 space-y-3">
+          <Label className="text-sm font-medium flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Income Details
+          </Label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="number"
+                value={formData.salary_amount || ''}
+                onChange={(e) => handleSalaryChange('salary_amount', e.target.value)}
+                className="pl-9"
+                placeholder="0"
+              />
+            </div>
+            <Select value={formData.salary_frequency || 'annual'} onValueChange={v => handleSalaryChange('salary_frequency', v)}>
+              <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FREQUENCY_OPTIONS.map(o => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {formData.salary_frequency !== 'annual' && (formData.salary_amount || 0) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              = {formatCurrency(grossAnnual)} per annum
+            </p>
+          )}
+
+          <Collapsible open={showBreakdown} onOpenChange={setShowBreakdown}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-start text-xs h-7 text-muted-foreground">
+                {showBreakdown ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                Additional Income (Bonus, Commission, OT...)
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { field: 'bonus' as const, label: 'Bonus (avg 2yr)' },
+                  { field: 'allowance' as const, label: 'Allowance' },
+                  { field: 'commission' as const, label: 'Commission' },
+                  { field: 'overtime_essential' as const, label: 'OT (Essential)' },
+                  { field: 'overtime_non_essential' as const, label: 'OT (Non-Essential)' },
+                  { field: 'other_taxable_income' as const, label: 'Other Taxable' },
+                ].map(({ field, label }) => (
+                  <div key={field} className="space-y-1">
+                    <Label className="text-xs">{label}</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        value={formData[field] || ''}
+                        onChange={e => updateField(field, parseFloat(e.target.value) || 0)}
+                        className="pl-7 h-9"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {totalAnnual > 0 && (
+            <div className="bg-muted/50 rounded-md p-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Annual</span>
+                <span className="font-semibold">{formatCurrency(totalAnnual)}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">

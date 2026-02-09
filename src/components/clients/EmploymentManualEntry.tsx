@@ -1,46 +1,24 @@
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
+  Sheet, SheetContent, SheetDescription, SheetFooter,
+  SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Briefcase, Trash2, Edit } from 'lucide-react';
+import { Plus, Briefcase, Trash2, Edit, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
-import { EmploymentFormFields } from './EmploymentFormFields';
+import { EmploymentFormFields, EmploymentFormData } from './EmploymentFormFields';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { formatCurrency, convertToAnnual } from './income/incomeSourceTypes';
 
 interface EmploymentManualEntryProps {
   clientId: string;
   onComplete: () => void;
 }
-
-interface EmploymentFormData {
-  id?: string;
-  contact_type: 'primary' | 'secondary';
-  is_current: boolean;
-  employment_type: string;
-  occupation_role: string;
-  employer_name: string;
-  start_date: string;
-}
-
-const employmentTypeOptions = [
-  { value: 'permanent', label: 'Permanent' },
-  { value: 'part_time', label: 'Part Time' },
-  { value: 'casual', label: 'Casual' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'self_employed', label: 'Self Employed' },
-];
 
 const defaultFormData: EmploymentFormData = {
   contact_type: 'primary',
@@ -49,19 +27,22 @@ const defaultFormData: EmploymentFormData = {
   occupation_role: '',
   employer_name: '',
   start_date: '',
+  salary_amount: 0,
+  salary_frequency: 'annual',
+  gross_annual_salary: 0,
+  bonus: 0,
+  commission: 0,
+  overtime_essential: 0,
+  overtime_non_essential: 0,
+  allowance: 0,
+  other_taxable_income: 0,
 };
 
-import { invokeSecureFunction } from '@/lib/secureInvoke';
-
-/**
- * Secure fetch for employment data using HttpOnly cookies
- */
 async function fetchEmploymentSecure(clientId: string) {
   const { data, error } = await invokeSecureFunction('get-client-data', {
     clientId,
     include: { employment: true },
   });
-
   if (error) throw new Error(error.message);
   if (!data?.success) throw new Error('Failed to fetch employment');
   return data.employment || [];
@@ -74,7 +55,6 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Fetch existing employment records - always enabled to show summary outside sheet
   const { data: existingEmployment = [] } = useQuery({
     queryKey: ['client-employment', clientId],
     queryFn: () => fetchEmploymentSecure(clientId),
@@ -102,6 +82,15 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
       occupation_role: employment.occupation_role || '',
       employer_name: employment.employer_name || '',
       start_date: employment.start_date || '',
+      salary_amount: employment.salary_amount || 0,
+      salary_frequency: employment.salary_frequency || 'annual',
+      gross_annual_salary: employment.gross_annual_salary || 0,
+      bonus: employment.bonus || 0,
+      commission: employment.commission || 0,
+      overtime_essential: employment.overtime_essential || 0,
+      overtime_non_essential: employment.overtime_non_essential || 0,
+      allowance: employment.allowance || 0,
+      other_taxable_income: employment.other_taxable_income || 0,
     });
     setEditingId(employment.id);
     setActiveTab(employment.contact_type);
@@ -116,6 +105,15 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
         occupation_role: formData.occupation_role,
         employer_name: formData.employer_name,
         start_date: formData.start_date || null,
+        salary_amount: formData.salary_amount,
+        salary_frequency: formData.salary_frequency,
+        gross_annual_salary: formData.gross_annual_salary || convertToAnnual(formData.salary_amount || 0, formData.salary_frequency || 'annual'),
+        bonus: formData.bonus,
+        commission: formData.commission,
+        overtime_essential: formData.overtime_essential,
+        overtime_non_essential: formData.overtime_non_essential,
+        allowance: formData.allowance,
+        other_taxable_income: formData.other_taxable_income,
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -128,11 +126,12 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to save employment');
-      
       return data.result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-income-sources', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', clientId] });
       toast.success(editingId ? 'Employment updated' : 'Employment added');
       resetForm();
     },
@@ -149,12 +148,13 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
         clientId,
         recordId: id,
       });
-
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to delete employment');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-employment', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-income-sources', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', clientId] });
       toast.success('Employment deleted');
       if (editingId) resetForm();
     },
@@ -171,83 +171,95 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
     saveMutation.mutate();
   };
 
-  const EmploymentCard = ({ employment, showContactType = false }: { employment: any; showContactType?: boolean }) => (
-    <Card className="mb-2">
-      <CardContent className="pt-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium">{employment.employer_name || 'Unknown Employer'}</span>
-              {employment.is_current && (
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
-              )}
-              {!employment.is_current && (
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
-              )}
-              {showContactType && (
-                <span className="text-xs text-muted-foreground capitalize">({employment.contact_type})</span>
+  const getEmploymentIncome = (emp: any) => {
+    const gross = emp.gross_annual_salary || convertToAnnual(emp.salary_amount || 0, emp.salary_frequency || 'annual');
+    const total = gross + (emp.bonus || 0) + (emp.commission || 0) + 
+      (emp.overtime_essential || 0) + (emp.overtime_non_essential || 0) + 
+      (emp.allowance || 0) + (emp.other_taxable_income || 0);
+    return total;
+  };
+
+  const EmploymentCard = ({ employment, showContactType = false }: { employment: any; showContactType?: boolean }) => {
+    const totalIncome = getEmploymentIncome(employment);
+    return (
+      <Card className="mb-2">
+        <CardContent className="pt-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium">{employment.employer_name || 'Unknown Employer'}</span>
+                {employment.is_current && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                )}
+                {!employment.is_current && (
+                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
+                )}
+                {showContactType && (
+                  <span className="text-xs text-muted-foreground capitalize">({employment.contact_type})</span>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">{employment.occupation_role}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {employment.employment_type} • Started: {employment.start_date || 'N/A'}
+              </p>
+              {totalIncome > 0 && (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <DollarSign className="h-3 w-3 text-success" />
+                  <span className="text-sm font-medium text-success">{formatCurrency(totalIncome)}/yr</span>
+                </div>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">{employment.occupation_role}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {employment.employment_type} • Started: {employment.start_date || 'N/A'}
-            </p>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(employment)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMutation.mutate(employment.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => startEdit(employment)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-destructive"
-              onClick={() => deleteMutation.mutate(employment.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-4">
-      {/* Employment Summary Display */}
-      {existingEmployment.length > 0 && (
+      {existingEmployment.length > 0 ? (
         <div className="space-y-2">
-          {existingEmployment.map((emp: any) => (
-            <Card key={emp.id} className="mb-2">
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{emp.employer_name || 'Unknown Employer'}</span>
-                      {emp.is_current && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+          {existingEmployment.map((emp: any) => {
+            const totalIncome = getEmploymentIncome(emp);
+            return (
+              <Card key={emp.id} className="mb-2">
+                <CardContent className="pt-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{emp.employer_name || 'Unknown Employer'}</span>
+                        {emp.is_current && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                        )}
+                        <span className="text-xs text-muted-foreground capitalize">({emp.contact_type})</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{emp.occupation_role}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {emp.employment_type} • Started: {emp.start_date || 'N/A'}
+                      </p>
+                      {totalIncome > 0 && (
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <DollarSign className="h-3 w-3 text-success" />
+                          <span className="text-sm font-medium text-success">{formatCurrency(totalIncome)}/yr</span>
+                        </div>
                       )}
-                      <span className="text-xs text-muted-foreground capitalize">({emp.contact_type})</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{emp.occupation_role}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {emp.employment_type} • Started: {emp.start_date || 'N/A'}
-                    </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      )}
-
-      {existingEmployment.length === 0 && (
+      ) : (
         <div className="text-center py-4 text-muted-foreground">
           <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No employment records</p>
@@ -268,7 +280,7 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
               Employment Details
             </SheetTitle>
             <SheetDescription>
-              Manage employment records for primary and secondary contacts
+              Manage employment records and income for each contact
             </SheetDescription>
           </SheetHeader>
 

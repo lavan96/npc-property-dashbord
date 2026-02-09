@@ -38,6 +38,78 @@ const ALLOWED_TABLES: TableName[] = [
   'client_income_sources',
 ];
 
+// Map employment_type to income source_type and default shading
+const EMPLOYMENT_TO_INCOME_MAP: Record<string, { sourceType: string; defaultShading: number }> = {
+  permanent: { sourceType: 'payg_fulltime', defaultShading: 1.0 },
+  part_time: { sourceType: 'payg_parttime', defaultShading: 1.0 },
+  casual: { sourceType: 'casual', defaultShading: 0.8 },
+  contract: { sourceType: 'contract', defaultShading: 0.8 },
+  self_employed: { sourceType: 'self_employed', defaultShading: 0.8 },
+};
+
+function convertToAnnual(amount: number, frequency: string): number {
+  switch (frequency) {
+    case 'weekly': return amount * 52;
+    case 'fortnightly': return amount * 26;
+    case 'monthly': return amount * 12;
+    default: return amount;
+  }
+}
+
+/**
+ * Syncs an employment record to its linked income source.
+ * Creates the income source if it doesn't exist, updates if it does.
+ */
+async function syncEmploymentToIncomeSource(supabase: any, employment: any, clientId: string) {
+  const mapping = EMPLOYMENT_TO_INCOME_MAP[employment.employment_type] || { sourceType: 'payg_fulltime', defaultShading: 1.0 };
+  const grossAnnual = employment.gross_annual_salary || convertToAnnual(employment.salary_amount || 0, employment.salary_frequency || 'annual');
+
+  const incomeData = {
+    client_id: clientId,
+    employment_id: employment.id,
+    contact_type: employment.contact_type || 'primary',
+    additional_contact_id: employment.additional_contact_id || null,
+    source_category: 'employment',
+    source_type: mapping.sourceType,
+    source_name: employment.employer_name || '',
+    gross_annual_amount: grossAnnual,
+    input_amount: employment.salary_amount || 0,
+    input_frequency: employment.salary_frequency || 'annual',
+    bonus: employment.bonus || 0,
+    commission: employment.commission || 0,
+    overtime_essential: employment.overtime_essential || 0,
+    overtime_non_essential: employment.overtime_non_essential || 0,
+    allowance: employment.allowance || 0,
+    other_taxable_income: employment.other_taxable_income || 0,
+    default_shading_rate: mapping.defaultShading,
+    is_active: employment.is_current !== false,
+  };
+
+  // Check if a linked income source already exists
+  const { data: existing } = await supabase
+    .from('client_income_sources')
+    .select('id')
+    .eq('employment_id', employment.id)
+    .maybeSingle();
+
+  if (existing) {
+    // Update existing
+    await supabase
+      .from('client_income_sources')
+      .update(incomeData)
+      .eq('id', existing.id);
+    console.log(`Updated linked income source ${existing.id} for employment ${employment.id}`);
+  } else {
+    // Create new
+    const { data: created } = await supabase
+      .from('client_income_sources')
+      .insert(incomeData)
+      .select('id')
+      .single();
+    console.log(`Created linked income source ${created?.id} for employment ${employment.id}`);
+  }
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -134,6 +206,15 @@ serve(async (req) => {
             .update({ last_note_at: new Date().toISOString() })
             .eq('id', clientId);
         }
+
+        // Auto-create linked income source when employment is created
+        if (!error && table === 'client_employment' && result && clientId) {
+          try {
+            await syncEmploymentToIncomeSource(supabase, result, clientId);
+          } catch (syncError) {
+            console.warn('Failed to sync employment to income source:', syncError);
+          }
+        }
         break;
       }
 
@@ -164,6 +245,15 @@ serve(async (req) => {
 
         result = updated;
         error = updateError;
+
+        // Auto-sync linked income source when employment is updated
+        if (!error && table === 'client_employment' && result && clientId) {
+          try {
+            await syncEmploymentToIncomeSource(supabase, result, clientId);
+          } catch (syncError) {
+            console.warn('Failed to sync employment to income source:', syncError);
+          }
+        }
         break;
       }
 
@@ -177,6 +267,8 @@ serve(async (req) => {
 
         // For clients table, use clientId as the record ID
         const idToDelete = table === 'clients' ? clientId : recordId;
+
+        // When deleting employment, the linked income source is auto-deleted via ON DELETE CASCADE on employment_id FK
 
         const { error: deleteError } = await supabase
           .from(table)
