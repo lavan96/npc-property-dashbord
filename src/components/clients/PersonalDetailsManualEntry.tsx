@@ -1,36 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
+  Sheet, SheetContent, SheetDescription, SheetFooter,
+  SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, User, Users, MapPin, IdCard, Heart, Loader2, Phone, Mail, Calendar, Plus, UserPlus } from 'lucide-react';
+import { Edit, User, Users, MapPin, IdCard, Heart, Loader2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { format } from 'date-fns';
 import { AdditionalContactCard, AdditionalContact, relationshipOptions } from './AdditionalContactCard';
 import { ContactFields } from './ContactFields';
+import { ContactAddressFields, ContactAddressData, livingSituationOptions, residentialStatusOptions } from './ContactAddressFields';
 
 interface PersonalDetailsManualEntryProps {
   clientId: string;
@@ -55,13 +47,18 @@ interface PersonalDetailsManualEntryProps {
     residential_status: string | null;
     marital_status: string | null;
     dependents_count: number | null;
+    // Secondary address fields
+    secondary_current_address?: string | null;
+    secondary_country?: string | null;
+    secondary_living_situation?: string | null;
+    secondary_residential_status?: string | null;
+    secondary_same_address_as_primary?: boolean | null;
   };
   additionalContacts?: AdditionalContact[];
   onComplete: () => void;
 }
 
 interface FormData {
-  // Primary Contact
   primary_first_name: string;
   primary_middle_name: string;
   primary_surname: string;
@@ -69,7 +66,6 @@ interface FormData {
   primary_email: string;
   primary_gender: string;
   primary_dob: string;
-  // Secondary Contact
   secondary_first_name: string;
   secondary_middle_name: string;
   secondary_surname: string;
@@ -77,13 +73,18 @@ interface FormData {
   secondary_email: string;
   secondary_gender: string;
   secondary_dob: string;
-  // Address
+  // Primary address
   current_address: string;
   country: string;
   living_situation: string;
-  // ID
   residential_status: string;
-  // Family Relations
+  // Secondary address
+  secondary_current_address: string;
+  secondary_country: string;
+  secondary_living_situation: string;
+  secondary_residential_status: string;
+  secondary_same_address_as_primary: boolean;
+  // Family
   marital_status: string;
   dependents_count: number;
 }
@@ -95,22 +96,6 @@ const genderOptions = [
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
 
-const livingSituationOptions = [
-  { value: 'renting', label: 'Renting' },
-  { value: 'living_with_parents', label: 'Living with Parents' },
-  { value: 'home_with_mortgage', label: 'Home with Mortgage' },
-  { value: 'home_owned_outright', label: 'Home Owned Outright' },
-  { value: 'boarding', label: 'Boarding' },
-  { value: 'other', label: 'Other' },
-];
-
-const residentialStatusOptions = [
-  { value: 'citizen', label: 'Citizen' },
-  { value: 'permanent_resident', label: 'Permanent Resident' },
-  { value: 'temporary_visa', label: 'Temporary Visa' },
-  { value: 'other', label: 'Other' },
-];
-
 const maritalStatusOptions = [
   { value: 'single', label: 'Single' },
   { value: 'married', label: 'Married' },
@@ -120,7 +105,6 @@ const maritalStatusOptions = [
   { value: 'separated', label: 'Separated' },
 ];
 
-// Helper to format display values
 const formatLabel = (value: string | null | undefined, options?: { value: string; label: string }[]): string => {
   if (!value) return '-';
   if (options) {
@@ -143,35 +127,20 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
-  
-  // State for additional contacts
-  const [additionalContacts, setAdditionalContacts] = useState<AdditionalContact[]>([]);
+
+  const [additionalContacts, setAdditionalContacts] = useState<(AdditionalContact & { current_address?: string; country?: string; living_situation?: string; residential_status?: string; same_address_as_primary?: boolean })[]>([]);
   const [deletedContactIds, setDeletedContactIds] = useState<string[]>([]);
-  
+
   const [formData, setFormData] = useState<FormData>({
-    primary_first_name: '',
-    primary_middle_name: '',
-    primary_surname: '',
-    primary_mobile: '',
-    primary_email: '',
-    primary_gender: '',
-    primary_dob: '',
-    secondary_first_name: '',
-    secondary_middle_name: '',
-    secondary_surname: '',
-    secondary_mobile: '',
-    secondary_email: '',
-    secondary_gender: '',
-    secondary_dob: '',
-    current_address: '',
-    country: 'Australia',
-    living_situation: '',
-    residential_status: '',
-    marital_status: '',
-    dependents_count: 0,
+    primary_first_name: '', primary_middle_name: '', primary_surname: '',
+    primary_mobile: '', primary_email: '', primary_gender: '', primary_dob: '',
+    secondary_first_name: '', secondary_middle_name: '', secondary_surname: '',
+    secondary_mobile: '', secondary_email: '', secondary_gender: '', secondary_dob: '',
+    current_address: '', country: 'Australia', living_situation: '', residential_status: '',
+    secondary_current_address: '', secondary_country: 'Australia', secondary_living_situation: '', secondary_residential_status: '', secondary_same_address_as_primary: false,
+    marital_status: '', dependents_count: 0,
   });
 
-  // Populate form with existing client data when sheet opens
   useEffect(() => {
     if (open && clientData) {
       setFormData({
@@ -193,30 +162,27 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         country: clientData.country || 'Australia',
         living_situation: clientData.living_situation || '',
         residential_status: clientData.residential_status || '',
+        secondary_current_address: (clientData as any).secondary_current_address || '',
+        secondary_country: (clientData as any).secondary_country || 'Australia',
+        secondary_living_situation: (clientData as any).secondary_living_situation || '',
+        secondary_residential_status: (clientData as any).secondary_residential_status || '',
+        secondary_same_address_as_primary: (clientData as any).secondary_same_address_as_primary || false,
         marital_status: clientData.marital_status || '',
         dependents_count: clientData.dependents_count || 0,
       });
-      // Initialize additional contacts
       setAdditionalContacts(initialAdditionalContacts.map(c => ({ ...c })));
       setDeletedContactIds([]);
     }
   }, [open, clientData, initialAdditionalContacts]);
 
-  const updateField = useCallback((field: keyof FormData | string, value: string | number) => {
+  const updateField = useCallback((field: keyof FormData | string, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  // Additional contacts management
   const handleAddContact = () => {
-    const newContact: AdditionalContact = {
+    const newContact: AdditionalContact & { same_address_as_primary?: boolean } = {
       relationship: 'Additional Applicant',
-      first_name: '',
-      surname: '',
-      middle_name: '',
-      email: '',
-      mobile: '',
-      dob: '',
-      gender: '',
+      first_name: '', surname: '', middle_name: '', email: '', mobile: '', dob: '', gender: '',
       display_order: additionalContacts.length + 1,
       isNew: true,
     };
@@ -224,22 +190,37 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
   };
 
   const handleUpdateContact = useCallback((index: number, updatedContact: AdditionalContact) => {
-    setAdditionalContacts(prev => prev.map((c, i) => i === index ? updatedContact : c));
+    setAdditionalContacts(prev => prev.map((c, i) => i === index ? { ...c, ...updatedContact } : c));
   }, []);
 
   const handleRemoveContact = useCallback((index: number) => {
     setAdditionalContacts(prev => {
-      const contactToRemove = prev[index];
-      if (contactToRemove.id && !contactToRemove.isNew) {
-        setDeletedContactIds(d => [...d, contactToRemove.id!]);
+      const toRemove = prev[index];
+      if (toRemove.id && !toRemove.isNew) {
+        setDeletedContactIds(d => [...d, toRemove.id!]);
       }
       return prev.filter((_, i) => i !== index);
     });
   }, []);
 
+  const handleAdditionalContactAddress = useCallback((index: number, field: keyof ContactAddressData, value: string | boolean) => {
+    setAdditionalContacts(prev => prev.map((c, i) => {
+      if (i !== index) return c;
+      const updated = { ...c, [field]: value };
+      // If toggling "same as primary", copy primary address
+      if (field === 'same_address_as_primary' && value === true) {
+        updated.current_address = formData.current_address;
+        updated.country = formData.country;
+        updated.living_situation = formData.living_situation;
+        updated.residential_status = formData.residential_status;
+      }
+      return updated;
+    }));
+  }, [formData.current_address, formData.country, formData.living_situation, formData.residential_status]);
+
   const updateClientMutation = useMutation({
     mutationFn: async () => {
-      const updateData = {
+      const updateData: Record<string, any> = {
         primary_first_name: formData.primary_first_name,
         primary_middle_name: formData.primary_middle_name || null,
         primary_surname: formData.primary_surname,
@@ -258,51 +239,45 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         country: formData.country || null,
         living_situation: formData.living_situation || null,
         residential_status: formData.residential_status || null,
+        secondary_current_address: formData.secondary_current_address || null,
+        secondary_country: formData.secondary_country || null,
+        secondary_living_situation: formData.secondary_living_situation || null,
+        secondary_residential_status: formData.secondary_residential_status || null,
+        secondary_same_address_as_primary: formData.secondary_same_address_as_primary,
         marital_status: formData.marital_status || null,
         dependents_count: formData.dependents_count || null,
       };
 
-      // 1. Update client data
       try {
-        const { data, error } = await invokeSecureFunction('manage-client-data', {
-          operation: 'update',
-          table: 'clients',
-          clientId,
-          data: updateData,
+        const { error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update', table: 'clients', clientId, data: updateData,
         });
-        
         if (error && !error.message?.includes('401')) {
           console.warn('Edge function failed for client update:', error);
         }
       } catch (err) {
         console.warn('Edge function failed, falling back to direct query:', err);
-        const { error } = await supabase
-          .from('clients')
-          .update(updateData)
-          .eq('id', clientId);
+        const { error } = await supabase.from('clients').update(updateData).eq('id', clientId);
         if (error) throw error;
       }
 
-      // 2. Handle additional contacts - delete removed ones
+      // Delete removed contacts
       for (const contactId of deletedContactIds) {
         try {
           await invokeSecureFunction('manage-client-data', {
-            operation: 'delete',
-            table: 'client_additional_contacts',
-            clientId,
-            recordId: contactId,
+            operation: 'delete', table: 'client_additional_contacts', clientId, recordId: contactId,
           });
         } catch (err) {
-          console.warn('Failed to delete contact via edge function:', err);
+          console.warn('Failed to delete contact:', err);
         }
       }
 
-      // 3. Handle additional contacts - create new or update existing
+      // Save additional contacts (with address fields)
       for (let i = 0; i < additionalContacts.length; i++) {
         const contact = additionalContacts[i];
         if (!contact.first_name.trim() || !contact.surname.trim()) continue;
 
-        const contactData = {
+        const contactData: Record<string, any> = {
           relationship: contact.relationship,
           first_name: contact.first_name.trim(),
           surname: contact.surname.trim(),
@@ -312,25 +287,21 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
           dob: contact.dob || null,
           gender: contact.gender || null,
           display_order: i + 1,
+          current_address: contact.current_address || null,
+          country: contact.country || 'Australia',
+          living_situation: contact.living_situation || null,
+          residential_status: contact.residential_status || null,
+          same_address_as_primary: contact.same_address_as_primary || false,
         };
 
         try {
           if (contact.id && !contact.isNew) {
-            // Update existing
             await invokeSecureFunction('manage-client-data', {
-              operation: 'update',
-              table: 'client_additional_contacts',
-              clientId,
-              recordId: contact.id,
-              data: contactData,
+              operation: 'update', table: 'client_additional_contacts', clientId, recordId: contact.id, data: contactData,
             });
           } else {
-            // Create new
             await invokeSecureFunction('manage-client-data', {
-              operation: 'create',
-              table: 'client_additional_contacts',
-              clientId,
-              data: contactData,
+              operation: 'create', table: 'client_additional_contacts', clientId, data: contactData,
             });
           }
         } catch (err) {
@@ -343,14 +314,11 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
       queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Personal details updated successfully');
-      
       addNotification({
-        type: 'client_updated',
-        title: 'Client Updated',
+        type: 'client_updated', title: 'Client Updated',
         message: `Personal details updated for ${formData.primary_first_name} ${formData.primary_surname}`,
-        entityId: clientId
+        entityId: clientId,
       });
-      
       setOpen(false);
       onComplete();
     },
@@ -367,18 +335,24 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
     updateClientMutation.mutate();
   };
 
-  // Read-only display component for when sheet is closed
+  const primaryAddressRef = {
+    current_address: formData.current_address,
+    country: formData.country,
+    living_situation: formData.living_situation,
+    residential_status: formData.residential_status,
+  };
+
+  // Check if secondary contact exists
+  const hasSecondary = !!(formData.secondary_first_name || formData.secondary_surname);
+
   const DisplayCard = ({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) => (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Icon className="h-4 w-4" />
-          {title}
+          <Icon className="h-4 w-4" />{title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="text-sm space-y-2">
-        {children}
-      </CardContent>
+      <CardContent className="text-sm space-y-2">{children}</CardContent>
     </Card>
   );
 
@@ -391,7 +365,6 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
 
   return (
     <div className="space-y-4">
-      {/* Stateful Display - Always shows current data */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Users className="h-5 w-5" />
@@ -423,14 +396,12 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                   <TabsTrigger value="family">Family</TabsTrigger>
                 </TabsList>
 
+                {/* Contacts Tab */}
                 <TabsContent value="contacts" className="space-y-4 mt-4">
                   <ContactFields prefix="primary" title="Primary Contact" formData={formData} updateField={updateField} />
-                  
                   <Separator className="my-4" />
-                  
                   <ContactFields prefix="secondary" title="Secondary Contact" formData={formData} updateField={updateField} />
 
-                  {/* Additional Contacts Section */}
                   {additionalContacts.length > 0 && (
                     <>
                       <Separator className="my-4" />
@@ -448,97 +419,86 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                       </div>
                     </>
                   )}
-
-                  {/* Add Contact Button */}
                   <Separator className="my-4" />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleAddContact}
-                  >
+                  <Button type="button" variant="outline" className="w-full" onClick={handleAddContact}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Additional Contact
                   </Button>
                 </TabsContent>
 
-                <TabsContent value="address" className="space-y-4 mt-4">
-                  {/* Address Section */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Address
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Current Address</Label>
-                        <Input
-                          value={formData.current_address}
-                          onChange={(e) => updateField('current_address', e.target.value)}
-                          placeholder="123 Main Street, Sydney NSW 2000"
+                {/* Address & ID Tab - per contact */}
+                <TabsContent value="address" className="space-y-6 mt-4">
+                  {/* Primary Contact Address */}
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
+                      Primary Contact — {formData.primary_first_name || 'Primary'} {formData.primary_surname}
+                    </Label>
+                    <ContactAddressFields
+                      data={{
+                        current_address: formData.current_address,
+                        country: formData.country,
+                        living_situation: formData.living_situation,
+                        residential_status: formData.residential_status,
+                        same_address_as_primary: false,
+                      }}
+                      onChange={(field, value) => updateField(field as string, value)}
+                      hideSameAsPrimary
+                    />
+                  </div>
+
+                  {/* Secondary Contact Address */}
+                  {hasSecondary && (
+                    <>
+                      <Separator />
+                      <div>
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
+                          Secondary Contact — {formData.secondary_first_name || 'Secondary'} {formData.secondary_surname}
+                        </Label>
+                        <ContactAddressFields
+                          data={{
+                            current_address: formData.secondary_current_address,
+                            country: formData.secondary_country,
+                            living_situation: formData.secondary_living_situation,
+                            residential_status: formData.secondary_residential_status,
+                            same_address_as_primary: formData.secondary_same_address_as_primary,
+                          }}
+                          onChange={(field, value) => {
+                            const prefixedField = `secondary_${field}`;
+                            updateField(prefixedField, value);
+                          }}
+                          primaryAddress={primaryAddressRef}
                         />
                       </div>
+                    </>
+                  )}
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label className="text-xs">Country</Label>
-                          <Input
-                            value={formData.country}
-                            onChange={(e) => updateField('country', e.target.value)}
-                            placeholder="Australia"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs">Living Situation</Label>
-                          <Select
-                            value={formData.living_situation}
-                            onValueChange={(v) => updateField('living_situation', v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select situation" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {livingSituationOptions.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  {/* Additional Contacts Addresses */}
+                  {additionalContacts.map((contact, index) => {
+                    if (!contact.first_name && !contact.surname) return null;
+                    const contactName = [contact.first_name, contact.surname].filter(Boolean).join(' ') || `Contact ${index + 3}`;
+                    return (
+                      <div key={contact.id || `addr-${index}`}>
+                        <Separator className="mb-6" />
+                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 block">
+                          {contact.relationship || 'Additional'} — {contactName}
+                        </Label>
+                        <ContactAddressFields
+                          data={{
+                            current_address: contact.current_address || '',
+                            country: contact.country || 'Australia',
+                            living_situation: contact.living_situation || '',
+                            residential_status: contact.residential_status || '',
+                            same_address_as_primary: contact.same_address_as_primary || false,
+                          }}
+                          onChange={(field, value) => handleAdditionalContactAddress(index, field, value)}
+                          primaryAddress={primaryAddressRef}
+                        />
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* ID Section */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <IdCard className="h-4 w-4" />
-                        ID
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Residential Status</Label>
-                        <Select
-                          value={formData.residential_status}
-                          onValueChange={(v) => updateField('residential_status', v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {residentialStatusOptions.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    );
+                  })}
                 </TabsContent>
 
+                {/* Family Tab */}
                 <TabsContent value="family" className="space-y-4 mt-4">
                   <Card>
                     <CardHeader className="pb-3">
@@ -551,13 +511,8 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                           <Label className="text-xs">Marital Status</Label>
-                          <Select
-                            value={formData.marital_status}
-                            onValueChange={(v) => updateField('marital_status', v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
+                          <Select value={formData.marital_status} onValueChange={(v) => updateField('marital_status', v)}>
+                            <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
                             <SelectContent>
                               {maritalStatusOptions.map(opt => (
                                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -568,8 +523,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
                         <div className="space-y-2">
                           <Label className="text-xs">Number of Dependents (under 18)</Label>
                           <Input
-                            type="number"
-                            min="0"
+                            type="number" min="0"
                             value={formData.dependents_count || ''}
                             onChange={(e) => updateField('dependents_count', parseInt(e.target.value) || 0)}
                             placeholder="0"
@@ -583,16 +537,9 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
             </ScrollArea>
 
             <SheetFooter className="pt-4">
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSubmit}
-                disabled={updateClientMutation.isPending}
-              >
-                {updateClientMutation.isPending && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                )}
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={handleSubmit} disabled={updateClientMutation.isPending}>
+                {updateClientMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
             </SheetFooter>
@@ -600,58 +547,44 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         </Sheet>
       </div>
 
-      {/* Read-only data display */}
+      {/* Read-only display */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Primary Contact Display */}
         <DisplayCard title="Primary Contact" icon={User}>
-          <DisplayItem 
-            label="Name" 
-            value={[clientData?.primary_first_name, clientData?.primary_middle_name, clientData?.primary_surname].filter(Boolean).join(' ') || '-'} 
-          />
+          <DisplayItem label="Name" value={[clientData?.primary_first_name, clientData?.primary_middle_name, clientData?.primary_surname].filter(Boolean).join(' ') || '-'} />
           <DisplayItem label="Mobile" value={clientData?.primary_mobile || '-'} />
           <DisplayItem label="Email" value={clientData?.primary_email || '-'} />
           <DisplayItem label="Gender" value={formatLabel(clientData?.primary_gender, genderOptions)} />
           <DisplayItem label="Date of Birth" value={formatDate(clientData?.primary_dob)} />
         </DisplayCard>
 
-        {/* Secondary Contact Display */}
         <DisplayCard title="Secondary Contact" icon={Users}>
-          <DisplayItem 
-            label="Name" 
-            value={[clientData?.secondary_first_name, clientData?.secondary_middle_name, clientData?.secondary_surname].filter(Boolean).join(' ') || '-'} 
-          />
+          <DisplayItem label="Name" value={[clientData?.secondary_first_name, clientData?.secondary_middle_name, clientData?.secondary_surname].filter(Boolean).join(' ') || '-'} />
           <DisplayItem label="Mobile" value={clientData?.secondary_mobile || '-'} />
           <DisplayItem label="Email" value={clientData?.secondary_email || '-'} />
           <DisplayItem label="Gender" value={formatLabel(clientData?.secondary_gender, genderOptions)} />
           <DisplayItem label="Date of Birth" value={formatDate(clientData?.secondary_dob)} />
         </DisplayCard>
 
-        {/* Address Display */}
-        <DisplayCard title="Address" icon={MapPin}>
+        <DisplayCard title="Primary Address" icon={MapPin}>
           <DisplayItem label="Current Address" value={clientData?.current_address || '-'} />
           <DisplayItem label="Country" value={clientData?.country || '-'} />
           <DisplayItem label="Living Situation" value={formatLabel(clientData?.living_situation, livingSituationOptions)} />
+          <DisplayItem label="Residential Status" value={formatLabel(clientData?.residential_status, residentialStatusOptions)} />
         </DisplayCard>
 
-        {/* ID & Family Display */}
-        <DisplayCard title="ID & Family" icon={Heart}>
-          <DisplayItem label="Residential Status" value={formatLabel(clientData?.residential_status, residentialStatusOptions)} />
+        <DisplayCard title="Family" icon={Heart}>
           <DisplayItem label="Marital Status" value={formatLabel(clientData?.marital_status, maritalStatusOptions)} />
           <DisplayItem label="Dependents" value={clientData?.dependents_count?.toString() || '0'} />
         </DisplayCard>
       </div>
 
-      {/* Additional Contacts Display */}
       {initialAdditionalContacts.length > 0 && (
         <div className="mt-4">
           <h4 className="text-sm font-medium text-muted-foreground mb-3">Additional Contacts</h4>
           <div className="grid gap-4 md:grid-cols-2">
-            {initialAdditionalContacts.map((contact, index) => (
-              <DisplayCard key={contact.id} title={`${contact.relationship}`} icon={UserPlus}>
-                <DisplayItem 
-                  label="Name" 
-                  value={[contact.first_name, contact.middle_name, contact.surname].filter(Boolean).join(' ') || '-'} 
-                />
+            {initialAdditionalContacts.map((contact) => (
+              <DisplayCard key={contact.id} title={contact.relationship} icon={UserPlus}>
+                <DisplayItem label="Name" value={[contact.first_name, contact.middle_name, contact.surname].filter(Boolean).join(' ') || '-'} />
                 <DisplayItem label="Mobile" value={contact.mobile || '-'} />
                 <DisplayItem label="Email" value={contact.email || '-'} />
                 <DisplayItem label="Date of Birth" value={formatDate(contact.dob)} />
