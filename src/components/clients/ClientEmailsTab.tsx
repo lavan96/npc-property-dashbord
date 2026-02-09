@@ -185,23 +185,25 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
   }
 
   return (
-    <div className="space-y-4">
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search emails..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
+    <div className="flex flex-col h-full min-h-0">
+      {/* Sticky Search */}
+      <div className="sticky top-0 z-10 bg-background pb-3 flex-shrink-0">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search emails..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
-      {/* Emails Table */}
-      <Card>
-        <ScrollArea className="max-h-[500px]">
+      {/* Emails Table - scrollable body with sticky header */}
+      <Card className="flex-1 min-h-0 overflow-hidden">
+        <div className="overflow-auto max-h-[calc(60vh-120px)]">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow>
                 <TableHead>From</TableHead>
                 <TableHead>Subject</TableHead>
@@ -273,11 +275,11 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
               ))}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </Card>
 
       {/* Summary */}
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground text-center pt-2 flex-shrink-0">
         {filteredEmails.length} email{filteredEmails.length !== 1 ? 's' : ''} linked to this client
       </p>
     </div>
