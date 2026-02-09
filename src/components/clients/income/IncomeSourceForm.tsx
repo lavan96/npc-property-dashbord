@@ -25,6 +25,7 @@ interface IncomeSourceFormProps {
   onSave: (source: IncomeSource) => void;
   onCancel: () => void;
   isPending: boolean;
+  hideEmploymentCategory?: boolean;
 }
 
 export const IncomeSourceForm = React.memo(function IncomeSourceForm({
@@ -33,12 +34,19 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
   onSave,
   onCancel,
   isPending,
+  hideEmploymentCategory = false,
 }: IncomeSourceFormProps) {
-  const [form, setForm] = useState<IncomeSource>(() => ({
-    ...defaultIncomeSource,
-    contact_type: contactType,
-    ...source,
-  }));
+  const [form, setForm] = useState<IncomeSource>(() => {
+    const defaultCategory = hideEmploymentCategory ? 'passive' : 'employment';
+    const defaultType = hideEmploymentCategory ? 'rental' : 'payg_fulltime';
+    return {
+      ...defaultIncomeSource,
+      source_category: defaultCategory,
+      source_type: defaultType,
+      contact_type: contactType,
+      ...source,
+    };
+  });
 
   const isEmployment = form.source_category === 'employment';
 
@@ -95,6 +103,9 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
     onSave(form);
   };
 
+  const availableCategories = hideEmploymentCategory 
+    ? SOURCE_CATEGORIES.filter(c => c.value !== 'employment') 
+    : SOURCE_CATEGORIES;
   const sourceTypes = SOURCE_TYPES[form.source_category] || [];
 
   return (
@@ -110,7 +121,7 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
             <Select value={form.source_category} onValueChange={v => updateField('source_category', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SOURCE_CATEGORIES.map(c => (
+                {availableCategories.map(c => (
                   <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                 ))}
               </SelectContent>

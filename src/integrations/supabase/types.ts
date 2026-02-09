@@ -1034,42 +1034,79 @@ export type Database = {
       }
       client_employment: {
         Row: {
+          additional_contact_id: string | null
+          allowance: number | null
+          bonus: number | null
           client_id: string
+          commission: number | null
           contact_type: string
           created_at: string
           employer_name: string | null
           employment_type: string | null
+          gross_annual_salary: number | null
           id: string
           is_current: boolean | null
           occupation_role: string | null
+          other_taxable_income: number | null
+          overtime_essential: number | null
+          overtime_non_essential: number | null
+          salary_amount: number | null
+          salary_frequency: string | null
           start_date: string | null
           updated_at: string
         }
         Insert: {
+          additional_contact_id?: string | null
+          allowance?: number | null
+          bonus?: number | null
           client_id: string
+          commission?: number | null
           contact_type?: string
           created_at?: string
           employer_name?: string | null
           employment_type?: string | null
+          gross_annual_salary?: number | null
           id?: string
           is_current?: boolean | null
           occupation_role?: string | null
+          other_taxable_income?: number | null
+          overtime_essential?: number | null
+          overtime_non_essential?: number | null
+          salary_amount?: number | null
+          salary_frequency?: string | null
           start_date?: string | null
           updated_at?: string
         }
         Update: {
+          additional_contact_id?: string | null
+          allowance?: number | null
+          bonus?: number | null
           client_id?: string
+          commission?: number | null
           contact_type?: string
           created_at?: string
           employer_name?: string | null
           employment_type?: string | null
+          gross_annual_salary?: number | null
           id?: string
           is_current?: boolean | null
           occupation_role?: string | null
+          other_taxable_income?: number | null
+          overtime_essential?: number | null
+          overtime_non_essential?: number | null
+          salary_amount?: number | null
+          salary_frequency?: string | null
           start_date?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_employment_additional_contact_id_fkey"
+            columns: ["additional_contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_additional_contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_employment_client_id_fkey"
             columns: ["client_id"]
@@ -1291,6 +1328,7 @@ export type Database = {
       }
       client_income_sources: {
         Row: {
+          additional_contact_id: string | null
           allowance: number | null
           bonus: number | null
           client_id: string
@@ -1300,6 +1338,7 @@ export type Database = {
           custom_shading_rate: number | null
           default_shading_rate: number
           display_order: number
+          employment_id: string | null
           gross_annual_amount: number
           id: string
           input_amount: number
@@ -1315,6 +1354,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          additional_contact_id?: string | null
           allowance?: number | null
           bonus?: number | null
           client_id: string
@@ -1324,6 +1364,7 @@ export type Database = {
           custom_shading_rate?: number | null
           default_shading_rate?: number
           display_order?: number
+          employment_id?: string | null
           gross_annual_amount?: number
           id?: string
           input_amount?: number
@@ -1339,6 +1380,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          additional_contact_id?: string | null
           allowance?: number | null
           bonus?: number | null
           client_id?: string
@@ -1348,6 +1390,7 @@ export type Database = {
           custom_shading_rate?: number | null
           default_shading_rate?: number
           display_order?: number
+          employment_id?: string | null
           gross_annual_amount?: number
           id?: string
           input_amount?: number
@@ -1364,10 +1407,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "client_income_sources_additional_contact_id_fkey"
+            columns: ["additional_contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_additional_contacts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "client_income_sources_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_income_sources_employment_id_fkey"
+            columns: ["employment_id"]
+            isOneToOne: false
+            referencedRelation: "client_employment"
             referencedColumns: ["id"]
           },
         ]

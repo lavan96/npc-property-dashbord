@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, DollarSign, Briefcase, Building, Landmark, TrendingUp, HelpCircle } from 'lucide-react';
+import { Edit, Trash2, DollarSign, Briefcase, Building, Landmark, TrendingUp, HelpCircle, Link } from 'lucide-react';
 import {
   IncomeSource,
   SOURCE_CATEGORIES,
@@ -16,6 +16,7 @@ interface IncomeSourceCardProps {
   source: IncomeSource;
   onEdit: () => void;
   onDelete: () => void;
+  isLinkedToEmployment?: boolean;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -30,6 +31,7 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
   source,
   onEdit,
   onDelete,
+  isLinkedToEmployment = false,
 }: IncomeSourceCardProps) {
   const totalAnnual = getSourceTotalAnnual(source);
   const shading = getEffectiveShading(source);
@@ -39,7 +41,7 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
   const Icon = categoryIcons[source.source_category] || DollarSign;
 
   return (
-    <Card className="group">
+    <Card className={`group ${isLinkedToEmployment ? 'border-muted bg-muted/30' : ''}`}>
       <CardContent className="pt-3 pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -50,6 +52,12 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-medium text-sm truncate">{source.source_name || typeLabel}</p>
                 <Badge variant="secondary" className="text-[10px] h-5">{categoryLabel}</Badge>
+                {isLinkedToEmployment && (
+                  <Badge variant="outline" className="text-[10px] h-5 gap-1">
+                    <Link className="h-2.5 w-2.5" />
+                    From Employment
+                  </Badge>
+                )}
                 {source.custom_shading_rate !== null && (
                   <Badge variant="outline" className="text-[10px] h-5">Custom {(shading * 100).toFixed(0)}%</Badge>
                 )}
@@ -65,14 +73,16 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
               </div>
             </div>
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
-              <Edit className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          {!isLinkedToEmployment && (
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+                <Edit className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

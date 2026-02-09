@@ -8,18 +8,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, DollarSign } from 'lucide-react';
+import { Plus, DollarSign, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { IncomeSourceForm } from './income/IncomeSourceForm';
 import { IncomeSourceCard } from './income/IncomeSourceCard';
 import {
   IncomeSource,
-  convertToAnnual,
   getSourceTotalAnnual,
-  getEffectiveShading,
   formatCurrency,
-  defaultIncomeSource,
 } from './income/incomeSourceTypes';
 
 interface IncomeManualEntryProps {
@@ -34,7 +31,7 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
   const [isAdding, setIsAdding] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch income sources
+  // Fetch all income sources (both employment-linked and standalone)
   const { data: incomeSources = [] } = useQuery<IncomeSource[]>({
     queryKey: ['client-income-sources', clientId],
     queryFn: async () => {
@@ -48,12 +45,22 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
     },
   });
 
+  // Split into employment-linked and standalone sources
+  const employmentSources = useMemo(() => incomeSources.filter((s: any) => s.employment_id), [incomeSources]);
+  const standaloneSources = useMemo(() => incomeSources.filter((s: any) => !s.employment_id), [incomeSources]);
+
   const primarySources = useMemo(() => incomeSources.filter(s => s.contact_type === 'primary'), [incomeSources]);
   const secondarySources = useMemo(() => incomeSources.filter(s => s.contact_type === 'secondary'), [incomeSources]);
   
   const primaryTotal = useMemo(() => primarySources.reduce((sum, s) => sum + getSourceTotalAnnual(s), 0), [primarySources]);
   const secondaryTotal = useMemo(() => secondarySources.reduce((sum, s) => sum + getSourceTotalAnnual(s), 0), [secondarySources]);
   const combinedTotal = primaryTotal + secondaryTotal;
+
+  // For the sheet: filter by tab, separating employment-linked vs standalone
+  const currentEmploymentSources = useMemo(() => 
+    employmentSources.filter((s: any) => s.contact_type === activeTab), [employmentSources, activeTab]);
+  const currentStandaloneSources = useMemo(() => 
+    standaloneSources.filter((s: any) => s.contact_type === activeTab), [standaloneSources, activeTab]);
 
   const saveMutation = useMutation({
     mutationFn: async (source: IncomeSource) => {
@@ -97,7 +104,6 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
     onError: (err: any) => toast.error('Failed to delete: ' + err.message),
   });
 
-  const currentSources = activeTab === 'primary' ? primarySources : secondarySources;
   const showForm = isAdding || editingSource !== null;
 
   return (
@@ -114,6 +120,9 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
               <p className="text-2xl font-bold text-success">{formatCurrency(combinedTotal)}/year</p>
               <p className="text-sm text-muted-foreground">
                 {formatCurrency(combinedTotal / 12)}/month • {incomeSources.length} source{incomeSources.length !== 1 ? 's' : ''}
+                {employmentSources.length > 0 && (
+                  <span className="ml-1">({employmentSources.length} from employment)</span>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -161,7 +170,7 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
               Income Sources
             </SheetTitle>
             <SheetDescription>
-              Add multiple income sources for each contact
+              Employment income is managed from the Employment tab. Add other income sources here.
             </SheetDescription>
           </SheetHeader>
 
@@ -173,6 +182,7 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
                 onSave={(source) => saveMutation.mutate(source)}
                 onCancel={() => { setEditingSource(null); setIsAdding(false); }}
                 isPending={saveMutation.isPending}
+                hideEmploymentCategory
               />
             ) : (
               <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)}>
@@ -186,16 +196,46 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
                 </TabsList>
 
                 <TabsContent value={activeTab} className="mt-4 space-y-3">
-                  {currentSources.map(source => (
-                    <IncomeSourceCard
-                      key={source.id}
-                      source={source}
-                      onEdit={() => setEditingSource(source)}
-                      onDelete={() => source.id && deleteMutation.mutate(source.id)}
-                    />
-                  ))}
+                  {/* Employment-linked income (read-only) */}
+                  {currentEmploymentSources.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From Employment</p>
+                      </div>
+                      {currentEmploymentSources.map((source: any) => (
+                        <IncomeSourceCard
+                          key={source.id}
+                          source={source}
+                          onEdit={() => {}}
+                          onDelete={() => {}}
+                          isLinkedToEmployment
+                        />
+                      ))}
+                    </div>
+                  )}
 
-                  {currentSources.length === 0 && (
+                  {/* Standalone income sources */}
+                  {currentStandaloneSources.length > 0 && (
+                    <div className="space-y-2">
+                      {currentEmploymentSources.length > 0 && (
+                        <div className="flex items-center gap-2 mt-4">
+                          <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Other Income</p>
+                        </div>
+                      )}
+                      {currentStandaloneSources.map((source: any) => (
+                        <IncomeSourceCard
+                          key={source.id}
+                          source={source}
+                          onEdit={() => setEditingSource(source)}
+                          onDelete={() => source.id && deleteMutation.mutate(source.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {currentEmploymentSources.length === 0 && currentStandaloneSources.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
                       <p className="text-sm">No {activeTab} income sources yet</p>
                     </div>
