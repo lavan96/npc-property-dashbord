@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { PortfolioAnalysisPDFGenerator } from '../PortfolioAnalysisPDFGenerator';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +34,7 @@ import {
 import { PortfolioAnalysisConfig, PortfolioAnalysisSettings } from './PortfolioAnalysisConfig';
 
 interface GenerateReportStepProps {
+  clientId: string;
   clientName: string;
   overallScore: number;
   riskLevel: string;
@@ -55,6 +58,7 @@ interface GenerateReportStepProps {
 }
 
 export function GenerateReportStep({
+  clientId,
   clientName,
   overallScore,
   riskLevel,
@@ -299,6 +303,30 @@ export function GenerateReportStep({
           />
         </CardContent>
       </Card>
+
+      {/* Generate Portfolio Performance Report */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Generate Performance Report
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Generate a comprehensive Portfolio Performance Analysis PDF using the investor profile settings configured above.
+          </p>
+          <PortfolioAnalysisPDFGenerator
+            clientId={clientId}
+            clientName={clientName}
+            includeBorrowingCapacity={includeBorrowingCapacity}
+            includeOwnerOccupied={includeOwnerOccupied}
+            analysisConfig={analysisConfig}
+          />
+        </CardContent>
+      </Card>
+
+      <Separator />
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4">

@@ -68,6 +68,7 @@ export function ReviewWizard({
         
         return (
           <GenerateReportStep
+            clientId={clientId}
             clientName={clientName}
             overallScore={wizard.scorecard.overallScore}
             riskLevel={wizard.scorecard.riskLevel}
