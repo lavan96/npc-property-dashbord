@@ -5,7 +5,8 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_s
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' |
                  'client_assets' | 'client_liabilities' | 'client_employment' |
                  'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts' |
-                 'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews' | 'client_scores';
+                 'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews' | 'client_scores' |
+                 'client_income_sources';
 
 type Operation = 'create' | 'update' | 'delete' | 'upsert' | 'bulkDelete';
 
@@ -34,6 +35,7 @@ const ALLOWED_TABLES: TableName[] = [
   'report_qa_conversations',
   'portfolio_reviews',
   'client_scores',
+  'client_income_sources',
 ];
 
 serve(async (req) => {
