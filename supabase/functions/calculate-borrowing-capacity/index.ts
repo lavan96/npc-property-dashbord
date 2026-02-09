@@ -223,7 +223,7 @@ function getHemBenchmark(maritalStatus: string | null, dependentsCount: number |
   return Math.round(baseHem * multiplier);
 }
 
-function calculateIncomeBreakdown(incomeRecords: any[], properties: any[]): { 
+function calculateIncomeBreakdown(incomeRecords: any[], properties: any[], incomeSources: any[]): { 
   grossTotal: number; 
   shadedTotal: number; 
   breakdown: IncomeBreakdownItem[];
@@ -232,132 +232,106 @@ function calculateIncomeBreakdown(incomeRecords: any[], properties: any[]): {
   let grossTotal = 0;
   let shadedTotal = 0;
 
-  // Process income records
-  for (const income of incomeRecords) {
-    // Gross salary
-    if (income.gross_salary && income.gross_salary > 0) {
-      const frequency = income.salary_frequency?.toLowerCase() || 'annual';
-      let annualAmount = income.gross_salary;
-      if (frequency === 'monthly') annualAmount *= 12;
-      else if (frequency === 'fortnightly') annualAmount *= 26;
-      else if (frequency === 'weekly') annualAmount *= 52;
-      
-      const rule = INCOME_SHADING_RULES.gross_salary;
-      grossTotal += annualAmount;
-      shadedTotal += annualAmount * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: annualAmount,
-        shadingRate: rule.rate,
-        shadedAmount: annualAmount * rule.rate,
-      });
-    }
+  // Prefer new multi-source income table (client_income_sources) over legacy client_income
+  const useNewSources = incomeSources && incomeSources.length > 0;
 
-    // Bonus
-    if (income.bonus && income.bonus > 0) {
-      const rule = INCOME_SHADING_RULES.bonus;
-      grossTotal += income.bonus;
-      shadedTotal += income.bonus * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: income.bonus,
-        shadingRate: rule.rate,
-        shadedAmount: income.bonus * rule.rate,
-      });
-    }
+  if (useNewSources) {
+    // Process from client_income_sources (supports primary, secondary, additional contacts)
+    for (const src of incomeSources) {
+      const contactLabel = src.contact_type === 'primary' ? 'Primary' : 
+        src.contact_type === 'secondary' ? 'Secondary' : src.contact_type;
+      const sourceName = src.source_name || src.source_type || 'Income';
+      const effectiveShading = src.custom_shading_rate ?? src.default_shading_rate ?? 1.0;
 
-    // Commission
-    if (income.commission && income.commission > 0) {
-      const rule = INCOME_SHADING_RULES.commission;
-      grossTotal += income.commission;
-      shadedTotal += income.commission * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: income.commission,
-        shadingRate: rule.rate,
-        shadedAmount: income.commission * rule.rate,
-      });
-    }
+      // Base gross annual amount
+      const grossAnnual = Number(src.gross_annual_amount) || 0;
+      if (grossAnnual > 0) {
+        grossTotal += grossAnnual;
+        const shadedAmount = grossAnnual * effectiveShading;
+        shadedTotal += shadedAmount;
+        breakdown.push({
+          component: `${contactLabel} ${sourceName}`,
+          grossAmount: grossAnnual,
+          shadingRate: effectiveShading,
+          shadedAmount,
+        });
+      }
 
-    // Overtime - Essential
-    if (income.overtime_essential && income.overtime_essential > 0) {
-      const rule = INCOME_SHADING_RULES.overtime_essential;
-      grossTotal += income.overtime_essential;
-      shadedTotal += income.overtime_essential * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: income.overtime_essential,
-        shadingRate: rule.rate,
-        shadedAmount: income.overtime_essential * rule.rate,
-      });
+      // Employment sub-fields with their own shading
+      const subFields = [
+        { key: 'bonus', label: 'Bonus', shading: INCOME_SHADING_RULES.bonus.rate },
+        { key: 'commission', label: 'Commission', shading: INCOME_SHADING_RULES.commission.rate },
+        { key: 'overtime_essential', label: 'Essential OT', shading: INCOME_SHADING_RULES.overtime_essential.rate },
+        { key: 'overtime_non_essential', label: 'Non-Essential OT', shading: INCOME_SHADING_RULES.overtime_non_essential.rate },
+        { key: 'allowance', label: 'Allowance', shading: INCOME_SHADING_RULES.allowance.rate },
+        { key: 'other_taxable_income', label: 'Other Taxable', shading: INCOME_SHADING_RULES.other_taxable.rate },
+      ];
+      for (const { key, label, shading } of subFields) {
+        const val = Number(src[key]) || 0;
+        if (val > 0) {
+          grossTotal += val;
+          const shadedAmount = val * shading;
+          shadedTotal += shadedAmount;
+          breakdown.push({
+            component: `${contactLabel} ${label}`,
+            grossAmount: val,
+            shadingRate: shading,
+            shadedAmount,
+          });
+        }
+      }
     }
-
-    // Overtime - Non-Essential
-    if (income.overtime_non_essential && income.overtime_non_essential > 0) {
-      const rule = INCOME_SHADING_RULES.overtime_non_essential;
-      grossTotal += income.overtime_non_essential;
-      shadedTotal += income.overtime_non_essential * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: income.overtime_non_essential,
-        shadingRate: rule.rate,
-        shadedAmount: income.overtime_non_essential * rule.rate,
-      });
-    }
-
-    // Allowance
-    if (income.allowance && income.allowance > 0) {
-      const rule = INCOME_SHADING_RULES.allowance;
-      grossTotal += income.allowance;
-      shadedTotal += income.allowance * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: income.allowance,
-        shadingRate: rule.rate,
-        shadedAmount: income.allowance * rule.rate,
-      });
-    }
-
-    // Other taxable income
-    if (income.other_taxable_income && income.other_taxable_income > 0) {
-      const rule = INCOME_SHADING_RULES.other_taxable;
-      grossTotal += income.other_taxable_income;
-      shadedTotal += income.other_taxable_income * rule.rate;
-      breakdown.push({
-        component: rule.label,
-        grossAmount: income.other_taxable_income,
-        shadingRate: rule.rate,
-        shadedAmount: income.other_taxable_income * rule.rate,
-      });
+  } else {
+    // Fallback: Process from legacy client_income table
+    for (const income of incomeRecords) {
+      if (income.gross_salary && income.gross_salary > 0) {
+        const frequency = income.salary_frequency?.toLowerCase() || 'annual';
+        let annualAmount = income.gross_salary;
+        if (frequency === 'monthly') annualAmount *= 12;
+        else if (frequency === 'fortnightly') annualAmount *= 26;
+        else if (frequency === 'weekly') annualAmount *= 52;
+        
+        const rule = INCOME_SHADING_RULES.gross_salary;
+        grossTotal += annualAmount;
+        shadedTotal += annualAmount * rule.rate;
+        breakdown.push({ component: rule.label, grossAmount: annualAmount, shadingRate: rule.rate, shadedAmount: annualAmount * rule.rate });
+      }
+      const legacyFields = [
+        { key: 'bonus', rule: INCOME_SHADING_RULES.bonus },
+        { key: 'commission', rule: INCOME_SHADING_RULES.commission },
+        { key: 'overtime_essential', rule: INCOME_SHADING_RULES.overtime_essential },
+        { key: 'overtime_non_essential', rule: INCOME_SHADING_RULES.overtime_non_essential },
+        { key: 'allowance', rule: INCOME_SHADING_RULES.allowance },
+        { key: 'other_taxable_income', rule: INCOME_SHADING_RULES.other_taxable },
+      ];
+      for (const { key, rule } of legacyFields) {
+        const val = Number(income[key]) || 0;
+        if (val > 0) {
+          grossTotal += val;
+          shadedTotal += val * rule.rate;
+          breakdown.push({ component: rule.label, grossAmount: val, shadingRate: rule.rate, shadedAmount: val * rule.rate });
+        }
+      }
     }
   }
 
-  // Add POSITIVE property cash flows as income (not rental income - only net cash flow)
-  // Properties with negative cash flow are handled in the expense calculation
+  // Add POSITIVE property cash flows as income
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
-    
-    // Skip rental properties (where client pays rent) - these are expenses, not income
     if (propertyType === 'rental') continue;
     
-    // Only add property cash flow if it's POSITIVE
     const netMonthlyCashflow = property.net_monthly_cashflow || 0;
-    
     if (netMonthlyCashflow > 0) {
       const annualPositiveCashflow = netMonthlyCashflow * 12;
-      
-      // Apply 80% shading to positive property cash flow (conservative bank approach)
       const rule = INCOME_SHADING_RULES.rental_existing;
-      
       grossTotal += annualPositiveCashflow;
       const shadedAmount = annualPositiveCashflow * rule.rate;
       shadedTotal += shadedAmount;
-      
       breakdown.push({
         component: `Positive Cash Flow (${property.address?.substring(0, 30) || 'Property'}...)`,
         grossAmount: annualPositiveCashflow,
         shadingRate: rule.rate,
-        shadedAmount: shadedAmount,
+        shadedAmount,
       });
     }
   }
@@ -654,15 +628,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch related data in parallel - INCLUDING client_expenses
-    const [incomeResult, liabilitiesResult, propertiesResult, expensesResult] = await Promise.all([
+    // Fetch related data in parallel - INCLUDING client_expenses and new income sources
+    const [incomeResult, incomeSourcesResult, liabilitiesResult, propertiesResult, expensesResult] = await Promise.all([
       supabase.from("client_income").select("*").eq("client_id", clientId),
+      supabase.from("client_income_sources").select("*").eq("client_id", clientId).eq("is_active", true).order("display_order"),
       supabase.from("client_liabilities").select("*").eq("client_id", clientId),
       supabase.from("client_properties").select("*").eq("client_id", clientId),
       supabase.from("client_expenses").select("*").eq("client_id", clientId),
     ]);
 
     const incomeRecords = incomeResult.data || [];
+    const incomeSources = incomeSourcesResult.data || [];
     const liabilities = liabilitiesResult.data || [];
     const properties = propertiesResult.data || [];
     const clientExpenses = expensesResult.data || [];
@@ -671,10 +647,10 @@ Deno.serve(async (req) => {
     const totalDeclaredExpenses = clientExpenses.reduce((sum, exp) => sum + (Number(exp.monthly_amount) || 0), 0);
     console.log(`[calculate-borrowing-capacity] Declared expenses from DB: $${totalDeclaredExpenses}/month from ${clientExpenses.length} expense records`);
 
-    console.log(`[calculate-borrowing-capacity] Found ${incomeRecords.length} income records, ${liabilities.length} liabilities, ${properties.length} properties`);
+    console.log(`[calculate-borrowing-capacity] Found ${incomeSources.length} income sources (new), ${incomeRecords.length} income records (legacy), ${liabilities.length} liabilities, ${properties.length} properties`);
 
-    // Calculate income
-    const { grossTotal, shadedTotal, breakdown: incomeBreakdown } = calculateIncomeBreakdown(incomeRecords, properties);
+    // Calculate income - prefers client_income_sources over legacy client_income
+    const { grossTotal, shadedTotal, breakdown: incomeBreakdown } = calculateIncomeBreakdown(incomeRecords, properties, incomeSources);
     
     // Apply overrides if provided
     const effectiveGrossIncome = overrides?.grossAnnualIncome ?? grossTotal;

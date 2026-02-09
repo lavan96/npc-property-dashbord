@@ -345,21 +345,43 @@ serve(async (req) => {
     if (additionalContacts && additionalContacts.length > 0) {
       householdSection += `\n- Additional Contacts: ${additionalContacts.map((c: any) => `${c.first_name} ${c.surname} (${c.relationship})`).join(', ')}`;
     }
+    // Living situation & address
+    if (client.living_situation) householdSection += `\n- Living Situation: ${client.living_situation}`;
+    if (client.current_address) householdSection += `\n- Current Address: ${client.current_address}`;
+    if (client.residential_status) householdSection += `\n- Residential Status: ${client.residential_status}`;
+    // Review dates
+    if (client.last_review_date) householdSection += `\n- Last Review Date: ${client.last_review_date}`;
+    if (client.next_review_due) householdSection += `\n- Next Review Due: ${client.next_review_due}`;
+    if (client.review_frequency) householdSection += `\n- Review Frequency: ${client.review_frequency}`;
 
     // Income breakdown
     let incomeSection = '';
     if (incomeSources && incomeSources.length > 0) {
       const totalGrossAnnual = incomeSources.reduce((sum: number, s: any) => sum + (Number(s.gross_annual_amount) || 0), 0);
-      incomeSection = `\n**INCOME BREAKDOWN (${incomeSources.length} sources, Total Gross Annual: $${totalGrossAnnual.toLocaleString()}):**\n`;
+      // Also sum all sub-components (bonus, commission, OT etc.) that are additional to gross_annual_amount
+      const totalBonuses = incomeSources.reduce((sum: number, s: any) => sum + (Number(s.bonus) || 0), 0);
+      const totalCommissions = incomeSources.reduce((sum: number, s: any) => sum + (Number(s.commission) || 0), 0);
+      const totalOT = incomeSources.reduce((sum: number, s: any) => sum + (Number(s.overtime_essential) || 0) + (Number(s.overtime_non_essential) || 0), 0);
+      const totalAllIncome = totalGrossAnnual + totalBonuses + totalCommissions + totalOT;
+      
+      incomeSection = `\n**INCOME BREAKDOWN (${incomeSources.length} sources):**\n`;
+      incomeSection += `- TOTAL HOUSEHOLD GROSS ANNUAL INCOME: $${totalAllIncome.toLocaleString()}\n`;
+      incomeSection += `  (Base: $${totalGrossAnnual.toLocaleString()}`;
+      if (totalBonuses > 0) incomeSection += ` + Bonuses: $${totalBonuses.toLocaleString()}`;
+      if (totalCommissions > 0) incomeSection += ` + Commissions: $${totalCommissions.toLocaleString()}`;
+      if (totalOT > 0) incomeSection += ` + Overtime: $${totalOT.toLocaleString()}`;
+      incomeSection += `)\n`;
+      
       incomeSources.forEach((src: any) => {
         const contactLabel = src.contact_type === 'primary' ? client.primary_first_name : 
           src.contact_type === 'secondary' && hasSecondary ? client.secondary_first_name : src.contact_type;
         incomeSection += `- [${contactLabel}] ${src.source_type} (${src.source_category}): $${(Number(src.gross_annual_amount) || 0).toLocaleString()}/yr`;
         if (src.source_name) incomeSection += ` — ${src.source_name}`;
-        // Add component breakdown for employment income
         if (src.bonus) incomeSection += ` (incl. bonus: $${Number(src.bonus).toLocaleString()})`;
         if (src.commission) incomeSection += ` (incl. commission: $${Number(src.commission).toLocaleString()})`;
         if (src.overtime_essential) incomeSection += ` (incl. essential OT: $${Number(src.overtime_essential).toLocaleString()})`;
+        if (src.overtime_non_essential) incomeSection += ` (incl. non-essential OT: $${Number(src.overtime_non_essential).toLocaleString()})`;
+        if (src.allowance) incomeSection += ` (incl. allowance: $${Number(src.allowance).toLocaleString()})`;
         incomeSection += `\n`;
       });
     } else {
