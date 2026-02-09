@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { PortfolioAnalysisConfig, PortfolioAnalysisSettings, DEFAULT_SETTINGS } from '@/components/clients/review-wizard/PortfolioAnalysisConfig';
 import {
   User,
   Building2,
@@ -38,6 +39,7 @@ import {
   UserCog,
   Send,
   Loader2,
+  Settings,
   Edit,
   Landmark,
   ClipboardCheck,
@@ -88,6 +90,8 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [pdfAttachment, setPdfAttachment] = useState<{ blob: Blob; fileName: string } | null>(null);
   const [isGeneratingPortfolio, setIsGeneratingPortfolio] = useState(false);
+  const [portfolioAnalysisConfig, setPortfolioAnalysisConfig] = useState<PortfolioAnalysisSettings>(DEFAULT_SETTINGS);
+  const [showPortfolioConfig, setShowPortfolioConfig] = useState(false);
   const [portfolioEmailSubject, setPortfolioEmailSubject] = useState('');
   const [portfolioEmailBody, setPortfolioEmailBody] = useState('');
   const [editingProperty, setEditingProperty] = useState<any>(null);
@@ -122,7 +126,8 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
         investorProfile: 'general',
         analysisDepth: 'comprehensive',
         includeProjections: true,
-        projectionYears: 10,
+        projectionYears: portfolioAnalysisConfig?.projectionPeriod || 10,
+        analysisConfig: portfolioAnalysisConfig,
       });
 
       if (error) throw error;
