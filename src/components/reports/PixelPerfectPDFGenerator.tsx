@@ -127,10 +127,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
   // Helper to strip word count markers from content - these are AI instruction artifacts
   const stripWordCountMarkers = (text: string): string => {
     return text
-      // Remove patterns like "(500 words)", "(500-1000 words)", "(min 500 words)"
-      .replace(/\(\s*(?:minimum|min|max|maximum)?\s*\d+\s*(?:\+|-|\s*-\s*\d+)?\s*words?\s*(?:required|minimum|min|max|maximum)?\s*\)/gi, '')
-      // Remove patterns like "(Minimum 400 words for this section)"
+      // Remove patterns like "(Word count: 812)", "(word count: 500)"
+      .replace(/\(\s*Word\s*count\s*:\s*\d+[\d,]*\s*\)/gi, '')
+      // Remove patterns like "(500 words)", "(500-1000 words)", "(min 500 words)", "(450+ words total)"
+      .replace(/\(\s*(?:minimum|min|max|maximum)?\s*\d+\s*(?:\+|-|\s*-\s*\d+)?\s*words?\s*(?:total|required|minimum|min|max|maximum)?\s*\)/gi, '')
+      // Remove patterns like "(Minimum 400 words for this section)" or any parenthesized phrase containing "words"
       .replace(/\(\s*[^)]*\d+\s*words?\s*[^)]*\)/gi, '')
+      // Remove standalone "**Top 3 Risks (450+ words total):**" style markers - strip just the word count part
+      .replace(/\(\s*\d+\+?\s*words?\s*(?:total)?\s*\)\s*:?/gi, '')
+      // Remove patterns like "(312 words)[1][2]" - word count before reference markers
+      .replace(/\(\s*\d+\s*words?\s*\)\s*(?:\[\d+\])+/gi, '')
       // Clean up any double spaces left behind
       .replace(/\s{2,}/g, ' ')
       .trim();
