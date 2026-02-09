@@ -101,6 +101,8 @@ serve(async (req) => {
     }
 
     console.log(`📊 Starting portfolio analysis for client: ${clientId}`);
+    console.log(`📋 Received analysisConfig:`, JSON.stringify(analysisConfig));
+    console.log(`📋 Extracted investor profile values:`, JSON.stringify({ riskTolerance, investmentStrategy, timeHorizon, growthRateAssumption, interestRateScenario, equityStrategy, debtReductionPriority, nextPropertyPreference, taxOptimizationPriority, retirementTimeline, marketOutlook }));
 
     // Fetch client data
     const { data: client, error: clientError } = await supabase
@@ -290,6 +292,8 @@ serve(async (req) => {
     if (taxOptimizationPriority) configContext += `- Tax Optimization Priority: ${configLabels.taxOptimizationPriority[taxOptimizationPriority]}\n`;
     if (retirementTimeline) configContext += `- Years Until Retirement: ${retirementTimeline} years\n`;
     if (marketOutlook) configContext += `- Market Outlook: ${configLabels.marketOutlook[marketOutlook]}\n`;
+
+    console.log(`📋 Built configContext for prompt injection:`, configContext || '(empty - no investor profile values set)');
 
     // Calculate growth rate for projections
     let growthRate = 5; // default
