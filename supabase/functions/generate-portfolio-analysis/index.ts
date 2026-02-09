@@ -34,12 +34,22 @@ interface ClientData {
   id: string;
   primary_first_name: string;
   primary_surname: string;
+  secondary_first_name: string | null;
+  secondary_surname: string | null;
+  marital_status: string | null;
+  dependents_count: number | null;
+  primary_email: string | null;
+  primary_mobile: string | null;
+  current_address: string | null;
+  living_situation: string | null;
   total_portfolio_value: number | null;
   total_debt: number | null;
   total_monthly_income: number | null;
   total_monthly_expenditure: number | null;
   total_monthly_rental_income: number | null;
   net_monthly_cash_flow: number | null;
+  borrowing_capacity: number | null;
+  equity_release: number | null;
 }
 
 serve(async (req) => {
@@ -142,7 +152,31 @@ serve(async (req) => {
     }
 
     console.log(`Found ${properties.length} properties for analysis`);
+
+    // Fetch all supplementary client financial data in parallel
+    const [
+      { data: incomeSources },
+      { data: employment },
+      { data: expenses },
+      { data: liabilities },
+      { data: assets },
+      { data: additionalContacts },
+      { data: bcDataArr },
+    ] = await Promise.all([
+      supabase.from('client_income_sources').select('*').eq('client_id', clientId).eq('is_active', true).order('display_order'),
+      supabase.from('client_employment').select('*').eq('client_id', clientId).eq('is_current', true),
+      supabase.from('client_expenses').select('*').eq('client_id', clientId),
+      supabase.from('client_liabilities').select('*').eq('client_id', clientId),
+      supabase.from('client_assets').select('*').eq('client_id', clientId),
+      supabase.from('client_additional_contacts').select('*').eq('client_id', clientId).order('display_order'),
+      supabase.from('borrowing_capacity_assessments').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(1),
+    ]);
+
+    const bcData = bcDataArr && bcDataArr.length > 0 ? bcDataArr[0] : null;
+
+    console.log(`📋 Supplementary data fetched: ${incomeSources?.length || 0} income sources, ${employment?.length || 0} employment records, ${expenses?.length || 0} expenses, ${liabilities?.length || 0} liabilities, ${assets?.length || 0} assets, ${additionalContacts?.length || 0} additional contacts`);
     console.log(`Include owner-occupied in calculations: ${includeOwnerOccupied}`);
+
 
     // Helper to check if property is owner-occupied
     const isOwnerOccupied = (propertyType: string) => 
@@ -300,14 +334,116 @@ serve(async (req) => {
     if (growthRateAssumption === 'conservative') growthRate = 3.5;
     else if (growthRateAssumption === 'optimistic') growthRate = 7.5;
 
+    // --- Build supplementary data sections for the prompt ---
+
+    // Household information
+    const hasSecondary = client.secondary_first_name && client.secondary_surname;
+    let householdSection = `- Primary Applicant: ${client.primary_first_name} ${client.primary_surname}`;
+    if (client.marital_status) householdSection += `\n- Marital Status: ${client.marital_status}`;
+    if (client.dependents_count !== null && client.dependents_count !== undefined) householdSection += `\n- Dependents: ${client.dependents_count}`;
+    if (hasSecondary) householdSection += `\n- Secondary Applicant: ${client.secondary_first_name} ${client.secondary_surname}`;
+    if (additionalContacts && additionalContacts.length > 0) {
+      householdSection += `\n- Additional Contacts: ${additionalContacts.map((c: any) => `${c.first_name} ${c.surname} (${c.relationship})`).join(', ')}`;
+    }
+
+    // Income breakdown
+    let incomeSection = '';
+    if (incomeSources && incomeSources.length > 0) {
+      const totalGrossAnnual = incomeSources.reduce((sum: number, s: any) => sum + (Number(s.gross_annual_amount) || 0), 0);
+      incomeSection = `\n**INCOME BREAKDOWN (${incomeSources.length} sources, Total Gross Annual: $${totalGrossAnnual.toLocaleString()}):**\n`;
+      incomeSources.forEach((src: any) => {
+        const contactLabel = src.contact_type === 'primary' ? client.primary_first_name : 
+          src.contact_type === 'secondary' && hasSecondary ? client.secondary_first_name : src.contact_type;
+        incomeSection += `- [${contactLabel}] ${src.source_type} (${src.source_category}): $${(Number(src.gross_annual_amount) || 0).toLocaleString()}/yr`;
+        if (src.source_name) incomeSection += ` — ${src.source_name}`;
+        // Add component breakdown for employment income
+        if (src.bonus) incomeSection += ` (incl. bonus: $${Number(src.bonus).toLocaleString()})`;
+        if (src.commission) incomeSection += ` (incl. commission: $${Number(src.commission).toLocaleString()})`;
+        if (src.overtime_essential) incomeSection += ` (incl. essential OT: $${Number(src.overtime_essential).toLocaleString()})`;
+        incomeSection += `\n`;
+      });
+    } else {
+      // Fallback to legacy flat field
+      incomeSection = `\n**INCOME:**\n- Total Monthly Income (legacy): $${(client.total_monthly_income || 0).toLocaleString()}\n`;
+    }
+
+    // Employment details
+    let employmentSection = '';
+    if (employment && employment.length > 0) {
+      employmentSection = `\n**EMPLOYMENT:**\n`;
+      employment.forEach((emp: any) => {
+        const contactLabel = emp.contact_type === 'primary' ? client.primary_first_name :
+          emp.contact_type === 'secondary' && hasSecondary ? client.secondary_first_name : emp.contact_type;
+        employmentSection += `- [${contactLabel}] ${emp.employment_type || 'N/A'} — ${emp.occupation_role || 'N/A'} at ${emp.employer_name || 'N/A'}`;
+        if (emp.gross_annual_salary) employmentSection += `, Gross Salary: $${Number(emp.gross_annual_salary).toLocaleString()}/yr`;
+        employmentSection += `\n`;
+      });
+    }
+
+    // Expenses
+    let expensesSection = '';
+    if (expenses && expenses.length > 0) {
+      const totalMonthlyExpenses = expenses.reduce((sum: number, e: any) => sum + (Number(e.monthly_amount) || 0), 0);
+      const essentialExpenses = expenses.filter((e: any) => e.is_essential);
+      const discretionaryExpenses = expenses.filter((e: any) => !e.is_essential);
+      expensesSection = `\n**LIVING EXPENSES (Total: $${totalMonthlyExpenses.toLocaleString()}/mo):**\n`;
+      if (essentialExpenses.length > 0) {
+        expensesSection += `Essential ($${essentialExpenses.reduce((s: number, e: any) => s + (Number(e.monthly_amount) || 0), 0).toLocaleString()}/mo): `;
+        expensesSection += essentialExpenses.map((e: any) => `${e.expense_category}: $${(Number(e.monthly_amount) || 0).toLocaleString()}`).join(', ') + `\n`;
+      }
+      if (discretionaryExpenses.length > 0) {
+        expensesSection += `Discretionary ($${discretionaryExpenses.reduce((s: number, e: any) => s + (Number(e.monthly_amount) || 0), 0).toLocaleString()}/mo): `;
+        expensesSection += discretionaryExpenses.map((e: any) => `${e.expense_category}: $${(Number(e.monthly_amount) || 0).toLocaleString()}`).join(', ') + `\n`;
+      }
+    }
+
+    // Liabilities (non-property)
+    let liabilitiesSection = '';
+    if (liabilities && liabilities.length > 0) {
+      const totalLiabilityBalance = liabilities.reduce((sum: number, l: any) => sum + (Number(l.current_balance) || 0), 0);
+      const totalLiabilityRepayments = liabilities.reduce((sum: number, l: any) => sum + (Number(l.monthly_repayment) || 0), 0);
+      liabilitiesSection = `\n**NON-PROPERTY LIABILITIES (Total Balance: $${totalLiabilityBalance.toLocaleString()}, Total Repayments: $${totalLiabilityRepayments.toLocaleString()}/mo):**\n`;
+      liabilities.forEach((l: any) => {
+        liabilitiesSection += `- ${l.liability_type}: Balance $${(Number(l.current_balance) || 0).toLocaleString()}`;
+        if (l.monthly_repayment) liabilitiesSection += `, Repayment $${Number(l.monthly_repayment).toLocaleString()}/mo`;
+        if (l.interest_rate) liabilitiesSection += `, Rate ${l.interest_rate}%`;
+        if (l.provider_name) liabilitiesSection += ` (${l.provider_name})`;
+        liabilitiesSection += `\n`;
+      });
+    }
+
+    // Non-property assets
+    let assetsSection = '';
+    if (assets && assets.length > 0) {
+      const totalAssetValue = assets.reduce((sum: number, a: any) => sum + (Number(a.value) || 0), 0);
+      assetsSection = `\n**NON-PROPERTY ASSETS (Total: $${totalAssetValue.toLocaleString()}):**\n`;
+      assets.forEach((a: any) => {
+        assetsSection += `- ${a.asset_type}: $${(Number(a.value) || 0).toLocaleString()}`;
+        if (a.description) assetsSection += ` — ${a.description}`;
+        if (a.institution_name) assetsSection += ` (${a.institution_name})`;
+        assetsSection += `\n`;
+      });
+    }
+
     // Build AI analysis prompt
     const prompt = `You are an expert Australian property portfolio analyst. Analyze this client's entire property portfolio and provide strategic recommendations.
 
-**CLIENT INFORMATION:**
-- Name: ${client.primary_first_name} ${client.primary_surname}
-- Total Monthly Income (Personal): $${(client.total_monthly_income || 0).toLocaleString()}
+**CLIENT & HOUSEHOLD INFORMATION:**
+${householdSection}
 - Investor Profile: ${investorProfile}
-
+${incomeSection}${employmentSection}${expensesSection}${liabilitiesSection}${assetsSection}${bcData ? `
+**BORROWING CAPACITY ASSESSMENT:**
+- Estimated Borrowing Capacity: $${(bcData.borrowing_capacity || 0).toLocaleString()}
+- Stress-Tested Capacity: $${(bcData.stress_tested_capacity || 0).toLocaleString()}
+- Monthly Surplus: $${(bcData.monthly_surplus || 0).toLocaleString()}
+- Serviceability Band: ${bcData.serviceability_band || 'Unknown'}
+- DTI Ratio: ${bcData.dti_ratio || 'N/A'}
+- Assessment Rate: ${bcData.assessment_rate || 'N/A'}%
+- Gross Annual Income (assessed): $${(bcData.gross_annual_income || 0).toLocaleString()}
+- Shaded Annual Income: $${(bcData.shaded_annual_income || 0).toLocaleString()}
+- Living Expenses (monthly): $${(bcData.living_expenses_monthly || 0).toLocaleString()}
+- Existing Commitments (monthly): $${(bcData.existing_commitments_monthly || 0).toLocaleString()}
+` : ''}
 ${configContext ? `**ANALYSIS CONFIGURATION:**
 The following preferences have been set to tailor this analysis:
 ${configContext}
@@ -474,7 +610,7 @@ Format your response as valid JSON with this structure:
           }
         ],
         temperature: 0.7,
-        max_tokens: 4000
+        max_tokens: 6000
       }),
     });
 
@@ -519,39 +655,27 @@ Format your response as valid JSON with this structure:
     const processingTime = Date.now() - startTime;
     console.log(`✅ Portfolio analysis completed in ${processingTime}ms`);
 
-    // Fetch the latest borrowing capacity assessment for this client
+    // Build borrowing capacity response object from already-fetched data
     let borrowingCapacity = null;
-    try {
-      const { data: bcData, error: bcError } = await supabase
-        .from('borrowing_capacity_assessments')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (!bcError && bcData) {
-        borrowingCapacity = {
-          borrowingCapacity: bcData.borrowing_capacity || 0,
-          monthlySurplus: bcData.monthly_surplus || 0,
-          serviceabilityBand: (bcData.serviceability_band || 'unknown').toLowerCase(),
-          dtiRatio: bcData.dti_ratio || 0,
-          stressTestedCapacity: bcData.stress_tested_capacity || 0,
-          assessmentRate: bcData.assessment_rate || 0,
-          grossAnnualIncome: bcData.gross_annual_income || 0,
-          shadedAnnualIncome: bcData.shaded_annual_income || 0,
-          livingExpenses: bcData.living_expenses_monthly || 0,
-          existingCommitments: bcData.existing_commitments_monthly || 0,
-          recommendations: Array.isArray(bcData.recommendations) ? bcData.recommendations : [],
-          warnings: Array.isArray(bcData.warnings) ? bcData.warnings : [],
-          calculatedAt: bcData.created_at,
-        };
-        console.log('✓ Borrowing capacity assessment found');
-      } else {
-        console.log('ℹ No borrowing capacity assessment found for client');
-      }
-    } catch (bcFetchError) {
-      console.warn('Could not fetch borrowing capacity:', bcFetchError);
+    if (bcData) {
+      borrowingCapacity = {
+        borrowingCapacity: bcData.borrowing_capacity || 0,
+        monthlySurplus: bcData.monthly_surplus || 0,
+        serviceabilityBand: (bcData.serviceability_band || 'unknown').toLowerCase(),
+        dtiRatio: bcData.dti_ratio || 0,
+        stressTestedCapacity: bcData.stress_tested_capacity || 0,
+        assessmentRate: bcData.assessment_rate || 0,
+        grossAnnualIncome: bcData.gross_annual_income || 0,
+        shadedAnnualIncome: bcData.shaded_annual_income || 0,
+        livingExpenses: bcData.living_expenses_monthly || 0,
+        existingCommitments: bcData.existing_commitments_monthly || 0,
+        recommendations: Array.isArray(bcData.recommendations) ? bcData.recommendations : [],
+        warnings: Array.isArray(bcData.warnings) ? bcData.warnings : [],
+        calculatedAt: bcData.created_at,
+      };
+      console.log('✓ Borrowing capacity assessment found');
+    } else {
+      console.log('ℹ No borrowing capacity assessment found for client');
     }
 
     // Return comprehensive response
