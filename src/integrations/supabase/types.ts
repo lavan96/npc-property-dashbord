@@ -2385,6 +2385,7 @@ export type Database = {
           body: string
           cc_recipients: string[] | null
           client_id: string | null
+          conversation_id: string | null
           created_at: string
           created_by: string | null
           draft_reply: string | null
@@ -2408,6 +2409,7 @@ export type Database = {
           body: string
           cc_recipients?: string[] | null
           client_id?: string | null
+          conversation_id?: string | null
           created_at?: string
           created_by?: string | null
           draft_reply?: string | null
@@ -2431,6 +2433,7 @@ export type Database = {
           body?: string
           cc_recipients?: string[] | null
           client_id?: string | null
+          conversation_id?: string | null
           created_at?: string
           created_by?: string | null
           draft_reply?: string | null

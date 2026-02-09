@@ -36,6 +36,7 @@ interface StoredAttachment {
 interface OutlookMessage {
   id: string;
   internetMessageId: string;
+  conversationId: string;
   subject: string;
   bodyPreview: string;
   body: {
@@ -92,8 +93,8 @@ async function fetchEmailsFromFolder(accessToken: string, mailboxEmail: string, 
   
   // Use folder-specific endpoint for sent items, default endpoint for inbox
   const graphUrl = folder === 'sent' 
-    ? `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/mailFolders/sentitems/messages?$top=${limit}&$orderby=sentDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments`
-    : `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments`;
+    ? `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/mailFolders/sentitems/messages?$top=${limit}&$orderby=sentDateTime desc&$select=id,internetMessageId,conversationId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,sentDateTime,isRead,hasAttachments`
+    : `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages?$top=${limit}&$orderby=receivedDateTime desc&$select=id,internetMessageId,conversationId,subject,bodyPreview,body,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -433,7 +434,8 @@ serve(async (req) => {
             bcc_recipients: bccRecipients,
             attachments: [],
             mailbox_source: mailboxSource,
-            folder: folder
+            folder: folder,
+            conversation_id: email.conversationId || null
           })
           .select('id')
           .single();

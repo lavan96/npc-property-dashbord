@@ -274,7 +274,7 @@ serve(async (req) => {
 
       if (include.emails) {
         fetchPromises.push(
-          supabase.from('email_copilot_emails').select('id,sender,subject,body,received_at,status,urgency_level,summary,draft_reply,folder').eq('client_id', id).order('received_at', { ascending: false }).limit(50)
+          supabase.from('email_copilot_emails').select('id,sender,subject,body,received_at,status,urgency_level,summary,draft_reply,folder,conversation_id,to_recipients').eq('client_id', id).order('received_at', { ascending: false }).limit(100)
             .then(({ data }) => { clientResult.emails = data || []; })
         );
       }
