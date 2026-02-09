@@ -153,10 +153,10 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
 
     const result: EmailThread[] = [];
     threadMap.forEach((threadEmails, conversationId) => {
-      // Sort emails within thread chronologically (oldest first)
-      threadEmails.sort((a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime());
+      // Sort emails within thread chronologically (newest first)
+      threadEmails.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
       
-      const latestEmail = threadEmails[threadEmails.length - 1];
+      const latestEmail = threadEmails[0];
       const participants = getUniqueParticipants(threadEmails);
       const hasUnread = threadEmails.some(e => e.status === 'unread');
       
@@ -274,7 +274,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
         {threads.map((thread) => {
           const isExpanded = expandedThreads.has(thread.conversationId);
           const isSingleEmail = thread.emails.length === 1;
-          const latestEmail = thread.emails[thread.emails.length - 1];
+          const latestEmail = thread.emails[0];
 
           if (isSingleEmail) {
             // Single email — render as flat row
@@ -323,14 +323,12 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
                   </div>
 
                   {/* Thread subject & preview */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`text-sm truncate ${thread.hasUnread ? 'font-semibold' : 'font-medium'}`}>
-                        {thread.subject || '(No Subject)'}
-                      </p>
-                    </div>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className={`text-sm truncate ${thread.hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                      {thread.subject || '(No Subject)'}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {extractSenderName(latestEmail.sender)}: {latestEmail.body?.slice(0, 50).replace(/\n/g, ' ')}...
+                      {extractSenderName(latestEmail.sender)}: {latestEmail.body?.slice(0, 50).replace(/\n/g, ' ')}…
                     </p>
                   </div>
 
@@ -406,7 +404,7 @@ function SingleEmailRow({
       </div>
 
       {/* Email details */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2">
           <span className={`truncate max-w-[120px] ${compact ? 'text-xs' : 'text-sm font-medium'}`}>
             {email.folder === 'sent' ? `To: ${email.to_recipients?.[0] ? extractSenderName(email.to_recipients[0]) : 'Unknown'}` : extractSenderName(email.sender)}
@@ -415,12 +413,12 @@ function SingleEmailRow({
             <span className="text-xs text-muted-foreground">·</span>
           )}
           <p className={`truncate flex-1 ${compact ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
-            {compact ? email.body?.slice(0, 40).replace(/\n/g, ' ') + '...' : email.subject || '(No Subject)'}
+            {compact ? (email.body?.slice(0, 40).replace(/\n/g, ' ') + '…') : (email.subject || '(No Subject)')}
           </p>
         </div>
         {!compact && (
           <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {email.body?.slice(0, 60).replace(/\n/g, ' ')}...
+            {email.body?.slice(0, 60).replace(/\n/g, ' ')}…
           </p>
         )}
       </div>
