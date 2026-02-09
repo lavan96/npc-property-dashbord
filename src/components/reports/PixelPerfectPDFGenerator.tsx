@@ -697,7 +697,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       {
-        pattern: /\|\s*Council Rates\s*\|[^\n]*/gi,
+        pattern: /\|\s*Council Rates\s*\|\s*\$[^\n]*/gi,
         getValue: () => councilRates,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -706,7 +706,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       {
-        pattern: /\|\s*Water Rates\s*\|[^\n]*/gi,
+        pattern: /\|\s*Water Rates\s*\|\s*\$[^\n]*/gi,
         getValue: () => waterRates,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -715,7 +715,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       {
-        pattern: /\|\s*(?:Building\s*(?:&|and)\s*)?(?:Landlord\s*)?Insurance\s*\|[^\n]*/gi,
+        pattern: /\|\s*(?:Building\s*(?:&|and)\s*)?(?:Landlord\s*)?Insurance\s*\|\s*\$[^\n]*/gi,
         getValue: () => landlordInsurance,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -724,7 +724,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       {
-        pattern: /\|\s*Strata Fees\s*\|[^\n]*/gi,
+        pattern: /\|\s*Strata Fees\s*\|\s*\$[^\n]*/gi,
         getValue: () => strataFees,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -733,7 +733,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       {
-        pattern: /\|\s*Body Corporate\s*\|[^\n]*/gi,
+        pattern: /\|\s*Body Corporate\s*\|\s*\$[^\n]*/gi,
         getValue: () => strataFees,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -743,7 +743,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       },
       // Property Management Fee table row - Amount column = fee, Calculation Method = formula
       {
-        pattern: /\|?\s*Property Management Fee?\s*\|[^\n]*/gi,
+        pattern: /\|?\s*Property Management Fee?\s*\|\s*\$[^\n]*/gi,
         getValue: () => ({ percent: propertyManagementPercent, annualRent, fee: propertyManagement }),
         format: (v) => {
           const annualStr = String(v.annualRent || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -753,7 +753,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         isFullLineReplacement: true
       },
       {
-        pattern: /\|\s*Maintenance\s*\|[^\n]*/gi,
+        pattern: /\|\s*Maintenance\s*\|\s*\$[^\n]*/gi,
         getValue: () => maintenance,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -778,7 +778,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       },
       // Land Tax row in page 10 table - Amount column then Calculation column
       {
-        pattern: /\|\s*Land Tax\s*\|[^\n]*/gi,
+        pattern: /\|\s*Land Tax\s*\|\s*\$[^\n]*/gi,
         getValue: () => landTax,
         format: (v) => {
           const str = String(v || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
