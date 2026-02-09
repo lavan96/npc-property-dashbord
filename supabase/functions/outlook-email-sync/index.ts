@@ -398,70 +398,55 @@ serve(async (req) => {
 
     console.log(`[Outlook Sync] Fetched ${inboxEmails.length} inbox and ${sentEmails.length} sent emails`);
 
-    // Get existing emails for this specific mailbox to avoid duplicates
-    // Filter by mailbox_source so admin and personal inboxes are treated separately
-    const { data: existingEmails } = await supabase
-      .from('email_copilot_emails')
-      .select('sender, subject, received_at, folder')
-      .eq('mailbox_source', mailboxSource);
-
-    // Create a set of composite keys for quick lookup (include folder in key)
-    const existingKeys = new Set<string>();
-    (existingEmails || []).forEach(e => {
-      const normalizedDate = new Date(e.received_at).toISOString();
-      existingKeys.add(`${e.folder || 'inbox'}|${e.sender?.toLowerCase()}|${e.subject?.toLowerCase()}|${normalizedDate}`);
-    });
-
-    console.log(`[Outlook Sync] Found ${existingKeys.size} existing ${mailboxSource} emails in database`);
-
     // Helper function to process and insert emails
+    // Uses DB unique constraint (idx_email_copilot_no_duplicates) to skip duplicates
     async function processEmails(emails: OutlookMessage[], folder: 'inbox' | 'sent') {
       let insertedCount = 0;
+      let skippedCount = 0;
       
       for (const email of emails) {
-        const sender = (email.from?.emailAddress?.address || 'unknown').toLowerCase();
-        const subject = (email.subject || '(No Subject)').toLowerCase();
         // For sent emails, use sentDateTime if available, otherwise fall back to receivedDateTime
         const emailDate = folder === 'sent' 
           ? (email as any).sentDateTime || email.receivedDateTime
           : email.receivedDateTime;
-        const receivedAt = new Date(emailDate).toISOString();
-        
-        const key = `${folder}|${sender}|${subject}|${receivedAt}`;
-        
-        if (!existingKeys.has(key)) {
-          // Use structure-preserving HTML conversion
-          const bodyContent = email.body?.contentType === 'html' 
-            ? convertHtmlToStructuredText(email.body.content)
-            : email.body?.content || email.bodyPreview || '';
 
-          const toRecipients = extractEmailAddresses(email.toRecipients);
-          const ccRecipients = extractEmailAddresses(email.ccRecipients);
-          const bccRecipients = extractEmailAddresses(email.bccRecipients);
+        // Use structure-preserving HTML conversion
+        const bodyContent = email.body?.contentType === 'html' 
+          ? convertHtmlToStructuredText(email.body.content)
+          : email.body?.content || email.bodyPreview || '';
 
-          // Insert email first to get the ID
-          const { data: insertedEmail, error: insertError } = await supabase
-            .from('email_copilot_emails')
-            .insert({
-              sender: email.from?.emailAddress?.address || 'unknown',
-              subject: email.subject || '(No Subject)',
-              body: bodyContent.substring(0, 10000),
-              received_at: emailDate,
-              status: folder === 'sent' ? 'sent' : 'unread',
-              to_recipients: toRecipients,
-              cc_recipients: ccRecipients,
-              bcc_recipients: bccRecipients,
-              attachments: [],
-              mailbox_source: mailboxSource,
-              folder: folder
-            })
-            .select('id')
-            .single();
+        const toRecipients = extractEmailAddresses(email.toRecipients);
+        const ccRecipients = extractEmailAddresses(email.ccRecipients);
+        const bccRecipients = extractEmailAddresses(email.bccRecipients);
 
-          if (insertError) {
-            console.error(`[Outlook Sync] Insert error for ${folder}:`, insertError);
+        // Insert email — unique constraint will reject duplicates
+        const { data: insertedEmail, error: insertError } = await supabase
+          .from('email_copilot_emails')
+          .insert({
+            sender: email.from?.emailAddress?.address || 'unknown',
+            subject: email.subject || '(No Subject)',
+            body: bodyContent.substring(0, 10000),
+            received_at: emailDate,
+            status: folder === 'sent' ? 'sent' : 'unread',
+            to_recipients: toRecipients,
+            cc_recipients: ccRecipients,
+            bcc_recipients: bccRecipients,
+            attachments: [],
+            mailbox_source: mailboxSource,
+            folder: folder
+          })
+          .select('id')
+          .single();
+
+        if (insertError) {
+          // Unique constraint violation = duplicate, skip silently
+          if (insertError.code === '23505') {
+            skippedCount++;
             continue;
           }
+          console.error(`[Outlook Sync] Insert error for ${folder}:`, insertError);
+          continue;
+        }
 
           // Fetch and upload attachments if email has any
           if (email.hasAttachments && insertedEmail) {
@@ -493,11 +478,10 @@ serve(async (req) => {
             }
           }
 
-          insertedCount++;
-          existingKeys.add(key);
-        }
+        insertedCount++;
       }
       
+      console.log(`[Outlook Sync] ${folder}: inserted ${insertedCount}, skipped ${skippedCount} duplicates`);
       return insertedCount;
     }
 
