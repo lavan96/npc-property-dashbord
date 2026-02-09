@@ -1725,21 +1725,21 @@ export default function EmailCopilot() {
                               selectedEmail?.id === latestEmail.id ? 'bg-muted border-l-2 border-l-primary' : ''
                             } ${hasUnread ? 'bg-primary/5' : ''}`}
                           >
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-2.5">
                               {/* Avatar */}
-                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs font-semibold text-primary">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-[11px] font-semibold text-primary">
                                   {getSenderInitials(latestEmail.sender)}
                                 </span>
                               </div>
                               
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className={`text-sm min-w-0 truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
                                     {extractSenderName(latestEmail.sender)}
                                   </span>
                                   {isThreaded && (
-                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+                                    <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">
                                       <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
                                       {threadEmails.length}
                                     </Badge>
@@ -1752,7 +1752,7 @@ export default function EmailCopilot() {
                                   {latestEmail.subject || '(No Subject)'}
                                 </p>
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                  {latestEmail.body?.slice(0, 60).replace(/\n/g, ' ')}…
+                                  {latestEmail.body?.slice(0, 50).replace(/\n/g, ' ')}…
                                 </p>
                                 
                                 {/* Status indicators */}
