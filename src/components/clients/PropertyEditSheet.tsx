@@ -100,7 +100,7 @@ interface PropertyFormData {
   council_rates: ExpenseField;
   water_rates: ExpenseField;
   repairs_maintenance: ExpenseField;
-  property_management: ExpenseField;
+  property_management_percent: number; // percentage of rental income
   landlord_insurance: ExpenseField;
   building_insurance: ExpenseField;
   rental_income: ExpenseField;
@@ -149,7 +149,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     council_rates: createExpenseField(),
     water_rates: createExpenseField(),
     repairs_maintenance: createExpenseField(),
-    property_management: createExpenseField(),
+    property_management_percent: 0,
     landlord_insurance: createExpenseField(),
     building_insurance: createExpenseField(),
     rental_income: createExpenseField(),
@@ -177,7 +177,10 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         council_rates: createExpenseField(Number(property.monthly_council_rates) || 0),
         water_rates: createExpenseField(Number(property.monthly_water_rates) || 0),
         repairs_maintenance: createExpenseField(Number(property.monthly_repairs_maintenance) || 0),
-        property_management: createExpenseField(Number(property.monthly_property_management) || 0),
+        // Derive PM percentage from stored dollar value and rental income
+        property_management_percent: (Number(property.monthly_property_management) && Number(property.monthly_rental_income))
+          ? Math.round(((Number(property.monthly_property_management) / Number(property.monthly_rental_income)) * 100) * 100) / 100
+          : 0,
         landlord_insurance: createExpenseField(Number(property.monthly_landlord_insurance) || 0),
         building_insurance: createExpenseField(Number(property.monthly_building_insurance) || 0),
         rental_income: createExpenseField(Number(property.monthly_rental_income) || 0),
@@ -210,7 +213,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   };
 
   const updateExpenseField = (
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'property_management' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
     key: 'value' | 'frequency',
     newValue: number | FrequencyType
   ) => {
@@ -231,18 +234,21 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   };
 
   // Calculate total monthly expenditure
+  // Calculate property management monthly value from percentage
+  const monthlyRentalIncome = formData.rental_income.monthlyValue;
+  const monthlyPropertyManagement = (formData.property_management_percent / 100) * monthlyRentalIncome;
+
   const totalMonthlyExpenditure = 
     formData.monthly_interest_repayment +
     formData.body_corporate.monthlyValue +
     formData.council_rates.monthlyValue +
     formData.water_rates.monthlyValue +
     formData.repairs_maintenance.monthlyValue +
-    formData.property_management.monthlyValue +
+    monthlyPropertyManagement +
     formData.landlord_insurance.monthlyValue +
     formData.building_insurance.monthlyValue;
 
   // Calculate net monthly cashflow
-  const monthlyRentalIncome = formData.rental_income.monthlyValue;
   const netMonthlyCashflow = monthlyRentalIncome - totalMonthlyExpenditure;
 
   const updatePropertyMutation = useMutation({
@@ -259,7 +265,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         monthly_council_rates: formData.council_rates.monthlyValue,
         monthly_water_rates: formData.water_rates.monthlyValue,
         monthly_repairs_maintenance: formData.repairs_maintenance.monthlyValue,
-        monthly_property_management: formData.property_management.monthlyValue,
+        monthly_property_management: monthlyPropertyManagement,
         monthly_landlord_insurance: formData.landlord_insurance.monthlyValue,
         monthly_building_insurance: formData.building_insurance.monthlyValue,
         monthly_rental_income: monthlyRentalIncome,
@@ -380,7 +386,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     showMonthlyEquivalent = true,
   }: {
     label: string;
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'property_management' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>;
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>;
     showMonthlyEquivalent?: boolean;
   }) => {
     const expense = formData[field];
@@ -710,7 +716,27 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                     <ExpenseInput label="Council Rates" field="council_rates" />
                     <ExpenseInput label="Water Rates" field="water_rates" />
                     <ExpenseInput label="Repairs & Maintenance" field="repairs_maintenance" />
-                    <ExpenseInput label="Property Management" field="property_management" />
+                    <div className="space-y-2">
+                      <Label className="text-xs">Property Management (%)</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Percent className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={formData.property_management_percent || ''}
+                            onChange={(e) => updateField('property_management_percent', parseFloat(e.target.value) || 0)}
+                            className="pl-7 h-9 text-sm"
+                            placeholder="e.g. 7.5"
+                          />
+                        </div>
+                      </div>
+                      {monthlyPropertyManagement > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          = ${Math.round(monthlyPropertyManagement).toLocaleString()}/month
+                        </p>
+                      )}
+                    </div>
                     <ExpenseInput label="Landlord Insurance" field="landlord_insurance" />
                     <ExpenseInput label="Building Insurance" field="building_insurance" />
                   </div>

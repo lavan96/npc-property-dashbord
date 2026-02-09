@@ -235,7 +235,9 @@ serve(async (req) => {
       const grossYield = (!ownerOccupied && value > 0) ? (annualRent / value) * 100 : null;
       const monthlyIncome = ownerOccupied ? 0 : (Number(prop.monthly_rental_income) || 0);
       const monthlyExpenses = Number(prop.total_monthly_expenditure) || 0;
-      const netCashflow = ownerOccupied ? -monthlyExpenses : (Number(prop.net_monthly_cashflow) || 0);
+      // For owner-occupied: use actual net_monthly_cashflow from DB (includes loan repayments + expenses)
+      // rather than hardcoding to zero — these are real outgoings the client has
+      const netCashflow = Number(prop.net_monthly_cashflow) || 0;
       const cashOnCashReturn = (!ownerOccupied && equity > 0) ? ((netCashflow * 12) / equity) * 100 : null;
 
       return {
@@ -248,12 +250,12 @@ serve(async (req) => {
         equity,
         lvr: lvr.toFixed(1),
         ownershipPercentage: prop.ownership_percentage || 100,
-        // Return null for investment-specific metrics on owner-occupied properties
+        // For owner-occupied: yield/cash-on-cash are N/A, but expenses and cashflow are real
         grossYield: grossYield !== null ? grossYield.toFixed(2) : 'N/A',
         monthlyRentalIncome: ownerOccupied ? null : monthlyIncome,
         monthlyExpenses,
-        netMonthlyCashflow: ownerOccupied ? null : netCashflow,
-        annualCashflow: ownerOccupied ? null : netCashflow * 12,
+        netMonthlyCashflow: netCashflow,
+        annualCashflow: netCashflow * 12,
         cashOnCashReturn: cashOnCashReturn !== null ? cashOnCashReturn.toFixed(2) : 'N/A',
         portfolioContribution: portfolioMetrics.totalValue > 0 
           ? ((value / portfolioMetrics.totalValue) * 100).toFixed(1) 
