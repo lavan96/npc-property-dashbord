@@ -37,6 +37,7 @@ async function fetchBorrowingCapacityData(clientId: string) {
       client: true,
       properties: true,
       income: true,
+      incomeSources: true,
       liabilities: true,
       expenses: true,
     },
@@ -58,6 +59,7 @@ async function fetchBorrowingCapacityData(clientId: string) {
   return {
     client: data.client,
     income: data.income || [],
+    incomeSources: data.incomeSources || [],
     liabilities: data.liabilities || [],
     properties: data.properties || [],
     expenses: data.expenses || [],
@@ -131,67 +133,71 @@ export function BorrowingCapacityModal({
     enabled: open,
   });
 
-  // Process income breakdown
-  const incomeBreakdown: IncomeBreakdownItem[] = clientData?.income.flatMap(inc => {
-    const items: IncomeBreakdownItem[] = [];
-    const contactLabel = inc.contact_type === 'primary' ? 'Primary' : 'Secondary';
+  // Process income breakdown - prefer new income sources, fall back to legacy
+  const hasIncomeSources = (clientData?.incomeSources || []).length > 0;
+  
+  const incomeBreakdown: IncomeBreakdownItem[] = hasIncomeSources
+    ? (clientData?.incomeSources || []).flatMap((src: any) => {
+        const items: IncomeBreakdownItem[] = [];
+        const contactLabel = src.contact_type === 'primary' ? 'Primary' : 'Secondary';
+        const effectiveShading = src.custom_shading_rate ?? src.default_shading_rate ?? 1.0;
+        const sourceName = src.source_name || src.source_type || 'Income';
 
-    if (inc.gross_salary) {
-      items.push({
-        id: `${inc.id}-salary`,
-        label: `${contactLabel} Base Salary`,
-        grossAmount: Number(inc.gross_salary),
-        shadingRate: 1.0,
-        shadedAmount: Number(inc.gross_salary),
+        const grossAnnual = Number(src.gross_annual_amount) || 0;
+        if (grossAnnual > 0) {
+          items.push({
+            id: `${src.id}-base`,
+            label: `${contactLabel} ${sourceName}`,
+            grossAmount: grossAnnual,
+            shadingRate: effectiveShading,
+            shadedAmount: grossAnnual * effectiveShading,
+          });
+        }
+        // Employment sub-fields with their own shading
+        const subFields = [
+          { key: 'bonus', label: 'Bonus', shading: 0.8 },
+          { key: 'commission', label: 'Commission', shading: 0.8 },
+          { key: 'overtime_essential', label: 'Essential OT', shading: 1.0 },
+          { key: 'overtime_non_essential', label: 'Non-Essential OT', shading: 0.5 },
+          { key: 'allowance', label: 'Allowance', shading: 0.8 },
+        ];
+        for (const { key, label, shading } of subFields) {
+          const val = Number(src[key]) || 0;
+          if (val > 0) {
+            items.push({
+              id: `${src.id}-${key}`,
+              label: `${contactLabel} ${label}`,
+              grossAmount: val,
+              shadingRate: shading,
+              shadedAmount: val * shading,
+            });
+          }
+        }
+        return items;
+      })
+    : (clientData?.income || []).flatMap((inc: any) => {
+        const items: IncomeBreakdownItem[] = [];
+        const contactLabel = inc.contact_type === 'primary' ? 'Primary' : 'Secondary';
+        if (inc.gross_salary) {
+          items.push({ id: `${inc.id}-salary`, label: `${contactLabel} Base Salary`, grossAmount: Number(inc.gross_salary), shadingRate: 1.0, shadedAmount: Number(inc.gross_salary) });
+        }
+        if (inc.bonus) {
+          items.push({ id: `${inc.id}-bonus`, label: `${contactLabel} Bonus`, grossAmount: Number(inc.bonus), shadingRate: 0.8, shadedAmount: Number(inc.bonus) * 0.8 });
+        }
+        if (inc.commission) {
+          items.push({ id: `${inc.id}-commission`, label: `${contactLabel} Commission`, grossAmount: Number(inc.commission), shadingRate: 0.8, shadedAmount: Number(inc.commission) * 0.8 });
+        }
+        if (inc.overtime_essential) {
+          items.push({ id: `${inc.id}-ot-essential`, label: `${contactLabel} Essential Overtime`, grossAmount: Number(inc.overtime_essential), shadingRate: 1.0, shadedAmount: Number(inc.overtime_essential) });
+        }
+        if (inc.overtime_non_essential) {
+          items.push({ id: `${inc.id}-ot-non-essential`, label: `${contactLabel} Non-Essential Overtime`, grossAmount: Number(inc.overtime_non_essential), shadingRate: 0.5, shadedAmount: Number(inc.overtime_non_essential) * 0.5 });
+        }
+        if (inc.allowance) {
+          items.push({ id: `${inc.id}-allowance`, label: `${contactLabel} Allowances`, grossAmount: Number(inc.allowance), shadingRate: 0.8, shadedAmount: Number(inc.allowance) * 0.8 });
+        }
+        return items;
       });
-    }
-    if (inc.bonus) {
-      items.push({
-        id: `${inc.id}-bonus`,
-        label: `${contactLabel} Bonus`,
-        grossAmount: Number(inc.bonus),
-        shadingRate: 0.8,
-        shadedAmount: Number(inc.bonus) * 0.8,
-      });
-    }
-    if (inc.commission) {
-      items.push({
-        id: `${inc.id}-commission`,
-        label: `${contactLabel} Commission`,
-        grossAmount: Number(inc.commission),
-        shadingRate: 0.8,
-        shadedAmount: Number(inc.commission) * 0.8,
-      });
-    }
-    if (inc.overtime_essential) {
-      items.push({
-        id: `${inc.id}-ot-essential`,
-        label: `${contactLabel} Essential Overtime`,
-        grossAmount: Number(inc.overtime_essential),
-        shadingRate: 1.0,
-        shadedAmount: Number(inc.overtime_essential),
-      });
-    }
-    if (inc.overtime_non_essential) {
-      items.push({
-        id: `${inc.id}-ot-non-essential`,
-        label: `${contactLabel} Non-Essential Overtime`,
-        grossAmount: Number(inc.overtime_non_essential),
-        shadingRate: 0.5,
-        shadedAmount: Number(inc.overtime_non_essential) * 0.5,
-      });
-    }
-    if (inc.allowance) {
-      items.push({
-        id: `${inc.id}-allowance`,
-        label: `${contactLabel} Allowances`,
-        grossAmount: Number(inc.allowance),
-        shadingRate: 0.8,
-        shadedAmount: Number(inc.allowance) * 0.8,
-      });
-    }
-    return items;
-  }) || [];
 
   // Add POSITIVE property cash flows as income (NOT rental income - only net cash flow)
   // Properties with negative cash flow are handled in expenses

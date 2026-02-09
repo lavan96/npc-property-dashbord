@@ -33,6 +33,7 @@ interface RequestBody {
     borrowingCapacity?: boolean;
     client?: boolean;
     emails?: boolean;
+    incomeSources?: boolean;
     additionalContacts?: boolean;
     scores?: boolean;
   };
@@ -283,6 +284,13 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('client_additional_contacts').select('*').eq('client_id', id).order('display_order', { ascending: true })
             .then(({ data }) => { clientResult.additionalContacts = data || []; })
+        );
+      }
+
+      if (include.incomeSources) {
+        fetchPromises.push(
+          supabase.from('client_income_sources').select('*').eq('client_id', id).eq('is_active', true).order('display_order', { ascending: true })
+            .then(({ data }) => { clientResult.incomeSources = data || []; })
         );
       }
 

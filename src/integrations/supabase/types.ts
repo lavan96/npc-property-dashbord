@@ -1289,6 +1289,89 @@ export type Database = {
           },
         ]
       }
+      client_income_sources: {
+        Row: {
+          allowance: number | null
+          bonus: number | null
+          client_id: string
+          commission: number | null
+          contact_type: string
+          created_at: string
+          custom_shading_rate: number | null
+          default_shading_rate: number
+          display_order: number
+          gross_annual_amount: number
+          id: string
+          input_amount: number
+          input_frequency: string
+          is_active: boolean
+          notes: string | null
+          other_taxable_income: number | null
+          overtime_essential: number | null
+          overtime_non_essential: number | null
+          source_category: string
+          source_name: string | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          allowance?: number | null
+          bonus?: number | null
+          client_id: string
+          commission?: number | null
+          contact_type?: string
+          created_at?: string
+          custom_shading_rate?: number | null
+          default_shading_rate?: number
+          display_order?: number
+          gross_annual_amount?: number
+          id?: string
+          input_amount?: number
+          input_frequency?: string
+          is_active?: boolean
+          notes?: string | null
+          other_taxable_income?: number | null
+          overtime_essential?: number | null
+          overtime_non_essential?: number | null
+          source_category?: string
+          source_name?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Update: {
+          allowance?: number | null
+          bonus?: number | null
+          client_id?: string
+          commission?: number | null
+          contact_type?: string
+          created_at?: string
+          custom_shading_rate?: number | null
+          default_shading_rate?: number
+          display_order?: number
+          gross_annual_amount?: number
+          id?: string
+          input_amount?: number
+          input_frequency?: string
+          is_active?: boolean
+          notes?: string | null
+          other_taxable_income?: number | null
+          overtime_essential?: number | null
+          overtime_non_essential?: number | null
+          source_category?: string
+          source_name?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_income_sources_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_liabilities: {
         Row: {
           client_id: string
