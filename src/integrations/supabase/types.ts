@@ -870,49 +870,64 @@ export type Database = {
       client_additional_contacts: {
         Row: {
           client_id: string
+          country: string | null
           created_at: string
+          current_address: string | null
           display_order: number
           dob: string | null
           email: string | null
           first_name: string
           gender: string | null
           id: string
+          living_situation: string | null
           middle_name: string | null
           mobile: string | null
           notes: string | null
           relationship: string
+          residential_status: string | null
+          same_address_as_primary: boolean | null
           surname: string
           updated_at: string
         }
         Insert: {
           client_id: string
+          country?: string | null
           created_at?: string
+          current_address?: string | null
           display_order?: number
           dob?: string | null
           email?: string | null
           first_name: string
           gender?: string | null
           id?: string
+          living_situation?: string | null
           middle_name?: string | null
           mobile?: string | null
           notes?: string | null
           relationship?: string
+          residential_status?: string | null
+          same_address_as_primary?: boolean | null
           surname: string
           updated_at?: string
         }
         Update: {
           client_id?: string
+          country?: string | null
           created_at?: string
+          current_address?: string | null
           display_order?: number
           dob?: string | null
           email?: string | null
           first_name?: string
           gender?: string | null
           id?: string
+          living_situation?: string | null
           middle_name?: string | null
           mobile?: string | null
           notes?: string | null
           relationship?: string
+          residential_status?: string | null
+          same_address_as_primary?: boolean | null
           surname?: string
           updated_at?: string
         }
@@ -1856,12 +1871,17 @@ export type Database = {
           proposed_rental_income: number | null
           residential_status: string | null
           review_frequency: string | null
+          secondary_country: string | null
+          secondary_current_address: string | null
           secondary_dob: string | null
           secondary_email: string | null
           secondary_first_name: string | null
           secondary_gender: string | null
+          secondary_living_situation: string | null
           secondary_middle_name: string | null
           secondary_mobile: string | null
+          secondary_residential_status: string | null
+          secondary_same_address_as_primary: boolean | null
           secondary_surname: string | null
           total_debt: number | null
           total_monthly_expenditure: number | null
@@ -1909,12 +1929,17 @@ export type Database = {
           proposed_rental_income?: number | null
           residential_status?: string | null
           review_frequency?: string | null
+          secondary_country?: string | null
+          secondary_current_address?: string | null
           secondary_dob?: string | null
           secondary_email?: string | null
           secondary_first_name?: string | null
           secondary_gender?: string | null
+          secondary_living_situation?: string | null
           secondary_middle_name?: string | null
           secondary_mobile?: string | null
+          secondary_residential_status?: string | null
+          secondary_same_address_as_primary?: boolean | null
           secondary_surname?: string | null
           total_debt?: number | null
           total_monthly_expenditure?: number | null
@@ -1962,12 +1987,17 @@ export type Database = {
           proposed_rental_income?: number | null
           residential_status?: string | null
           review_frequency?: string | null
+          secondary_country?: string | null
+          secondary_current_address?: string | null
           secondary_dob?: string | null
           secondary_email?: string | null
           secondary_first_name?: string | null
           secondary_gender?: string | null
+          secondary_living_situation?: string | null
           secondary_middle_name?: string | null
           secondary_mobile?: string | null
+          secondary_residential_status?: string | null
+          secondary_same_address_as_primary?: boolean | null
           secondary_surname?: string | null
           total_debt?: number | null
           total_monthly_expenditure?: number | null
