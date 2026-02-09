@@ -4329,6 +4329,7 @@ export type Database = {
       cleanup_expired_stamp_duty_cache: { Args: never; Returns: undefined }
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
       cleanup_old_health_logs: { Args: never; Returns: undefined }
+      extract_email_address: { Args: { raw_text: string }; Returns: string }
       get_all_cache_stats: {
         Args: never
         Returns: {
