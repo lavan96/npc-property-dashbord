@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,14 +14,17 @@ import { toast } from 'sonner';
 import { EmploymentFormFields, EmploymentFormData } from './EmploymentFormFields';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { formatCurrency, convertToAnnual } from './income/incomeSourceTypes';
+import { ContactInfo, getContactTabLabel } from './hooks/useClientContacts';
 
 interface EmploymentManualEntryProps {
   clientId: string;
+  contacts: ContactInfo[];
   onComplete: () => void;
 }
 
 const defaultFormData: EmploymentFormData = {
   contact_type: 'primary',
+  additional_contact_id: null,
   is_current: true,
   employment_type: 'permanent',
   occupation_role: '',
@@ -48,9 +51,9 @@ async function fetchEmploymentSecure(clientId: string) {
   return data.employment || [];
 }
 
-export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManualEntryProps) {
+export function EmploymentManualEntry({ clientId, contacts, onComplete }: EmploymentManualEntryProps) {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'primary' | 'secondary'>('primary');
+  const [activeTab, setActiveTab] = useState<string>('primary');
   const [formData, setFormData] = useState<EmploymentFormData>(defaultFormData);
   const [editingId, setEditingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -60,23 +63,36 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
     queryFn: () => fetchEmploymentSecure(clientId),
   });
 
-  const primaryEmployment = existingEmployment.filter((e: any) => e.contact_type === 'primary' && e.is_current);
-  const secondaryEmployment = existingEmployment.filter((e: any) => e.contact_type === 'secondary' && e.is_current);
-  const previousEmployment = existingEmployment.filter((e: any) => !e.is_current);
+  // Filter employment records per contact
+  const getEmploymentForContact = useCallback((contact: ContactInfo) => {
+    return existingEmployment.filter((e: any) => {
+      if (contact.contactType === 'primary') return e.contact_type === 'primary' && !e.additional_contact_id;
+      if (contact.contactType === 'secondary') return e.contact_type === 'secondary' && !e.additional_contact_id;
+      return e.additional_contact_id === contact.additionalContactId;
+    });
+  }, [existingEmployment]);
+
+  const previousEmployment = useMemo(() => existingEmployment.filter((e: any) => !e.is_current), [existingEmployment]);
 
   const updateField = useCallback((field: keyof EmploymentFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const resetForm = () => {
-    setFormData({ ...defaultFormData, contact_type: activeTab });
+  const resetForm = useCallback(() => {
+    const activeContact = contacts.find(c => c.id === activeTab);
+    setFormData({
+      ...defaultFormData,
+      contact_type: activeContact?.contactType === 'additional' ? 'additional' : (activeContact?.contactType || 'primary') as any,
+      additional_contact_id: activeContact?.additionalContactId || null,
+    });
     setEditingId(null);
-  };
+  }, [activeTab, contacts]);
 
   const startEdit = (employment: any) => {
     setFormData({
       id: employment.id,
       contact_type: employment.contact_type,
+      additional_contact_id: employment.additional_contact_id || null,
       is_current: employment.is_current ?? true,
       employment_type: employment.employment_type || 'permanent',
       occupation_role: employment.occupation_role || '',
@@ -93,13 +109,20 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
       other_taxable_income: employment.other_taxable_income || 0,
     });
     setEditingId(employment.id);
-    setActiveTab(employment.contact_type);
+    // Switch to the right tab
+    if (employment.additional_contact_id) {
+      setActiveTab(employment.additional_contact_id);
+    } else {
+      setActiveTab(employment.contact_type);
+    }
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const activeContact = contacts.find(c => c.id === activeTab);
       const payload = {
-        contact_type: formData.contact_type,
+        contact_type: activeContact?.contactType === 'additional' ? 'additional' : (activeContact?.contactType || 'primary'),
+        additional_contact_id: activeContact?.additionalContactId || null,
         is_current: formData.is_current,
         employment_type: formData.employment_type,
         occupation_role: formData.occupation_role,
@@ -173,13 +196,12 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
   const getEmploymentIncome = (emp: any) => {
     const gross = emp.gross_annual_salary || convertToAnnual(emp.salary_amount || 0, emp.salary_frequency || 'annual');
-    const total = gross + (emp.bonus || 0) + (emp.commission || 0) + 
+    return gross + (emp.bonus || 0) + (emp.commission || 0) + 
       (emp.overtime_essential || 0) + (emp.overtime_non_essential || 0) + 
       (emp.allowance || 0) + (emp.other_taxable_income || 0);
-    return total;
   };
 
-  const EmploymentCard = ({ employment, showContactType = false }: { employment: any; showContactType?: boolean }) => {
+  const EmploymentCard = ({ employment }: { employment: any }) => {
     const totalIncome = getEmploymentIncome(employment);
     return (
       <Card className="mb-2">
@@ -193,9 +215,6 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
                 )}
                 {!employment.is_current && (
                   <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
-                )}
-                {showContactType && (
-                  <span className="text-xs text-muted-foreground capitalize">({employment.contact_type})</span>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">{employment.occupation_role}</p>
@@ -222,6 +241,14 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
       </Card>
     );
   };
+
+  // Determine dynamic tab list: all contacts + "Previous"
+  const tabItems = useMemo(() => {
+    return [
+      ...contacts.map(c => ({ value: c.id, label: getContactTabLabel(c), contact: c })),
+      { value: 'previous', label: 'Previous', contact: null },
+    ];
+  }, [contacts]);
 
   return (
     <div className="space-y-4">
@@ -286,60 +313,57 @@ export function EmploymentManualEntry({ clientId, onComplete }: EmploymentManual
 
           <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
             <Tabs value={activeTab} onValueChange={(v) => {
-              setActiveTab(v as 'primary' | 'secondary');
-              setFormData(prev => ({ ...prev, contact_type: v as 'primary' | 'secondary' }));
+              setActiveTab(v);
+              if (v !== 'previous') {
+                const contact = contacts.find(c => c.id === v);
+                setFormData(prev => ({
+                  ...prev,
+                  contact_type: contact?.contactType === 'additional' ? 'additional' : (contact?.contactType || 'primary') as any,
+                  additional_contact_id: contact?.additionalContactId || null,
+                }));
+              }
               setEditingId(null);
             }}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="primary">Primary</TabsTrigger>
-                <TabsTrigger value="secondary">Secondary</TabsTrigger>
-                <TabsTrigger value="previous">Previous</TabsTrigger>
+              <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${tabItems.length}, 1fr)` }}>
+                {tabItems.map(tab => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
               </TabsList>
 
-              <TabsContent value="primary" className="space-y-4 mt-4">
-                {primaryEmployment.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Current Employment</Label>
-                    {primaryEmployment.map((emp: any) => (
-                      <EmploymentCard key={emp.id} employment={emp} />
-                    ))}
-                  </div>
-                )}
-                <EmploymentFormFields
-                  formData={formData}
-                  updateField={updateField}
-                  onSubmit={handleSubmit}
-                  onCancel={resetForm}
-                  isPending={saveMutation.isPending}
-                  isEditing={!!editingId}
-                />
-              </TabsContent>
+              {/* Dynamic contact tabs */}
+              {contacts.map(contact => {
+                const contactEmployment = getEmploymentForContact(contact).filter((e: any) => e.is_current);
+                return (
+                  <TabsContent key={contact.id} value={contact.id} className="space-y-4 mt-4">
+                    {contactEmployment.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">Current Employment — {contact.name}</Label>
+                        {contactEmployment.map((emp: any) => (
+                          <EmploymentCard key={emp.id} employment={emp} />
+                        ))}
+                      </div>
+                    )}
+                    <EmploymentFormFields
+                      formData={formData}
+                      updateField={updateField}
+                      onSubmit={handleSubmit}
+                      onCancel={resetForm}
+                      isPending={saveMutation.isPending}
+                      isEditing={!!editingId}
+                    />
+                  </TabsContent>
+                );
+              })}
 
-              <TabsContent value="secondary" className="space-y-4 mt-4">
-                {secondaryEmployment.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Current Employment</Label>
-                    {secondaryEmployment.map((emp: any) => (
-                      <EmploymentCard key={emp.id} employment={emp} />
-                    ))}
-                  </div>
-                )}
-                <EmploymentFormFields
-                  formData={formData}
-                  updateField={updateField}
-                  onSubmit={handleSubmit}
-                  onCancel={resetForm}
-                  isPending={saveMutation.isPending}
-                  isEditing={!!editingId}
-                />
-              </TabsContent>
-
+              {/* Previous tab */}
               <TabsContent value="previous" className="space-y-4 mt-4">
                 {previousEmployment.length > 0 ? (
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Previous Employment Records</Label>
                     {previousEmployment.map((emp: any) => (
-                      <EmploymentCard key={emp.id} employment={emp} showContactType />
+                      <EmploymentCard key={emp.id} employment={emp} />
                     ))}
                   </div>
                 ) : (

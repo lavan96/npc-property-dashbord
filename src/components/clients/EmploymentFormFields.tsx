@@ -29,7 +29,8 @@ const employmentTypeOptions = [
 
 export interface EmploymentFormData {
   id?: string;
-  contact_type: 'primary' | 'secondary';
+  contact_type: 'primary' | 'secondary' | 'additional';
+  additional_contact_id: string | null;
   is_current: boolean;
   employment_type: string;
   occupation_role: string;

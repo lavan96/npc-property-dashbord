@@ -57,6 +57,7 @@ import { ClientVownetForms } from './ClientVownetForms';
 import { PropertyManualEntry } from './PropertyManualEntry';
 import { PersonalDetailsManualEntry } from './PersonalDetailsManualEntry';
 import { EmploymentManualEntry } from './EmploymentManualEntry';
+import { useClientContacts } from './hooks/useClientContacts';
 import { IncomeManualEntry } from './IncomeManualEntry';
 import { AssetManualEntry } from './AssetManualEntry';
 import { LiabilityManualEntry } from './LiabilityManualEntry';
@@ -188,6 +189,9 @@ NPC Team`
   const assets = secureData?.assets || [];
   const liabilities = secureData?.liabilities || [];
   const additionalContacts = secureData?.additionalContacts || [];
+
+  // Build dynamic contact list for employment/income tabs
+  const contacts = useClientContacts(fullClient || undefined, additionalContacts);
 
   // Refetch function for backward compatibility
   const refetchClient = () => {
@@ -588,12 +592,12 @@ NPC Team`
             </TabsContent>
 
             <TabsContent value="employment" className="space-y-4 mt-4">
-              <EmploymentManualEntry clientId={client.id} onComplete={() => refetchClient()} />
+              <EmploymentManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
             </TabsContent>
 
             <TabsContent value="financials" className="space-y-6 mt-4">
               {/* Income Section */}
-              <IncomeManualEntry clientId={client.id} onComplete={() => refetchClient()} />
+              <IncomeManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
               
               <Separator />
               

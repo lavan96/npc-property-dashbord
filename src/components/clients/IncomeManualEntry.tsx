@@ -18,20 +18,21 @@ import {
   getSourceTotalAnnual,
   formatCurrency,
 } from './income/incomeSourceTypes';
+import { ContactInfo, getContactTabLabel } from './hooks/useClientContacts';
 
 interface IncomeManualEntryProps {
   clientId: string;
+  contacts: ContactInfo[];
   onComplete: () => void;
 }
 
-export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryProps) {
+export function IncomeManualEntry({ clientId, contacts, onComplete }: IncomeManualEntryProps) {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'primary' | 'secondary'>('primary');
+  const [activeTab, setActiveTab] = useState<string>(contacts[0]?.id || 'primary');
   const [editingSource, setEditingSource] = useState<IncomeSource | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch all income sources (both employment-linked and standalone)
   const { data: incomeSources = [] } = useQuery<IncomeSource[]>({
     queryKey: ['client-income-sources', clientId],
     queryFn: async () => {
@@ -45,26 +46,32 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
     },
   });
 
-  // Split into employment-linked and standalone sources
+  // Helper to get sources for a specific contact
+  const getSourcesForContact = (contact: ContactInfo) => {
+    return incomeSources.filter((s: any) => {
+      if (contact.contactType === 'primary') return s.contact_type === 'primary' && !s.additional_contact_id;
+      if (contact.contactType === 'secondary') return s.contact_type === 'secondary' && !s.additional_contact_id;
+      return s.additional_contact_id === contact.additionalContactId;
+    });
+  };
+
+  const combinedTotal = useMemo(() => incomeSources.reduce((sum, s) => sum + getSourceTotalAnnual(s), 0), [incomeSources]);
   const employmentSources = useMemo(() => incomeSources.filter((s: any) => s.employment_id), [incomeSources]);
-  const standaloneSources = useMemo(() => incomeSources.filter((s: any) => !s.employment_id), [incomeSources]);
 
-  const primarySources = useMemo(() => incomeSources.filter(s => s.contact_type === 'primary'), [incomeSources]);
-  const secondarySources = useMemo(() => incomeSources.filter(s => s.contact_type === 'secondary'), [incomeSources]);
-  
-  const primaryTotal = useMemo(() => primarySources.reduce((sum, s) => sum + getSourceTotalAnnual(s), 0), [primarySources]);
-  const secondaryTotal = useMemo(() => secondarySources.reduce((sum, s) => sum + getSourceTotalAnnual(s), 0), [secondarySources]);
-  const combinedTotal = primaryTotal + secondaryTotal;
-
-  // For the sheet: filter by tab, separating employment-linked vs standalone
-  const currentEmploymentSources = useMemo(() => 
-    employmentSources.filter((s: any) => s.contact_type === activeTab), [employmentSources, activeTab]);
-  const currentStandaloneSources = useMemo(() => 
-    standaloneSources.filter((s: any) => s.contact_type === activeTab), [standaloneSources, activeTab]);
+  // Current tab sources
+  const activeContact = contacts.find(c => c.id === activeTab);
+  const currentSources = activeContact ? getSourcesForContact(activeContact) : [];
+  const currentEmploymentSources = currentSources.filter((s: any) => s.employment_id);
+  const currentStandaloneSources = currentSources.filter((s: any) => !s.employment_id);
 
   const saveMutation = useMutation({
     mutationFn: async (source: IncomeSource) => {
       const { id, client_id, ...payload } = source;
+      // Set correct contact attribution
+      if (activeContact) {
+        (payload as any).contact_type = activeContact.contactType === 'additional' ? 'additional' : activeContact.contactType;
+        (payload as any).additional_contact_id = activeContact.additionalContactId || null;
+      }
       const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: id ? 'update' : 'create',
         table: 'client_income_sources',
@@ -106,9 +113,17 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
 
   const showForm = isAdding || editingSource !== null;
 
+  // Build per-contact summary for display
+  const contactSummaries = useMemo(() => {
+    return contacts.map(c => {
+      const sources = getSourcesForContact(c);
+      const total = sources.reduce((sum, s) => sum + getSourceTotalAnnual(s), 0);
+      return { contact: c, count: sources.length, total };
+    }).filter(s => s.count > 0);
+  }, [contacts, incomeSources]);
+
   return (
     <div className="space-y-4">
-      {/* Income Summary Display */}
       {incomeSources.length > 0 ? (
         <div className="space-y-2">
           <Card className="bg-success/10 border-success/20">
@@ -127,24 +142,18 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
             </CardContent>
           </Card>
           
-          <div className="grid grid-cols-2 gap-2">
-            {primarySources.length > 0 && (
-              <Card>
-                <CardContent className="pt-3">
-                  <p className="text-xs text-muted-foreground">Primary ({primarySources.length})</p>
-                  <p className="font-medium">{formatCurrency(primaryTotal)}/yr</p>
-                </CardContent>
-              </Card>
-            )}
-            {secondarySources.length > 0 && (
-              <Card>
-                <CardContent className="pt-3">
-                  <p className="text-xs text-muted-foreground">Secondary ({secondarySources.length})</p>
-                  <p className="font-medium">{formatCurrency(secondaryTotal)}/yr</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {contactSummaries.length > 1 && (
+            <div className="grid grid-cols-2 gap-2">
+              {contactSummaries.map(({ contact, count, total }) => (
+                <Card key={contact.id}>
+                  <CardContent className="pt-3">
+                    <p className="text-xs text-muted-foreground">{getContactTabLabel(contact)} ({count})</p>
+                    <p className="font-medium">{formatCurrency(total)}/yr</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-4 text-muted-foreground">
@@ -178,79 +187,83 @@ export function IncomeManualEntry({ clientId, onComplete }: IncomeManualEntryPro
             {showForm ? (
               <IncomeSourceForm
                 source={editingSource || undefined}
-                contactType={activeTab}
+                contactType={activeContact?.contactType === 'secondary' ? 'secondary' : 'primary'}
                 onSave={(source) => saveMutation.mutate(source)}
                 onCancel={() => { setEditingSource(null); setIsAdding(false); }}
                 isPending={saveMutation.isPending}
                 hideEmploymentCategory
               />
             ) : (
-              <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="primary">
-                    Primary ({primarySources.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="secondary">
-                    Secondary ({secondarySources.length})
-                  </TabsTrigger>
+              <Tabs value={activeTab} onValueChange={v => setActiveTab(v)}>
+                <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${contacts.length}, 1fr)` }}>
+                  {contacts.map(c => (
+                    <TabsTrigger key={c.id} value={c.id} className="text-xs">
+                      {getContactTabLabel(c)} ({getSourcesForContact(c).length})
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
-                <TabsContent value={activeTab} className="mt-4 space-y-3">
-                  {/* Employment-linked income (read-only) */}
-                  {currentEmploymentSources.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From Employment</p>
-                      </div>
-                      {currentEmploymentSources.map((source: any) => (
-                        <IncomeSourceCard
-                          key={source.id}
-                          source={source}
-                          onEdit={() => {}}
-                          onDelete={() => {}}
-                          isLinkedToEmployment
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Standalone income sources */}
-                  {currentStandaloneSources.length > 0 && (
-                    <div className="space-y-2">
-                      {currentEmploymentSources.length > 0 && (
-                        <div className="flex items-center gap-2 mt-4">
-                          <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Other Income</p>
+                {contacts.map(contact => {
+                  const empSources = getSourcesForContact(contact).filter((s: any) => s.employment_id);
+                  const standSources = getSourcesForContact(contact).filter((s: any) => !s.employment_id);
+                  
+                  return (
+                    <TabsContent key={contact.id} value={contact.id} className="mt-4 space-y-3">
+                      {empSources.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">From Employment</p>
+                          </div>
+                          {empSources.map((source: any) => (
+                            <IncomeSourceCard
+                              key={source.id}
+                              source={source}
+                              onEdit={() => {}}
+                              onDelete={() => {}}
+                              isLinkedToEmployment
+                            />
+                          ))}
                         </div>
                       )}
-                      {currentStandaloneSources.map((source: any) => (
-                        <IncomeSourceCard
-                          key={source.id}
-                          source={source}
-                          onEdit={() => setEditingSource(source)}
-                          onDelete={() => source.id && deleteMutation.mutate(source.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
 
-                  {currentEmploymentSources.length === 0 && currentStandaloneSources.length === 0 && (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <p className="text-sm">No {activeTab} income sources yet</p>
-                    </div>
-                  )}
+                      {standSources.length > 0 && (
+                        <div className="space-y-2">
+                          {empSources.length > 0 && (
+                            <div className="flex items-center gap-2 mt-4">
+                              <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Other Income</p>
+                            </div>
+                          )}
+                          {standSources.map((source: any) => (
+                            <IncomeSourceCard
+                              key={source.id}
+                              source={source}
+                              onEdit={() => setEditingSource(source)}
+                              onDelete={() => source.id && deleteMutation.mutate(source.id)}
+                            />
+                          ))}
+                        </div>
+                      )}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setIsAdding(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add {activeTab === 'primary' ? 'Primary' : 'Secondary'} Income Source
-                  </Button>
-                </TabsContent>
+                      {empSources.length === 0 && standSources.length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <p className="text-sm">No income sources for {contact.name}</p>
+                        </div>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setIsAdding(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Income Source
+                      </Button>
+                    </TabsContent>
+                  );
+                })}
               </Tabs>
             )}
           </ScrollArea>
