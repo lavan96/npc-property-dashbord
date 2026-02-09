@@ -358,6 +358,7 @@ export function BorrowingCapacityModal({
         grossAnnualIncome: totalGrossIncome,
         livingExpenses: effectiveExpenses,
         interestRate,
+        bufferRate: effectiveBufferRate,
         loanTermYears,
         proposedLoanAmount,
         // Pass mode settings
