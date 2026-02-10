@@ -69,6 +69,10 @@ interface PortfolioAnalysisData {
     portfolioContribution: string;
   }>;
   analysis: {
+    personalizedNarrative?: {
+      openingStatement: string;
+      portfolioJourney: string;
+    };
     executiveSummary: {
       overallHealth: string;
       healthScore: number;
@@ -82,6 +86,12 @@ interface PortfolioAnalysisData {
       propertyMixAssessment: string;
       recommendations: string[];
     };
+    propertyStrategicContext?: Array<{
+      address: string;
+      strategicRole: string;
+      capitalGrowthAnalysis: string;
+      individualOutlook: string;
+    }>;
     financialHealth: {
       cashflowStatus: string;
       equityPosition: string;
@@ -105,6 +115,17 @@ interface PortfolioAnalysisData {
       marketRisks: string[];
       mitigationStrategies: string[];
     };
+    interestRateSensitivity?: {
+      currentMonthlyCashflow: number;
+      plusOnePercentImpact: number;
+      plusTwoPercentImpact: number;
+      commentary: string;
+    };
+    marketConditions?: {
+      marketCycleSummary: string;
+      rbaOutlook: string;
+      clientPositioning: string;
+    };
     growthOpportunities: {
       equityReleaseOptions: string[];
       refinancingOpportunities: string[];
@@ -117,6 +138,17 @@ interface PortfolioAnalysisData {
       projectedEquity: number;
       projectedMonthlyCashflow: number;
       assumptions: string[];
+    };
+    actionPlan?: {
+      twelveMonthActions: string[];
+      optimisationScenarios: string[];
+    };
+    borrowingCapacityUtilisation?: {
+      totalDebtDeployed: number;
+      estimatedCapacity: number;
+      availableCapacity: number;
+      utilisationPercentage: number;
+      commentary: string;
     };
     strategicRecommendations: {
       shortTerm: string[];
@@ -1255,24 +1287,31 @@ export function PortfolioAnalysisPDFGenerator({
       tocY -= 30;
       
       // TOC entries with page numbers
-      const tocEntries = [
-        { title: 'Executive Summary', page: 3 },
-        { title: 'Portfolio Overview', page: 3 },
-        { title: 'Portfolio Composition Analysis', page: metrics.smsfCount > 0 ? 5 : 4 },
-        { title: 'Property Cashflow Analysis', page: metrics.smsfCount > 0 ? 6 : 5 },
-        { title: 'Property Performance Rankings', page: metrics.smsfCount > 0 ? 7 : 6 },
-        { title: 'Financial Health Analysis', page: metrics.smsfCount > 0 ? 8 : 7 },
-        { title: 'Risk Assessment', page: metrics.smsfCount > 0 ? 8 : 7 },
-        { title: 'Growth Opportunities', page: metrics.smsfCount > 0 ? 9 : 8 },
-        { title: 'Portfolio Projections', page: metrics.smsfCount > 0 ? 9 : 8 },
-        { title: 'Strategic Recommendations', page: metrics.smsfCount > 0 ? 10 : 9 },
-        { title: 'Property Portfolio Details', page: metrics.smsfCount > 0 ? 11 : 10 },
-        { title: 'Disclaimer & Contact', page: metrics.smsfCount > 0 ? 12 : 11 },
-      ];
+      const hasPropertyStrategicCtx = safeArray(analysisData.analysis?.propertyStrategicContext).length > 0;
+      const hasRateSensitivity = !!analysisData.analysis?.interestRateSensitivity;
+      const hasMarketConditions = !!analysisData.analysis?.marketConditions;
+      const hasActionPlan = !!analysisData.analysis?.actionPlan;
+      const hasBcUtil = !!analysisData.analysis?.borrowingCapacityUtilisation;
       
-      if (metrics.smsfCount > 0) {
-        tocEntries.splice(2, 0, { title: 'SMSF Portfolio Summary', page: 4 });
-      }
+      const tocEntries: { title: string; page: number }[] = [];
+      let pageEstimate = 3;
+      tocEntries.push({ title: 'Executive Summary & Portfolio Overview', page: pageEstimate });
+      if (metrics.smsfCount > 0) { pageEstimate++; tocEntries.push({ title: 'SMSF Portfolio Summary', page: pageEstimate }); }
+      pageEstimate++; tocEntries.push({ title: 'Portfolio Composition Analysis', page: pageEstimate });
+      pageEstimate++; tocEntries.push({ title: 'Property Cashflow Analysis', page: pageEstimate });
+      pageEstimate++; tocEntries.push({ title: 'Property Performance Rankings', page: pageEstimate });
+      if (hasPropertyStrategicCtx) { pageEstimate++; tocEntries.push({ title: 'Property Strategic Context', page: pageEstimate }); }
+      pageEstimate++; tocEntries.push({ title: 'Financial Health Analysis', page: pageEstimate });
+      tocEntries.push({ title: 'Risk Assessment', page: pageEstimate });
+      if (hasRateSensitivity) { pageEstimate++; tocEntries.push({ title: 'Interest Rate Sensitivity', page: pageEstimate }); }
+      if (hasMarketConditions) { tocEntries.push({ title: 'Market Conditions & Outlook', page: pageEstimate }); }
+      pageEstimate++; tocEntries.push({ title: 'Growth Opportunities', page: pageEstimate });
+      tocEntries.push({ title: 'Portfolio Projections', page: pageEstimate });
+      if (hasActionPlan) { pageEstimate++; tocEntries.push({ title: '12-Month Action Plan', page: pageEstimate }); }
+      if (hasBcUtil) { tocEntries.push({ title: 'Borrowing Capacity Utilisation', page: pageEstimate }); }
+      pageEstimate++; tocEntries.push({ title: 'Strategic Recommendations', page: pageEstimate });
+      pageEstimate++; tocEntries.push({ title: 'Property Portfolio Details', page: pageEstimate });
+      pageEstimate++; tocEntries.push({ title: 'Disclaimer & Contact', page: pageEstimate });
       
       for (let i = 0; i < tocEntries.length; i++) {
         const entry = tocEntries[i];
@@ -1353,6 +1392,23 @@ export function PortfolioAnalysisPDFGenerator({
       console.log('📝 Creating executive summary page...');
       let page = addContentPage();
       let yPos = PAGE_HEIGHT - MARGIN_TOP;
+      
+      // Personalised Narrative (if available from enhanced prompt)
+      const narrative = analysisData.analysis?.personalizedNarrative;
+      if (narrative) {
+        yPos = drawSectionHeader(page, 'Your Portfolio at a Glance', yPos);
+        
+        if (narrative.openingStatement) {
+          yPos = drawFormattedText(page, narrative.openingStatement, MARGIN_LEFT, yPos, CONTENT_WIDTH, 10, 16, SECONDARY_COLOR);
+          yPos -= PARAGRAPH_SPACING;
+        }
+        
+        if (narrative.portfolioJourney) {
+          yPos = drawSubsectionHeader(page, 'Portfolio Journey', yPos);
+          yPos = drawFormattedText(page, narrative.portfolioJourney, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= SECTION_SPACING;
+        }
+      }
       
       // Page header
       yPos = drawSectionHeader(page, 'Executive Summary', yPos);
@@ -2025,6 +2081,93 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Property rankings page complete');
       
+      // ============= PAGE: PROPERTY STRATEGIC CONTEXT =============
+      const propertyStrategicContext = safeArray(analysisData.analysis?.propertyStrategicContext);
+      if (propertyStrategicContext.length > 0) {
+        console.log('📝 Creating property strategic context page...');
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        
+        yPos = drawSectionHeader(page, 'Property Strategic Context', yPos);
+        
+        for (const propCtx of propertyStrategicContext) {
+          // Check for page break (each property card ~130px)
+          if (needsNewPage(yPos, 140)) {
+            page = addContentPage();
+            yPos = PAGE_HEIGHT - MARGIN_TOP;
+            yPos = drawSectionHeader(page, 'Property Strategic Context (continued)', yPos);
+          }
+          
+          // Property address
+          page.drawText(stripEmojis(safeString(propCtx.address, 'Property')), {
+            x: MARGIN_LEFT,
+            y: yPos,
+            size: 11,
+            font: helveticaBold,
+            color: SECONDARY_COLOR,
+          });
+          
+          // Strategic role badge
+          const roleText = stripEmojis(safeString(propCtx.strategicRole, 'Asset').toUpperCase());
+          const roleWidth = helveticaBold.widthOfTextAtSize(roleText, 8) + 14;
+          page.drawRectangle({
+            x: PAGE_WIDTH - MARGIN_RIGHT - roleWidth,
+            y: yPos - 5,
+            width: roleWidth,
+            height: 18,
+            color: PRIMARY_COLOR,
+          });
+          page.drawText(roleText, {
+            x: PAGE_WIDTH - MARGIN_RIGHT - roleWidth + 7,
+            y: yPos,
+            size: 8,
+            font: helveticaBold,
+            color: rgb(1, 1, 1),
+          });
+          
+          yPos -= 22;
+          
+          // Capital growth analysis
+          if (propCtx.capitalGrowthAnalysis) {
+            page.drawText('Capital Growth:', {
+              x: MARGIN_LEFT + 5,
+              y: yPos,
+              size: 8,
+              font: helveticaBold,
+              color: SUCCESS_COLOR,
+            });
+            yPos -= 14;
+            yPos = drawWrappedText(page, propCtx.capitalGrowthAnalysis, MARGIN_LEFT + 5, yPos, CONTENT_WIDTH - 10, helveticaFont, 8, SECONDARY_COLOR, 1.5);
+            yPos -= 6;
+          }
+          
+          // Individual outlook
+          if (propCtx.individualOutlook) {
+            page.drawText('Outlook:', {
+              x: MARGIN_LEFT + 5,
+              y: yPos,
+              size: 8,
+              font: helveticaBold,
+              color: PRIMARY_COLOR,
+            });
+            yPos -= 14;
+            yPos = drawWrappedText(page, propCtx.individualOutlook, MARGIN_LEFT + 5, yPos, CONTENT_WIDTH - 10, helveticaFont, 8, SECONDARY_COLOR, 1.5);
+          }
+          
+          // Separator
+          yPos -= 8;
+          page.drawLine({
+            start: { x: MARGIN_LEFT, y: yPos },
+            end: { x: PAGE_WIDTH - MARGIN_RIGHT, y: yPos },
+            thickness: 0.5,
+            color: rgb(0.9, 0.9, 0.9),
+          });
+          yPos -= 15;
+        }
+        
+        console.log('✓ Property strategic context page complete');
+      }
+      
       // ============= PAGE 5: FINANCIAL HEALTH ANALYSIS =============
       console.log('📝 Creating financial health page...');
       page = addContentPage();
@@ -2480,6 +2623,67 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Risk assessment page complete');
       
+      // ============= PAGE: INTEREST RATE SENSITIVITY =============
+      const rateSensitivity = analysisData.analysis?.interestRateSensitivity;
+      if (rateSensitivity) {
+        console.log('📝 Creating interest rate sensitivity section...');
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        
+        yPos = drawSectionHeader(page, 'Interest Rate Sensitivity Analysis', yPos);
+        
+        // Current cashflow vs impact KPIs
+        const rateKpiWidth = (CONTENT_WIDTH - 20) / 3;
+        drawKPIBox(page, 'CURRENT CASHFLOW', formatCurrency(rateSensitivity.currentMonthlyCashflow) + '/mo', MARGIN_LEFT, yPos, rateKpiWidth, 
+          safeNumber(rateSensitivity.currentMonthlyCashflow) >= 0 ? SUCCESS_COLOR : DANGER_COLOR);
+        drawKPIBox(page, '+1% RATE IMPACT', formatCurrency(rateSensitivity.plusOnePercentImpact) + '/mo', MARGIN_LEFT + rateKpiWidth + 10, yPos, rateKpiWidth, WARNING_COLOR);
+        drawKPIBox(page, '+2% RATE IMPACT', formatCurrency(rateSensitivity.plusTwoPercentImpact) + '/mo', MARGIN_LEFT + (rateKpiWidth + 10) * 2, yPos, rateKpiWidth, DANGER_COLOR);
+        
+        yPos -= 75;
+        
+        // Commentary
+        if (rateSensitivity.commentary) {
+          yPos = drawSubsectionHeader(page, 'Analysis', yPos);
+          yPos = drawFormattedText(page, rateSensitivity.commentary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= SECTION_SPACING;
+        }
+        
+        console.log('✓ Interest rate sensitivity section complete');
+      }
+      
+      // ============= PAGE: MARKET CONDITIONS =============
+      const marketConditions = analysisData.analysis?.marketConditions;
+      if (marketConditions) {
+        console.log('📝 Creating market conditions section...');
+        
+        if (needsNewPage(yPos, 250)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+        }
+        
+        yPos = drawSectionHeader(page, 'Market Conditions & Outlook', yPos);
+        
+        if (marketConditions.marketCycleSummary) {
+          yPos = drawSubsectionHeader(page, 'Market Cycle', yPos);
+          yPos = drawFormattedText(page, marketConditions.marketCycleSummary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= PARAGRAPH_SPACING;
+        }
+        
+        if (marketConditions.rbaOutlook) {
+          yPos = drawSubsectionHeader(page, 'RBA Outlook', yPos);
+          yPos = drawFormattedText(page, marketConditions.rbaOutlook, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= PARAGRAPH_SPACING;
+        }
+        
+        if (marketConditions.clientPositioning) {
+          yPos = drawSubsectionHeader(page, 'Your Positioning', yPos, PRIMARY_COLOR);
+          yPos = drawFormattedText(page, marketConditions.clientPositioning, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= SECTION_SPACING;
+        }
+        
+        console.log('✓ Market conditions section complete');
+      }
+      
       // ============= PAGE: GROWTH OPPORTUNITIES =============
       console.log('📝 Creating growth opportunities page...');
       page = addContentPage();
@@ -2578,6 +2782,107 @@ export function PortfolioAnalysisPDFGenerator({
       }
       
       console.log('✓ Projections page complete');
+      
+      // ============= PAGE: 12-MONTH ACTION PLAN =============
+      const actionPlan = analysisData.analysis?.actionPlan;
+      if (actionPlan) {
+        console.log('📝 Creating 12-month action plan...');
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        
+        yPos = drawSectionHeader(page, '12-Month Action Plan', yPos);
+        
+        const twelveMonthActions = safeArray(actionPlan.twelveMonthActions);
+        if (twelveMonthActions.length > 0) {
+          yPos = drawSubsectionHeader(page, 'Priority Actions', yPos, SUCCESS_COLOR);
+          yPos = drawNumberedList(page, twelveMonthActions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+          yPos -= SUBSECTION_SPACING;
+        }
+        
+        const optimisationScenarios = safeArray(actionPlan.optimisationScenarios);
+        if (optimisationScenarios.length > 0) {
+          if (needsNewPage(yPos, optimisationScenarios.length * 25 + 40)) {
+            page = addContentPage();
+            yPos = PAGE_HEIGHT - MARGIN_TOP;
+            yPos = drawSectionHeader(page, '12-Month Action Plan (continued)', yPos);
+          }
+          yPos = drawSubsectionHeader(page, 'Optimisation Scenarios', yPos, PRIMARY_COLOR);
+          yPos = drawBulletList(page, optimisationScenarios, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
+          yPos -= SECTION_SPACING;
+        }
+        
+        console.log('✓ 12-month action plan complete');
+      }
+      
+      // ============= PAGE: BORROWING CAPACITY UTILISATION =============
+      const bcUtil = analysisData.analysis?.borrowingCapacityUtilisation;
+      if (bcUtil) {
+        console.log('📝 Creating borrowing capacity utilisation section...');
+        
+        if (needsNewPage(yPos, 220)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+        }
+        
+        yPos = drawSectionHeader(page, 'Borrowing Capacity Utilisation', yPos);
+        
+        // KPI boxes for capacity utilisation
+        const bcuKpiWidth = (CONTENT_WIDTH - 20) / 3;
+        drawKPIBox(page, 'DEBT DEPLOYED', formatCurrency(bcUtil.totalDebtDeployed), MARGIN_LEFT, yPos, bcuKpiWidth, SECONDARY_COLOR);
+        drawKPIBox(page, 'ESTIMATED CAPACITY', formatCurrency(bcUtil.estimatedCapacity), MARGIN_LEFT + bcuKpiWidth + 10, yPos, bcuKpiWidth, PRIMARY_COLOR);
+        drawKPIBox(page, 'AVAILABLE CAPACITY', formatCurrency(bcUtil.availableCapacity), MARGIN_LEFT + (bcuKpiWidth + 10) * 2, yPos, bcuKpiWidth, SUCCESS_COLOR);
+        
+        yPos -= 75;
+        
+        // Utilisation percentage bar
+        const utilPercent = safeNumber(bcUtil.utilisationPercentage, 0);
+        const utilColor = utilPercent < 60 ? SUCCESS_COLOR : utilPercent < 80 ? WARNING_COLOR : DANGER_COLOR;
+        
+        page.drawText('Capacity Utilisation:', {
+          x: MARGIN_LEFT,
+          y: yPos,
+          size: 10,
+          font: helveticaFont,
+          color: MUTED_COLOR,
+        });
+        
+        page.drawText(`${utilPercent.toFixed(0)}%`, {
+          x: MARGIN_LEFT + 115,
+          y: yPos,
+          size: 12,
+          font: helveticaBold,
+          color: utilColor,
+        });
+        
+        yPos -= 20;
+        
+        // Draw utilisation bar
+        const barWidth = CONTENT_WIDTH;
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - 12,
+          width: barWidth,
+          height: 14,
+          color: rgb(0.92, 0.92, 0.92),
+        });
+        page.drawRectangle({
+          x: MARGIN_LEFT,
+          y: yPos - 12,
+          width: barWidth * Math.min(utilPercent / 100, 1),
+          height: 14,
+          color: utilColor,
+        });
+        
+        yPos -= 35;
+        
+        // Commentary
+        if (bcUtil.commentary) {
+          yPos = drawFormattedText(page, bcUtil.commentary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= SECTION_SPACING;
+        }
+        
+        console.log('✓ Borrowing capacity utilisation complete');
+      }
       
       // ============= PAGE: STRATEGIC RECOMMENDATIONS =============
       console.log('📝 Creating strategic recommendations page...');
@@ -3091,6 +3396,23 @@ export function PortfolioAnalysisPDFGenerator({
                   </p>
                 </div>
 
+                {/* Personalised Narrative */}
+                {analysisData.analysis?.personalizedNarrative && (
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="pt-6 space-y-3">
+                      {analysisData.analysis.personalizedNarrative.openingStatement && (
+                        <p className="text-sm">{analysisData.analysis.personalizedNarrative.openingStatement}</p>
+                      )}
+                      {analysisData.analysis.personalizedNarrative.portfolioJourney && (
+                        <div>
+                          <p className="text-sm font-medium text-primary">Portfolio Journey</p>
+                          <p className="text-sm text-muted-foreground">{analysisData.analysis.personalizedNarrative.portfolioJourney}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Executive Summary */}
                 <Card>
                   <CardHeader className="pb-2">
@@ -3360,6 +3682,31 @@ export function PortfolioAnalysisPDFGenerator({
                   </CardContent>
                 </Card>
 
+                {/* Property Strategic Context */}
+                {safeArray(analysisData.analysis?.propertyStrategicContext).length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Property Strategic Context</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {analysisData.analysis!.propertyStrategicContext!.map((ctx, i) => (
+                        <div key={i} className="border rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">{ctx.address}</span>
+                            <Badge variant="outline">{ctx.strategicRole}</Badge>
+                          </div>
+                          {ctx.capitalGrowthAnalysis && (
+                            <p className="text-xs text-muted-foreground mb-1"><span className="font-medium text-success">Growth:</span> {ctx.capitalGrowthAnalysis}</p>
+                          )}
+                          {ctx.individualOutlook && (
+                            <p className="text-xs text-muted-foreground"><span className="font-medium text-primary">Outlook:</span> {ctx.individualOutlook}</p>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Risk Assessment */}
                 <Card>
                   <CardHeader className="pb-2">
@@ -3393,6 +3740,67 @@ export function PortfolioAnalysisPDFGenerator({
                   </CardContent>
                 </Card>
 
+                {/* Interest Rate Sensitivity */}
+                {analysisData.analysis?.interestRateSensitivity && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Interest Rate Sensitivity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Current Cashflow</p>
+                          <p className={`text-xl font-bold ${safeNumber(analysisData.analysis.interestRateSensitivity.currentMonthlyCashflow) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {formatCurrency(analysisData.analysis.interestRateSensitivity.currentMonthlyCashflow)}/mo
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">+1% Impact</p>
+                          <p className="text-xl font-bold text-warning">
+                            {formatCurrency(analysisData.analysis.interestRateSensitivity.plusOnePercentImpact)}/mo
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">+2% Impact</p>
+                          <p className="text-xl font-bold text-destructive">
+                            {formatCurrency(analysisData.analysis.interestRateSensitivity.plusTwoPercentImpact)}/mo
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{analysisData.analysis.interestRateSensitivity.commentary}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Market Conditions */}
+                {analysisData.analysis?.marketConditions && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Market Conditions & Outlook</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      {analysisData.analysis.marketConditions.marketCycleSummary && (
+                        <div>
+                          <p className="font-medium">Market Cycle</p>
+                          <p className="text-muted-foreground">{analysisData.analysis.marketConditions.marketCycleSummary}</p>
+                        </div>
+                      )}
+                      {analysisData.analysis.marketConditions.rbaOutlook && (
+                        <div>
+                          <p className="font-medium">RBA Outlook</p>
+                          <p className="text-muted-foreground">{analysisData.analysis.marketConditions.rbaOutlook}</p>
+                        </div>
+                      )}
+                      {analysisData.analysis.marketConditions.clientPositioning && (
+                        <div>
+                          <p className="font-medium text-primary">Your Positioning</p>
+                          <p className="text-muted-foreground">{analysisData.analysis.marketConditions.clientPositioning}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Projections */}
                 <Card>
                   <CardHeader className="pb-2">
@@ -3408,7 +3816,7 @@ export function PortfolioAnalysisPDFGenerator({
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Projected Equity</p>
-                        <p className="text-xl font-bold text-green-600">
+                        <p className="text-xl font-bold text-success">
                           {formatCurrency(analysisData.analysis.projections.projectedEquity)}
                         </p>
                       </div>
@@ -3422,7 +3830,77 @@ export function PortfolioAnalysisPDFGenerator({
                   </CardContent>
                 </Card>
 
-                {/* Strategic Recommendations */}
+                {/* 12-Month Action Plan */}
+                {analysisData.analysis?.actionPlan && (
+                  <Card className="border-primary/30">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">12-Month Action Plan</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {safeArray(analysisData.analysis.actionPlan.twelveMonthActions).length > 0 && (
+                        <div>
+                          <p className="font-medium text-sm text-success">Priority Actions</p>
+                          <ol className="text-sm mt-1 space-y-1 list-decimal list-inside">
+                            {analysisData.analysis.actionPlan.twelveMonthActions.map((a, i) => (
+                              <li key={i}>{a}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                      {safeArray(analysisData.analysis.actionPlan.optimisationScenarios).length > 0 && (
+                        <>
+                          <Separator />
+                          <div>
+                            <p className="font-medium text-sm text-primary">Optimisation Scenarios</p>
+                            <ul className="text-sm mt-1 space-y-1">
+                              {analysisData.analysis.actionPlan.optimisationScenarios.map((s, i) => (
+                                <li key={i}>• {s}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Borrowing Capacity Utilisation */}
+                {analysisData.analysis?.borrowingCapacityUtilisation && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Borrowing Capacity Utilisation</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Debt Deployed</p>
+                          <p className="text-xl font-bold">{formatCurrency(analysisData.analysis.borrowingCapacityUtilisation.totalDebtDeployed)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Estimated Capacity</p>
+                          <p className="text-xl font-bold text-primary">{formatCurrency(analysisData.analysis.borrowingCapacityUtilisation.estimatedCapacity)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Available</p>
+                          <p className="text-xl font-bold text-success">{formatCurrency(analysisData.analysis.borrowingCapacityUtilisation.availableCapacity)}</p>
+                        </div>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-3 mb-2">
+                        <div
+                          className={`h-3 rounded-full ${
+                            safeNumber(analysisData.analysis.borrowingCapacityUtilisation.utilisationPercentage) < 60 ? 'bg-success' :
+                            safeNumber(analysisData.analysis.borrowingCapacityUtilisation.utilisationPercentage) < 80 ? 'bg-warning' : 'bg-destructive'
+                          }`}
+                          style={{ width: `${Math.min(safeNumber(analysisData.analysis.borrowingCapacityUtilisation.utilisationPercentage), 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">{safeNumber(analysisData.analysis.borrowingCapacityUtilisation.utilisationPercentage).toFixed(0)}% utilised</p>
+                      {analysisData.analysis.borrowingCapacityUtilisation.commentary && (
+                        <p className="text-sm text-muted-foreground mt-3">{analysisData.analysis.borrowingCapacityUtilisation.commentary}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Strategic Recommendations</CardTitle>
