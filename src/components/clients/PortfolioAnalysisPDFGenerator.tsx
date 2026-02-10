@@ -2133,31 +2133,56 @@ export function PortfolioAnalysisPDFGenerator({
             yPos = drawSectionHeader(page, 'Property Strategic Context (continued)', yPos);
           }
           
-          // Property address
-          page.drawText(stripEmojis(safeString(propCtx.address, 'Property')), {
+          // Strategic role badge (draw first to calculate available width for address)
+          const roleText = stripEmojis(safeString(propCtx.strategicRole, 'Asset').toUpperCase());
+          // Cap role badge width to max 55% of content width
+          const maxRoleBadgeWidth = CONTENT_WIDTH * 0.55;
+          let roleFontSize = 8;
+          let displayRoleText = roleText;
+          let roleTextWidth = helveticaBold.widthOfTextAtSize(displayRoleText, roleFontSize) + 14;
+          // Shrink font or truncate if badge is too wide
+          if (roleTextWidth > maxRoleBadgeWidth) {
+            roleFontSize = 7;
+            roleTextWidth = helveticaBold.widthOfTextAtSize(displayRoleText, roleFontSize) + 14;
+            if (roleTextWidth > maxRoleBadgeWidth) {
+              while (displayRoleText.length > 3 && helveticaBold.widthOfTextAtSize(displayRoleText + '...', roleFontSize) + 14 > maxRoleBadgeWidth) {
+                displayRoleText = displayRoleText.slice(0, -1);
+              }
+              displayRoleText = displayRoleText.trim() + '...';
+              roleTextWidth = helveticaBold.widthOfTextAtSize(displayRoleText, roleFontSize) + 14;
+            }
+          }
+          page.drawRectangle({
+            x: PAGE_WIDTH - MARGIN_RIGHT - roleTextWidth,
+            y: yPos - 5,
+            width: roleTextWidth,
+            height: 18,
+            color: PRIMARY_COLOR,
+          });
+          page.drawText(displayRoleText, {
+            x: PAGE_WIDTH - MARGIN_RIGHT - roleTextWidth + 7,
+            y: yPos,
+            size: roleFontSize,
+            font: helveticaBold,
+            color: rgb(1, 1, 1),
+          });
+          
+          // Property address (truncate to fit before the badge)
+          const maxAddressWidth = CONTENT_WIDTH - roleTextWidth - 15;
+          let addressText = stripEmojis(safeString(propCtx.address, 'Property'));
+          let addressWidth = helveticaBold.widthOfTextAtSize(addressText, 11);
+          if (addressWidth > maxAddressWidth) {
+            while (addressText.length > 3 && helveticaBold.widthOfTextAtSize(addressText + '...', 11) > maxAddressWidth) {
+              addressText = addressText.slice(0, -1);
+            }
+            addressText = addressText.trim() + '...';
+          }
+          page.drawText(addressText, {
             x: MARGIN_LEFT,
             y: yPos,
             size: 11,
             font: helveticaBold,
             color: SECONDARY_COLOR,
-          });
-          
-          // Strategic role badge
-          const roleText = stripEmojis(safeString(propCtx.strategicRole, 'Asset').toUpperCase());
-          const roleWidth = helveticaBold.widthOfTextAtSize(roleText, 8) + 14;
-          page.drawRectangle({
-            x: PAGE_WIDTH - MARGIN_RIGHT - roleWidth,
-            y: yPos - 5,
-            width: roleWidth,
-            height: 18,
-            color: PRIMARY_COLOR,
-          });
-          page.drawText(roleText, {
-            x: PAGE_WIDTH - MARGIN_RIGHT - roleWidth + 7,
-            y: yPos,
-            size: 8,
-            font: helveticaBold,
-            color: rgb(1, 1, 1),
           });
           
           yPos -= 22;
@@ -2854,6 +2879,11 @@ export function PortfolioAnalysisPDFGenerator({
       // Assumptions
       const assumptions = safeArray(projections?.assumptions);
       if (assumptions.length > 0) {
+        const assumptionsHeight = assumptions.length * 18 + 35;
+        if (needsNewPage(yPos, assumptionsHeight)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+        }
         yPos = drawSubsectionHeader(page, 'Key Assumptions', yPos);
         yPos = drawBulletList(page, assumptions, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9);
         yPos -= SUBSECTION_SPACING;
