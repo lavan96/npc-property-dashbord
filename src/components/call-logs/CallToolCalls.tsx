@@ -148,9 +148,9 @@ export const CallToolCalls = ({ artifactMessages }: CallToolCallsProps) => {
       </div>
 
       {/* Tool Calls List */}
-      <Accordion type="multiple" className="space-y-2">
+      <Accordion type="multiple" className="space-y-2 overflow-hidden">
         {toolCalls.map((tc, idx) => (
-          <AccordionItem key={tc.id} value={tc.id} className="border rounded-lg px-1">
+          <AccordionItem key={tc.id} value={tc.id} className="border rounded-lg px-1 overflow-hidden">
             <AccordionTrigger className="hover:no-underline py-3">
               <div className="flex items-center gap-3 text-left flex-1">
                 <div className={`w-2 h-2 rounded-full ${tc.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
@@ -164,13 +164,13 @@ export const CallToolCalls = ({ artifactMessages }: CallToolCallsProps) => {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <div className="space-y-3 pb-2">
+              <div className="space-y-3 pb-2 overflow-hidden">
                 {/* Request */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                     <ChevronRight className="w-3 h-3" /> Request Payload
                   </p>
-                  <pre className="whitespace-pre-wrap text-xs font-mono bg-muted p-3 rounded-lg overflow-auto max-h-60">
+                  <pre className="whitespace-pre-wrap break-all text-xs font-mono bg-muted p-3 rounded-lg overflow-auto max-h-60 w-full max-w-full">
                     {typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments, null, 2)}
                   </pre>
                 </div>
@@ -184,7 +184,7 @@ export const CallToolCalls = ({ artifactMessages }: CallToolCallsProps) => {
                       <Badge className="bg-red-500/15 text-red-500 border-0 text-[10px] py-0 px-1.5 ml-1">ERROR</Badge>
                     )}
                   </p>
-                  <pre className="whitespace-pre-wrap text-xs font-mono bg-muted p-3 rounded-lg overflow-auto max-h-60">
+                  <pre className="whitespace-pre-wrap break-all text-xs font-mono bg-muted p-3 rounded-lg overflow-auto max-h-60 w-full max-w-full">
                     {tc.result ? (typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2)) : 'No response recorded'}
                   </pre>
                 </div>
