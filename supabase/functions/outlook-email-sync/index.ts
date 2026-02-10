@@ -114,10 +114,45 @@ async function fetchEmailsFromFolder(accessToken: string, mailboxEmail: string, 
   return data.value || [];
 }
 
+// Known inline/signature image patterns to skip
+const INLINE_IMAGE_PATTERNS = [
+  /^image\d{3}\./i,           // image001.png, image002.jpg etc.
+  /^outlook-/i,               // Outlook-v5bh5gyh.png etc.
+  /^icons8-/i,                // icons8-linkedin-50.png etc.
+  /^cid:/i,                   // Content-ID referenced images
+];
+
+const SIGNATURE_IMAGE_KEYWORDS = [
+  'logo', 'banner', 'footer', 'signature', 'award', 'badge', 'icon',
+  'linkedin', 'facebook', 'twitter', 'instagram', 'social',
+];
+
+function isInlineOrSignatureImage(attachment: any): boolean {
+  // Microsoft Graph marks inline attachments
+  if (attachment.isInline === true) return true;
+
+  const name = (attachment.name || '').toLowerCase();
+  const contentType = (attachment.contentType || '').toLowerCase();
+
+  // Only filter images, never filter PDFs/docs/spreadsheets
+  if (!contentType.startsWith('image/')) return false;
+
+  // Check against known inline patterns
+  if (INLINE_IMAGE_PATTERNS.some(p => p.test(name))) return true;
+
+  // Small images (<50KB) with signature keywords are likely signature elements
+  if (attachment.size < 50 * 1024) {
+    if (SIGNATURE_IMAGE_KEYWORDS.some(kw => name.includes(kw))) return true;
+  }
+
+  return false;
+}
+
 async function fetchAttachments(accessToken: string, mailboxEmail: string, messageId: string): Promise<Attachment[]> {
   console.log(`[Outlook Sync] Fetching attachments for message ${messageId}...`);
   
-  const graphUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages/${messageId}/attachments`;
+  // Only request metadata first (no contentBytes) to filter before downloading
+  const graphUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages/${messageId}/attachments?$select=id,name,contentType,size,isInline`;
   
   const response = await fetch(graphUrl, {
     headers: {
@@ -132,7 +167,28 @@ async function fetchAttachments(accessToken: string, mailboxEmail: string, messa
   }
 
   const data = await response.json();
-  return data.value || [];
+  const allAttachments = data.value || [];
+
+  // Filter out inline/signature images
+  const realAttachments = allAttachments.filter((a: any) => !isInlineOrSignatureImage(a));
+  const skipped = allAttachments.length - realAttachments.length;
+  if (skipped > 0) {
+    console.log(`[Outlook Sync] Filtered out ${skipped} inline/signature images, keeping ${realAttachments.length} real attachments`);
+  }
+
+  // Now fetch contentBytes only for real attachments
+  const fullAttachments: Attachment[] = [];
+  for (const att of realAttachments) {
+    const attUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/messages/${messageId}/attachments/${att.id}`;
+    const attResponse = await fetch(attUrl, {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    });
+    if (attResponse.ok) {
+      fullAttachments.push(await attResponse.json());
+    }
+  }
+
+  return fullAttachments;
 }
 
 async function uploadAttachmentToStorage(
