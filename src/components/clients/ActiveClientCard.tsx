@@ -332,7 +332,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
   const getNoteTypeIcon = (type: string) => {
     const noteType = noteTypes.find(t => t.value === type);
     const Icon = noteType?.icon || MessageSquare;
-    return <Icon className="h-3 w-3" />;
+    return <Icon className="h-3.5 w-3.5" />;
   };
 
   const getNoteTypeColor = (type: string) => {
@@ -359,19 +359,19 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
 
   return (
     <Card className={cn("flex flex-col", client.is_favorite && "ring-2 ring-yellow-400/50")}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2 min-w-0 flex-1">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2.5 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0"
+              className="h-8 w-8 shrink-0"
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
               <Star 
                 className={cn(
-                  "h-4 w-4 transition-colors",
+                  "h-5 w-5 transition-colors",
                   client.is_favorite 
                     ? 'fill-yellow-400 text-yellow-400' 
                     : 'text-muted-foreground hover:text-yellow-400'
@@ -379,19 +379,19 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               />
             </Button>
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base truncate">
+              <CardTitle className="text-lg truncate">
                 {formatFullName(client.primary_first_name, client.primary_surname)}
               </CardTitle>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground mt-1">
+              <div className="flex flex-col gap-1.5 text-sm text-muted-foreground mt-1.5">
                 {client.primary_email && (
-                  <span className="flex items-center gap-1 truncate">
-                    <Mail className="h-3 w-3 flex-shrink-0" />
+                  <span className="flex items-center gap-1.5 truncate">
+                    <Mail className="h-3.5 w-3.5 flex-shrink-0" />
                     <span className="truncate">{client.primary_email}</span>
                   </span>
                 )}
                 {client.primary_mobile && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3 flex-shrink-0" />
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5 flex-shrink-0" />
                     {client.primary_mobile}
                   </span>
                 )}
@@ -399,7 +399,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             </div>
           </div>
           <Badge 
-            className="text-xs flex-shrink-0"
+            className="text-sm flex-shrink-0"
             style={{ 
               backgroundColor: stageInfo.color + '20',
               color: stageInfo.color,
@@ -411,20 +411,20 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 pt-0 space-y-3">
+      <CardContent className="flex-1 pt-0 space-y-4">
         {/* Add Note Section */}
         {isAddingNote ? (
-          <div className="space-y-2 p-2 border rounded-md bg-muted/30">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <Select value={newNoteType} onValueChange={(v: NoteType) => setNewNoteType(v)}>
-                <SelectTrigger className="w-28 h-7 text-xs">
+                <SelectTrigger className="w-32 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {noteTypes.map(type => (
                     <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-1.5">
-                        <type.icon className="h-3 w-3" />
+                      <div className="flex items-center gap-2">
+                        <type.icon className="h-3.5 w-3.5" />
                         {type.label}
                       </div>
                     </SelectItem>
@@ -441,24 +441,24 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               placeholder="Enter your note..."
               value={newNoteContent}
               onChange={(e) => setNewNoteContent(e.target.value)}
-              className="min-h-[60px] text-xs"
+              className="min-h-[72px] text-sm"
             />
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className="h-8 text-sm"
                 onClick={() => addNoteMutation.mutate()}
                 disabled={!newNoteContent.trim() || addNoteMutation.isPending}
               >
                 {addNoteMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 ) : null}
                 Save
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs"
+                className="h-8 text-sm"
                 onClick={() => {
                   setIsAddingNote(false);
                   setNewNoteContent('');
@@ -472,10 +472,10 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="w-full h-7 text-xs"
+            className="w-full h-8 text-sm"
             onClick={() => setIsAddingNote(true)}
           >
-            <Plus className="h-3 w-3 mr-1" />
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
             Add Note
           </Button>
         )}
@@ -486,44 +486,44 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : notes.length > 0 ? (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <FileText className="h-3 w-3" />
+          <div className="space-y-2.5">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
               Notes ({notes.length}{hasNextPage ? '+' : ''})
             </p>
-            <ScrollArea className="h-40" onScrollCapture={handleScrollCapture}>
+            <ScrollArea className="h-48" onScrollCapture={handleScrollCapture}>
               <div 
                 ref={scrollRef}
-                className="space-y-2 pr-3"
+                className="space-y-2.5 pr-3"
               >
                 {notes.map((note: ClientNote) => (
                   <div 
                     key={note.id} 
-                    className="bg-muted/50 rounded-md p-2.5 text-xs group relative"
+                    className="bg-muted/50 rounded-lg p-3 text-sm group relative"
                   >
                     {editingNoteId === note.id ? (
                       <div className="space-y-2">
                         <Textarea
                           value={editNoteContent}
                           onChange={(e) => setEditNoteContent(e.target.value)}
-                          className="min-h-[60px] text-xs"
+                          className="min-h-[72px] text-sm"
                         />
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="h-6 text-xs"
+                            className="h-7 text-sm"
                             onClick={() => updateNoteMutation.mutate(note.id)}
                             disabled={!editNoteContent.trim() || updateNoteMutation.isPending}
                           >
                             {updateNoteMutation.isPending ? (
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                             ) : null}
                             Save
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 text-xs"
+                            className="h-7 text-sm"
                             onClick={handleCancelEdit}
                           >
                             Cancel
@@ -532,14 +532,14 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-1.5 mb-1">
+                        <div className="flex items-center gap-2 mb-1.5">
                           <span className={getNoteTypeColor(note.note_type)}>
                             {getNoteTypeIcon(note.note_type)}
                           </span>
-                          <span className="capitalize text-[10px] text-muted-foreground">
+                          <span className="capitalize text-xs text-muted-foreground">
                             {note.note_type}
                           </span>
-                          <span className="text-[10px] text-muted-foreground ml-auto">
+                          <span className="text-xs text-muted-foreground ml-auto">
                             {format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}
                           </span>
                           <DropdownMenu>
@@ -547,21 +547,21 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-5 w-5 p-0 hover:bg-muted"
+                                className="h-6 w-6 p-0 hover:bg-muted"
                               >
-                                <MoreVertical className="h-3 w-3" />
+                                <MoreVertical className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleStartEdit(note)}>
-                                <Pencil className="h-3 w-3 mr-2" />
+                                <Pencil className="h-3.5 w-3.5 mr-2" />
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => deleteNoteMutation.mutate(note.id)}
                                 className="text-destructive focus:text-destructive"
                               >
-                                <Trash2 className="h-3 w-3 mr-2" />
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -572,7 +572,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-5 px-1 text-[10px] text-primary hover:text-primary/80 mt-1"
+                            className="h-6 px-1.5 text-xs text-primary hover:text-primary/80 mt-1.5"
                             onClick={() => toggleNoteExpansion(note.id)}
                           >
                             {expandedNotes.has(note.id) ? (
@@ -601,7 +601,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             </ScrollArea>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">
+        <p className="text-base text-muted-foreground italic">
             No notes for this client
           </p>
         )}
