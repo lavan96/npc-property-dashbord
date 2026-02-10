@@ -366,3 +366,6 @@ verify_jwt = true
 [functions.cleanup-call-log-names]
 verify_jwt = true
 request_timeout = 300
+
+[functions.get-email-data]
+verify_jwt = true

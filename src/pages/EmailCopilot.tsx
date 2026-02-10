@@ -667,17 +667,14 @@ export default function EmailCopilot() {
 
   const fetchSentReplies = async () => {
     try {
-      const mailboxFilter = selectedMailbox;
-      
-      const { data, error } = await supabase
-        .from('email_copilot_sent_replies')
-        .select('*')
-        .eq('mailbox_source', mailboxFilter)
-        .order('sent_at', { ascending: false });
+      const { data, error } = await invokeSecureFunction('get-email-data', {
+        action: 'list_replies',
+        mailbox_source: selectedMailbox,
+      });
 
       if (error) throw error;
       
-      const typedReplies: SentReply[] = (data || []).map(reply => ({
+      const typedReplies: SentReply[] = (data?.replies || []).map((reply: any) => ({
         id: reply.id,
         original_email_id: reply.original_email_id,
         recipient: reply.recipient,
@@ -699,33 +696,15 @@ export default function EmailCopilot() {
   const fetchEmails = async () => {
     setIsLoading(true);
     try {
-      // Filter by mailbox source based on selection
-      const mailboxFilter = selectedMailbox;
-      
-      // Paginate to bypass Supabase's default 1000-row limit
-      const PAGE_SIZE = 1000;
-      let allData: any[] = [];
-      let from = 0;
-      let hasMore = true;
+      const { data, error } = await invokeSecureFunction('get-email-data', {
+        action: 'list',
+        mailbox_source: selectedMailbox,
+      });
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('email_copilot_emails')
-          .select('*')
-          .eq('mailbox_source', mailboxFilter)
-          .order('received_at', { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
-
-        if (error) throw error;
-
-        const page = data || [];
-        allData = allData.concat(page);
-        hasMore = page.length === PAGE_SIZE;
-        from += PAGE_SIZE;
-      }
+      if (error) throw error;
       
       // Type assertion with proper handling
-      const typedEmails: Email[] = allData.map(email => ({
+      const typedEmails: Email[] = (data?.emails || []).map((email: any) => ({
         id: email.id,
         sender: email.sender,
         subject: email.subject,
@@ -745,7 +724,7 @@ export default function EmailCopilot() {
         mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
         folder: (email.folder as 'inbox' | 'sent') || 'inbox',
         client_id: email.client_id || null,
-        client_name: null, // Will be populated if needed
+        client_name: null,
       }));
       
       setEmails(typedEmails);
