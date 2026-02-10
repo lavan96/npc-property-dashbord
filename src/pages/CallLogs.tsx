@@ -28,6 +28,8 @@ import { WeeklyReportConfig } from '@/components/call-logs/WeeklyReportConfig';
 import { CleanupContactNames } from '@/components/call-logs/CleanupContactNames';
 import { CleanupTestCalls } from '@/components/call-logs/CleanupTestCalls';
 import { NegativeCallAnalysis } from '@/components/call-logs/NegativeCallAnalysis';
+import { CallToolCalls } from '@/components/call-logs/CallToolCalls';
+import { CallTranscriptChat } from '@/components/call-logs/CallTranscriptChat';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -109,6 +111,7 @@ interface CallLog {
   metadata: unknown;
   created_at: string;
   tags: string[] | null;
+  artifact_messages: unknown[] | null;
   // Squad-specific fields
   is_squad_call: boolean | null;
   squad_id: string | null;
@@ -1030,7 +1033,7 @@ const CallLogs = () => {
           </DialogHeader>
           {selectedCall && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className={`grid w-full ${selectedCall.is_squad_call ? 'grid-cols-5' : 'grid-cols-4'}`}>
+              <TabsList className={`grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`}>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 {selectedCall.is_squad_call && (
                   <TabsTrigger value="squad" className="flex items-center gap-1">
@@ -1039,6 +1042,7 @@ const CallLogs = () => {
                   </TabsTrigger>
                 )}
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                <TabsTrigger value="tool-calls">Tool Calls</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="metadata">Metadata</TabsTrigger>
               </TabsList>
@@ -1285,23 +1289,14 @@ const CallLogs = () => {
                 )}
 
                 <TabsContent value="transcript" className="p-1">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4" />
-                        Conversation Transcript
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {selectedCall.transcript ? (
-                        <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg">
-                          {selectedCall.transcript}
-                        </pre>
-                      ) : (
-                        <p className="text-muted-foreground text-center py-8">No transcript available</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <CallTranscriptChat 
+                    artifactMessages={selectedCall.artifact_messages as any[]}
+                    plainTranscript={selectedCall.transcript}
+                  />
+                </TabsContent>
+
+                <TabsContent value="tool-calls" className="p-1">
+                  <CallToolCalls artifactMessages={selectedCall.artifact_messages as any[]} />
                 </TabsContent>
 
                 <TabsContent value="analysis" className="space-y-4 p-1">

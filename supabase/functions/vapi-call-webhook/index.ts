@@ -100,6 +100,18 @@ interface VapiWebhookPayload {
         // Squad-specific fields
         assistantId?: string;
         assistantName?: string;
+        // Tool call fields
+        name?: string;
+        toolCalls?: Array<{
+          id?: string;
+          type?: string;
+          function?: {
+            name?: string;
+            arguments?: string;
+          };
+        }>;
+        toolCallId?: string;
+        result?: string;
       }>;
     };
     call?: {
@@ -1053,6 +1065,7 @@ serve(async (req) => {
       duration_seconds: durationSeconds,
       cost: cost,
       transcript: transcript,
+      artifact_messages: message.artifact?.messages || null,
       summary: summary,
       sentiment: sentiment,
       key_topics: keyTopics,
