@@ -505,10 +505,10 @@ Provide analysis with these sections:
 5. FINANCIAL HEALTH - Cashflow, equity, serviceability, LVR risk
 6. PROPERTY RANKINGS - Performance ranking with strengths, concerns, recommendations
 7. RISK ASSESSMENT - Concentration, interest rate, vacancy, market risks with mitigation strategies
-8. INTEREST RATE SENSITIVITY - Monthly cashflow impact at +1% and +2% rate increases
+8. INTEREST RATE SENSITIVITY ON LENDER RATES - Show how changes to lender interest rates affect monthly repayments and cashflow. Break this down into TWO sections: (a) Investment Properties - impact on rental cashflow, and (b) Owner-Occupied Properties (home loans) - impact on personal loan repayments. Use plain English that a non-expert would understand (e.g. "If your lender increased your interest rate by 1%, your monthly home loan repayment would increase by $X, bringing your total monthly repayment to $Y"). Calculate impacts based on actual loan balances and current interest rates from the property data provided
 9. MARKET CONDITIONS - Australian market cycle, RBA outlook, client positioning
 10. GROWTH OPPORTUNITIES - Equity release, refinancing, next purchase, optimization
-11. ${projectionYears}-YEAR PROJECTIONS - Value, equity, cashflow projections (${growthRate}% growth)${interestRateScenario && interestRateScenario !== 'current' ? ` with stress test for ${configLabels.interestRateScenario[interestRateScenario]}` : ''}
+11. ${projectionYears}-YEAR PROJECTIONS - Value, equity, cashflow projections (${growthRate}% growth)${interestRateScenario && interestRateScenario !== 'current' ? ` with stress test for ${configLabels.interestRateScenario[interestRateScenario]}` : ''}. Use plain language to explain what these numbers mean for the client in practical terms (e.g. "In 10 years, your portfolio is estimated to be worth $X, meaning you would have built approximately $Y in equity - that's roughly $Z more than today")
 12. ACTION PLAN - Next 12-month prioritised actions and optimisation scenarios
 13. BORROWING CAPACITY UTILISATION - Deployed vs available capacity analysis
 14. STRATEGIC RECOMMENDATIONS - Short/medium/long-term with priority actions
@@ -566,10 +566,19 @@ Format your response as valid JSON with this structure:
     "mitigationStrategies": ["string"]
   },
   "interestRateSensitivity": {
-    "currentMonthlyCashflow": number,
-    "plusOnePercentImpact": number,
-    "plusTwoPercentImpact": number,
-    "commentary": "string"
+    "investmentProperties": {
+      "currentMonthlyCashflow": number,
+      "plusOnePercentImpact": number,
+      "plusTwoPercentImpact": number,
+      "commentary": "string (plain English explanation of what rate rises mean for rental income vs expenses)"
+    },
+    "ownerOccupiedProperties": {
+      "currentMonthlyRepayment": number,
+      "plusOnePercentImpact": number,
+      "plusTwoPercentImpact": number,
+      "commentary": "string (plain English explanation of what rate rises mean for home loan repayments)"
+    },
+    "combinedCommentary": "string (overall summary in plain English)"
   },
   "marketConditions": {
     "marketCycleSummary": "string",
@@ -587,7 +596,8 @@ Format your response as valid JSON with this structure:
     "projectedPortfolioValue": number,
     "projectedEquity": number,
     "projectedMonthlyCashflow": number,
-    "assumptions": ["string"]
+    "assumptions": ["string"],
+    "plainEnglishSummary": "string (2-3 sentences explaining what these projections mean in everyday language for the client)"
   },
   "actionPlan": {
     "twelveMonthActions": ["string (concrete, prioritised actions)"],
