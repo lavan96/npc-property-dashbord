@@ -133,6 +133,7 @@ interface PortfolioAnalysisData {
     marketConditions?: {
       marketCycleSummary: string;
       rbaOutlook: string;
+      lendingEnvironment?: string;
       clientPositioning: string;
     };
     growthOpportunities: {
@@ -2771,6 +2772,12 @@ export function PortfolioAnalysisPDFGenerator({
           yPos -= PARAGRAPH_SPACING;
         }
         
+        if (marketConditions.lendingEnvironment) {
+          yPos = drawSubsectionHeader(page, 'Lending & Credit Environment', yPos);
+          yPos = drawFormattedText(page, marketConditions.lendingEnvironment, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+          yPos -= PARAGRAPH_SPACING;
+        }
+        
         if (marketConditions.clientPositioning) {
           yPos = drawSubsectionHeader(page, 'Your Positioning', yPos, PRIMARY_COLOR);
           yPos = drawFormattedText(page, marketConditions.clientPositioning, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
@@ -3941,6 +3948,12 @@ export function PortfolioAnalysisPDFGenerator({
                         <div>
                           <p className="font-medium">RBA Outlook</p>
                           <p className="text-muted-foreground">{analysisData.analysis.marketConditions.rbaOutlook}</p>
+                        </div>
+                      )}
+                      {analysisData.analysis.marketConditions.lendingEnvironment && (
+                        <div>
+                          <p className="font-medium">Lending & Credit Environment</p>
+                          <p className="text-muted-foreground">{analysisData.analysis.marketConditions.lendingEnvironment}</p>
                         </div>
                       )}
                       {analysisData.analysis.marketConditions.clientPositioning && (

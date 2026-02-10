@@ -506,8 +506,8 @@ Provide analysis with these sections:
 6. PROPERTY RANKINGS - Performance ranking with strengths, concerns, recommendations
 7. RISK ASSESSMENT - Concentration, interest rate, vacancy, market risks with mitigation strategies
 8. INTEREST RATE SENSITIVITY ON LENDER RATES - Show how changes to lender interest rates affect monthly repayments and cashflow. Break this down into TWO sections: (a) Investment Properties - impact on rental cashflow, and (b) Owner-Occupied Properties (home loans) - impact on personal loan repayments. Use plain English that a non-expert would understand (e.g. "If your lender increased your interest rate by 1%, your monthly home loan repayment would increase by $X, bringing your total monthly repayment to $Y"). Calculate impacts based on actual loan balances and current interest rates from the property data provided
-9. MARKET CONDITIONS - Australian market cycle, RBA outlook, client positioning
-10. GROWTH OPPORTUNITIES - Equity release, refinancing, next purchase, optimization
+9. MARKET CONDITIONS - This is a KEY SECTION that must be rich and detailed (minimum 3 substantial paragraphs). Cover: (a) Where Australia sits in the current property market cycle (recovery, growth, peak, correction) with supporting evidence, (b) RBA monetary policy — current cash rate, recent decisions, forward guidance, and what economists/major banks are forecasting for the next 12-18 months, (c) How these macro conditions specifically affect THIS client's portfolio — connect the dots between rate movements, borrowing capacity, property values, and rental demand in their specific markets, (d) Credit and lending environment — are banks tightening or loosening? What does APRA's stance mean for refinancing or new purchases? Write this section as a bird's-eye economic briefing that helps the client understand WHY their portfolio is performing the way it is.
+10. GROWTH OPPORTUNITIES - Equity release, refinancing, next purchase, optimization. Be specific with dollar amounts and scenarios.
 11. ${projectionYears}-YEAR PROJECTIONS - Value, equity, cashflow projections (${growthRate}% growth)${interestRateScenario && interestRateScenario !== 'current' ? ` with stress test for ${configLabels.interestRateScenario[interestRateScenario]}` : ''}. Use plain language to explain what these numbers mean for the client in practical terms (e.g. "In 10 years, your portfolio is estimated to be worth $X, meaning you would have built approximately $Y in equity - that's roughly $Z more than today")
 12. ACTION PLAN - Next 12-month prioritised actions and optimisation scenarios
 13. BORROWING CAPACITY UTILISATION - Deployed vs available capacity analysis
@@ -581,9 +581,10 @@ Format your response as valid JSON with this structure:
     "combinedCommentary": "string (overall summary in plain English)"
   },
   "marketConditions": {
-    "marketCycleSummary": "string",
-    "rbaOutlook": "string",
-    "clientPositioning": "string"
+    "marketCycleSummary": "string (detailed 2-3 paragraph analysis of where Australia sits in the property cycle, with evidence and historical context)",
+    "rbaOutlook": "string (detailed 2-3 paragraph analysis covering current cash rate, recent RBA decisions, forward guidance, major bank forecasts for the next 12-18 months, and what this means for mortgage holders and property investors)",
+    "lendingEnvironment": "string (1-2 paragraphs on APRA regulations, bank lending appetite, credit conditions, and implications for refinancing or new purchases)",
+    "clientPositioning": "string (1-2 paragraphs connecting ALL of the above macro factors specifically to THIS client's portfolio — how do these conditions affect their properties, their borrowing power, and their strategy?)"
   },
   "growthOpportunities": {
     "equityReleaseOptions": ["string"],
@@ -649,7 +650,7 @@ Format your response as valid JSON with this structure:
           }
         ],
         temperature: 0.7,
-        max_tokens: 12000
+        max_tokens: 16000
       }),
     });
 
