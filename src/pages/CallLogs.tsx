@@ -480,7 +480,10 @@ const CallLogs = () => {
           <SquadAnalyticsDashboard calls={filteredCalls} />
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-4 md:mt-6 space-y-4 md:space-y-6">
+        <TabsContent value="logs" className="mt-4 md:mt-6 space-y-0">
+
+      {/* Sticky header: Stats + Filters */}
+      <div className="sticky top-0 z-20 bg-background pb-4 space-y-4 md:space-y-6">
 
       {/* Stats Cards - Responsive grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 md:gap-3">
@@ -742,6 +745,10 @@ const CallLogs = () => {
         </CardContent>
       </Card>
 
+      </div>
+      {/* End sticky header */}
+
+      <div className="mt-4 md:mt-6">
       {/* Call List */}
       <Card>
         <CardHeader className="pb-4">
@@ -966,6 +973,7 @@ const CallLogs = () => {
           )}
         </CardContent>
       </Card>
+      </div>
         </TabsContent>
       </Tabs>
 
