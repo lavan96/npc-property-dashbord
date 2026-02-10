@@ -702,16 +702,30 @@ export default function EmailCopilot() {
       // Filter by mailbox source based on selection
       const mailboxFilter = selectedMailbox;
       
-      const { data, error } = await supabase
-        .from('email_copilot_emails')
-        .select('*')
-        .eq('mailbox_source', mailboxFilter)
-        .order('received_at', { ascending: false });
+      // Paginate to bypass Supabase's default 1000-row limit
+      const PAGE_SIZE = 1000;
+      let allData: any[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('email_copilot_emails')
+          .select('*')
+          .eq('mailbox_source', mailboxFilter)
+          .order('received_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+
+        const page = data || [];
+        allData = allData.concat(page);
+        hasMore = page.length === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
       
       // Type assertion with proper handling
-      const typedEmails: Email[] = (data || []).map(email => ({
+      const typedEmails: Email[] = allData.map(email => ({
         id: email.id,
         sender: email.sender,
         subject: email.subject,
