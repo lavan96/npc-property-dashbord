@@ -83,7 +83,7 @@ serve(async (req: Request) => {
     );
 
     const body: RequestBody = await req.json();
-    const { action } = body;
+    const { action, session_token } = body;
 
     // Actions that don't require superadmin auth
     if (action === 'verify_invite') {
