@@ -148,7 +148,7 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                     }
 
                     return (
-                      <AccordionItem key={tcId} value={tcId} className="border border-dashed border-muted-foreground/30 rounded-lg my-1 px-1">
+                      <AccordionItem key={tcId} value={tcId} className="border border-dashed border-muted-foreground/30 rounded-lg my-1 px-1 overflow-hidden">
                         <AccordionTrigger className="hover:no-underline py-2 text-xs">
                           <div className="flex items-center gap-2 text-left">
                             <Wrench className="w-3 h-3 text-muted-foreground" />
@@ -157,12 +157,12 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                          <div className="space-y-2 text-xs pb-1">
+                          <div className="space-y-2 text-xs pb-1 overflow-hidden">
                             <div>
                               <p className="font-medium text-muted-foreground mb-1 flex items-center gap-1">
                                 <ChevronRight className="w-3 h-3" /> Request
                               </p>
-                              <pre className="whitespace-pre-wrap font-mono bg-background p-2 rounded-md overflow-auto max-h-40 text-[11px]">
+                              <pre className="whitespace-pre-wrap break-all font-mono bg-background p-2 rounded-md overflow-auto max-h-40 text-[11px] w-full max-w-full">
                                 {typeof args === 'string' ? args : JSON.stringify(args, null, 2)}
                               </pre>
                             </div>
@@ -170,7 +170,7 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                               <p className="font-medium text-muted-foreground mb-1 flex items-center gap-1">
                                 <ChevronRight className="w-3 h-3" /> Response
                               </p>
-                              <pre className="whitespace-pre-wrap font-mono bg-background p-2 rounded-md overflow-auto max-h-40 text-[11px]">
+                              <pre className="whitespace-pre-wrap break-all font-mono bg-background p-2 rounded-md overflow-auto max-h-40 text-[11px] w-full max-w-full">
                                 {result ? (typeof result === 'string' ? result : JSON.stringify(result, null, 2)) : 'No response'}
                               </pre>
                             </div>
