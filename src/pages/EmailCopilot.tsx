@@ -425,6 +425,40 @@ export default function EmailCopilot() {
     }
   }, []);
 
+  // Handle deep-link to a specific email via ?emailId= query param
+  useEffect(() => {
+    if (emails.length === 0 || isLoading) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailId = urlParams.get('emailId');
+    if (!emailId) return;
+    
+    // Try to find in current mailbox
+    const targetEmail = emails.find(e => e.id === emailId);
+    if (targetEmail) {
+      setSelectedEmail(targetEmail);
+      if (isMobile) {
+        setShowMobileDetail(true);
+      }
+      // Clean URL
+      window.history.replaceState({}, '', '/email-copilot');
+    } else {
+      // Email might be in the other mailbox - switch and retry
+      const otherMailbox = selectedMailbox === 'admin' ? 'personal' : 'admin';
+      // Only attempt switch once (check if we already tried)
+      const alreadySwitched = urlParams.get('_switched');
+      if (!alreadySwitched) {
+        setSelectedMailbox(otherMailbox);
+        // Keep the emailId param but mark that we switched
+        window.history.replaceState({}, '', `/email-copilot?emailId=${emailId}&_switched=1`);
+      } else {
+        // Couldn't find in either mailbox
+        toast.error('Email not found', { description: 'The linked email could not be located.' });
+        window.history.replaceState({}, '', '/email-copilot');
+      }
+    }
+  }, [emails, isLoading, isMobile, selectedMailbox]);
+
   // Fetch user profile to get personal mailbox
   useEffect(() => {
     const fetchUserProfile = async () => {
