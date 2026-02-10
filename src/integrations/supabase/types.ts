@@ -4262,6 +4262,7 @@ export type Database = {
           agent_id: string | null
           agent_name: string | null
           ai_recommendations: string[] | null
+          artifact_messages: Json | null
           assistants_involved: Json | null
           call_direction: string | null
           call_intent: string | null
@@ -4304,6 +4305,7 @@ export type Database = {
           agent_id?: string | null
           agent_name?: string | null
           ai_recommendations?: string[] | null
+          artifact_messages?: Json | null
           assistants_involved?: Json | null
           call_direction?: string | null
           call_intent?: string | null
@@ -4346,6 +4348,7 @@ export type Database = {
           agent_id?: string | null
           agent_name?: string | null
           ai_recommendations?: string[] | null
+          artifact_messages?: Json | null
           assistants_involved?: Json | null
           call_direction?: string | null
           call_intent?: string | null
