@@ -64,6 +64,8 @@ interface PropertyData {
   weekly_rental_income: number | null;
   total_monthly_expenditure: number | null;
   net_monthly_cashflow: number | null;
+  purchase_price: number | null;
+  purchase_date: string | null;
   smsf_fund_name: string | null;
   smsf_trustee_name: string | null;
   smsf_trustee_type: string | null;
@@ -91,6 +93,8 @@ interface PropertyFormData {
   property_type: 'owner_occupied' | 'investment' | 'smsf';
   address: string;
   value: number;
+  purchase_price: number;
+  purchase_date: string;
   loan_remaining: number;
   interest_rate: number;
   ownership_percentage: number;
@@ -140,6 +144,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     property_type: 'investment',
     address: '',
     value: 0,
+    purchase_price: 0,
+    purchase_date: '',
     loan_remaining: 0,
     interest_rate: 5.90,
     ownership_percentage: 100,
@@ -168,6 +174,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         property_type: (property.property_type as 'owner_occupied' | 'investment' | 'smsf') || 'investment',
         address: property.address || '',
         value: Number(property.value) || 0,
+        purchase_price: Number(property.purchase_price) || 0,
+        purchase_date: property.purchase_date || '',
         loan_remaining: Number(property.loan_remaining) || 0,
         interest_rate: Number(property.interest_rate) || 5.90,
         ownership_percentage: Number(property.ownership_percentage) || 100,
@@ -257,6 +265,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         property_type: formData.property_type,
         address: formData.address,
         value: formData.value,
+        purchase_price: formData.purchase_price || null,
+        purchase_date: formData.purchase_date || null,
         loan_remaining: formData.loan_remaining,
         interest_rate: formData.interest_rate,
         ownership_percentage: formData.ownership_percentage,
@@ -622,6 +632,30 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                       placeholder="0"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Purchase Price ($)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      value={formData.purchase_price || ''}
+                      onChange={(e) => updateNumberField('purchase_price', e.target.value)}
+                      className="pl-9"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Purchase Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.purchase_date || ''}
+                    onChange={(e) => updateField('purchase_date', e.target.value)}
+                  />
                 </div>
               </div>
 

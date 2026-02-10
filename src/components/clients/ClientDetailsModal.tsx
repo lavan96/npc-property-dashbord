@@ -70,6 +70,7 @@ import { ClientReportsTab } from './ClientReportsTab';
 import { VownetPDFGenerator } from './VownetPDFGenerator';
 import { PropertyEditSheet } from './PropertyEditSheet';
 import { ClientPropertyInvestmentReport } from './ClientPropertyInvestmentReport';
+import { CGTCalculator } from './CGTCalculator';
 import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
@@ -527,6 +528,10 @@ NPC Team`
                               clientName={`${client.primary_first_name} ${client.primary_surname}`}
                             />
                           )}
+                          <CGTCalculator
+                            property={property as any}
+                            clientGrossAnnualIncome={income.reduce((sum: number, inc: any) => sum + (Number(inc.gross_salary) || 0), 0) || Number(fullClient?.total_monthly_income || 0) * 12}
+                          />
                           <Button 
                             variant="ghost" 
                             size="sm"

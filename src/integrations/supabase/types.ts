@@ -1562,6 +1562,8 @@ export type Database = {
           net_monthly_cashflow: number | null
           ownership_percentage: number | null
           property_type: string
+          purchase_date: string | null
+          purchase_price: number | null
           smsf_abn: string | null
           smsf_auditor_name: string | null
           smsf_compliance_status: string | null
@@ -1592,6 +1594,8 @@ export type Database = {
           net_monthly_cashflow?: number | null
           ownership_percentage?: number | null
           property_type?: string
+          purchase_date?: string | null
+          purchase_price?: number | null
           smsf_abn?: string | null
           smsf_auditor_name?: string | null
           smsf_compliance_status?: string | null
@@ -1622,6 +1626,8 @@ export type Database = {
           net_monthly_cashflow?: number | null
           ownership_percentage?: number | null
           property_type?: string
+          purchase_date?: string | null
+          purchase_price?: number | null
           smsf_abn?: string | null
           smsf_auditor_name?: string | null
           smsf_compliance_status?: string | null
