@@ -1033,10 +1033,30 @@ export function PortfolioAnalysisPDFGenerator({
           borderWidth: 1,
         });
         
-        page.drawText(stripEmojis(label), {
+        // Auto-size label to fit within box width
+        const cleanLabel = stripEmojis(label);
+        const maxLabelWidth = width - BOX_PADDING * 2;
+        let labelSize = 8;
+        let labelText = cleanLabel;
+        const labelWidth = helveticaFont.widthOfTextAtSize(cleanLabel, labelSize);
+        if (labelWidth > maxLabelWidth) {
+          // Try smaller font first
+          labelSize = 7;
+          const smallerWidth = helveticaFont.widthOfTextAtSize(cleanLabel, labelSize);
+          if (smallerWidth > maxLabelWidth) {
+            // Truncate with ellipsis
+            labelSize = 7;
+            while (labelText.length > 3 && helveticaFont.widthOfTextAtSize(labelText + '...', labelSize) > maxLabelWidth) {
+              labelText = labelText.slice(0, -1);
+            }
+            labelText = labelText.trim() + '...';
+          }
+        }
+        
+        page.drawText(labelText, {
           x: x + BOX_PADDING,
           y: y - 18,
-          size: 8,
+          size: labelSize,
           font: helveticaFont,
           color: MUTED_COLOR,
         });
@@ -1513,6 +1533,11 @@ export function PortfolioAnalysisPDFGenerator({
       yPos -= SECTION_SPACING;
       
       // ============= PORTFOLIO OVERVIEW SECTION =============
+      // Need ~165px: section header (30) + 2 KPI rows (65 each) + spacing
+      if (needsNewPage(yPos, 165)) {
+        page = addContentPage();
+        yPos = PAGE_HEIGHT - MARGIN_TOP;
+      }
       yPos = drawSectionHeader(page, 'Portfolio Overview', yPos);
       
       const kpiWidth = (CONTENT_WIDTH - 20) / 3;
