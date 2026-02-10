@@ -14,6 +14,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { QAPDFGenerator } from '@/components/reports/QAPDFGenerator';
 import { convertPdfToImages } from '@/utils/pdfToImages';
+import { extractPdfTextClientSide } from '@/lib/pdfClientExtractor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
@@ -352,10 +353,10 @@ export default function ReportQA() {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 50 * 1024 * 1024) {
       toast({
         title: 'File too large',
-        description: 'Please upload a file smaller than 10MB',
+        description: 'Please upload a file smaller than 50MB',
         variant: 'destructive',
       });
       return;
@@ -379,43 +380,38 @@ export default function ReportQA() {
     setUploadProgress(prev => [...prev, progressItem]);
 
     try {
-      // Simulate upload progress
       const updateProgress = (progress: number, status: UploadProgress['status']) => {
         setUploadProgress(prev => 
           prev.map(p => p.fileName === file.name ? { ...p, progress, status } : p)
         );
       };
-      
-      const reader = new FileReader();
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 50);
-          updateProgress(percent, 'uploading');
-        }
-      };
-      
-      reader.onload = async (e) => {
-        updateProgress(50, 'processing');
-        const base64 = e.target?.result as string;
 
-        if (!base64 || typeof base64 !== 'string') {
-          throw new Error('Failed to read PDF file');
-        }
+      updateProgress(10, 'processing');
 
-        // Pre-render first pages to images for robust OCR of scanned PDFs
-        // (Edge Functions cannot render PDFs to images, and OpenAI Vision requires image mime types)
+      // --- Client-side text extraction using pdfjs-dist ---
+      // This runs entirely in the browser, no edge function timeouts
+      const result = await extractPdfTextClientSide(file, (current, total) => {
+        const pct = 10 + Math.round((current / Math.max(total, 1)) * 80);
+        updateProgress(Math.min(pct, 90), 'processing');
+      });
+
+      let extractedText = result.text;
+
+      // If client-side extraction yielded very little text (scanned PDF), fall back to server OCR
+      if (extractedText.length < 500) {
+        console.log(`[ReportQA] Low text from client extraction (${extractedText.length} chars), trying server-side OCR...`);
+        updateProgress(85, 'processing');
+
         let pageImages: Array<{ pageNumber: number; base64: string; width: number; height: number; mimeType: string }> = [];
         try {
           const conv = await convertPdfToImages(file, (current, total) => {
-            // Map conversion progress into 50% -> 80% range
-            const pct = 50 + Math.round((current / Math.max(total, 1)) * 30);
-            updateProgress(Math.min(pct, 80), 'processing');
+            const pct = 85 + Math.round((current / Math.max(total, 1)) * 10);
+            updateProgress(Math.min(pct, 95), 'processing');
           });
 
           if (conv.success) {
-            // Keep payload bounded
             pageImages = conv.images
-              .slice(0, 4)
+              .slice(0, 8)
               .map((img) => ({
                 pageNumber: img.pageNumber,
                 base64: img.base64,
@@ -425,48 +421,57 @@ export default function ReportQA() {
               }));
           }
         } catch (err) {
-          console.warn('PDF page image pre-render failed (continuing without OCR images):', err);
+          console.warn('PDF page image pre-render failed:', err);
         }
-        
-        const { data, error } = await invokeSecureFunction('report-qa', {
-          action: 'extract',
-          fileData: base64,
-          fileName: file.name,
-          pageImages,
-        });
 
-        if (error) throw error;
-
-        if (data.success) {
-          updateProgress(100, 'complete');
-          
-          const newReport: UploadedReport = {
-            name: file.name,
-            content: data.extractedText,
-            uploadedAt: new Date(),
-            fileSizeBytes: file.size,
-            totalPages: data.totalPages,
-            imagesProcessed: data.imagesProcessed,
-          };
-          
-          setUploadedReports(prev => [...prev, newReport]);
-          
-          // Remove from progress after a short delay
-          setTimeout(() => {
-            setUploadProgress(prev => prev.filter(p => p.fileName !== file.name));
-          }, 1500);
-          
-          toast({
-            title: 'Report uploaded',
-            description: `${file.name} added. ${uploadedReports.length + 1} report(s) loaded.`,
+        if (pageImages.length > 0) {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve, reject) => {
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
           });
-        } else {
-          throw new Error(data.error || 'Failed to extract text');
+
+          const { data, error } = await invokeSecureFunction('report-qa', {
+            action: 'extract',
+            fileData: base64,
+            fileName: file.name,
+            pageImages,
+          });
+
+          if (!error && data?.success && data.extractedText?.length > extractedText.length) {
+            extractedText = data.extractedText;
+          }
         }
-        
-        setIsUploading(false);
+      }
+
+      if (!extractedText || extractedText.length < 50) {
+        throw new Error('Could not extract meaningful text from this PDF. It may be a scanned document or image-only PDF.');
+      }
+
+      updateProgress(100, 'complete');
+      
+      const newReport: UploadedReport = {
+        name: file.name,
+        content: extractedText,
+        uploadedAt: new Date(),
+        fileSizeBytes: file.size,
+        totalPages: result.totalPages,
+        imagesProcessed: 0,
       };
-      reader.readAsDataURL(file);
+      
+      setUploadedReports(prev => [...prev, newReport]);
+      
+      setTimeout(() => {
+        setUploadProgress(prev => prev.filter(p => p.fileName !== file.name));
+      }, 1500);
+      
+      toast({
+        title: 'Report uploaded',
+        description: `${file.name} added (${result.extractedPages}/${result.totalPages} pages). ${uploadedReports.length + 1} report(s) loaded.`,
+      });
+
+      setIsUploading(false);
     } catch (error) {
       console.error('Upload error:', error);
       setUploadProgress(prev => 
