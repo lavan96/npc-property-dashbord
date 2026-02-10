@@ -332,7 +332,7 @@ const CallLogs = () => {
 
   const calculateStats = () => {
     const totalCalls = filteredCalls.length;
-    const completedCalls = filteredCalls.filter(c => c.call_outcome === 'completed').length;
+    const completedCalls = filteredCalls.filter(c => getOutcomeCategory(c.call_outcome) === 'success').length;
     const successRate = totalCalls > 0 ? Math.round((completedCalls / totalCalls) * 100) : 0;
     
     const callsWithDuration = filteredCalls.filter(c => c.duration_seconds);
@@ -343,7 +343,7 @@ const CallLogs = () => {
     const totalCost = filteredCalls.reduce((sum, c) => sum + (c.cost || 0), 0);
     const inboundCalls = filteredCalls.filter(c => c.call_direction === 'inbound').length;
     const outboundCalls = filteredCalls.filter(c => c.call_direction === 'outbound').length;
-    const voicemails = filteredCalls.filter(c => c.call_outcome === 'voicemail').length;
+    const voicemails = filteredCalls.filter(c => getOutcomeCategory(c.call_outcome) === 'voicemail').length;
     const squadCalls = filteredCalls.filter(c => c.is_squad_call).length;
 
     setStats({
@@ -366,23 +366,55 @@ const CallLogs = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // VAPI outcome category helpers
+  const getOutcomeCategory = (outcome: string | null): string => {
+    if (!outcome) return 'unknown';
+    const o = outcome.toLowerCase();
+    if (o === 'customer-ended-call' || o === 'assistant-ended-call' || o === 'assistant-forwarded-call' || o === 'completed') return 'success';
+    if (o === 'voicemail') return 'voicemail';
+    if (o === 'customer-did-not-answer' || o === 'no-answer') return 'no-answer';
+    if (o === 'customer-busy' || o.includes('operator-busy') || o === 'busy') return 'busy';
+    if (o === 'silence-timed-out' || o === 'exceeded-max-duration' || o === 'timeout') return 'timeout';
+    if (o === 'manually-canceled' || o === 'cancelled') return 'cancelled';
+    if (o.includes('error') || o.includes('failed')) return 'error';
+    return 'other';
+  };
+
+  const OUTCOME_DISPLAY: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
+    'customer-ended-call': { label: 'Customer Ended', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: CheckCircle },
+    'assistant-ended-call': { label: 'Assistant Ended', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: CheckCircle },
+    'assistant-forwarded-call': { label: 'Forwarded', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Phone },
+    'voicemail': { label: 'Voicemail', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Voicemail },
+    'customer-did-not-answer': { label: 'No Answer', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Phone },
+    'customer-busy': { label: 'Busy', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Phone },
+    'silence-timed-out': { label: 'Silence Timeout', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: Clock },
+    'exceeded-max-duration': { label: 'Max Duration', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: Clock },
+    'manually-canceled': { label: 'Cancelled', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', icon: XCircle },
+    // Legacy values
+    'completed': { label: 'Completed', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: CheckCircle },
+    'no-answer': { label: 'No Answer', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Phone },
+    'busy': { label: 'Busy', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Phone },
+    'failed': { label: 'Failed', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: XCircle },
+    'cancelled': { label: 'Cancelled', color: 'bg-gray-500/20 text-gray-400 border-gray-500/30', icon: XCircle },
+    'timeout': { label: 'Timeout', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: Clock },
+  };
+
   const getOutcomeBadge = (outcome: string | null) => {
-    switch (outcome) {
-      case 'completed':
-        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"><CheckCircle className="w-3 h-3 mr-1" /> Completed</Badge>;
-      case 'voicemail':
-        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><Voicemail className="w-3 h-3 mr-1" /> Voicemail</Badge>;
-      case 'no-answer':
-        return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30"><Phone className="w-3 h-3 mr-1" /> No Answer</Badge>;
-      case 'busy':
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"><Phone className="w-3 h-3 mr-1" /> Busy</Badge>;
-      case 'failed':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="w-3 h-3 mr-1" /> Failed</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30"><XCircle className="w-3 h-3 mr-1" /> Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
+    if (!outcome) return <Badge variant="outline">Unknown</Badge>;
+    const display = OUTCOME_DISPLAY[outcome];
+    if (display) {
+      const Icon = display.icon;
+      return <Badge className={display.color}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
     }
+    // Fallback for any VAPI reason not explicitly mapped - format nicely
+    const category = getOutcomeCategory(outcome);
+    const fallbackColors: Record<string, string> = {
+      'error': 'bg-red-500/20 text-red-400 border-red-500/30',
+      'other': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+    };
+    const color = fallbackColors[category] || fallbackColors['other'];
+    const label = outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return <Badge className={color}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
   };
 
   const getSentimentBadge = (sentiment: string | null) => {
@@ -623,12 +655,21 @@ const CallLogs = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Outcomes</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="voicemail">Voicemail</SelectItem>
-                <SelectItem value="no-answer">No Answer</SelectItem>
-                <SelectItem value="busy">Busy</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                {/* Dynamic outcomes from actual data */}
+                {(() => {
+                  const outcomeCounts = new Map<string, number>();
+                  calls.forEach(c => {
+                    const o = c.call_outcome || 'unknown';
+                    outcomeCounts.set(o, (outcomeCounts.get(o) || 0) + 1);
+                  });
+                  return Array.from(outcomeCounts.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([outcome, count]) => {
+                      const display = OUTCOME_DISPLAY[outcome];
+                      const label = display?.label || outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                      return <SelectItem key={outcome} value={outcome}>{label} ({count})</SelectItem>;
+                    });
+                })()}
               </SelectContent>
             </Select>
             <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>

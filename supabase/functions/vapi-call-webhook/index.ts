@@ -753,14 +753,8 @@ serve(async (req) => {
 
     const getCallOutcome = (endedReason?: string): string | null => {
       if (!endedReason) return null;
-      const reason = endedReason.toLowerCase();
-      if (reason.includes('voicemail')) return 'voicemail';
-      if (reason.includes('no-answer') || reason.includes('timeout')) return 'no-answer';
-      if (reason.includes('busy')) return 'busy';
-      if (reason.includes('failed') || reason.includes('error')) return 'failed';
-      if (reason.includes('cancel')) return 'cancelled';
-      if (reason.includes('customer-ended') || reason.includes('assistant-ended') || reason.includes('ended')) return 'completed';
-      return 'completed';
+      // Store the raw VAPI endedReason for full granularity
+      return endedReason;
     };
 
     const getCallStatus = (status?: string): string | null => {
