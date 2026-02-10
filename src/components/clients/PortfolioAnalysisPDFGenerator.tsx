@@ -116,10 +116,19 @@ interface PortfolioAnalysisData {
       mitigationStrategies: string[];
     };
     interestRateSensitivity?: {
-      currentMonthlyCashflow: number;
-      plusOnePercentImpact: number;
-      plusTwoPercentImpact: number;
-      commentary: string;
+      investmentProperties?: {
+        currentMonthlyCashflow: number;
+        plusOnePercentImpact: number;
+        plusTwoPercentImpact: number;
+        commentary: string;
+      };
+      ownerOccupiedProperties?: {
+        currentMonthlyRepayment: number;
+        plusOnePercentImpact: number;
+        plusTwoPercentImpact: number;
+        commentary: string;
+      };
+      combinedCommentary: string;
     };
     marketConditions?: {
       marketCycleSummary: string;
@@ -138,6 +147,7 @@ interface PortfolioAnalysisData {
       projectedEquity: number;
       projectedMonthlyCashflow: number;
       assumptions: string[];
+      plainEnglishSummary?: string;
     };
     actionPlan?: {
       twelveMonthActions: string[];
@@ -1303,7 +1313,7 @@ export function PortfolioAnalysisPDFGenerator({
       if (hasPropertyStrategicCtx) { pageEstimate++; tocEntries.push({ title: 'Property Strategic Context', page: pageEstimate }); }
       pageEstimate++; tocEntries.push({ title: 'Financial Health Analysis', page: pageEstimate });
       tocEntries.push({ title: 'Risk Assessment', page: pageEstimate });
-      if (hasRateSensitivity) { pageEstimate++; tocEntries.push({ title: 'Interest Rate Sensitivity', page: pageEstimate }); }
+      if (hasRateSensitivity) { pageEstimate++; tocEntries.push({ title: 'Interest Rate Sensitivity — Lender Rates', page: pageEstimate }); }
       if (hasMarketConditions) { tocEntries.push({ title: 'Market Conditions & Outlook', page: pageEstimate }); }
       pageEstimate++; tocEntries.push({ title: 'Growth Opportunities', page: pageEstimate });
       tocEntries.push({ title: 'Portfolio Projections', page: pageEstimate });
@@ -2630,21 +2640,58 @@ export function PortfolioAnalysisPDFGenerator({
         page = addContentPage();
         yPos = PAGE_HEIGHT - MARGIN_TOP;
         
-        yPos = drawSectionHeader(page, 'Interest Rate Sensitivity Analysis', yPos);
+        yPos = drawSectionHeader(page, 'Interest Rate Sensitivity Analysis — Lender Rates', yPos);
         
-        // Current cashflow vs impact KPIs
-        const rateKpiWidth = (CONTENT_WIDTH - 20) / 3;
-        drawKPIBox(page, 'CURRENT CASHFLOW', formatCurrency(rateSensitivity.currentMonthlyCashflow) + '/mo', MARGIN_LEFT, yPos, rateKpiWidth, 
-          safeNumber(rateSensitivity.currentMonthlyCashflow) >= 0 ? SUCCESS_COLOR : DANGER_COLOR);
-        drawKPIBox(page, '+1% RATE IMPACT', formatCurrency(rateSensitivity.plusOnePercentImpact) + '/mo', MARGIN_LEFT + rateKpiWidth + 10, yPos, rateKpiWidth, WARNING_COLOR);
-        drawKPIBox(page, '+2% RATE IMPACT', formatCurrency(rateSensitivity.plusTwoPercentImpact) + '/mo', MARGIN_LEFT + (rateKpiWidth + 10) * 2, yPos, rateKpiWidth, DANGER_COLOR);
+        // Investment Properties subsection
+        const investRates = rateSensitivity.investmentProperties;
+        if (investRates) {
+          yPos = drawSubsectionHeader(page, 'Investment Properties — Impact on Rental Cashflow', yPos);
+          
+          const rateKpiWidth = (CONTENT_WIDTH - 20) / 3;
+          drawKPIBox(page, 'CURRENT NET CASHFLOW', formatCurrency(investRates.currentMonthlyCashflow) + '/mo', MARGIN_LEFT, yPos, rateKpiWidth, 
+            safeNumber(investRates.currentMonthlyCashflow) >= 0 ? SUCCESS_COLOR : DANGER_COLOR);
+          drawKPIBox(page, 'IF RATES RISE +1%', formatCurrency(investRates.plusOnePercentImpact) + '/mo', MARGIN_LEFT + rateKpiWidth + 10, yPos, rateKpiWidth, WARNING_COLOR);
+          drawKPIBox(page, 'IF RATES RISE +2%', formatCurrency(investRates.plusTwoPercentImpact) + '/mo', MARGIN_LEFT + (rateKpiWidth + 10) * 2, yPos, rateKpiWidth, DANGER_COLOR);
+          
+          yPos -= 75;
+          
+          if (investRates.commentary) {
+            yPos = drawFormattedText(page, investRates.commentary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+            yPos -= PARAGRAPH_SPACING;
+          }
+        }
         
-        yPos -= 75;
+        // Owner-Occupied Properties subsection (tied to includeOwnerOccupied)
+        const ooRates = rateSensitivity.ownerOccupiedProperties;
+        if (ooRates && includeOwnerOccupied) {
+          if (needsNewPage(yPos, 180)) {
+            page = addContentPage();
+            yPos = PAGE_HEIGHT - MARGIN_TOP;
+          }
+          
+          yPos = drawSubsectionHeader(page, 'Owner-Occupied Properties — Impact on Home Loan Repayments', yPos, PRIMARY_COLOR);
+          
+          const rateKpiWidth = (CONTENT_WIDTH - 20) / 3;
+          drawKPIBox(page, 'CURRENT REPAYMENT', formatCurrency(ooRates.currentMonthlyRepayment) + '/mo', MARGIN_LEFT, yPos, rateKpiWidth, SECONDARY_COLOR);
+          drawKPIBox(page, 'IF RATES RISE +1%', formatCurrency(ooRates.plusOnePercentImpact) + '/mo', MARGIN_LEFT + rateKpiWidth + 10, yPos, rateKpiWidth, WARNING_COLOR);
+          drawKPIBox(page, 'IF RATES RISE +2%', formatCurrency(ooRates.plusTwoPercentImpact) + '/mo', MARGIN_LEFT + (rateKpiWidth + 10) * 2, yPos, rateKpiWidth, DANGER_COLOR);
+          
+          yPos -= 75;
+          
+          if (ooRates.commentary) {
+            yPos = drawFormattedText(page, ooRates.commentary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+            yPos -= PARAGRAPH_SPACING;
+          }
+        }
         
-        // Commentary
-        if (rateSensitivity.commentary) {
-          yPos = drawSubsectionHeader(page, 'Analysis', yPos);
-          yPos = drawFormattedText(page, rateSensitivity.commentary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+        // Combined commentary
+        if (rateSensitivity.combinedCommentary) {
+          if (needsNewPage(yPos, 80)) {
+            page = addContentPage();
+            yPos = PAGE_HEIGHT - MARGIN_TOP;
+          }
+          yPos = drawSubsectionHeader(page, 'Overall Impact Summary', yPos);
+          yPos = drawFormattedText(page, rateSensitivity.combinedCommentary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
           yPos -= SECTION_SPACING;
         }
         
@@ -2660,7 +2707,6 @@ export function PortfolioAnalysisPDFGenerator({
           page = addContentPage();
           yPos = PAGE_HEIGHT - MARGIN_TOP;
         }
-        
         yPos = drawSectionHeader(page, 'Market Conditions & Outlook', yPos);
         
         if (marketConditions.marketCycleSummary) {
@@ -2765,13 +2811,20 @@ export function PortfolioAnalysisPDFGenerator({
       const projYears = safeNumber(projections?.years, 10);
       yPos = drawSectionHeader(page, `${projYears}-Year Portfolio Projections`, yPos);
       
-      // Projection KPI boxes
+      // Projection KPI boxes with layperson-friendly labels
       const projKpiWidth = (CONTENT_WIDTH - 20) / 3;
-      drawKPIBox(page, 'PROJECTED VALUE', formatCurrency(projections?.projectedPortfolioValue), MARGIN_LEFT, yPos, projKpiWidth, PRIMARY_COLOR);
-      drawKPIBox(page, 'PROJECTED EQUITY', formatCurrency(projections?.projectedEquity), MARGIN_LEFT + projKpiWidth + 10, yPos, projKpiWidth, SUCCESS_COLOR);
-      drawKPIBox(page, 'PROJECTED CASHFLOW', formatCurrency(projections?.projectedMonthlyCashflow) + '/mo', MARGIN_LEFT + (projKpiWidth + 10) * 2, yPos, projKpiWidth);
+      drawKPIBox(page, 'ESTIMATED TOTAL VALUE', formatCurrency(projections?.projectedPortfolioValue), MARGIN_LEFT, yPos, projKpiWidth, PRIMARY_COLOR);
+      drawKPIBox(page, 'ESTIMATED EQUITY (WHAT YOU OWN)', formatCurrency(projections?.projectedEquity), MARGIN_LEFT + projKpiWidth + 10, yPos, projKpiWidth, SUCCESS_COLOR);
+      drawKPIBox(page, 'ESTIMATED MONTHLY INCOME', formatCurrency(projections?.projectedMonthlyCashflow) + '/mo', MARGIN_LEFT + (projKpiWidth + 10) * 2, yPos, projKpiWidth);
       
       yPos -= 85;
+      
+      // Plain English summary
+      if (projections?.plainEnglishSummary) {
+        yPos = drawSubsectionHeader(page, 'What This Means For You', yPos, PRIMARY_COLOR);
+        yPos = drawFormattedText(page, projections.plainEnglishSummary, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
+        yPos -= PARAGRAPH_SPACING;
+      }
       
       // Assumptions
       const assumptions = safeArray(projections?.assumptions);
@@ -3740,34 +3793,78 @@ export function PortfolioAnalysisPDFGenerator({
                   </CardContent>
                 </Card>
 
-                {/* Interest Rate Sensitivity */}
+                {/* Interest Rate Sensitivity — Lender Rates */}
                 {analysisData.analysis?.interestRateSensitivity && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Interest Rate Sensitivity</CardTitle>
+                      <CardTitle className="text-lg">Interest Rate Sensitivity — Lender Rates</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                    <CardContent className="space-y-4">
+                      {/* Investment Properties */}
+                      {analysisData.analysis.interestRateSensitivity.investmentProperties && (
                         <div>
-                          <p className="text-sm text-muted-foreground">Current Cashflow</p>
-                          <p className={`text-xl font-bold ${safeNumber(analysisData.analysis.interestRateSensitivity.currentMonthlyCashflow) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                            {formatCurrency(analysisData.analysis.interestRateSensitivity.currentMonthlyCashflow)}/mo
-                          </p>
+                          <p className="text-sm font-medium mb-2">Investment Properties — Impact on Rental Cashflow</p>
+                          <div className="grid grid-cols-3 gap-4 text-center mb-2">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Current Net Cashflow</p>
+                              <p className={`text-lg font-bold ${safeNumber(analysisData.analysis.interestRateSensitivity.investmentProperties.currentMonthlyCashflow) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                {formatCurrency(analysisData.analysis.interestRateSensitivity.investmentProperties.currentMonthlyCashflow)}/mo
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">If Rates Rise +1%</p>
+                              <p className="text-lg font-bold text-warning">
+                                {formatCurrency(analysisData.analysis.interestRateSensitivity.investmentProperties.plusOnePercentImpact)}/mo
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">If Rates Rise +2%</p>
+                              <p className="text-lg font-bold text-destructive">
+                                {formatCurrency(analysisData.analysis.interestRateSensitivity.investmentProperties.plusTwoPercentImpact)}/mo
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{analysisData.analysis.interestRateSensitivity.investmentProperties.commentary}</p>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">+1% Impact</p>
-                          <p className="text-xl font-bold text-warning">
-                            {formatCurrency(analysisData.analysis.interestRateSensitivity.plusOnePercentImpact)}/mo
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">+2% Impact</p>
-                          <p className="text-xl font-bold text-destructive">
-                            {formatCurrency(analysisData.analysis.interestRateSensitivity.plusTwoPercentImpact)}/mo
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{analysisData.analysis.interestRateSensitivity.commentary}</p>
+                      )}
+                      
+                      {/* Owner-Occupied Properties */}
+                      {includeOwnerOccupied && analysisData.analysis.interestRateSensitivity.ownerOccupiedProperties && (
+                        <>
+                          <Separator />
+                          <div>
+                            <p className="text-sm font-medium mb-2">Owner-Occupied Properties — Impact on Home Loan Repayments</p>
+                            <div className="grid grid-cols-3 gap-4 text-center mb-2">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Current Repayment</p>
+                                <p className="text-lg font-bold">
+                                  {formatCurrency(analysisData.analysis.interestRateSensitivity.ownerOccupiedProperties.currentMonthlyRepayment)}/mo
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">If Rates Rise +1%</p>
+                                <p className="text-lg font-bold text-warning">
+                                  {formatCurrency(analysisData.analysis.interestRateSensitivity.ownerOccupiedProperties.plusOnePercentImpact)}/mo
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">If Rates Rise +2%</p>
+                                <p className="text-lg font-bold text-destructive">
+                                  {formatCurrency(analysisData.analysis.interestRateSensitivity.ownerOccupiedProperties.plusTwoPercentImpact)}/mo
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{analysisData.analysis.interestRateSensitivity.ownerOccupiedProperties.commentary}</p>
+                          </div>
+                        </>
+                      )}
+                      
+                      {analysisData.analysis.interestRateSensitivity.combinedCommentary && (
+                        <>
+                          <Separator />
+                          <p className="text-sm text-muted-foreground">{analysisData.analysis.interestRateSensitivity.combinedCommentary}</p>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 )}
@@ -3804,29 +3901,35 @@ export function PortfolioAnalysisPDFGenerator({
                 {/* Projections */}
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{analysisData.analysis.projections.years}-Year Projections</CardTitle>
+                    <CardTitle className="text-lg">{analysisData.analysis.projections.years}-Year Portfolio Projections</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <p className="text-sm text-muted-foreground">Projected Value</p>
+                        <p className="text-sm text-muted-foreground">Estimated Total Value</p>
                         <p className="text-xl font-bold text-primary">
                           {formatCurrency(analysisData.analysis.projections.projectedPortfolioValue)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Projected Equity</p>
+                        <p className="text-sm text-muted-foreground">Estimated Equity (What You Own)</p>
                         <p className="text-xl font-bold text-success">
                           {formatCurrency(analysisData.analysis.projections.projectedEquity)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Monthly Cashflow</p>
+                        <p className="text-sm text-muted-foreground">Estimated Monthly Income</p>
                         <p className="text-xl font-bold">
                           {formatCurrency(analysisData.analysis.projections.projectedMonthlyCashflow)}
                         </p>
                       </div>
                     </div>
+                    {analysisData.analysis.projections.plainEnglishSummary && (
+                      <div className="p-3 bg-muted/50 rounded-lg border">
+                        <p className="text-sm font-medium text-primary mb-1">What This Means For You</p>
+                        <p className="text-sm text-muted-foreground">{analysisData.analysis.projections.plainEnglishSummary}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
