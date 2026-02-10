@@ -160,7 +160,7 @@ const CallLogs = () => {
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
+  const [agents, setAgents] = useState<{ name: string; count: number }[]>([]);
   const [squads, setSquads] = useState<{ id: string; name: string }[]>([]);
   const [stats, setStats] = useState<CallStats>({
     totalCalls: 0,
@@ -228,14 +228,15 @@ const CallLogs = () => {
 
       setCalls(transformedData);
 
-      // Extract unique agents
-      const uniqueAgents = new Map<string, string>();
+      // Extract unique agents by name (not ID) to avoid duplicates
+      const agentCounts = new Map<string, number>();
       transformedData?.forEach(call => {
-        if (call.agent_id) {
-          uniqueAgents.set(call.agent_id, call.agent_name || call.agent_id);
+        const name = call.agent_name;
+        if (name) {
+          agentCounts.set(name, (agentCounts.get(name) || 0) + 1);
         }
       });
-      setAgents(Array.from(uniqueAgents, ([id, name]) => ({ id, name })));
+      setAgents(Array.from(agentCounts, ([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name)));
 
       // Extract unique squads
       const uniqueSquads = new Map<string, string>();
@@ -277,7 +278,7 @@ const CallLogs = () => {
     }
 
     if (selectedAgent !== 'all') {
-      filtered = filtered.filter(call => call.agent_id === selectedAgent);
+      filtered = filtered.filter(call => call.agent_name === selectedAgent);
     }
 
     if (selectedOutcome !== 'all') {
@@ -611,7 +612,7 @@ const CallLogs = () => {
               <SelectContent>
                 <SelectItem value="all">All Agents</SelectItem>
                 {agents.map(agent => (
-                  <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
+                  <SelectItem key={agent.name} value={agent.name}>{agent.name} ({agent.count})</SelectItem>
                 ))}
               </SelectContent>
             </Select>
