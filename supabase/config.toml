@@ -369,3 +369,7 @@ request_timeout = 300
 
 [functions.get-email-data]
 verify_jwt = true
+
+[functions.backfill-investment-scores]
+verify_jwt = false
+request_timeout = 300
