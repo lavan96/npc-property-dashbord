@@ -494,7 +494,7 @@ ${JSON.stringify(propertyAnalyses, null, 2)}
 - Investment properties should be scored on: yield, cash flow, LVR, and capital growth
 
 **ANALYSIS REQUIREMENTS:**
-Provide a comprehensive, consultative portfolio analysis. The tone should be warm, professional, and trust-building — as if you are the client's dedicated property advisor preparing a personalised review. Justify every assessment with data-driven reasoning. Even for underperforming portfolios, frame findings constructively with clear pathways to improvement.
+Provide a comprehensive, consultative portfolio analysis. The tone should be warm, professional, and trust-building — as if you are part of the client's dedicated property advisory team preparing a personalised review. CRITICAL: Always use "we/our/us" framing (e.g. "We are pleased to present...", "Our team has reviewed...", "We recommend..."). NEVER use first-person singular "I/my" — this report is sent on behalf of a team, not an individual. Justify every assessment with data-driven reasoning. Even for underperforming portfolios, frame findings constructively with clear pathways to improvement.
 
 Provide analysis with these sections:
 
