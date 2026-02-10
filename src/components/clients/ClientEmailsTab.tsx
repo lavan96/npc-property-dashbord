@@ -391,7 +391,7 @@ function SingleEmailRow({
   compact?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
+    <div className={`relative flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
       {/* Sender avatar */}
       <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
         {email.folder === 'sent' ? (
@@ -403,7 +403,7 @@ function SingleEmailRow({
         )}
       </div>
 
-      {/* Email details - takes available space */}
+      {/* Email details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className={`truncate ${compact ? 'text-xs max-w-[100px]' : 'text-sm font-medium max-w-[140px]'}`}>
@@ -421,13 +421,17 @@ function SingleEmailRow({
         )}
       </div>
 
-      {/* Status, date & actions - always visible, pinned right */}
+      {/* Status & date */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {getStatusBadge(email.status)}
         {getUrgencyBadge(email.urgency_level)}
         <span className={`text-muted-foreground whitespace-nowrap ${compact ? 'text-[11px]' : 'text-xs'}`}>
           {format(new Date(email.received_at), compact ? 'MMM d' : 'MMM d, yyyy')}
         </span>
+      </div>
+
+      {/* Hover overlay actions */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-background/95 backdrop-blur-sm border rounded-md shadow-sm px-1 py-0.5">
         <Button
           variant="ghost"
           size="icon"
