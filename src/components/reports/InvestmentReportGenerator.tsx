@@ -83,6 +83,16 @@ export function InvestmentReportGenerator() {
   
   // Pre-generation overrides data
   const [preGenData, setPreGenData] = useState<PreGenerationData>({ buildType: 'existing_property' });
+
+  // Whether current query type is property-specific (needs property details, overrides, etc.)
+  const isPropertySpecific = queryType === 'address';
+
+  // Auto-switch to manual entry when selecting non-address query types
+  useEffect(() => {
+    if (!isPropertySpecific && inputMode !== 'manual') {
+      setInputMode('manual');
+    }
+  }, [isPropertySpecific, inputMode]);
   
   // Track if sync is in progress to prevent loops
   const isSyncingFromPreGen = useRef(false);
@@ -253,7 +263,8 @@ export function InvestmentReportGenerator() {
       return;
     }
 
-    if (!propertyPrice || parseFloat(propertyPrice) <= 0) {
+    // Purchase price only required for property-specific address reports
+    if (queryType === 'address' && (!propertyPrice || parseFloat(propertyPrice) <= 0)) {
       toast({
         title: "Purchase Price Required",
         description: "Please enter a valid purchase price to calculate investment score.",
@@ -1375,67 +1386,79 @@ export function InvestmentReportGenerator() {
             <CardContent className="space-y-6">
             {/* Input Mode Tabs */}
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="manual" className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Manual Entry
-                  </TabsTrigger>
-                  <TabsTrigger value="url" className="flex items-center gap-2">
-                    <Link className="h-4 w-4" />
-                    URL Scrape
-                  </TabsTrigger>
-                  <TabsTrigger value="pdf" className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    PDF Upload
-                  </TabsTrigger>
-                </TabsList>
+                {isPropertySpecific ? (
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Manual Entry
+                    </TabsTrigger>
+                    <TabsTrigger value="url" className="flex items-center gap-2">
+                      <Link className="h-4 w-4" />
+                      URL Scrape
+                    </TabsTrigger>
+                    <TabsTrigger value="pdf" className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      PDF Upload
+                    </TabsTrigger>
+                  </TabsList>
+                ) : (
+                  <TabsList className="grid w-full grid-cols-1">
+                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Manual Entry
+                    </TabsTrigger>
+                  </TabsList>
+                )}
 
                 {/* Manual Entry Tab */}
                 <TabsContent value="manual" className="space-y-6 pt-4">
-                  {/* Build Type Radio Selection */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold">Build Type</Label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="buildType"
-                          value="existing_property"
-                          checked={preGenData.buildType === 'existing_property'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isGenerating}
-                        />
-                        <span className="text-sm">Existing Property</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="buildType"
-                          value="new_build"
-                          checked={preGenData.buildType === 'new_build'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isGenerating}
-                        />
-                        <span className="text-sm">New Build</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="buildType"
-                          value="land_only"
-                          checked={preGenData.buildType === 'land_only'}
-                          onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'land_only' }))}
-                          className="h-4 w-4 text-primary"
-                          disabled={isGenerating}
-                        />
-                        <span className="text-sm">Land Only</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <Separator />
+                  {/* Build Type Radio Selection - Only for property-specific */}
+                  {isPropertySpecific && (
+                    <>
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Build Type</Label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="buildType"
+                              value="existing_property"
+                              checked={preGenData.buildType === 'existing_property'}
+                              onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
+                              className="h-4 w-4 text-primary"
+                              disabled={isGenerating}
+                            />
+                            <span className="text-sm">Existing Property</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="buildType"
+                              value="new_build"
+                              checked={preGenData.buildType === 'new_build'}
+                              onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
+                              className="h-4 w-4 text-primary"
+                              disabled={isGenerating}
+                            />
+                            <span className="text-sm">New Build</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="buildType"
+                              value="land_only"
+                              checked={preGenData.buildType === 'land_only'}
+                              onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'land_only' }))}
+                              className="h-4 w-4 text-primary"
+                              disabled={isGenerating}
+                            />
+                            <span className="text-sm">Land Only</span>
+                          </label>
+                        </div>
+                      </div>
+                      <Separator />
+                    </>
+                  )}
                   {/* Query Type Selection */}
                   <div className="space-y-3">
                     <Label htmlFor="queryType">Analysis Scope</Label>
@@ -1488,8 +1511,27 @@ export function InvestmentReportGenerator() {
                       placeholder={getQueryTypePlaceholder()}
                       disabled={isGenerating}
                     />
+                    {/* Query type description hints */}
+                    {queryType === 'zipcode' && (
+                      <p className="text-xs text-muted-foreground">
+                        Generates an area-level market analysis covering median prices, growth trends, demographics, and investment potential for the postcode.
+                      </p>
+                    )}
+                    {queryType === 'suburb' && (
+                      <p className="text-xs text-muted-foreground">
+                        Generates a suburb-level snapshot including market performance, rental yields, demographic trends, and infrastructure analysis.
+                      </p>
+                    )}
+                    {queryType === 'state' && (
+                      <p className="text-xs text-muted-foreground">
+                        Generates a statewide market overview covering regional trends, growth corridors, policy impacts, and investment hotspots.
+                      </p>
+                    )}
                   </div>
 
+              {/* Property Details - Only for property-specific address queries */}
+              {isPropertySpecific && (
+              <>
               <Separator />
 
               {/* Property Details - Optional but Recommended */}
@@ -1619,6 +1661,9 @@ export function InvestmentReportGenerator() {
                 </div>
               </div>
 
+              </>
+              )}
+
               {/* Suburb Year Context - Only show for suburb analysis */}
               {queryType === 'suburb' && (
                 <>
@@ -1699,44 +1744,84 @@ export function InvestmentReportGenerator() {
                 </>
               )}
 
-              <Separator />
-
-              {/* Pre-Generation Manual Inputs */}
-              <PreGenerationOverrides
-                propertyAddress={query}
-                onDataChange={handlePreGenDataChange}
-                disabled={isGenerating}
-                buildType={preGenData.buildType}
-                onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
-                externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
-                externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
-                externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
-                externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
-                externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
-                externalLandSize={landSize ? parseFloat(landSize) : undefined}
-                externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
-                externalCouncilRates={preGenData.councilRates}
-                externalWaterRates={preGenData.waterRates}
-                externalBodyCorporateFees={preGenData.bodyCorporateFees}
-                externalBuildingInsurance={preGenData.buildingLandlordInsurance}
-                externalPropertyManagementPercent={preGenData.propertyManagementFees}
-                externalConstructionYear={preGenData.constructionYear}
-              />
+              {/* Pre-Generation Manual Inputs - Only for property-specific */}
+              {isPropertySpecific && (
+                <>
+                  <Separator />
+                  <PreGenerationOverrides
+                    propertyAddress={query}
+                    onDataChange={handlePreGenDataChange}
+                    disabled={isGenerating}
+                    buildType={preGenData.buildType}
+                    onBuildTypeChange={(bt) => setPreGenData(prev => ({ ...prev, buildType: bt }))}
+                    externalPurchasePrice={propertyPrice ? parseFloat(propertyPrice) : undefined}
+                    externalLandPrice={landPrice ? parseFloat(landPrice) : undefined}
+                    externalBuildPrice={buildPrice ? parseFloat(buildPrice) : undefined}
+                    externalWeeklyRent={weeklyRent ? parseFloat(weeklyRent) : undefined}
+                    externalCarSpaces={carSpaces ? parseInt(carSpaces) : undefined}
+                    externalLandSize={landSize ? parseFloat(landSize) : undefined}
+                    externalBuildSize={buildSize ? parseFloat(buildSize) : undefined}
+                    externalCouncilRates={preGenData.councilRates}
+                    externalWaterRates={preGenData.waterRates}
+                    externalBodyCorporateFees={preGenData.bodyCorporateFees}
+                    externalBuildingInsurance={preGenData.buildingLandlordInsurance}
+                    externalPropertyManagementPercent={preGenData.propertyManagementFees}
+                    externalConstructionYear={preGenData.constructionYear}
+                  />
+                </>
+              )}
 
               {/* Info Box */}
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p><strong>What you'll get:</strong></p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>Property basics and financial snapshot</li>
-                      <li>Investment & growth potential analysis</li>
-                      <li>Location & suburb profile</li>
-                      <li>10-year projection calculations</li>
-                      <li>Investment recommendation with rating</li>
-                      <li>Curated sources and citations</li>
-                    </ul>
+                    {isPropertySpecific ? (
+                      <>
+                        <p><strong>What you'll get:</strong></p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Property basics and financial snapshot</li>
+                          <li>Investment & growth potential analysis</li>
+                          <li>Location & suburb profile</li>
+                          <li>10-year projection calculations</li>
+                          <li>Investment recommendation with rating</li>
+                          <li>Curated sources and citations</li>
+                        </ul>
+                      </>
+                    ) : queryType === 'zipcode' ? (
+                      <>
+                        <p><strong>What you'll get:</strong></p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Postcode market overview and median prices</li>
+                          <li>Capital growth trends and rental yields</li>
+                          <li>Demographic and economic profile</li>
+                          <li>Infrastructure and development pipeline</li>
+                          <li>Investment potential assessment</li>
+                        </ul>
+                      </>
+                    ) : queryType === 'suburb' ? (
+                      <>
+                        <p><strong>What you'll get:</strong></p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>Suburb market performance snapshot</li>
+                          <li>Property price trends and rental data</li>
+                          <li>Demographics and lifestyle factors</li>
+                          <li>Amenities and transport analysis</li>
+                          <li>Growth corridor assessment</li>
+                        </ul>
+                      </>
+                    ) : (
+                      <>
+                        <p><strong>What you'll get:</strong></p>
+                        <ul className="list-disc list-inside space-y-1 ml-2">
+                          <li>State-wide market conditions overview</li>
+                          <li>Regional growth hotspots</li>
+                          <li>Government policy and regulatory impacts</li>
+                          <li>Population and migration trends</li>
+                          <li>Top investment corridors and recommendations</li>
+                        </ul>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1744,7 +1829,7 @@ export function InvestmentReportGenerator() {
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
-                disabled={isGenerating || !query.trim()}
+                disabled={isGenerating || !query.trim() || (isPropertySpecific && (!propertyPrice || parseFloat(propertyPrice) <= 0))}
                 size="lg"
                 className="w-full"
               >
