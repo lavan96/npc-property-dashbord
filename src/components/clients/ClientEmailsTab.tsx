@@ -391,7 +391,7 @@ function SingleEmailRow({
   compact?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
+    <div className={`flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
       {/* Sender avatar */}
       <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
         {email.folder === 'sent' ? (
@@ -403,16 +403,14 @@ function SingleEmailRow({
         )}
       </div>
 
-      {/* Email details */}
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="flex items-center gap-2">
-          <span className={`truncate max-w-[120px] ${compact ? 'text-xs' : 'text-sm font-medium'}`}>
+      {/* Email details - takes available space */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className={`truncate ${compact ? 'text-xs max-w-[100px]' : 'text-sm font-medium max-w-[140px]'}`}>
             {email.folder === 'sent' ? `To: ${email.to_recipients?.[0] ? extractSenderName(email.to_recipients[0]) : 'Unknown'}` : extractSenderName(email.sender)}
           </span>
-          {!compact && (
-            <span className="text-xs text-muted-foreground">·</span>
-          )}
-          <p className={`truncate flex-1 ${compact ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
+          {!compact && <span className="text-xs text-muted-foreground">·</span>}
+          <p className={`truncate flex-1 min-w-0 ${compact ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
             {compact ? (email.body?.slice(0, 40).replace(/\n/g, ' ') + '…') : (email.subject || '(No Subject)')}
           </p>
         </div>
@@ -423,34 +421,30 @@ function SingleEmailRow({
         )}
       </div>
 
-      {/* Status & date */}
+      {/* Status, date & actions - always visible, pinned right */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {getStatusBadge(email.status)}
         {getUrgencyBadge(email.urgency_level)}
-        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+        <span className={`text-muted-foreground whitespace-nowrap ${compact ? 'text-[11px]' : 'text-xs'}`}>
           {format(new Date(email.received_at), compact ? 'MMM d' : 'MMM d, yyyy')}
         </span>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-7 w-7"
           onClick={(e) => { e.stopPropagation(); onView(email.id); }}
           title="View in Email Copilot"
         >
-          <ExternalLink className="h-3 w-3" />
+          <ExternalLink className="h-3.5 w-3.5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-destructive hover:text-destructive"
+          className="h-7 w-7 text-destructive hover:text-destructive"
           onClick={(e) => { e.stopPropagation(); onUnlink(email.id); }}
           title="Unlink from client"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>
