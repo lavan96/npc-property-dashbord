@@ -1858,7 +1858,8 @@ export function InvestmentReportGenerator() {
               )}
                 </TabsContent>
 
-                {/* URL Scrape Tab */}
+                {/* URL Scrape Tab - Only for property-specific queries */}
+                {isPropertySpecific && (
                 <TabsContent value="url" className="space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
                   <div className="space-y-3">
@@ -2137,8 +2138,10 @@ export function InvestmentReportGenerator() {
                     )}
                   </Button>
                 </TabsContent>
+                )}
 
-                {/* PDF Upload Tab */}
+                {/* PDF Upload Tab - Only for property-specific queries */}
+                {isPropertySpecific && (
                 <TabsContent value="pdf" className="space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
                   <div className="space-y-3">
@@ -2467,6 +2470,7 @@ export function InvestmentReportGenerator() {
                     )}
                   </Button>
                 </TabsContent>
+                )}
 
               </Tabs>
             </CardContent>
