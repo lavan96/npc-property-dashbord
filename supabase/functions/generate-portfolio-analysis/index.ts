@@ -300,7 +300,7 @@ serve(async (req) => {
     });
 
     // Build configuration context for the AI
-    const configLabels = {
+    const configLabels: Record<string, Record<string, string>> = {
       riskTolerance: { conservative: 'Conservative', moderate: 'Moderate', aggressive: 'Aggressive' },
       investmentStrategy: { capital_growth: 'Capital Growth', cash_flow: 'Cash Flow', balanced: 'Balanced', wealth_accumulation: 'Wealth Accumulation' },
       timeHorizon: { short: 'Short-term (1-3 years)', medium: 'Medium-term (3-7 years)', long: 'Long-term (7-15 years)', multi_generational: 'Multi-generational (15+ years)' },
@@ -448,7 +448,7 @@ serve(async (req) => {
     }
 
     // Build AI analysis prompt
-    const prompt = `You are an expert Australian property portfolio analyst. Analyze this client's entire property portfolio and provide strategic recommendations.
+    const prompt = `You are an expert Australian property portfolio analyst and trusted advisor. Analyze this client's entire property portfolio and provide a comprehensive, consultative analysis that builds trust and demonstrates expertise.
 
 **CLIENT & HOUSEHOLD INFORMATION:**
 ${householdSection}
@@ -494,59 +494,36 @@ ${JSON.stringify(propertyAnalyses, null, 2)}
 - Investment properties should be scored on: yield, cash flow, LVR, and capital growth
 
 **ANALYSIS REQUIREMENTS:**
-Provide a comprehensive portfolio analysis with these sections:
+Provide a comprehensive, consultative portfolio analysis. The tone should be warm, professional, and trust-building — as if you are the client's dedicated property advisor preparing a personalised review. Justify every assessment with data-driven reasoning. Even for underperforming portfolios, frame findings constructively with clear pathways to improvement.
 
-1. EXECUTIVE SUMMARY
-   - Portfolio health assessment
-   - Key strengths and concerns
-   - Overall recommendation
+Provide analysis with these sections:
 
-2. PORTFOLIO COMPOSITION ANALYSIS
-   - Asset allocation assessment (distinguish owner-occupied vs investment)
-   - Geographic diversification (if applicable)
-   - Property type mix evaluation
-
-3. FINANCIAL HEALTH METRICS
-   - Cashflow analysis (for investment properties only)
-   - Equity position assessment (for all properties)
-   - Debt serviceability analysis
-   - LVR risk assessment
-
-4. INDIVIDUAL PROPERTY RANKINGS
-   - Rank investment properties by performance (yield, cashflow)
-   - Rank owner-occupied properties by equity position only
-   - Identify star performers vs underperformers (investment only)
-   - Specific recommendations per property
-
-5. RISK ASSESSMENT
-   - Concentration risk
-   - Interest rate sensitivity
-   - Vacancy risk
-   - Market risk factors
-
-6. GROWTH OPPORTUNITIES
-   - Equity release options
-   - Refinancing opportunities
-   - Next purchase recommendations
-   - Portfolio optimization strategies
-
-7. ${projectionYears}-YEAR PROJECTIONS
-   - Portfolio value projections (assume ${growthRate}% annual growth${growthRateAssumption ? ` based on ${configLabels.growthRateAssumption[growthRateAssumption]} assumption` : ''})
-   - Equity growth trajectory
-   - Cashflow improvement path${interestRateScenario && interestRateScenario !== 'current' ? `\n   - Include stress test analysis for ${configLabels.interestRateScenario[interestRateScenario]} scenario` : ''}
-
-8. STRATEGIC RECOMMENDATIONS
-   - Short-term actions (0-12 months)
-   - Medium-term strategy (1-3 years)
-   - Long-term vision (3-10 years)
+1. PERSONALISED NARRATIVE - A warm opening statement and portfolio journey summary
+2. EXECUTIVE SUMMARY - Health assessment, strengths, concerns, recommendation
+3. PORTFOLIO COMPOSITION - Asset allocation, diversification, property mix
+4. PROPERTY STRATEGIC CONTEXT - For EACH property: strategic role (Growth Asset/Income Generator/Equity Builder/Lifestyle Asset), capital growth analysis, and individual 2-3 sentence outlook
+5. FINANCIAL HEALTH - Cashflow, equity, serviceability, LVR risk
+6. PROPERTY RANKINGS - Performance ranking with strengths, concerns, recommendations
+7. RISK ASSESSMENT - Concentration, interest rate, vacancy, market risks with mitigation strategies
+8. INTEREST RATE SENSITIVITY - Monthly cashflow impact at +1% and +2% rate increases
+9. MARKET CONDITIONS - Australian market cycle, RBA outlook, client positioning
+10. GROWTH OPPORTUNITIES - Equity release, refinancing, next purchase, optimization
+11. ${projectionYears}-YEAR PROJECTIONS - Value, equity, cashflow projections (${growthRate}% growth)${interestRateScenario && interestRateScenario !== 'current' ? ` with stress test for ${configLabels.interestRateScenario[interestRateScenario]}` : ''}
+12. ACTION PLAN - Next 12-month prioritised actions and optimisation scenarios
+13. BORROWING CAPACITY UTILISATION - Deployed vs available capacity analysis
+14. STRATEGIC RECOMMENDATIONS - Short/medium/long-term with priority actions
 
 Format your response as valid JSON with this structure:
 {
+  "personalizedNarrative": {
+    "openingStatement": "string (warm, client-facing paragraph framing this as their portfolio health check)",
+    "portfolioJourney": "string (where they stand today - equity position, portfolio composition, market context)"
+  },
   "executiveSummary": {
     "overallHealth": "string (Excellent/Good/Fair/Poor)",
     "healthScore": number (0-100),
-    "keyStrengths": ["string"],
-    "keyConcerns": ["string"],
+    "keyStrengths": ["string (be specific with dollar amounts)"],
+    "keyConcerns": ["string (be specific with dollar amounts)"],
     "primaryRecommendation": "string"
   },
   "compositionAnalysis": {
@@ -555,6 +532,14 @@ Format your response as valid JSON with this structure:
     "propertyMixAssessment": "string",
     "recommendations": ["string"]
   },
+  "propertyStrategicContext": [
+    {
+      "address": "string",
+      "strategicRole": "string (Growth Asset/Income Generator/Equity Builder/Lifestyle Asset/Development Pipeline)",
+      "capitalGrowthAnalysis": "string (historical and forward-looking growth commentary)",
+      "individualOutlook": "string (2-3 sentences on suburb trends and demand drivers)"
+    }
+  ],
   "financialHealth": {
     "cashflowStatus": "string (Positive/Neutral/Negative)",
     "equityPosition": "string (Strong/Moderate/Weak)",
@@ -580,6 +565,17 @@ Format your response as valid JSON with this structure:
     "marketRisks": ["string"],
     "mitigationStrategies": ["string"]
   },
+  "interestRateSensitivity": {
+    "currentMonthlyCashflow": number,
+    "plusOnePercentImpact": number,
+    "plusTwoPercentImpact": number,
+    "commentary": "string"
+  },
+  "marketConditions": {
+    "marketCycleSummary": "string",
+    "rbaOutlook": "string",
+    "clientPositioning": "string"
+  },
   "growthOpportunities": {
     "equityReleaseOptions": ["string"],
     "refinancingOpportunities": ["string"],
@@ -592,6 +588,17 @@ Format your response as valid JSON with this structure:
     "projectedEquity": number,
     "projectedMonthlyCashflow": number,
     "assumptions": ["string"]
+  },
+  "actionPlan": {
+    "twelveMonthActions": ["string (concrete, prioritised actions)"],
+    "optimisationScenarios": ["string (if-then improvement scenarios with dollar amounts)"]
+  },
+  "borrowingCapacityUtilisation": {
+    "totalDebtDeployed": number,
+    "estimatedCapacity": number,
+    "availableCapacity": number,
+    "utilisationPercentage": number,
+    "commentary": "string"
   },
   "strategicRecommendations": {
     "shortTerm": ["string"],
@@ -624,7 +631,7 @@ Format your response as valid JSON with this structure:
         messages: [
           {
             role: 'system',
-            content: 'You are an expert property portfolio analyst. Provide detailed, actionable portfolio analysis. CRITICAL: Always respond with ONLY valid JSON - no markdown, no code blocks. Return pure JSON starting with { and ending with }.'
+            content: 'You are an expert property portfolio analyst and trusted advisor. Provide detailed, actionable, and consultative portfolio analysis. Your tone should be warm and professional, building client trust. CRITICAL: Always respond with ONLY valid JSON - no markdown, no code blocks. Return pure JSON starting with { and ending with }.'
           },
           {
             role: 'user',
@@ -632,7 +639,7 @@ Format your response as valid JSON with this structure:
           }
         ],
         temperature: 0.7,
-        max_tokens: 6000
+        max_tokens: 12000
       }),
     });
 
@@ -660,7 +667,7 @@ Format your response as valid JSON with this structure:
     let analysis;
     try {
       let jsonString = analysisText;
-      const jsonMatch = analysisText.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
+      const jsonMatch = analysisText.match(/\`\`\`(?:json)?\s*\n([\s\S]*?)\n\`\`\`/);
       if (jsonMatch) {
         jsonString = jsonMatch[1];
       }
