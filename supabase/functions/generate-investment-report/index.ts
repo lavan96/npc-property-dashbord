@@ -1038,8 +1038,9 @@ serve(async (req) => {
     console.log('[generate-investment-report] Authenticated user:', userId);
     
     let { reportId, propertyAddress, propertyDetails, continueFrom, singleSection } = requestBody;
-    const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
-    const isAreaReport = ['suburb', 'postcode', 'statewide', 'zipcode'].includes(reportScope);
+    // Get scope from request, with fallback to existing report's scope for continuation/chunked calls
+    let reportScope = propertyDetails?.queryType || 'address';
+    let isAreaReport = ['suburb', 'postcode', 'statewide', 'zipcode'].includes(reportScope);
     
     // Flag to indicate if we're continuing from existing content
     const isContinuation = continueFrom === true;
@@ -1161,9 +1162,16 @@ serve(async (req) => {
         // Fetch existing report data (including content for continuation)
         const { data: existingReport } = await supabaseClient
           .from('investment_reports')
-          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence')
+          .select('manual_overrides, report_content, property_address, last_completed_section, investment_score, financial_calculations, demographics_data, economic_data, location_intelligence, report_scope')
           .eq('id', reportId)
           .single();
+        
+        // CRITICAL: If queryType wasn't passed (e.g., chunked regeneration), use the existing report's scope
+        if (existingReport?.report_scope && reportScope === 'address' && !propertyDetails?.queryType) {
+          reportScope = existingReport.report_scope;
+          isAreaReport = ['suburb', 'postcode', 'statewide', 'zipcode'].includes(reportScope);
+          console.log(`📋 Restored report_scope from existing report: ${reportScope} (isAreaReport: ${isAreaReport})`);
+        }
         
         if (existingReport?.manual_overrides) {
           existingManualOverrides = existingReport.manual_overrides;
@@ -4054,12 +4062,44 @@ YOUR DEDICATED PROPERTY PARTNER
       }
     }
     
-    for (let i = 0; i < REPORT_SECTIONS.length; i++) {
-      const sectionDef = REPORT_SECTIONS[i];
+    // ============================================================================
+    // AREA REPORT SECTION EXCLUSION
+    // For suburb/postcode/statewide reports, filter out property-specific financial sections
+    // These sections require property-level data (purchase price, loan details, etc.)
+    // that don't apply to area-level analysis
+    // ============================================================================
+    const AREA_EXCLUDED_SECTION_KEYWORDS = [
+      'costs & rental', 'loan & sensitivity', 'projections & swot',
+      'assumptions', 'cash flow', 'cashflow', 'loan structure', 'repayment',
+      'sensitivity analysis', 'purchase & ongoing', 'rental assessment',
+      '10-year', 'ten-year', 'ten year', 'operating costs',
+      'initial purchase', 'annual costs', 'financial analysis',
+      'mortgage', 'stamp duty calculation', 'depreciation',
+      'negative gearing', 'tax benefit', 'equity growth projection'
+    ];
+
+    const filteredSections = isAreaReport
+      ? REPORT_SECTIONS.filter(s => {
+          const nameLower = s.name.toLowerCase();
+          const sectionHeadingsLower = s.sections.map(h => h.toLowerCase());
+          const isExcluded = AREA_EXCLUDED_SECTION_KEYWORDS.some(kw =>
+            nameLower.includes(kw) || sectionHeadingsLower.some(h => h.includes(kw))
+          );
+          if (isExcluded) {
+            console.log(`⏭️ AREA REPORT: Excluding property-level section: "${s.name}" [${s.sections.join(', ')}]`);
+          }
+          return !isExcluded;
+        })
+      : REPORT_SECTIONS;
+
+    console.log(`📋 Sections to generate: ${filteredSections.length}/${REPORT_SECTIONS.length}${isAreaReport ? ` (${REPORT_SECTIONS.length - filteredSections.length} excluded for area report)` : ''}`);
+
+    for (let i = 0; i < filteredSections.length; i++) {
+      const sectionDef = filteredSections[i];
       
       // CONTINUATION MODE: Skip already-completed sections
       if (isContinuation && completedSectionIndices.includes(i)) {
-        console.log(`\n⏭️ Skipping section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name} (already complete)`);
+        console.log(`\n⏭️ Skipping section ${i + 1}/${filteredSections.length}: ${sectionDef.name} (already complete)`);
         sectionResults.push({
           id: sectionDef.id,
           name: sectionDef.name,
@@ -4071,7 +4111,7 @@ YOUR DEDICATED PROPERTY PARTNER
         continue;
       }
       
-      console.log(`\n📄 Generating section ${i + 1}/${REPORT_SECTIONS.length}: ${sectionDef.name}`);
+      console.log(`\n📄 Generating section ${i + 1}/${filteredSections.length}: ${sectionDef.name}`);
       
       // Pass context from previous sections for consistency
       const previousContext = combinedContent.length > 500 ? combinedContent.substring(combinedContent.length - 2000) : '';
@@ -4178,7 +4218,7 @@ YOUR DEDICATED PROPERTY PARTNER
         if (reportId && supabaseClient) {
           try {
             const completedSectionIndex = i + 1; // Section i is now complete (0-indexed to 1-indexed)
-            console.log(`💾 Progressive save after section ${completedSectionIndex}/${REPORT_SECTIONS.length}...`);
+            console.log(`💾 Progressive save after section ${completedSectionIndex}/${filteredSections.length}...`);
             
             // Build progressive update payload
             const progressiveUpdatePayload: any = {
@@ -4232,16 +4272,16 @@ YOUR DEDICATED PROPERTY PARTNER
             // === SINGLE-SECTION MODE: Return immediately after saving one section ===
             // This allows the frontend to call again for the next section, avoiding platform timeouts
             if (isSingleSectionMode) {
-              const isFullyComplete = completedSectionIndex >= REPORT_SECTIONS.length;
-              console.log(`🔧 Single-section mode: Completed section ${completedSectionIndex}/${REPORT_SECTIONS.length}`);
+              const isFullyComplete = completedSectionIndex >= filteredSections.length;
+              console.log(`🔧 Single-section mode: Completed section ${completedSectionIndex}/${filteredSections.length}`);
               
               if (!isFullyComplete) {
                 // Return immediately - UI will call again for next section
                 return new Response(JSON.stringify({
                   success: true,
-                  message: `Section ${completedSectionIndex}/${REPORT_SECTIONS.length} completed`,
+                  message: `Section ${completedSectionIndex}/${filteredSections.length} completed`,
                   sectionCompleted: completedSectionIndex,
-                  totalSections: REPORT_SECTIONS.length,
+                  totalSections: filteredSections.length,
                   isComplete: false,
                   contentLength: combinedContent.length
                 }), {
@@ -4292,7 +4332,7 @@ YOUR DEDICATED PROPERTY PARTNER
       
       // Adaptive delay between sections to avoid rate limiting
       // Use jitter to prevent thundering herd
-      if (i < REPORT_SECTIONS.length - 1) {
+      if (i < filteredSections.length - 1) {
         const baseDelay = 500;
         const jitter = Math.random() * 500; // 0-500ms jitter
         await new Promise(resolve => setTimeout(resolve, baseDelay + jitter));

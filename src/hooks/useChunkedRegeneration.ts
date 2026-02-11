@@ -57,7 +57,7 @@ export function useChunkedRegeneration() {
       const { data: reportData, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId,
         listOptions: {
-          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address'
+          select: 'report_content, manual_overrides, financial_calculations, last_completed_section, status, current_version, property_address, report_scope'
         }
       });
 
@@ -114,10 +114,12 @@ export function useChunkedRegeneration() {
           }
 
           // Use the main generate-investment-report function with singleSection mode
+          // CRITICAL: Pass queryType from existing report's report_scope to prevent scope misclassification
           const { data, error } = await invokeSecureFunction('generate-investment-report', {
             reportId,
             propertyAddress: effectivePropertyAddress,
             propertyDetails: {
+              queryType: report?.report_scope || 'address', // Preserve the original scope
               manualOverrides: manualOverrides || report?.manual_overrides || {},
               ...financialCalculations,
               ...(report?.financial_calculations || {})
