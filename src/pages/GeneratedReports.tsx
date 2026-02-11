@@ -1222,7 +1222,7 @@ export default function GeneratedReports() {
                             {report.investment_score.grade || 'N/A'}
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Investment Grade</span>
+                            <span className="text-xs text-muted-foreground">{report.investment_score?.scoreType === 'area' ? 'Area Grade' : 'Investment Grade'}</span>
                             <span className="text-sm font-medium">{report.investment_score.recommendation?.split(' ').slice(0, 2).join(' ') || 'Not rated'}</span>
                           </div>
                         </div>
@@ -1237,11 +1237,11 @@ export default function GeneratedReports() {
                       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-dashed">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg font-bold text-sm flex items-center justify-center bg-muted text-muted-foreground">
-                            —
+                            <Map className="h-5 w-5" />
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Investment Score</span>
-                            <span className="text-sm text-muted-foreground">Not applicable for area reports</span>
+                            <span className="text-xs text-muted-foreground">Area Score</span>
+                            <span className="text-sm text-muted-foreground">Generate a new report to calculate area score</span>
                           </div>
                         </div>
                       </div>

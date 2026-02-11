@@ -92,6 +92,284 @@ function transformInputData(rawInput: any): InvestmentScoringInput {
 }
 
 
+// ============= AREA SCORING TYPES & LOGIC =============
+
+interface AreaScoringInput {
+  scope: 'suburb' | 'zipcode' | 'state';
+  priceGrowth1Year?: number;
+  priceGrowth3Year?: number;
+  medianPrice?: number;
+  vacancyRate?: number;
+  daysOnMarket?: number;
+  populationGrowth?: number;
+  medianIncome?: number;
+  unemploymentRate?: number;
+  walkScore?: number;
+  schoolsNearby?: number;
+  commuteTimeCBD?: number;
+  state?: string;
+  rentalYield?: number;
+  supplyPipeline?: number; // new dwellings approved
+  infrastructureSpend?: number; // nearby infrastructure investment
+}
+
+interface AreaScore {
+  totalScore: number;
+  grade: string;
+  recommendation: string;
+  scoreType: 'area';
+  scope: string;
+  breakdown: {
+    marketMomentum: { score: number; weight: number; details: string };
+    economicStrength: { score: number; weight: number; details: string };
+    livability: { score: number; weight: number; details: string };
+    rentalMarket: { score: number; weight: number; details: string };
+    futureOutlook: { score: number; weight: number; details: string };
+  };
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  risks: string[];
+}
+
+function transformAreaInput(rawInput: any): AreaScoringInput {
+  const demographics = rawInput.demographics || {};
+  const locationIntelligence = rawInput.locationIntelligence || {};
+  const marketData = demographics.marketData || {};
+
+  return {
+    scope: rawInput.scope || 'suburb',
+    priceGrowth1Year: marketData.priceGrowth1Year || marketData.annualGrowth || undefined,
+    priceGrowth3Year: marketData.priceGrowth3Year || undefined,
+    medianPrice: marketData.medianPrice || undefined,
+    vacancyRate: marketData.vacancyRate || undefined,
+    daysOnMarket: marketData.daysOnMarket || undefined,
+    populationGrowth: demographics.populationGrowth || undefined,
+    medianIncome: demographics.medianIncome || demographics.medianHouseholdIncome || undefined,
+    unemploymentRate: demographics.unemploymentRate || undefined,
+    walkScore: locationIntelligence.walkScore || undefined,
+    schoolsNearby: locationIntelligence.schools?.schoolsWithin3km || undefined,
+    commuteTimeCBD: locationIntelligence.commute?.durationMinutes || undefined,
+    state: rawInput.state || demographics.state || undefined,
+    rentalYield: marketData.rentalYield || marketData.grossRentalYield || undefined,
+    supplyPipeline: demographics.supplyPipeline || undefined,
+    infrastructureSpend: demographics.infrastructureSpend || undefined,
+  };
+}
+
+function calculateAreaScore(input: AreaScoringInput): AreaScore {
+  const marketMomentum = calcMarketMomentum(input);
+  const economicStrength = calcEconomicStrength(input);
+  const livability = calcLivability(input);
+  const rentalMarket = calcRentalMarket(input);
+  const futureOutlook = calcFutureOutlook(input);
+
+  const weights = {
+    marketMomentum: 0.30,
+    economicStrength: 0.25,
+    livability: 0.15,
+    rentalMarket: 0.15,
+    futureOutlook: 0.15,
+  };
+
+  const totalScore = Math.round(
+    marketMomentum.score * weights.marketMomentum +
+    economicStrength.score * weights.economicStrength +
+    livability.score * weights.livability +
+    rentalMarket.score * weights.rentalMarket +
+    futureOutlook.score * weights.futureOutlook
+  );
+
+  const { grade, recommendation } = determineAreaGrade(totalScore, input.scope);
+  const swot = analyzeAreaSWOT(input, { marketMomentum, economicStrength, livability, rentalMarket, futureOutlook });
+
+  return {
+    totalScore,
+    grade,
+    recommendation,
+    scoreType: 'area',
+    scope: input.scope,
+    breakdown: {
+      marketMomentum: { ...marketMomentum, weight: weights.marketMomentum * 100 },
+      economicStrength: { ...economicStrength, weight: weights.economicStrength * 100 },
+      livability: { ...livability, weight: weights.livability * 100 },
+      rentalMarket: { ...rentalMarket, weight: weights.rentalMarket * 100 },
+      futureOutlook: { ...futureOutlook, weight: weights.futureOutlook * 100 },
+    },
+    ...swot,
+  };
+}
+
+function calcMarketMomentum(input: AreaScoringInput): { score: number; details: string } {
+  let score = 50;
+  const factors: string[] = [];
+  const g1 = input.priceGrowth1Year || 0;
+  const g3 = input.priceGrowth3Year || 0;
+
+  if (g1 >= 10) { score += 30; factors.push('Strong 1yr growth (10%+)'); }
+  else if (g1 >= 5) { score += 20; factors.push('Good 1yr growth (5-10%)'); }
+  else if (g1 >= 2) { score += 10; factors.push('Moderate 1yr growth (2-5%)'); }
+  else if (g1 < 0) { score -= 15; factors.push('Negative 1yr growth'); }
+
+  if (g3 > 20) { score += 15; factors.push('Strong 3yr trend'); }
+  else if (g3 > 10) { score += 8; factors.push('Solid 3yr trend'); }
+
+  if (input.daysOnMarket !== undefined) {
+    if (input.daysOnMarket < 25) { score += 10; factors.push('Fast-moving market'); }
+    else if (input.daysOnMarket > 70) { score -= 10; factors.push('Slow market liquidity'); }
+  }
+
+  return { score: Math.min(100, Math.max(0, score)), details: factors.join('. ') || 'Moderate market momentum' };
+}
+
+function calcEconomicStrength(input: AreaScoringInput): { score: number; details: string } {
+  let score = 50;
+  const factors: string[] = [];
+
+  if (input.unemploymentRate !== undefined) {
+    if (input.unemploymentRate < 3) { score += 25; factors.push('Very low unemployment (<3%)'); }
+    else if (input.unemploymentRate < 4.5) { score += 15; factors.push('Low unemployment'); }
+    else if (input.unemploymentRate > 6) { score -= 15; factors.push('High unemployment (>6%)'); }
+  }
+
+  if (input.medianIncome) {
+    if (input.medianIncome > 100000) { score += 20; factors.push('High median income'); }
+    else if (input.medianIncome > 75000) { score += 10; factors.push('Above-average income'); }
+    else if (input.medianIncome < 50000) { score -= 10; factors.push('Below-average income'); }
+  }
+
+  if (input.populationGrowth !== undefined) {
+    if (input.populationGrowth > 3) { score += 15; factors.push('Strong population growth (>3%)'); }
+    else if (input.populationGrowth > 1.5) { score += 8; factors.push('Good population growth'); }
+    else if (input.populationGrowth < 0) { score -= 10; factors.push('Population decline'); }
+  }
+
+  return { score: Math.min(100, Math.max(0, score)), details: factors.join('. ') || 'Average economic indicators' };
+}
+
+function calcLivability(input: AreaScoringInput): { score: number; details: string } {
+  let score = 0;
+  const factors: string[] = [];
+
+  // Walk score (max 35)
+  if (input.walkScore) {
+    if (input.walkScore >= 80) { score += 35; factors.push('Excellent walkability'); }
+    else if (input.walkScore >= 60) { score += 25; factors.push('Good walkability'); }
+    else if (input.walkScore >= 40) { score += 15; factors.push('Some walkability'); }
+    else { score += 5; factors.push('Car-dependent'); }
+  } else { score += 15; }
+
+  // Schools (max 25)
+  if (input.schoolsNearby) {
+    if (input.schoolsNearby >= 6) { score += 25; factors.push('Excellent school access'); }
+    else if (input.schoolsNearby >= 3) { score += 18; factors.push('Good school access'); }
+    else { score += 8; factors.push('Limited school access'); }
+  } else { score += 10; }
+
+  // Commute (max 25)
+  if (input.commuteTimeCBD) {
+    if (input.commuteTimeCBD <= 20) { score += 25; factors.push('Excellent CBD access'); }
+    else if (input.commuteTimeCBD <= 40) { score += 18; factors.push('Good CBD access'); }
+    else if (input.commuteTimeCBD <= 60) { score += 10; factors.push('Moderate CBD access'); }
+    else { score += 3; factors.push('Distant from CBD'); }
+  } else { score += 10; }
+
+  // State bonus (max 15)
+  if (input.state && ['NSW', 'VIC', 'QLD'].includes(input.state)) { score += 15; }
+  else if (input.state && ['WA', 'SA'].includes(input.state)) { score += 10; }
+  else { score += 5; }
+
+  return { score: Math.min(100, score), details: factors.join('. ') || 'Average livability' };
+}
+
+function calcRentalMarket(input: AreaScoringInput): { score: number; details: string } {
+  let score = 50;
+  const factors: string[] = [];
+
+  if (input.vacancyRate !== undefined) {
+    if (input.vacancyRate < 1) { score += 30; factors.push('Extremely tight vacancy (<1%)'); }
+    else if (input.vacancyRate < 2) { score += 20; factors.push('Tight rental market (<2%)'); }
+    else if (input.vacancyRate < 3) { score += 10; factors.push('Balanced rental market'); }
+    else if (input.vacancyRate > 4) { score -= 15; factors.push('Oversupplied rental market'); }
+  }
+
+  if (input.rentalYield !== undefined) {
+    if (input.rentalYield >= 6) { score += 20; factors.push('Exceptional area yield (6%+)'); }
+    else if (input.rentalYield >= 4.5) { score += 12; factors.push('Strong area yield (4.5-6%)'); }
+    else if (input.rentalYield >= 3) { score += 5; factors.push('Average area yield'); }
+    else { score -= 10; factors.push('Low area yield (<3%)'); }
+  }
+
+  return { score: Math.min(100, Math.max(0, score)), details: factors.join('. ') || 'Average rental market' };
+}
+
+function calcFutureOutlook(input: AreaScoringInput): { score: number; details: string } {
+  let score = 50;
+  const factors: string[] = [];
+
+  if (input.populationGrowth !== undefined) {
+    if (input.populationGrowth > 3) { score += 20; factors.push('High population growth fuels demand'); }
+    else if (input.populationGrowth > 1.5) { score += 10; factors.push('Healthy population growth'); }
+    else if (input.populationGrowth < 0) { score -= 15; factors.push('Shrinking population a concern'); }
+  }
+
+  if (input.infrastructureSpend !== undefined && input.infrastructureSpend > 0) {
+    score += 15; factors.push('Active infrastructure investment');
+  }
+
+  if (input.supplyPipeline !== undefined) {
+    if (input.supplyPipeline > 5000) { score -= 10; factors.push('High dwelling supply pipeline'); }
+    else if (input.supplyPipeline > 2000) { score += 5; factors.push('Moderate new supply'); }
+  }
+
+  // Market overheating risk
+  const g1 = input.priceGrowth1Year || 0;
+  if (g1 > 20) { score -= 15; factors.push('Overheating risk from rapid growth'); }
+  else if (g1 > 15) { score -= 8; factors.push('Growth pace may cool'); }
+
+  return { score: Math.min(100, Math.max(0, score)), details: factors.join('. ') || 'Neutral future outlook' };
+}
+
+function determineAreaGrade(score: number, scope: string): { grade: string; recommendation: string } {
+  const scopeLabel = scope === 'state' ? 'State' : scope === 'zipcode' ? 'Postcode' : 'Suburb';
+  if (score >= 85) return { grade: 'A+', recommendation: `PRIME ${scopeLabel.toUpperCase()} - Outstanding investment fundamentals across all area metrics` };
+  if (score >= 75) return { grade: 'A', recommendation: `STRONG ${scopeLabel.toUpperCase()} - Excellent area with solid growth and economic drivers` };
+  if (score >= 65) return { grade: 'B+', recommendation: `PROMISING ${scopeLabel.toUpperCase()} - Good area with favorable market dynamics` };
+  if (score >= 55) return { grade: 'B', recommendation: `STABLE ${scopeLabel.toUpperCase()} - Moderate investment appeal, monitor trends` };
+  if (score >= 45) return { grade: 'C+', recommendation: `MIXED ${scopeLabel.toUpperCase()} - Some positives but notable concerns exist` };
+  if (score >= 35) return { grade: 'C', recommendation: `EMERGING ${scopeLabel.toUpperCase()} - Below average with limited near-term appeal` };
+  return { grade: 'D', recommendation: `WEAK ${scopeLabel.toUpperCase()} - Significant challenges across key area metrics` };
+}
+
+function analyzeAreaSWOT(input: AreaScoringInput, scores: any) {
+  const strengths: string[] = [];
+  const weaknesses: string[] = [];
+  const opportunities: string[] = [];
+  const risks: string[] = [];
+
+  if (scores.marketMomentum.score >= 70) strengths.push('Strong market momentum and price growth');
+  if (scores.economicStrength.score >= 70) strengths.push('Robust local economy and employment');
+  if (scores.livability.score >= 70) strengths.push('High livability with good amenities');
+  if (scores.rentalMarket.score >= 70) strengths.push('Tight rental market with strong yields');
+
+  if (scores.marketMomentum.score < 40) weaknesses.push('Weak or declining market momentum');
+  if (scores.economicStrength.score < 40) weaknesses.push('Economic headwinds or high unemployment');
+  if (scores.rentalMarket.score < 40) weaknesses.push('Oversupplied rental market');
+
+  if (input.populationGrowth && input.populationGrowth > 2) opportunities.push('Strong population growth driving long-term demand');
+  if (input.infrastructureSpend && input.infrastructureSpend > 0) opportunities.push('Infrastructure investment boosting area appeal');
+  if (input.vacancyRate !== undefined && input.vacancyRate < 1.5) opportunities.push('Tight vacancy creating rental growth opportunity');
+
+  const g1 = input.priceGrowth1Year || 0;
+  if (g1 > 15) risks.push('Rapid price growth may indicate market cooling ahead');
+  if (input.unemploymentRate && input.unemploymentRate > 5) risks.push('Elevated unemployment poses economic risk');
+  if (input.supplyPipeline && input.supplyPipeline > 4000) risks.push('Large development pipeline may suppress price growth');
+
+  return { strengths, weaknesses, opportunities, risks };
+}
+
+// ============= MAIN SERVER =============
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -120,7 +398,20 @@ serve(async (req) => {
     const rawInput: any = body;
     console.log('Raw input received:', JSON.stringify(rawInput, null, 2));
 
-    // Transform nested structure to flat structure expected by scoring functions
+    // Route to area scoring if scope is provided
+    const scope = rawInput.scope;
+    if (scope && ['suburb', 'zipcode', 'state'].includes(scope)) {
+      console.log(`📊 Area scoring mode: ${scope}`);
+      const areaInput = transformAreaInput(rawInput);
+      console.log('Transformed area input:', JSON.stringify(areaInput, null, 2));
+      const areaScore = calculateAreaScore(areaInput);
+      return new Response(JSON.stringify({ success: true, data: areaScore }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Property-specific scoring (existing logic)
     const input: InvestmentScoringInput = transformInputData(rawInput);
     console.log('Transformed input for scoring:', JSON.stringify(input, null, 2));
 

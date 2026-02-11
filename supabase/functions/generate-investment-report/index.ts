@@ -1840,9 +1840,9 @@ serve(async (req) => {
         console.error('❌ Location intelligence fetch failed:', error?.message || 'Unknown error');
       }
 
-      // Calculate investment score - USE EFFECTIVE VALUES
-      // Skip scoring for area reports (suburb/postcode/statewide) - they lack property-specific financials
-      if (effectivePurchasePrice > 0 && !isAreaReport) {
+      // Calculate investment score - property OR area scoring
+      if (!isAreaReport && effectivePurchasePrice > 0) {
+        // Property-specific scoring
         try {
           console.log('📊 Investment scoring inputs (using effective values):');
           console.log(`  Price: $${effectivePurchasePrice.toLocaleString()}`);
@@ -1875,7 +1875,6 @@ serve(async (req) => {
               enhancedData = { ...enhancedData, investmentScore: scoreData.data };
               console.log('✓ Investment score calculated:', scoreData.data?.grade, scoreData.data?.totalScore);
             } else if (scoreData) {
-              // Direct response without wrapper
               enhancedData = { ...enhancedData, investmentScore: scoreData };
               console.log('✓ Investment score (direct):', scoreData?.grade, scoreData?.totalScore);
             }
@@ -1885,6 +1884,40 @@ serve(async (req) => {
           }
         } catch (error: any) {
           console.error('❌ Investment score calculation failed:', error?.message || 'Unknown error');
+        }
+      } else if (isAreaReport) {
+        // Area-level scoring (suburb/postcode/statewide)
+        try {
+          const areaScope = queryType === 'suburb' ? 'suburb' : queryType === 'zipcode' ? 'zipcode' : 'state';
+          console.log(`📊 Area scoring for scope: ${areaScope}`);
+          
+          const scoreResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/investment-scoring-service`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
+            },
+            body: JSON.stringify({
+              scope: areaScope,
+              demographics: enhancedData.demographics,
+              locationIntelligence: enhancedData.locationIntelligence,
+              state: state || undefined
+            })
+          });
+          
+          if (scoreResponse.ok) {
+            const scoreData = await scoreResponse.json();
+            if (scoreData?.success && scoreData?.data) {
+              enhancedData = { ...enhancedData, investmentScore: scoreData.data };
+              console.log('✓ Area score calculated:', scoreData.data?.grade, scoreData.data?.totalScore);
+            }
+          } else {
+            const errorText = await scoreResponse.text();
+            console.error('❌ Area scoring error:', scoreResponse.status, errorText);
+          }
+        } catch (error: any) {
+          console.error('❌ Area score calculation failed:', error?.message || 'Unknown error');
         }
       }
 
