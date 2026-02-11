@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,9 +16,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, UserPlus, X, Search, Loader2, Link as LinkIcon } from 'lucide-react';
+import { User, UserPlus, X, Search, Loader2, Link as LinkIcon, ExternalLink } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -39,6 +46,7 @@ export function EmailClientAssignment({
   currentClientName,
   onAssignmentChange,
 }: EmailClientAssignmentProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -138,22 +146,46 @@ export function EmailClientAssignment({
     return `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim() || 'Unnamed Client';
   };
 
+  const handleNavigateToClient = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentClientId) {
+      navigate(`/client-management?clientId=${currentClientId}`);
+    }
+  };
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        {currentClientId ? (
-          <Badge 
-            variant="secondary" 
-            className="cursor-pointer hover:bg-secondary/80 gap-1.5 py-1 px-2"
-          >
-            <User className="h-3 w-3" />
-            <span className="truncate max-w-[120px]">{currentClientName || 'Client'}</span>
-            <button
+    <div className="flex items-center gap-1">
+      {currentClientId && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge 
+                variant="secondary" 
+                className="cursor-pointer hover:bg-primary/15 gap-1.5 py-1 px-2.5 border border-primary/20 bg-primary/5 text-primary"
+                onClick={handleNavigateToClient}
+              >
+                <User className="h-3 w-3" />
+                <span className="truncate max-w-[160px] font-medium">{currentClientName || 'Linked Client'}</span>
+                <ExternalLink className="h-3 w-3 opacity-60" />
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Click to view client profile</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          {currentClientId ? (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 handleUnassign();
               }}
-              className="ml-0.5 hover:bg-destructive/20 rounded p-0.5"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -161,15 +193,14 @@ export function EmailClientAssignment({
               ) : (
                 <X className="h-3 w-3" />
               )}
-            </button>
-          </Badge>
-        ) : (
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-muted-foreground hover:text-foreground">
-            <LinkIcon className="h-3.5 w-3.5" />
-            <span className="text-xs">Link to Client</span>
-          </Button>
-        )}
-      </PopoverTrigger>
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-muted-foreground hover:text-foreground">
+              <LinkIcon className="h-3.5 w-3.5" />
+              <span className="text-xs">Link to Client</span>
+            </Button>
+          )}
+        </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="start">
         <div className="p-3 border-b">
           <div className="relative">
@@ -220,5 +251,6 @@ export function EmailClientAssignment({
         </ScrollArea>
       </PopoverContent>
     </Popover>
+    </div>
   );
 }
