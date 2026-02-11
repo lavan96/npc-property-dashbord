@@ -149,7 +149,7 @@ export function EmailClientAssignment({
   const handleNavigateToClient = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentClientId) {
-      navigate(`/client-management?clientId=${currentClientId}`);
+      navigate(`/clients?clientId=${currentClientId}`);
     }
   };
 
