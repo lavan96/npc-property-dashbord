@@ -15,7 +15,7 @@ import { secureStorageUpload } from '@/hooks/useSecureStorage';
 
 interface TemplateUploaderProps {
   templateType: 'ai_structure' | 'pdf_layout' | 'client_branding';
-  defaultCategory?: 'investment' | 'comparison' | 'cash_flow';
+  defaultCategory?: 'investment' | 'suburb' | 'postcode' | 'statewide' | 'comparison' | 'cash_flow';
   defaultTier?: 'compass' | 'executive' | 'snapshot';
 }
 

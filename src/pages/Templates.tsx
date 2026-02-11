@@ -11,13 +11,22 @@ import { QATemplateUploader } from '@/components/templates/QATemplateUploader';
 import { QATemplateList } from '@/components/templates/QATemplateList';
 import { CashFlowTemplateUploader } from '@/components/templates/CashFlowTemplateUploader';
 import { CashFlowTemplateList } from '@/components/templates/CashFlowTemplateList';
-import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator } from 'lucide-react';
+import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator, MapPin, Hash, Map } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type ReportFormat =
   | 'investment_compass' 
   | 'investment_executive' 
   | 'investment_snapshot'
+  | 'suburb_compass'
+  | 'suburb_executive'
+  | 'suburb_snapshot'
+  | 'postcode_compass'
+  | 'postcode_executive'
+  | 'postcode_snapshot'
+  | 'statewide_compass'
+  | 'statewide_executive'
+  | 'statewide_snapshot'
   | 'comparison_specific'
   | 'comparison_cashflow'
   | 'individual_cashflow';
@@ -26,7 +35,7 @@ interface ReportFormatConfig {
   id: ReportFormat;
   label: string;
   description: string;
-  category: 'investment' | 'comparison' | 'cash_flow';
+  category: 'investment' | 'suburb' | 'postcode' | 'statewide' | 'comparison' | 'cash_flow';
   tier?: 'compass' | 'executive' | 'snapshot';
   icon: React.ElementType;
 }
@@ -56,6 +65,82 @@ const REPORT_FORMATS: ReportFormatConfig[] = [
     tier: 'snapshot',
     icon: FileText,
   },
+  // Suburb-Level Reports
+  {
+    id: 'suburb_compass',
+    label: 'Suburb Compass',
+    description: 'Comprehensive suburb-wide investment analysis',
+    category: 'suburb',
+    tier: 'compass',
+    icon: MapPin,
+  },
+  {
+    id: 'suburb_executive',
+    label: 'Suburb Executive Brief',
+    description: 'Condensed suburb market summary',
+    category: 'suburb',
+    tier: 'executive',
+    icon: FileText,
+  },
+  {
+    id: 'suburb_snapshot',
+    label: 'Suburb Snapshot',
+    description: 'Quick suburb overview',
+    category: 'suburb',
+    tier: 'snapshot',
+    icon: FileText,
+  },
+  // Postcode-Level Reports
+  {
+    id: 'postcode_compass',
+    label: 'Postcode Compass',
+    description: 'Comprehensive postcode zone analysis',
+    category: 'postcode',
+    tier: 'compass',
+    icon: Hash,
+  },
+  {
+    id: 'postcode_executive',
+    label: 'Postcode Executive Brief',
+    description: 'Condensed postcode market summary',
+    category: 'postcode',
+    tier: 'executive',
+    icon: FileText,
+  },
+  {
+    id: 'postcode_snapshot',
+    label: 'Postcode Snapshot',
+    description: 'Quick postcode overview',
+    category: 'postcode',
+    tier: 'snapshot',
+    icon: FileText,
+  },
+  // Statewide Reports
+  {
+    id: 'statewide_compass',
+    label: 'Statewide Compass',
+    description: 'Comprehensive state-level market analysis',
+    category: 'statewide',
+    tier: 'compass',
+    icon: Map,
+  },
+  {
+    id: 'statewide_executive',
+    label: 'Statewide Executive Brief',
+    description: 'Condensed state market summary',
+    category: 'statewide',
+    tier: 'executive',
+    icon: FileText,
+  },
+  {
+    id: 'statewide_snapshot',
+    label: 'Statewide Snapshot',
+    description: 'Quick state overview',
+    category: 'statewide',
+    tier: 'snapshot',
+    icon: FileText,
+  },
+  // Comparison Reports
   {
     id: 'comparison_specific',
     label: 'Specific Property Comparison',
@@ -134,6 +219,9 @@ export default function Templates() {
 
   const groupedFormats = {
     investment: REPORT_FORMATS.filter(f => f.category === 'investment'),
+    suburb: REPORT_FORMATS.filter(f => f.category === 'suburb'),
+    postcode: REPORT_FORMATS.filter(f => f.category === 'postcode'),
+    statewide: REPORT_FORMATS.filter(f => f.category === 'statewide'),
     comparison: REPORT_FORMATS.filter(f => f.category === 'comparison'),
     cash_flow: REPORT_FORMATS.filter(f => f.category === 'cash_flow'),
   };
@@ -194,6 +282,147 @@ export default function Templates() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
                 {groupedFormats.investment.map((format) => {
+                  const Icon = format.icon;
+                  const count = getTemplateCountByFormat(format);
+                  const isSelected = selectedFormat === format.id;
+                  
+                  return (
+                    <Card 
+                      key={format.id}
+                      className={`cursor-pointer transition-all hover:border-primary/50 ${
+                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
+                      }`}
+                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">{format.label}</h3>
+                              <p className="text-sm text-muted-foreground">{format.description}</p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary">{count}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Suburb Analysis Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Suburb Analysis
+              </CardTitle>
+              <CardDescription>
+                Templates for suburb-wide market and investment analysis reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {groupedFormats.suburb.map((format) => {
+                  const Icon = format.icon;
+                  const count = getTemplateCountByFormat(format);
+                  const isSelected = selectedFormat === format.id;
+                  
+                  return (
+                    <Card 
+                      key={format.id}
+                      className={`cursor-pointer transition-all hover:border-primary/50 ${
+                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
+                      }`}
+                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">{format.label}</h3>
+                              <p className="text-sm text-muted-foreground">{format.description}</p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary">{count}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Postcode Analysis Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Hash className="h-5 w-5 text-primary" />
+                Postcode / ZIP Code Analysis
+              </CardTitle>
+              <CardDescription>
+                Templates for postcode-zone market and investment analysis reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {groupedFormats.postcode.map((format) => {
+                  const Icon = format.icon;
+                  const count = getTemplateCountByFormat(format);
+                  const isSelected = selectedFormat === format.id;
+                  
+                  return (
+                    <Card 
+                      key={format.id}
+                      className={`cursor-pointer transition-all hover:border-primary/50 ${
+                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
+                      }`}
+                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">{format.label}</h3>
+                              <p className="text-sm text-muted-foreground">{format.description}</p>
+                            </div>
+                          </div>
+                          <Badge variant="secondary">{count}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Statewide Analysis Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Map className="h-5 w-5 text-primary" />
+                Statewide Analysis
+              </CardTitle>
+              <CardDescription>
+                Templates for state-level macro market and investment analysis reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {groupedFormats.statewide.map((format) => {
                   const Icon = format.icon;
                   const count = getTemplateCountByFormat(format);
                   const isSelected = selectedFormat === format.id;
