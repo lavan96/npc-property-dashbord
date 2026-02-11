@@ -1215,7 +1215,7 @@ export default function GeneratedReports() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Investment Grade & Score Display */}
-                    {report.investment_score && (
+                    {report.investment_score ? (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-lg font-bold text-lg flex items-center justify-center ${getGradeColor(report.investment_score.grade)}`}>
@@ -1233,7 +1233,19 @@ export default function GeneratedReports() {
                           </span>
                         </div>
                       </div>
-                    )}
+                    ) : ['suburb', 'zipcode', 'state'].includes(report.report_scope || '') ? (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-dashed">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg font-bold text-sm flex items-center justify-center bg-muted text-muted-foreground">
+                            —
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Investment Score</span>
+                            <span className="text-sm text-muted-foreground">Not applicable for area reports</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                     
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
