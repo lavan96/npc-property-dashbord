@@ -724,7 +724,7 @@ export default function EmailCopilot() {
         mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
         folder: (email.folder as 'inbox' | 'sent') || 'inbox',
         client_id: email.client_id || null,
-        client_name: null,
+        client_name: email.client_name || null,
       }));
       
       setEmails(typedEmails);

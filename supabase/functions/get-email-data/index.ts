@@ -38,7 +38,7 @@ serve(async (req) => {
       while (hasMore) {
         const { data, error } = await supabase
           .from('email_copilot_emails')
-          .select('*')
+          .select('*, clients:client_id(id, primary_first_name, primary_surname)')
           .eq('mailbox_source', mailboxFilter)
           .order('received_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
@@ -51,8 +51,18 @@ serve(async (req) => {
         from += PAGE_SIZE;
       }
 
+      // Flatten client data into client_name field
+      const enrichedData = allData.map((email: any) => {
+        const client = email.clients;
+        const clientName = client
+          ? `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim() || null
+          : null;
+        const { clients: _removed, ...rest } = email;
+        return { ...rest, client_name: clientName };
+      });
+
       return new Response(
-        JSON.stringify({ success: true, emails: allData }),
+        JSON.stringify({ success: true, emails: enrichedData }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
