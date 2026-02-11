@@ -1895,10 +1895,15 @@ serve(async (req) => {
         }
       } else if (isAreaReport) {
         // Area-level scoring (suburb/postcode/statewide)
+        const areaScope = queryType === 'suburb' ? 'suburb' : queryType === 'zipcode' ? 'zipcode' : 'state';
+        console.log(`📊 Area scoring for scope: ${areaScope} (isAreaReport: ${isAreaReport}, queryType: ${queryType})`);
+        console.log(`📊 Area scoring input data - demographics keys: ${Object.keys(enhancedData.demographics || {}).join(', ') || 'NONE'}`);
+        console.log(`📊 Area scoring input data - locationIntelligence keys: ${Object.keys(enhancedData.locationIntelligence || {}).join(', ') || 'NONE'}`);
+        
+        let areaScoreCalculated = false;
+        
+        // Try service call first
         try {
-          const areaScope = queryType === 'suburb' ? 'suburb' : queryType === 'zipcode' ? 'zipcode' : 'state';
-          console.log(`📊 Area scoring for scope: ${areaScope}`);
-          
           const scoreResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/investment-scoring-service`, {
             method: 'POST',
             headers: {
@@ -1908,25 +1913,111 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               scope: areaScope,
-              demographics: enhancedData.demographics,
-              locationIntelligence: enhancedData.locationIntelligence,
+              demographics: enhancedData.demographics || {},
+              locationIntelligence: enhancedData.locationIntelligence || {},
               state: state || undefined
             })
           });
           
+          console.log(`📊 Area scoring service response status: ${scoreResponse.status}`);
+          
           if (scoreResponse.ok) {
             const scoreData = await scoreResponse.json();
+            console.log(`📊 Area scoring response: success=${scoreData?.success}, hasData=${!!scoreData?.data}, grade=${scoreData?.data?.grade}`);
             if (scoreData?.success && scoreData?.data) {
               enhancedData = { ...enhancedData, investmentScore: scoreData.data };
-              console.log('✓ Area score calculated:', scoreData.data?.grade, scoreData.data?.totalScore);
+              areaScoreCalculated = true;
+              console.log('✓ Area score calculated via service:', scoreData.data?.grade, scoreData.data?.totalScore);
             }
           } else {
             const errorText = await scoreResponse.text();
-            console.error('❌ Area scoring error:', scoreResponse.status, errorText);
+            console.error('❌ Area scoring service error:', scoreResponse.status, errorText);
           }
         } catch (error: any) {
-          console.error('❌ Area score calculation failed:', error?.message || 'Unknown error');
+          console.error('❌ Area scoring service call failed:', error?.message || 'Unknown error');
         }
+        
+        // FALLBACK: Calculate area score inline if service call failed
+        if (!areaScoreCalculated) {
+          console.log('📊 Falling back to inline area scoring calculation...');
+          try {
+            const demographics = enhancedData.demographics || {};
+            const locationIntelligence = enhancedData.locationIntelligence || {};
+            const marketData = demographics.marketData || {};
+            
+            // Simple inline area scoring
+            let totalScore = 50; // Base score
+            const factors: string[] = [];
+            const strengths: string[] = [];
+            const weaknesses: string[] = [];
+            
+            // Market momentum (30%)
+            let marketScore = 50;
+            if (marketData.priceGrowth1Year > 5) { marketScore += 20; strengths.push('Strong price growth'); }
+            else if (marketData.priceGrowth1Year < 0) { marketScore -= 20; weaknesses.push('Declining prices'); }
+            if (marketData.daysOnMarket < 30) { marketScore += 10; strengths.push('Fast-selling market'); }
+            
+            // Economic strength (25%)
+            let economicScore = 50;
+            if (demographics.unemploymentRate < 4) { economicScore += 15; strengths.push('Low unemployment'); }
+            else if (demographics.unemploymentRate > 7) { economicScore -= 15; weaknesses.push('High unemployment'); }
+            if (demographics.populationGrowth > 1.5) { economicScore += 10; strengths.push('Growing population'); }
+            
+            // Livability (15%)
+            let livabilityScore = 50;
+            if (locationIntelligence.walkScore > 70) { livabilityScore += 20; strengths.push('High walkability'); }
+            
+            // Rental market (15%)
+            let rentalScore = 50;
+            if (marketData.vacancyRate < 2) { rentalScore += 20; strengths.push('Tight rental market'); }
+            else if (marketData.vacancyRate > 5) { rentalScore -= 15; weaknesses.push('High vacancy rate'); }
+            
+            // Future outlook (15%)
+            let futureScore = 50;
+            
+            totalScore = Math.round(
+              marketScore * 0.30 + economicScore * 0.25 + livabilityScore * 0.15 + rentalScore * 0.15 + futureScore * 0.15
+            );
+            totalScore = Math.max(0, Math.min(100, totalScore));
+            
+            // Determine grade
+            let grade = 'C';
+            let recommendation = 'HOLD';
+            if (totalScore >= 80) { grade = 'A'; recommendation = 'PRIME SUBURB'; }
+            else if (totalScore >= 70) { grade = 'B+'; recommendation = 'STRONG AREA'; }
+            else if (totalScore >= 60) { grade = 'B'; recommendation = 'SOLID AREA'; }
+            else if (totalScore >= 50) { grade = 'C+'; recommendation = 'HOLD'; }
+            else if (totalScore >= 40) { grade = 'C'; recommendation = 'MONITOR'; }
+            else { grade = 'D'; recommendation = 'CAUTION'; }
+            
+            enhancedData = {
+              ...enhancedData,
+              investmentScore: {
+                totalScore,
+                grade,
+                recommendation,
+                scoreType: 'area',
+                scope: areaScope,
+                breakdown: {
+                  marketMomentum: { score: marketScore, weight: 30, details: 'Inline calculation' },
+                  economicStrength: { score: economicScore, weight: 25, details: 'Inline calculation' },
+                  livability: { score: livabilityScore, weight: 15, details: 'Inline calculation' },
+                  rentalMarket: { score: rentalScore, weight: 15, details: 'Inline calculation' },
+                  futureOutlook: { score: futureScore, weight: 15, details: 'Inline calculation' },
+                },
+                strengths,
+                weaknesses,
+                opportunities: [],
+                risks: [],
+              }
+            };
+            console.log('✓ Inline area score calculated:', grade, totalScore);
+          } catch (inlineError: any) {
+            console.error('❌ Inline area scoring also failed:', inlineError?.message);
+          }
+        }
+        
+        console.log(`📊 Final investmentScore after area scoring: ${enhancedData.investmentScore ? 'SET' : 'NULL'} (grade: ${enhancedData.investmentScore?.grade || 'N/A'})`);
       }
 
       // NOTE: SEIFA, Crime, Employment, and Climate data are now fetched in Phase 1 parallel block above
