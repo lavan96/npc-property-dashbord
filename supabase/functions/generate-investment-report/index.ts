@@ -1039,6 +1039,7 @@ serve(async (req) => {
     
     let { reportId, propertyAddress, propertyDetails, continueFrom, singleSection } = requestBody;
     const reportScope = propertyDetails?.queryType || 'address'; // Get scope from request
+    const isAreaReport = ['suburb', 'postcode', 'statewide', 'zipcode'].includes(reportScope);
     
     // Flag to indicate if we're continuing from existing content
     const isContinuation = continueFrom === true;
@@ -3495,6 +3496,46 @@ This report synthesizes publicly available data and ${documentContent ? 'provide
       : reportScope === 'statewide' ? statewidePrompt
       : propertyPrompt;
     
+    // For area reports, inject explicit exclusion instructions to prevent property-level sections
+    if (isAreaReport) {
+      const areaExclusionInstructions = `
+---
+**CRITICAL: AREA-LEVEL ANALYSIS ONLY — NO PROPERTY-SPECIFIC SECTIONS**
+
+This is a ${reportScope.toUpperCase()}-level area analysis report. You MUST NOT include any of the following property-specific sections or content:
+
+- ❌ Loan Repayment calculations or tables
+- ❌ Cash Flow Analysis or Projections (weekly/monthly/annual)
+- ❌ 10-Year Cash Flow Projection tables
+- ❌ Mortgage / Loan Scenarios
+- ❌ Stamp Duty calculations
+- ❌ Depreciation schedules
+- ❌ Rental Yield calculations for a specific property
+- ❌ Property Snapshot tables with specific purchase price, weekly rent, LVR, etc.
+- ❌ Net/Gross Rental Yield for a single property
+- ❌ Acquisition Cost breakdowns
+- ❌ Annual Operating Cost breakdowns for a single property
+- ❌ Negative Gearing / Tax Benefit calculations
+- ❌ Equity Growth projections for a single property
+
+Instead, focus EXCLUSIVELY on area-level analysis:
+- ✅ Median prices, rental yields, and vacancy rates for the area
+- ✅ Supply pipeline and development activity
+- ✅ Demographics and population trends
+- ✅ Infrastructure and government investment
+- ✅ Market momentum and growth trends
+- ✅ Comparative suburb/region analysis
+- ✅ Investment hotspot identification
+- ✅ Zoning and planning considerations
+- ✅ SWOT analysis at the area level
+
+---
+
+`;
+      prompt = areaExclusionInstructions + prompt;
+      console.log('✅ Area-level exclusion instructions injected for scope:', reportScope);
+    }
+    
     // If document content is available (from URL scrape OR PDF upload), prepend it to the prompt for context
     if (documentContent) {
       const contentSourceLabel = fromPdfUpload ? 'PDF Document' : (sourceUrl || 'Property Listing');
@@ -3568,8 +3609,10 @@ ${sourceSpecificInstructions}
     }
 
     // ========== MANUAL OVERRIDES INJECTION ==========
-    // Inject pre-generation overrides from the frontend into the prompt
-    const manualOverrides = propertyDetails?.manualOverrides;
+    // Only inject property-level overrides for address-scope reports
+    // Area reports (suburb/postcode/statewide) do NOT use property-level overrides
+    // isAreaReport already defined at top of function
+    const manualOverrides = isAreaReport ? null : (propertyDetails?.manualOverrides || null);
     if (manualOverrides && Object.keys(manualOverrides).length > 0) {
       console.log('📝 Injecting manual overrides into prompt...');
       const overrideLines: string[] = [];
