@@ -1841,7 +1841,8 @@ serve(async (req) => {
       }
 
       // Calculate investment score - USE EFFECTIVE VALUES
-      if (effectivePurchasePrice > 0) {
+      // Skip scoring for area reports (suburb/postcode/statewide) - they lack property-specific financials
+      if (effectivePurchasePrice > 0 && !isAreaReport) {
         try {
           console.log('📊 Investment scoring inputs (using effective values):');
           console.log(`  Price: $${effectivePurchasePrice.toLocaleString()}`);
