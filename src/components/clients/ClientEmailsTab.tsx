@@ -270,7 +270,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
       </div>
 
       {/* Threaded Email List */}
-      <div className="flex-1 min-h-0 overflow-auto max-h-[calc(60vh-120px)] space-y-1">
+      <div className="flex-1 min-h-0 overflow-auto space-y-1">
         {threads.map((thread) => {
           const isExpanded = expandedThreads.has(thread.conversationId);
           const isSingleEmail = thread.emails.length === 1;
@@ -391,7 +391,7 @@ function SingleEmailRow({
   compact?: boolean;
 }) {
   return (
-    <div className={`relative flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
+    <div className={`relative flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
       {/* Sender avatar */}
       <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
         {email.folder === 'sent' ? (
@@ -406,7 +406,7 @@ function SingleEmailRow({
       {/* Email details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className={`truncate ${compact ? 'text-xs max-w-[100px]' : 'text-sm font-medium max-w-[140px]'}`}>
+          <span className={`truncate flex-shrink-0 ${compact ? 'text-xs max-w-[120px]' : 'text-sm font-medium max-w-[180px]'}`}>
             {email.folder === 'sent' ? `To: ${email.to_recipients?.[0] ? extractSenderName(email.to_recipients[0]) : 'Unknown'}` : extractSenderName(email.sender)}
           </span>
           {!compact && <span className="text-xs text-muted-foreground">·</span>}
