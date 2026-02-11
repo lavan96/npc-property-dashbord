@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,6 +103,7 @@ function smartCapitalize(name: string | null | undefined): string {
 }
 
 export default function ClientManagement() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -140,6 +141,20 @@ export default function ClientManagement() {
       return data.clients as Client[];
     }
   });
+
+  // Deep-link: auto-open client modal from ?clientId= query param
+  useEffect(() => {
+    const clientId = searchParams.get('clientId');
+    if (!clientId || isLoading || clients.length === 0) return;
+
+    const target = clients.find(c => c.id === clientId);
+    if (target) {
+      setSelectedClient(target);
+      setShowDetailsModal(true);
+    }
+    // Clean URL
+    setSearchParams({}, { replace: true });
+  }, [clients, isLoading, searchParams]);
 
   // Fetch GHL Location ID via edge function
   const { data: ghlLocationId } = useQuery({
