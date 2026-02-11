@@ -4762,6 +4762,9 @@ export type Database = {
         | "comparison"
         | "suburb_snapshot"
         | "cash_flow"
+        | "suburb"
+        | "postcode"
+        | "statewide"
       report_tier_enum: "compass" | "executive" | "snapshot"
       template_type:
         | "ai_structure"
@@ -5009,6 +5012,9 @@ export const Constants = {
         "comparison",
         "suburb_snapshot",
         "cash_flow",
+        "suburb",
+        "postcode",
+        "statewide",
       ],
       report_tier_enum: ["compass", "executive", "snapshot"],
       template_type: [
