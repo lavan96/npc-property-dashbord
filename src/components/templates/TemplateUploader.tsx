@@ -162,7 +162,7 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
         description: description || null,
         template_type: templateType as 'ai_structure' | 'pdf_layout' | 'client_branding',
         report_tier: (reportTier && reportTier !== 'all' ? reportTier : null) as 'compass' | 'executive' | 'snapshot' | null,
-        report_category: (reportCategory && reportCategory !== 'all' ? reportCategory : null) as 'investment' | 'comparison' | 'suburb_snapshot' | null,
+        report_category: (reportCategory && reportCategory !== 'all' ? reportCategory : null) as 'investment' | 'suburb' | 'postcode' | 'statewide' | 'comparison' | 'cash_flow' | null,
         file_name: file.name,
         file_path: filePath,
         file_size: file.size,
@@ -339,9 +339,11 @@ export function TemplateUploader({ templateType, defaultCategory, defaultTier }:
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="investment">Investment Report</SelectItem>
+                <SelectItem value="suburb">Suburb Analysis</SelectItem>
+                <SelectItem value="postcode">Postcode / ZIP Analysis</SelectItem>
+                <SelectItem value="statewide">Statewide Analysis</SelectItem>
                 <SelectItem value="comparison">Comparison Analysis</SelectItem>
                 <SelectItem value="cash_flow">Cash Flow Analysis</SelectItem>
-                <SelectItem value="suburb_snapshot">Suburb Snapshot</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -11,8 +11,8 @@ import { QATemplateUploader } from '@/components/templates/QATemplateUploader';
 import { QATemplateList } from '@/components/templates/QATemplateList';
 import { CashFlowTemplateUploader } from '@/components/templates/CashFlowTemplateUploader';
 import { CashFlowTemplateList } from '@/components/templates/CashFlowTemplateList';
+import { ReportFormatGroup } from '@/components/templates/ReportFormatGroup';
 import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator, MapPin, Hash, Map } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 type ReportFormat =
   | 'investment_compass' 
@@ -41,134 +41,36 @@ interface ReportFormatConfig {
 }
 
 const REPORT_FORMATS: ReportFormatConfig[] = [
-  {
-    id: 'investment_compass',
-    label: 'Investor Compass',
-    description: 'Comprehensive investment analysis report',
-    category: 'investment',
-    tier: 'compass',
-    icon: Building2,
-  },
-  {
-    id: 'investment_executive',
-    label: 'Executive Brief',
-    description: 'Condensed executive summary report',
-    category: 'investment',
-    tier: 'executive',
-    icon: FileText,
-  },
-  {
-    id: 'investment_snapshot',
-    label: 'Snapshot',
-    description: 'Quick property snapshot overview',
-    category: 'investment',
-    tier: 'snapshot',
-    icon: FileText,
-  },
-  // Suburb-Level Reports
-  {
-    id: 'suburb_compass',
-    label: 'Suburb Compass',
-    description: 'Comprehensive suburb-wide investment analysis',
-    category: 'suburb',
-    tier: 'compass',
-    icon: MapPin,
-  },
-  {
-    id: 'suburb_executive',
-    label: 'Suburb Executive Brief',
-    description: 'Condensed suburb market summary',
-    category: 'suburb',
-    tier: 'executive',
-    icon: FileText,
-  },
-  {
-    id: 'suburb_snapshot',
-    label: 'Suburb Snapshot',
-    description: 'Quick suburb overview',
-    category: 'suburb',
-    tier: 'snapshot',
-    icon: FileText,
-  },
-  // Postcode-Level Reports
-  {
-    id: 'postcode_compass',
-    label: 'Postcode Compass',
-    description: 'Comprehensive postcode zone analysis',
-    category: 'postcode',
-    tier: 'compass',
-    icon: Hash,
-  },
-  {
-    id: 'postcode_executive',
-    label: 'Postcode Executive Brief',
-    description: 'Condensed postcode market summary',
-    category: 'postcode',
-    tier: 'executive',
-    icon: FileText,
-  },
-  {
-    id: 'postcode_snapshot',
-    label: 'Postcode Snapshot',
-    description: 'Quick postcode overview',
-    category: 'postcode',
-    tier: 'snapshot',
-    icon: FileText,
-  },
-  // Statewide Reports
-  {
-    id: 'statewide_compass',
-    label: 'Statewide Compass',
-    description: 'Comprehensive state-level market analysis',
-    category: 'statewide',
-    tier: 'compass',
-    icon: Map,
-  },
-  {
-    id: 'statewide_executive',
-    label: 'Statewide Executive Brief',
-    description: 'Condensed state market summary',
-    category: 'statewide',
-    tier: 'executive',
-    icon: FileText,
-  },
-  {
-    id: 'statewide_snapshot',
-    label: 'Statewide Snapshot',
-    description: 'Quick state overview',
-    category: 'statewide',
-    tier: 'snapshot',
-    icon: FileText,
-  },
-  // Comparison Reports
-  {
-    id: 'comparison_specific',
-    label: 'Specific Property Comparison',
-    description: 'Side-by-side property comparison analysis',
-    category: 'comparison',
-    icon: BarChart3,
-  },
-  {
-    id: 'comparison_cashflow',
-    label: '10 Year Cash Flow Comparison',
-    description: 'Multi-property cash flow projection comparison',
-    category: 'comparison',
-    icon: TrendingUp,
-  },
-  {
-    id: 'individual_cashflow',
-    label: 'Individual 10 Year Cash Flow',
-    description: 'Single property detailed cash flow analysis',
-    category: 'cash_flow',
-    icon: TrendingUp,
-  },
+  { id: 'investment_compass', label: 'Investor Compass', description: 'Comprehensive investment analysis report', category: 'investment', tier: 'compass', icon: Building2 },
+  { id: 'investment_executive', label: 'Executive Brief', description: 'Condensed executive summary report', category: 'investment', tier: 'executive', icon: FileText },
+  { id: 'investment_snapshot', label: 'Snapshot', description: 'Quick property snapshot overview', category: 'investment', tier: 'snapshot', icon: FileText },
+  { id: 'suburb_compass', label: 'Suburb Compass', description: 'Comprehensive suburb-wide investment analysis', category: 'suburb', tier: 'compass', icon: MapPin },
+  { id: 'suburb_executive', label: 'Suburb Executive Brief', description: 'Condensed suburb market summary', category: 'suburb', tier: 'executive', icon: FileText },
+  { id: 'suburb_snapshot', label: 'Suburb Snapshot', description: 'Quick suburb overview', category: 'suburb', tier: 'snapshot', icon: FileText },
+  { id: 'postcode_compass', label: 'Postcode Compass', description: 'Comprehensive postcode zone analysis', category: 'postcode', tier: 'compass', icon: Hash },
+  { id: 'postcode_executive', label: 'Postcode Executive Brief', description: 'Condensed postcode market summary', category: 'postcode', tier: 'executive', icon: FileText },
+  { id: 'postcode_snapshot', label: 'Postcode Snapshot', description: 'Quick postcode overview', category: 'postcode', tier: 'snapshot', icon: FileText },
+  { id: 'statewide_compass', label: 'Statewide Compass', description: 'Comprehensive state-level market analysis', category: 'statewide', tier: 'compass', icon: Map },
+  { id: 'statewide_executive', label: 'Statewide Executive Brief', description: 'Condensed state market summary', category: 'statewide', tier: 'executive', icon: FileText },
+  { id: 'statewide_snapshot', label: 'Statewide Snapshot', description: 'Quick state overview', category: 'statewide', tier: 'snapshot', icon: FileText },
+  { id: 'comparison_specific', label: 'Specific Property Comparison', description: 'Side-by-side property comparison analysis', category: 'comparison', icon: BarChart3 },
+  { id: 'comparison_cashflow', label: '10 Year Cash Flow Comparison', description: 'Multi-property cash flow projection comparison', category: 'comparison', icon: TrendingUp },
+  { id: 'individual_cashflow', label: 'Individual 10 Year Cash Flow', description: 'Single property detailed cash flow analysis', category: 'cash_flow', icon: TrendingUp },
+];
+
+const FORMAT_GROUPS = [
+  { key: 'investment', title: 'Investment Reports', description: 'Templates for individual property investment analysis reports', icon: Building2, columns: 3 as const },
+  { key: 'suburb', title: 'Suburb Analysis', description: 'Templates for suburb-wide market and investment analysis reports', icon: MapPin, columns: 3 as const },
+  { key: 'postcode', title: 'Postcode / ZIP Code Analysis', description: 'Templates for postcode-zone market and investment analysis reports', icon: Hash, columns: 3 as const },
+  { key: 'statewide', title: 'Statewide Analysis', description: 'Templates for state-level macro market and investment analysis reports', icon: Map, columns: 3 as const },
+  { key: 'comparison', title: 'Comparison Analysis', description: 'Templates for comparing multiple properties side-by-side', icon: BarChart3, columns: 2 as const },
+  { key: 'cash_flow', title: 'Individual Cash Flow Analysis', description: 'Templates for detailed single property cash flow projections', icon: TrendingUp, columns: 2 as const },
 ];
 
 export default function Templates() {
   const [activeTab, setActiveTab] = useState('report-formats');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat | null>(null);
 
-  // Fetch templates
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['report-structure-templates'],
     queryFn: async () => {
@@ -177,13 +79,11 @@ export default function Templates() {
         table: 'report_structure_templates',
         listOptions: { orderBy: 'priority', orderAsc: false }
       });
-      
       if (error) throw new Error(error.message);
       return data?.records || [];
     },
   });
 
-  // Fetch branding profiles
   const { data: brandingProfiles, isLoading: brandingLoading } = useQuery({
     queryKey: ['client-branding-profiles'],
     queryFn: async () => {
@@ -192,7 +92,6 @@ export default function Templates() {
         table: 'client_branding_profiles',
         listOptions: { orderBy: 'created_at', orderAsc: false }
       });
-      
       if (error) throw new Error(error.message);
       return data?.records || [];
     },
@@ -204,27 +103,20 @@ export default function Templates() {
 
   const filterTemplatesByFormat = (format: ReportFormatConfig) => {
     return templates?.filter(t => {
-      // Match by category and tier if applicable
       if (format.tier) {
         return t.report_category === format.category && t.report_tier === format.tier;
       }
-      // For comparison and cash_flow, match by category
       return t.report_category === format.category;
     }) || [];
   };
 
-  const getTemplateCountByFormat = (format: ReportFormatConfig) => {
-    return filterTemplatesByFormat(format).length;
+  const getTemplateCountByFormat = (format: { id: string }) => {
+    const config = REPORT_FORMATS.find(f => f.id === format.id);
+    if (!config) return 0;
+    return filterTemplatesByFormat(config).length;
   };
 
-  const groupedFormats = {
-    investment: REPORT_FORMATS.filter(f => f.category === 'investment'),
-    suburb: REPORT_FORMATS.filter(f => f.category === 'suburb'),
-    postcode: REPORT_FORMATS.filter(f => f.category === 'postcode'),
-    statewide: REPORT_FORMATS.filter(f => f.category === 'statewide'),
-    comparison: REPORT_FORMATS.filter(f => f.category === 'comparison'),
-    cash_flow: REPORT_FORMATS.filter(f => f.category === 'cash_flow'),
-  };
+  const selectedConfig = REPORT_FORMATS.find(f => f.id === selectedFormat);
 
   return (
     <div className="space-y-6">
@@ -236,14 +128,10 @@ export default function Templates() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="report-formats" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             Report Formats
-          </TabsTrigger>
-          <TabsTrigger value="ai-structure" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            AI Structure
           </TabsTrigger>
           <TabsTrigger value="pdf-layout" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -268,307 +156,37 @@ export default function Templates() {
         </TabsList>
 
         <TabsContent value="report-formats" className="space-y-6">
-          {/* Investment Reports Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Investment Reports
-              </CardTitle>
-              <CardDescription>
-                Templates for individual property investment analysis reports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {groupedFormats.investment.map((format) => {
-                  const Icon = format.icon;
-                  const count = getTemplateCountByFormat(format);
-                  const isSelected = selectedFormat === format.id;
-                  
-                  return (
-                    <Card 
-                      key={format.id}
-                      className={`cursor-pointer transition-all hover:border-primary/50 ${
-                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
-                      }`}
-                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{format.label}</h3>
-                              <p className="text-sm text-muted-foreground">{format.description}</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+          {FORMAT_GROUPS.map((group) => (
+            <ReportFormatGroup
+              key={group.key}
+              title={group.title}
+              description={group.description}
+              icon={group.icon}
+              formats={REPORT_FORMATS.filter(f => f.category === group.key)}
+              selectedFormat={selectedFormat}
+              onSelectFormat={(id) => setSelectedFormat(id as ReportFormat | null)}
+              getCount={getTemplateCountByFormat}
+              columns={group.columns}
+            />
+          ))}
 
-          {/* Suburb Analysis Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
-                Suburb Analysis
-              </CardTitle>
-              <CardDescription>
-                Templates for suburb-wide market and investment analysis reports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {groupedFormats.suburb.map((format) => {
-                  const Icon = format.icon;
-                  const count = getTemplateCountByFormat(format);
-                  const isSelected = selectedFormat === format.id;
-                  
-                  return (
-                    <Card 
-                      key={format.id}
-                      className={`cursor-pointer transition-all hover:border-primary/50 ${
-                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
-                      }`}
-                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{format.label}</h3>
-                              <p className="text-sm text-muted-foreground">{format.description}</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Postcode Analysis Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hash className="h-5 w-5 text-primary" />
-                Postcode / ZIP Code Analysis
-              </CardTitle>
-              <CardDescription>
-                Templates for postcode-zone market and investment analysis reports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {groupedFormats.postcode.map((format) => {
-                  const Icon = format.icon;
-                  const count = getTemplateCountByFormat(format);
-                  const isSelected = selectedFormat === format.id;
-                  
-                  return (
-                    <Card 
-                      key={format.id}
-                      className={`cursor-pointer transition-all hover:border-primary/50 ${
-                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
-                      }`}
-                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{format.label}</h3>
-                              <p className="text-sm text-muted-foreground">{format.description}</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Statewide Analysis Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Map className="h-5 w-5 text-primary" />
-                Statewide Analysis
-              </CardTitle>
-              <CardDescription>
-                Templates for state-level macro market and investment analysis reports
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {groupedFormats.statewide.map((format) => {
-                  const Icon = format.icon;
-                  const count = getTemplateCountByFormat(format);
-                  const isSelected = selectedFormat === format.id;
-                  
-                  return (
-                    <Card 
-                      key={format.id}
-                      className={`cursor-pointer transition-all hover:border-primary/50 ${
-                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
-                      }`}
-                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{format.label}</h3>
-                              <p className="text-sm text-muted-foreground">{format.description}</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Comparison Analysis Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Comparison Analysis
-              </CardTitle>
-              <CardDescription>
-                Templates for comparing multiple properties side-by-side
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {groupedFormats.comparison.map((format) => {
-                  const Icon = format.icon;
-                  const count = getTemplateCountByFormat(format);
-                  const isSelected = selectedFormat === format.id;
-                  
-                  return (
-                    <Card 
-                      key={format.id}
-                      className={`cursor-pointer transition-all hover:border-primary/50 ${
-                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
-                      }`}
-                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{format.label}</h3>
-                              <p className="text-sm text-muted-foreground">{format.description}</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Individual Cash Flow Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Individual Cash Flow Analysis
-              </CardTitle>
-              <CardDescription>
-                Templates for detailed single property cash flow projections
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {groupedFormats.cash_flow.map((format) => {
-                  const Icon = format.icon;
-                  const count = getTemplateCountByFormat(format);
-                  const isSelected = selectedFormat === format.id;
-                  
-                  return (
-                    <Card 
-                      key={format.id}
-                      className={`cursor-pointer transition-all hover:border-primary/50 ${
-                        isSelected ? 'border-primary ring-2 ring-primary/20' : ''
-                      }`}
-                      onClick={() => setSelectedFormat(isSelected ? null : format.id)}
-                    >
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{format.label}</h3>
-                              <p className="text-sm text-muted-foreground">{format.description}</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Selected Format Details */}
-          {selectedFormat && (
+          {/* Selected Format Details — upload & list scoped to this format */}
+          {selectedConfig && (
             <Card>
               <CardHeader>
-                <CardTitle>
-                  {REPORT_FORMATS.find(f => f.id === selectedFormat)?.label} Templates
-                </CardTitle>
+                <CardTitle>{selectedConfig.label} Templates</CardTitle>
                 <CardDescription>
-                  Upload and manage templates for this report format
+                  Upload and manage AI structure templates for this report format
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <TemplateUploader 
-                  templateType="ai_structure" 
-                  defaultCategory={REPORT_FORMATS.find(f => f.id === selectedFormat)?.category}
-                  defaultTier={REPORT_FORMATS.find(f => f.id === selectedFormat)?.tier}
+                <TemplateUploader
+                  templateType="ai_structure"
+                  defaultCategory={selectedConfig.category}
+                  defaultTier={selectedConfig.tier}
                 />
-                <TemplateList 
-                  templates={filterTemplatesByFormat(REPORT_FORMATS.find(f => f.id === selectedFormat)!)} 
+                <TemplateList
+                  templates={filterTemplatesByFormat(selectedConfig)}
                   isLoading={templatesLoading}
                   templateType="ai_structure"
                 />
@@ -577,42 +195,17 @@ export default function Templates() {
           )}
         </TabsContent>
 
-        <TabsContent value="ai-structure" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>AI Structure Templates</CardTitle>
-              <CardDescription>
-                Reference documents that define report structure and content patterns for AI generation.
-                These templates are parsed and stored as vector embeddings for RAG-based context injection.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <TemplateUploader templateType="ai_structure" />
-              <TemplateList 
-                templates={filterTemplatesByType('ai_structure')} 
-                isLoading={templatesLoading}
-                templateType="ai_structure"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="pdf-layout" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>PDF Layout Templates</CardTitle>
               <CardDescription>
                 HTML/CSS templates that control the visual layout and styling of generated PDF reports.
-                Supports different layouts for investment reports, comparisons, and suburb snapshots.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <TemplateUploader templateType="pdf_layout" />
-              <TemplateList 
-                templates={filterTemplatesByType('pdf_layout')} 
-                isLoading={templatesLoading}
-                templateType="pdf_layout"
-              />
+              <TemplateList templates={filterTemplatesByType('pdf_layout')} isLoading={templatesLoading} templateType="pdf_layout" />
             </CardContent>
           </Card>
         </TabsContent>
@@ -626,8 +219,6 @@ export default function Templates() {
               </CardTitle>
               <CardDescription>
                 Upload PDF templates to customize how Report Q&A conversations are exported.
-                The active template defines the cover page design, fonts, colors, headers, and footers
-                for PDF exports from the Q&A agent.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -646,8 +237,6 @@ export default function Templates() {
               </CardTitle>
               <CardDescription>
                 Upload PDF templates to customize how 10-Year Cash Flow analyses are exported.
-                The active template defines the cover page design, branding, colors, and styling
-                for PDF exports from the Cash Flow Analysis tool.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -663,14 +252,10 @@ export default function Templates() {
               <CardTitle>Client Branding Profiles</CardTitle>
               <CardDescription>
                 Customize report branding with client-specific logos, colors, and styling.
-                Each profile can be applied to generated reports for white-label delivery.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <BrandingManager 
-                profiles={brandingProfiles || []} 
-                isLoading={brandingLoading}
-              />
+              <BrandingManager profiles={brandingProfiles || []} isLoading={brandingLoading} />
             </CardContent>
           </Card>
         </TabsContent>
