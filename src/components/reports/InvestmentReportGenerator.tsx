@@ -328,11 +328,15 @@ export function InvestmentReportGenerator() {
         }
       });
       
+      // Only include manual overrides for property-specific (address) reports
+      // Area reports (suburb/postcode/statewide) don't use property-level overrides
+      const isPropertyScope = queryType === 'address';
+      
       const propertyDetails: any = { 
         queryType, 
         originalQuery: query,
-        // Include pre-generation manual overrides for context injection
-        manualOverrides: sanitizedPreGenData,
+        // Include pre-generation manual overrides ONLY for address-scope reports
+        ...(isPropertyScope ? { manualOverrides: sanitizedPreGenData } : {}),
       };
       
       // Add optional property details if provided (form values take precedence over preGenData)
@@ -436,9 +440,12 @@ export function InvestmentReportGenerator() {
 
       // Create the report record first with pending status and pre-generation overrides
       // Filter out undefined values and cast to Json for Supabase compatibility
-      const cleanedOverrides = Object.fromEntries(
-        Object.entries(preGenData).filter(([_, v]) => v !== undefined)
-      ) as Json;
+      // Only save overrides for property-specific (address) reports
+      const cleanedOverrides = isPropertyScope 
+        ? Object.fromEntries(
+            Object.entries(preGenData).filter(([_, v]) => v !== undefined)
+          ) as Json
+        : {} as Json;
       
       // Use secure edge function for insert (service_role required due to RLS)
       const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
@@ -449,7 +456,7 @@ export function InvestmentReportGenerator() {
           status: 'pending',
           report_scope: queryType, // Track the scope type
           generated_by: null, // Set to null to avoid foreign key constraint issues
-          manual_overrides: cleanedOverrides, // Save pre-generation overrides immediately
+          manual_overrides: cleanedOverrides, // Save pre-generation overrides (empty for area reports)
         },
       });
 
