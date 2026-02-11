@@ -126,6 +126,242 @@ const DEFAULT_REPORT_SECTIONS: ReportSectionDefinition[] = [
   }
 ];
 
+// ============================================================================
+// SUBURB REPORT SECTIONS - Fallback for suburb-scope reports
+// ============================================================================
+const DEFAULT_SUBURB_SECTIONS: ReportSectionDefinition[] = [
+  {
+    id: 'suburb_section0',
+    name: 'Executive Summary',
+    sections: ['Executive Summary'],
+    maxTokens: 2000,
+    minContentLength: 1500,
+    requiredKeywords: ['suburb', 'investment', 'thesis'],
+  },
+  {
+    id: 'suburb_section1',
+    name: 'Suburb Profile',
+    sections: ['Suburb Profile', 'Location & Profile'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['suburb', 'character', 'geographic', 'LGA'],
+  },
+  {
+    id: 'suburb_section2',
+    name: 'Market Analysis & Trends',
+    sections: ['Market Analysis', 'Price Trends & Growth'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['median', 'growth', 'clearance', 'price'],
+  },
+  {
+    id: 'suburb_section3',
+    name: 'Rental Market',
+    sections: ['Rental Market Deep Dive'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['rent', 'yield', 'vacancy', 'demand'],
+  },
+  {
+    id: 'suburb_section4',
+    name: 'Demographics & Economics',
+    sections: ['Demographics & Economics'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['population', 'income', 'employment', 'household'],
+  },
+  {
+    id: 'suburb_section5',
+    name: 'Location & Amenities',
+    sections: ['Location & Amenities', 'Infrastructure & Amenities'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['transport', 'school', 'shopping', 'healthcare'],
+  },
+  {
+    id: 'suburb_section6',
+    name: 'Supply & Development',
+    sections: ['Supply & Development Pipeline'],
+    maxTokens: 2000,
+    minContentLength: 1500,
+    requiredKeywords: ['development', 'DA', 'rezoning', 'supply'],
+  },
+  {
+    id: 'suburb_section7',
+    name: 'Risk & Safety',
+    sections: ['Risk Assessment', 'Crime & Safety'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['flood', 'bushfire', 'crime', 'risk'],
+  },
+  {
+    id: 'suburb_section8',
+    name: 'Investment Score & SWOT',
+    sections: ['Investment Score & SWOT', 'SWOT Analysis'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['score', 'strength', 'weakness', 'opportunity'],
+  },
+  {
+    id: 'suburb_section9',
+    name: 'Comparative Context & Disclaimer',
+    sections: ['Comparative Context', 'Disclaimer'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['comparison', 'benchmark', 'disclaimer'],
+  },
+];
+
+// ============================================================================
+// POSTCODE REPORT SECTIONS - Fallback for postcode-scope reports
+// ============================================================================
+const DEFAULT_POSTCODE_SECTIONS: ReportSectionDefinition[] = [
+  {
+    id: 'postcode_section0',
+    name: 'Executive Summary',
+    sections: ['Executive Summary'],
+    maxTokens: 2000,
+    minContentLength: 1500,
+    requiredKeywords: ['postcode', 'investment', 'thesis'],
+  },
+  {
+    id: 'postcode_section1',
+    name: 'Zone Profile',
+    sections: ['Zone Profile'],
+    maxTokens: 2000,
+    minContentLength: 1500,
+    requiredKeywords: ['suburbs', 'LGA', 'boundaries', 'zone'],
+  },
+  {
+    id: 'postcode_section2',
+    name: 'Market Overview',
+    sections: ['Market Overview'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['median', 'clearance', 'stock', 'market'],
+  },
+  {
+    id: 'postcode_section3',
+    name: 'Suburb-by-Suburb Breakdown',
+    sections: ['Suburb-by-Suburb Breakdown'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['suburb', 'comparison', 'standout'],
+  },
+  {
+    id: 'postcode_section4',
+    name: 'Price Trends & Rental Market',
+    sections: ['Price Trends & Growth', 'Rental Market'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['growth', 'benchmark', 'rent', 'yield', 'vacancy'],
+  },
+  {
+    id: 'postcode_section5',
+    name: 'Demographics & Infrastructure',
+    sections: ['Demographics & Economics', 'Infrastructure & Development'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['population', 'income', 'projects', 'transport'],
+  },
+  {
+    id: 'postcode_section6',
+    name: 'Risk & Investment Score',
+    sections: ['Risk Assessment', 'Investment Score & Hotspot Identification'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['risk', 'hazard', 'score', 'hotspot', 'SWOT'],
+  },
+  {
+    id: 'postcode_section7',
+    name: 'Disclaimer',
+    sections: ['Disclaimer'],
+    maxTokens: 1500,
+    minContentLength: 500,
+    requiredKeywords: ['disclaimer'],
+  },
+];
+
+// ============================================================================
+// STATEWIDE REPORT SECTIONS - Fallback for statewide-scope reports
+// ============================================================================
+const DEFAULT_STATEWIDE_SECTIONS: ReportSectionDefinition[] = [
+  {
+    id: 'statewide_section0',
+    name: 'Executive Summary',
+    sections: ['Executive Summary'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['state', 'investment', 'climate'],
+  },
+  {
+    id: 'statewide_section1',
+    name: 'State Economic Overview',
+    sections: ['State Economic Overview'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['GDP', 'employment', 'population', 'migration'],
+  },
+  {
+    id: 'statewide_section2',
+    name: 'Property Market Overview',
+    sections: ['Property Market Overview'],
+    maxTokens: 2500,
+    minContentLength: 2000,
+    requiredKeywords: ['median', 'clearance', 'listings', 'market'],
+  },
+  {
+    id: 'statewide_section3',
+    name: 'Regional Comparison',
+    sections: ['Regional Comparison'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['metro', 'regional', 'top', 'bottom'],
+  },
+  {
+    id: 'statewide_section4',
+    name: 'Price Trends & Rental Market',
+    sections: ['Price Trends & Affordability', 'Rental Market'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['growth', 'affordability', 'vacancy', 'yield'],
+  },
+  {
+    id: 'statewide_section5',
+    name: 'Policy & Infrastructure',
+    sections: ['Government Policy & Regulation', 'Infrastructure Pipeline'],
+    maxTokens: 3000,
+    minContentLength: 2500,
+    requiredKeywords: ['stamp duty', 'land tax', 'projects', 'infrastructure'],
+  },
+  {
+    id: 'statewide_section6',
+    name: 'Risk & Hotspots',
+    sections: ['Risk & Macro Factors', 'Investment Hotspots'],
+    maxTokens: 3500,
+    minContentLength: 3000,
+    requiredKeywords: ['interest rate', 'supply', 'hotspot', 'SWOT'],
+  },
+  {
+    id: 'statewide_section7',
+    name: 'Disclaimer',
+    sections: ['Disclaimer'],
+    maxTokens: 1500,
+    minContentLength: 500,
+    requiredKeywords: ['disclaimer'],
+  },
+];
+
+// Helper: get default sections by scope
+function getDefaultSectionsForScope(scope: string): ReportSectionDefinition[] {
+  switch (scope) {
+    case 'suburb': return [...DEFAULT_SUBURB_SECTIONS];
+    case 'postcode': return [...DEFAULT_POSTCODE_SECTIONS];
+    case 'statewide': return [...DEFAULT_STATEWIDE_SECTIONS];
+    default: return [...DEFAULT_REPORT_SECTIONS];
+  }
+}
+
 // Dynamic sections - populated from database template at runtime
 let REPORT_SECTIONS: ReportSectionDefinition[] = [...DEFAULT_REPORT_SECTIONS];
 
@@ -1924,6 +2160,254 @@ Suburb Investment Snapshot: [SUBURB NAME], [STATE]
 
 Produce a comprehensive suburb investment snapshot following the structure above with specific Australian market data.`;
 
+    // ============================================================================
+    // POSTCODE / ZIP CODE ANALYSIS PROMPT
+    // ============================================================================
+    const postcodePrompt = `You are an expert Australian property market analyst creating comprehensive postcode-zone investment analysis reports.
+Your goal is to generate a professional postcode-level analysis covering all suburbs within the zone.
+
+**POSTCODE TO ANALYZE: ${formattedInput}**
+${yearContextString}
+
+${propertyDetails ? `Context: ${propertyDetails.propertyType || 'General'} market analysis for this postcode zone` : ''}
+
+**CRITICAL - MANDATORY POSTCODE REPORT STRUCTURE:**
+
+Follow this exact structure for postcode-level analysis:
+
+# REPORT TITLE
+Postcode Investment Analysis: ${formattedInput}
+
+# 1. Executive Summary
+- Postcode investment thesis
+- Key takeaways and overall market assessment
+
+# 2. Zone Profile
+- List of all suburbs within this postcode
+- LGA(s) and geographic boundaries
+- Zone character and overview
+
+# 3. Market Overview
+**Aggregated Market Data:**
+
+| Property Type | Median Price | Annual Growth | Gross Yield | DOM |
+|--------------|--------------|---------------|-------------|-----|
+| Houses | $XXX,XXX | +/-X.X% | X.XX% | XX |
+| Units | $XXX,XXX | +/-X.X% | X.XX% | XX |
+
+**Market Activity:**
+- Auction clearance rates
+- Stock on market levels
+- Sales volume trends
+
+# 4. Suburb-by-Suburb Breakdown
+| Suburb | Median House Price | Median Unit Price | Annual Growth | Gross Yield | Vacancy Rate | DOM |
+|--------|-------------------|-------------------|---------------|-------------|--------------|-----|
+
+[Include ALL suburbs in the postcode with comprehensive data]
+
+**Standout Performers:**
+- Identify top-performing suburbs with reasoning
+
+# 5. Price Trends & Growth
+**Postcode-Wide Historical Trends:**
+| Period | Houses Growth | Units Growth | Metro Average | State Average |
+|--------|-------------|-------------|---------------|---------------|
+| 1-Year | +/-X.X% | +/-X.X% | +/-X.X% | +/-X.X% |
+| 3-Year | +/-XX.X% | +/-XX.X% | +/-XX.X% | +/-XX.X% |
+| 5-Year | +/-XX.X% | +/-XX.X% | +/-XX.X% | +/-XX.X% |
+
+# 6. Rental Market
+**Aggregate Rental Data:**
+| Property Type | Median Weekly Rent | Annual Rent Growth | Vacancy Rate |
+|--------------|-------------------|-------------------|--------------|
+
+**Suburb-Level Yield Comparison:**
+| Suburb | Median Rent | House Yield | Unit Yield |
+|--------|------------|-------------|------------|
+
+# 7. Demographics & Economics
+- Population & growth across the zone
+- Income & employment data
+- Household profile
+
+# 8. Infrastructure & Development
+- Major projects & transport upgrades affecting this postcode
+- Rezoning & development pipeline
+- Impact on property values
+
+# 9. Risk Assessment
+- Zone-level hazard mapping (flood, bushfire)
+- Market diversification analysis
+- Crime & safety overview
+
+# 10. Investment Score & Hotspot Identification
+- Zone investment score
+- Best value suburbs within the postcode (with data-driven reasoning)
+- SWOT Analysis (minimum 8 bullet points per category)
+
+# 11. Disclaimer
+[Standard professional disclaimer]
+
+---
+
+**DATA QUALITY REQUIREMENTS:**
+- Use live data where available from ABS, Domain, CoreLogic, state authorities
+- Clearly mark estimated or inferred data points
+- Include data sources and "as of" dates
+- Compare against metro and state benchmarks throughout
+
+**OUTPUT STYLE:**
+- Use markdown tables extensively
+- Include horizontal rulers (---) between major sections
+- Professional, data-driven language
+- Specific numbers, percentages, dollar amounts
+- Actionable insights for investors
+- No code blocks or JSON formatting
+
+Produce a comprehensive postcode investment analysis following the structure above with specific Australian market data.`;
+
+    // ============================================================================
+    // STATEWIDE ANALYSIS PROMPT
+    // ============================================================================
+    const statewidePrompt = `You are an expert Australian property market economist creating comprehensive state-level investment analysis reports.
+Your goal is to generate a professional statewide market analysis covering macro-economic conditions, regional comparisons, and investment opportunities.
+
+**STATE TO ANALYZE: ${formattedInput}**
+${yearContextString}
+
+**CRITICAL - MANDATORY STATEWIDE REPORT STRUCTURE:**
+
+Follow this exact structure for state-level analysis:
+
+# REPORT TITLE
+Statewide Investment Analysis: ${formattedInput}
+
+# 1. Executive Summary
+- State investment climate summary
+- Key takeaways and macro assessment
+
+# 2. State Economic Overview
+**Economic Indicators:**
+| Metric | Value | National Average | Trend |
+|--------|-------|-----------------|-------|
+| GSP/GDP Growth | X.X% | X.X% | [trend] |
+| Unemployment Rate | X.X% | X.X% | [trend] |
+| Population Growth | X.X% | X.X% | [trend] |
+| Net Interstate Migration | +/-XX,XXX | - | [trend] |
+| Net Overseas Migration | +XX,XXX | - | [trend] |
+
+**Major Industries:**
+[Top 5-10 industries by employment share]
+
+# 3. Property Market Overview
+**State-Wide Market Data:**
+| Property Type | Median Price | Annual Growth | Gross Yield | DOM | Total Listings |
+|--------------|--------------|---------------|-------------|-----|----------------|
+| Houses | $XXX,XXX | +/-X.X% | X.XX% | XX | XX,XXX |
+| Units | $XXX,XXX | +/-X.X% | X.XX% | XX | XX,XXX |
+
+- Auction clearance rates (state average)
+- Total listings volume & trend
+
+# 4. Regional Comparison
+**Metro vs Regional Performance:**
+| Region | Median House Price | Annual Growth | Yield | Vacancy | Population Growth |
+|--------|-------------------|---------------|-------|---------|-------------------|
+
+**Top 10 Performing Areas:**
+| Rank | Area/Suburb | Median Price | 12-Month Growth | Key Driver |
+|------|------------|--------------|-----------------|------------|
+
+**Bottom 10 Performing Areas:**
+| Rank | Area/Suburb | Median Price | 12-Month Growth | Key Concern |
+|------|------------|--------------|-----------------|-------------|
+
+# 5. Price Trends & Affordability
+**State Growth vs National Benchmarks:**
+| Period | State Houses | State Units | National Houses | National Units |
+|--------|-------------|-------------|-----------------|----------------|
+| 1-Year | +/-X.X% | +/-X.X% | +/-X.X% | +/-X.X% |
+| 3-Year | +/-XX.X% | +/-XX.X% | +/-XX.X% | +/-XX.X% |
+| 5-Year | +/-XX.X% | +/-XX.X% | +/-XX.X% | +/-XX.X% |
+| 10-Year | +/-XX.X% | +/-XX.X% | +/-XX.X% | +/-XX.X% |
+
+**Affordability Index:**
+[Housing affordability metrics, price-to-income ratios]
+
+# 6. Rental Market
+**State Vacancy Rates:**
+| Region | Current Vacancy | 12-Month Ago | 5-Year Average |
+|--------|----------------|-------------|----------------|
+
+**Rental Growth by Region:**
+| Region | Weekly Rent (Houses) | Annual Growth | Weekly Rent (Units) | Annual Growth |
+|--------|---------------------|---------------|--------------------|----|
+
+**Rental Yield by Region:**
+| Region | House Yield | Unit Yield | State Average |
+|--------|------------|------------|---------------|
+
+# 7. Government Policy & Regulation
+- Stamp duty thresholds and rates
+- Land tax thresholds and rates
+- First home buyer schemes and grants
+- Planning reforms and zoning changes
+- Foreign investment rules (if applicable)
+
+# 8. Infrastructure Pipeline
+**Major State Projects:**
+| Project | Budget | Completion | Impact Region | Property Impact |
+|---------|--------|------------|---------------|-----------------|
+
+**Investment Impact Zones:**
+[Areas most likely to benefit from infrastructure spending]
+
+# 9. Risk & Macro Factors
+**Interest Rate Sensitivity:**
+[Impact of RBA rate changes on state market]
+
+**Supply Pipeline Risk:**
+[New housing supply vs demand balance]
+
+**Population Growth Corridors:**
+[Where population is heading and property demand implications]
+
+# 10. Investment Hotspots
+**Top Opportunity Regions/Suburbs:**
+| Rank | Area | Why It's a Hotspot | Entry Price | Growth Forecast | Yield |
+|------|------|-------------------|-------------|-----------------|-------|
+
+**Hotspot Reasoning:**
+[Detailed data-driven explanation for each hotspot]
+
+**State-Level SWOT Analysis:**
+- Strengths (minimum 8 points)
+- Weaknesses (minimum 8 points)
+- Opportunities (minimum 8 points)
+- Threats (minimum 8 points)
+
+# 11. Disclaimer
+[Standard professional disclaimer]
+
+---
+
+**DATA QUALITY REQUIREMENTS:**
+- Use live data where available from ABS, Domain, CoreLogic, state authorities, RBA
+- Compare all metrics against national benchmarks
+- Include data sources and "as of" dates
+- Focus on macro trends and their property market implications
+
+**OUTPUT STYLE:**
+- Use markdown tables extensively for data presentation
+- Include horizontal rulers (---) between major sections
+- Professional, economist-level language
+- Specific numbers, percentages, dollar amounts
+- Actionable insights for investors
+- No code blocks or JSON formatting
+
+Produce a comprehensive statewide investment analysis following the structure above with specific Australian market data.`;
+
     // STRICT REFERENCE TEMPLATE - Based on the Naidu Property Consulting Services Investment Report format
     // This template enforces the exact structure, length, content, and sources matching the reference PDF
     
@@ -3006,7 +3490,10 @@ This report synthesizes publicly available data and ${documentContent ? 'provide
 13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts`;
 
     // Select the appropriate prompt based on report scope
-    let prompt = reportScope === 'suburb' ? suburbPrompt : propertyPrompt;
+    let prompt = reportScope === 'suburb' ? suburbPrompt 
+      : reportScope === 'postcode' ? postcodePrompt
+      : reportScope === 'statewide' ? statewidePrompt
+      : propertyPrompt;
     
     // If document content is available (from URL scrape OR PDF upload), prepend it to the prompt for context
     if (documentContent) {
@@ -3288,10 +3775,18 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
         'executive': 'executive', // Direct match (in case already mapped)
       };
       const reportTier = tierMapping[rawTier] || rawTier;
-      const reportCategory = reportScope === 'suburb' ? 'suburb_snapshot' : 'investment';
+      const scopeCategoryMap: Record<string, string> = {
+        'suburb': 'suburb',
+        'postcode': 'postcode', 
+        'statewide': 'statewide',
+      };
+      const reportCategory = scopeCategoryMap[reportScope] || 'investment';
       
       console.log(`📋 Tier mapping: "${rawTier}" → "${reportTier}"`);
       
+      // Initialize REPORT_SECTIONS based on scope before template fetch
+      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
+
       // Query report_structure_templates directly for the matching template
       const templateClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
@@ -3342,24 +3837,24 @@ DO NOT default to 0% or any arbitrary value. The capital growth rate is critical
             console.log(`  Template headings found: ${parsedStructure.headings.length}`);
           } else {
             console.log('⚠️ Template parsing returned no sections, using DEFAULT_REPORT_SECTIONS');
-            REPORT_SECTIONS = [...DEFAULT_REPORT_SECTIONS];
+            REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
           }
           // ========== END DYNAMIC SECTION PARSING ==========
           
         } else {
           console.log('⚠️ Template found but parsed_content is empty');
           console.log('  Using DEFAULT_REPORT_SECTIONS as fallback');
-          REPORT_SECTIONS = [...DEFAULT_REPORT_SECTIONS];
+            REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
         }
       } else {
         console.log('ℹ️ No active AI structure templates found in database');
         console.log('  Using DEFAULT_REPORT_SECTIONS as fallback');
-        REPORT_SECTIONS = [...DEFAULT_REPORT_SECTIONS];
+          REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
       }
     } catch (templateError: any) {
       console.log('⚠️ Template fetch failed (non-critical):', templateError?.message || 'Unknown error');
       console.log('  Using DEFAULT_REPORT_SECTIONS as fallback');
-      REPORT_SECTIONS = [...DEFAULT_REPORT_SECTIONS];
+      REPORT_SECTIONS = getDefaultSectionsForScope(reportScope);
     }
 
     // Inject template context into prompt if available
@@ -3380,9 +3875,12 @@ ${templateContext}
     }
     // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
-    const systemMessage = reportScope === 'suburb' 
-      ? 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.'
-      : 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.';
+    const areaSystemMessages: Record<string, string> = {
+      'suburb': 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.',
+      'postcode': 'You are an expert Australian property market analyst specialising in postcode-zone analysis. You provide comprehensive, data-driven analysis comparing all suburbs within a postcode zone, identifying hotspots, and benchmarking against metro and state averages. Always include specific numbers, percentages, and statistics. Focus on zone-wide patterns, suburb-by-suburb comparisons, and investment opportunities across the postcode.',
+      'statewide': 'You are an expert Australian property market economist specialising in state-level macro analysis. You provide comprehensive, data-driven statewide market assessments covering economic conditions, regional comparisons, government policy impacts, infrastructure pipelines, and investment hotspot identification. Always include specific numbers, percentages, and statistics. Focus on macro trends, regional disparities, and strategic investment opportunities across the state.',
+    };
+    const systemMessage = areaSystemMessages[reportScope] || 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.';
 
     console.log('=== MULTI-SECTION REPORT GENERATION ===');
     console.log('Report scope:', reportScope);
