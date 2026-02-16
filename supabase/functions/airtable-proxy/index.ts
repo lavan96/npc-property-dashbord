@@ -7,6 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 function createCorsHeaders(origin: string | null): Record<string, string> {
   // Allowed origins for the application
   const allowedOrigins = [
+    'https://command-centre.npcservices.com.au',
     'https://npc-property-dashbord.lovable.app',
     'https://id-preview--7976d60b-c277-4851-889b-c170285f4be2.lovable.app',
     'http://localhost:5173',
