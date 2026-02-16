@@ -4,9 +4,14 @@ import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthori
 
 // Dynamic CORS headers for credential-based requests
 function createCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = origin && (origin.endsWith('.lovable.app') || origin.includes('localhost')) 
+  const allowedOrigin = origin && (
+    origin === 'https://command-centre.npcservices.com.au' ||
+    origin.endsWith('.lovable.app') ||
+    origin.endsWith('.lovableproject.com') ||
+    origin.includes('localhost')
+  )
     ? origin 
-    : 'https://npc-property-dashbord.lovable.app';
+    : 'https://command-centre.npcservices.com.au';
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,

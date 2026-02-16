@@ -294,6 +294,7 @@ function decodePdfStringFast(str: string): string {
 // Dynamic CORS headers for credentials support
 function createCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = [
+    'https://command-centre.npcservices.com.au',
     'https://npc-property-dashbord.lovable.app',
     'https://id-preview--7976d60b-c277-4851-889b-c170285f4be2.lovable.app',
     'http://localhost:5173',
