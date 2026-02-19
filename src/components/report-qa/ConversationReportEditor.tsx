@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import jsPDF from 'jspdf';
 
 interface Message {
@@ -104,6 +105,11 @@ export function ConversationReportEditor({
       const usableWidth = pageWidth - margin * 2;
       let yPos = margin;
 
+      // Fetch global settings for contact/disclaimer
+      const globalSettings = await fetchGlobalReportSettings();
+      const contact = globalSettings.contactDetails;
+      const disclaimerSettings = globalSettings.disclaimer;
+
       const ensureSpace = (needed: number) => {
         if (yPos + needed > pageHeight - 25) {
           doc.addPage();
@@ -111,17 +117,81 @@ export function ConversationReportEditor({
         }
       };
 
-      // Header
+      // ============= COVER PAGE =============
+      // Try to load the QA cover image template
+      let coverImageLoaded = false;
+      try {
+        const coverResponse = await fetch('/templates/npc-qa-cover.jpg');
+        if (coverResponse.ok) {
+          const coverBlob = await coverResponse.blob();
+          const coverDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(coverBlob);
+          });
+          doc.addImage(coverDataUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
+          coverImageLoaded = true;
+        }
+      } catch (e) {
+        console.warn('Cover template not loaded, using fallback:', e);
+      }
+
+      if (!coverImageLoaded) {
+        // Fallback programmatic cover page
+        doc.setFillColor(15, 18, 25);
+        doc.rect(0, 0, pageWidth, pageHeight, 'F');
+        
+        // Gold accent line
+        doc.setDrawColor(191, 155, 80);
+        doc.setLineWidth(0.8);
+        doc.line(pageWidth * 0.3, pageHeight * 0.42, pageWidth * 0.7, pageHeight * 0.42);
+      }
+
+      // Overlay dynamic text on cover
+      const dateStr = new Date().toLocaleDateString('en-AU', {
+        day: 'numeric', month: 'long', year: 'numeric'
+      });
+
+      // Report title - centered
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      const reportTitle = 'Property Analysis Report';
+      doc.text(reportTitle, pageWidth / 2, pageHeight * 0.48, { align: 'center' });
+
+      // Report names / subject
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(191, 155, 80);
+      const subjectText = reportNames.length > 0 ? reportNames.join(' | ') : title;
+      const wrappedSubject = doc.splitTextToSize(subjectText, usableWidth * 0.8);
+      doc.text(wrappedSubject, pageWidth / 2, pageHeight * 0.55, { align: 'center' });
+
+      // Date
+      doc.setFontSize(12);
+      doc.setTextColor(200, 200, 200);
+      doc.text(dateStr, pageWidth / 2, pageHeight * 0.62, { align: 'center' });
+
+      // Company name at bottom
+      doc.setFontSize(10);
+      doc.setTextColor(191, 155, 80);
+      doc.text(contact.company_name || 'NPC Services', pageWidth / 2, pageHeight - 30, { align: 'center' });
+
+      // ============= CONTENT PAGES =============
+      doc.addPage();
+      yPos = margin;
+
+      // Content page header
       doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageWidth, 35, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('NPC Services', margin, 15);
+      doc.text(contact.company_name || 'NPC Services', margin, 15);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text('Investment Property Analysis', margin, 22);
-      doc.text(`Generated: ${new Date().toLocaleDateString('en-AU')}`, margin, 28);
+      doc.text(`Generated: ${dateStr}`, margin, 28);
       
       yPos = 45;
       doc.setTextColor(0, 0, 0);
@@ -407,15 +477,80 @@ export function ConversationReportEditor({
         yPos += wrappedText.length * 4.5 + 2;
         i++;
       }
-      // Footer on each page
+      // ============= DISCLAIMER & CONTACT PAGE =============
+      doc.addPage();
+      
+      // Dark background
+      doc.setFillColor(20, 20, 20);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      // Company name - large gold text
+      doc.setTextColor(191, 155, 80);
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      const companyParts = (contact.company_name || 'NPC SERVICES').toUpperCase().split(' ');
+      if (companyParts.length >= 2) {
+        doc.text(companyParts.slice(0, -1).join(' '), margin, 40);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'normal');
+        doc.text(companyParts[companyParts.length - 1], margin, 52);
+      } else {
+        doc.text(companyParts[0], margin, 40);
+      }
+
+      // "CONTACT US" header
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(191, 155, 80);
+      doc.text('CONTACT US', margin, 80);
+
+      // Contact details
+      const labelX = margin;
+      const valueX = margin + 35;
+      let contactY = 100;
+      const contactLineH = 12;
+
+      const drawContactLine = (label: string, value: string) => {
+        if (!value) return;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(191, 155, 80);
+        doc.text(label.toUpperCase() + ':', labelX, contactY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, valueX, contactY);
+        contactY += contactLineH;
+      };
+
+      drawContactLine('Website', contact.website);
+      drawContactLine('Email', contact.email);
+      drawContactLine('Phone', contact.phone);
+      drawContactLine('Address', contact.address);
+      drawContactLine('ABN', contact.abn);
+
+      // Disclaimer text at bottom
+      if (disclaimerSettings.is_enabled && disclaimerSettings.text) {
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(153, 153, 153);
+        const disclaimerText = sanitizeForPDF(disclaimerSettings.text);
+        const wrappedDisclaimer = doc.splitTextToSize(disclaimerText, usableWidth);
+        // Position disclaimer from bottom up
+        const disclaimerStartY = pageHeight - 20 - (wrappedDisclaimer.length * 3.5);
+        doc.text(wrappedDisclaimer, margin, Math.max(disclaimerStartY, contactY + 20));
+      }
+
+      // Footer on each page (skip cover page = page 1, skip disclaimer = last page)
       const totalPages = doc.getNumberOfPages();
+      const companyFooterName = contact.company_name || 'NPC Services';
       for (let i = 1; i <= totalPages; i++) {
+        // Skip cover (page 1) and disclaimer (last page)
+        if (i === 1 || i === totalPages) continue;
         doc.setPage(i);
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(150, 150, 150);
         doc.text(
-          `NPC Services — Confidential — Page ${i} of ${totalPages}`,
+          `${companyFooterName} -- Confidential -- Page ${i - 1} of ${totalPages - 2}`,
           pageWidth / 2,
           pageHeight - 8,
           { align: 'center' }
