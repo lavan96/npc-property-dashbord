@@ -18,7 +18,8 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigin = origin && (
     allowedOrigins.includes(origin) ||
     origin.endsWith('.lovable.app') ||
-    origin.endsWith('.lovableproject.com')
+    origin.endsWith('.lovableproject.com') ||
+    origin.endsWith('.npcservices.com.au')
   ) ? origin : allowedOrigins[0];
 
   return {
