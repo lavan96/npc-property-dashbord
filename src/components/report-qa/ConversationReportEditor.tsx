@@ -147,35 +147,11 @@ export function ConversationReportEditor({
         doc.line(pageWidth * 0.3, pageHeight * 0.42, pageWidth * 0.7, pageHeight * 0.42);
       }
 
-      // Overlay dynamic text on cover
+      // No overlay text on cover — the template image is used as-is
+
       const dateStr = new Date().toLocaleDateString('en-AU', {
         day: 'numeric', month: 'long', year: 'numeric'
       });
-
-      // Report title - centered
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(28);
-      doc.setFont('helvetica', 'bold');
-      const reportTitle = 'Property Analysis Report';
-      doc.text(reportTitle, pageWidth / 2, pageHeight * 0.48, { align: 'center' });
-
-      // Report names / subject
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(191, 155, 80);
-      const subjectText = reportNames.length > 0 ? reportNames.join(' | ') : title;
-      const wrappedSubject = doc.splitTextToSize(subjectText, usableWidth * 0.8);
-      doc.text(wrappedSubject, pageWidth / 2, pageHeight * 0.55, { align: 'center' });
-
-      // Date
-      doc.setFontSize(12);
-      doc.setTextColor(200, 200, 200);
-      doc.text(dateStr, pageWidth / 2, pageHeight * 0.62, { align: 'center' });
-
-      // Company name at bottom
-      doc.setFontSize(10);
-      doc.setTextColor(191, 155, 80);
-      doc.text(contact.company_name || 'NPC Services', pageWidth / 2, pageHeight - 30, { align: 'center' });
 
       // ============= CONTENT PAGES =============
       doc.addPage();
