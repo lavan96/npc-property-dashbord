@@ -137,8 +137,9 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
         const cellPadding = 2;
         const rowHeight = 8;
 
-        const totalHeight = (rows.length + 1) * rowHeight + 4;
-        ensureSpace(Math.min(totalHeight, 60));
+        // Ensure space for at least the header + first 2 rows
+        const minTableHeight = Math.min((rows.length + 1) * rowHeight + 4, 3 * rowHeight + 4);
+        ensureSpace(minTableHeight);
 
         let xPos = margin;
         doc.setFillColor(240, 245, 255);
@@ -251,6 +252,21 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           continue;
         }
 
+        // H5 (must be checked before H4)
+        if (trimmed.startsWith('##### ')) {
+          ensureSpace(14);
+          yPos += 2;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(71, 85, 105);
+          const h5Text = trimmed.replace(/^#####+ /, '');
+          const wrappedH5 = doc.splitTextToSize(h5Text, usableWidth);
+          doc.text(wrappedH5, margin, yPos);
+          yPos += wrappedH5.length * 4.5 + 3;
+          i++;
+          continue;
+        }
+
         // H4
         if (trimmed.startsWith('#### ')) {
           ensureSpace(14);
@@ -258,7 +274,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.setFontSize(10);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(51, 65, 85);
-          const h4Text = trimmed.replace(/^#### /, '');
+          const h4Text = trimmed.replace(/^####+ /, '');
           const wrappedH4 = doc.splitTextToSize(h4Text, usableWidth);
           doc.text(wrappedH4, margin, yPos);
           yPos += wrappedH4.length * 4.5 + 3;
@@ -326,6 +342,21 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.text('•', margin + 2, yPos);
           doc.text(wrappedBullet, margin + 8, yPos);
           yPos += wrappedBullet.length * 4.5 + 1.5;
+          i++;
+          continue;
+        }
+
+        // Bold-only lines (rendered as styled sub-headings)
+        if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.startsWith('***')) {
+          ensureSpace(14);
+          yPos += 2;
+          doc.setFontSize(10.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 41, 59);
+          const boldText = sanitizeForPDF(trimmed.replace(/^\*\*|\*\*$/g, ''));
+          const wrappedBold = doc.splitTextToSize(boldText, usableWidth);
+          doc.text(wrappedBold, margin, yPos);
+          yPos += wrappedBold.length * 4.5 + 3;
           i++;
           continue;
         }
