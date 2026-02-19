@@ -9,7 +9,7 @@ import {
 import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ModelProvider = 'openai' | 'openai-direct' | 'perplexity';
+export type ModelProvider = 'openai' | 'openai-direct' | 'perplexity' | 'gemini';
 
 interface ModelSelectorProps {
   selectedModel: ModelProvider;
@@ -44,7 +44,26 @@ export function PerplexityLogo({ className }: { className?: string }) {
   );
 }
 
+// Google Gemini Logo SVG Component
+export function GeminiLogo({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M12 0C12 6.627 17.373 12 24 12C17.373 12 12 17.373 12 24C12 17.373 6.627 12 0 12C6.627 12 12 6.627 12 0Z" />
+    </svg>
+  );
+}
+
 const MODEL_OPTIONS = [
+  {
+    id: 'gemini' as ModelProvider,
+    name: 'Gemini Pro',
+    description: 'Large context window — best for big docs',
+    Icon: GeminiLogo,
+  },
   {
     id: 'openai' as ModelProvider,
     name: 'OpenAI GPT-5.2',

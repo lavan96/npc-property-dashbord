@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { OpenAILogo, PerplexityLogo, type ModelProvider } from './ModelSelector';
+import { OpenAILogo, PerplexityLogo, GeminiLogo, type ModelProvider } from './ModelSelector';
 import { ArrowRight } from 'lucide-react';
 
 interface ModelSwitchDividerProps {
@@ -8,10 +8,23 @@ interface ModelSwitchDividerProps {
   className?: string;
 }
 
+function getModelIcon(model: ModelProvider) {
+  if (model === 'gemini') return GeminiLogo;
+  if (model === 'perplexity') return PerplexityLogo;
+  return OpenAILogo;
+}
+
+function getModelLabel(model: ModelProvider) {
+  if (model === 'gemini') return 'Gemini Pro';
+  if (model === 'perplexity') return 'Perplexity';
+  if (model === 'openai-direct') return 'GPT-4.1';
+  return 'GPT-5.2';
+}
+
 export function ModelSwitchDivider({ fromModel, toModel, className }: ModelSwitchDividerProps) {
-  const FromIcon = fromModel === 'openai' ? OpenAILogo : PerplexityLogo;
-  const ToIcon = toModel === 'openai' ? OpenAILogo : PerplexityLogo;
-  const toLabel = toModel === 'openai' ? 'GPT-5.2' : 'Perplexity';
+  const FromIcon = getModelIcon(fromModel);
+  const ToIcon = getModelIcon(toModel);
+  const toLabel = getModelLabel(toModel);
 
   return (
     <div className={cn('flex items-center gap-3 py-3', className)}>
