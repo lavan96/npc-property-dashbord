@@ -301,11 +301,12 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
     'http://localhost:8080',
   ];
   
-  // Allow Lovable preview domains dynamically
+  // Allow Lovable preview domains and custom domains dynamically
   const allowedOrigin = origin && (
     allowedOrigins.includes(origin) ||
     origin.endsWith('.lovable.app') ||
-    origin.endsWith('.lovableproject.com')
+    origin.endsWith('.lovableproject.com') ||
+    origin.endsWith('.npcservices.com.au')
   ) ? origin : allowedOrigins[0];
 
   return {
