@@ -511,6 +511,24 @@ NPC Team`
                               'Investment'
                             )}
                           </Badge>
+                          {/* Sourced By Badge */}
+                          {property.sourced_by && property.sourced_by !== 'unknown' && (
+                            <Badge 
+                              variant={property.sourced_by === 'npc' ? 'default' : 'outline'}
+                              className={
+                                property.sourced_by === 'npc' 
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                                  : property.sourced_by === 'self_sourced'
+                                    ? 'border-blue-500 text-blue-700 bg-blue-50'
+                                    : 'border-orange-500 text-orange-700 bg-orange-50'
+                              }
+                            >
+                              {property.sourced_by === 'npc' ? '🏆 NPC Sourced' 
+                                : property.sourced_by === 'self_sourced' ? 'Self Sourced' 
+                                : property.sourced_by === 'other_agency' ? 'Other Agency' 
+                                : property.sourced_by}
+                            </Badge>
+                          )}
                           <CardTitle className="text-base font-medium mt-2 flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
                             {property.address}

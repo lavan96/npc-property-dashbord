@@ -61,6 +61,7 @@ interface ClientCardProps {
     client_properties?: { id: string }[];
     pipeline_status?: string | null;
     follow_up_date?: string | null;
+    deal_status?: string;
   };
   ghlLocationId?: string | null;
   onView: () => void;
@@ -283,6 +284,16 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
                 ? client.pipeline_status.substring(0, 18) + '...' 
                 : client.pipeline_status
               }
+            </Badge>
+          </div>
+        )}
+
+        {/* Deal Status */}
+        {client.deal_status === 'closed' && (
+          <div className="flex items-center justify-between pt-2 border-t">
+            <span className="text-xs text-muted-foreground">Deal Status</span>
+            <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+              🏆 Deal Closed
             </Badge>
           </div>
         )}
