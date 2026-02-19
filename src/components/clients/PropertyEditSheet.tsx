@@ -33,7 +33,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Trash2 } from 'lucide-react';
+import { Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Trash2, Trophy } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import {
@@ -42,6 +43,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+type SourcedByType = 'npc' | 'self_sourced' | 'other_agency' | 'unknown';
 
 interface PropertyData {
   id: string;
@@ -72,6 +75,9 @@ interface PropertyData {
   smsf_abn: string | null;
   smsf_compliance_status: string | null;
   smsf_auditor_name: string | null;
+  sourced_by?: string | null;
+  deal_closed_at?: string | null;
+  sourced_notes?: string | null;
 }
 
 interface PropertyEditSheetProps {
@@ -114,6 +120,9 @@ interface PropertyFormData {
   smsf_abn: string;
   smsf_compliance_status: 'compliant' | 'non_compliant' | 'pending_audit';
   smsf_auditor_name: string;
+  sourced_by: SourcedByType;
+  deal_closed_at: string;
+  sourced_notes: string;
 }
 
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
@@ -165,6 +174,9 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     smsf_abn: '',
     smsf_compliance_status: 'compliant',
     smsf_auditor_name: '',
+    sourced_by: 'unknown',
+    deal_closed_at: '',
+    sourced_notes: '',
   });
 
   // Populate form with existing property data when sheet opens
@@ -198,6 +210,9 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         smsf_abn: property.smsf_abn || '',
         smsf_compliance_status: (property.smsf_compliance_status as 'compliant' | 'non_compliant' | 'pending_audit') || 'compliant',
         smsf_auditor_name: property.smsf_auditor_name || '',
+        sourced_by: (property.sourced_by as SourcedByType) || 'unknown',
+        deal_closed_at: property.deal_closed_at ? property.deal_closed_at.split('T')[0] : '',
+        sourced_notes: property.sourced_notes || '',
       });
     }
   }, [open, property]);
@@ -288,6 +303,9 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
         smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
+        sourced_by: formData.sourced_by,
+        deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
+        sourced_notes: formData.sourced_notes || null,
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -300,6 +318,24 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
       
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Failed to update property');
+      }
+
+      // Auto-update client deal_status when NPC-sourced property is saved
+      if (formData.sourced_by === 'npc') {
+        try {
+          const clientUpdateData: Record<string, any> = { deal_status: 'closed' };
+          if (formData.deal_closed_at) {
+            clientUpdateData.first_deal_closed_at = formData.deal_closed_at;
+          }
+          await invokeSecureFunction('manage-client-data', {
+            operation: 'update',
+            table: 'clients',
+            clientId: property.client_id,
+            data: clientUpdateData,
+          });
+        } catch (e) {
+          console.warn('Failed to auto-update client deal status:', e);
+        }
       }
     },
     onSuccess: () => {
@@ -598,6 +634,59 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 </CardContent>
               </Card>
             )}
+
+            {/* Deal Sourcing */}
+            <Card className="border-primary/20">
+              <CardContent className="pt-4">
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Deal Sourcing
+                  </h4>
+
+                  <div className="space-y-2">
+                    <Label>Sourced By</Label>
+                    <Select
+                      value={formData.sourced_by}
+                      onValueChange={(v) => updateField('sourced_by', v as SourcedByType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="npc">NPC (Our Deal)</SelectItem>
+                        <SelectItem value="self_sourced">Self-sourced by Client</SelectItem>
+                        <SelectItem value="other_agency">Other Agency</SelectItem>
+                        <SelectItem value="unknown">Unknown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.sourced_by === 'npc' && (
+                    <div className="space-y-2">
+                      <Label>Deal Closed Date</Label>
+                      <Input
+                        type="date"
+                        value={formData.deal_closed_at}
+                        onChange={(e) => updateField('deal_closed_at', e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {(formData.sourced_by === 'other_agency' || formData.sourced_by === 'npc') && (
+                    <div className="space-y-2">
+                      <Label>{formData.sourced_by === 'other_agency' ? 'Agency Name / Notes' : 'Notes'}</Label>
+                      <Textarea
+                        value={formData.sourced_notes}
+                        onChange={(e) => updateField('sourced_notes', e.target.value)}
+                        placeholder={formData.sourced_by === 'other_agency' ? 'Enter agency name or details...' : 'Any notes about this deal...'}
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Financial Details */}
             <div className="space-y-4">
