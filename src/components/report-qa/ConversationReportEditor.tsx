@@ -104,8 +104,15 @@ export function ConversationReportEditor({
       const usableWidth = pageWidth - margin * 2;
       let yPos = margin;
 
+      const ensureSpace = (needed: number) => {
+        if (yPos + needed > pageHeight - 25) {
+          doc.addPage();
+          yPos = margin;
+        }
+      };
+
       // Header
-      doc.setFillColor(15, 23, 42); // slate-900
+      doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageWidth, 35, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
@@ -119,25 +126,114 @@ export function ConversationReportEditor({
       yPos = 45;
       doc.setTextColor(0, 0, 0);
 
-      // Parse markdown content into lines for PDF
-      const lines = reportContent.split('\n');
-      
-      for (const line of lines) {
-        // Check for page break
-        if (yPos > pageHeight - 30) {
-          doc.addPage();
-          yPos = margin;
-        }
+      const stripMarkdown = (text: string) =>
+        text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
 
+      // Detect markdown table block
+      const isTableLine = (line: string) => line.trim().startsWith('|') && line.trim().endsWith('|');
+      const isSeparatorLine = (line: string) => /^\|[\s\-:]+(\|[\s\-:]+)+\|$/.test(line.trim());
+
+      const drawTable = (tableLines: string[]) => {
+        // Parse header, separator, and body
+        const parseRow = (line: string) =>
+          line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => stripMarkdown(c.trim()));
+
+        const header = parseRow(tableLines[0]);
+        const bodyLines = tableLines.slice(2); // skip separator
+        const rows = bodyLines.map(parseRow);
+        const colCount = header.length;
+
+        // Calculate column widths proportionally
+        const allRows = [header, ...rows];
+        const colWidths: number[] = [];
+        const totalChars = header.reduce((sum, h, i) => {
+          const maxLen = Math.max(h.length, ...rows.map(r => (r[i] || '').length));
+          colWidths.push(maxLen);
+          return sum + maxLen;
+        }, 0);
+        const colWidthsMM = colWidths.map(w => Math.max((w / totalChars) * usableWidth, 25));
+        // Normalize to fit usableWidth
+        const totalMM = colWidthsMM.reduce((a, b) => a + b, 0);
+        const scale = usableWidth / totalMM;
+        const finalWidths = colWidthsMM.map(w => w * scale);
+
+        const cellPadding = 2;
+        const rowHeight = 8;
+
+        // Estimate total height
+        const totalHeight = (rows.length + 1) * rowHeight + 4;
+        ensureSpace(Math.min(totalHeight, 60)); // at least fit header + a few rows
+
+        // Draw header
+        let xPos = margin;
+        doc.setFillColor(240, 245, 255);
+        doc.rect(margin, yPos - 5, usableWidth, rowHeight, 'F');
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        for (let i = 0; i < colCount; i++) {
+          doc.text(header[i], xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
+          xPos += finalWidths[i];
+        }
+        // Header border
+        doc.setDrawColor(200, 210, 230);
+        doc.setLineWidth(0.3);
+        doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
+        yPos += rowHeight;
+
+        // Draw body rows
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 51, 51);
+        for (const row of rows) {
+          ensureSpace(rowHeight + 2);
+          xPos = margin;
+          for (let i = 0; i < colCount; i++) {
+            const cellText = row[i] || '';
+            doc.text(cellText, xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
+            xPos += finalWidths[i];
+          }
+          // Row border
+          doc.setDrawColor(230, 230, 230);
+          doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
+          yPos += rowHeight;
+        }
+        yPos += 4;
+      };
+
+      const lines = reportContent.split('\n');
+      let i = 0;
+      
+      while (i < lines.length) {
+        const line = lines[i];
         const trimmed = line.trim();
-        
-        if (!trimmed) {
-          yPos += 4;
+
+        // Collect table block
+        if (isTableLine(trimmed)) {
+          const tableLines: string[] = [];
+          while (i < lines.length && isTableLine(lines[i].trim())) {
+            if (!isSeparatorLine(lines[i].trim()) || tableLines.length === 1) {
+              tableLines.push(lines[i]);
+            }
+            i++;
+          }
+          if (tableLines.length >= 2) {
+            drawTable(tableLines);
+          }
           continue;
         }
 
-        // H1
-        if (trimmed.startsWith('# ')) {
+        // Check for page break
+        ensureSpace(8);
+
+        if (!trimmed) {
+          yPos += 4;
+          i++;
+          continue;
+        }
+
+        // H1 - also check next line has content to avoid orphan
+        if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
+          ensureSpace(20); // Prevent orphaned heading
           yPos += 4;
           doc.setFontSize(16);
           doc.setFont('helvetica', 'bold');
@@ -146,16 +242,17 @@ export function ConversationReportEditor({
           const wrappedH1 = doc.splitTextToSize(h1Text, usableWidth);
           doc.text(wrappedH1, margin, yPos);
           yPos += wrappedH1.length * 7 + 2;
-          // Underline
           doc.setDrawColor(59, 130, 246);
           doc.setLineWidth(0.5);
           doc.line(margin, yPos, pageWidth - margin, yPos);
           yPos += 6;
+          i++;
           continue;
         }
 
         // H2
-        if (trimmed.startsWith('## ')) {
+        if (trimmed.startsWith('## ') && !trimmed.startsWith('### ')) {
+          ensureSpace(18);
           yPos += 3;
           doc.setFontSize(13);
           doc.setFont('helvetica', 'bold');
@@ -164,11 +261,13 @@ export function ConversationReportEditor({
           const wrappedH2 = doc.splitTextToSize(h2Text, usableWidth);
           doc.text(wrappedH2, margin, yPos);
           yPos += wrappedH2.length * 6 + 4;
+          i++;
           continue;
         }
 
         // H3
-        if (trimmed.startsWith('### ')) {
+        if (trimmed.startsWith('### ') && !trimmed.startsWith('#### ')) {
+          ensureSpace(16);
           yPos += 2;
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
@@ -177,6 +276,22 @@ export function ConversationReportEditor({
           const wrappedH3 = doc.splitTextToSize(h3Text, usableWidth);
           doc.text(wrappedH3, margin, yPos);
           yPos += wrappedH3.length * 5 + 3;
+          i++;
+          continue;
+        }
+
+        // H4
+        if (trimmed.startsWith('#### ')) {
+          ensureSpace(14);
+          yPos += 2;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(51, 65, 85);
+          const h4Text = trimmed.replace(/^#### /, '');
+          const wrappedH4 = doc.splitTextToSize(h4Text, usableWidth);
+          doc.text(wrappedH4, margin, yPos);
+          yPos += wrappedH4.length * 4.5 + 3;
+          i++;
           continue;
         }
 
@@ -187,6 +302,44 @@ export function ConversationReportEditor({
           doc.setLineWidth(0.3);
           doc.line(margin, yPos, pageWidth - margin, yPos);
           yPos += 4;
+          i++;
+          continue;
+        }
+
+        // Numbered list items (e.g., "1. ", "2. ")
+        if (/^\d+\.\s/.test(trimmed)) {
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 51, 51);
+          const match = trimmed.match(/^(\d+\.)\s(.*)$/);
+          if (match) {
+            const num = match[1];
+            const text = stripMarkdown(match[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(num, margin + 2, yPos);
+            doc.setFont('helvetica', 'normal');
+            const wrappedNum = doc.splitTextToSize(text, usableWidth - 12);
+            ensureSpace(wrappedNum.length * 4.5 + 2);
+            doc.text(wrappedNum, margin + 10, yPos);
+            yPos += wrappedNum.length * 4.5 + 2;
+          }
+          i++;
+          continue;
+        }
+
+        // Nested bullet points (- - or indented -)
+        if (/^\s{2,}-\s/.test(line) || trimmed.startsWith('- -')) {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(80, 80, 80);
+          const bulletText = trimmed.replace(/^-\s*-\s*/, '').replace(/^-\s/, '');
+          const cleanText = stripMarkdown(bulletText);
+          const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 16);
+          ensureSpace(wrappedBullet.length * 4 + 2);
+          doc.text('◦', margin + 8, yPos);
+          doc.text(wrappedBullet, margin + 14, yPos);
+          yPos += wrappedBullet.length * 4 + 1.5;
+          i++;
           continue;
         }
 
@@ -196,24 +349,27 @@ export function ConversationReportEditor({
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(51, 51, 51);
           const bulletText = trimmed.replace(/^[-*] /, '');
-          // Strip bold markdown
-          const cleanText = bulletText.replace(/\*\*(.*?)\*\*/g, '$1');
-          const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 8);
+          const cleanText = stripMarkdown(bulletText);
+          const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 10);
+          ensureSpace(wrappedBullet.length * 4.5 + 2);
           doc.text('•', margin + 2, yPos);
           doc.text(wrappedBullet, margin + 8, yPos);
           yPos += wrappedBullet.length * 4.5 + 1.5;
+          i++;
           continue;
         }
 
-        // Italic/meta lines (e.g. *Reports analyzed: ...*)
+        // Italic/meta lines
         if (trimmed.startsWith('*') && trimmed.endsWith('*') && !trimmed.startsWith('**')) {
           doc.setFontSize(8);
           doc.setFont('helvetica', 'italic');
           doc.setTextColor(120, 120, 120);
           const metaText = trimmed.replace(/^\*|\*$/g, '');
           const wrappedMeta = doc.splitTextToSize(metaText, usableWidth);
+          ensureSpace(wrappedMeta.length * 3.5 + 2);
           doc.text(wrappedMeta, margin, yPos);
           yPos += wrappedMeta.length * 3.5 + 2;
+          i++;
           continue;
         }
 
@@ -221,22 +377,13 @@ export function ConversationReportEditor({
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
-        // Strip markdown bold/italic for PDF
-        const cleanLine = trimmed
-          .replace(/\*\*(.*?)\*\*/g, '$1')
-          .replace(/\*(.*?)\*/g, '$1');
+        const cleanLine = stripMarkdown(trimmed);
         const wrappedText = doc.splitTextToSize(cleanLine, usableWidth);
-        
-        // Check if wrapped text fits
-        if (yPos + wrappedText.length * 4.5 > pageHeight - 25) {
-          doc.addPage();
-          yPos = margin;
-        }
-        
+        ensureSpace(wrappedText.length * 4.5 + 2);
         doc.text(wrappedText, margin, yPos);
         yPos += wrappedText.length * 4.5 + 2;
+        i++;
       }
-
       // Footer on each page
       const totalPages = doc.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
