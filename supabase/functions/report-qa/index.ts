@@ -985,6 +985,22 @@ No investment report has been uploaded. You are having an open conversation abou
               stream: true,
             }),
           });
+        } else if (modelProvider === 'gemini') {
+          // Use Lovable AI Gateway with Gemini Pro (large context window)
+          console.log(`[report-qa] Using Gemini Pro via Lovable AI Gateway`);
+          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-pro",
+              messages,
+              max_tokens: 8192,
+              stream: true,
+            }),
+          });
         } else {
           // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
           response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -1067,6 +1083,21 @@ No investment report has been uploaded. You are having an open conversation abou
             model: "gpt-4.1",
             messages,
             max_completion_tokens: 4096,
+          }),
+        });
+      } else if (modelProvider === 'gemini') {
+        // Use Lovable AI Gateway with Gemini Pro (large context window)
+        console.log(`[report-qa] Using Gemini Pro via Lovable AI Gateway (non-streaming)`);
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-pro",
+            messages,
+            max_tokens: 8192,
           }),
         });
       } else {

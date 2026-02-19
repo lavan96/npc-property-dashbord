@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { OpenAILogo, PerplexityLogo, type ModelProvider } from './ModelSelector';
+import { OpenAILogo, PerplexityLogo, GeminiLogo, type ModelProvider } from './ModelSelector';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 interface ModelBadgeProps {
@@ -11,21 +11,38 @@ interface ModelBadgeProps {
 export function ModelBadge({ provider, className, showLabel = false }: ModelBadgeProps) {
   if (!provider) return null;
 
-  const config = provider === 'openai' 
-    ? {
-        Icon: OpenAILogo,
-        label: 'GPT-5.2',
-        color: 'text-emerald-600 dark:text-emerald-400',
-        bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
-        borderColor: 'border-emerald-200 dark:border-emerald-800',
-      }
-    : {
-        Icon: PerplexityLogo,
-        label: 'Perplexity',
-        color: 'text-blue-600 dark:text-blue-400',
-        bgColor: 'bg-blue-50 dark:bg-blue-950/30',
-        borderColor: 'border-blue-200 dark:border-blue-800',
-      };
+  const configs: Record<string, { Icon: typeof OpenAILogo; label: string; color: string; bgColor: string; borderColor: string }> = {
+    openai: {
+      Icon: OpenAILogo,
+      label: 'GPT-5.2',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
+      borderColor: 'border-emerald-200 dark:border-emerald-800',
+    },
+    'openai-direct': {
+      Icon: OpenAILogo,
+      label: 'GPT-4.1',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
+      borderColor: 'border-emerald-200 dark:border-emerald-800',
+    },
+    perplexity: {
+      Icon: PerplexityLogo,
+      label: 'Perplexity',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+      borderColor: 'border-blue-200 dark:border-blue-800',
+    },
+    gemini: {
+      Icon: GeminiLogo,
+      label: 'Gemini Pro',
+      color: 'text-violet-600 dark:text-violet-400',
+      bgColor: 'bg-violet-50 dark:bg-violet-950/30',
+      borderColor: 'border-violet-200 dark:border-violet-800',
+    },
+  };
+
+  const config = configs[provider] || configs.openai;
 
   const badge = (
     <div 
