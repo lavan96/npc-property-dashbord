@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont, RGB } from 'pdf-lib';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import jsPDF from 'jspdf';
+import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface QAPDFGeneratorProps {
   content: string;
@@ -11,53 +11,6 @@ interface QAPDFGeneratorProps {
   reportNames: string[];
   onComplete?: () => void;
 }
-
-// Color type for the PDF
-interface PDFColors {
-  black: RGB;
-  darkGray: RGB;
-  gold: RGB;
-  lightGold: RGB;
-  white: RGB;
-  gray: RGB;
-  darkText: RGB;
-}
-
-// Template configuration interface
-interface TemplateConfig {
-  id: string;
-  name: string;
-  colors: PDFColors;
-  companyName: string;
-  companyNameLine2: string;
-  tagline: string;
-  contactPhone: string;
-  contactEmail: string;
-  website: string;
-  disclaimer: string;
-}
-
-// Default NPC Brand configuration
-const defaultConfig: TemplateConfig = {
-  id: 'default',
-  name: 'Default NPC Template',
-  colors: {
-    black: rgb(0.04, 0.04, 0.04),         // #0a0a0a
-    darkGray: rgb(0.18, 0.18, 0.18),       // #2d2d2d
-    gold: rgb(0.79, 0.64, 0.15),           // #c9a227
-    lightGold: rgb(0.91, 0.84, 0.62),      // #e8d59d
-    white: rgb(1, 1, 1),
-    gray: rgb(0.53, 0.53, 0.53),           // #888888
-    darkText: rgb(0.1, 0.1, 0.1),          // #1a1a1a
-  },
-  companyName: 'NAIDU PROPERTY',
-  companyNameLine2: 'CONSULTING SERVICES',
-  tagline: 'YOUR DEDICATED PROPERTY PARTNER',
-  contactPhone: '0433 005 110',
-  contactEmail: 'admin@npcservices.com.au',
-  website: 'npcservices.com.au',
-  disclaimer: 'Disclaimer: This summary is provided for informational purposes only and does not constitute financial advice.',
-};
 
 export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({ 
   content, 
@@ -67,141 +20,422 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
-  const loadActiveTemplate = async (): Promise<TemplateConfig> => {
-    try {
-      // Fetch active qa_export template via secure function
-      const { data, error } = await invokeSecureFunction('get-investment-reports', {
-        table: 'report_structure_templates',
-        listMode: true,
-        listOptions: {
-          select: '*'
-        }
-      });
-
-      // The get-investment-reports function doesn't support this table, so use fallback
-      // For now, use the default config since template fetching requires a dedicated endpoint
-      if (error || !data?.reports) {
-        console.log('Using default QA template (template fetch not supported via secure function)');
-        return defaultConfig;
-      }
-
-      // Filter for active qa_export template
-      const template = data.reports.find((t: any) => t.template_type === 'qa_export' && t.is_active);
-
-      // Parse metadata for custom configuration if available
-      const metadata = template.metadata as Record<string, any> | null;
-      
-      if (metadata?.branding) {
-        // If template has branding configuration, use it
-        const branding = metadata.branding;
-        return {
-          id: template.id,
-          name: template.name,
-          colors: {
-            black: branding.colors?.black ? parseColor(branding.colors.black) : defaultConfig.colors.black,
-            darkGray: branding.colors?.darkGray ? parseColor(branding.colors.darkGray) : defaultConfig.colors.darkGray,
-            gold: branding.colors?.primary ? parseColor(branding.colors.primary) : defaultConfig.colors.gold,
-            lightGold: branding.colors?.primaryLight ? parseColor(branding.colors.primaryLight) : defaultConfig.colors.lightGold,
-            white: defaultConfig.colors.white,
-            gray: branding.colors?.gray ? parseColor(branding.colors.gray) : defaultConfig.colors.gray,
-            darkText: branding.colors?.text ? parseColor(branding.colors.text) : defaultConfig.colors.darkText,
-          },
-          companyName: branding.companyName || defaultConfig.companyName,
-          companyNameLine2: branding.companyNameLine2 || defaultConfig.companyNameLine2,
-          tagline: branding.tagline || defaultConfig.tagline,
-          contactPhone: branding.contactPhone || defaultConfig.contactPhone,
-          contactEmail: branding.contactEmail || defaultConfig.contactEmail,
-          website: branding.website || defaultConfig.website,
-          disclaimer: branding.disclaimer || defaultConfig.disclaimer,
-        };
-      }
-
-      // Template exists but no custom branding - use default with template name
-      console.log(`Using template "${template.name}" with default styling`);
-      return {
-        ...defaultConfig,
-        id: template.id,
-        name: template.name,
+  const sanitizeForPDF = (text: string): string => {
+    let clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+    clean = clean.replace(/%æ\s*/g, '- ');
+    clean = clean.replace(/[≤≥→←↑↓•·…—–''""″′]/g, (ch) => {
+      const map: Record<string, string> = {
+        '≤': '<=', '≥': '>=', '→': '->', '←': '<-', '↑': '^', '↓': 'v',
+        '•': '-', '·': '-', '…': '...', '—': '--', '–': '-',
+        '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
+        '″': '"', '′': "'",
       };
-    } catch (err) {
-      console.error('Failed to load template:', err);
-      return defaultConfig;
-    }
-  };
-
-  const parseColor = (hexColor: string): RGB => {
-    // Parse hex color to RGB values
-    const hex = hexColor.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16) / 255;
-    const g = parseInt(hex.substring(2, 4), 16) / 255;
-    const b = parseInt(hex.substring(4, 6), 16) / 255;
-    return rgb(r, g, b);
+      return map[ch] || ch;
+    });
+    clean = clean.replace(/"d\$/g, '<=$');
+    clean = clean.replace(/[^\x00-\x7F]/g, (ch) => {
+      if (/[àáâãäåèéêëìíîïòóôõöùúûüýÿñçÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ×÷]/.test(ch)) return ch;
+      return '';
+    });
+    return clean;
   };
 
   const generatePDF = async () => {
     setIsGenerating(true);
-    console.log('🚀 Starting Q&A PDF generation');
-    
     try {
-      // Load template configuration
-      const templateConfig = await loadActiveTemplate();
-      console.log(`📋 Using template: ${templateConfig.name}`);
-      
-      // Create a new PDF document
-      const pdfDoc = await PDFDocument.create();
-      
-      // Embed fonts
-      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-      const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-      const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-      const timesRomanItalic = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const usableWidth = pageWidth - margin * 2;
+      let yPos = margin;
 
-      // Page dimensions (A4)
-      const pageWidth = 595;
-      const pageHeight = 842;
-      const margin = 60;
+      const globalSettings = await fetchGlobalReportSettings();
+      const contact = globalSettings.contactDetails;
+      const disclaimerSettings = globalSettings.disclaimer;
 
-      // Create cover page
-      await createCoverPage(pdfDoc, {
-        pageWidth,
-        pageHeight,
-        title,
-        reportNames,
-        fonts: { helvetica, helveticaBold, timesRoman, timesRomanBold },
-        colors: templateConfig.colors,
-        config: templateConfig,
+      const ensureSpace = (needed: number) => {
+        if (yPos + needed > pageHeight - 25) {
+          doc.addPage();
+          yPos = margin;
+        }
+      };
+
+      // ============= COVER PAGE =============
+      let coverImageLoaded = false;
+      try {
+        const coverResponse = await fetch('/templates/npc-qa-cover.jpg');
+        if (coverResponse.ok) {
+          const coverBlob = await coverResponse.blob();
+          const coverDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(coverBlob);
+          });
+          doc.addImage(coverDataUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
+          coverImageLoaded = true;
+        }
+      } catch (e) {
+        console.warn('Cover template not loaded, using fallback:', e);
+      }
+
+      if (!coverImageLoaded) {
+        doc.setFillColor(15, 18, 25);
+        doc.rect(0, 0, pageWidth, pageHeight, 'F');
+        doc.setDrawColor(191, 155, 80);
+        doc.setLineWidth(0.8);
+        doc.line(pageWidth * 0.3, pageHeight * 0.42, pageWidth * 0.7, pageHeight * 0.42);
+      }
+
+      const dateStr = new Date().toLocaleDateString('en-AU', {
+        day: 'numeric', month: 'long', year: 'numeric'
       });
 
-      // Create content pages
-      await createContentPages(pdfDoc, {
-        pageWidth,
-        pageHeight,
-        margin,
-        content,
-        fonts: { helvetica, helveticaBold, timesRoman, timesRomanBold, timesRomanItalic },
-        colors: templateConfig.colors,
-        config: templateConfig,
-      });
+      // ============= CONTENT PAGES =============
+      doc.addPage();
+      yPos = margin;
 
-      // Generate PDF bytes
-      const pdfBytes = await pdfDoc.save();
+      // Content page header
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text(contact.company_name || 'Naidu Property Consulting Services', margin, 15);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Investment Property Analysis', margin, 22);
+      doc.text(`Generated: ${dateStr}`, margin, 28);
       
-      // Create download
-      const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
+      yPos = 45;
+      doc.setTextColor(0, 0, 0);
+
+      // Detect markdown table block
+      const isTableLine = (line: string) => line.trim().startsWith('|') && line.trim().endsWith('|');
+      const isSeparatorLine = (line: string) => /^\|[\s\-:]+(\|[\s\-:]+)+\|$/.test(line.trim());
+
+      const drawTable = (tableLines: string[]) => {
+        const parseRow = (line: string) =>
+          line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => sanitizeForPDF(c.trim()));
+
+        const header = parseRow(tableLines[0]);
+        const bodyLines = tableLines.slice(2);
+        const rows = bodyLines.map(parseRow);
+        const colCount = header.length;
+
+        const colWidths: number[] = [];
+        const totalChars = header.reduce((sum, h, i) => {
+          const maxLen = Math.max(h.length, ...rows.map(r => (r[i] || '').length));
+          colWidths.push(maxLen);
+          return sum + maxLen;
+        }, 0);
+        const colWidthsMM = colWidths.map(w => Math.max((w / totalChars) * usableWidth, 25));
+        const totalMM = colWidthsMM.reduce((a, b) => a + b, 0);
+        const scale = usableWidth / totalMM;
+        const finalWidths = colWidthsMM.map(w => w * scale);
+
+        const cellPadding = 2;
+        const rowHeight = 8;
+
+        const totalHeight = (rows.length + 1) * rowHeight + 4;
+        ensureSpace(Math.min(totalHeight, 60));
+
+        let xPos = margin;
+        doc.setFillColor(240, 245, 255);
+        doc.rect(margin, yPos - 5, usableWidth, rowHeight, 'F');
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        for (let i = 0; i < colCount; i++) {
+          doc.text(header[i], xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
+          xPos += finalWidths[i];
+        }
+        doc.setDrawColor(200, 210, 230);
+        doc.setLineWidth(0.3);
+        doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
+        yPos += rowHeight;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 51, 51);
+        for (const row of rows) {
+          ensureSpace(rowHeight + 2);
+          xPos = margin;
+          for (let i = 0; i < colCount; i++) {
+            const cellText = row[i] || '';
+            doc.text(cellText, xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
+            xPos += finalWidths[i];
+          }
+          doc.setDrawColor(230, 230, 230);
+          doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
+          yPos += rowHeight;
+        }
+        yPos += 4;
+      };
+
+      const lines = content.split('\n');
+      let i = 0;
       
+      while (i < lines.length) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Collect table block
+        if (isTableLine(trimmed)) {
+          const tableLines: string[] = [];
+          while (i < lines.length && isTableLine(lines[i].trim())) {
+            if (!isSeparatorLine(lines[i].trim()) || tableLines.length === 1) {
+              tableLines.push(lines[i]);
+            }
+            i++;
+          }
+          if (tableLines.length >= 2) {
+            drawTable(tableLines);
+          }
+          continue;
+        }
+
+        ensureSpace(8);
+
+        if (!trimmed) {
+          yPos += 4;
+          i++;
+          continue;
+        }
+
+        // H1
+        if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
+          ensureSpace(20);
+          yPos += 4;
+          doc.setFontSize(16);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(15, 23, 42);
+          const h1Text = trimmed.replace(/^# /, '');
+          const wrappedH1 = doc.splitTextToSize(h1Text, usableWidth);
+          doc.text(wrappedH1, margin, yPos);
+          yPos += wrappedH1.length * 7 + 2;
+          doc.setDrawColor(59, 130, 246);
+          doc.setLineWidth(0.5);
+          doc.line(margin, yPos, pageWidth - margin, yPos);
+          yPos += 6;
+          i++;
+          continue;
+        }
+
+        // H2
+        if (trimmed.startsWith('## ') && !trimmed.startsWith('### ')) {
+          ensureSpace(18);
+          yPos += 3;
+          doc.setFontSize(13);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(37, 99, 235);
+          const h2Text = trimmed.replace(/^## /, '');
+          const wrappedH2 = doc.splitTextToSize(h2Text, usableWidth);
+          doc.text(wrappedH2, margin, yPos);
+          yPos += wrappedH2.length * 6 + 4;
+          i++;
+          continue;
+        }
+
+        // H3
+        if (trimmed.startsWith('### ') && !trimmed.startsWith('#### ')) {
+          ensureSpace(16);
+          yPos += 2;
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 64, 175);
+          const h3Text = trimmed.replace(/^### /, '');
+          const wrappedH3 = doc.splitTextToSize(h3Text, usableWidth);
+          doc.text(wrappedH3, margin, yPos);
+          yPos += wrappedH3.length * 5 + 3;
+          i++;
+          continue;
+        }
+
+        // H4
+        if (trimmed.startsWith('#### ')) {
+          ensureSpace(14);
+          yPos += 2;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(51, 65, 85);
+          const h4Text = trimmed.replace(/^#### /, '');
+          const wrappedH4 = doc.splitTextToSize(h4Text, usableWidth);
+          doc.text(wrappedH4, margin, yPos);
+          yPos += wrappedH4.length * 4.5 + 3;
+          i++;
+          continue;
+        }
+
+        // Horizontal rule
+        if (trimmed === '---' || trimmed === '***') {
+          yPos += 2;
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.line(margin, yPos, pageWidth - margin, yPos);
+          yPos += 4;
+          i++;
+          continue;
+        }
+
+        // Numbered list items
+        if (/^\d+\.\s/.test(trimmed)) {
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 51, 51);
+          const match = trimmed.match(/^(\d+\.)\s(.*)$/);
+          if (match) {
+            const num = match[1];
+            const text = sanitizeForPDF(match[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(num, margin + 2, yPos);
+            doc.setFont('helvetica', 'normal');
+            const wrappedNum = doc.splitTextToSize(text, usableWidth - 12);
+            ensureSpace(wrappedNum.length * 4.5 + 2);
+            doc.text(wrappedNum, margin + 10, yPos);
+            yPos += wrappedNum.length * 4.5 + 2;
+          }
+          i++;
+          continue;
+        }
+
+        // Nested bullet points
+        if (/^\s{2,}-\s/.test(line) || trimmed.startsWith('- -') || trimmed.startsWith('%æ')) {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(80, 80, 80);
+          const bulletText = trimmed.replace(/^-\s*-\s*/, '').replace(/^-\s/, '').replace(/^%æ\s*/, '');
+          const cleanText = sanitizeForPDF(bulletText);
+          const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 16);
+          ensureSpace(wrappedBullet.length * 4 + 2);
+          doc.text('-', margin + 8, yPos);
+          doc.text(wrappedBullet, margin + 14, yPos);
+          yPos += wrappedBullet.length * 4 + 1.5;
+          i++;
+          continue;
+        }
+
+        // Bullet points
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 51, 51);
+          const bulletText = trimmed.replace(/^[-*] /, '');
+          const cleanText = sanitizeForPDF(bulletText);
+          const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 10);
+          ensureSpace(wrappedBullet.length * 4.5 + 2);
+          doc.text('•', margin + 2, yPos);
+          doc.text(wrappedBullet, margin + 8, yPos);
+          yPos += wrappedBullet.length * 4.5 + 1.5;
+          i++;
+          continue;
+        }
+
+        // Italic/meta lines
+        if (trimmed.startsWith('*') && trimmed.endsWith('*') && !trimmed.startsWith('**')) {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(120, 120, 120);
+          const metaText = trimmed.replace(/^\*|\*$/g, '');
+          const wrappedMeta = doc.splitTextToSize(metaText, usableWidth);
+          ensureSpace(wrappedMeta.length * 3.5 + 2);
+          doc.text(wrappedMeta, margin, yPos);
+          yPos += wrappedMeta.length * 3.5 + 2;
+          i++;
+          continue;
+        }
+
+        // Regular text
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 51, 51);
+        const cleanLine = sanitizeForPDF(trimmed);
+        const wrappedText = doc.splitTextToSize(cleanLine, usableWidth);
+        ensureSpace(wrappedText.length * 4.5 + 2);
+        doc.text(wrappedText, margin, yPos);
+        yPos += wrappedText.length * 4.5 + 2;
+        i++;
+      }
+
+      // ============= DISCLAIMER & CONTACT PAGE =============
+      doc.addPage();
+      
+      doc.setFillColor(20, 20, 20);
+      doc.rect(0, 0, pageWidth, pageHeight, 'F');
+
+      doc.setTextColor(191, 155, 80);
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      const companyParts = (contact.company_name || 'Naidu Property Consulting Services').toUpperCase().split(' ');
+      if (companyParts.length >= 2) {
+        doc.text(companyParts.slice(0, -1).join(' '), margin, 40);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'normal');
+        doc.text(companyParts[companyParts.length - 1], margin, 52);
+      } else {
+        doc.text(companyParts[0], margin, 40);
+      }
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(191, 155, 80);
+      doc.text('CONTACT US', margin, 80);
+
+      const labelX = margin;
+      const valueX = margin + 35;
+      let contactY = 100;
+      const contactLineH = 12;
+
+      const drawContactLine = (label: string, value: string) => {
+        if (!value) return;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(191, 155, 80);
+        doc.text(label.toUpperCase() + ':', labelX, contactY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value, valueX, contactY);
+        contactY += contactLineH;
+      };
+
+      drawContactLine('Website', contact.website);
+      drawContactLine('Email', contact.email);
+      drawContactLine('Phone', contact.phone);
+      drawContactLine('Address', contact.address);
+      drawContactLine('ABN', contact.abn);
+
+      if (disclaimerSettings.is_enabled && disclaimerSettings.text) {
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(153, 153, 153);
+        const disclaimerText = sanitizeForPDF(disclaimerSettings.text);
+        const disclaimerMaxWidth = pageWidth - (margin * 1.5);
+        const wrappedDisclaimer = doc.splitTextToSize(disclaimerText, disclaimerMaxWidth);
+        const lineHeight = 4.2;
+        const disclaimerStartY = pageHeight - 20 - (wrappedDisclaimer.length * lineHeight);
+        doc.text(wrappedDisclaimer, margin * 0.75, Math.max(disclaimerStartY, contactY + 20), { lineHeightFactor: 1.4 });
+      }
+
+      // Footer on each page (skip cover page = page 1, skip disclaimer = last page)
+      const totalPages = doc.getNumberOfPages();
+      const companyFooterName = contact.company_name || 'Naidu Property Consulting Services';
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages) continue;
+        doc.setPage(p);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `${companyFooterName} -- Confidential -- Page ${p - 1} of ${totalPages - 2}`,
+          pageWidth / 2,
+          pageHeight - 8,
+          { align: 'center' }
+        );
+      }
+
       const fileName = reportNames.length > 0 
         ? `Summary - ${reportNames.join(', ')}.pdf`
         : `Q&A Summary - ${new Date().toLocaleDateString()}.pdf`;
       
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      doc.save(fileName);
 
       toast.success('PDF Downloaded', {
         description: 'Your summary has been exported',
@@ -235,614 +469,3 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
     </Button>
   );
 };
-
-// Helper types
-interface PageConfig {
-  pageWidth: number;
-  pageHeight: number;
-  title: string;
-  reportNames: string[];
-  fonts: {
-    helvetica: PDFFont;
-    helveticaBold: PDFFont;
-    timesRoman: PDFFont;
-    timesRomanBold: PDFFont;
-  };
-  colors: PDFColors;
-  config: TemplateConfig;
-}
-
-interface ContentConfig {
-  pageWidth: number;
-  pageHeight: number;
-  margin: number;
-  content: string;
-  fonts: {
-    helvetica: PDFFont;
-    helveticaBold: PDFFont;
-    timesRoman: PDFFont;
-    timesRomanBold: PDFFont;
-    timesRomanItalic: PDFFont;
-  };
-  colors: PDFColors;
-  config: TemplateConfig;
-}
-
-async function createCoverPage(pdfDoc: PDFDocument, pageConfig: PageConfig) {
-  const { pageWidth, pageHeight, title, reportNames, fonts, colors, config } = pageConfig;
-  
-  const page = pdfDoc.addPage([pageWidth, pageHeight]);
-  
-  // Black background
-  page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: pageWidth,
-    height: pageHeight,
-    color: colors.black,
-  });
-
-  // Corner accents - Top left
-  page.drawRectangle({
-    x: 0,
-    y: pageHeight - 120,
-    width: 120,
-    height: 120,
-    color: colors.darkGray,
-  });
-  // Gold accent line
-  page.drawLine({
-    start: { x: 0, y: pageHeight - 100 },
-    end: { x: 100, y: pageHeight },
-    thickness: 2,
-    color: colors.gold,
-  });
-
-  // Corner accents - Top right
-  page.drawRectangle({
-    x: pageWidth - 120,
-    y: pageHeight - 120,
-    width: 120,
-    height: 120,
-    color: colors.darkGray,
-  });
-  page.drawLine({
-    start: { x: pageWidth - 100, y: pageHeight },
-    end: { x: pageWidth, y: pageHeight - 100 },
-    thickness: 2,
-    color: colors.gold,
-  });
-
-  // Corner accents - Bottom right
-  page.drawRectangle({
-    x: pageWidth - 120,
-    y: 0,
-    width: 120,
-    height: 120,
-    color: colors.darkGray,
-  });
-  page.drawLine({
-    start: { x: pageWidth, y: 100 },
-    end: { x: pageWidth - 100, y: 0 },
-    thickness: 2,
-    color: colors.gold,
-  });
-
-  // Corner accents - Bottom left
-  page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: 120,
-    height: 120,
-    color: colors.darkGray,
-  });
-  page.drawLine({
-    start: { x: 0, y: 100 },
-    end: { x: 100, y: 0 },
-    thickness: 2,
-    color: colors.gold,
-  });
-
-  // Draw stylized "N" logo
-  const logoY = pageHeight - 280;
-  const logoSize = 80;
-  const logoX = (pageWidth - logoSize) / 2;
-  
-  // N shape using lines
-  page.drawLine({
-    start: { x: logoX + 15, y: logoY },
-    end: { x: logoX + 15, y: logoY + logoSize },
-    thickness: 8,
-    color: colors.gold,
-  });
-  page.drawLine({
-    start: { x: logoX + 15, y: logoY + logoSize },
-    end: { x: logoX + logoSize - 15, y: logoY },
-    thickness: 8,
-    color: colors.gold,
-  });
-  page.drawLine({
-    start: { x: logoX + logoSize - 15, y: logoY },
-    end: { x: logoX + logoSize - 15, y: logoY + logoSize },
-    thickness: 8,
-    color: colors.gold,
-  });
-
-  // Company name - use config values
-  const companyLine1 = config.companyName;
-  const companyLine2 = config.companyNameLine2;
-  const companySize = 24;
-  
-  const line1Width = fonts.timesRoman.widthOfTextAtSize(companyLine1, companySize);
-  const line2Width = fonts.timesRoman.widthOfTextAtSize(companyLine2, companySize);
-  
-  page.drawText(companyLine1, {
-    x: (pageWidth - line1Width) / 2,
-    y: pageHeight - 380,
-    size: companySize,
-    font: fonts.timesRoman,
-    color: colors.gold,
-  });
-  
-  page.drawText(companyLine2, {
-    x: (pageWidth - line2Width) / 2,
-    y: pageHeight - 410,
-    size: companySize,
-    font: fonts.timesRoman,
-    color: colors.gold,
-  });
-
-  // Decorative divider
-  const dividerY = pageHeight - 450;
-  page.drawLine({
-    start: { x: pageWidth / 2 - 80, y: dividerY },
-    end: { x: pageWidth / 2 - 10, y: dividerY },
-    thickness: 2,
-    color: colors.gold,
-  });
-  // Diamond shape using lines
-  const diamondSize = 6;
-  const cx = pageWidth / 2;
-  const cy = dividerY;
-  page.drawLine({
-    start: { x: cx, y: cy + diamondSize },
-    end: { x: cx + diamondSize, y: cy },
-    thickness: 2,
-    color: colors.gold,
-  });
-  page.drawLine({
-    start: { x: cx + diamondSize, y: cy },
-    end: { x: cx, y: cy - diamondSize },
-    thickness: 2,
-    color: colors.gold,
-  });
-  page.drawLine({
-    start: { x: cx, y: cy - diamondSize },
-    end: { x: cx - diamondSize, y: cy },
-    thickness: 2,
-    color: colors.gold,
-  });
-  page.drawLine({
-    start: { x: cx - diamondSize, y: cy },
-    end: { x: cx, y: cy + diamondSize },
-    thickness: 2,
-    color: colors.gold,
-  });
-  page.drawLine({
-    start: { x: pageWidth / 2 + 10, y: dividerY },
-    end: { x: pageWidth / 2 + 80, y: dividerY },
-    thickness: 2,
-    color: colors.gold,
-  });
-
-  // Tagline - use config value
-  const tagline = config.tagline;
-  const taglineSize = 10;
-  const taglineWidth = fonts.helvetica.widthOfTextAtSize(tagline, taglineSize);
-  page.drawText(tagline, {
-    x: (pageWidth - taglineWidth) / 2,
-    y: pageHeight - 480,
-    size: taglineSize,
-    font: fonts.helvetica,
-    color: colors.gold,
-  });
-
-  // Document title
-  const titleSize = 18;
-  const titleWidth = fonts.timesRomanBold.widthOfTextAtSize(title, titleSize);
-  page.drawText(title, {
-    x: (pageWidth - titleWidth) / 2,
-    y: pageHeight - 550,
-    size: titleSize,
-    font: fonts.timesRomanBold,
-    color: colors.white,
-  });
-
-  // Report names
-  if (reportNames.length > 0) {
-    const basedOnText = `Based on: ${reportNames.join(', ')}`;
-    const basedOnSize = 10;
-    const basedOnWidth = fonts.helvetica.widthOfTextAtSize(basedOnText, basedOnSize);
-    page.drawText(basedOnText, {
-      x: (pageWidth - basedOnWidth) / 2,
-      y: pageHeight - 580,
-      size: basedOnSize,
-      font: fonts.helvetica,
-      color: colors.gray,
-    });
-  }
-
-  // Generated date
-  const generatedText = `Generated: ${new Date().toLocaleString()}`;
-  const generatedSize = 9;
-  const generatedWidth = fonts.helvetica.widthOfTextAtSize(generatedText, generatedSize);
-  page.drawText(generatedText, {
-    x: (pageWidth - generatedWidth) / 2,
-    y: pageHeight - 620,
-    size: generatedSize,
-    font: fonts.helvetica,
-    color: colors.gray,
-  });
-}
-
-async function createContentPages(pdfDoc: PDFDocument, contentConfig: ContentConfig) {
-  const { pageWidth, pageHeight, margin, content, fonts, colors, config } = contentConfig;
-  
-  const topMargin = 80;
-  const bottomMargin = 80;
-  const textSize = 11;
-  const lineHeight = 16;
-  const headerSize = 14;
-  const subHeaderSize = 12;
-  
-  // Parse content into lines
-  const lines = parseContentToLines(content, fonts.timesRoman, textSize, pageWidth - margin * 2);
-  
-  let currentPage: PDFPage | null = null;
-  let yPosition = 0;
-  let pageNumber = 1;
-  const totalPages = Math.ceil(lines.length / 45) + 1; // Estimate
-
-  const startNewPage = () => {
-    currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-    pageNumber++;
-    yPosition = pageHeight - topMargin;
-    
-    // Draw page decorations
-    drawPageDecorations(currentPage, pageWidth, pageHeight, colors);
-    
-    return currentPage;
-  };
-
-  // Start first content page
-  currentPage = startNewPage();
-
-  for (const line of lines) {
-    // Check if we need a new page
-    if (yPosition < bottomMargin + 40) {
-      // Add footer to current page before starting new one
-      addPageFooter(currentPage!, pageWidth, pageNumber, totalPages, fonts.helvetica, colors, config);
-      currentPage = startNewPage();
-    }
-
-    // Determine line type and styling
-    if (line.type === 'header') {
-      // Add extra spacing before headers
-      yPosition -= 10;
-      
-      // Draw gold underline for headers
-      currentPage!.drawLine({
-        start: { x: margin, y: yPosition - 5 },
-        end: { x: pageWidth - margin, y: yPosition - 5 },
-        thickness: 1,
-        color: colors.gold,
-      });
-      
-      currentPage!.drawText(line.text, {
-        x: margin,
-        y: yPosition,
-        size: headerSize,
-        font: fonts.timesRomanBold,
-        color: colors.darkText,
-      });
-      yPosition -= lineHeight + 8;
-    } else if (line.type === 'subheader') {
-      yPosition -= 6;
-      currentPage!.drawText(line.text, {
-        x: margin,
-        y: yPosition,
-        size: subHeaderSize,
-        font: fonts.timesRomanBold,
-        color: colors.darkText,
-      });
-      yPosition -= lineHeight + 4;
-    } else if (line.type === 'bullet') {
-      // Draw gold bullet
-      currentPage!.drawText('•', {
-        x: margin,
-        y: yPosition,
-        size: textSize,
-        font: fonts.timesRoman,
-        color: colors.gold,
-      });
-      currentPage!.drawText(line.text, {
-        x: margin + 15,
-        y: yPosition,
-        size: textSize,
-        font: fonts.timesRoman,
-        color: colors.darkText,
-      });
-      yPosition -= lineHeight;
-    } else if (line.type === 'numbered') {
-      currentPage!.drawText(line.prefix || '', {
-        x: margin,
-        y: yPosition,
-        size: textSize,
-        font: fonts.timesRomanBold,
-        color: colors.gold,
-      });
-      currentPage!.drawText(line.text, {
-        x: margin + 20,
-        y: yPosition,
-        size: textSize,
-        font: fonts.timesRoman,
-        color: colors.darkText,
-      });
-      yPosition -= lineHeight;
-    } else if (line.type === 'bold') {
-      currentPage!.drawText(line.text, {
-        x: margin,
-        y: yPosition,
-        size: textSize,
-        font: fonts.timesRomanBold,
-        color: colors.darkText,
-      });
-      yPosition -= lineHeight;
-    } else if (line.type === 'empty') {
-      yPosition -= lineHeight / 2;
-    } else {
-      // Regular text
-      currentPage!.drawText(line.text, {
-        x: margin,
-        y: yPosition,
-        size: textSize,
-        font: fonts.timesRoman,
-        color: colors.darkText,
-      });
-      yPosition -= lineHeight;
-    }
-  }
-
-  // Add footer to last page
-  if (currentPage) {
-    addPageFooter(currentPage, pageWidth, pageNumber, totalPages, fonts.helvetica, colors, config);
-    
-    // Add contact info and disclaimer on last page
-    addLastPageInfo(currentPage, pageWidth, margin, fonts, colors, config);
-  }
-}
-
-function drawPageDecorations(page: PDFPage, pageWidth: number, pageHeight: number, colors: PDFColors) {
-  // Top-left corner accent
-  page.drawRectangle({
-    x: 0,
-    y: pageHeight - 60,
-    width: 60,
-    height: 60,
-    color: colors.darkGray,
-  });
-  page.drawLine({
-    start: { x: 0, y: pageHeight - 50 },
-    end: { x: 50, y: pageHeight },
-    thickness: 1.5,
-    color: colors.gold,
-  });
-
-  // Bottom-right corner accent
-  page.drawRectangle({
-    x: pageWidth - 60,
-    y: 0,
-    width: 60,
-    height: 60,
-    color: colors.darkGray,
-  });
-  page.drawLine({
-    start: { x: pageWidth, y: 50 },
-    end: { x: pageWidth - 50, y: 0 },
-    thickness: 1.5,
-    color: colors.gold,
-  });
-}
-
-function addPageFooter(
-  page: PDFPage, 
-  pageWidth: number, 
-  pageNumber: number, 
-  totalPages: number, 
-  font: PDFFont, 
-  colors: PDFColors,
-  config: TemplateConfig
-) {
-  const footerY = 30;
-  
-  // Left side - company info (use config values)
-  const footerLeft = `Naidu Property Consulting Services | ${config.website}`;
-  page.drawText(footerLeft, {
-    x: 60,
-    y: footerY,
-    size: 8,
-    font,
-    color: colors.gray,
-  });
-  
-  // Right side - page number
-  const pageText = `Page ${pageNumber} of ${totalPages}`;
-  const pageTextWidth = font.widthOfTextAtSize(pageText, 8);
-  page.drawText(pageText, {
-    x: pageWidth - 60 - pageTextWidth,
-    y: footerY,
-    size: 8,
-    font,
-    color: colors.gray,
-  });
-  
-  // Top border line
-  page.drawLine({
-    start: { x: 60, y: footerY + 15 },
-    end: { x: pageWidth - 60, y: footerY + 15 },
-    thickness: 0.5,
-    color: rgb(0.9, 0.9, 0.9),
-  });
-}
-
-function addLastPageInfo(
-  page: PDFPage, 
-  pageWidth: number, 
-  margin: number, 
-  fonts: ContentConfig['fonts'], 
-  colors: PDFColors,
-  config: TemplateConfig
-) {
-  const contactY = 120;
-  
-  // Gold divider line
-  page.drawLine({
-    start: { x: margin, y: contactY + 20 },
-    end: { x: pageWidth - margin, y: contactY + 20 },
-    thickness: 2,
-    color: colors.gold,
-  });
-  
-  // Contact heading
-  const contactHeading = 'Contact Naidu Property Consulting Services';
-  const headingWidth = fonts.timesRomanBold.widthOfTextAtSize(contactHeading, 11);
-  page.drawText(contactHeading, {
-    x: (pageWidth - headingWidth) / 2,
-    y: contactY,
-    size: 11,
-    font: fonts.timesRomanBold,
-    color: colors.darkText,
-  });
-  
-  // Contact details - use config values
-  const contactDetails = `Phone: ${config.contactPhone} | Email: ${config.contactEmail} | Website: ${config.website}`;
-  const detailsWidth = fonts.timesRoman.widthOfTextAtSize(contactDetails, 9);
-  page.drawText(contactDetails, {
-    x: (pageWidth - detailsWidth) / 2,
-    y: contactY - 18,
-    size: 9,
-    font: fonts.timesRoman,
-    color: colors.gray,
-  });
-  
-  // Disclaimer - use config value
-  const disclaimerWidth = fonts.timesRomanItalic.widthOfTextAtSize(config.disclaimer, 8);
-  page.drawText(config.disclaimer, {
-    x: (pageWidth - disclaimerWidth) / 2,
-    y: contactY - 40,
-    size: 8,
-    font: fonts.timesRomanItalic,
-    color: colors.gray,
-  });
-}
-
-interface ParsedLine {
-  type: 'header' | 'subheader' | 'bullet' | 'numbered' | 'bold' | 'text' | 'empty';
-  text: string;
-  prefix?: string;
-}
-
-function parseContentToLines(content: string, font: PDFFont, fontSize: number, maxWidth: number): ParsedLine[] {
-  const result: ParsedLine[] = [];
-  const rawLines = content.split('\n');
-  
-  for (const rawLine of rawLines) {
-    const trimmed = rawLine.trim();
-    
-    if (!trimmed) {
-      result.push({ type: 'empty', text: '' });
-      continue;
-    }
-    
-    // Check for headers (## or #)
-    if (trimmed.startsWith('## ')) {
-      result.push({ type: 'subheader', text: trimmed.replace(/^##\s*/, '') });
-      continue;
-    }
-    if (trimmed.startsWith('# ')) {
-      result.push({ type: 'header', text: trimmed.replace(/^#\s*/, '') });
-      continue;
-    }
-    
-    // Check for bullet points
-    if (trimmed.match(/^[•\-\*]\s+/)) {
-      const bulletText = trimmed.replace(/^[•\-\*]\s+/, '');
-      const wrappedLines = wrapText(bulletText, font, fontSize, maxWidth - 15);
-      wrappedLines.forEach((line, idx) => {
-        if (idx === 0) {
-          result.push({ type: 'bullet', text: line });
-        } else {
-          result.push({ type: 'text', text: '   ' + line });
-        }
-      });
-      continue;
-    }
-    
-    // Check for numbered lists
-    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
-    if (numberedMatch) {
-      const prefix = numberedMatch[1] + '.';
-      const numberedText = numberedMatch[2];
-      const wrappedLines = wrapText(numberedText, font, fontSize, maxWidth - 20);
-      wrappedLines.forEach((line, idx) => {
-        if (idx === 0) {
-          result.push({ type: 'numbered', text: line, prefix });
-        } else {
-          result.push({ type: 'text', text: '    ' + line });
-        }
-      });
-      continue;
-    }
-    
-    // Check for bold text (entire line)
-    if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
-      result.push({ type: 'bold', text: trimmed.replace(/\*\*/g, '') });
-      continue;
-    }
-    
-    // Regular text - wrap to fit page width
-    const cleanText = trimmed.replace(/\*\*/g, '').replace(/__/g, '');
-    const wrappedLines = wrapText(cleanText, font, fontSize, maxWidth);
-    wrappedLines.forEach(line => {
-      result.push({ type: 'text', text: line });
-    });
-  }
-  
-  return result;
-}
-
-function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
-  
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    const width = font.widthOfTextAtSize(testLine, fontSize);
-    
-    if (width <= maxWidth) {
-      currentLine = testLine;
-    } else {
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      currentLine = word;
-    }
-  }
-  
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-  
-  return lines.length > 0 ? lines : [''];
-}
