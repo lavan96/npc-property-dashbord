@@ -92,6 +92,8 @@ interface TrackedClient {
   opportunity_status: string | null;
   is_favorite?: boolean;
   last_note_at?: string | null;
+  deal_status?: string;
+  first_deal_closed_at?: string | null;
 }
 
 interface ClientNote {
@@ -118,6 +120,7 @@ export default function ClientTracker() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('all');
   const [editingClient, setEditingClient] = useState<TrackedClient | null>(null);
   const [activeTab, setActiveTab] = useState('kanban');
+  const [activeDealFilter, setActiveDealFilter] = useState<'all' | 'closed' | 'prospects'>('all');
   const [isSyncingPipelines, setIsSyncingPipelines] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   // Infinite scroll for active clients
@@ -199,16 +202,34 @@ export default function ClientTracker() {
         return bTime - aTime;
       });
   }, [clients]);
-  // Filter active clients by search query
+  // Filter active clients by search query and deal status
   const filteredActiveClients = useMemo(() => {
-    if (activeTab !== 'active' || searchQuery === '') return activeClients;
-    return activeClients.filter(client => {
-      const matchesSearch = 
-        `${client.primary_first_name} ${client.primary_surname}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.primary_email?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    });
-  }, [activeClients, searchQuery, activeTab]);
+    let filtered = activeClients;
+    
+    // Apply deal status filter
+    if (activeDealFilter === 'closed') {
+      filtered = filtered.filter(c => c.deal_status === 'closed');
+    } else if (activeDealFilter === 'prospects') {
+      filtered = filtered.filter(c => c.deal_status !== 'closed');
+    }
+    
+    // Apply search
+    if (activeTab === 'active' && searchQuery !== '') {
+      filtered = filtered.filter(client => {
+        const matchesSearch = 
+          `${client.primary_first_name} ${client.primary_surname}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          client.primary_email?.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch;
+      });
+    }
+    
+    return filtered;
+  }, [activeClients, searchQuery, activeTab, activeDealFilter]);
+
+  // Count deals closed among active clients
+  const dealsClosedCount = useMemo(() => 
+    activeClients.filter(c => c.deal_status === 'closed').length
+  , [activeClients]);
 
   // Reset displayed count when search changes
   useEffect(() => {
@@ -1233,16 +1254,47 @@ export default function ClientTracker() {
             <div className="grid gap-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <UserCheck className="h-5 w-5 text-primary" />
-                    Active Clients Notes
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {searchQuery 
-                      ? `Showing ${filteredActiveClients.length} of ${activeClients.length} active clients`
-                      : `View notes for ${activeClients.length} active clients`
-                    }
-                  </p>
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <UserCheck className="h-5 w-5 text-primary" />
+                        Active Clients Notes
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {searchQuery 
+                          ? `Showing ${filteredActiveClients.length} of ${activeClients.length} active clients`
+                          : `View notes for ${activeClients.length} active clients`
+                        }
+                      </p>
+                    </div>
+                    {/* Deal Status Sub-Filters */}
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                      <Button
+                        variant={activeDealFilter === 'all' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 text-xs px-3"
+                        onClick={() => setActiveDealFilter('all')}
+                      >
+                        All ({activeClients.length})
+                      </Button>
+                      <Button
+                        variant={activeDealFilter === 'closed' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 text-xs px-3"
+                        onClick={() => setActiveDealFilter('closed')}
+                      >
+                        🏆 Deals Closed ({dealsClosedCount})
+                      </Button>
+                      <Button
+                        variant={activeDealFilter === 'prospects' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 text-xs px-3"
+                        onClick={() => setActiveDealFilter('prospects')}
+                      >
+                        Prospects ({activeClients.length - dealsClosedCount})
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {filteredActiveClients.length === 0 ? (

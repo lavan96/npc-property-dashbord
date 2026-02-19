@@ -23,8 +23,12 @@ import {
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Key } from 'lucide-react';
+import { Plus, Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Key, Award, Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import {
@@ -46,6 +50,8 @@ interface ExpenseField {
   frequency: FrequencyType;
   monthlyValue: number;
 }
+
+type SourcedByType = 'npc' | 'client' | 'other_agency' | 'unknown';
 
 interface PropertyFormData {
   property_type: 'owner_occupied' | 'investment' | 'smsf' | 'rental';
@@ -73,6 +79,10 @@ interface PropertyFormData {
   smsf_abn: string;
   smsf_compliance_status: 'compliant' | 'non_compliant' | 'pending_audit';
   smsf_auditor_name: string;
+  // Deal sourcing
+  sourced_by: SourcedByType;
+  deal_closed_at: string;
+  sourced_notes: string;
 }
 
 const createExpenseField = (value = 0, frequency: FrequencyType = 'monthly'): ExpenseField => ({
@@ -119,6 +129,10 @@ const defaultFormData: PropertyFormData = {
   smsf_abn: '',
   smsf_compliance_status: 'compliant',
   smsf_auditor_name: '',
+  // Deal sourcing defaults
+  sourced_by: 'unknown',
+  deal_closed_at: '',
+  sourced_notes: '',
 };
 
 export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntryProps) {
@@ -220,6 +234,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
         smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
+        // Deal sourcing
+        sourced_by: formData.sourced_by,
+        deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
+        sourced_notes: formData.sourced_notes || null,
       };
 
       // Use secure Edge Function with HttpOnly cookie auth
@@ -232,6 +250,23 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       
       if (fnError || !data?.success) {
         throw new Error(fnError?.message || data?.error || 'Failed to create property');
+      }
+
+      // Auto-update client deal_status when NPC-sourced property is added
+      if (formData.sourced_by === 'npc') {
+        try {
+          await invokeSecureFunction('manage-client-data', {
+            operation: 'update',
+            table: 'clients',
+            clientId,
+            data: { 
+              deal_status: 'closed',
+              first_deal_closed_at: formData.deal_closed_at || new Date().toISOString(),
+            },
+          });
+        } catch (e) {
+          console.warn('Failed to auto-update client deal_status:', e);
+        }
       }
     },
     onSuccess: () => {
@@ -399,6 +434,78 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                       placeholder="123 Main Street, Sydney NSW 2000"
                     />
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Deal Sourcing Section */}
+            <Card className="border-emerald-500/20">
+              <CardContent className="pt-4">
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium flex items-center gap-2 text-emerald-600">
+                    <Award className="h-4 w-4" />
+                    Deal Sourcing
+                  </h4>
+                  
+                  <div className="space-y-2">
+                    <Label>Sourced By</Label>
+                    <Select
+                      value={formData.sourced_by}
+                      onValueChange={(v) => updateField('sourced_by', v as SourcedByType)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unknown">Unknown</SelectItem>
+                        <SelectItem value="npc">NPC (Our Agency)</SelectItem>
+                        <SelectItem value="client">Self-sourced (Client)</SelectItem>
+                        <SelectItem value="other_agency">Other Agency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.sourced_by === 'npc' && (
+                    <div className="space-y-2">
+                      <Label>Deal Closed Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.deal_closed_at && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.deal_closed_at 
+                              ? format(new Date(formData.deal_closed_at), 'PPP')
+                              : 'Pick a date'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.deal_closed_at ? new Date(formData.deal_closed_at) : undefined}
+                            onSelect={(date) => updateField('deal_closed_at', date ? date.toISOString() : '')}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+
+                  {formData.sourced_by === 'other_agency' && (
+                    <div className="space-y-2">
+                      <Label>Agency Name / Notes</Label>
+                      <Input
+                        value={formData.sourced_notes}
+                        onChange={(e) => updateField('sourced_notes', e.target.value)}
+                        placeholder="e.g. XYZ Buyer's Agency"
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
