@@ -1,0 +1,458 @@
+import { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Loader2, 
+  Download, 
+  Eye, 
+  Type, 
+  FileText, 
+  Sparkles, 
+  RefreshCw 
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import jsPDF from 'jspdf';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: Date;
+}
+
+interface ConversationReportEditorProps {
+  isOpen: boolean;
+  onClose: () => void;
+  messages: Message[];
+  title: string;
+  reportNames: string[];
+}
+
+export function ConversationReportEditor({ 
+  isOpen, 
+  onClose, 
+  messages, 
+  title, 
+  reportNames 
+}: ConversationReportEditorProps) {
+  const [reportContent, setReportContent] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState('edit');
+  const [hasEdited, setHasEdited] = useState(false);
+  const { toast } = useToast();
+  const initialContent = useRef('');
+
+  useEffect(() => {
+    if (isOpen && messages.length > 0 && !reportContent) {
+      generateStructuredReport();
+    }
+  }, [isOpen]);
+
+  const generateStructuredReport = async () => {
+    setIsGenerating(true);
+    try {
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'summarize-conversation',
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+        reportNames,
+        title,
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data?.structuredReport) throw new Error('No report generated');
+
+      setReportContent(data.structuredReport);
+      initialContent.current = data.structuredReport;
+      setHasEdited(false);
+      setActiveTab('edit');
+
+      toast({
+        title: 'Report generated',
+        description: 'AI has structured your conversation into a report. Review and edit before exporting.',
+      });
+    } catch (err: any) {
+      console.error('Failed to generate structured report:', err);
+      toast({
+        title: 'Generation failed',
+        description: err.message || 'Failed to generate structured report',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleContentChange = (value: string) => {
+    setReportContent(value);
+    setHasEdited(value !== initialContent.current);
+  };
+
+  const exportAsPDF = async () => {
+    setIsExporting(true);
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const usableWidth = pageWidth - margin * 2;
+      let yPos = margin;
+
+      // Header
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('NPC Services', margin, 15);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Investment Property Analysis', margin, 22);
+      doc.text(`Generated: ${new Date().toLocaleDateString('en-AU')}`, margin, 28);
+      
+      yPos = 45;
+      doc.setTextColor(0, 0, 0);
+
+      // Parse markdown content into lines for PDF
+      const lines = reportContent.split('\n');
+      
+      for (const line of lines) {
+        // Check for page break
+        if (yPos > pageHeight - 30) {
+          doc.addPage();
+          yPos = margin;
+        }
+
+        const trimmed = line.trim();
+        
+        if (!trimmed) {
+          yPos += 4;
+          continue;
+        }
+
+        // H1
+        if (trimmed.startsWith('# ')) {
+          yPos += 4;
+          doc.setFontSize(16);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(15, 23, 42);
+          const h1Text = trimmed.replace(/^# /, '');
+          const wrappedH1 = doc.splitTextToSize(h1Text, usableWidth);
+          doc.text(wrappedH1, margin, yPos);
+          yPos += wrappedH1.length * 7 + 2;
+          // Underline
+          doc.setDrawColor(59, 130, 246);
+          doc.setLineWidth(0.5);
+          doc.line(margin, yPos, pageWidth - margin, yPos);
+          yPos += 6;
+          continue;
+        }
+
+        // H2
+        if (trimmed.startsWith('## ')) {
+          yPos += 3;
+          doc.setFontSize(13);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(37, 99, 235);
+          const h2Text = trimmed.replace(/^## /, '');
+          const wrappedH2 = doc.splitTextToSize(h2Text, usableWidth);
+          doc.text(wrappedH2, margin, yPos);
+          yPos += wrappedH2.length * 6 + 4;
+          continue;
+        }
+
+        // H3
+        if (trimmed.startsWith('### ')) {
+          yPos += 2;
+          doc.setFontSize(11);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 64, 175);
+          const h3Text = trimmed.replace(/^### /, '');
+          const wrappedH3 = doc.splitTextToSize(h3Text, usableWidth);
+          doc.text(wrappedH3, margin, yPos);
+          yPos += wrappedH3.length * 5 + 3;
+          continue;
+        }
+
+        // Horizontal rule
+        if (trimmed === '---' || trimmed === '***') {
+          yPos += 2;
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.3);
+          doc.line(margin, yPos, pageWidth - margin, yPos);
+          yPos += 4;
+          continue;
+        }
+
+        // Bullet points
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 51, 51);
+          const bulletText = trimmed.replace(/^[-*] /, '');
+          // Strip bold markdown
+          const cleanText = bulletText.replace(/\*\*(.*?)\*\*/g, '$1');
+          const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 8);
+          doc.text('•', margin + 2, yPos);
+          doc.text(wrappedBullet, margin + 8, yPos);
+          yPos += wrappedBullet.length * 4.5 + 1.5;
+          continue;
+        }
+
+        // Italic/meta lines (e.g. *Reports analyzed: ...*)
+        if (trimmed.startsWith('*') && trimmed.endsWith('*') && !trimmed.startsWith('**')) {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'italic');
+          doc.setTextColor(120, 120, 120);
+          const metaText = trimmed.replace(/^\*|\*$/g, '');
+          const wrappedMeta = doc.splitTextToSize(metaText, usableWidth);
+          doc.text(wrappedMeta, margin, yPos);
+          yPos += wrappedMeta.length * 3.5 + 2;
+          continue;
+        }
+
+        // Regular text
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(51, 51, 51);
+        // Strip markdown bold/italic for PDF
+        const cleanLine = trimmed
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1');
+        const wrappedText = doc.splitTextToSize(cleanLine, usableWidth);
+        
+        // Check if wrapped text fits
+        if (yPos + wrappedText.length * 4.5 > pageHeight - 25) {
+          doc.addPage();
+          yPos = margin;
+        }
+        
+        doc.text(wrappedText, margin, yPos);
+        yPos += wrappedText.length * 4.5 + 2;
+      }
+
+      // Footer on each page
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `NPC Services — Confidential — Page ${i} of ${totalPages}`,
+          pageWidth / 2,
+          pageHeight - 8,
+          { align: 'center' }
+        );
+      }
+
+      const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
+      doc.save(`${sanitizedTitle}_report.pdf`);
+
+      toast({
+        title: 'PDF exported',
+        description: 'Your structured report has been downloaded.',
+      });
+    } catch (err: any) {
+      console.error('PDF export failed:', err);
+      toast({
+        title: 'Export failed',
+        description: err.message || 'Failed to generate PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportAsMarkdown = () => {
+    const blob = new Blob([reportContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}_report.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Markdown exported',
+      description: 'Your structured report has been downloaded as markdown.',
+    });
+  };
+
+  const handleClose = () => {
+    if (hasEdited) {
+      if (!confirm('You have unsaved edits. Are you sure you want to close?')) return;
+    }
+    setReportContent('');
+    setHasEdited(false);
+    initialContent.current = '';
+    onClose();
+  };
+
+  // Markdown rendering components
+  const markdownComponents = {
+    h1: ({ children }: any) => (
+      <h1 className="text-2xl font-bold mt-8 mb-4 text-foreground border-b pb-2">{children}</h1>
+    ),
+    h2: ({ children }: any) => (
+      <h2 className="text-xl font-semibold mt-6 mb-3 text-primary">{children}</h2>
+    ),
+    h3: ({ children }: any) => (
+      <h3 className="text-lg font-medium mt-4 mb-2 text-foreground">{children}</h3>
+    ),
+    p: ({ children }: any) => (
+      <p className="mb-4 leading-relaxed text-foreground">{children}</p>
+    ),
+    ul: ({ children }: any) => (
+      <ul className="mb-4 space-y-2 list-disc list-inside">{children}</ul>
+    ),
+    ol: ({ children }: any) => (
+      <ol className="mb-4 space-y-2 list-decimal list-inside">{children}</ol>
+    ),
+    li: ({ children }: any) => (
+      <li className="text-foreground leading-relaxed pl-2">{children}</li>
+    ),
+    table: ({ children }: any) => (
+      <div className="not-prose overflow-x-auto my-8">
+        <table className="min-w-full border-collapse border-2 border-border shadow-sm">{children}</table>
+      </div>
+    ),
+    thead: ({ children }: any) => (
+      <thead className="bg-gradient-to-r from-primary/10 to-primary/5 border-b-2 border-border">{children}</thead>
+    ),
+    tbody: ({ children }: any) => <tbody className="divide-y divide-border">{children}</tbody>,
+    th: ({ children }: any) => (
+      <th className="border border-border px-6 py-3 text-left font-bold text-foreground bg-muted/50">{children}</th>
+    ),
+    td: ({ children }: any) => (
+      <td className="border border-border px-6 py-3 text-foreground">{children}</td>
+    ),
+    strong: ({ children }: any) => <strong className="font-semibold text-foreground">{children}</strong>,
+    em: ({ children }: any) => <em className="italic text-muted-foreground">{children}</em>,
+    blockquote: ({ children }: any) => (
+      <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">{children}</blockquote>
+    ),
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Export Conversation Report
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            AI has structured your conversation into a professional report. Review, edit, then export.
+          </p>
+        </DialogHeader>
+
+        {isGenerating ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 py-16">
+            <div className="relative">
+              <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="font-medium text-foreground">Structuring your conversation...</p>
+              <p className="text-sm text-muted-foreground">
+                AI is analyzing {messages.length} messages and creating a professional report
+              </p>
+            </div>
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-0">
+              <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+                <TabsTrigger value="edit" className="flex items-center gap-2">
+                  <Type className="h-4 w-4" />
+                  Edit Report
+                </TabsTrigger>
+                <TabsTrigger value="preview" className="flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Preview
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="edit" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+                <ScrollArea className="flex-1 border rounded-md">
+                  <Textarea
+                    value={reportContent}
+                    onChange={(e) => handleContentChange(e.target.value)}
+                    placeholder="Report content will appear here..."
+                    className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
+                  />
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+                <div className="flex-1 border rounded-md overflow-y-auto">
+                  <div className="p-6">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {reportContent}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
+
+        <DialogFooter className="flex-shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {hasEdited && (
+              <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
+                Edited
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {reportContent.length} chars • {messages.length} messages processed
+            </span>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={generateStructuredReport}
+              disabled={isGenerating}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isGenerating ? 'animate-spin' : ''}`} />
+              Regenerate
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={exportAsMarkdown}
+              disabled={!reportContent || isGenerating}
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Markdown
+            </Button>
+            <Button 
+              size="sm"
+              onClick={exportAsPDF}
+              disabled={!reportContent || isGenerating || isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3 mr-1" />
+              )}
+              Export PDF
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

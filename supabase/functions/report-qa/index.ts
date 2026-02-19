@@ -1300,6 +1300,122 @@ No investment report has been uploaded. You are having an open conversation abou
       );
     }
 
+    // Handle summarize-conversation: AI processes raw chat into structured report
+    if (action === "summarize-conversation") {
+      const { messages: chatMessages, reportNames, title } = body;
+      
+      if (!chatMessages || chatMessages.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "No messages provided" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`[report-qa] Summarizing conversation: ${chatMessages.length} messages`);
+
+      const transcript = chatMessages.map((m: any) => {
+        const role = m.role === 'user' ? 'Advisor' : 'AI Analyst';
+        return `**${role}:**\n${m.content}`;
+      }).join('\n\n---\n\n');
+
+      const summarizePrompt = `You are a professional report writer for NPC Services, an Australian property investment advisory firm.
+
+You have been given a raw Q&A conversation transcript between a property advisor and an AI analyst about investment property reports. Your task is to transform this raw conversation into a polished, structured analytical report suitable for client presentation.
+
+## INSTRUCTIONS
+1. Extract ALL key insights, findings, data points, and recommendations from the conversation
+2. Organize them into a professional report structure
+3. Remove conversational artifacts (greetings, "thank you", repetition, back-and-forth)
+4. Preserve ALL numerical data, statistics, and specific details mentioned
+5. Write in a professional third-person analytical tone
+6. Use proper markdown formatting with headings, bullet points, and tables where appropriate
+
+## REQUIRED REPORT STRUCTURE
+Use the following sections (skip any that have no relevant content):
+
+# ${title || 'Investment Analysis Report'}
+
+## Executive Summary
+A concise 2-3 paragraph overview of the key findings and recommendations.
+
+## Property Overview
+Key details about the property/properties discussed.
+
+## Financial Analysis
+Any financial metrics, yields, cash flow projections, costs discussed.
+
+## Market & Location Insights
+Demographics, infrastructure, growth drivers, market trends.
+
+## Risk Assessment
+Identified risks, concerns, and mitigation strategies.
+
+## Opportunities & Strengths
+Positive factors and investment opportunities identified.
+
+## Recommendations
+Actionable recommendations and next steps.
+
+## Additional Notes
+Any other relevant information from the conversation.
+
+---
+*Reports analyzed: ${(reportNames || []).join(', ') || 'N/A'}*
+*Generated: ${new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' })}*
+*Prepared by: NPC Services*
+
+## RAW CONVERSATION TRANSCRIPT
+${transcript}`;
+
+      const summarizeMessages = [
+        { role: "system", content: "You are an expert report writer. Transform raw conversations into polished, structured reports. Output only the final markdown report, no preamble." },
+        { role: "user", content: summarizePrompt },
+      ];
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-5.2",
+          messages: summarizeMessages,
+          max_completion_tokens: 8192,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[report-qa] Summarize error: ${response.status} - ${errorText}`);
+        
+        if (response.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const aiResponse = await response.json();
+      const structuredReport = aiResponse.choices?.[0]?.message?.content || "";
+
+      console.log(`[report-qa] Generated structured report: ${structuredReport.length} chars`);
+
+      return new Response(
+        JSON.stringify({ success: true, structuredReport }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle deleting conversation
     if (action === "delete-conversation") {
       const { conversationId } = body;
