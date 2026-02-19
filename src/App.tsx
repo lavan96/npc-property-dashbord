@@ -18,6 +18,7 @@ import { ReportGenerationProgress } from "./components/reports/ReportGenerationP
 import { CallNotificationListener } from "./components/CallNotificationListener";
 import { Phase1NotificationListeners } from "./components/Phase1NotificationListeners";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { HarveyCountdown } from "@/components/HarveyCountdown";
 import { Button } from "@/components/ui/button";
 import Overview from "./pages/Overview";
 import Listings from "./pages/Listings";
@@ -79,6 +80,7 @@ const App = () => (
             <PermissionsProvider>
               <BrowserRouter>
                 <NotificationsProvider>
+                  <HarveyCountdown />
                   <BackgroundJobTracker />
                   <ReportGenerationProgress />
                   <CallNotificationListener />
