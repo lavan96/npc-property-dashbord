@@ -180,7 +180,7 @@ export default function ClientTracker() {
       const { data, error } = await invokeSecureFunction('get-client-data', {
         mode: 'list',
         listOptions: {
-          select: 'id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite, last_note_at',
+          select: 'id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, borrowing_capacity, proposed_rental_income, equity_release, pipeline_notes, pipeline_updated_at, ghl_contact_id, ghl_opportunity_id, current_pipeline_id, current_stage_id, opportunity_status, is_favorite, last_note_at, deal_status, first_deal_closed_at',
           orderBy: 'follow_up_date',
           orderAsc: true
         }
