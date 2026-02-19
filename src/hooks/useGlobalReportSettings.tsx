@@ -22,7 +22,7 @@ export interface GlobalReportSettings {
 }
 
 const defaultContactDetails: ContactDetails = {
-  company_name: 'NPC Services',
+  company_name: 'Naidu Property Consulting Services',
   phone: '0433 005 110',
   email: 'admin@npcservices.com.au',
   website: 'npcservices.com.au',

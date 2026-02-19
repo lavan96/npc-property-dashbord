@@ -1411,7 +1411,7 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         let yPos = pageHeight - 80;
         
         // Company Name / Header
-        const companyName = contactDetails.company_name || 'NPC Services';
+        const companyName = contactDetails.company_name || 'Naidu Property Consulting Services';
         page.drawText(companyName.toUpperCase(), {
           x: 60,
           y: yPos,
