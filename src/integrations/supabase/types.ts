@@ -1547,6 +1547,7 @@ export type Database = {
           address: string
           client_id: string
           created_at: string
+          deal_closed_at: string | null
           id: string
           interest_rate: number | null
           loan_remaining: number | null
@@ -1570,6 +1571,8 @@ export type Database = {
           smsf_fund_name: string | null
           smsf_trustee_name: string | null
           smsf_trustee_type: string | null
+          sourced_by: string
+          sourced_notes: string | null
           total_monthly_expenditure: number | null
           updated_at: string
           value: number | null
@@ -1579,6 +1582,7 @@ export type Database = {
           address: string
           client_id: string
           created_at?: string
+          deal_closed_at?: string | null
           id?: string
           interest_rate?: number | null
           loan_remaining?: number | null
@@ -1602,6 +1606,8 @@ export type Database = {
           smsf_fund_name?: string | null
           smsf_trustee_name?: string | null
           smsf_trustee_type?: string | null
+          sourced_by?: string
+          sourced_notes?: string | null
           total_monthly_expenditure?: number | null
           updated_at?: string
           value?: number | null
@@ -1611,6 +1617,7 @@ export type Database = {
           address?: string
           client_id?: string
           created_at?: string
+          deal_closed_at?: string | null
           id?: string
           interest_rate?: number | null
           loan_remaining?: number | null
@@ -1634,6 +1641,8 @@ export type Database = {
           smsf_fund_name?: string | null
           smsf_trustee_name?: string | null
           smsf_trustee_type?: string | null
+          sourced_by?: string
+          sourced_notes?: string | null
           total_monthly_expenditure?: number | null
           updated_at?: string
           value?: number | null
@@ -1846,8 +1855,10 @@ export type Database = {
           current_address: string | null
           current_pipeline_id: string | null
           current_stage_id: string | null
+          deal_status: string
           dependents_count: number | null
           equity_release: number | null
+          first_deal_closed_at: string | null
           follow_up_date: string | null
           ghl_contact_id: string | null
           ghl_last_synced_at: string | null
@@ -1904,8 +1915,10 @@ export type Database = {
           current_address?: string | null
           current_pipeline_id?: string | null
           current_stage_id?: string | null
+          deal_status?: string
           dependents_count?: number | null
           equity_release?: number | null
+          first_deal_closed_at?: string | null
           follow_up_date?: string | null
           ghl_contact_id?: string | null
           ghl_last_synced_at?: string | null
@@ -1962,8 +1975,10 @@ export type Database = {
           current_address?: string | null
           current_pipeline_id?: string | null
           current_stage_id?: string | null
+          deal_status?: string
           dependents_count?: number | null
           equity_release?: number | null
+          first_deal_closed_at?: string | null
           follow_up_date?: string | null
           ghl_contact_id?: string | null
           ghl_last_synced_at?: string | null

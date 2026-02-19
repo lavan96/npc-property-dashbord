@@ -59,6 +59,8 @@ interface TrackedClient {
   pipeline_status: string | null;
   current_stage_id: string | null;
   is_favorite?: boolean;
+  deal_status?: string;
+  first_deal_closed_at?: string | null;
 }
 
 interface StageInfo {
@@ -398,17 +400,24 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               </div>
             </div>
           </div>
-          <Badge 
-            className="text-sm flex-shrink-0"
-            style={{ 
-              backgroundColor: stageInfo.color + '20',
-              color: stageInfo.color,
-              borderColor: stageInfo.color 
-            }}
-            variant="outline"
-          >
-            {stageInfo.name}
-          </Badge>
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <Badge 
+              className="text-sm"
+              style={{ 
+                backgroundColor: stageInfo.color + '20',
+                color: stageInfo.color,
+                borderColor: stageInfo.color 
+              }}
+              variant="outline"
+            >
+              {stageInfo.name}
+            </Badge>
+            {client.deal_status === 'closed' && (
+              <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700">
+                🏆 Deal Closed
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 pt-0 space-y-4">
