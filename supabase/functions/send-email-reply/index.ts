@@ -8,6 +8,7 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
     origin === 'https://command-centre.npcservices.com.au' ||
     origin.endsWith('.lovable.app') ||
     origin.endsWith('.lovableproject.com') ||
+    origin.endsWith('.npcservices.com.au') ||
     origin.includes('localhost')
   )
     ? origin 
