@@ -126,8 +126,31 @@ export function ConversationReportEditor({
       yPos = 45;
       doc.setTextColor(0, 0, 0);
 
-      const stripMarkdown = (text: string) =>
-        text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+      const sanitizeForPDF = (text: string): string => {
+        // Strip markdown bold/italic
+        let clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+        // Replace %æ sub-bullet markers with dash
+        clean = clean.replace(/%æ\s*/g, '- ');
+        // Replace common Unicode chars that cause letter-spacing issues in jsPDF
+        clean = clean.replace(/[≤≥→←↑↓•·…—–''""″′]/g, (ch) => {
+          const map: Record<string, string> = {
+            '≤': '<=', '≥': '>=', '→': '->', '←': '<-', '↑': '^', '↓': 'v',
+            '•': '-', '·': '-', '…': '...', '—': '--', '–': '-',
+            '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
+            '″': '"', '′': "'",
+          };
+          return map[ch] || ch;
+        });
+        // Fix "d$1M type artifacts (corrupted ≤$1M)
+        clean = clean.replace(/"d\$/g, '<=$');
+        // Replace any remaining non-ASCII chars that jsPDF can't render
+        clean = clean.replace(/[^\x00-\x7F]/g, (ch) => {
+          // Keep common extended latin chars
+          if (/[àáâãäåèéêëìíîïòóôõöùúûüýÿñçÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ×÷]/.test(ch)) return ch;
+          return '';
+        });
+        return clean;
+      };
 
       // Detect markdown table block
       const isTableLine = (line: string) => line.trim().startsWith('|') && line.trim().endsWith('|');
@@ -136,7 +159,7 @@ export function ConversationReportEditor({
       const drawTable = (tableLines: string[]) => {
         // Parse header, separator, and body
         const parseRow = (line: string) =>
-          line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => stripMarkdown(c.trim()));
+          line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => sanitizeForPDF(c.trim()));
 
         const header = parseRow(tableLines[0]);
         const bodyLines = tableLines.slice(2); // skip separator
@@ -314,7 +337,7 @@ export function ConversationReportEditor({
           const match = trimmed.match(/^(\d+\.)\s(.*)$/);
           if (match) {
             const num = match[1];
-            const text = stripMarkdown(match[2]);
+            const text = sanitizeForPDF(match[2]);
             doc.setFont('helvetica', 'bold');
             doc.text(num, margin + 2, yPos);
             doc.setFont('helvetica', 'normal');
@@ -327,16 +350,16 @@ export function ConversationReportEditor({
           continue;
         }
 
-        // Nested bullet points (- - or indented -)
-        if (/^\s{2,}-\s/.test(line) || trimmed.startsWith('- -')) {
+        // Nested bullet points (- - or indented - or %æ sub-bullets)
+        if (/^\s{2,}-\s/.test(line) || trimmed.startsWith('- -') || trimmed.startsWith('%æ') || trimmed.startsWith('%æ')) {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(80, 80, 80);
-          const bulletText = trimmed.replace(/^-\s*-\s*/, '').replace(/^-\s/, '');
-          const cleanText = stripMarkdown(bulletText);
+          const bulletText = trimmed.replace(/^-\s*-\s*/, '').replace(/^-\s/, '').replace(/^%æ\s*/, '').replace(/^%æ\s*/, '');
+          const cleanText = sanitizeForPDF(bulletText);
           const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 16);
           ensureSpace(wrappedBullet.length * 4 + 2);
-          doc.text('◦', margin + 8, yPos);
+          doc.text('-', margin + 8, yPos);
           doc.text(wrappedBullet, margin + 14, yPos);
           yPos += wrappedBullet.length * 4 + 1.5;
           i++;
@@ -349,7 +372,7 @@ export function ConversationReportEditor({
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(51, 51, 51);
           const bulletText = trimmed.replace(/^[-*] /, '');
-          const cleanText = stripMarkdown(bulletText);
+          const cleanText = sanitizeForPDF(bulletText);
           const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 10);
           ensureSpace(wrappedBullet.length * 4.5 + 2);
           doc.text('•', margin + 2, yPos);
@@ -377,7 +400,7 @@ export function ConversationReportEditor({
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
-        const cleanLine = stripMarkdown(trimmed);
+        const cleanLine = sanitizeForPDF(trimmed);
         const wrappedText = doc.splitTextToSize(cleanLine, usableWidth);
         ensureSpace(wrappedText.length * 4.5 + 2);
         doc.text(wrappedText, margin, yPos);
