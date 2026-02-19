@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, FileText, FileDown } from 'lucide-react';
+import { Download, FileText, FileDown, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ConversationReportEditor } from './ConversationReportEditor';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -22,6 +25,7 @@ interface ConversationExportProps {
 
 export function ConversationExport({ messages, title, reportNames }: ConversationExportProps) {
   const { toast } = useToast();
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const exportAsText = () => {
     const header = `# ${title}\n\nReports: ${reportNames.join(', ')}\nExported: ${new Date().toLocaleString()}\n\n---\n\n`;
@@ -98,27 +102,42 @@ export function ConversationExport({ messages, title, reportNames }: Conversatio
   if (messages.length === 0) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
-          <Download className="h-3 w-3" />
-          Export
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={exportAsText}>
-          <FileText className="h-4 w-4 mr-2" />
-          Export as Text (.txt)
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsMarkdown}>
-          <FileDown className="h-4 w-4 mr-2" />
-          Export as Markdown (.md)
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportAsJSON}>
-          <FileDown className="h-4 w-4 mr-2" />
-          Export as JSON (.json)
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+            <Download className="h-3 w-3" />
+            Export
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setEditorOpen(true)}>
+            <Sparkles className="h-4 w-4 mr-2 text-primary" />
+            Export as Structured Report (AI)
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={exportAsText}>
+            <FileText className="h-4 w-4 mr-2" />
+            Export Raw Transcript (.txt)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={exportAsMarkdown}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Export Raw Transcript (.md)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={exportAsJSON}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Export Raw Data (.json)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConversationReportEditor
+        isOpen={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        messages={messages}
+        title={title}
+        reportNames={reportNames}
+      />
+    </>
   );
 }
