@@ -69,7 +69,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               color: '#C5A572',
               fontFamily: 'Arial, sans-serif'
             }}>
-              NPC SERVICES
+              {(contactDetails.company_name || 'Naidu Property Consulting Services').toUpperCase()}
             </div>
             <div style={{
               fontSize: '10pt',
@@ -161,7 +161,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               lineHeight: '1.3'
             }}>
               <div style={{ fontWeight: 'bold', color: '#1E3A5F' }}>{suburb}, {state}</div>
-              <div>NPC Services</div>
+              <div>{contactDetails.company_name || 'Naidu Property Consulting Services'}</div>
             </div>
           </div>
 
@@ -258,7 +258,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             </h1>
             <div style={{ fontSize: '8pt', color: '#666', textAlign: 'right', lineHeight: '1.3' }}>
               <div style={{ fontWeight: 'bold', color: '#1E3A5F' }}>{suburb}, {state}</div>
-              <div>NPC Services</div>
+              <div>{contactDetails.company_name || 'Naidu Property Consulting Services'}</div>
             </div>
           </div>
 
@@ -306,7 +306,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             </h1>
             <div style={{ fontSize: '8pt', color: '#666', textAlign: 'right', lineHeight: '1.3' }}>
               <div style={{ fontWeight: 'bold', color: '#1E3A5F' }}>{suburb}, {state}</div>
-              <div>NPC Services</div>
+              <div>{contactDetails.company_name || 'Naidu Property Consulting Services'}</div>
             </div>
           </div>
 
@@ -354,7 +354,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             </h1>
             <div style={{ fontSize: '8pt', color: '#666', textAlign: 'right', lineHeight: '1.3' }}>
               <div style={{ fontWeight: 'bold', color: '#1E3A5F' }}>{suburb}, {state}</div>
-              <div>NPC Services</div>
+              <div>{contactDetails.company_name || 'Naidu Property Consulting Services'}</div>
             </div>
           </div>
 
@@ -402,7 +402,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             </h1>
             <div style={{ fontSize: '8pt', color: '#666', textAlign: 'right', lineHeight: '1.3' }}>
               <div style={{ fontWeight: 'bold', color: '#1E3A5F' }}>{suburb}, {state}</div>
-              <div>NPC Services</div>
+              <div>{contactDetails.company_name || 'Naidu Property Consulting Services'}</div>
             </div>
           </div>
 
@@ -460,7 +460,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               color: '#C5A572',
               marginBottom: '12pt'
             }}>
-              {contactDetails.company_name || 'NPC SERVICES'}
+              {contactDetails.company_name || 'Naidu Property Consulting Services'}
             </div>
             <div style={{
               fontSize: '13pt',
@@ -520,7 +520,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               </p>
             )}
             <p style={{ margin: '5pt 0' }}>
-              © {new Date().getFullYear()} {contactDetails.company_name || 'NPC Services'}. All rights reserved.
+              © {new Date().getFullYear()} {contactDetails.company_name || 'Naidu Property Consulting Services'}. All rights reserved.
             </p>
           </div>
         </div>

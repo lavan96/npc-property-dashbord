@@ -67,7 +67,7 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
               letterSpacing: '2pt',
               color: '#00d4ff'
             }}>
-              NPC SERVICES
+              {(contactDetails.company_name || 'Naidu Property Consulting Services').toUpperCase()}
             </div>
             <div style={{
               fontSize: '9pt',
@@ -424,7 +424,7 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
               color: '#00d4ff',
               marginBottom: '10pt'
             }}>
-              {contactDetails.company_name || 'NPC SERVICES'}
+              {contactDetails.company_name || 'Naidu Property Consulting Services'}
             </div>
             <div style={{
               fontSize: '12pt',
@@ -487,7 +487,7 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
               </p>
             )}
             <p style={{ margin: '5pt 0' }}>
-              © {new Date().getFullYear()} {contactDetails.company_name || 'NPC Services'}. All rights reserved.
+              © {new Date().getFullYear()} {contactDetails.company_name || 'Naidu Property Consulting Services'}. All rights reserved.
             </p>
           </div>
         </div>

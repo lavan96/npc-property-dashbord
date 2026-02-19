@@ -666,7 +666,7 @@ function addPageFooter(
   const footerY = 30;
   
   // Left side - company info (use config values)
-  const footerLeft = `NPC Services | ${config.website}`;
+  const footerLeft = `Naidu Property Consulting Services | ${config.website}`;
   page.drawText(footerLeft, {
     x: 60,
     y: footerY,
@@ -714,7 +714,7 @@ function addLastPageInfo(
   });
   
   // Contact heading
-  const contactHeading = 'Contact NPC Services';
+  const contactHeading = 'Contact Naidu Property Consulting Services';
   const headingWidth = fonts.timesRomanBold.widthOfTextAtSize(contactHeading, 11);
   page.drawText(contactHeading, {
     x: (pageWidth - headingWidth) / 2,

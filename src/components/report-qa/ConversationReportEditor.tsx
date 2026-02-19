@@ -163,7 +163,7 @@ export function ConversationReportEditor({
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text(contact.company_name || 'NPC Services', margin, 15);
+      doc.text(contact.company_name || 'Naidu Property Consulting Services', margin, 15);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text('Investment Property Analysis', margin, 22);
@@ -464,7 +464,7 @@ export function ConversationReportEditor({
       doc.setTextColor(191, 155, 80);
       doc.setFontSize(28);
       doc.setFont('helvetica', 'bold');
-      const companyParts = (contact.company_name || 'NPC SERVICES').toUpperCase().split(' ');
+      const companyParts = (contact.company_name || 'Naidu Property Consulting Services').toUpperCase().split(' ');
       if (companyParts.length >= 2) {
         doc.text(companyParts.slice(0, -1).join(' '), margin, 40);
         doc.setFontSize(16);
@@ -505,19 +505,21 @@ export function ConversationReportEditor({
 
       // Disclaimer text at bottom
       if (disclaimerSettings.is_enabled && disclaimerSettings.text) {
-        doc.setFontSize(7);
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(153, 153, 153);
         const disclaimerText = sanitizeForPDF(disclaimerSettings.text);
-        const wrappedDisclaimer = doc.splitTextToSize(disclaimerText, usableWidth);
+        const disclaimerMaxWidth = pageWidth - (margin * 1.5);
+        const wrappedDisclaimer = doc.splitTextToSize(disclaimerText, disclaimerMaxWidth);
+        const lineHeight = 4.2;
         // Position disclaimer from bottom up
-        const disclaimerStartY = pageHeight - 20 - (wrappedDisclaimer.length * 3.5);
-        doc.text(wrappedDisclaimer, margin, Math.max(disclaimerStartY, contactY + 20));
+        const disclaimerStartY = pageHeight - 20 - (wrappedDisclaimer.length * lineHeight);
+        doc.text(wrappedDisclaimer, margin * 0.75, Math.max(disclaimerStartY, contactY + 20), { lineHeightFactor: 1.4 });
       }
 
       // Footer on each page (skip cover page = page 1, skip disclaimer = last page)
       const totalPages = doc.getNumberOfPages();
-      const companyFooterName = contact.company_name || 'NPC Services';
+      const companyFooterName = contact.company_name || 'Naidu Property Consulting Services';
       for (let i = 1; i <= totalPages; i++) {
         // Skip cover (page 1) and disclaimer (last page)
         if (i === 1 || i === totalPages) continue;
