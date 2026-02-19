@@ -80,7 +80,6 @@ const App = () => (
             <PermissionsProvider>
               <BrowserRouter>
                 <NotificationsProvider>
-                  <HarveyCountdown />
                   <BackgroundJobTracker />
                   <ReportGenerationProgress />
                   <CallNotificationListener />
@@ -94,6 +93,7 @@ const App = () => (
                         <Route path="/accept-invite" element={<AcceptInvite />} />
                         <Route path="/" element={
                           <ProtectedRoute>
+                            <HarveyCountdown />
                             <DashboardLayout />
                           </ProtectedRoute>
                         }>
