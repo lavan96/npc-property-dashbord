@@ -206,20 +206,20 @@ export default function ActivityLogs() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Activity Logs</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Logs</h1>
+          <p className="text-sm text-muted-foreground">
             Track all user actions and system events
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportLogs}>
+          <Button variant="outline" size="sm" onClick={exportLogs} className="min-h-[44px] sm:min-h-0">
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={loadLogs}>
+          <Button variant="outline" size="sm" onClick={loadLogs} className="min-h-[44px] sm:min-h-0">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -332,60 +332,93 @@ export default function ActivityLogs() {
                   <p>No activity logs found</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[180px]">Timestamp</TableHead>
-                      <TableHead className="w-[120px]">User</TableHead>
-                      <TableHead className="w-[160px]">Action</TableHead>
-                      <TableHead>Entity</TableHead>
-                      <TableHead className="w-[120px]">IP Address</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile: Card layout */}
+                  <div className="sm:hidden divide-y divide-border">
                     {filteredLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-mono text-xs">
-                          <div>{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</div>
-                          <div className="text-muted-foreground">
-                            {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">
-                              {log.username || 'Unknown'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getActionBadge(log.action_type)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground">
+                      <div key={log.id} className="py-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-muted-foreground shrink-0">
                               {getEntityIcon(log.entity_type)}
                             </span>
-                            <div>
-                              <div className="text-sm font-medium truncate max-w-[300px]">
-                                {log.entity_name || log.entity_type.replace(/_/g, ' ')}
-                              </div>
-                              {log.entity_id && (
-                                <div className="text-xs text-muted-foreground font-mono">
-                                  {log.entity_id.slice(0, 8)}...
-                                </div>
-                              )}
-                            </div>
+                            <span className="font-medium text-sm truncate">
+                              {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+                            </span>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">
-                          {log.ip_address || '-'}
-                        </TableCell>
-                      </TableRow>
+                          {getActionBadge(log.action_type)}
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3" />
+                            <span>{log.username || 'Unknown'}</span>
+                          </div>
+                          <span className="font-mono">
+                            {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop: Table layout */}
+                  <div className="hidden sm:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[180px]">Timestamp</TableHead>
+                          <TableHead className="w-[120px]">User</TableHead>
+                          <TableHead className="w-[160px]">Action</TableHead>
+                          <TableHead>Entity</TableHead>
+                          <TableHead className="w-[120px]">IP Address</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredLogs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="font-mono text-xs">
+                              <div>{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</div>
+                              <div className="text-muted-foreground">
+                                {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium text-sm">
+                                  {log.username || 'Unknown'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getActionBadge(log.action_type)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  {getEntityIcon(log.entity_type)}
+                                </span>
+                                <div>
+                                  <div className="text-sm font-medium truncate max-w-[300px]">
+                                    {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+                                  </div>
+                                  {log.entity_id && (
+                                    <div className="text-xs text-muted-foreground font-mono">
+                                      {log.entity_id.slice(0, 8)}...
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-mono text-muted-foreground">
+                              {log.ip_address || '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </ScrollArea>
           </CardContent>

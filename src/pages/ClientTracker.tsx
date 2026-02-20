@@ -1451,24 +1451,45 @@ export default function ClientTracker() {
         </Tabs>
       )}
 
-      {/* Edit Dialog (for Kanban cards) */}
+      {/* Edit Dialog (for Kanban cards) - Sheet on mobile, Dialog on desktop */}
       {editingClient && (
-        <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                Edit: {formatFullName(editingClient.primary_first_name, editingClient.primary_surname)}
-              </DialogTitle>
-            </DialogHeader>
-            <ClientEditForm 
-              client={editingClient}
-              stages={allStages}
-              pipelines={pipelines}
-              onSave={(data) => updateClientMutation.mutate({ id: editingClient.id, ...data })}
-              isLoading={updateClientMutation.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+        isMobile ? (
+          <Sheet open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
+            <SheetContent side="bottom" className="h-[90vh] overflow-y-auto rounded-t-xl">
+              <SheetHeader>
+                <SheetTitle>
+                  Edit: {formatFullName(editingClient.primary_first_name, editingClient.primary_surname)}
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <ClientEditForm 
+                  client={editingClient}
+                  stages={allStages}
+                  pipelines={pipelines}
+                  onSave={(data) => updateClientMutation.mutate({ id: editingClient.id, ...data })}
+                  isLoading={updateClientMutation.isPending}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  Edit: {formatFullName(editingClient.primary_first_name, editingClient.primary_surname)}
+                </DialogTitle>
+              </DialogHeader>
+              <ClientEditForm 
+                client={editingClient}
+                stages={allStages}
+                pipelines={pipelines}
+                onSave={(data) => updateClientMutation.mutate({ id: editingClient.id, ...data })}
+                isLoading={updateClientMutation.isPending}
+              />
+            </DialogContent>
+          </Dialog>
+        )
       )}
     </div>
   );

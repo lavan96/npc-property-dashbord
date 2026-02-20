@@ -192,12 +192,12 @@ export function DataValidationPanel({ dashboardData, reportsData, className = ''
             <TabsContent value="fields" className="space-y-4">
               <div className="space-y-3">
                 {Object.entries(comparison.fieldComparison).map(([field, data]) => (
-                  <div key={field} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div key={field} className="flex flex-col gap-2 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${data.match ? 'bg-green-500' : 'bg-red-500'}`} />
-                      <span className="font-medium capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${data.match ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <span className="font-medium capitalize text-sm">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">
                       <span>Dashboard: {data.dashboard}</span>
                       <span>Reports: {data.reports}</span>
                       <Badge variant={data.match ? "secondary" : "destructive"}>
