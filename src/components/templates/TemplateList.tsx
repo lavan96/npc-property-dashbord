@@ -491,7 +491,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
 
       {/* Content Preview Dialog */}
       <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[80vh] w-[95vw] sm:w-auto">
           <DialogHeader>
             <DialogTitle>
               Extracted Content: {previewTemplate?.name}
@@ -500,8 +500,8 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
               {previewTemplate?.parsed_content?.length.toLocaleString()} characters of Markdown content
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[60vh] w-full rounded-md border p-4">
-            <pre className="text-sm whitespace-pre-wrap font-mono">
+          <ScrollArea className="h-[50vh] sm:h-[60vh] w-full rounded-md border p-3 sm:p-4">
+            <pre className="text-xs sm:text-sm whitespace-pre-wrap font-mono break-words">
               {previewTemplate?.parsed_content}
             </pre>
           </ScrollArea>

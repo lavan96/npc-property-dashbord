@@ -233,7 +233,7 @@ export const SwitchConfigModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh]">
+      <DialogContent className="max-w-2xl max-h-[90vh] w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle>{editingSwitch ? 'Edit Switch' : 'Create New Switch'}</DialogTitle>
           <DialogDescription>
@@ -312,7 +312,7 @@ export const SwitchConfigModal = ({
             </div>
 
             {/* Bedrooms & Bathrooms */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-3">
                 <Label>Bedrooms</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -466,15 +466,15 @@ export const SwitchConfigModal = ({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
+          <div className="text-sm text-muted-foreground w-full sm:w-auto text-center sm:text-left">
             {criteriaCount} criteria configured
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 sm:flex-initial">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-initial">
               {saving ? 'Saving...' : editingSwitch ? 'Update Switch' : 'Create Switch'}
             </Button>
           </div>

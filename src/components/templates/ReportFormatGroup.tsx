@@ -39,7 +39,7 @@ export function ReportFormatGroup({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className={`grid gap-4 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        <div className={`grid gap-3 sm:gap-4 grid-cols-1 ${columns === 3 ? 'sm:grid-cols-2 md:grid-cols-3' : 'sm:grid-cols-2'}`}>
           {formats.map((format) => {
             const Icon = format.icon;
             const count = getCount(format);

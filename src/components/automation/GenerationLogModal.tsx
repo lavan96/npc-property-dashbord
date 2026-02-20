@@ -80,7 +80,7 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh]">
+      <DialogContent className="max-w-4xl max-h-[85vh] w-[95vw] sm:w-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -103,45 +103,52 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Switch</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="max-w-[200px] truncate">
-                      {log.listing_address}
-                    </TableCell>
-                    <TableCell>
-                      {log.switch_name ? (
-                        <Badge variant="outline">{log.switch_name}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {getStatusBadge(log.status)}
-                        {log.error_message && (
-                          <p className="text-xs text-destructive truncate max-w-[200px]">
-                            {log.error_message}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(log.created_at), 'MMM d, HH:mm')}
-                    </TableCell>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[180px]">Address</TableHead>
+                    <TableHead className="hidden sm:table-cell">Switch</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="min-w-[100px]">Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="max-w-[180px] sm:max-w-[200px]">
+                        <div className="truncate text-sm">{log.listing_address}</div>
+                        <div className="sm:hidden mt-1">
+                          {log.switch_name ? (
+                            <Badge variant="outline" className="text-xs">{log.switch_name}</Badge>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {log.switch_name ? (
+                          <Badge variant="outline">{log.switch_name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          {getStatusBadge(log.status)}
+                          {log.error_message && (
+                            <p className="text-xs text-destructive truncate max-w-[150px] sm:max-w-[200px]">
+                              {log.error_message}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                        {format(new Date(log.created_at), 'MMM d, HH:mm')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </ScrollArea>
       </DialogContent>
