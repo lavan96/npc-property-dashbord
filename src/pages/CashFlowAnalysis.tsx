@@ -178,12 +178,13 @@ export default function CashFlowAnalysis() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Calculator className="h-8 w-8 text-primary" />
-              10-Year Cash Flow Analysis
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Calculator className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+              <span className="hidden sm:inline">10-Year Cash Flow Analysis</span>
+              <span className="sm:hidden">Cash Flow</span>
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Generate detailed 10-year cash flow projections for investment reports
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
+              Generate detailed 10-year cash flow projections
             </p>
           </div>
         </div>
@@ -212,7 +213,7 @@ export default function CashFlowAnalysis() {
 
         {/* Search and Filter */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by property address..."

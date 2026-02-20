@@ -17,6 +17,7 @@ import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, Histo
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
@@ -914,7 +915,7 @@ export default function GeneratedReports() {
         <TabsContent value="investment" className="space-y-4">
           {/* Search Bar & Filters */}
           <div className="flex flex-col gap-4 mb-4">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <div className="relative flex-1">
                 <Input
                   type="text"
@@ -926,200 +927,220 @@ export default function GeneratedReports() {
                   }}
                 />
               </div>
-              <Select value={scopeFilter} onValueChange={(value) => {
-                setScopeFilter(value);
-                setInvestmentPage(1);
-              }}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by scope" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="all">All Reports</SelectItem>
-                  <SelectItem value="address" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                    <div className="flex items-center gap-2">
-                      <Home className="h-4 w-4" />
-                      Property Analysis
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="suburb" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Suburb Analysis
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="zipcode" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
-                    <div className="flex items-center gap-2">
-                      <Map className="h-4 w-4" />
-                      Area Analysis
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="state" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      State Analysis
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Grade Filter */}
-              <Select value={gradeFilter} onValueChange={(value) => {
-                setGradeFilter(value);
-                setInvestmentPage(1);
-              }}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Filter by grade" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="all">All Grades</SelectItem>
-                  <SelectItem value="A+">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-emerald-500 text-white">A+</span>
-                      Grade A+
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="A">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-green-500 text-white">A</span>
-                      Grade A
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="B+">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-teal-500 text-white">B+</span>
-                      Grade B+
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="B">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-yellow-500 text-black">B</span>
-                      Grade B
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="C+">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-amber-500 text-black">C+</span>
-                      Grade C+
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="C">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-orange-500 text-white">C</span>
-                      Grade C
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="D">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-red-400 text-white">D</span>
-                      Grade D
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="F">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center bg-red-600 text-white">F</span>
-                      Grade F
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
 
-              {/* Tier Filter */}
-              <Select value={tierFilter} onValueChange={(value) => {
-                setTierFilter(value);
-                setInvestmentPage(1);
-              }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Filter by tier" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="all">All Tiers</SelectItem>
-                  <SelectItem value="compass">
-                    <div className="flex items-center gap-2">
-                      <Compass className="h-4 w-4 text-amber-500" />
-                      Compass (Full)
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="briefing">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-500" />
-                      Briefing (~20p)
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="snapshot">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-green-500" />
-                      Snapshot (~5p)
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Source Filter (Manual vs Auto) */}
-              <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setInvestmentPage(1); }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Filter by source" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="all">All Sources</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="auto">Auto-generated</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Archive Toggle */}
-              <Button
-                variant={showArchived ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setShowArchived(!showArchived)}
-                className="gap-2"
-              >
-                <Archive className="h-4 w-4" />
-                {showArchived ? 'Viewing Archived' : 'Show Archived'}
-              </Button>
+              {/* Mobile: Filter Sheet */}
+              {isMobile ? (
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon" className="shrink-0">
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
+                    <SheetHeader className="p-4 border-b">
+                      <SheetTitle>Report Filters</SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="flex-1 p-4">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Scope</label>
+                          <Select value={scopeFilter} onValueChange={(v) => { setScopeFilter(v); setInvestmentPage(1); }}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="All Reports" /></SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              <SelectItem value="all">All Reports</SelectItem>
+                              <SelectItem value="address">Property Analysis</SelectItem>
+                              <SelectItem value="suburb">Suburb Analysis</SelectItem>
+                              <SelectItem value="zipcode">Area Analysis</SelectItem>
+                              <SelectItem value="state">State Analysis</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Grade</label>
+                          <Select value={gradeFilter} onValueChange={(v) => { setGradeFilter(v); setInvestmentPage(1); }}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="All Grades" /></SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              <SelectItem value="all">All Grades</SelectItem>
+                              {['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'].map(g => (
+                                <SelectItem key={g} value={g}>Grade {g}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Tier</label>
+                          <Select value={tierFilter} onValueChange={(v) => { setTierFilter(v); setInvestmentPage(1); }}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="All Tiers" /></SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              <SelectItem value="all">All Tiers</SelectItem>
+                              <SelectItem value="compass">Compass (Full)</SelectItem>
+                              <SelectItem value="briefing">Briefing (~20p)</SelectItem>
+                              <SelectItem value="snapshot">Snapshot (~5p)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Source</label>
+                          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setInvestmentPage(1); }}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder="All Sources" /></SelectTrigger>
+                            <SelectContent className="bg-background z-50">
+                              <SelectItem value="all">All Sources</SelectItem>
+                              <SelectItem value="manual">Manual</SelectItem>
+                              <SelectItem value="auto">Auto-generated</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Score Range: {scoreRange[0]} - {scoreRange[1]}</label>
+                          <Slider
+                            value={scoreRange}
+                            onValueChange={(value) => { setScoreRange(value as [number, number]); setInvestmentPage(1); }}
+                            min={0} max={100} step={5}
+                          />
+                        </div>
+                        <Button
+                          variant={showArchived ? "secondary" : "outline"}
+                          className="w-full gap-2"
+                          onClick={() => setShowArchived(!showArchived)}
+                        >
+                          <Archive className="h-4 w-4" />
+                          {showArchived ? 'Viewing Archived' : 'Show Archived'}
+                        </Button>
+                      </div>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
+              ) : (
+                <>
+                  {/* Desktop inline filters */}
+                  <Select value={scopeFilter} onValueChange={(value) => { setScopeFilter(value); setInvestmentPage(1); }}>
+                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by scope" /></SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="all">All Reports</SelectItem>
+                      <SelectItem value="address">
+                        <div className="flex items-center gap-2"><Home className="h-4 w-4" />Property Analysis</div>
+                      </SelectItem>
+                      <SelectItem value="suburb">
+                        <div className="flex items-center gap-2"><Building2 className="h-4 w-4" />Suburb Analysis</div>
+                      </SelectItem>
+                      <SelectItem value="zipcode">
+                        <div className="flex items-center gap-2"><Map className="h-4 w-4" />Area Analysis</div>
+                      </SelectItem>
+                      <SelectItem value="state">
+                        <div className="flex items-center gap-2"><Globe className="h-4 w-4" />State Analysis</div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={gradeFilter} onValueChange={(value) => { setGradeFilter(value); setInvestmentPage(1); }}>
+                    <SelectTrigger className="w-[140px]"><SelectValue placeholder="Filter by grade" /></SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="all">All Grades</SelectItem>
+                      {['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'].map(g => (
+                        <SelectItem key={g} value={g}>
+                          <div className="flex items-center gap-2">
+                            <span className={`w-5 h-5 rounded text-xs font-bold flex items-center justify-center ${getGradeColor(g)}`}>{g}</span>
+                            Grade {g}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              <Badge variant="secondary">
+                  <Select value={tierFilter} onValueChange={(value) => { setTierFilter(value); setInvestmentPage(1); }}>
+                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter by tier" /></SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="all">All Tiers</SelectItem>
+                      <SelectItem value="compass">
+                        <div className="flex items-center gap-2"><Compass className="h-4 w-4 text-amber-500" />Compass (Full)</div>
+                      </SelectItem>
+                      <SelectItem value="briefing">
+                        <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-blue-500" />Briefing (~20p)</div>
+                      </SelectItem>
+                      <SelectItem value="snapshot">
+                        <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-green-500" />Snapshot (~5p)</div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setInvestmentPage(1); }}>
+                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter by source" /></SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="all">All Sources</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="auto">Auto-generated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button
+                    variant={showArchived ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="gap-2"
+                  >
+                    <Archive className="h-4 w-4" />
+                    {showArchived ? 'Viewing Archived' : 'Show Archived'}
+                  </Button>
+                </>
+              )}
+
+              <Badge variant="secondary" className="hidden md:inline-flex">
                 {filteredInvestmentReports.length} of {investmentReports.filter(r => showArchived ? r.is_archived : !r.is_archived).length} reports
               </Badge>
               
               {!showArchived && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground hidden md:inline">
                   Showing last 30 days
                 </span>
               )}
             </div>
             
-            {/* Score Range Filter */}
-            <div className="flex items-center gap-4 px-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Star className="h-4 w-4" />
-                <span>Score Range:</span>
+            {/* Score Range Filter - desktop only */}
+            {!isMobile && (
+              <div className="flex items-center gap-4 px-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Star className="h-4 w-4" />
+                  <span>Score Range:</span>
+                </div>
+                <div className="flex-1 max-w-md flex items-center gap-4">
+                  <span className="text-sm font-medium w-8">{scoreRange[0]}</span>
+                  <Slider
+                    value={scoreRange}
+                    onValueChange={(value) => {
+                      setScoreRange(value as [number, number]);
+                      setInvestmentPage(1);
+                    }}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-medium w-8">{scoreRange[1]}</span>
+                </div>
+                {(scoreRange[0] > 0 || scoreRange[1] < 100) && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setScoreRange([0, 100])}
+                    className="text-xs"
+                  >
+                    Reset
+                  </Button>
+                )}
               </div>
-              <div className="flex-1 max-w-md flex items-center gap-4">
-                <span className="text-sm font-medium w-8">{scoreRange[0]}</span>
-                <Slider
-                  value={scoreRange}
-                  onValueChange={(value) => {
-                    setScoreRange(value as [number, number]);
-                    setInvestmentPage(1);
-                  }}
-                  min={0}
-                  max={100}
-                  step={5}
-                  className="flex-1"
-                />
-                <span className="text-sm font-medium w-8">{scoreRange[1]}</span>
+            )}
+
+            {/* Mobile filter summary */}
+            {isMobile && (scopeFilter !== 'all' || gradeFilter !== 'all' || tierFilter !== 'all' || sourceFilter !== 'all' || scoreRange[0] > 0 || scoreRange[1] < 100) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="secondary" className="text-xs">
+                  {[scopeFilter !== 'all', gradeFilter !== 'all', tierFilter !== 'all', sourceFilter !== 'all', scoreRange[0] > 0 || scoreRange[1] < 100].filter(Boolean).length} filter(s)
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {filteredInvestmentReports.length} reports
+                </Badge>
               </div>
-              {(scoreRange[0] > 0 || scoreRange[1] < 100) && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setScoreRange([0, 100])}
-                  className="text-xs"
-                >
-                  Reset
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
           {filteredInvestmentReports.length === 0 ? (
