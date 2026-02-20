@@ -50,6 +50,10 @@ const bandLabel = (band: string): string => {
   return 'LIMITED';
 };
 
+/** Convert snake_case / kebab-case to Title Case */
+const formatLabel = (s: string): string =>
+  s.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 function setColor(doc: jsPDF, c: RGB) {
   doc.setTextColor(c.r, c.g, c.b);
 }
@@ -296,7 +300,19 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 
     for (let i = 0; i < incomeBreakdown.length; i++) {
       const item = incomeBreakdown[i];
+      const prevY = y;
       y = checkPageBreak(doc, y, 10, pageNum);
+      // Re-draw table header after page break
+      if (y < prevY) {
+        y = drawTableRow(doc, y, [
+          { text: 'Source', x: MARGIN, bold: true, color: NAVY },
+          { text: 'Gross Amount', x: MARGIN + 90, align: 'right', bold: true, color: NAVY },
+          { text: 'Shading', x: MARGIN + 120, align: 'right', bold: true, color: NAVY },
+          { text: 'Shaded Amount', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
+        ]);
+        setFill(doc, GOLD);
+        doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
+      }
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
       let sourceName = item.component || item.source_name || item.source_type || 'Income';
       // Truncate long source names to prevent overlap with amount columns
@@ -353,10 +369,29 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
 
     for (let i = 0; i < liabilities.length; i++) {
+      const prevY = y;
       y = checkPageBreak(doc, y, 10, pageNum);
+      // Re-draw table header after page break
+      if (y < prevY) {
+        y = drawTableRow(doc, y, [
+          { text: 'Type', x: MARGIN, bold: true, color: NAVY },
+          { text: 'Balance', x: MARGIN + 60, align: 'right', bold: true, color: NAVY },
+          { text: 'Monthly Repayment', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
+        ]);
+        setFill(doc, GOLD);
+        doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
+      }
       const l = liabilities[i];
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
-      const lType = l.type || l.liability_type || 'Liability';
+      let lType = l.type || l.liability_type || 'Liability';
+      lType = formatLabel(lType);
+      // Truncate long liability names (e.g. "Existing Loan P&I (address...)")
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const maxLiabW = 50;
+      while (doc.getTextWidth(lType) > maxLiabW && lType.length > 10) {
+        lType = lType.slice(0, -4) + '...';
+      }
       const balance = l.balance || l.current_balance || 0;
       const monthly = l.monthlyServicing || l.monthly_repayment || 0;
       y = drawTableRow(doc, y, [
@@ -471,11 +506,19 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 
     y = drawSectionHeader(doc, 'Assessment History', y);
 
+    // Summary line
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, { r: 80, g: 80, b: 80 });
+    doc.text(`${history.length} assessment${history.length > 1 ? 's' : ''} on record`, MARGIN, y);
+    y += 10;
+
     // Table header
     y = drawTableRow(doc, y, [
       { text: 'Date', x: MARGIN, bold: true, color: NAVY },
-      { text: 'Capacity', x: MARGIN + 55, align: 'right', bold: true, color: NAVY },
-      { text: 'Band', x: MARGIN + 95, bold: true, color: NAVY },
+      { text: 'Capacity', x: MARGIN + 50, align: 'right', bold: true, color: NAVY },
+      { text: 'Change', x: MARGIN + 80, align: 'right', bold: true, color: NAVY },
+      { text: 'Band', x: MARGIN + 110, bold: true, color: NAVY },
       { text: 'Surplus', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
     ]);
     setFill(doc, GOLD);
@@ -487,10 +530,24 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const dateStr = h.created_at ? format(new Date(h.created_at), 'dd MMM yyyy') : '-';
       const band = h.serviceability_band || h.serviceabilityBand || '-';
       const surplus = h.monthly_surplus || h.monthlySurplus || 0;
+      const cap = h.borrowing_capacity || h.borrowingCapacity || 0;
+      // Change vs previous entry
+      let changeText = '-';
+      let changeColor = GRAY;
+      if (i < history.length - 1) {
+        const prevCap = history[i + 1]?.borrowing_capacity || history[i + 1]?.borrowingCapacity || 0;
+        if (prevCap > 0) {
+          const diff = cap - prevCap;
+          const pct = ((diff / prevCap) * 100).toFixed(1);
+          changeText = diff >= 0 ? `+${pct}%` : `${pct}%`;
+          changeColor = diff >= 0 ? GREEN : RED;
+        }
+      }
       y = drawTableRow(doc, y, [
         { text: dateStr, x: MARGIN },
-        { text: fmt(h.borrowing_capacity || h.borrowingCapacity || 0), x: MARGIN + 55, align: 'right', bold: true },
-        { text: bandLabel(band), x: MARGIN + 95, color: bandColor(band) },
+        { text: fmt(cap), x: MARGIN + 50, align: 'right', bold: true },
+        { text: changeText, x: MARGIN + 80, align: 'right', color: changeColor },
+        { text: bandLabel(band), x: MARGIN + 110, color: bandColor(band) },
         { text: fmt(surplus), x: MARGIN + CONTENT_W, align: 'right', color: surplus >= 0 ? GREEN : RED },
       ], bg);
     }
