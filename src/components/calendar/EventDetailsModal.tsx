@@ -183,7 +183,7 @@ export function EventDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] w-[95vw]">
         <DialogHeader>
           <div className="flex items-start justify-between gap-3">
             {isEditing ? (
@@ -228,7 +228,7 @@ export function EventDetailsModal({
                 Reschedule Appointment
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="reschedule-date" className="text-xs">Date</Label>
                   <Input

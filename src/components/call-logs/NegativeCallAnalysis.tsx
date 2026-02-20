@@ -615,7 +615,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       {/* Call Detail Dialog */}
       <Dialog open={!!selectedCall} onOpenChange={(open) => !open && setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -626,7 +626,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
           {selectedCall && (
             <div className="space-y-6">
               {/* Call Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground">Customer</label>
                   <p className="font-medium">{selectedCall.customer_name || selectedCall.phone_number || 'Unknown'}</p>

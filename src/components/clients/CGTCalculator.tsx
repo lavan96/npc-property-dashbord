@@ -148,9 +148,9 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
           CGT
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 w-[95vw] sm:w-auto">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Calculator className="h-5 w-5" />
             Capital Gains Tax Calculator
           </DialogTitle>
@@ -159,7 +159,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-100px)] px-6 pb-6">
+        <ScrollArea className="max-h-[calc(90vh-100px)] px-4 sm:px-6 pb-4 sm:pb-6">
           <div className="space-y-5">
             {/* Main Residence Toggle */}
             <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
@@ -185,7 +185,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
             )}
 
             {/* Sale & Purchase Details */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-medium">Estimated Sale Price</Label>
                 <Input
@@ -337,11 +337,11 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                 </h3>
 
                 {/* Key metrics row */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Card className="border-0 shadow-none bg-muted/50">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Capital Gain</p>
-                      <p className={`text-lg font-bold ${result.isCapitalLoss ? 'text-red-600' : 'text-green-600'}`}>
+                      <p className={`text-base sm:text-lg font-bold ${result.isCapitalLoss ? 'text-red-600' : 'text-green-600'}`}>
                         {formatCurrency(result.grossCapitalGain)}
                       </p>
                     </CardContent>
@@ -349,7 +349,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                   <Card className="border-0 shadow-none bg-muted/50">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Estimated CGT</p>
-                      <p className={`text-lg font-bold ${result.estimatedCGT > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      <p className={`text-base sm:text-lg font-bold ${result.estimatedCGT > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                         {formatCurrency(result.estimatedCGT)}
                       </p>
                     </CardContent>
@@ -357,7 +357,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                   <Card className="border-0 shadow-none bg-muted/50">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Proceeds</p>
-                      <p className="text-lg font-bold">{formatCurrency(result.netProceeds)}</p>
+                      <p className="text-base sm:text-lg font-bold">{formatCurrency(result.netProceeds)}</p>
                     </CardContent>
                   </Card>
                 </div>

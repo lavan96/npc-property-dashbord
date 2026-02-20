@@ -294,7 +294,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
 
       {/* Call Detail Dialog */}
       <Dialog open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-red-500" />
@@ -305,7 +305,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
           {selectedCall && (
             <div className="space-y-6">
               {/* Call Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-muted">
                   <p className="text-xs text-muted-foreground mb-1">Customer</p>
                   <p className="font-medium">{selectedCall.customer_name || selectedCall.phone_number || 'Unknown'}</p>
@@ -353,7 +353,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
               </div>
 
               {/* Root Cause & Severity */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg border">
                   <p className="text-xs text-muted-foreground mb-1">Root Cause</p>
                   {selectedCall.root_cause_category ? (
