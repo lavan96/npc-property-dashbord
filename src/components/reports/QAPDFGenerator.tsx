@@ -135,40 +135,59 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
         const finalWidths = colWidthsMM.map(w => w * scale);
 
         const cellPadding = 2;
-        const rowHeight = 8;
+        const baseCellLineHeight = 3.8;
 
-        // Ensure space for at least the header + first 2 rows
-        const minTableHeight = Math.min((rows.length + 1) * rowHeight + 4, 3 * rowHeight + 4);
+        // Helper: calculate the row height based on wrapped text in each cell
+        const calcRowHeight = (cells: string[], fontSize: number): number => {
+          doc.setFontSize(fontSize);
+          let maxLines = 1;
+          for (let c = 0; c < colCount; c++) {
+            const cellText = cells[c] || '';
+            const wrapped = doc.splitTextToSize(cellText, finalWidths[c] - cellPadding * 2);
+            if (wrapped.length > maxLines) maxLines = wrapped.length;
+          }
+          return maxLines * baseCellLineHeight + 4;
+        };
+
+        // Calculate header row height
+        doc.setFontSize(8);
+        const headerRowH = calcRowHeight(header, 8);
+
+        const minTableHeight = Math.min(headerRowH + rows.slice(0, 2).reduce((s, r) => s + calcRowHeight(r, 8), 0) + 4, 60);
         ensureSpace(minTableHeight);
 
         let xPos = margin;
         doc.setFillColor(240, 245, 255);
-        doc.rect(margin, yPos - 5, usableWidth, rowHeight, 'F');
+        doc.rect(margin, yPos - 5, usableWidth, headerRowH, 'F');
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(15, 23, 42);
         for (let i = 0; i < colCount; i++) {
-          doc.text(header[i], xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
+          const wrapped = doc.splitTextToSize(header[i], finalWidths[i] - cellPadding * 2);
+          doc.text(wrapped, xPos + cellPadding, yPos);
           xPos += finalWidths[i];
         }
         doc.setDrawColor(200, 210, 230);
         doc.setLineWidth(0.3);
-        doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
-        yPos += rowHeight;
+        doc.line(margin, yPos + headerRowH - 5, margin + usableWidth, yPos + headerRowH - 5);
+        yPos += headerRowH;
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
+        doc.setFontSize(8);
         for (const row of rows) {
-          ensureSpace(rowHeight + 2);
+          const dynRowH = calcRowHeight(row, 8);
+          ensureSpace(dynRowH + 2);
           xPos = margin;
           for (let i = 0; i < colCount; i++) {
             const cellText = row[i] || '';
-            doc.text(cellText, xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
+            const wrapped = doc.splitTextToSize(cellText, finalWidths[i] - cellPadding * 2);
+            doc.text(wrapped, xPos + cellPadding, yPos);
             xPos += finalWidths[i];
           }
           doc.setDrawColor(230, 230, 230);
-          doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
-          yPos += rowHeight;
+          doc.line(margin, yPos + dynRowH - 5, margin + usableWidth, yPos + dynRowH - 5);
+          yPos += dynRowH;
         }
         yPos += 4;
       };
@@ -210,7 +229,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.setFontSize(16);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(15, 23, 42);
-          const h1Text = trimmed.replace(/^# /, '');
+          const h1Text = sanitizeForPDF(trimmed.replace(/^# /, ''));
           const wrappedH1 = doc.splitTextToSize(h1Text, usableWidth);
           doc.text(wrappedH1, margin, yPos);
           yPos += wrappedH1.length * 7 + 2;
@@ -229,7 +248,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.setFontSize(13);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(37, 99, 235);
-          const h2Text = trimmed.replace(/^## /, '');
+          const h2Text = sanitizeForPDF(trimmed.replace(/^## /, ''));
           const wrappedH2 = doc.splitTextToSize(h2Text, usableWidth);
           doc.text(wrappedH2, margin, yPos);
           yPos += wrappedH2.length * 6 + 4;
@@ -244,7 +263,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.setFontSize(11);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(30, 64, 175);
-          const h3Text = trimmed.replace(/^### /, '');
+          const h3Text = sanitizeForPDF(trimmed.replace(/^### /, ''));
           const wrappedH3 = doc.splitTextToSize(h3Text, usableWidth);
           doc.text(wrappedH3, margin, yPos);
           yPos += wrappedH3.length * 5 + 3;
@@ -259,7 +278,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.setFontSize(10);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(71, 85, 105);
-          const h5Text = trimmed.replace(/^#####+ /, '');
+          const h5Text = sanitizeForPDF(trimmed.replace(/^#####+ /, ''));
           const wrappedH5 = doc.splitTextToSize(h5Text, usableWidth);
           doc.text(wrappedH5, margin, yPos);
           yPos += wrappedH5.length * 4.5 + 3;
@@ -274,7 +293,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
           doc.setFontSize(10);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(51, 65, 85);
-          const h4Text = trimmed.replace(/^####+ /, '');
+          const h4Text = sanitizeForPDF(trimmed.replace(/^####+ /, ''));
           const wrappedH4 = doc.splitTextToSize(h4Text, usableWidth);
           doc.text(wrappedH4, margin, yPos);
           yPos += wrappedH4.length * 4.5 + 3;
