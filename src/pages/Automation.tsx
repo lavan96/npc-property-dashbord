@@ -273,15 +273,15 @@ const Automation = () => {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Auto-Generation Switchbot</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Auto-Generation Switchbot</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Configure automated investment report generation for incoming listings
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setLogModalOpen(true)}>
+            <Button variant="outline" onClick={() => setLogModalOpen(true)} size="sm" className="sm:size-default">
               <History className="h-4 w-4 mr-2" />
               View Log
             </Button>
@@ -291,9 +291,9 @@ const Automation = () => {
         {/* Airtable Sync Controls */}
         <Card className="border-blue-500/30 bg-blue-500/5">
           <CardContent className="py-4">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-blue-500/20">
+                <div className="p-2 rounded-lg bg-blue-500/20 shrink-0">
                   <Zap className="h-4 w-4 text-blue-500" />
                 </div>
                 <div>
@@ -302,7 +302,7 @@ const Automation = () => {
                     Sync new listings from Airtable and auto-generate reports based on your switch criteria.
                   </p>
                   {syncStats && (
-                    <div className="flex gap-3 mt-2 text-xs">
+                    <div className="flex flex-wrap gap-2 mt-2 text-xs">
                       <Badge variant="outline">{syncStats.total} processed</Badge>
                       <Badge variant="secondary">{syncStats.generated} reports generated</Badge>
                       {syncStats.lastSync && (
@@ -314,20 +314,20 @@ const Automation = () => {
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:shrink-0">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="sm"
                       disabled={clearing || !syncStats?.total}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive min-h-[44px] sm:min-h-0"
                     >
                       <XCircle className={`h-4 w-4 mr-1 ${clearing ? 'animate-spin' : ''}`} />
                       {clearing ? 'Clearing...' : 'Clear Queue'}
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="w-[95vw] sm:w-auto">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Clear Stuck Reports?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -348,6 +348,7 @@ const Automation = () => {
                   size="sm"
                   onClick={() => runSync(true)}
                   disabled={syncing || !masterEnabled}
+                  className="min-h-[44px] sm:min-h-0"
                 >
                   <Eye className="h-4 w-4 mr-1" />
                   Dry Run
@@ -356,6 +357,7 @@ const Automation = () => {
                   size="sm"
                   onClick={() => runSync(false)}
                   disabled={syncing || !masterEnabled}
+                  className="min-h-[44px] sm:min-h-0"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Syncing...' : 'Sync Now'}
@@ -409,8 +411,8 @@ const Automation = () => {
         {/* Switches Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Filter Switches</h2>
-            <Button onClick={openCreateModal}>
+            <h2 className="text-lg sm:text-xl font-semibold">Filter Switches</h2>
+            <Button onClick={openCreateModal} size="sm" className="sm:size-default min-h-[44px] sm:min-h-0">
               <Plus className="h-4 w-4 mr-2" />
               Create Switch
             </Button>
@@ -448,15 +450,15 @@ const Automation = () => {
                   className={switchItem.is_enabled ? 'border-primary/30' : 'border-muted'}
                 >
                   <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <Switch
                           checked={switchItem.is_enabled}
                           onCheckedChange={() => toggleSwitch(switchItem)}
                           disabled={!masterEnabled}
                         />
-                        <div>
-                          <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium">{switchItem.name}</span>
                             <Badge variant="secondary" className="text-xs">
                               {getCriteriaCount(switchItem.criteria)} criteria
@@ -480,11 +482,12 @@ const Automation = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
                         <Button 
                           variant="ghost" 
                           size="sm"
                           onClick={() => openEditModal(switchItem)}
+                          className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
                         >
                           <Settings2 className="h-4 w-4" />
                         </Button>
@@ -492,7 +495,7 @@ const Automation = () => {
                           variant="ghost" 
                           size="sm"
                           onClick={() => deleteSwitch(switchItem)}
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
