@@ -10,3 +10,4 @@ export { ExpensesSection } from './sections/ExpensesSection';
 export { LiabilitiesSection } from './sections/LiabilitiesSection';
 export { ProposedLoanSection } from './sections/ProposedLoanSection';
 export * from './BorrowingCapacityPDFSection';
+export { generateBorrowingCapacityPDF, fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';

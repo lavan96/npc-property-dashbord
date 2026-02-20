@@ -632,6 +632,8 @@ export function BorrowingCapacityModal({
                       calculationMode={calculationMode}
                       dtiCapEnabled={dtiCapEnabled}
                       dtiCapLimit={dtiCapLimit}
+                      clientId={clientId}
+                      clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
                     />
                   </div>
                 </ScrollArea>
