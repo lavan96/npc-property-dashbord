@@ -562,7 +562,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
         onClose();
       }
     }}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col w-[95vw]">
+      <DialogContent className="max-w-7xl h-[90vh] flex flex-col w-[95vw] sm:w-[95vw] p-3 sm:p-6">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />

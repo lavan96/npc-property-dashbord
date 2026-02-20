@@ -138,7 +138,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -153,7 +153,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
           {/* Primary Contact */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-foreground">Primary Contact</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="primary_first_name">First Name *</Label>
                 <Input
@@ -175,7 +175,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="primary_email">Email</Label>
                 <Input
@@ -201,7 +201,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
           {/* Secondary Contact */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-muted-foreground">Secondary Contact (Optional)</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="secondary_first_name">First Name</Label>
                 <Input

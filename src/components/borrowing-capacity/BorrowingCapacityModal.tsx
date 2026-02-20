@@ -6,11 +6,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark, getHemBreakdown, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
@@ -97,6 +104,7 @@ export function BorrowingCapacityModal({
   open, 
   onOpenChange 
 }: BorrowingCapacityModalProps) {
+  const isMobile = useIsMobile();
   const { 
     quickCalculate, 
     isCalculating, 
@@ -387,309 +395,339 @@ export function BorrowingCapacityModal({
     }
   }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
 
+  const headerContent = (
+    <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center gap-2 text-lg font-semibold">
+        <Calculator className="h-5 w-5 text-primary" />
+        <span className="text-base sm:text-xl">Borrowing Capacity</span>
+      </div>
+      <div className="flex gap-2">
+        <Button 
+          variant="outline"
+          onClick={() => {
+            calculate({
+              grossAnnualIncome: totalGrossIncome,
+              livingExpenses: effectiveExpenses,
+              interestRate,
+              loanTermYears,
+              proposedLoanAmount,
+            });
+            toast.success('Assessment saved');
+          }}
+          disabled={isLocalCalculating || isCalculating || !result}
+          size="sm"
+        >
+          <Save className="h-4 w-4 mr-1 sm:mr-2" />
+          Save
+        </Button>
+        <Button 
+          onClick={handleCalculate}
+          disabled={isLocalCalculating || isCalculating}
+          size="sm"
+        >
+          {isLocalCalculating || isCalculating ? (
+            <Loader2 className="h-4 w-4 mr-1 sm:mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-1 sm:mr-2" />
+          )}
+          Recalculate
+        </Button>
+      </div>
+    </div>
+  );
+
+  const tabsContent = (
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+      <div className="px-4 sm:px-6 border-b">
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="calculator" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Calculator className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Calculator
+          </TabsTrigger>
+          <TabsTrigger value="scenarios" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <FlaskConical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            What-If
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            History
+          </TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
+        {/* Desktop: side-by-side. Mobile: stacked single column */}
+        <div className="flex flex-col md:flex-row flex-1 h-full overflow-hidden">
+          {/* Left Panel - Inputs */}
+          <div className="w-full md:w-1/2 md:border-r">
+            <ScrollArea className={isMobile ? "h-auto max-h-[60vh]" : "h-[calc(90vh-140px)]"}>
+              <div className="p-4 sm:p-6 space-y-4">
+                <IncomeSection
+                  incomeBreakdown={incomeBreakdown}
+                  totalGross={totalGrossIncome}
+                  totalShaded={totalShadedIncome}
+                />
+                <ExpensesSection
+                  expenseMethod={expenseMethod}
+                  hemBenchmark={hemBenchmark}
+                  hemBreakdown={hemBreakdown}
+                  declaredExpenses={declaredExpenses}
+                  baseExpenses={baseExpenses}
+                  negativePropertyCashFlows={negativePropertyCashFlows}
+                  totalNegativeCashFlows={totalNegativeCashFlows}
+                  effectiveExpenses={effectiveExpenses}
+                  onMethodChange={setExpenseMethod}
+                  onDeclaredExpensesChange={setDeclaredExpenses}
+                />
+                <LiabilitiesSection
+                  liabilities={liabilitiesBreakdown}
+                  totalMonthlyCommitments={totalMonthlyCommitments}
+                />
+                <ProposedLoanSection
+                  proposedLoanAmount={proposedLoanAmount}
+                  interestRate={interestRate}
+                  bufferRate={effectiveBufferRate}
+                  bufferEnabled={bufferEnabled}
+                  onBufferEnabledChange={setBufferEnabled}
+                  loanTermYears={loanTermYears}
+                  onProposedLoanChange={setProposedLoanAmount}
+                  onInterestRateChange={setInterestRate}
+                  onLoanTermChange={setLoanTermYears}
+                />
+
+                {/* Bank Rate Selector - CDR Integration */}
+                <div className="rounded-lg border p-4 bg-card">
+                  <h3 className="font-medium mb-3 flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    Live Bank Rates (CDR)
+                  </h3>
+                  <BankRateSelector
+                    value={interestRate}
+                    onChange={(rate, lenderName) => {
+                      setInterestRate(rate);
+                      if (lenderName) setSelectedLenderName(lenderName);
+                    }}
+                    loanPurpose="INVESTMENT"
+                    repaymentType="PRINCIPAL_AND_INTEREST"
+                    onOpenComparison={() => setShowRateComparison(true)}
+                  />
+                  {selectedLenderName && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Using rate from: {selectedLenderName}
+                    </p>
+                  )}
+                </div>
+
+                {/* Calculation Mode Controls */}
+                <div className="rounded-lg border p-4 bg-card space-y-4">
+                  <h3 className="font-medium flex items-center gap-2">
+                    {calculationMode === 'conservative' ? (
+                      <ShieldAlert className="h-4 w-4 text-warning" />
+                    ) : (
+                      <Shield className="h-4 w-4 text-primary" />
+                    )}
+                    Calculation Mode
+                  </h3>
+                  
+                  {/* Conservative Mode Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="conservative-mode" className="text-sm font-medium">
+                        Conservative Mode
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Quickli-style with surplus floors & DTI cap
+                      </p>
+                    </div>
+                    <Switch
+                      id="conservative-mode"
+                      checked={calculationMode === 'conservative'}
+                      onCheckedChange={(checked) => {
+                        setCalculationMode(checked ? 'conservative' : 'bank');
+                        if (checked) {
+                          setDtiCapEnabled(true);
+                          setDtiCapLimit(6);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  {/* DTI Cap Controls */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="dti-cap" className="text-sm font-medium">
+                          Enforce DTI Cap
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Limit capacity based on debt-to-income ratio
+                        </p>
+                      </div>
+                      <Switch
+                        id="dti-cap"
+                        checked={dtiCapEnabled || calculationMode === 'conservative'}
+                        onCheckedChange={setDtiCapEnabled}
+                        disabled={calculationMode === 'conservative'}
+                      />
+                    </div>
+                    
+                    {(dtiCapEnabled || calculationMode === 'conservative') && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs text-muted-foreground">DTI Limit</Label>
+                          <span className="text-sm font-medium">{dtiCapLimit}x</span>
+                        </div>
+                        <div className="flex gap-2">
+                          {[5, 6, 7, 8].map((cap) => (
+                            <button
+                              key={cap}
+                              onClick={() => setDtiCapLimit(cap)}
+                              disabled={calculationMode === 'conservative'}
+                              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
+                                dtiCapLimit === cap
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-secondary hover:bg-secondary/80'
+                              } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              {cap}x
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {calculationMode === 'conservative' 
+                            ? 'Conservative mode enforces 6x DTI cap'
+                            : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mode Description */}
+                  <div className={`p-3 rounded-lg text-xs ${
+                    calculationMode === 'conservative' 
+                      ? 'bg-warning/10 border border-warning/30 text-warning'
+                      : 'bg-primary/10 border border-primary/30 text-primary'
+                  }`}>
+                    {calculationMode === 'conservative' ? (
+                      <p>
+                        <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
+                        residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
+                        Results align with consumer-focused tools like Quickli.
+                      </p>
+                    ) : (
+                      <p>
+                        <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
+                        constraints. Shows maximum theoretical lending capacity similar to major lender 
+                        assessments.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
+          {/* Right Panel - Results (below on mobile) */}
+          <div className="w-full md:w-1/2 border-t md:border-t-0">
+            <ScrollArea className={isMobile ? "h-auto max-h-[60vh]" : "h-[calc(90vh-140px)]"}>
+              <div className="p-4 sm:p-6">
+                <ResultsPanel 
+                  result={result} 
+                  isCalculating={isLocalCalculating || isCalculating}
+                  calculationMode={calculationMode}
+                  dtiCapEnabled={dtiCapEnabled}
+                  dtiCapLimit={dtiCapLimit}
+                  clientId={clientId}
+                  clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
+                />
+              </div>
+            </ScrollArea>
+          </div>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="scenarios" className="flex-1 overflow-hidden m-0">
+        <ScrollArea className={isMobile ? "h-[calc(100vh-180px)]" : "h-[calc(90vh-140px)]"}>
+          <div className="p-4 sm:p-6">
+            {result ? (
+              <ScenarioModeling
+                baseInputs={{
+                  grossAnnualIncome: totalGrossIncome,
+                  shadedAnnualIncome: totalShadedIncome,
+                  monthlyLivingExpenses: effectiveExpenses,
+                  monthlyCommitments: totalMonthlyCommitments,
+                  interestRate,
+                  bufferRate: effectiveBufferRate,
+                  loanTermYears,
+                }}
+                baseResult={result}
+              />
+            ) : (
+              <div className="text-center text-muted-foreground py-12">
+                Calculate borrowing capacity first to model scenarios.
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </TabsContent>
+
+      <TabsContent value="history" className="flex-1 overflow-hidden m-0">
+        <ScrollArea className={isMobile ? "h-[calc(100vh-180px)]" : "h-[calc(90vh-140px)]"}>
+          <div className="p-4 sm:p-6">
+            <CapacityHistoryChart 
+              history={assessmentHistory || []} 
+              isLoading={isLoadingHistory} 
+            />
+          </div>
+        </ScrollArea>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const bankRateModal = (
+    <BankRateComparisonModal
+      open={showRateComparison}
+      onOpenChange={setShowRateComparison}
+      onSelectRate={(rate, lenderName, productName) => {
+        setInterestRate(rate);
+        setSelectedLenderName(lenderName);
+        toast.success(`Selected ${lenderName} rate: ${rate.toFixed(2)}%`);
+      }}
+      defaultLoanPurpose="INVESTMENT"
+      defaultRepaymentType="PRINCIPAL_AND_INTEREST"
+    />
+  );
+
+  // Mobile: full-screen Sheet
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[95vh] p-0 flex flex-col rounded-t-xl">
+          <SheetHeader className="p-4 pb-3 border-b flex-shrink-0">
+            <SheetTitle className="sr-only">Borrowing Capacity Calculator</SheetTitle>
+            {headerContent}
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {tabsContent}
+          </div>
+          {bankRateModal}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: standard dialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[90vh] p-0 gap-0">
         <DialogHeader className="p-6 pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-primary" />
-              Borrowing Capacity Calculator
-            </DialogTitle>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  calculate({
-                    grossAnnualIncome: totalGrossIncome,
-                    livingExpenses: effectiveExpenses,
-                    interestRate,
-                    loanTermYears,
-                    proposedLoanAmount,
-                  });
-                  toast.success('Assessment saved');
-                }}
-                disabled={isLocalCalculating || isCalculating || !result}
-                size="sm"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save
-              </Button>
-              <Button 
-                onClick={handleCalculate}
-                disabled={isLocalCalculating || isCalculating}
-                size="sm"
-              >
-                {isLocalCalculating || isCalculating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Recalculate
-              </Button>
-            </div>
-          </div>
+          <DialogTitle className="sr-only">Borrowing Capacity Calculator</DialogTitle>
+          {headerContent}
         </DialogHeader>
-
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 border-b">
-            <TabsList className="w-full justify-start">
-              <TabsTrigger value="calculator" className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Calculator
-              </TabsTrigger>
-              <TabsTrigger value="scenarios" className="flex items-center gap-2">
-                <FlaskConical className="h-4 w-4" />
-                What-If
-              </TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                History
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
-            <div className="flex flex-1 h-full overflow-hidden">
-              {/* Left Panel - Inputs */}
-              <div className="w-1/2 border-r">
-                <ScrollArea className="h-[calc(90vh-140px)]">
-                  <div className="p-6 space-y-4">
-                    <IncomeSection
-                      incomeBreakdown={incomeBreakdown}
-                      totalGross={totalGrossIncome}
-                      totalShaded={totalShadedIncome}
-                    />
-                    <ExpensesSection
-                      expenseMethod={expenseMethod}
-                      hemBenchmark={hemBenchmark}
-                      hemBreakdown={hemBreakdown}
-                      declaredExpenses={declaredExpenses}
-                      baseExpenses={baseExpenses}
-                      negativePropertyCashFlows={negativePropertyCashFlows}
-                      totalNegativeCashFlows={totalNegativeCashFlows}
-                      effectiveExpenses={effectiveExpenses}
-                      onMethodChange={setExpenseMethod}
-                      onDeclaredExpensesChange={setDeclaredExpenses}
-                    />
-                    <LiabilitiesSection
-                      liabilities={liabilitiesBreakdown}
-                      totalMonthlyCommitments={totalMonthlyCommitments}
-                    />
-                    <ProposedLoanSection
-                      proposedLoanAmount={proposedLoanAmount}
-                      interestRate={interestRate}
-                      bufferRate={effectiveBufferRate}
-                      bufferEnabled={bufferEnabled}
-                      onBufferEnabledChange={setBufferEnabled}
-                      loanTermYears={loanTermYears}
-                      onProposedLoanChange={setProposedLoanAmount}
-                      onInterestRateChange={setInterestRate}
-                      onLoanTermChange={setLoanTermYears}
-                    />
-
-                    {/* Bank Rate Selector - CDR Integration */}
-                    <div className="rounded-lg border p-4 bg-card">
-                      <h3 className="font-medium mb-3 flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-primary" />
-                        Live Bank Rates (CDR)
-                      </h3>
-                      <BankRateSelector
-                        value={interestRate}
-                        onChange={(rate, lenderName) => {
-                          setInterestRate(rate);
-                          if (lenderName) setSelectedLenderName(lenderName);
-                        }}
-                        loanPurpose="INVESTMENT"
-                        repaymentType="PRINCIPAL_AND_INTEREST"
-                        onOpenComparison={() => setShowRateComparison(true)}
-                      />
-                      {selectedLenderName && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Using rate from: {selectedLenderName}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Calculation Mode Controls */}
-                    <div className="rounded-lg border p-4 bg-card space-y-4">
-                      <h3 className="font-medium flex items-center gap-2">
-                        {calculationMode === 'conservative' ? (
-                          <ShieldAlert className="h-4 w-4 text-warning" />
-                        ) : (
-                          <Shield className="h-4 w-4 text-primary" />
-                        )}
-                        Calculation Mode
-                      </h3>
-                      
-                      {/* Conservative Mode Toggle */}
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="conservative-mode" className="text-sm font-medium">
-                            Conservative Mode
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Quickli-style with surplus floors & DTI cap
-                          </p>
-                        </div>
-                        <Switch
-                          id="conservative-mode"
-                          checked={calculationMode === 'conservative'}
-                          onCheckedChange={(checked) => {
-                            setCalculationMode(checked ? 'conservative' : 'bank');
-                            if (checked) {
-                              setDtiCapEnabled(true);
-                              setDtiCapLimit(6);
-                            }
-                          }}
-                        />
-                      </div>
-
-                      <Separator />
-
-                      {/* DTI Cap Controls */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="dti-cap" className="text-sm font-medium">
-                              Enforce DTI Cap
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              Limit capacity based on debt-to-income ratio
-                            </p>
-                          </div>
-                          <Switch
-                            id="dti-cap"
-                            checked={dtiCapEnabled || calculationMode === 'conservative'}
-                            onCheckedChange={setDtiCapEnabled}
-                            disabled={calculationMode === 'conservative'}
-                          />
-                        </div>
-                        
-                        {(dtiCapEnabled || calculationMode === 'conservative') && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs text-muted-foreground">DTI Limit</Label>
-                              <span className="text-sm font-medium">{dtiCapLimit}x</span>
-                            </div>
-                            <div className="flex gap-2">
-                              {[5, 6, 7, 8].map((cap) => (
-                                <button
-                                  key={cap}
-                                  onClick={() => setDtiCapLimit(cap)}
-                                  disabled={calculationMode === 'conservative'}
-                                  className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
-                                    dtiCapLimit === cap
-                                      ? 'bg-primary text-primary-foreground'
-                                      : 'bg-secondary hover:bg-secondary/80'
-                                  } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                  {cap}x
-                                </button>
-                              ))}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {calculationMode === 'conservative' 
-                                ? 'Conservative mode enforces 6x DTI cap'
-                                : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
-                              }
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Mode Description */}
-                      <div className={`p-3 rounded-lg text-xs ${
-                        calculationMode === 'conservative' 
-                          ? 'bg-warning/10 border border-warning/30 text-warning'
-                          : 'bg-primary/10 border border-primary/30 text-primary'
-                      }`}>
-                        {calculationMode === 'conservative' ? (
-                          <p>
-                            <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
-                            residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
-                            Results align with consumer-focused tools like Quickli.
-                          </p>
-                        ) : (
-                          <p>
-                            <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
-                            constraints. Shows maximum theoretical lending capacity similar to major lender 
-                            assessments.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </ScrollArea>
-              </div>
-              {/* Right Panel - Results */}
-              <div className="w-1/2">
-                <ScrollArea className="h-[calc(90vh-140px)]">
-                  <div className="p-6">
-                    <ResultsPanel 
-                      result={result} 
-                      isCalculating={isLocalCalculating || isCalculating}
-                      calculationMode={calculationMode}
-                      dtiCapEnabled={dtiCapEnabled}
-                      dtiCapLimit={dtiCapLimit}
-                      clientId={clientId}
-                      clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
-                    />
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="scenarios" className="flex-1 overflow-hidden m-0">
-            <ScrollArea className="h-[calc(90vh-140px)]">
-              <div className="p-6">
-                {result ? (
-                  <ScenarioModeling
-                    baseInputs={{
-                      grossAnnualIncome: totalGrossIncome,
-                      shadedAnnualIncome: totalShadedIncome,
-                      monthlyLivingExpenses: effectiveExpenses,
-                      monthlyCommitments: totalMonthlyCommitments,
-                      interestRate,
-                      bufferRate: effectiveBufferRate,
-                      loanTermYears,
-                    }}
-                    baseResult={result}
-                  />
-                ) : (
-                  <div className="text-center text-muted-foreground py-12">
-                    Calculate borrowing capacity first to model scenarios.
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="history" className="flex-1 overflow-hidden m-0">
-            <ScrollArea className="h-[calc(90vh-140px)]">
-              <div className="p-6">
-                <CapacityHistoryChart 
-                  history={assessmentHistory || []} 
-                  isLoading={isLoadingHistory} 
-                />
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-
-        {/* Bank Rate Comparison Modal */}
-        <BankRateComparisonModal
-          open={showRateComparison}
-          onOpenChange={setShowRateComparison}
-          onSelectRate={(rate, lenderName, productName) => {
-            setInterestRate(rate);
-            setSelectedLenderName(lenderName);
-            toast.success(`Selected ${lenderName} rate: ${rate.toFixed(2)}%`);
-          }}
-          defaultLoanPurpose="INVESTMENT"
-          defaultRepaymentType="PRINCIPAL_AND_INTEREST"
-        />
+        {tabsContent}
+        {bankRateModal}
       </DialogContent>
     </Dialog>
   );

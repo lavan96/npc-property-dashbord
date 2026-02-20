@@ -124,7 +124,7 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
   if (loading || !dataA || !dataB) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[80vh]">
+        <DialogContent className="max-w-5xl max-h-[80vh] w-[95vw] sm:w-auto">
           <DialogHeader>
             <DialogTitle>Version Comparison</DialogTitle>
             <DialogDescription>Loading comparison data...</DialogDescription>
@@ -152,7 +152,7 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[80vh]">
+      <DialogContent className="max-w-5xl max-h-[80vh] w-[95vw] sm:w-auto overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Version Comparison</DialogTitle>
           <DialogDescription>
