@@ -3655,6 +3655,7 @@ export type Database = {
           report_contents: string[]
           report_names: string[]
           status: string
+          structured_report: string | null
           title: string | null
           updated_at: string
         }
@@ -3665,6 +3666,7 @@ export type Database = {
           report_contents?: string[]
           report_names?: string[]
           status?: string
+          structured_report?: string | null
           title?: string | null
           updated_at?: string
         }
@@ -3675,6 +3677,7 @@ export type Database = {
           report_contents?: string[]
           report_names?: string[]
           status?: string
+          structured_report?: string | null
           title?: string | null
           updated_at?: string
         }
@@ -3694,6 +3697,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          edited_content: string | null
           id: string
           model_provider: string | null
           role: string
@@ -3703,6 +3707,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          edited_content?: string | null
           id?: string
           model_provider?: string | null
           role: string
@@ -3712,6 +3717,7 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          edited_content?: string | null
           id?: string
           model_provider?: string | null
           role?: string

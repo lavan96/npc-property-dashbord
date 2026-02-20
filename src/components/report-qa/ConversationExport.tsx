@@ -21,9 +21,10 @@ interface ConversationExportProps {
   messages: Message[];
   title: string;
   reportNames: string[];
+  conversationId?: string | null;
 }
 
-export function ConversationExport({ messages, title, reportNames }: ConversationExportProps) {
+export function ConversationExport({ messages, title, reportNames, conversationId }: ConversationExportProps) {
   const { toast } = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -137,6 +138,7 @@ export function ConversationExport({ messages, title, reportNames }: Conversatio
         messages={messages}
         title={title}
         reportNames={reportNames}
+        conversationId={conversationId}
       />
     </>
   );
