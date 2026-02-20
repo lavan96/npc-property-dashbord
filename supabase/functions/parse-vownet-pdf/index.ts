@@ -9,12 +9,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authResult = await verifyAuth(req);
-    if (!authResult.authenticated) {
-      return createUnauthorizedResponse(authResult.error || 'Authentication required');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const body = await req.json();
+    const authResult = await verifyAuth(supabase, req.headers, body);
+    if (authResult.error) {
+      return createUnauthorizedResponse(authResult.error);
     }
 
-    const { extractedText } = await req.json();
+    const { extractedText } = body;
 
     if (!extractedText || typeof extractedText !== 'string') {
       return new Response(
