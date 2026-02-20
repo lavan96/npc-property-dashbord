@@ -195,13 +195,15 @@ export function IncomeManualEntry({ clientId, contacts, onComplete }: IncomeManu
               />
             ) : (
               <Tabs value={activeTab} onValueChange={v => setActiveTab(v)}>
-                <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${contacts.length}, 1fr)` }}>
-                  {contacts.map(c => (
-                    <TabsTrigger key={c.id} value={c.id} className="text-xs">
-                      {getContactTabLabel(c)} ({getSourcesForContact(c).length})
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
+                  <TabsList className="inline-flex w-auto min-w-max">
+                    {contacts.map(c => (
+                      <TabsTrigger key={c.id} value={c.id} className="text-xs sm:text-sm whitespace-nowrap">
+                        {getContactTabLabel(c)} ({getSourcesForContact(c).length})
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
 
                 {contacts.map(contact => {
                   const empSources = getSourcesForContact(contact).filter((s: any) => s.employment_id);

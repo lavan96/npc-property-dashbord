@@ -1394,20 +1394,22 @@ export function InvestmentReportGenerator() {
             {/* Input Mode Tabs */}
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
                 {isPropertySpecific ? (
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="manual" className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Manual Entry
-                    </TabsTrigger>
-                    <TabsTrigger value="url" className="flex items-center gap-2">
-                      <Link className="h-4 w-4" />
-                      URL Scrape
-                    </TabsTrigger>
-                    <TabsTrigger value="pdf" className="flex items-center gap-2">
-                      <Upload className="h-4 w-4" />
-                      PDF Upload
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
+                    <TabsList className="inline-flex w-auto min-w-max">
+                      <TabsTrigger value="manual" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                        <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Manual
+                      </TabsTrigger>
+                      <TabsTrigger value="url" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                        <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        URL Scrape
+                      </TabsTrigger>
+                      <TabsTrigger value="pdf" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                        <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        PDF Upload
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
                 ) : (
                   <TabsList className="grid w-full grid-cols-1">
                     <TabsTrigger value="manual" className="flex items-center gap-2">

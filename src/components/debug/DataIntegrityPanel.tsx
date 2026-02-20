@@ -133,11 +133,13 @@ export function DataIntegrityPanel({
 
             {showDetails && (
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="fields">Field Analysis</TabsTrigger>
-                  <TabsTrigger value="quality">Data Quality</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
+                  <TabsList className="inline-flex w-auto min-w-max">
+                    <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+                    <TabsTrigger value="fields" className="text-xs sm:text-sm">Field Analysis</TabsTrigger>
+                    <TabsTrigger value="quality" className="text-xs sm:text-sm">Data Quality</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="overview" className="space-y-4">
                   <div className="text-sm text-muted-foreground">
