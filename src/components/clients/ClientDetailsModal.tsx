@@ -303,29 +303,29 @@ NPC Team`
         </Button>
       </div>
 
-      <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-120px)]"}>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
-            <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
-              <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-              <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
-              <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
-              <TabsTrigger value="employment" className="text-xs sm:text-sm">Employment</TabsTrigger>
-              <TabsTrigger value="financials" className="text-xs sm:text-sm">Financials</TabsTrigger>
-              <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
-              <TabsTrigger value="emails" className="text-xs sm:text-sm">
-                <Inbox className="h-3 w-3 mr-0.5" />
-                Emails
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
-              <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
-              <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">VowNet</TabsTrigger>
-              <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
-              <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
-              <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>
-            </TabsList>
-          </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
+        <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide flex-shrink-0 sticky top-0 z-10 bg-background pb-1">
+          <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
+            <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
+            <TabsTrigger value="employment" className="text-xs sm:text-sm">Employment</TabsTrigger>
+            <TabsTrigger value="financials" className="text-xs sm:text-sm">Financials</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
+            <TabsTrigger value="emails" className="text-xs sm:text-sm">
+              <Inbox className="h-3 w-3 mr-0.5" />
+              Emails
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
+            <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
+            <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">VowNet</TabsTrigger>
+            <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
+            <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+            <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>
+          </TabsList>
+        </div>
 
+        <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-180px)]"}>
           <div {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
@@ -730,8 +730,8 @@ NPC Team`
               <ClientAIInsights clientId={client.id} />
             </TabsContent>
           </div>
-          </Tabs>
         </ScrollArea>
+      </Tabs>
       </>
   );
 

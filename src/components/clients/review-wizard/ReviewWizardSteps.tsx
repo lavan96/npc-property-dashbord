@@ -38,7 +38,7 @@ export function ReviewWizardSteps({
             onClick={() => isClickable && onStepClick(step)}
             disabled={!isClickable}
             className={cn(
-              "flex items-center gap-2 text-xs font-medium transition-colors",
+              "flex items-center gap-1.5 sm:gap-2 text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0",
               isClickable && "cursor-pointer hover:text-primary",
               !isClickable && "cursor-not-allowed opacity-50",
               isCurrent && "text-primary",
