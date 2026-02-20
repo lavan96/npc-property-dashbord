@@ -192,20 +192,22 @@ export default function Sources() {
       </div>
 
       <Tabs defaultValue="email" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="email" className="flex items-center gap-2">
-            <Mail className="h-4 w-4" />
-            Email Sources ({emailSources.length})
-          </TabsTrigger>
-          <TabsTrigger value="agencies" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Agencies ({agencySources.length})
-          </TabsTrigger>
-          <TabsTrigger value="agents" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Agents ({agentSources.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
+          <TabsList className="inline-flex w-auto min-w-max">
+            <TabsTrigger value="email" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+              <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Email Sources ({emailSources.length})
+            </TabsTrigger>
+            <TabsTrigger value="agencies" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+              <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Agencies ({agencySources.length})
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Agents ({agentSources.length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="email" className="space-y-4">
           {emailSources.length === 0 ? (

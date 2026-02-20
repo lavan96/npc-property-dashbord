@@ -26,7 +26,7 @@ export function ReviewWizardSteps({
   onStepClick 
 }: ReviewWizardStepsProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+    <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 overflow-x-auto scrollbar-hide gap-1">
       {steps.map((step, index) => {
         const isCompleted = index < currentStepIndex;
         const isCurrent = step === currentStep;

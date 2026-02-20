@@ -390,11 +390,13 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
 
             <ScrollArea className="h-[calc(100vh-180px)] pr-4">
               <Tabs defaultValue="contacts" className="w-full mt-4">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="contacts">Contacts</TabsTrigger>
-                  <TabsTrigger value="address">Address & ID</TabsTrigger>
-                  <TabsTrigger value="family">Family</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
+                  <TabsList className="inline-flex w-auto min-w-max">
+                    <TabsTrigger value="contacts" className="text-xs sm:text-sm">Contacts</TabsTrigger>
+                    <TabsTrigger value="address" className="text-xs sm:text-sm">Address & ID</TabsTrigger>
+                    <TabsTrigger value="family" className="text-xs sm:text-sm">Family</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 {/* Contacts Tab */}
                 <TabsContent value="contacts" className="space-y-4 mt-4">
