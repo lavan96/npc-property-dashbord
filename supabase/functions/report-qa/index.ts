@@ -1259,10 +1259,7 @@ No investment report has been uploaded. You are having an open conversation abou
     if (action === "get-conversations") {
       const { data, error } = await supabase
         .from("report_qa_conversations")
-        .select(`
-          *,
-          messages:report_qa_messages(*)
-        `)
+        .select("id, title, report_names, created_at, updated_at, model_id, structured_report")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
