@@ -17,7 +17,10 @@ import {
   Lightbulb,
   Info,
   Receipt,
+  FileText,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
 import { useState, useMemo } from 'react';
 import type { FullAssessmentResult, ServiceabilityBand, CalculationMode, TaxBreakdown } from '@/utils/borrowingCapacityCalculations';
 import { getTaxBreakdown } from '@/utils/borrowingCapacityCalculations';
@@ -28,9 +31,11 @@ interface ResultsPanelProps {
   calculationMode?: CalculationMode;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  clientId?: string;
+  clientName?: string;
 }
 
-export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit }: ResultsPanelProps) {
+export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
@@ -107,10 +112,22 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
   return (
     <Card className="h-full">
       <CardHeader className="pb-4">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          Results
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Results
+          </CardTitle>
+          {clientId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client')}
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              Export PDF
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Main Borrowing Capacity */}

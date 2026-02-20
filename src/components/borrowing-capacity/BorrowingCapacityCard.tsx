@@ -12,16 +12,19 @@ import {
   AlertTriangle,
   CheckCircle,
   ChevronRight,
-  Calculator
+  Calculator,
+  FileText,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
 
 interface BorrowingCapacityCardProps {
   clientId: string;
+  clientName?: string;
   onOpenCalculator?: () => void;
 }
 
-export function BorrowingCapacityCard({ clientId, onOpenCalculator }: BorrowingCapacityCardProps) {
+export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }: BorrowingCapacityCardProps) {
   const {
     latestAssessment,
     isLoading,
@@ -122,22 +125,39 @@ export function BorrowingCapacityCard({ clientId, onOpenCalculator }: BorrowingC
             <DollarSign className="h-4 w-4" />
             Borrowing Capacity
           </CardTitle>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => calculate({})}
-                  disabled={isCalculating}
-                >
-                  <RefreshCw className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''}`} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Recalculate</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client')}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Export Snapshot PDF</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => calculate({})}
+                    disabled={isCalculating}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Recalculate</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

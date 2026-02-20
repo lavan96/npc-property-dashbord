@@ -704,7 +704,8 @@ NPC Team`
             <TabsContent value="insights" className="mt-4 space-y-4">
               <ClientScoreCard clientId={client.id} />
               <BorrowingCapacityCard 
-                clientId={client.id} 
+                clientId={client.id}
+                clientName={`${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim()}
                 onOpenCalculator={() => setShowBorrowingCalculator(true)}
               />
               <ClientTags clientId={client.id} />
