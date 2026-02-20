@@ -459,15 +459,15 @@ export default function WhiteLabel() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 px-1 sm:px-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Branding</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Branding</h1>
+          <p className="text-sm text-muted-foreground">
             Customize the dashboard appearance with your brand identity
           </p>
         </div>
-        <Badge variant="outline" className="gap-1">
+        <Badge variant="outline" className="gap-1 self-start sm:self-auto">
           <Palette className="h-3 w-3" />
           White Label
         </Badge>
@@ -495,14 +495,14 @@ export default function WhiteLabel() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Enter company name"
-              className="max-w-sm"
+              className="sm:max-w-sm"
             />
-            <Button onClick={handleCompanyNameSave} disabled={companyName === settings.companyName}>
+            <Button onClick={handleCompanyNameSave} disabled={companyName === settings.companyName} className="min-h-[44px] sm:min-h-0 shrink-0">
               <Check className="h-4 w-4 mr-2" />
               Save
             </Button>
@@ -703,7 +703,7 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Logo Upload Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
         <LogoUploadCard
           title="Auth Page Logo"
           description="Displayed prominently on the login page (recommended: wide format)"
@@ -752,7 +752,7 @@ export default function WhiteLabel() {
           <CardDescription>See how your branding will appear across the dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
             {/* Auth Page Preview */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Login Page</Label>
@@ -875,7 +875,7 @@ export default function WhiteLabel() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="sig-name">Name</Label>
               <Input
