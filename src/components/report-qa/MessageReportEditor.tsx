@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 import jsPDF from 'jspdf';
 
 interface MessageReportEditorProps {
@@ -510,62 +511,7 @@ export function MessageReportEditor({
       }
 
       // ============= DISCLAIMER & CONTACT PAGE =============
-      doc.addPage();
-      
-      doc.setFillColor(20, 20, 20);
-      doc.rect(0, 0, pageWidth, pageHeight, 'F');
-
-      doc.setTextColor(191, 155, 80);
-      doc.setFontSize(28);
-      doc.setFont('helvetica', 'bold');
-      const companyParts = (contact.company_name || 'Naidu Property Consulting Services').toUpperCase().split(' ');
-      if (companyParts.length >= 2) {
-        doc.text(companyParts.slice(0, -1).join(' '), margin, 40);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'normal');
-        doc.text(companyParts[companyParts.length - 1], margin, 52);
-      } else {
-        doc.text(companyParts[0], margin, 40);
-      }
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(191, 155, 80);
-      doc.text('CONTACT US', margin, 80);
-
-      const labelX = margin;
-      const valueX = margin + 35;
-      let contactY = 100;
-      const contactLineH = 12;
-
-      const drawContactLine = (label: string, value: string) => {
-        if (!value) return;
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(191, 155, 80);
-        doc.text(label.toUpperCase() + ':', labelX, contactY);
-        doc.setFont('helvetica', 'normal');
-        doc.text(value, valueX, contactY);
-        contactY += contactLineH;
-      };
-
-      drawContactLine('Website', contact.website);
-      drawContactLine('Email', contact.email);
-      drawContactLine('Phone', contact.phone);
-      drawContactLine('Address', contact.address);
-      drawContactLine('ABN', contact.abn);
-
-      if (disclaimerSettings.is_enabled && disclaimerSettings.text) {
-        doc.setFontSize(8.5);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(153, 153, 153);
-        const disclaimerText = sanitizeForPDF(disclaimerSettings.text);
-        const disclaimerMaxWidth = pageWidth - (margin * 1.5);
-        const wrappedDisclaimer = doc.splitTextToSize(disclaimerText, disclaimerMaxWidth);
-        const lineHeight = 4.2;
-        const disclaimerStartY = pageHeight - 20 - (wrappedDisclaimer.length * lineHeight);
-        doc.text(wrappedDisclaimer, margin * 0.75, Math.max(disclaimerStartY, contactY + 20), { lineHeightFactor: 1.4 });
-      }
+      drawJsPDFDisclaimerPage(doc, contact, disclaimerSettings);
 
       // Footer on each page (skip cover = page 1, skip disclaimer = last page)
       const totalPages = doc.getNumberOfPages();
