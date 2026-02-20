@@ -25,8 +25,15 @@ import {
   Star,
   ExternalLink,
   Target,
-  UserPlus
+  UserPlus,
+  MoreHorizontal
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ExcelDropzone } from '@/components/clients/ExcelDropzone';
@@ -449,107 +456,89 @@ export default function ClientManagement() {
   const someSelected = selectedClients.length > 0 && selectedClients.length < filteredClients.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Client Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Client Management</h1>
+          <p className="text-sm text-muted-foreground">
             Manage clients, properties, and sync with GoHighLevel
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Auto-sync toggle */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
-                  {isAutoSyncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  ) : (
-                    <Zap className={`h-4 w-4 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
-                  )}
-                  <span className="text-sm font-medium">Auto-sync</span>
-                  <Switch
-                    checked={autoSyncEnabled}
-                    onCheckedChange={setAutoSyncEnabled}
-                    className="scale-90"
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Auto-sync every 5 minutes from GHL</p>
-                {lastSyncTime && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                    <Clock className="h-3 w-3" />
-                    Last sync: {formatLastSync(lastSyncTime)}
-                  </p>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Auto-sync toggle - compact on mobile */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border">
+            {isAutoSyncing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            ) : (
+              <Zap className={`h-3.5 w-3.5 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+            )}
+            <span className="text-xs font-medium hidden sm:inline">Auto-sync</span>
+            <Switch
+              checked={autoSyncEnabled}
+              onCheckedChange={setAutoSyncEnabled}
+              className="scale-75 sm:scale-90"
+            />
+          </div>
 
           <Button 
             onClick={() => handleImportFromGHL(false)} 
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
+            className="h-8 text-xs sm:text-sm"
           >
             {isImportingFromGHL ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-3.5 w-3.5 mr-1.5" />
             )}
-            {isImportingFromGHL && importProgress
-              ? `Importing... (${importProgress.imported.toLocaleString()}${
-                  importProgress.totalFromApi
-                    ? ` / ${importProgress.totalFromApi.toLocaleString()}`
-                    : ''
-                } clients)`
-              : 'Import from GHL'}
-          </Button>
-          <Button 
-            onClick={handleClearAndReimport} 
-            variant="outline" 
-            size="sm"
-            disabled={isImportingFromGHL}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Clear & Reimport
+            <span className="hidden sm:inline">
+              {isImportingFromGHL && importProgress
+                ? `Importing... (${importProgress.imported.toLocaleString()})`
+                : 'Import from GHL'}
+            </span>
+            <span className="sm:hidden">Import</span>
           </Button>
           <Button 
             onClick={() => setShowAddClientModal(true)} 
             variant="default" 
             size="sm"
+            className="h-8 text-xs sm:text-sm"
           >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Client
+            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+            <span className="hidden sm:inline">Add Client</span>
+            <span className="sm:hidden">Add</span>
           </Button>
-          {pendingSyncCount > 0 && (
-            <Button 
-              onClick={handleSyncAllPending} 
-              variant="secondary" 
-              size="sm"
-              disabled={isSyncingAll}
-            >
-              {isSyncingAll ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+          
+          {/* More actions in dropdown on mobile */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear & Reimport
+              </DropdownMenuItem>
+              {pendingSyncCount > 0 && (
+                <DropdownMenuItem onClick={handleSyncAllPending} disabled={isSyncingAll}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sync All ({pendingSyncCount})
+                </DropdownMenuItem>
               )}
-              Sync All ({pendingSyncCount})
-            </Button>
-          )}
-          <Button onClick={() => refetch()} variant="ghost" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/client-tracker">
-              <Target className="h-4 w-4 mr-2" />
-              Client Tracker
-            </Link>
-          </Button>
+              <DropdownMenuItem onClick={() => refetch()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'}>
+                <Target className="h-4 w-4 mr-2" />
+                Client Tracker
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -595,13 +584,15 @@ export default function ClientManagement() {
 
       {/* Main Content */}
       <Tabs defaultValue="clients" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="clients">Clients</TabsTrigger>
-          <TabsTrigger value="portfolio-reports">Portfolio Reports</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="compare">Compare</TabsTrigger>
-          <TabsTrigger value="import">Import</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+          <TabsList className="inline-flex w-auto min-w-max">
+            <TabsTrigger value="clients">Clients</TabsTrigger>
+            <TabsTrigger value="portfolio-reports">Portfolio</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="compare">Compare</TabsTrigger>
+            <TabsTrigger value="import">Import</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="clients" className="space-y-4">
           {/* Bulk Actions Bar */}

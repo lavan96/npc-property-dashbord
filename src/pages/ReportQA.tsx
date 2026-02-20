@@ -1419,31 +1419,32 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "p-6 space-y-6 h-[calc(100vh-4rem)]",
+          "p-3 md:p-6 space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-20 md:pb-0",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
         aria-label="Report Q&A Chat"
       >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Report Q&A</h1>
-          <p className="text-sm text-muted-foreground hidden sm:block">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Report Q&A</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
             Upload investment reports and ask questions to generate summaries
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} />
-          <Button onClick={handleNewChat} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Chat
+          <Button onClick={handleNewChat} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm">
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">New Chat</span>
+            <span className="sm:hidden">New</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-2">
-            <History className="h-4 w-4" />
-            History
+          <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm">
+            <History className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">History</span>
             {savedConversations.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs">
                 {savedConversations.length}
               </Badge>
             )}
@@ -1452,30 +1453,30 @@ export default function ReportQA() {
             <Button 
               variant="outline" 
               onClick={handleGeneratePDFAttachment} 
-              className="gap-2"
+              className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm"
               disabled={isGeneratingPDF}
             >
               {isGeneratingPDF ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <FileText className="h-4 w-4" />
+                <FileText className="h-3.5 w-3.5" />
               )}
-              Export PDF
+              <span className="hidden sm:inline">Export PDF</span>
             </Button>
           )}
           {uploadedReports.length > 0 && (
-            <Button variant="outline" onClick={clearAll} className="gap-2">
-              <X className="h-4 w-4" />
-              Clear All
+            <Button variant="outline" onClick={clearAll} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm">
+              <X className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Clear All</span>
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
-        {/* Upload Section - Collapsible */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-[calc(100%-4rem)] md:h-[calc(100%-5rem)]">
+        {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
-        <Card className="lg:col-span-1 flex flex-col">
+        <Card className="hidden lg:flex lg:col-span-1 flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
