@@ -130,7 +130,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
           <div className="flex items-center gap-2">
             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Button variant="ghost" size="icon" className="h-11 w-11">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -161,7 +161,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost" 
               size="icon" 
               onClick={() => setIsSearchOpen(true)}
-              className="h-9 w-9"
+              className="h-11 w-11"
             >
               <Search className="h-5 w-5" />
             </Button>
@@ -170,7 +170,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost"
               size="icon"
               onClick={onCycleTheme}
-              className="h-9 w-9"
+              className="h-11 w-11"
             >
               {getThemeIcon()}
             </Button>
@@ -179,7 +179,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Button variant="ghost" size="icon" className="h-11 w-11">
                   <Avatar className="h-7 w-7">
                     <AvatarFallback className="text-xs">
                       {user?.username?.substring(0, 2).toUpperCase() || 'AD'}

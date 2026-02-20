@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -102,6 +103,27 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [editingProperty, setEditingProperty] = useState<any>(null);
   const [showReviewWizard, setShowReviewWizard] = useState(false);
   const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const tabOrder = ['overview', 'personal', 'properties', 'employment', 'financials', 'reports', 'emails', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
+
+  const tabSwipeHandlers = useSwipeGesture(
+    useCallback(() => {
+      // Swipe left = next tab
+      setActiveTab(prev => {
+        const idx = tabOrder.indexOf(prev);
+        return idx < tabOrder.length - 1 ? tabOrder[idx + 1] : prev;
+      });
+    }, []),
+    useCallback(() => {
+      // Swipe right = previous tab
+      setActiveTab(prev => {
+        const idx = tabOrder.indexOf(prev);
+        return idx > 0 ? tabOrder[idx - 1] : prev;
+      });
+    }, []),
+    { threshold: 60 }
+  );
 
   // Handle PDF email callback (for finance)
   const handlePdfEmailClick = (pdfBlob: Blob, fileName: string) => {
@@ -282,8 +304,8 @@ NPC Team`
       </div>
 
       <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-120px)]"}>
-        <Tabs defaultValue="overview" className="w-full">
-          <div className="overflow-x-auto -mx-1 px-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
             <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
               <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
@@ -304,6 +326,7 @@ NPC Team`
             </TabsList>
           </div>
 
+          <div {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -706,6 +729,7 @@ NPC Team`
               <ClientTags clientId={client.id} />
               <ClientAIInsights clientId={client.id} />
             </TabsContent>
+          </div>
           </Tabs>
         </ScrollArea>
       </>

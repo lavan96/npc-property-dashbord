@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -507,6 +508,21 @@ export default function Calendar() {
     setSelectedDate(null);
   }, []);
 
+  // Swipe gestures for mobile calendar navigation
+  const calendarSwipeHandlers = useSwipeGesture(
+    useCallback(() => {
+      // Swipe left = navigate forward
+      if (view === 'month') setCurrentMonth(addMonths(currentMonth, 1));
+      else setCurrentWeek(addWeeks(currentWeek, 1));
+    }, [view, currentMonth, currentWeek]),
+    useCallback(() => {
+      // Swipe right = navigate backward
+      if (view === 'month') setCurrentMonth(subMonths(currentMonth, 1));
+      else setCurrentWeek(subWeeks(currentWeek, 1));
+    }, [view, currentMonth, currentWeek]),
+    { threshold: 60 }
+  );
+
   if (error) {
     return (
       <div className="space-y-6">
@@ -792,8 +808,9 @@ export default function Calendar() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Animation wrapper */}
+            {/* Animation wrapper with swipe support */}
             <div
+              {...(isMobile ? calendarSwipeHandlers : {})}
               className={cn(
                 'transition-all duration-300 ease-out',
                 viewTransition === 'exit' && 'opacity-0 scale-95 translate-y-2',
