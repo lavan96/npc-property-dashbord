@@ -624,171 +624,326 @@ const CallLogs = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by phone, name, or summary..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+      {/* Filters - Mobile: Sheet, Desktop: Inline */}
+      {isMobile ? (
+        <>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search calls..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
-            <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="All Agents" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Agents</SelectItem>
-                {agents.map(agent => (
-                  <SelectItem key={agent.name} value={agent.name}>{agent.name} ({agent.count})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="All Outcomes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Outcomes</SelectItem>
-                {/* Dynamic outcomes from actual data */}
-                {(() => {
-                  const outcomeCounts = new Map<string, number>();
-                  calls.forEach(c => {
-                    const o = c.call_outcome || 'unknown';
-                    outcomeCounts.set(o, (outcomeCounts.get(o) || 0) + 1);
-                  });
-                  return Array.from(outcomeCounts.entries())
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([outcome, count]) => {
-                      const display = OUTCOME_DISPLAY[outcome];
-                      const label = display?.label || outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                      return <SelectItem key={outcome} value={outcome}>{label} ({count})</SelectItem>;
-                    });
-                })()}
-              </SelectContent>
-            </Select>
-            <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
-              <SelectTrigger className="w-[160px]">
-                <Users className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Call Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Call Types</SelectItem>
-                <SelectItem value="squad">Squad Calls</SelectItem>
-                <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
-              </SelectContent>
-            </Select>
-            {squads.length > 0 && (
-              <Select value={selectedSquad} onValueChange={setSelectedSquad}>
-                <SelectTrigger className="w-[200px]">
-                  <GitBranch className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="All Squads" />
+            <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle className="flex items-center gap-2">
+                    <Filter className="h-5 w-5" />
+                    Call Filters
+                  </SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Agent</label>
+                      <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All Agents" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Agents</SelectItem>
+                          {agents.map(agent => (
+                            <SelectItem key={agent.name} value={agent.name}>{agent.name} ({agent.count})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Outcome</label>
+                      <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All Outcomes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Outcomes</SelectItem>
+                          {(() => {
+                            const outcomeCounts = new Map<string, number>();
+                            calls.forEach(c => {
+                              const o = c.call_outcome || 'unknown';
+                              outcomeCounts.set(o, (outcomeCounts.get(o) || 0) + 1);
+                            });
+                            return Array.from(outcomeCounts.entries())
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([outcome, count]) => {
+                                const display = OUTCOME_DISPLAY[outcome];
+                                const label = display?.label || outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                                return <SelectItem key={outcome} value={outcome}>{label} ({count})</SelectItem>;
+                              });
+                          })()}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Call Type</label>
+                      <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Call Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Call Types</SelectItem>
+                          <SelectItem value="squad">Squad Calls</SelectItem>
+                          <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Intent</label>
+                      <Select value={selectedIntent} onValueChange={setSelectedIntent}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Intent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Intents</SelectItem>
+                          <SelectItem value="discovery_booking">Discovery</SelectItem>
+                          <SelectItem value="strategy_booking">Strategy</SelectItem>
+                          <SelectItem value="finance_consult">Finance</SelectItem>
+                          <SelectItem value="general_inquiry">General Inquiry</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Tags</label>
+                      <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Date Range</label>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant={!dateRange ? "default" : "outline"} size="sm" onClick={() => setDateRange(undefined)}>All Time</Button>
+                        <Button variant="outline" size="sm" onClick={() => setDateRange({ from: new Date(), to: new Date() })}>Today</Button>
+                        <Button variant="outline" size="sm" onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}>7 days</Button>
+                        <Button variant="outline" size="sm" onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}>30 days</Button>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedAgent('all');
+                        setSelectedOutcome('all');
+                        setSelectedSquadType('all');
+                        setSelectedSquad('all');
+                        setSelectedIntent('all');
+                        setSelectedTags([]);
+                        setDateRange(undefined);
+                      }}
+                    >
+                      Clear All Filters
+                    </Button>
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+          </div>
+          {/* Active filter count badge */}
+          {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedIntent !== 'all' || selectedTags.length > 0 || dateRange) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="text-xs">
+                {[selectedAgent !== 'all', selectedOutcome !== 'all', selectedSquadType !== 'all', selectedIntent !== 'all', selectedTags.length > 0, !!dateRange].filter(Boolean).length} filter(s) active
+              </Badge>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2 text-xs"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedAgent('all');
+                  setSelectedOutcome('all');
+                  setSelectedSquadType('all');
+                  setSelectedSquad('all');
+                  setSelectedIntent('all');
+                  setSelectedTags([]);
+                  setDateRange(undefined);
+                }}
+              >
+                Clear all
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by phone, name, or summary..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+              <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                <SelectTrigger className="w-[180px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Squads</SelectItem>
-                  {squads.map(squad => (
-                    <SelectItem key={squad.id} value={squad.id}>{squad.name}</SelectItem>
+                  <SelectItem value="all">All Agents</SelectItem>
+                  {agents.map(agent => (
+                    <SelectItem key={agent.name} value={agent.name}>{agent.name} ({agent.count})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
-            <Select value={selectedIntent} onValueChange={setSelectedIntent}>
-              <SelectTrigger className="w-[160px]">
-                <Target className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Intent" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Intents</SelectItem>
-                <SelectItem value="discovery_booking">Discovery</SelectItem>
-                <SelectItem value="strategy_booking">Strategy</SelectItem>
-                <SelectItem value="finance_consult">Finance</SelectItem>
-                <SelectItem value="general_inquiry">General Inquiry</SelectItem>
-              </SelectContent>
-            </Select>
-            <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
-            
-            {/* Date Range Picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-[240px] justify-start text-left font-normal",
-                    !dateRange && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d, yyyy")}
-                      </>
-                    ) : (
-                      format(dateRange.from, "MMM d, yyyy")
-                    )
-                  ) : (
-                    <span>Filter by date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <div className="p-3 border-b space-y-2">
-                  <p className="text-sm font-medium">Quick Select</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDateRange({ from: new Date(), to: new Date() })}
-                    >
-                      Today
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}
-                    >
-                      Last 7 days
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
-                    >
-                      Last 30 days
-                    </Button>
-                    {dateRange && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDateRange(undefined)}
-                      >
-                        Clear
-                      </Button>
+              <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
+                <SelectTrigger className="w-[180px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="All Outcomes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Outcomes</SelectItem>
+                  {(() => {
+                    const outcomeCounts = new Map<string, number>();
+                    calls.forEach(c => {
+                      const o = c.call_outcome || 'unknown';
+                      outcomeCounts.set(o, (outcomeCounts.get(o) || 0) + 1);
+                    });
+                    return Array.from(outcomeCounts.entries())
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([outcome, count]) => {
+                        const display = OUTCOME_DISPLAY[outcome];
+                        const label = display?.label || outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                        return <SelectItem key={outcome} value={outcome}>{label} ({count})</SelectItem>;
+                      });
+                  })()}
+                </SelectContent>
+              </Select>
+              <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
+                <SelectTrigger className="w-[160px]">
+                  <Users className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Call Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Call Types</SelectItem>
+                  <SelectItem value="squad">Squad Calls</SelectItem>
+                  <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
+                </SelectContent>
+              </Select>
+              {squads.length > 0 && (
+                <Select value={selectedSquad} onValueChange={setSelectedSquad}>
+                  <SelectTrigger className="w-[200px]">
+                    <GitBranch className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="All Squads" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Squads</SelectItem>
+                    {squads.map(squad => (
+                      <SelectItem key={squad.id} value={squad.id}>{squad.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Select value={selectedIntent} onValueChange={setSelectedIntent}>
+                <SelectTrigger className="w-[160px]">
+                  <Target className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Intent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Intents</SelectItem>
+                  <SelectItem value="discovery_booking">Discovery</SelectItem>
+                  <SelectItem value="strategy_booking">Strategy</SelectItem>
+                  <SelectItem value="finance_consult">Finance</SelectItem>
+                  <SelectItem value="general_inquiry">General Inquiry</SelectItem>
+                </SelectContent>
+              </Select>
+              <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
+              
+              {/* Date Range Picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
                     )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "MMM d")} - {format(dateRange.to, "MMM d, yyyy")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "MMM d, yyyy")
+                      )
+                    ) : (
+                      <span>Filter by date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-3 border-b space-y-2">
+                    <p className="text-sm font-medium">Quick Select</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDateRange({ from: new Date(), to: new Date() })}
+                      >
+                        Today
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDateRange({ from: subDays(new Date(), 7), to: new Date() })}
+                      >
+                        Last 7 days
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
+                      >
+                        Last 30 days
+                      </Button>
+                      {dateRange && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDateRange(undefined)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </CardContent>
-      </Card>
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       </div>
       {/* End sticky header */}
@@ -1024,7 +1179,10 @@ const CallLogs = () => {
 
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className={cn(
+          "max-h-[90vh]",
+          isMobile ? "w-full max-w-full h-[95vh] p-3 rounded-t-xl" : "max-w-3xl"
+        )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Phone className="w-5 h-5" />
@@ -1033,19 +1191,24 @@ const CallLogs = () => {
           </DialogHeader>
           {selectedCall && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className={`grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`}>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                {selectedCall.is_squad_call && (
-                  <TabsTrigger value="squad" className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    Squad
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                <TabsTrigger value="tool-calls">Tool Calls</TabsTrigger>
-                <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                <TabsTrigger value="metadata">Metadata</TabsTrigger>
-              </TabsList>
+              <div className={isMobile ? "overflow-x-auto -mx-1 px-1 scrollbar-hide" : ""}>
+                <TabsList className={isMobile 
+                  ? "inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5"
+                  : `grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`
+                }>
+                  <TabsTrigger value="overview" className={isMobile ? "text-xs" : ""}>Overview</TabsTrigger>
+                  {selectedCall.is_squad_call && (
+                    <TabsTrigger value="squad" className={cn("flex items-center gap-1", isMobile && "text-xs")}>
+                      <Users className="w-3 h-3" />
+                      Squad
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger value="transcript" className={isMobile ? "text-xs" : ""}>Transcript</TabsTrigger>
+                  <TabsTrigger value="tool-calls" className={isMobile ? "text-xs" : ""}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
+                  <TabsTrigger value="analysis" className={isMobile ? "text-xs" : ""}>Analysis</TabsTrigger>
+                  <TabsTrigger value="metadata" className={isMobile ? "text-xs" : ""}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
+                </TabsList>
+              </div>
               
               <ScrollArea className="h-[60vh] mt-4">
                 <TabsContent value="overview" className="space-y-4 p-1">

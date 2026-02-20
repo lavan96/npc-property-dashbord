@@ -312,7 +312,7 @@ export default function Reports() {
                   <CardDescription>Top 10 suburbs by listing count</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer ref={suburbChartRef} config={chartConfig} className="h-[400px]">
+                  <ChartContainer ref={suburbChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={suburbChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -340,7 +340,7 @@ export default function Reports() {
                   <CardDescription>Breakdown by property category</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="h-[400px]">
+                  <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -372,7 +372,7 @@ export default function Reports() {
                   <CardDescription>Listings grouped by price brackets</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[400px]">
+                  <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={priceRangeChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -392,7 +392,7 @@ export default function Reports() {
                   <CardDescription>Listings by number of bedrooms</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[400px]">
+                  <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={bedroomChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
