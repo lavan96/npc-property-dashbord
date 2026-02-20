@@ -456,196 +456,379 @@ export function BorrowingCapacityModal({
       </div>
 
       <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
-        {/* Desktop: side-by-side. Mobile: stacked single column */}
-        <div className="flex flex-col md:flex-row flex-1 h-full overflow-hidden">
-          {/* Left Panel - Inputs */}
-          <div className="w-full md:w-1/2 md:border-r">
-            <ScrollArea className={isMobile ? "h-auto max-h-[60vh]" : "h-[calc(90vh-140px)]"}>
-              <div className="p-4 sm:p-6 space-y-4">
-                <IncomeSection
-                  incomeBreakdown={incomeBreakdown}
-                  totalGross={totalGrossIncome}
-                  totalShaded={totalShadedIncome}
-                />
-                <ExpensesSection
-                  expenseMethod={expenseMethod}
-                  hemBenchmark={hemBenchmark}
-                  hemBreakdown={hemBreakdown}
-                  declaredExpenses={declaredExpenses}
-                  baseExpenses={baseExpenses}
-                  negativePropertyCashFlows={negativePropertyCashFlows}
-                  totalNegativeCashFlows={totalNegativeCashFlows}
-                  effectiveExpenses={effectiveExpenses}
-                  onMethodChange={setExpenseMethod}
-                  onDeclaredExpensesChange={setDeclaredExpenses}
-                />
-                <LiabilitiesSection
-                  liabilities={liabilitiesBreakdown}
-                  totalMonthlyCommitments={totalMonthlyCommitments}
-                />
-                <ProposedLoanSection
-                  proposedLoanAmount={proposedLoanAmount}
-                  interestRate={interestRate}
-                  bufferRate={effectiveBufferRate}
-                  bufferEnabled={bufferEnabled}
-                  onBufferEnabledChange={setBufferEnabled}
-                  loanTermYears={loanTermYears}
-                  onProposedLoanChange={setProposedLoanAmount}
-                  onInterestRateChange={setInterestRate}
-                  onLoanTermChange={setLoanTermYears}
-                />
+        {isMobile ? (
+          /* Mobile: single scrollable column */
+          <ScrollArea className="h-[calc(95vh-160px)]">
+            <div className="p-4 space-y-4">
+              <IncomeSection
+                incomeBreakdown={incomeBreakdown}
+                totalGross={totalGrossIncome}
+                totalShaded={totalShadedIncome}
+              />
+              <ExpensesSection
+                expenseMethod={expenseMethod}
+                hemBenchmark={hemBenchmark}
+                hemBreakdown={hemBreakdown}
+                declaredExpenses={declaredExpenses}
+                baseExpenses={baseExpenses}
+                negativePropertyCashFlows={negativePropertyCashFlows}
+                totalNegativeCashFlows={totalNegativeCashFlows}
+                effectiveExpenses={effectiveExpenses}
+                onMethodChange={setExpenseMethod}
+                onDeclaredExpensesChange={setDeclaredExpenses}
+              />
+              <LiabilitiesSection
+                liabilities={liabilitiesBreakdown}
+                totalMonthlyCommitments={totalMonthlyCommitments}
+              />
+              <ProposedLoanSection
+                proposedLoanAmount={proposedLoanAmount}
+                interestRate={interestRate}
+                bufferRate={effectiveBufferRate}
+                bufferEnabled={bufferEnabled}
+                onBufferEnabledChange={setBufferEnabled}
+                loanTermYears={loanTermYears}
+                onProposedLoanChange={setProposedLoanAmount}
+                onInterestRateChange={setInterestRate}
+                onLoanTermChange={setLoanTermYears}
+              />
 
-                {/* Bank Rate Selector - CDR Integration */}
-                <div className="rounded-lg border p-4 bg-card">
-                  <h3 className="font-medium mb-3 flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    Live Bank Rates (CDR)
-                  </h3>
-                  <BankRateSelector
-                    value={interestRate}
-                    onChange={(rate, lenderName) => {
-                      setInterestRate(rate);
-                      if (lenderName) setSelectedLenderName(lenderName);
-                    }}
-                    loanPurpose="INVESTMENT"
-                    repaymentType="PRINCIPAL_AND_INTEREST"
-                    onOpenComparison={() => setShowRateComparison(true)}
-                  />
-                  {selectedLenderName && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Using rate from: {selectedLenderName}
-                    </p>
+              {/* Bank Rate Selector - CDR Integration */}
+              <div className="rounded-lg border p-4 bg-card">
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Live Bank Rates (CDR)
+                </h3>
+                <BankRateSelector
+                  value={interestRate}
+                  onChange={(rate, lenderName) => {
+                    setInterestRate(rate);
+                    if (lenderName) setSelectedLenderName(lenderName);
+                  }}
+                  loanPurpose="INVESTMENT"
+                  repaymentType="PRINCIPAL_AND_INTEREST"
+                  onOpenComparison={() => setShowRateComparison(true)}
+                />
+                {selectedLenderName && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Using rate from: {selectedLenderName}
+                  </p>
+                )}
+              </div>
+
+              {/* Calculation Mode Controls */}
+              <div className="rounded-lg border p-4 bg-card space-y-4">
+                <h3 className="font-medium flex items-center gap-2">
+                  {calculationMode === 'conservative' ? (
+                    <ShieldAlert className="h-4 w-4 text-warning" />
+                  ) : (
+                    <Shield className="h-4 w-4 text-primary" />
                   )}
+                  Calculation Mode
+                </h3>
+                
+                {/* Conservative Mode Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="conservative-mode-m" className="text-sm font-medium">
+                      Conservative Mode
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Quickli-style with surplus floors & DTI cap
+                    </p>
+                  </div>
+                  <Switch
+                    id="conservative-mode-m"
+                    checked={calculationMode === 'conservative'}
+                    onCheckedChange={(checked) => {
+                      setCalculationMode(checked ? 'conservative' : 'bank');
+                      if (checked) {
+                        setDtiCapEnabled(true);
+                        setDtiCapLimit(6);
+                      }
+                    }}
+                  />
                 </div>
 
-                {/* Calculation Mode Controls */}
-                <div className="rounded-lg border p-4 bg-card space-y-4">
-                  <h3 className="font-medium flex items-center gap-2">
-                    {calculationMode === 'conservative' ? (
-                      <ShieldAlert className="h-4 w-4 text-warning" />
-                    ) : (
-                      <Shield className="h-4 w-4 text-primary" />
-                    )}
-                    Calculation Mode
-                  </h3>
-                  
-                  {/* Conservative Mode Toggle */}
+                <Separator />
+
+                {/* DTI Cap Controls */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="conservative-mode" className="text-sm font-medium">
-                        Conservative Mode
+                      <Label htmlFor="dti-cap-m" className="text-sm font-medium">
+                        Enforce DTI Cap
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Quickli-style with surplus floors & DTI cap
+                        Limit capacity based on debt-to-income ratio
                       </p>
                     </div>
                     <Switch
-                      id="conservative-mode"
-                      checked={calculationMode === 'conservative'}
-                      onCheckedChange={(checked) => {
-                        setCalculationMode(checked ? 'conservative' : 'bank');
-                        if (checked) {
-                          setDtiCapEnabled(true);
-                          setDtiCapLimit(6);
-                        }
-                      }}
+                      id="dti-cap-m"
+                      checked={dtiCapEnabled || calculationMode === 'conservative'}
+                      onCheckedChange={setDtiCapEnabled}
+                      disabled={calculationMode === 'conservative'}
                     />
                   </div>
+                  
+                  {(dtiCapEnabled || calculationMode === 'conservative') && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">DTI Limit</Label>
+                        <span className="text-sm font-medium">{dtiCapLimit}x</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {[5, 6, 7, 8].map((cap) => (
+                          <button
+                            key={cap}
+                            onClick={() => setDtiCapLimit(cap)}
+                            disabled={calculationMode === 'conservative'}
+                            className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
+                              dtiCapLimit === cap
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-secondary hover:bg-secondary/80'
+                            } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {cap}x
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {calculationMode === 'conservative' 
+                          ? 'Conservative mode enforces 6x DTI cap'
+                          : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-                  <Separator />
+                {/* Mode Description */}
+                <div className={`p-3 rounded-lg text-xs ${
+                  calculationMode === 'conservative' 
+                    ? 'bg-warning/10 border border-warning/30 text-warning'
+                    : 'bg-primary/10 border border-primary/30 text-primary'
+                }`}>
+                  {calculationMode === 'conservative' ? (
+                    <p>
+                      <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
+                      residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
+                      Results align with consumer-focused tools like Quickli.
+                    </p>
+                  ) : (
+                    <p>
+                      <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
+                      constraints. Shows maximum theoretical lending capacity similar to major lender 
+                      assessments.
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                  {/* DTI Cap Controls */}
-                  <div className="space-y-3">
+              {/* Results */}
+              <ResultsPanel 
+                result={result} 
+                isCalculating={isLocalCalculating || isCalculating}
+                calculationMode={calculationMode}
+                dtiCapEnabled={dtiCapEnabled}
+                dtiCapLimit={dtiCapLimit}
+                clientId={clientId}
+                clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
+              />
+            </div>
+          </ScrollArea>
+        ) : (
+          /* Desktop: side-by-side */
+          <div className="flex flex-row flex-1 h-full overflow-hidden">
+            {/* Left Panel - Inputs */}
+            <div className="w-1/2 border-r">
+              <ScrollArea className="h-[calc(90vh-140px)]">
+                <div className="p-6 space-y-4">
+                  <IncomeSection
+                    incomeBreakdown={incomeBreakdown}
+                    totalGross={totalGrossIncome}
+                    totalShaded={totalShadedIncome}
+                  />
+                  <ExpensesSection
+                    expenseMethod={expenseMethod}
+                    hemBenchmark={hemBenchmark}
+                    hemBreakdown={hemBreakdown}
+                    declaredExpenses={declaredExpenses}
+                    baseExpenses={baseExpenses}
+                    negativePropertyCashFlows={negativePropertyCashFlows}
+                    totalNegativeCashFlows={totalNegativeCashFlows}
+                    effectiveExpenses={effectiveExpenses}
+                    onMethodChange={setExpenseMethod}
+                    onDeclaredExpensesChange={setDeclaredExpenses}
+                  />
+                  <LiabilitiesSection
+                    liabilities={liabilitiesBreakdown}
+                    totalMonthlyCommitments={totalMonthlyCommitments}
+                  />
+                  <ProposedLoanSection
+                    proposedLoanAmount={proposedLoanAmount}
+                    interestRate={interestRate}
+                    bufferRate={effectiveBufferRate}
+                    bufferEnabled={bufferEnabled}
+                    onBufferEnabledChange={setBufferEnabled}
+                    loanTermYears={loanTermYears}
+                    onProposedLoanChange={setProposedLoanAmount}
+                    onInterestRateChange={setInterestRate}
+                    onLoanTermChange={setLoanTermYears}
+                  />
+
+                  {/* Bank Rate Selector - CDR Integration */}
+                  <div className="rounded-lg border p-4 bg-card">
+                    <h3 className="font-medium mb-3 flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      Live Bank Rates (CDR)
+                    </h3>
+                    <BankRateSelector
+                      value={interestRate}
+                      onChange={(rate, lenderName) => {
+                        setInterestRate(rate);
+                        if (lenderName) setSelectedLenderName(lenderName);
+                      }}
+                      loanPurpose="INVESTMENT"
+                      repaymentType="PRINCIPAL_AND_INTEREST"
+                      onOpenComparison={() => setShowRateComparison(true)}
+                    />
+                    {selectedLenderName && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Using rate from: {selectedLenderName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Calculation Mode Controls */}
+                  <div className="rounded-lg border p-4 bg-card space-y-4">
+                    <h3 className="font-medium flex items-center gap-2">
+                      {calculationMode === 'conservative' ? (
+                        <ShieldAlert className="h-4 w-4 text-warning" />
+                      ) : (
+                        <Shield className="h-4 w-4 text-primary" />
+                      )}
+                      Calculation Mode
+                    </h3>
+                    
+                    {/* Conservative Mode Toggle */}
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="dti-cap" className="text-sm font-medium">
-                          Enforce DTI Cap
+                        <Label htmlFor="conservative-mode" className="text-sm font-medium">
+                          Conservative Mode
                         </Label>
                         <p className="text-xs text-muted-foreground">
-                          Limit capacity based on debt-to-income ratio
+                          Quickli-style with surplus floors & DTI cap
                         </p>
                       </div>
                       <Switch
-                        id="dti-cap"
-                        checked={dtiCapEnabled || calculationMode === 'conservative'}
-                        onCheckedChange={setDtiCapEnabled}
-                        disabled={calculationMode === 'conservative'}
+                        id="conservative-mode"
+                        checked={calculationMode === 'conservative'}
+                        onCheckedChange={(checked) => {
+                          setCalculationMode(checked ? 'conservative' : 'bank');
+                          if (checked) {
+                            setDtiCapEnabled(true);
+                            setDtiCapLimit(6);
+                          }
+                        }}
                       />
                     </div>
-                    
-                    {(dtiCapEnabled || calculationMode === 'conservative') && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs text-muted-foreground">DTI Limit</Label>
-                          <span className="text-sm font-medium">{dtiCapLimit}x</span>
-                        </div>
-                        <div className="flex gap-2">
-                          {[5, 6, 7, 8].map((cap) => (
-                            <button
-                              key={cap}
-                              onClick={() => setDtiCapLimit(cap)}
-                              disabled={calculationMode === 'conservative'}
-                              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
-                                dtiCapLimit === cap
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-secondary hover:bg-secondary/80'
-                              } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              {cap}x
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {calculationMode === 'conservative' 
-                            ? 'Conservative mode enforces 6x DTI cap'
-                            : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
-                          }
-                        </p>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Mode Description */}
-                  <div className={`p-3 rounded-lg text-xs ${
-                    calculationMode === 'conservative' 
-                      ? 'bg-warning/10 border border-warning/30 text-warning'
-                      : 'bg-primary/10 border border-primary/30 text-primary'
-                  }`}>
-                    {calculationMode === 'conservative' ? (
-                      <p>
-                        <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
-                        residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
-                        Results align with consumer-focused tools like Quickli.
-                      </p>
-                    ) : (
-                      <p>
-                        <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
-                        constraints. Shows maximum theoretical lending capacity similar to major lender 
-                        assessments.
-                      </p>
-                    )}
+                    <Separator />
+
+                    {/* DTI Cap Controls */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="dti-cap" className="text-sm font-medium">
+                            Enforce DTI Cap
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Limit capacity based on debt-to-income ratio
+                          </p>
+                        </div>
+                        <Switch
+                          id="dti-cap"
+                          checked={dtiCapEnabled || calculationMode === 'conservative'}
+                          onCheckedChange={setDtiCapEnabled}
+                          disabled={calculationMode === 'conservative'}
+                        />
+                      </div>
+                      
+                      {(dtiCapEnabled || calculationMode === 'conservative') && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">DTI Limit</Label>
+                            <span className="text-sm font-medium">{dtiCapLimit}x</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {[5, 6, 7, 8].map((cap) => (
+                              <button
+                                key={cap}
+                                onClick={() => setDtiCapLimit(cap)}
+                                disabled={calculationMode === 'conservative'}
+                                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
+                                  dtiCapLimit === cap
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-secondary hover:bg-secondary/80'
+                                } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >
+                                {cap}x
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {calculationMode === 'conservative' 
+                              ? 'Conservative mode enforces 6x DTI cap'
+                              : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mode Description */}
+                    <div className={`p-3 rounded-lg text-xs ${
+                      calculationMode === 'conservative' 
+                        ? 'bg-warning/10 border border-warning/30 text-warning'
+                        : 'bg-primary/10 border border-primary/30 text-primary'
+                    }`}>
+                      {calculationMode === 'conservative' ? (
+                        <p>
+                          <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
+                          residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
+                          Results align with consumer-focused tools like Quickli.
+                        </p>
+                      ) : (
+                        <p>
+                          <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
+                          constraints. Shows maximum theoretical lending capacity similar to major lender 
+                          assessments.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </ScrollArea>
+              </ScrollArea>
+            </div>
+            {/* Right Panel - Results */}
+            <div className="w-1/2">
+              <ScrollArea className="h-[calc(90vh-140px)]">
+                <div className="p-6">
+                  <ResultsPanel 
+                    result={result} 
+                    isCalculating={isLocalCalculating || isCalculating}
+                    calculationMode={calculationMode}
+                    dtiCapEnabled={dtiCapEnabled}
+                    dtiCapLimit={dtiCapLimit}
+                    clientId={clientId}
+                    clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
+                  />
+                </div>
+              </ScrollArea>
+            </div>
           </div>
-          {/* Right Panel - Results (below on mobile) */}
-          <div className="w-full md:w-1/2 border-t md:border-t-0">
-            <ScrollArea className={isMobile ? "h-auto max-h-[60vh]" : "h-[calc(90vh-140px)]"}>
-              <div className="p-4 sm:p-6">
-                <ResultsPanel 
-                  result={result} 
-                  isCalculating={isLocalCalculating || isCalculating}
-                  calculationMode={calculationMode}
-                  dtiCapEnabled={dtiCapEnabled}
-                  dtiCapLimit={dtiCapLimit}
-                  clientId={clientId}
-                  clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
-                />
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
+        )}
       </TabsContent>
 
       <TabsContent value="scenarios" className="flex-1 overflow-hidden m-0">
