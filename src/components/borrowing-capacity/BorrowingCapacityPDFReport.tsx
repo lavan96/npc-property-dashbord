@@ -139,51 +139,40 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   const a = data.assessment;
 
   // ════════════════════════════════════════════════════════════════════════════
-  // PAGE 1: COVER
+  // PAGE 1: COVER — standard NPC template image (no overlay text)
   // ════════════════════════════════════════════════════════════════════════════
-  setFill(doc, DARK_BG);
-  doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
-
-  // Gold accent bar
-  setFill(doc, GOLD);
-  doc.rect(MARGIN, 60, 60, 3, 'F');
-
-  // Title
-  doc.setFontSize(32);
-  doc.setFont('helvetica', 'bold');
-  setColor(doc, WHITE);
-  doc.text('BORROWING', MARGIN, 85);
-  doc.text('CAPACITY', MARGIN, 100);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'normal');
-  setColor(doc, GOLD);
-  doc.text('SNAPSHOT', MARGIN, 115);
-
-  // Client name
-  doc.setFontSize(14);
-  setColor(doc, WHITE);
-  doc.text(data.clientName, MARGIN, 145);
-
-  // Date
-  doc.setFontSize(10);
-  setColor(doc, GRAY);
-  doc.text(format(new Date(a.created_at || new Date()), 'dd MMMM yyyy'), MARGIN, 160);
-
-  // "Estimate" label
-  doc.setFontSize(9);
-  setColor(doc, GOLD);
-  doc.text('This report provides an estimate of borrowing capacity', MARGIN, 175);
-  doc.text('based on available client data and standard lending criteria.', MARGIN, 182);
-
-  // Bottom branding
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  setColor(doc, GOLD);
-  doc.text('NAIDU PROPERTY CONSULTING', MARGIN, PAGE_H - 40);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  setColor(doc, GRAY);
-  doc.text('SERVICES', MARGIN, PAGE_H - 33);
+  try {
+    const coverImageUrl = '/templates/npc-cashflow-cover.jpg';
+    const coverResponse = await fetch(coverImageUrl);
+    if (coverResponse.ok) {
+      const coverBlob = await coverResponse.blob();
+      const coverDataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(coverBlob);
+      });
+      doc.addImage(coverDataUrl, 'JPEG', 0, 0, PAGE_W, PAGE_H);
+    } else {
+      throw new Error('Cover image not found');
+    }
+  } catch (e) {
+    // Fallback: simple dark branded cover
+    setFill(doc, DARK_BG);
+    doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
+    const goldColor = { r: 201, g: 165, b: 90 };
+    setFill(doc, goldColor);
+    doc.rect(0, 0, PAGE_W, 8, 'F');
+    doc.setFontSize(28);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, goldColor);
+    doc.text('NAIDU PROPERTY', PAGE_W / 2, 100, { align: 'center' });
+    doc.text('CONSULTING SERVICES', PAGE_W / 2, 115, { align: 'center' });
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('YOUR DEDICATED PROPERTY PARTNER', PAGE_W / 2, 135, { align: 'center' });
+    setFill(doc, goldColor);
+    doc.rect(0, PAGE_H - 8, PAGE_W, 8, 'F');
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // PAGE 2: EXECUTIVE SUMMARY
@@ -294,10 +283,11 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   const incomeBreakdown = a.income_breakdown || data.incomeSources;
   if (incomeBreakdown && Array.isArray(incomeBreakdown) && incomeBreakdown.length > 0) {
     // Header
+    const srcColW = 65; // max width for source name before truncation
     y = drawTableRow(doc, y, [
       { text: 'Source', x: MARGIN, bold: true, color: NAVY },
-      { text: 'Gross Amount', x: MARGIN + 75, align: 'right', bold: true, color: NAVY },
-      { text: 'Shading', x: MARGIN + 110, align: 'right', bold: true, color: NAVY },
+      { text: 'Gross Amount', x: MARGIN + 90, align: 'right', bold: true, color: NAVY },
+      { text: 'Shading', x: MARGIN + 120, align: 'right', bold: true, color: NAVY },
       { text: 'Shaded Amount', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
     ]);
 
@@ -308,14 +298,20 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const item = incomeBreakdown[i];
       y = checkPageBreak(doc, y, 10, pageNum);
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
-      const sourceName = item.component || item.source_name || item.source_type || 'Income';
+      let sourceName = item.component || item.source_name || item.source_type || 'Income';
+      // Truncate long source names to prevent overlap with amount columns
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      while (doc.getTextWidth(sourceName) > srcColW && sourceName.length > 10) {
+        sourceName = sourceName.slice(0, -4) + '...';
+      }
       const gross = item.grossAmount || item.gross_annual_amount || item.input_amount || 0;
       const rate = item.shadingRate || item.custom_shading_rate || item.default_shading_rate || 1;
       const shaded = item.shadedAmount || gross * rate;
       y = drawTableRow(doc, y, [
         { text: sourceName, x: MARGIN },
-        { text: fmt(gross), x: MARGIN + 75, align: 'right' },
-        { text: `${(rate * 100).toFixed(0)}%`, x: MARGIN + 110, align: 'right' },
+        { text: fmt(gross), x: MARGIN + 90, align: 'right' },
+        { text: `${(rate * 100).toFixed(0)}%`, x: MARGIN + 120, align: 'right' },
         { text: fmt(shaded), x: MARGIN + CONTENT_W, align: 'right', bold: true },
       ], bg);
     }
