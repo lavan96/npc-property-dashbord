@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'; // En
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -2860,100 +2862,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       }
 
       // ========== CONTACT / DISCLAIMER PAGE (Last Page) ==========
-      pdf.addPage();
-      
-      // Dark background
-      pdf.setFillColor(26, 26, 26);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-      // Gold color for text
-      const contactGoldColor = { r: 201, g: 165, b: 90 }; // #c9a55a
-      const contactGrayColor = { r: 150, g: 150, b: 150 };
-      
-      let contactYPos = 60;
-      
-      // Company Name / Header
-      pdf.setFontSize(28);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
-      pdf.text(templateConfig.companyName.toUpperCase(), margin + 10, contactYPos);
-      
-      if (templateConfig.companyNameLine2) {
-        contactYPos += 12;
-        pdf.setFontSize(18);
-        pdf.text(templateConfig.companyNameLine2, margin + 10, contactYPos);
-      }
-      
-      contactYPos += 25;
-      
-      // "CONTACT US" heading
-      pdf.setFontSize(18);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CONTACT US', margin + 10, contactYPos);
-      
-      contactYPos += 15;
-      
-      // Contact details
-      pdf.setFontSize(11);
-      
-      if (templateConfig.website) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
-        pdf.text('WEBSITE:', margin + 10, contactYPos);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(templateConfig.website, margin + 45, contactYPos);
-        contactYPos += 10;
-      }
-      
-      if (templateConfig.contactEmail) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('EMAIL:', margin + 10, contactYPos);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(templateConfig.contactEmail, margin + 45, contactYPos);
-        contactYPos += 10;
-      }
-      
-      // Always show the phone number - use hardcoded value
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('PHONE:', margin + 10, contactYPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('(02) 8609 3299', margin + 45, contactYPos);
-      contactYPos += 10;
-      
-      // Address
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
-      pdf.text('ADDRESS:', margin + 10, contactYPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('Level 5 Nexus Norwest, 4 Columbia Ct, Norwest NSW 2153', margin + 45, contactYPos);
-      contactYPos += 10;
-      
-      // ABN
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('ABN:', margin + 10, contactYPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text('50 684 555 771', margin + 45, contactYPos);
-      contactYPos += 10;
-      
-      // Disclaimer section
-      contactYPos = pageHeight - 100;
-      
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(contactGrayColor.r, contactGrayColor.g, contactGrayColor.b);
-      
-      // Full professional disclaimer
-      const fullDisclaimer = "As a Professional Property Consultant & Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice. While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment. It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses. Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process. Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors. By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions. Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.";
-      
-      const disclaimerLinesFull = pdf.splitTextToSize(fullDisclaimer, pageWidth - margin * 4);
-      disclaimerLinesFull.forEach((line: string) => {
-        pdf.text(line, margin + 10, contactYPos);
-        contactYPos += 5;
-      });
-      
-      // Bottom gold bar
-      pdf.setFillColor(contactGoldColor.r, contactGoldColor.g, contactGoldColor.b);
-      pdf.rect(0, pageHeight - 8, pageWidth, 8, 'F');
+      const globalSettings = await fetchGlobalReportSettings();
+      drawJsPDFDisclaimerPage(pdf, globalSettings.contactDetails, globalSettings.disclaimer);
 
       // ========== FOOTER (on content pages only, skip cover and contact pages) ==========
       const totalPages = pdf.getNumberOfPages();

@@ -6,6 +6,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 
 type ReportTier = 'compass' | 'briefing' | 'snapshot';
 
@@ -1392,163 +1393,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       // Helper function to add a contact/disclaimer page with global settings
       const addContactDisclaimerPage = async (settings: GlobalReportSettings) => {
-        const page = pdfDoc.addPage([pageWidth, pageHeight]);
-        const { contactDetails, disclaimer } = settings;
-        
-        // Dark background
-        page.drawRectangle({
-          x: 0,
-          y: 0,
-          width: pageWidth,
-          height: pageHeight,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-
-        // Gold color for text
-        const goldColor = rgb(0.788, 0.647, 0.353); // #c9a55a
-        const grayColor = rgb(0.6, 0.6, 0.6);
-        
-        let yPos = pageHeight - 80;
-        
-        // Company Name / Header
-        const companyName = contactDetails.company_name || 'Naidu Property Consulting Services';
-        page.drawText(companyName.toUpperCase(), {
-          x: 60,
-          y: yPos,
-          size: 28,
-          font: helveticaBold,
-          color: goldColor,
-        });
-        
-        yPos -= 50;
-        
-        // "CONTACT US" heading
-        page.drawText('CONTACT US', {
-          x: 60,
-          y: yPos,
-          size: 18,
-          font: helveticaBold,
-          color: goldColor,
-        });
-        
-        yPos -= 40;
-        
-        // Contact details
-        if (contactDetails.website) {
-          page.drawText('WEBSITE:', {
-            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
-          });
-          page.drawText(contactDetails.website, {
-            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
-          });
-          yPos -= 22;
-        }
-        
-        if (contactDetails.email) {
-          page.drawText('EMAIL:', {
-            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
-          });
-          page.drawText(contactDetails.email, {
-            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
-          });
-          yPos -= 22;
-        }
-        
-        if (contactDetails.phone) {
-          page.drawText('PHONE:', {
-            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
-          });
-          page.drawText(contactDetails.phone, {
-            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
-          });
-          yPos -= 22;
-        }
-        
-        if (contactDetails.address) {
-          page.drawText('ADDRESS:', {
-            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
-          });
-          page.drawText(contactDetails.address, {
-            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
-          });
-          yPos -= 22;
-        }
-        
-        if (contactDetails.abn) {
-          page.drawText('ABN:', {
-            x: 60, y: yPos, size: 11, font: helveticaBold, color: goldColor
-          });
-          page.drawText(contactDetails.abn, {
-            x: 140, y: yPos, size: 11, font: helveticaFont, color: goldColor
-          });
-          yPos -= 22;
-        }
-        
-        // Disclaimer section (if enabled)
-        if (disclaimer.is_enabled && disclaimer.text) {
-          const disclaimerText = stripEmojis(disclaimer.text);
-          const maxWidth = pageWidth - 120;
-          
-          // Map font size setting to actual size (default to small/8pt)
-          const fontSizeMap = { small: 8, medium: 10, large: 12 };
-          const fontSize = fontSizeMap[disclaimer.font_size || 'small'] || 8;
-          const lineHeightDisclaimer = fontSize * 1.5; // Proportional line height
-          const paragraphSpacing = fontSize * 0.8; // Extra spacing between paragraphs
-          
-          // Split by paragraph breaks (double newlines or single newlines)
-          const paragraphs = disclaimerText.split(/\n\s*\n|\n/).filter(p => p.trim());
-          
-          // First pass: calculate total height needed for disclaimer
-          let totalDisclaimerHeight = 0;
-          const allWrappedParagraphs: string[][] = [];
-          
-          for (const paragraph of paragraphs) {
-            const words = paragraph.trim().split(' ');
-            let currentLine = '';
-            const lines: string[] = [];
-            
-            for (const word of words) {
-              const testLine = currentLine ? `${currentLine} ${word}` : word;
-              const testWidth = helveticaFont.widthOfTextAtSize(testLine, fontSize);
-              
-              if (testWidth > maxWidth && currentLine) {
-                lines.push(currentLine);
-                currentLine = word;
-              } else {
-                currentLine = testLine;
-              }
-            }
-            if (currentLine) lines.push(currentLine);
-            
-            allWrappedParagraphs.push(lines);
-            totalDisclaimerHeight += lines.length * lineHeightDisclaimer + paragraphSpacing;
-          }
-          
-          // Calculate starting position to fit entire disclaimer
-          // Start from current yPos or higher if needed, ensuring we don't go above contact details
-          const bottomMargin = 40;
-          const requiredStartY = bottomMargin + totalDisclaimerHeight + 20; // 20px buffer
-          
-          // Position disclaimer to fit all content, using more page space for larger fonts
-          yPos = Math.max(requiredStartY, Math.min(yPos - 40, 350));
-          
-          // Second pass: draw the disclaimer
-          for (const lines of allWrappedParagraphs) {
-            for (const line of lines) {
-              if (yPos < bottomMargin) break;
-              page.drawText(line, {
-                x: 60,
-                y: yPos,
-                size: fontSize,
-                font: helveticaFont,
-                color: grayColor,
-              });
-              yPos -= lineHeightDisclaimer;
-            }
-            yPos -= paragraphSpacing;
-          }
-        }
-        
+        const page = drawPdfLibDisclaimerPage(
+          pdfDoc,
+          pageWidth,
+          pageHeight,
+          helveticaFont,
+          helveticaBold,
+          settings.contactDetails,
+          settings.disclaimer,
+        );
         console.log('✓ Added contact/disclaimer page with global settings');
         return page;
       };

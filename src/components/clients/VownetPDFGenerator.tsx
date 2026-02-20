@@ -1853,8 +1853,23 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
       </div>
       
       <!-- FINAL PAGE - Contact & Disclaimer -->
-      <div class="page final-page" style="background-image: url('/templates/npc-vownet-final.jpg'); background-size: cover; background-position: center;">
-        <!-- Using the exact template image as background -->
+      <div class="page final-page" style="background-color: #141414; display: flex; flex-direction: column; justify-content: flex-start; padding: 60px 40px;">
+        <div style="color: #BF9B50; font-size: 28px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">NAIDU PROPERTY CONSULTING</div>
+        <div style="color: #BF9B50; font-size: 16px; font-weight: normal; text-transform: uppercase; margin-bottom: 30px;">SERVICES</div>
+        
+        <div style="color: #BF9B50; font-size: 14px; font-weight: bold; margin-bottom: 20px;">CONTACT US</div>
+        
+        <table style="border-collapse: collapse; margin-bottom: auto;">
+          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">WEBSITE:</td><td style="color: #BF9B50; font-size: 9px;">npcservices.com.au</td></tr>
+          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">EMAIL:</td><td style="color: #BF9B50; font-size: 9px;">admin@npcservices.com.au</td></tr>
+          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">PHONE:</td><td style="color: #BF9B50; font-size: 9px;">(02) 8609 3299</td></tr>
+          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ADDRESS:</td><td style="color: #BF9B50; font-size: 9px;">Level 5 Nexus Norwest, 4 Columbia Ct, Norwest NSW 2153</td></tr>
+          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ABN:</td><td style="color: #BF9B50; font-size: 9px;">50 684 555 771</td></tr>
+        </table>
+        
+        <div style="color: #999999; font-size: 8.5px; line-height: 1.4; margin-top: auto; padding-bottom: 20px;">
+          As a Professional Property Consultant &amp; Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice. While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment. It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses. Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process. Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors. By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions. Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.
+        </div>
       </div>
     </body>
     </html>
