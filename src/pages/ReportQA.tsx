@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
-import { QAPDFGenerator } from '@/components/reports/QAPDFGenerator';
+import { MessageReportEditor } from '@/components/report-qa/MessageReportEditor';
 import { convertPdfToImages } from '@/utils/pdfToImages';
 import { extractPdfTextClientSide } from '@/lib/pdfClientExtractor';
 import ReactMarkdown from 'react-markdown';
@@ -45,7 +45,8 @@ import {
   Pin,
   Pause,
   Play,
-  Square
+  Square,
+  Download
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -170,6 +171,8 @@ export default function ReportQA() {
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [messageEditorOpen, setMessageEditorOpen] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [showEmailCopilotModal, setShowEmailCopilotModal] = useState(false);
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
@@ -1698,6 +1701,7 @@ export default function ReportQA() {
                   messages={messages}
                   title={getCurrentTitle()}
                   reportNames={uploadedReports.map(r => r.name)}
+                  conversationId={conversationId}
                 />
                 <AutoSummarize
                   messages={messages.map(m => ({ role: m.role, content: m.content }))}
@@ -1849,15 +1853,18 @@ export default function ReportQA() {
                                 <Mail className="h-3 w-3 mr-1" />
                                 Email
                               </Button>
-                              <QAPDFGenerator
-                                content={message.content}
-                                title={uploadedReports.length > 1 
-                                  ? 'Property Comparison Summary'
-                                  : uploadedReports.length === 1 
-                                    ? 'Investment Report Summary'
-                                    : 'Property Investment Analysis'}
-                                reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
-                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1.5"
+                                onClick={() => {
+                                  setEditingMessage(message);
+                                  setMessageEditorOpen(true);
+                                }}
+                              >
+                                <Download className="h-3 w-3" />
+                                PDF
+                              </Button>
                               <MessageReactions messageId={message.id} />
                             </div>
                             <MessageThreading
@@ -2564,6 +2571,24 @@ export default function ReportQA() {
           });
         }}
       />
+
+      {editingMessage && (
+        <MessageReportEditor
+          isOpen={messageEditorOpen}
+          onClose={() => {
+            setMessageEditorOpen(false);
+            setEditingMessage(null);
+          }}
+          content={editingMessage.content}
+          messageId={editingMessage.id}
+          title={uploadedReports.length > 1 
+            ? 'Property Comparison Summary'
+            : uploadedReports.length === 1 
+              ? 'Investment Report Summary'
+              : 'Property Investment Analysis'}
+          reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
+        />
+      )}
       </div>
     </>
   );

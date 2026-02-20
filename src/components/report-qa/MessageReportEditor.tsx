@@ -13,7 +13,6 @@ import {
   Eye, 
   Type, 
   FileText, 
-  Sparkles, 
   RefreshCw 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -21,109 +20,64 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import jsPDF from 'jspdf';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: Date;
-}
-
-interface ConversationReportEditorProps {
+interface MessageReportEditorProps {
   isOpen: boolean;
   onClose: () => void;
-  messages: Message[];
+  content: string;
+  messageId: string;
   title: string;
   reportNames: string[];
-  conversationId?: string | null;
 }
 
-export function ConversationReportEditor({ 
+export function MessageReportEditor({ 
   isOpen, 
   onClose, 
-  messages, 
+  content: originalContent, 
+  messageId,
   title, 
-  reportNames,
-  conversationId 
-}: ConversationReportEditorProps) {
+  reportNames 
+}: MessageReportEditorProps) {
   const [reportContent, setReportContent] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState('edit');
   const [hasEdited, setHasEdited] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const initialContent = useRef('');
 
+  // Load content: use persisted edited_content if available, otherwise use original
   useEffect(() => {
-    if (isOpen && messages.length > 0) {
-      loadCachedOrGenerate();
+    if (isOpen) {
+      loadPersistedContent();
     }
-  }, [isOpen]);
+  }, [isOpen, messageId]);
 
-  const loadCachedOrGenerate = async () => {
-    if (conversationId) {
-      try {
-        const { data, error } = await invokeSecureFunction('manage-client-data', {
-          operation: 'list',
-          table: 'report_qa_conversations',
-          filters: { id: conversationId }
-        });
-        if (!error && data?.records?.length > 0 && data.records[0].structured_report) {
-          setReportContent(data.records[0].structured_report);
-          initialContent.current = data.records[0].structured_report;
+  const loadPersistedContent = async () => {
+    try {
+      // Try to load persisted edited content from database
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'list',
+        table: 'report_qa_messages',
+        filters: { id: messageId }
+      });
+
+      if (!error && data?.records?.length > 0) {
+        const record = data.records[0];
+        if (record.edited_content) {
+          setReportContent(record.edited_content);
+          initialContent.current = record.edited_content;
           setHasEdited(false);
-          setActiveTab('edit');
           return;
         }
-      } catch (err) {
-        console.warn('Could not load cached report:', err);
       }
+    } catch (err) {
+      console.warn('Could not load persisted content, using original:', err);
     }
-    if (!reportContent) {
-      generateStructuredReport();
-    }
-  };
-
-  const generateStructuredReport = async () => {
-    setIsGenerating(true);
-    try {
-      const { data, error } = await invokeSecureFunction('report-qa', {
-        action: 'summarize-conversation',
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-        reportNames,
-        title,
-      });
-
-      if (error) throw new Error(error.message);
-      if (!data?.structuredReport) throw new Error('No report generated');
-
-      setReportContent(data.structuredReport);
-      initialContent.current = data.structuredReport;
-      setHasEdited(false);
-      setActiveTab('edit');
-
-      // Persist to database
-      if (conversationId) {
-        invokeSecureFunction('manage-client-data', {
-          operation: 'update',
-          table: 'report_qa_conversations',
-          id: conversationId,
-          data: { structured_report: data.structuredReport }
-        }).catch(err => console.warn('Failed to cache structured report:', err));
-      }
-
-      toast({
-        title: 'Report generated',
-        description: 'AI has structured your conversation into a report. Review and edit before exporting.',
-      });
-    } catch (err: any) {
-      console.error('Failed to generate structured report:', err);
-      toast({
-        title: 'Generation failed',
-        description: err.message || 'Failed to generate structured report',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+    
+    // Fallback to original message content
+    setReportContent(originalContent);
+    initialContent.current = originalContent;
+    setHasEdited(false);
   };
 
   const handleContentChange = (value: string) => {
@@ -131,9 +85,69 @@ export function ConversationReportEditor({
     setHasEdited(value !== initialContent.current);
   };
 
+  const saveEditedContent = async () => {
+    setIsSaving(true);
+    try {
+      await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'report_qa_messages',
+        id: messageId,
+        data: { edited_content: reportContent }
+      });
+
+      initialContent.current = reportContent;
+      setHasEdited(false);
+
+      toast({
+        title: 'Saved',
+        description: 'Your edits have been saved.',
+      });
+    } catch (err: any) {
+      console.error('Failed to save edited content:', err);
+      toast({
+        title: 'Save failed',
+        description: err.message || 'Failed to save edits',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetToOriginal = () => {
+    setReportContent(originalContent);
+    setHasEdited(originalContent !== initialContent.current);
+  };
+
+  // ========== PDF EXPORT (mirrors QAPDFGenerator template) ==========
+  const sanitizeForPDF = (text: string): string => {
+    let clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+    clean = clean.replace(/%æ\s*/g, '- ');
+    clean = clean.replace(/[≤≥→←↑↓•·…—–''""″′]/g, (ch) => {
+      const map: Record<string, string> = {
+        '≤': '<=', '≥': '>=', '→': '->', '←': '<-', '↑': '^', '↓': 'v',
+        '•': '-', '·': '-', '…': '...', '—': '--', '–': '-',
+        '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
+        '″': '"', '′': "'",
+      };
+      return map[ch] || ch;
+    });
+    clean = clean.replace(/"d\$/g, '<=$');
+    clean = clean.replace(/[^\x00-\x7F]/g, (ch) => {
+      if (/[àáâãäåèéêëìíîïòóôõöùúûüýÿñçÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ×÷]/.test(ch)) return ch;
+      return '';
+    });
+    return clean;
+  };
+
   const exportAsPDF = async () => {
     setIsExporting(true);
     try {
+      // Save edits first if changed
+      if (hasEdited) {
+        await saveEditedContent();
+      }
+
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -141,7 +155,6 @@ export function ConversationReportEditor({
       const usableWidth = pageWidth - margin * 2;
       let yPos = margin;
 
-      // Fetch global settings for contact/disclaimer
       const globalSettings = await fetchGlobalReportSettings();
       const contact = globalSettings.contactDetails;
       const disclaimerSettings = globalSettings.disclaimer;
@@ -154,7 +167,6 @@ export function ConversationReportEditor({
       };
 
       // ============= COVER PAGE =============
-      // Try to load the QA cover image template
       let coverImageLoaded = false;
       try {
         const coverResponse = await fetch('/templates/npc-qa-cover.jpg');
@@ -173,17 +185,12 @@ export function ConversationReportEditor({
       }
 
       if (!coverImageLoaded) {
-        // Fallback programmatic cover page
         doc.setFillColor(15, 18, 25);
         doc.rect(0, 0, pageWidth, pageHeight, 'F');
-        
-        // Gold accent line
         doc.setDrawColor(191, 155, 80);
         doc.setLineWidth(0.8);
         doc.line(pageWidth * 0.3, pageHeight * 0.42, pageWidth * 0.7, pageHeight * 0.42);
       }
-
-      // No overlay text on cover — the template image is used as-is
 
       const dateStr = new Date().toLocaleDateString('en-AU', {
         day: 'numeric', month: 'long', year: 'numeric'
@@ -193,7 +200,6 @@ export function ConversationReportEditor({
       doc.addPage();
       yPos = margin;
 
-      // Content page header
       doc.setFillColor(15, 23, 42);
       doc.rect(0, 0, pageWidth, 35, 'F');
       doc.setTextColor(255, 255, 255);
@@ -208,48 +214,19 @@ export function ConversationReportEditor({
       yPos = 45;
       doc.setTextColor(0, 0, 0);
 
-      const sanitizeForPDF = (text: string): string => {
-        // Strip markdown bold/italic
-        let clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
-        // Replace %æ sub-bullet markers with dash
-        clean = clean.replace(/%æ\s*/g, '- ');
-        // Replace common Unicode chars that cause letter-spacing issues in jsPDF
-        clean = clean.replace(/[≤≥→←↑↓•·…—–''""″′]/g, (ch) => {
-          const map: Record<string, string> = {
-            '≤': '<=', '≥': '>=', '→': '->', '←': '<-', '↑': '^', '↓': 'v',
-            '•': '-', '·': '-', '…': '...', '—': '--', '–': '-',
-            '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
-            '″': '"', '′': "'",
-          };
-          return map[ch] || ch;
-        });
-        // Fix "d$1M type artifacts (corrupted ≤$1M)
-        clean = clean.replace(/"d\$/g, '<=$');
-        // Replace any remaining non-ASCII chars that jsPDF can't render
-        clean = clean.replace(/[^\x00-\x7F]/g, (ch) => {
-          // Keep common extended latin chars
-          if (/[àáâãäåèéêëìíîïòóôõöùúûüýÿñçÀÁÂÃÄÅÈÉÊËÌÍÎÏÒÓÔÕÖÙÚÛÜÝÑÇ×÷]/.test(ch)) return ch;
-          return '';
-        });
-        return clean;
-      };
-
       // Detect markdown table block
       const isTableLine = (line: string) => line.trim().startsWith('|') && line.trim().endsWith('|');
       const isSeparatorLine = (line: string) => /^\|[\s\-:]+(\|[\s\-:]+)+\|$/.test(line.trim());
 
       const drawTable = (tableLines: string[]) => {
-        // Parse header, separator, and body
         const parseRow = (line: string) =>
           line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => sanitizeForPDF(c.trim()));
 
         const header = parseRow(tableLines[0]);
-        const bodyLines = tableLines.slice(2); // skip separator
+        const bodyLines = tableLines.slice(2);
         const rows = bodyLines.map(parseRow);
         const colCount = header.length;
 
-        // Calculate column widths proportionally
-        const allRows = [header, ...rows];
         const colWidths: number[] = [];
         const totalChars = header.reduce((sum, h, i) => {
           const maxLen = Math.max(h.length, ...rows.map(r => (r[i] || '').length));
@@ -257,7 +234,6 @@ export function ConversationReportEditor({
           return sum + maxLen;
         }, 0);
         const colWidthsMM = colWidths.map(w => Math.max((w / totalChars) * usableWidth, 25));
-        // Normalize to fit usableWidth
         const totalMM = colWidthsMM.reduce((a, b) => a + b, 0);
         const scale = usableWidth / totalMM;
         const finalWidths = colWidthsMM.map(w => w * scale);
@@ -265,11 +241,9 @@ export function ConversationReportEditor({
         const cellPadding = 2;
         const rowHeight = 8;
 
-        // Estimate total height
-        const totalHeight = (rows.length + 1) * rowHeight + 4;
-        ensureSpace(Math.min(totalHeight, 60)); // at least fit header + a few rows
+        const minTableHeight = Math.min((rows.length + 1) * rowHeight + 4, 3 * rowHeight + 4);
+        ensureSpace(minTableHeight);
 
-        // Draw header
         let xPos = margin;
         doc.setFillColor(240, 245, 255);
         doc.rect(margin, yPos - 5, usableWidth, rowHeight, 'F');
@@ -280,13 +254,11 @@ export function ConversationReportEditor({
           doc.text(header[i], xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
           xPos += finalWidths[i];
         }
-        // Header border
         doc.setDrawColor(200, 210, 230);
         doc.setLineWidth(0.3);
         doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
         yPos += rowHeight;
 
-        // Draw body rows
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
         for (const row of rows) {
@@ -297,7 +269,6 @@ export function ConversationReportEditor({
             doc.text(cellText, xPos + cellPadding, yPos, { maxWidth: finalWidths[i] - cellPadding * 2 });
             xPos += finalWidths[i];
           }
-          // Row border
           doc.setDrawColor(230, 230, 230);
           doc.line(margin, yPos + 3, margin + usableWidth, yPos + 3);
           yPos += rowHeight;
@@ -312,7 +283,6 @@ export function ConversationReportEditor({
         const line = lines[i];
         const trimmed = line.trim();
 
-        // Collect table block
         if (isTableLine(trimmed)) {
           const tableLines: string[] = [];
           while (i < lines.length && isTableLine(lines[i].trim())) {
@@ -327,7 +297,6 @@ export function ConversationReportEditor({
           continue;
         }
 
-        // Check for page break
         ensureSpace(8);
 
         if (!trimmed) {
@@ -336,9 +305,9 @@ export function ConversationReportEditor({
           continue;
         }
 
-        // H1 - also check next line has content to avoid orphan
+        // H1
         if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
-          ensureSpace(20); // Prevent orphaned heading
+          ensureSpace(20);
           yPos += 4;
           doc.setFontSize(16);
           doc.setFont('helvetica', 'bold');
@@ -385,6 +354,21 @@ export function ConversationReportEditor({
           continue;
         }
 
+        // H5 (must be before H4)
+        if (trimmed.startsWith('##### ')) {
+          ensureSpace(14);
+          yPos += 2;
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(71, 85, 105);
+          const h5Text = trimmed.replace(/^#####+ /, '');
+          const wrappedH5 = doc.splitTextToSize(h5Text, usableWidth);
+          doc.text(wrappedH5, margin, yPos);
+          yPos += wrappedH5.length * 4.5 + 3;
+          i++;
+          continue;
+        }
+
         // H4
         if (trimmed.startsWith('#### ')) {
           ensureSpace(14);
@@ -392,7 +376,7 @@ export function ConversationReportEditor({
           doc.setFontSize(10);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(51, 65, 85);
-          const h4Text = trimmed.replace(/^#### /, '');
+          const h4Text = trimmed.replace(/^####+ /, '');
           const wrappedH4 = doc.splitTextToSize(h4Text, usableWidth);
           doc.text(wrappedH4, margin, yPos);
           yPos += wrappedH4.length * 4.5 + 3;
@@ -411,7 +395,7 @@ export function ConversationReportEditor({
           continue;
         }
 
-        // Numbered list items (e.g., "1. ", "2. ")
+        // Numbered list items
         if (/^\d+\.\s/.test(trimmed)) {
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
@@ -432,12 +416,12 @@ export function ConversationReportEditor({
           continue;
         }
 
-        // Nested bullet points (- - or indented - or %æ sub-bullets)
-        if (/^\s{2,}-\s/.test(line) || trimmed.startsWith('- -') || trimmed.startsWith('%æ') || trimmed.startsWith('%æ')) {
+        // Nested bullet points
+        if (/^\s{2,}-\s/.test(line) || trimmed.startsWith('- -') || trimmed.startsWith('%æ')) {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(80, 80, 80);
-          const bulletText = trimmed.replace(/^-\s*-\s*/, '').replace(/^-\s/, '').replace(/^%æ\s*/, '').replace(/^%æ\s*/, '');
+          const bulletText = trimmed.replace(/^-\s*-\s*/, '').replace(/^-\s/, '').replace(/^%æ\s*/, '');
           const cleanText = sanitizeForPDF(bulletText);
           const wrappedBullet = doc.splitTextToSize(cleanText, usableWidth - 16);
           ensureSpace(wrappedBullet.length * 4 + 2);
@@ -460,6 +444,21 @@ export function ConversationReportEditor({
           doc.text('•', margin + 2, yPos);
           doc.text(wrappedBullet, margin + 8, yPos);
           yPos += wrappedBullet.length * 4.5 + 1.5;
+          i++;
+          continue;
+        }
+
+        // Bold-only lines (rendered as styled sub-headings)
+        if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.startsWith('***')) {
+          ensureSpace(14);
+          yPos += 2;
+          doc.setFontSize(10.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 41, 59);
+          const boldText = sanitizeForPDF(trimmed.replace(/^\*\*|\*\*$/g, ''));
+          const wrappedBold = doc.splitTextToSize(boldText, usableWidth);
+          doc.text(wrappedBold, margin, yPos);
+          yPos += wrappedBold.length * 4.5 + 3;
           i++;
           continue;
         }
@@ -489,14 +488,13 @@ export function ConversationReportEditor({
         yPos += wrappedText.length * 4.5 + 2;
         i++;
       }
+
       // ============= DISCLAIMER & CONTACT PAGE =============
       doc.addPage();
       
-      // Dark background
       doc.setFillColor(20, 20, 20);
       doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-      // Company name - large gold text
       doc.setTextColor(191, 155, 80);
       doc.setFontSize(28);
       doc.setFont('helvetica', 'bold');
@@ -510,13 +508,11 @@ export function ConversationReportEditor({
         doc.text(companyParts[0], margin, 40);
       }
 
-      // "CONTACT US" header
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(191, 155, 80);
       doc.text('CONTACT US', margin, 80);
 
-      // Contact details
       const labelX = margin;
       const valueX = margin + 35;
       let contactY = 100;
@@ -539,7 +535,6 @@ export function ConversationReportEditor({
       drawContactLine('Address', contact.address);
       drawContactLine('ABN', contact.abn);
 
-      // Disclaimer text at bottom
       if (disclaimerSettings.is_enabled && disclaimerSettings.text) {
         doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
@@ -548,35 +543,36 @@ export function ConversationReportEditor({
         const disclaimerMaxWidth = pageWidth - (margin * 1.5);
         const wrappedDisclaimer = doc.splitTextToSize(disclaimerText, disclaimerMaxWidth);
         const lineHeight = 4.2;
-        // Position disclaimer from bottom up
         const disclaimerStartY = pageHeight - 20 - (wrappedDisclaimer.length * lineHeight);
         doc.text(wrappedDisclaimer, margin * 0.75, Math.max(disclaimerStartY, contactY + 20), { lineHeightFactor: 1.4 });
       }
 
-      // Footer on each page (skip cover page = page 1, skip disclaimer = last page)
+      // Footer on each page (skip cover = page 1, skip disclaimer = last page)
       const totalPages = doc.getNumberOfPages();
       const companyFooterName = contact.company_name || 'Naidu Property Consulting Services';
-      for (let i = 1; i <= totalPages; i++) {
-        // Skip cover (page 1) and disclaimer (last page)
-        if (i === 1 || i === totalPages) continue;
-        doc.setPage(i);
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages) continue;
+        doc.setPage(p);
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(150, 150, 150);
         doc.text(
-          `${companyFooterName} -- Confidential -- Page ${i - 1} of ${totalPages - 2}`,
+          `${companyFooterName} -- Confidential -- Page ${p - 1} of ${totalPages - 2}`,
           pageWidth / 2,
           pageHeight - 8,
           { align: 'center' }
         );
       }
 
-      const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
-      doc.save(`${sanitizedTitle}_report.pdf`);
+      const fileName = reportNames.length > 0 
+        ? `Summary - ${reportNames.join(', ')}.pdf`
+        : `Q&A Summary - ${new Date().toLocaleDateString()}.pdf`;
+      
+      doc.save(fileName);
 
       toast({
         title: 'PDF exported',
-        description: 'Your structured report has been downloaded.',
+        description: 'Your report has been downloaded.',
       });
     } catch (err: any) {
       console.error('PDF export failed:', err);
@@ -595,7 +591,7 @@ export function ConversationReportEditor({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${title.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}_report.md`;
+    a.download = `${title.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}_message.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -603,7 +599,7 @@ export function ConversationReportEditor({
 
     toast({
       title: 'Markdown exported',
-      description: 'Your structured report has been downloaded as markdown.',
+      description: 'Message content has been downloaded as markdown.',
     });
   };
 
@@ -611,13 +607,9 @@ export function ConversationReportEditor({
     if (hasEdited) {
       if (!confirm('You have unsaved edits. Are you sure you want to close?')) return;
     }
-    setReportContent('');
-    setHasEdited(false);
-    initialContent.current = '';
     onClose();
   };
 
-  // Markdown rendering components
   const markdownComponents = {
     h1: ({ children }: any) => (
       <h1 className="text-2xl font-bold mt-8 mb-4 text-foreground border-b pb-2">{children}</h1>
@@ -627,6 +619,12 @@ export function ConversationReportEditor({
     ),
     h3: ({ children }: any) => (
       <h3 className="text-lg font-medium mt-4 mb-2 text-foreground">{children}</h3>
+    ),
+    h4: ({ children }: any) => (
+      <h4 className="text-base font-medium mt-3 mb-2 text-foreground">{children}</h4>
+    ),
+    h5: ({ children }: any) => (
+      <h5 className="text-sm font-medium mt-2 mb-1 text-muted-foreground">{children}</h5>
     ),
     p: ({ children }: any) => (
       <p className="mb-4 leading-relaxed text-foreground">{children}</p>
@@ -668,73 +666,58 @@ export function ConversationReportEditor({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Export Conversation Report
+            Export Message as PDF
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            AI has structured your conversation into a professional report. Review, edit, then export.
+            Review and edit the message content before exporting as a professional PDF report.
           </p>
         </DialogHeader>
 
-        {isGenerating ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 py-16">
-            <div className="relative">
-              <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-            </div>
-            <div className="text-center space-y-2">
-              <p className="font-medium text-foreground">Structuring your conversation...</p>
-              <p className="text-sm text-muted-foreground">
-                AI is analyzing {messages.length} messages and creating a professional report
-              </p>
-            </div>
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-0">
-              <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
-                <TabsTrigger value="edit" className="flex items-center gap-2">
-                  <Type className="h-4 w-4" />
-                  Edit Report
-                </TabsTrigger>
-                <TabsTrigger value="preview" className="flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </TabsTrigger>
-              </TabsList>
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-0">
+            <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+              <TabsTrigger value="edit" className="flex items-center gap-2">
+                <Type className="h-4 w-4" />
+                Edit Content
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Preview
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="edit" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
-                <ScrollArea className="flex-1 border rounded-md">
-                  <Textarea
-                    value={reportContent}
-                    onChange={(e) => handleContentChange(e.target.value)}
-                    placeholder="Report content will appear here..."
-                    className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
-                  />
-                </ScrollArea>
-              </TabsContent>
+            <TabsContent value="edit" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 border rounded-md">
+                <Textarea
+                  value={reportContent}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  placeholder="Message content will appear here..."
+                  className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
+                />
+              </ScrollArea>
+            </TabsContent>
 
-              <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
-                <div className="flex-1 border rounded-md overflow-y-auto">
-                  <div className="p-6">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                      {reportContent}
-                    </ReactMarkdown>
-                  </div>
+            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
+              <div className="flex-1 border rounded-md overflow-y-auto">
+                <div className="p-6">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {reportContent}
+                  </ReactMarkdown>
                 </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
 
         <DialogFooter className="flex-shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {hasEdited && (
               <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
-                Edited
+                Unsaved edits
               </Badge>
             )}
             <span className="text-xs text-muted-foreground">
-              {reportContent.length} chars • {messages.length} messages processed
+              {reportContent.length} chars
             </span>
           </div>
           
@@ -742,17 +725,30 @@ export function ConversationReportEditor({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={generateStructuredReport}
-              disabled={isGenerating}
+              onClick={resetToOriginal}
+              disabled={!hasEdited}
             >
-              <RefreshCw className={`h-3 w-3 mr-1 ${isGenerating ? 'animate-spin' : ''}`} />
-              Regenerate
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Reset
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={saveEditedContent}
+              disabled={!hasEdited || isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3 mr-1" />
+              )}
+              Save
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={exportAsMarkdown}
-              disabled={!reportContent || isGenerating}
+              disabled={!reportContent}
             >
               <Download className="h-3 w-3 mr-1" />
               Markdown
@@ -760,7 +756,7 @@ export function ConversationReportEditor({
             <Button 
               size="sm"
               onClick={exportAsPDF}
-              disabled={!reportContent || isGenerating || isExporting}
+              disabled={!reportContent || isExporting}
             >
               {isExporting ? (
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
