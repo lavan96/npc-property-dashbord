@@ -70,7 +70,7 @@ export function EmailClientAssignment({
           select: 'id,primary_first_name,primary_surname,primary_email',
           orderBy: 'primary_surname',
           order_asc: true,
-          limit: 500,
+          limit: 2000,
         },
       });
 
