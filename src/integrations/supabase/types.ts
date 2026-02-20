@@ -2716,6 +2716,24 @@ export type Database = {
           },
         ]
       }
+      email_linking_excluded_addresses: {
+        Row: {
+          address: string
+          created_at: string
+          reason: string | null
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          reason?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       finance_agent_contacts: {
         Row: {
           company: string | null
