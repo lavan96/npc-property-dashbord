@@ -653,7 +653,7 @@ serve(async (req) => {
         });
       }
 
-      console.log(`Creating appointment on calendar ${targetCalendarId}: ${title || 'Untitled'}`);
+      console.log(`Creating appointment on calendar ${targetCalendarId}: ${title || 'Untitled'}, contactId: ${appointmentContactId || 'none'}`);
 
       const createPayload: Record<string, unknown> = {
         calendarId: targetCalendarId,
@@ -667,6 +667,8 @@ serve(async (req) => {
       if (address) createPayload.address = address;
       if (assignedUserId) createPayload.assignedUserId = assignedUserId;
 
+      console.log('[ghl-calendar] Create payload:', JSON.stringify(createPayload));
+
       const createResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments`, {
         method: 'POST',
         headers,
@@ -676,8 +678,15 @@ serve(async (req) => {
       if (!createResponse.ok) {
         const errorText = await createResponse.text();
         console.error('Appointment create error:', errorText);
+        // Parse GHL error to extract the actual message
+        let ghlMessage = 'Failed to create appointment';
+        try {
+          const ghlError = JSON.parse(errorText);
+          const msg = ghlError.message;
+          ghlMessage = Array.isArray(msg) ? msg.join(', ') : (msg || ghlMessage);
+        } catch { /* use default */ }
         return new Response(JSON.stringify({
-          error: 'Failed to create appointment',
+          error: ghlMessage,
           details: errorText,
           success: false
         }), {

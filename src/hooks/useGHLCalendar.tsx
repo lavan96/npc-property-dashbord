@@ -601,7 +601,10 @@ export function useGHLCalendar() {
         });
         return { success: true, event: newEvent ?? undefined };
       } else {
-        throw new Error(data?.error || 'Failed to create appointment');
+        // Surface the actual GHL error message to the user
+        const errorMsg = data?.error || 'Failed to create appointment';
+        console.error('[createAppointment] GHL error details:', data?.details);
+        throw new Error(errorMsg);
       }
     } catch (err: any) {
       console.error('Error creating appointment:', err);
