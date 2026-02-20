@@ -324,10 +324,10 @@ export default function DataImport() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
         <div>
-          <h1 className="text-3xl font-bold">Data Import</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold">Data Import</h1>
+          <p className="text-sm text-muted-foreground mt-2">
             Upload CSV files to populate cache tables and directories
           </p>
         </div>
@@ -380,7 +380,7 @@ export default function DataImport() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="dataType">Data Type</Label>
                 <Select value={selectedType} onValueChange={(value) => {
@@ -429,18 +429,18 @@ export default function DataImport() {
 
             <div className="space-y-2">
               <Label htmlFor="csvFile">CSV File</Label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <input
                   id="csvFile"
                   type="file"
                   accept=".csv"
                   onChange={handleFileChange}
-                  className="flex-1 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
                 {file && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
                     <FileText className="h-4 w-4" />
-                    {file.name}
+                    <span className="truncate max-w-[200px]">{file.name}</span>
                   </div>
                 )}
               </div>

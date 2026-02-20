@@ -446,11 +446,11 @@ export default function Integrations() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Integrations</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Integrations</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Configure API keys and credentials for external services
           </p>
         </div>
@@ -459,14 +459,14 @@ export default function Integrations() {
           size="sm"
           onClick={checkSupabaseSecrets}
           disabled={loadingSecrets}
-          className="gap-2"
+          className="gap-2 min-h-[44px] sm:min-h-0 self-start"
         >
           {loadingSecrets ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <RefreshCw className="h-4 w-4" />
           )}
-          Sync Supabase Status
+          Sync Status
         </Button>
       </div>
 
@@ -498,15 +498,17 @@ export default function Integrations() {
       )}
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList>
-          <TabsTrigger value="all">All Integrations</TabsTrigger>
-          <TabsTrigger value="configured">Configured</TabsTrigger>
-          <TabsTrigger value="pending">Pending Setup</TabsTrigger>
-          <TabsTrigger value="planned">Roadmap</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex w-auto min-w-max">
+            <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+            <TabsTrigger value="configured" className="text-xs sm:text-sm">Configured</TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs sm:text-sm">Pending</TabsTrigger>
+            <TabsTrigger value="planned" className="text-xs sm:text-sm">Roadmap</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="all" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
             {integrations.map(integration => {
               const status = getIntegrationStatus(integration);
               return (
@@ -565,7 +567,7 @@ export default function Integrations() {
                       </div>
                     ))}
                     
-                    <div className="flex items-center justify-between pt-2 gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
                       {integration.docsUrl && (
                         <Button
                           variant="ghost"
@@ -620,7 +622,7 @@ export default function Integrations() {
         </TabsContent>
 
         <TabsContent value="configured" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) === 'configured')
               .map(integration => {
