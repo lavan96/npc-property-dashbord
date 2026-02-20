@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { format } from 'date-fns';
 import { 
   Search, 
@@ -40,7 +41,9 @@ import {
   ChevronLeft,
   Zap,
   Video,
-  User
+  User,
+  MoreHorizontal,
+  SlidersHorizontal
 } from 'lucide-react';
 import { ActiveClientCard } from '@/components/clients/ActiveClientCard';
 // Pagination imports removed - using infinite scroll now
@@ -51,6 +54,7 @@ import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
 import { EventDetailsModal } from '@/components/calendar/EventDetailsModal';
 import { toast } from 'sonner';
 import { formatFullName } from '@/utils/nameFormatting';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Types for GHL pipeline data
 interface GHLPipeline {
@@ -594,84 +598,130 @@ export default function ClientTracker() {
 
   const isLoading = pipelinesLoading || stagesLoading || clientsLoading;
 
+  const isMobile = useIsMobile();
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-4 md:space-y-6 pb-20 md:pb-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Client Tracker</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Client Tracker</h1>
+          <p className="text-sm text-muted-foreground">
             Track clients through your GHL pipelines
             {pipelines.length > 0 && (
-              <span className="ml-2 text-sm">
+              <span className="ml-2 text-xs md:text-sm">
                 • {pipelines.length} pipeline{pipelines.length !== 1 ? 's' : ''} synced
               </span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Auto-sync toggle */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
-                  {isAutoSyncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  ) : (
-                    <Zap className={`h-4 w-4 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+        
+        {/* Mobile: Compact action bar */}
+        {isMobile ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-muted/50 border">
+              {isAutoSyncing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              ) : (
+                <Zap className={`h-3.5 w-3.5 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+              )}
+              <Switch
+                checked={autoSyncEnabled}
+                onCheckedChange={setAutoSyncEnabled}
+                className="scale-75"
+              />
+            </div>
+            <Button
+              onClick={handleSyncPipelines}
+              disabled={isSyncingPipelines}
+              variant="default"
+              size="sm"
+              className="h-8 text-xs"
+            >
+              {isSyncingPipelines ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+            </Button>
+            <Button 
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+                queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
+                queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+              }} 
+              variant="outline" 
+              size="sm"
+              className="h-8"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Auto-sync toggle */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                    {isAutoSyncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : (
+                      <Zap className={`h-4 w-4 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                    )}
+                    <span className="text-sm font-medium">Auto-sync</span>
+                    <Switch
+                      checked={autoSyncEnabled}
+                      onCheckedChange={setAutoSyncEnabled}
+                      className="scale-90"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Auto-sync every 5 minutes from GHL</p>
+                  {lastSyncTime && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                      <Clock className="h-3 w-3" />
+                      Last sync: {formatLastSync(lastSyncTime)}
+                    </p>
                   )}
-                  <span className="text-sm font-medium">Auto-sync</span>
-                  <Switch
-                    checked={autoSyncEnabled}
-                    onCheckedChange={setAutoSyncEnabled}
-                    className="scale-90"
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Auto-sync every 5 minutes from GHL</p>
-                {lastSyncTime && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                    <Clock className="h-3 w-3" />
-                    Last sync: {formatLastSync(lastSyncTime)}
-                  </p>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {lastSyncTime && (
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Last sync: {formatLastSync(lastSyncTime)}
-            </span>
-          )}
-          <Button
-            onClick={handleSyncPipelines}
-            disabled={isSyncingPipelines}
-            variant="default"
-            size="sm"
-          >
-            {isSyncingPipelines ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            {lastSyncTime && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Last sync: {formatLastSync(lastSyncTime)}
+              </span>
             )}
-            {isSyncingPipelines ? 'Syncing...' : 'Sync from GHL'}
-          </Button>
-          <Button 
-            onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
-              queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
-              queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
-            }} 
-            variant="outline" 
-            size="sm"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
+            <Button
+              onClick={handleSyncPipelines}
+              disabled={isSyncingPipelines}
+              variant="default"
+              size="sm"
+            >
+              {isSyncingPipelines ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              {isSyncingPipelines ? 'Syncing...' : 'Sync from GHL'}
+            </Button>
+            <Button 
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+                queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
+                queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+              }} 
+              variant="outline" 
+              size="sm"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -822,54 +872,109 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search clients..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        {/* Pipeline selector */}
-        <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-          <SelectTrigger className="w-full md:w-[220px]">
-            <Layers className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Select Pipeline" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Pipelines</SelectItem>
-            {pipelines.map(pipeline => (
-              <SelectItem key={pipeline.id} value={pipeline.id}>
-                {pipeline.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Stage filter */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by stage" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stages</SelectItem>
-            {stagesForPipeline.map(stage => (
-              <SelectItem key={stage.id} value={stage.name}>
-                <div className="flex items-center gap-2">
-                  <span 
-                    className="w-2 h-2 rounded-full" 
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  {stage.name}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search clients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-9 md:h-10"
+            />
+          </div>
+          
+          {/* Mobile: Filters in Sheet */}
+          {isMobile ? (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 shrink-0">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[60vh]">
+                <SheetHeader>
+                  <SheetTitle>Filters</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Pipeline</label>
+                    <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+                      <SelectTrigger>
+                        <Layers className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Select Pipeline" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Pipelines</SelectItem>
+                        {pipelines.map(pipeline => (
+                          <SelectItem key={pipeline.id} value={pipeline.id}>
+                            {pipeline.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Stage</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Filter by stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Stages</SelectItem>
+                        {stagesForPipeline.map(stage => (
+                          <SelectItem key={stage.id} value={stage.name}>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                              {stage.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <>
+              {/* Desktop: Inline filters */}
+              <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+                <SelectTrigger className="w-[220px]">
+                  <Layers className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Select Pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Pipelines</SelectItem>
+                  {pipelines.map(pipeline => (
+                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filter by stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Stages</SelectItem>
+                  {stagesForPipeline.map(stage => (
+                    <SelectItem key={stage.id} value={stage.name}>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                        {stage.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
       </div>
 
       {/* No pipelines synced message */}
@@ -896,15 +1001,19 @@ export default function ClientTracker() {
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-            <TabsTrigger value="pipeline">Pipeline View</TabsTrigger>
-            <TabsTrigger value="table">Table View</TabsTrigger>
-            <TabsTrigger value="active" className="flex items-center gap-1">
-              <UserCheck className="h-3.5 w-3.5" />
-              Active Clients ({activeClients.length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+            <TabsList className="inline-flex w-auto min-w-max">
+              {!isMobile && <TabsTrigger value="kanban">Kanban Board</TabsTrigger>}
+              <TabsTrigger value="pipeline">
+                {isMobile ? 'Cards' : 'Pipeline View'}
+              </TabsTrigger>
+              <TabsTrigger value="table">Table</TabsTrigger>
+              <TabsTrigger value="active" className="flex items-center gap-1">
+                <UserCheck className="h-3.5 w-3.5" />
+                Active ({activeClients.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Kanban Board View */}
           <TabsContent value="kanban" className="mt-4">
@@ -1548,7 +1657,7 @@ function ClientEditForm({ client, stages, pipelines, onSave, isLoading }: Client
         </Popover>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="text-sm font-medium">Borrowing Capacity</label>
           <Input

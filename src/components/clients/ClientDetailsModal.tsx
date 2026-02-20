@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useSecureClientData } from '@/hooks/useSecureClientData';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +91,7 @@ interface ClientDetailsModalProps {
 }
 
 export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetailsModalProps) {
+  const isMobile = useIsMobile();
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [pdfAttachment, setPdfAttachment] = useState<{ blob: Blob; fileName: string } | null>(null);
   const [isGeneratingPortfolio, setIsGeneratingPortfolio] = useState(false);
@@ -222,92 +226,83 @@ NPC Team`
     return format(new Date(dateStr), 'dd MMM yyyy');
   };
 
-  return (
+  // Shared content for both mobile and desktop
+  const modalContent = (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <div>
-              <DialogTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                {client.primary_first_name} {client.primary_surname}
-              </DialogTitle>
-              <DialogDescription className="sr-only">
-                View and manage client details, properties, and reports
-              </DialogDescription>
-            </div>
-            <div className="flex items-center gap-2 mr-6">
-              {/* Send to Finance - Vownet Form */}
-              <VownetPDFGenerator
-                data={{
-                  client: (fullClient || {
-                    id: client.id,
-                    primary_first_name: client.primary_first_name,
-                    primary_surname: client.primary_surname,
-                    primary_email: client.primary_email,
-                    primary_mobile: client.primary_mobile,
-                  }) as any,
-                  properties: properties as any[],
-                  employment: employment as any[],
-                  income: income as any[],
-                  assets: assets as any[],
-                  liabilities: liabilities as any[],
-                }}
-                clientName={`${client.primary_first_name} ${client.primary_surname}`}
-                onEmailClick={handlePdfEmailClick}
-                buttonLabel="Send to Finance"
-              />
-              
-              {/* Start Portfolio Review */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowReviewWizard(true)}
-                disabled={properties.length === 0}
-                title={properties.length === 0 ? 'Add properties to start a review' : 'Start portfolio review wizard'}
-              >
-                <ClipboardCheck className="h-4 w-4 mr-2" />
-                Start Review
-              </Button>
-              
-              {/* Send Portfolio to Client */}
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleSendPortfolioToClient}
-                disabled={isGeneratingPortfolio || properties.length === 0 || !client.primary_email}
-                title={!client.primary_email ? 'Client has no email' : properties.length === 0 ? 'No properties to analyze' : 'Send portfolio analysis to client'}
-              >
-                {isGeneratingPortfolio ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Send Portfolio to Client
-              </Button>
-            </div>
-          </DialogHeader>
+      {/* Header actions - stacked on mobile */}
+      <div className={cn(
+        "flex items-center gap-2 px-1",
+        isMobile ? "flex-wrap pb-2 border-b border-border mb-2" : "mr-6"
+      )}>
+        <VownetPDFGenerator
+          data={{
+            client: (fullClient || {
+              id: client.id,
+              primary_first_name: client.primary_first_name,
+              primary_surname: client.primary_surname,
+              primary_email: client.primary_email,
+              primary_mobile: client.primary_mobile,
+            }) as any,
+            properties: properties as any[],
+            employment: employment as any[],
+            income: income as any[],
+            assets: assets as any[],
+            liabilities: liabilities as any[],
+          }}
+          clientName={`${client.primary_first_name} ${client.primary_surname}`}
+          onEmailClick={handlePdfEmailClick}
+          buttonLabel={isMobile ? "Finance" : "Send to Finance"}
+        />
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowReviewWizard(true)}
+          disabled={properties.length === 0}
+          title={properties.length === 0 ? 'Add properties to start a review' : 'Start portfolio review wizard'}
+        >
+          <ClipboardCheck className="h-4 w-4 mr-1.5" />
+          <span className={isMobile ? "text-xs" : ""}>Review</span>
+        </Button>
+        
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleSendPortfolioToClient}
+          disabled={isGeneratingPortfolio || properties.length === 0 || !client.primary_email}
+          title={!client.primary_email ? 'Client has no email' : properties.length === 0 ? 'No properties to analyze' : 'Send portfolio analysis to client'}
+        >
+          {isGeneratingPortfolio ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4 mr-1.5" />
+          )}
+          <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Send" : "Send Portfolio to Client"}</span>
+        </Button>
+      </div>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)]">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="personal">Personal Details</TabsTrigger>
-              <TabsTrigger value="properties">Properties ({properties.length})</TabsTrigger>
-              <TabsTrigger value="employment">Employment</TabsTrigger>
-              <TabsTrigger value="financials">Financials</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="emails">
-                <Inbox className="h-3 w-3 mr-1" />
+      <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-120px)]"}>
+        <Tabs defaultValue="overview" className="w-full">
+          <div className="overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
+              <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
+              <TabsTrigger value="employment" className="text-xs sm:text-sm">Employment</TabsTrigger>
+              <TabsTrigger value="financials" className="text-xs sm:text-sm">Financials</TabsTrigger>
+              <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
+              <TabsTrigger value="emails" className="text-xs sm:text-sm">
+                <Inbox className="h-3 w-3 mr-0.5" />
                 Emails
               </TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
-              <TabsTrigger value="reminders">Reminders</TabsTrigger>
-              <TabsTrigger value="vownet-forms">VowNet Forms</TabsTrigger>
-              <TabsTrigger value="files">Files</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="insights">AI Insights</TabsTrigger>
+              <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
+              <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
+              <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">VowNet</TabsTrigger>
+              <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+              <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>
             </TabsList>
+          </div>
 
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
@@ -713,48 +708,82 @@ NPC Team`
             </TabsContent>
           </Tabs>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </>
+  );
 
-    {/* Email Compose Modal */}
-    <ClientEmailCompose
-      open={showEmailCompose}
-      onOpenChange={(open) => {
-        setShowEmailCompose(open);
-        if (!open) {
-          // Clear template when modal closes
-          setPortfolioEmailSubject('');
-          setPortfolioEmailBody('');
-        }
-      }}
-      clientId={client.id}
-      clientEmail={client.primary_email}
-      clientName={`${client.primary_first_name} ${client.primary_surname}`}
-      defaultSubject={portfolioEmailSubject || undefined}
-      defaultBody={portfolioEmailBody || undefined}
-    />
+  return (
+    <>
+      {isMobile ? (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent side="bottom" className="h-[95vh] flex flex-col p-0">
+            <SheetHeader className="px-4 pt-4 pb-2 border-b shrink-0">
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <User className="h-4 w-4" />
+                {client.primary_first_name} {client.primary_surname}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-auto px-4 py-2 pb-20">
+              {modalContent}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  {client.primary_first_name} {client.primary_surname}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  View and manage client details, properties, and reports
+                </DialogDescription>
+              </div>
+              {modalContent}
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      )}
 
-    {/* Portfolio Review Wizard */}
-    <ReviewWizard
-      clientId={client.id}
-      clientName={`${client.primary_first_name} ${client.primary_surname}`}
-      properties={properties}
-      clientData={fullClient}
-      isOpen={showReviewWizard}
-      onClose={() => setShowReviewWizard(false)}
-      onComplete={(reviewId) => {
-        setShowReviewWizard(false);
-        refetchClient();
-        toast.success('Portfolio review completed successfully');
-      }}
-    />
+      {/* Email Compose Modal */}
+      <ClientEmailCompose
+        open={showEmailCompose}
+        onOpenChange={(open) => {
+          setShowEmailCompose(open);
+          if (!open) {
+            setPortfolioEmailSubject('');
+            setPortfolioEmailBody('');
+          }
+        }}
+        clientId={client.id}
+        clientEmail={client.primary_email}
+        clientName={`${client.primary_first_name} ${client.primary_surname}`}
+        defaultSubject={portfolioEmailSubject || undefined}
+        defaultBody={portfolioEmailBody || undefined}
+      />
 
-    {/* Borrowing Capacity Calculator Modal */}
-    <BorrowingCapacityModal
-      clientId={client.id}
-      open={showBorrowingCalculator}
-      onOpenChange={setShowBorrowingCalculator}
-    />
-  </>
+      {/* Portfolio Review Wizard */}
+      <ReviewWizard
+        clientId={client.id}
+        clientName={`${client.primary_first_name} ${client.primary_surname}`}
+        properties={properties}
+        clientData={fullClient}
+        isOpen={showReviewWizard}
+        onClose={() => setShowReviewWizard(false)}
+        onComplete={(reviewId) => {
+          setShowReviewWizard(false);
+          refetchClient();
+          toast.success('Portfolio review completed successfully');
+        }}
+      />
+
+      {/* Borrowing Capacity Calculator Modal */}
+      <BorrowingCapacityModal
+        clientId={client.id}
+        open={showBorrowingCalculator}
+        onOpenChange={setShowBorrowingCalculator}
+      />
+    </>
   );
 }
