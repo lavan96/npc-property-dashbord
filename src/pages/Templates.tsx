@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -128,32 +129,34 @@ export default function Templates() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="report-formats" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Report Formats
-          </TabsTrigger>
-          <TabsTrigger value="pdf-layout" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            PDF Layouts
-          </TabsTrigger>
-          <TabsTrigger value="qa-export" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Q&A Export
-          </TabsTrigger>
-          <TabsTrigger value="cashflow-export" className="flex items-center gap-2">
-            <Calculator className="h-4 w-4" />
-            Cash Flow
-          </TabsTrigger>
-          <TabsTrigger value="branding" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Client Branding
-          </TabsTrigger>
-          <TabsTrigger value="global-settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Global Settings
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-6">
+            <TabsTrigger value="report-formats" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+              <Brain className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Formats
+            </TabsTrigger>
+            <TabsTrigger value="pdf-layout" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+              <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              PDF
+            </TabsTrigger>
+            <TabsTrigger value="qa-export" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+              <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Q&A
+            </TabsTrigger>
+            <TabsTrigger value="cashflow-export" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+              <Calculator className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Cash Flow
+            </TabsTrigger>
+            <TabsTrigger value="branding" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+              <Palette className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Branding
+            </TabsTrigger>
+            <TabsTrigger value="global-settings" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+              <Settings className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="report-formats" className="space-y-6">
           {FORMAT_GROUPS.map((group) => (
