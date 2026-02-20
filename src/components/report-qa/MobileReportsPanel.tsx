@@ -56,45 +56,8 @@ export function MobileReportsPanel({ children, reportCount, className }: MobileR
   );
 }
 
-// Swipe gesture hook for panels
-export function useSwipeGesture(
-  onSwipeLeft?: () => void,
-  onSwipeRight?: () => void,
-  threshold = 50
-) {
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > threshold;
-    const isRightSwipe = distance < -threshold;
-    
-    if (isLeftSwipe && onSwipeLeft) {
-      onSwipeLeft();
-    }
-    if (isRightSwipe && onSwipeRight) {
-      onSwipeRight();
-    }
-  };
-
-  return {
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd,
-  };
-}
+// Re-export swipe gesture hook from shared location
+export { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
 // Collapsible panel for desktop
 interface CollapsibleSidePanelProps {
