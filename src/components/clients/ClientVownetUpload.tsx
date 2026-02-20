@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseExcelToClients, type ParsedClient, type ParsedProperty } from '@/utils/excelClientParser';
+import { parseVownetPdf } from '@/utils/vownetPdfParser';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
@@ -100,22 +101,33 @@ export function ClientVownetUpload({
     setErrorMessage(null);
 
     try {
-      // Check if it's a PDF file - PDFs require OCR and are not supported for data extraction
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        throw new Error('PDF parsing is not yet supported for VowNet data extraction. Please upload an Excel file (.xlsx or .xls) instead.');
-      }
-
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      setProgress(50);
-
-      const clients = parseExcelToClients(workbook);
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       
-      if (clients.length === 0) {
-        throw new Error('No valid client data found in the spreadsheet');
-      }
+      let client: ParsedClient;
+      
+      if (isPdf) {
+        // Parse PDF using AI extraction
+        client = await parseVownetPdf(file, (progress) => {
+          if (progress.stage === 'extracting') {
+            setProgress(10 + (progress.current / progress.total) * 30);
+          } else if (progress.stage === 'parsing') {
+            setProgress(50);
+          }
+        });
+      } else {
+        // Parse Excel file
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        setProgress(50);
 
-      const client = clients[0];
+        const clients = parseExcelToClients(workbook);
+        
+        if (clients.length === 0) {
+          throw new Error('No valid client data found in the spreadsheet');
+        }
+        client = clients[0];
+      }
+      
       setParsedClient(client);
 
       // Build merge items with matching logic

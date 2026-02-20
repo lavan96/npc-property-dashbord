@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import * as XLSX from 'xlsx';
 import { parseVownetForm } from '@/utils/vownetParser';
+import { parseVownetPdf } from '@/utils/vownetPdfParser';
 import type { ParsedClient } from '@/utils/excelClientParser';
 import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 
@@ -85,17 +86,26 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
     setImportSummary(null);
 
     try {
-      // Check if it's a PDF file - PDFs require OCR and are not supported for data extraction
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        throw new Error('PDF parsing is not yet supported for VowNet data extraction. Please upload an Excel file (.xlsx or .xls) instead.');
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      
+      let parsedData: ParsedClient | null;
+      
+      if (isPdf) {
+        // Parse PDF using AI extraction
+        parsedData = await parseVownetPdf(file, (progress) => {
+          if (progress.stage === 'extracting') {
+            setProgress(10 + (progress.current / progress.total) * 15);
+          } else if (progress.stage === 'parsing') {
+            setProgress(28);
+          }
+        });
+      } else {
+        // Parse Excel file
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        setProgress(30);
+        parsedData = parseVownetForm(workbook);
       }
-
-      // Parse the Excel file
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      setProgress(30);
-
-      const parsedData = parseVownetForm(workbook);
       
       if (!parsedData) {
         throw new Error('Could not parse VowNet form. Please check the file format.');
