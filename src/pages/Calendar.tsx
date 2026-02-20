@@ -732,11 +732,11 @@ export default function Calendar() {
       )}
 
       <div className={cn(
-        "grid gap-6 transition-all duration-300",
-        sidebarCollapsed ? "lg:grid-cols-[1fr_56px]" : "lg:grid-cols-3"
+        "grid gap-4 md:gap-6 transition-all duration-300",
+        isMobile ? "grid-cols-1" : sidebarCollapsed ? "lg:grid-cols-[1fr_56px]" : "lg:grid-cols-3"
       )}>
         {/* Calendar View */}
-        <Card className="lg:col-span-2">
+        <Card className={isMobile ? '' : 'lg:col-span-2'}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -807,9 +807,9 @@ export default function Calendar() {
                 <>
                   {/* Day headers - Sticky */}
                   <div className="grid grid-cols-7 gap-1 mb-1 sticky top-0 bg-background z-10">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
-                        {day}
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} className="text-center text-[10px] md:text-xs font-medium text-muted-foreground py-1 md:py-2">
+                        {isMobile ? day.charAt(0) : day}
                       </div>
                     ))}
                   </div>
@@ -826,8 +826,8 @@ export default function Calendar() {
                           date={day}
                           onDrop={handleEventDrop}
                           disabled={isUpdating}
-                          className={cn(
-                            'min-h-[80px] p-1 rounded-md border text-left transition-colors cursor-pointer',
+                            className={cn(
+                            'min-h-[60px] md:min-h-[80px] p-0.5 md:p-1 rounded-md border text-left transition-colors cursor-pointer',
                             isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50',
                             !isCurrentMonth && 'opacity-40',
                             isToday(day) && 'ring-1 ring-primary'
@@ -841,7 +841,7 @@ export default function Calendar() {
                               {format(day, 'd')}
                             </div>
                             <div className="space-y-0.5">
-                              {dayEvents.slice(0, 3).map(event => (
+                              {dayEvents.slice(0, isMobile ? 2 : 3).map(event => (
                                 <EnhancedEventPreview
                                   key={event.id}
                                   event={event}
@@ -877,9 +877,9 @@ export default function Calendar() {
                                   </DraggableEvent>
                                 </EnhancedEventPreview>
                               ))}
-                              {dayEvents.length > 3 && (
-                                <div className="text-[10px] text-muted-foreground px-1">
-                                  +{dayEvents.length - 3} more
+                              {dayEvents.length > (isMobile ? 2 : 3) && (
+                                <div className="text-[9px] md:text-[10px] text-muted-foreground px-1">
+                                  +{dayEvents.length - (isMobile ? 2 : 3)} more
                                 </div>
                               )}
                             </div>
@@ -969,7 +969,8 @@ export default function Calendar() {
           </CardContent>
         </Card>
 
-        {/* Sidebar Panel with Tabs */}
+        {/* Sidebar Panel with Tabs - Hidden on mobile (accessible via Sheet) */}
+        {!isMobile && (
         <Card className={cn(
           "transition-all duration-300 overflow-hidden",
           sidebarCollapsed && "w-14"
@@ -1183,6 +1184,7 @@ export default function Calendar() {
             </CardContent>
           )}
         </Card>
+        )}
       </div>
 
       {/* Floating Actions */}
@@ -1210,7 +1212,7 @@ export default function Calendar() {
       />
 
       {/* Calendars List */}
-      <Card>
+      <Card className={isMobile ? '' : ''}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -1225,7 +1227,7 @@ export default function Calendar() {
               ))}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {calendars.map(calendar => (
                 <button
                   key={calendar.id}

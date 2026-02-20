@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export default function Overview() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kpis, setKpis] = useState<DashboardKPIs>({
@@ -503,26 +505,26 @@ export default function Overview() {
       </div>
 
       {/* Charts Section */}
-      <div className="space-y-8">
+      <div className="space-y-4 md:space-y-8">
         {/* Row 1: Suburbs and Property Types */}
-        <div className="grid gap-6 lg:grid-cols-2 animate-fade-in">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className="hover-scale">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Listings by Suburb (Top 10)</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Listings by Suburb (Top 10)</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={suburbData} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
+            <CardContent className="px-2 md:px-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 250 : 350}>
+                <BarChart data={suburbData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 80 } : { top: 20, right: 30, left: 20, bottom: 100 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="suburb" 
                     angle={-45}
                     textAnchor="end"
-                    height={100}
-                    fontSize={12}
+                    height={isMobile ? 80 : 100}
+                    fontSize={isMobile ? 10 : 12}
                     interval={0}
                   />
-                  <YAxis fontSize={12} />
+                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 30 : 60} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--card))', 
@@ -537,18 +539,18 @@ export default function Overview() {
           </Card>
 
           <Card className="hover-scale">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Property Types</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Property Types</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart margin={{ top: 40, right: 20, bottom: 80, left: 20 }}>
+            <CardContent className="px-2 md:px-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 280 : 350}>
+                <PieChart margin={isMobile ? { top: 20, right: 10, bottom: 60, left: 10 } : { top: 40, right: 20, bottom: 80, left: 20 }}>
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
                     cy="40%"
                     labelLine={false}
-                    outerRadius={100}
+                    outerRadius={isMobile ? 70 : 100}
                     fill="#8884d8"
                     dataKey="count"
                   >
@@ -574,26 +576,23 @@ export default function Overview() {
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={60}
-                    wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
-                    content={(props) => {
-                      const { payload } = props;
-                      return (
-                        <div className="flex flex-wrap justify-center gap-2">
-                          {propertyTypeData.map((entry, index) => (
-                            <div key={entry.type} className="flex items-center gap-1">
-                              <div 
-                                className="w-3 h-3 rounded-sm" 
-                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                              />
-                              <span className="text-xs text-muted-foreground">
-                                {entry.type} ({entry.count})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }}
+                    height={isMobile ? 50 : 60}
+                    wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
+                    content={() => (
+                      <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
+                        {propertyTypeData.map((entry, index) => (
+                          <div key={entry.type} className="flex items-center gap-1">
+                            <div 
+                              className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
+                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            />
+                            <span className="text-[10px] md:text-xs text-muted-foreground">
+                              {entry.type} ({entry.count})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -602,25 +601,26 @@ export default function Overview() {
         </div>
 
         {/* Row 2: Daily Listings and Property Status */}
-        <div className="grid gap-6 lg:grid-cols-2 animate-fade-in">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className="hover-scale">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Daily Listings (Last 30 Days)</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Daily Listings (Last 30 Days)</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+            <CardContent className="px-2 md:px-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
+                <LineChart data={dailyData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 30 } : { top: 20, right: 30, left: 20, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="date"
-                    fontSize={12}
+                    fontSize={isMobile ? 9 : 12}
                     tick={{ textAnchor: 'middle' }}
                     tickFormatter={(value) => {
                       const date = new Date(value);
                       return `${date.getMonth() + 1}/${date.getDate()}`;
                     }}
+                    interval={isMobile ? 'preserveStartEnd' : undefined}
                   />
-                  <YAxis fontSize={12} />
+                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 25 : 60} />
                   <Tooltip 
                     labelFormatter={(value) => {
                       const date = new Date(value);
@@ -636,9 +636,9 @@ export default function Overview() {
                     type="monotone" 
                     dataKey="count" 
                     stroke="hsl(var(--primary))" 
-                    strokeWidth={3}
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: 'hsl(var(--primary))' }}
+                    strokeWidth={isMobile ? 2 : 3}
+                    dot={isMobile ? false : { fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: isMobile ? 4 : 6, fill: 'hsl(var(--primary))' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -646,12 +646,12 @@ export default function Overview() {
           </Card>
 
           <Card className="hover-scale">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Property Status</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Property Status</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
+            <CardContent className="px-2 md:px-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+                <PieChart margin={isMobile ? { top: 10, right: 10, bottom: 50, left: 10 } : { top: 20, right: 20, bottom: 60, left: 20 }}>
                   <Pie
                     data={categoryData}
                     cx="50%"
@@ -660,7 +660,7 @@ export default function Overview() {
                     label={(props: any) => 
                       props.percent > 0.05 ? `${props.count}` : ''
                     }
-                    outerRadius={90}
+                    outerRadius={isMobile ? 65 : 90}
                     fill="#8884d8"
                     dataKey="count"
                   >
@@ -686,25 +686,23 @@ export default function Overview() {
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={40}
-                    wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
-                    content={(props) => {
-                      return (
-                        <div className="flex flex-wrap justify-center gap-2">
-                          {categoryData.map((entry, index) => (
-                            <div key={entry.status} className="flex items-center gap-1">
-                              <div 
-                                className="w-3 h-3 rounded-sm" 
-                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                              />
-                              <span className="text-xs text-muted-foreground">
-                                {entry.status} ({entry.count})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }}
+                    height={isMobile ? 35 : 40}
+                    wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
+                    content={() => (
+                      <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
+                        {categoryData.map((entry, index) => (
+                          <div key={entry.status} className="flex items-center gap-1">
+                            <div 
+                              className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
+                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            />
+                            <span className="text-[10px] md:text-xs text-muted-foreground">
+                              {entry.status} ({entry.count})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -713,24 +711,24 @@ export default function Overview() {
         </div>
 
         {/* Row 3: Source and Agency Distribution */}
-        <div className="grid gap-6 lg:grid-cols-2 animate-fade-in">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className="hover-scale">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Top Sender Emails</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Top Sender Emails</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={sourceData} margin={{ top: 20, right: 30, left: 20, bottom: 120 }}>
+            <CardContent className="px-2 md:px-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 260 : 350}>
+                <BarChart data={sourceData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 90 } : { top: 20, right: 30, left: 20, bottom: 120 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="source" 
                     angle={-45}
                     textAnchor="end"
-                    height={120}
-                    fontSize={11}
+                    height={isMobile ? 90 : 120}
+                    fontSize={isMobile ? 9 : 11}
                     interval={0}
                   />
-                  <YAxis fontSize={12} />
+                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 25 : 60} />
                   <Tooltip 
                     formatter={(value) => [value, 'Count']}
                     labelFormatter={(value) => `Source: ${value}`}
@@ -747,22 +745,22 @@ export default function Overview() {
           </Card>
 
           <Card className="hover-scale">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Top Agencies</CardTitle>
+            <CardHeader className="pb-2 md:pb-4">
+              <CardTitle className="text-base md:text-lg">Top Agencies</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={agencyData} margin={{ top: 20, right: 30, left: 20, bottom: 120 }}>
+            <CardContent className="px-2 md:px-6">
+              <ResponsiveContainer width="100%" height={isMobile ? 260 : 350}>
+                <BarChart data={agencyData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 90 } : { top: 20, right: 30, left: 20, bottom: 120 }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis 
                     dataKey="agency" 
                     angle={-45}
                     textAnchor="end"
-                    height={120}
-                    fontSize={11}
+                    height={isMobile ? 90 : 120}
+                    fontSize={isMobile ? 9 : 11}
                     interval={0}
                   />
-                  <YAxis fontSize={12} />
+                  <YAxis fontSize={isMobile ? 10 : 12} width={isMobile ? 25 : 60} />
                   <Tooltip 
                     formatter={(value) => [value, 'Count']}
                     labelFormatter={(value) => `Agency: ${value}`}
@@ -794,25 +792,25 @@ export default function Overview() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {recentListings.map((listing, index) => (
               <div 
                 key={listing.id} 
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-all duration-200 hover-scale"
+                className="flex flex-col md:flex-row md:items-center justify-between p-3 md:p-4 border rounded-lg hover:bg-muted/50 transition-all duration-200 hover-scale gap-2"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="font-medium text-base">{listing.address || 'Unknown Address'}</h4>
-                    <Badge variant="outline" className="text-xs">{listing.propertyType || 'Unknown'}</Badge>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start md:items-center gap-2 mb-1.5 md:mb-2 flex-wrap">
+                    <h4 className="font-medium text-sm md:text-base truncate">{listing.address || 'Unknown Address'}</h4>
+                    <Badge variant="outline" className="text-[10px] md:text-xs shrink-0">{listing.propertyType || 'Unknown'}</Badge>
                     {listing.status && listing.status !== 'Available' && (
-                      <Badge variant="secondary" className="text-xs">{listing.status}</Badge>
+                      <Badge variant="secondary" className="text-[10px] md:text-xs shrink-0">{listing.status}</Badge>
                     )}
                     {listing.confidence !== undefined && (
                       <ConfidenceBadge confidence={listing.confidence} />
                     )}
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground flex-wrap">
                     <span className="font-medium">{listing.suburb || 'Unknown Suburb'}</span>
                     {listing.price && listing.price > 0 && (
                       <span className="font-semibold text-primary">{formatCurrency(listing.price)}</span>
@@ -820,13 +818,13 @@ export default function Overview() {
                     {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
                     {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
                     {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
-                    {listing.images && listing.images.length > 0 && (
+                    {!isMobile && listing.images && listing.images.length > 0 && (
                       <div className="flex items-center gap-1">
                         <Image className="h-3 w-3" />
                         <span>{listing.images.length} image{listing.images.length !== 1 ? 's' : ''}</span>
                       </div>
                     )}
-                    {listing.floorplans && listing.floorplans.length > 0 && (
+                    {!isMobile && listing.floorplans && listing.floorplans.length > 0 && (
                       <div className="flex items-center gap-1">
                         <FileText className="h-3 w-3" />
                         <span>{listing.floorplans.length} floorplan{listing.floorplans.length !== 1 ? 's' : ''}</span>
@@ -834,11 +832,11 @@ export default function Overview() {
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-foreground">
+                <div className="text-left md:text-right flex md:flex-col items-center md:items-end gap-2 md:gap-0">
+                  <div className="text-xs md:text-sm font-medium text-foreground">
                     {formatDate(listing.createdAt || listing.createdTime || listing.receivedAt)}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[200px]">
                     From: {listing.source || listing.sourceHost || 'Unknown Sender'}
                   </div>
                 </div>
