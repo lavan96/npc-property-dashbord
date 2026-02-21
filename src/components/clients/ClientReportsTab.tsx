@@ -215,9 +215,9 @@ export function ClientReportsTab({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Generate Report Actions */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -323,20 +323,21 @@ export function ClientReportsTab({
       </Card>
 
       {/* Portfolio Analysis Reports History */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 min-w-0 truncate">
+              <PieChart className="h-4 w-4 flex-shrink-0" />
               Portfolio Performance Reports
             </CardTitle>
             <Button
               variant="outline"
               size="sm"
+              className="flex-shrink-0"
               onClick={() => window.location.href = `/portfolio-reports?clientId=${clientId}`}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
-              View All Reports
+              View All
             </Button>
           </div>
         </CardHeader>
