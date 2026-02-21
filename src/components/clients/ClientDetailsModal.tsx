@@ -325,8 +325,8 @@ NPC Team`
           </TabsList>
         </div>
 
-        <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-180px)]"}>
-          <div {...(isMobile ? tabSwipeHandlers : {})}>
+        <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-180px)] w-full"}>
+          <div className="min-w-0 overflow-hidden" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -661,7 +661,7 @@ NPC Team`
               <LiabilityManualEntry clientId={client.id} onComplete={() => refetchClient()} />
             </TabsContent>
 
-            <TabsContent value="reports" className="mt-4">
+            <TabsContent value="reports" className="mt-4 min-w-0 overflow-hidden">
               <ClientReportsTab
                 clientId={client.id}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}
