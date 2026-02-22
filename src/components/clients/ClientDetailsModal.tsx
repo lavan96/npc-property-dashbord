@@ -753,19 +753,19 @@ NPC Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-4xl max-h-[90vh]">
-            <DialogHeader className="flex flex-row items-center justify-between">
-              <div>
-                <DialogTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  {client.primary_first_name} {client.primary_surname}
-                </DialogTitle>
-                <DialogDescription className="sr-only">
-                  View and manage client details, properties, and reports
-                </DialogDescription>
-              </div>
-              {modalContent}
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                {client.primary_first_name} {client.primary_surname}
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                View and manage client details, properties, and reports
+              </DialogDescription>
             </DialogHeader>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {modalContent}
+            </div>
           </DialogContent>
         </Dialog>
       )}
