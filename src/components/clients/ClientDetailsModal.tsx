@@ -325,7 +325,7 @@ NPC Team`
           </TabsList>
         </div>
 
-        <ScrollArea className={isMobile ? "flex-1" : "max-h-[calc(90vh-180px)] w-full"}>
+        <ScrollArea className={isMobile ? "flex-1" : "flex-1 min-h-0 w-full"}>
           <div className="min-w-0 overflow-hidden" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
@@ -753,7 +753,7 @@ NPC Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
