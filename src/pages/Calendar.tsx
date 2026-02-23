@@ -602,7 +602,7 @@ export default function Calendar() {
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[320px] p-0 flex flex-col h-full">
+                <SheetContent side="right" className="w-full sm:w-[320px] p-0 flex flex-col h-full">
                   <SheetHeader className="p-4 border-b shrink-0">
                     <SheetTitle>Calendar Tools</SheetTitle>
                   </SheetHeader>
