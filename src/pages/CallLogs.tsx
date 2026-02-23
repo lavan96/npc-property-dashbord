@@ -1232,69 +1232,57 @@ const CallLogs = () => {
                   )}
                   
                   {isMobile ? (
-                    /* Mobile: compact stacked list instead of grid */
-                    <div className="space-y-1.5">
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">Customer</p>
-                          <p className="font-medium text-sm leading-tight break-words">{selectedCall.customer_name || 'Unknown'}</p>
-                          <p className="text-[11px] text-muted-foreground break-all">{selectedCall.phone_number || '-'}</p>
-                        </div>
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">{selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}</p>
-                          <p className="font-medium text-sm leading-tight break-words">{selectedCall.agent_name || 'Unknown'}</p>
-                          <p className="text-[11px] text-muted-foreground break-all">{selectedCall.agent_id || '-'}</p>
+                    /* Mobile: single-column stack */
+                    <div className="space-y-2">
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Customer</p>
+                        <p className="font-medium text-sm break-words">{selectedCall.customer_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground break-all">{selectedCall.phone_number || '-'}</p>
+                      </div>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">{selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}</p>
+                        <p className="font-medium text-sm break-words">{selectedCall.agent_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground break-all">{selectedCall.agent_id || '-'}</p>
+                      </div>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Direction</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {selectedCall.call_direction === 'inbound' ? (
+                            <>
+                              <PhoneIncoming className="w-4 h-4 text-emerald-500" />
+                              <span className="text-sm font-medium">Inbound</span>
+                            </>
+                          ) : (
+                            <>
+                              <PhoneOutgoing className="w-4 h-4 text-blue-500" />
+                              <span className="text-sm font-medium">Outbound</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">Direction</p>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            {selectedCall.call_direction === 'inbound' ? (
-                              <>
-                                <PhoneIncoming className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                                <span className="text-xs font-medium">In</span>
-                              </>
-                            ) : (
-                              <>
-                                <PhoneOutgoing className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                <span className="text-xs font-medium">Out</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">Duration</p>
-                          <p className="font-medium text-sm mt-0.5">{formatDuration(selectedCall.duration_seconds)}</p>
-                        </div>
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">Cost</p>
-                          <p className="font-medium text-sm mt-0.5">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
-                        </div>
-                      </div>
-                      <div className="rounded-lg border bg-card p-2.5">
-                        <p className="text-[11px] text-muted-foreground">Outcome</p>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Outcome</p>
                         <div className="mt-0.5">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                       </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">Started</p>
-                          <p className="font-medium text-xs leading-snug">
-                            {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'MMM d, yyyy') : '-'}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'h:mm:ss a') : ''}
-                          </p>
-                        </div>
-                        <div className="rounded-lg border bg-card p-2.5">
-                          <p className="text-[11px] text-muted-foreground">Ended</p>
-                          <p className="font-medium text-xs leading-snug">
-                            {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'MMM d, yyyy') : '-'}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'h:mm:ss a') : ''}
-                          </p>
-                        </div>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Duration</p>
+                        <p className="font-medium text-sm">{formatDuration(selectedCall.duration_seconds)}</p>
+                      </div>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Cost</p>
+                        <p className="font-medium text-sm">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
+                      </div>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Started</p>
+                        <p className="font-medium text-sm">
+                          {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Ended</p>
+                        <p className="font-medium text-sm">
+                          {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
+                        </p>
                       </div>
                     </div>
                   ) : (
