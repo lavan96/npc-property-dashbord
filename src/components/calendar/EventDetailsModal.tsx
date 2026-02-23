@@ -12,6 +12,7 @@ import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Sa
 import { format, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
 import { toTimezoneISO } from '@/lib/sydneyTime';
 import { formatInSydney, formatDateInSydney, getSydneyTzAbbr, getSydneyDateTimeParts, isNonSydneyTimezone, formatInLocal } from '@/lib/timezoneUtils';
+import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -76,7 +77,7 @@ export function EventDetailsModal({
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleDuration, setRescheduleDuration] = useState(30);
-  const [rescheduleTimezone, setRescheduleTimezone] = useState('Australia/Sydney');
+  const [rescheduleTimezone, setRescheduleTimezone] = useState<string>(() => getBookingTimezone());
 
   useEffect(() => {
     if (open && event?.contactId && fetchContact) {
@@ -274,21 +275,11 @@ export function EventDetailsModal({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Australia/Sydney">Sydney (AEST/AEDT)</SelectItem>
-                    <SelectItem value="Australia/Melbourne">Melbourne (AEST/AEDT)</SelectItem>
-                    <SelectItem value="Australia/Brisbane">Brisbane (AEST)</SelectItem>
-                    <SelectItem value="Australia/Adelaide">Adelaide (ACST/ACDT)</SelectItem>
-                    <SelectItem value="Australia/Perth">Perth (AWST)</SelectItem>
-                    <SelectItem value="Australia/Darwin">Darwin (ACST)</SelectItem>
-                    <SelectItem value="Australia/Hobart">Hobart (AEST/AEDT)</SelectItem>
-                    <SelectItem value="Pacific/Auckland">Auckland (NZST/NZDT)</SelectItem>
-                    <SelectItem value="Asia/Singapore">Singapore (SGT)</SelectItem>
-                    <SelectItem value="Asia/Tokyo">Tokyo (JST)</SelectItem>
-                    <SelectItem value="Asia/Hong_Kong">Hong Kong (HKT)</SelectItem>
-                    <SelectItem value="Asia/Kolkata">India (IST)</SelectItem>
-                    <SelectItem value="Europe/London">London (GMT/BST)</SelectItem>
-                    <SelectItem value="America/New_York">New York (EST/EDT)</SelectItem>
-                    <SelectItem value="America/Los_Angeles">Los Angeles (PST/PDT)</SelectItem>
+                    {AUSTRALIAN_TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format, addMinutes } from 'date-fns';
-import { toSydneyISO } from '@/lib/sydneyTime';
+import { toTimezoneISO } from '@/lib/sydneyTime';
+import { getBookingTimezone } from '@/lib/bookingTimezone';
 import { 
   Calendar, 
   Clock, 
@@ -174,12 +175,13 @@ export function EventTemplates({
       const startTimeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
       const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
-      // Treat selected time as Australia/Sydney wall-clock time
+      // Treat selected time in the configured booking timezone
+      const bookingTz = getBookingTimezone();
       const result = await onCreateAppointment({
         calendarId: selectedCalendarId,
         title: customTitle || selectedTemplate.defaultTitle,
-        startTime: toSydneyISO(dateStr, startTimeStr),
-        endTime: toSydneyISO(dateStr, endTimeStr),
+        startTime: toTimezoneISO(dateStr, startTimeStr, bookingTz),
+        endTime: toTimezoneISO(dateStr, endTimeStr, bookingTz),
         notes: customNotes || undefined,
       });
 

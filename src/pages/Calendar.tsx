@@ -295,9 +295,11 @@ export default function Calendar() {
     // Calculate duration
     const duration = differenceInMilliseconds(originalEnd, originalStart);
 
-    // Build new start time - interpret as Sydney wall-clock time
-    const { toSydneyISO } = await import('@/lib/sydneyTime');
+    // Build new start time - interpret in configured booking timezone
+    const { toTimezoneISO } = await import('@/lib/sydneyTime');
     const { formatInSydney } = await import('@/lib/timezoneUtils');
+    const { getBookingTimezone } = await import('@/lib/bookingTimezone');
+    const bookingTz = getBookingTimezone();
     
     let newStartDate: Date;
     if (targetHour !== undefined) {
@@ -308,10 +310,10 @@ export default function Calendar() {
       newStartDate.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
     }
 
-    // Convert the visual date/time to Sydney-anchored UTC
+    // Convert the visual date/time to booking-timezone-anchored UTC
     const dateStr = `${newStartDate.getFullYear()}-${String(newStartDate.getMonth() + 1).padStart(2, '0')}-${String(newStartDate.getDate()).padStart(2, '0')}`;
     const timeStr = `${String(newStartDate.getHours()).padStart(2, '0')}:${String(newStartDate.getMinutes()).padStart(2, '0')}`;
-    const newStartISO = toSydneyISO(dateStr, timeStr);
+    const newStartISO = toTimezoneISO(dateStr, timeStr, bookingTz);
     
     // Calculate end from duration
     const endTotalMs = new Date(newStartISO).getTime() + duration;
