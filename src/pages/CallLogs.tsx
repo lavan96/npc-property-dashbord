@@ -1181,7 +1181,7 @@ const CallLogs = () => {
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
           "flex flex-col",
-          isMobile ? "w-full max-w-full h-[95vh] max-h-[95vh] p-2 rounded-t-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
+          isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1211,7 +1211,7 @@ const CallLogs = () => {
               </div>
               
               <ScrollArea className={cn("mt-2", isMobile ? "h-[60vh]" : "flex-1")}>
-                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 overflow-hidden", isMobile ? "px-1" : "pr-4")}>
+                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 overflow-hidden min-w-0", isMobile ? "px-0.5" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
