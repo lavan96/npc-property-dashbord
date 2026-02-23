@@ -1231,71 +1231,71 @@ const CallLogs = () => {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Customer</p>
-                        <p className="font-medium">{selectedCall.customer_name || 'Unknown'}</p>
-                        <p className="text-sm text-muted-foreground">{selectedCall.phone_number || '-'}</p>
+                        <p className="font-medium truncate">{selectedCall.customer_name || 'Unknown'}</p>
+                        <p className="text-sm text-muted-foreground truncate">{selectedCall.phone_number || '-'}</p>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">
                           {selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}
                         </p>
-                        <p className="font-medium">{selectedCall.agent_name || 'Unknown'}</p>
-                        <p className="text-sm text-muted-foreground">{selectedCall.agent_id || '-'}</p>
+                        <p className="font-medium truncate">{selectedCall.agent_name || 'Unknown'}</p>
+                        <p className="text-sm text-muted-foreground truncate">{selectedCall.agent_id || '-'}</p>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Direction</p>
                         <div className="flex items-center gap-2 mt-1">
                           {selectedCall.call_direction === 'inbound' ? (
                             <>
-                              <PhoneIncoming className="w-4 h-4 text-emerald-500" />
+                              <PhoneIncoming className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                               <span>Inbound</span>
                             </>
                           ) : (
                             <>
-                              <PhoneOutgoing className="w-4 h-4 text-blue-500" />
+                              <PhoneOutgoing className="w-4 h-4 text-blue-500 flex-shrink-0" />
                               <span>Outbound</span>
                             </>
                           )}
                         </div>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Outcome</p>
                         <div className="mt-1">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Duration</p>
                         <p className="font-medium">{formatDuration(selectedCall.duration_seconds)}</p>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Cost</p>
                         <p className="font-medium">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Started</p>
-                        <p className="font-medium">
+                        <p className="font-medium text-sm sm:text-base">
                           {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
                         </p>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
+                    <Card className="min-w-0">
+                      <CardContent className="p-3 sm:p-4">
                         <p className="text-sm text-muted-foreground">Ended</p>
-                        <p className="font-medium">
+                        <p className="font-medium text-sm sm:text-base">
                           {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
                         </p>
                       </CardContent>
