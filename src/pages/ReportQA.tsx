@@ -1609,7 +1609,7 @@ export default function ReportQA() {
         )}
 
         {/* Chat Section */}
-        <Card className={cn("flex flex-col", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
+        <Card className={cn("flex flex-col overflow-hidden min-h-0", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
           <CardHeader className="pb-3 px-3 sm:px-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
               <div className="flex items-center gap-2">
@@ -1736,9 +1736,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0">
+          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-3 sm:px-6">
             {/* Messages */}
-            <ScrollArea className="flex-1 pr-4 mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea className="flex-1 pr-2 sm:pr-4 mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center p-4 sm:p-8">
                   <div className="space-y-4">
@@ -1821,7 +1821,7 @@ export default function ReportQA() {
                           )}
                         </div>
                         {message.role === 'assistant' ? (
-                          <div className="qa-markdown text-xs sm:text-sm">
+                          <div className="qa-markdown text-xs sm:text-sm break-words overflow-hidden">
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -1857,7 +1857,7 @@ export default function ReportQA() {
                                 progressColor="rgba(255, 255, 255, 0.8)"
                               />
                             )}
-                            <p className="text-xs sm:text-sm whitespace-pre-wrap">{message.content}</p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{message.content}</p>
                           </div>
                         )}
                         {/* PDF Attachments */}
