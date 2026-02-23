@@ -1211,7 +1211,7 @@ const CallLogs = () => {
               </div>
               
               <ScrollArea className={cn("mt-2", isMobile ? "h-[60vh]" : "flex-1")}>
-                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 overflow-hidden min-w-0", isMobile ? "px-0.5" : "pr-4")}>
+                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 overflow-hidden min-w-0 max-w-full", isMobile ? "px-0" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
@@ -1233,54 +1233,54 @@ const CallLogs = () => {
                   
                   {isMobile ? (
                     /* Mobile: single-column stack */
-                    <div className="space-y-2">
-                      <div className="rounded-lg border bg-card p-3">
+                    <div className="space-y-2 max-w-full overflow-hidden">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Customer</p>
-                        <p className="font-medium text-sm break-words">{selectedCall.customer_name || 'Unknown'}</p>
-                        <p className="text-xs text-muted-foreground break-all">{selectedCall.phone_number || '-'}</p>
+                        <p className="font-medium text-sm break-words overflow-hidden">{selectedCall.customer_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground break-all overflow-hidden">{selectedCall.phone_number || '-'}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">{selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}</p>
-                        <p className="font-medium text-sm break-words">{selectedCall.agent_name || 'Unknown'}</p>
-                        <p className="text-xs text-muted-foreground break-all">{selectedCall.agent_id || '-'}</p>
+                        <p className="font-medium text-sm break-words overflow-hidden">{selectedCall.agent_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground break-all overflow-hidden">{selectedCall.agent_id || '-'}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Direction</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {selectedCall.call_direction === 'inbound' ? (
                             <>
-                              <PhoneIncoming className="w-4 h-4 text-emerald-500" />
+                              <PhoneIncoming className="w-4 h-4 flex-shrink-0 text-emerald-500" />
                               <span className="text-sm font-medium">Inbound</span>
                             </>
                           ) : (
                             <>
-                              <PhoneOutgoing className="w-4 h-4 text-blue-500" />
+                              <PhoneOutgoing className="w-4 h-4 flex-shrink-0 text-blue-500" />
                               <span className="text-sm font-medium">Outbound</span>
                             </>
                           )}
                         </div>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Outcome</p>
                         <div className="mt-0.5">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Duration</p>
                         <p className="font-medium text-sm">{formatDuration(selectedCall.duration_seconds)}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Cost</p>
                         <p className="font-medium text-sm">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Started</p>
-                        <p className="font-medium text-sm">
+                        <p className="font-medium text-sm break-words">
                           {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
                         </p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3">
+                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
                         <p className="text-xs text-muted-foreground">Ended</p>
-                        <p className="font-medium text-sm">
+                        <p className="font-medium text-sm break-words">
                           {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
                         </p>
                       </div>
