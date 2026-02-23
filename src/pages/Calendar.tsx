@@ -1008,7 +1008,7 @@ export default function Calendar() {
                 </>
               ) : view === 'week' ? (
                 /* Week View with Drag and Drop */
-                <ScrollArea className="h-[600px]">
+                <div className={cn("h-[600px]", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
                   <div className="min-w-[700px]">
                     {/* Week day headers - Sticky */}
                     <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2 border-b">
@@ -1070,7 +1070,7 @@ export default function Calendar() {
                       ))}
                     </div>
                   </div>
-                </ScrollArea>
+                </div>
               ) : (
                 /* Timeline View */
                 <TimelineView
