@@ -602,27 +602,117 @@ export default function Calendar() {
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[300px] p-0">
-                  <SheetHeader className="p-4 border-b">
+                <SheetContent side="right" className="w-[320px] p-0 flex flex-col h-full">
+                  <SheetHeader className="p-4 border-b shrink-0">
                     <SheetTitle>Calendar Tools</SheetTitle>
                   </SheetHeader>
-                  <div className="p-4">
-                    <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as SidebarTab)}>
-                      <div className="overflow-x-auto -mx-4 px-4 pb-2">
-                        <TabsList className="inline-flex gap-1 h-auto flex-wrap">
-                          {SIDEBAR_TABS.slice(0, 6).map(tab => (
-                            <TabsTrigger 
-                              key={tab.id} 
-                              value={tab.id}
-                              className="text-xs px-2 py-1"
-                            >
-                              {tab.icon}
-                              <span className="ml-1">{tab.label}</span>
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
+                  <div className="flex flex-col flex-1 overflow-hidden">
+                    {/* Tab triggers - scrollable horizontally */}
+                    <div className="overflow-x-auto px-4 py-2 border-b shrink-0">
+                      <div className="inline-flex gap-1 flex-wrap">
+                        {SIDEBAR_TABS.map(tab => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setSidebarTab(tab.id)}
+                            className={cn(
+                              "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md transition-colors min-h-[36px] touch-manipulation",
+                              sidebarTab === tab.id
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:text-foreground"
+                            )}
+                          >
+                            {tab.icon}
+                            <span>{tab.label}</span>
+                          </button>
+                        ))}
                       </div>
-                    </Tabs>
+                    </div>
+                    {/* Tab content */}
+                    <ScrollArea className="flex-1 p-4">
+                      {/* Mini Calendar Navigator */}
+                      <div className="mb-4 pb-3 border-b">
+                        <MiniCalendarNavigator
+                          currentMonth={currentMonth}
+                          setCurrentMonth={setCurrentMonth}
+                          selectedDate={selectedDate}
+                          onDateSelect={(date) => {
+                            setSelectedDate(date);
+                            setCurrentMonth(date);
+                          }}
+                          eventsPerDay={eventsPerDay}
+                        />
+                      </div>
+
+                      {sidebarTab === 'events' && (
+                        <div>
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
+                          </h4>
+                          {isLoading ? (
+                            <SidebarLoadingSkeleton />
+                          ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {(selectedDate ? selectedDateEvents : upcomingEvents).map(event => (
+                                <EventCard key={event.id} event={event} getStatusColor={getStatusColor} onClick={() => { handleEventClick(event); setMobileSidebarOpen(false); }} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {sidebarTab === 'availability' && selectedDate && (
+                        <AvailabilitySlots selectedDate={selectedDate} events={filteredEvents} onSlotClick={() => setSidebarTab('templates')} />
+                      )}
+                      {sidebarTab === 'templates' && (
+                        <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
+                      )}
+                      {sidebarTab === 'heatmap' && (
+                        <CalendarHeatmap events={filteredEvents} currentMonth={currentMonth} selectedDate={selectedDate} onDateSelect={(date) => { setSelectedDate(date); setSidebarTab('events'); }} />
+                      )}
+                      {sidebarTab === 'analytics' && (
+                        <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} selectedDate={selectedDate} />
+                      )}
+                      {sidebarTab === 'summary' && (
+                        <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} selectedDate={selectedDate} />
+                      )}
+                      {sidebarTab === 'conflicts' && (
+                        <ConflictDetection events={filteredEvents} onEventClick={(event) => { handleEventClick(event); setMobileSidebarOpen(false); }} selectedDate={selectedDate} />
+                      )}
+                      {sidebarTab === 'optimize' && (
+                        <ResourceOptimization
+                          events={filteredEvents}
+                          currentWeek={currentWeek}
+                          selectedDate={selectedDate}
+                          onSlotSelect={(date, hour) => {
+                            setSelectedDate(date);
+                            setQuickAddDefaultHour(hour);
+                            setQuickAddModalOpen(true);
+                            setMobileSidebarOpen(false);
+                          }}
+                        />
+                      )}
+                      {sidebarTab === 'overlay' && (
+                        <MultiCalendarOverlay
+                          calendars={calendars}
+                          events={events}
+                          visibleCalendars={visibleCalendars}
+                          onToggleCalendar={handleToggleCalendar}
+                          onShowAll={handleShowAllCalendars}
+                          onHideAll={handleHideAllCalendars}
+                        />
+                      )}
+                      {sidebarTab === 'patterns' && (
+                        <RecurringPatterns events={events} onPatternClick={(pattern) => toast({ title: 'Pattern detected', description: pattern.title })} />
+                      )}
+                      {sidebarTab === 'reminders' && (
+                        <SmartReminders calendars={calendars} />
+                      )}
+                    </ScrollArea>
                   </div>
                 </SheetContent>
               </Sheet>
