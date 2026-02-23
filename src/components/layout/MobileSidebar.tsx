@@ -9,7 +9,6 @@ import {
   Database,
   BarChart3,
   FileText,
-  Users2,
   BookOpen,
   Activity,
   Upload,
@@ -24,6 +23,8 @@ import {
   History,
   ChevronRight,
   Plug,
+  UserCircle,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
@@ -38,7 +39,6 @@ interface MobileSidebarProps {
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
   { title: 'Listings', url: '/listings', icon: Building2, moduleKey: 'listings' },
-  { title: 'Clients', url: '/clients', icon: Users2, moduleKey: 'clients' },
   { title: 'Calendar', url: '/calendar', icon: Calendar, moduleKey: 'calendar' },
   { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
   { title: 'Reports', url: '/reports', icon: BarChart3, moduleKey: 'reports' },
@@ -47,6 +47,9 @@ const navigationItems = [
   { title: 'Report Q&A', url: '/report-qa', icon: MessageSquareText, moduleKey: 'report_qa' },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles, moduleKey: 'email_copilot' },
   { title: 'Call Logs', url: '/call-logs', icon: Phone, moduleKey: 'call_logs' },
+  { title: 'Clients', url: '/clients', icon: UserCircle, moduleKey: 'clients' },
+  { title: 'Client Tracker', url: '/client-tracker', icon: Target, moduleKey: 'client_tracker' },
+  { title: 'Portfolio Reports', url: '/portfolio-reports', icon: FileText, moduleKey: 'portfolio_reports' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
 ];
