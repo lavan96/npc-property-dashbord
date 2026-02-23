@@ -1674,15 +1674,15 @@ export default function ReportQA() {
                 )}
               </div>
               
-              {/* Action bar - scrollable on mobile */}
-              <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-shrink-0">
+              {/* Action bar - wraps on mobile */}
+              <div className="flex items-center gap-1 flex-wrap flex-shrink-0">
                 {/* Model Selector */}
                 <ModelSelector
                   selectedModel={selectedModel}
                   onModelChange={setSelectedModel}
                   disabled={isProcessing}
                 />
-                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
                 {conversationId && (
                   <>
                     <PinConversation
@@ -1802,7 +1802,7 @@ export default function ReportQA() {
                       )}
                       <div 
                         className={cn(
-                          "max-w-[80%] rounded-lg p-3",
+                          "max-w-[90%] sm:max-w-[80%] rounded-lg p-2.5 sm:p-3",
                           message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
                           getMessageBgClass(message.role)
                         )}
@@ -1821,7 +1821,7 @@ export default function ReportQA() {
                           )}
                         </div>
                         {message.role === 'assistant' ? (
-                          <div className="qa-markdown">
+                          <div className="qa-markdown text-xs sm:text-sm">
                             <ReactMarkdown 
                               remarkPlugins={[remarkGfm]}
                               components={{
@@ -1857,7 +1857,7 @@ export default function ReportQA() {
                                 progressColor="rgba(255, 255, 255, 0.8)"
                               />
                             )}
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap">{message.content}</p>
                           </div>
                         )}
                         {/* PDF Attachments */}
@@ -1874,29 +1874,29 @@ export default function ReportQA() {
                         )}
                         {message.role === 'assistant' && !message.attachments?.length && (
                           <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1 sm:gap-2">
                               <CopyWithFeedback content={message.content} />
                               <TextToSpeech text={message.content} />
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-xs"
+                                className="h-7 px-1.5 sm:px-2 text-xs"
                                 onClick={() => handleOpenEmailModal(message.content)}
                               >
-                                <Mail className="h-3 w-3 mr-1" />
-                                Email
+                                <Mail className="h-3 w-3 sm:mr-1" />
+                                <span className="hidden sm:inline">Email</span>
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-xs gap-1.5"
+                                className="h-7 px-1.5 sm:px-2 text-xs gap-1.5"
                                 onClick={() => {
                                   setEditingMessage(message);
                                   setMessageEditorOpen(true);
                                 }}
                               >
                                 <Download className="h-3 w-3" />
-                                PDF
+                                <span className="hidden sm:inline">PDF</span>
                               </Button>
                               <MessageReactions messageId={message.id} />
                             </div>

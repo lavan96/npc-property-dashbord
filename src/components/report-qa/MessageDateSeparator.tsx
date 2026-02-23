@@ -12,12 +12,19 @@ export function MessageDateSeparator({ date }: MessageDateSeparatorProps) {
     return format(date, 'EEEE, MMMM d, yyyy');
   };
 
+  const getShortDateLabel = () => {
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'EEE, MMM d, yyyy');
+  };
+
   return (
     <div className="flex items-center gap-3 py-4">
       <div className="flex-1 h-px bg-border" />
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full whitespace-nowrap">
         <Calendar className="h-3 w-3" />
-        {getDateLabel()}
+        <span className="hidden sm:inline">{getDateLabel()}</span>
+        <span className="sm:hidden">{getShortDateLabel()}</span>
       </div>
       <div className="flex-1 h-px bg-border" />
     </div>
