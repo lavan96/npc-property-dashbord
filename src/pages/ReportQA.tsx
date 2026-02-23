@@ -1655,8 +1655,8 @@ export default function ReportQA() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">{getCurrentTitle()}</CardTitle>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CardTitle className="text-base sm:text-lg truncate max-w-[120px] sm:max-w-none">{getCurrentTitle()}</CardTitle>
                     {conversationId && (
                       <Button
                         variant="ghost"
@@ -1682,41 +1682,79 @@ export default function ReportQA() {
                   onModelChange={setSelectedModel}
                   disabled={isProcessing}
                 />
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                {conversationId && (
-                  <>
-                    <PinConversation
-                      conversationId={conversationId}
-                      isPinned={pinnedIds.includes(conversationId)}
-                      onTogglePin={handleTogglePin}
-                    />
-                    <ConversationTags
-                      tags={conversationTags.get(conversationId) || []}
-                      onAddTag={handleAddTag}
-                      onRemoveTag={handleRemoveTag}
-                    />
-                  </>
-                )}
-                <ChatThemeSelector onThemeChange={setChatTheme} />
-                <ConversationExport
-                  messages={messages}
-                  title={getCurrentTitle()}
-                  reportNames={uploadedReports.map(r => r.name)}
-                  conversationId={conversationId}
-                />
-                <AutoSummarize
-                  messages={messages.map(m => ({ role: m.role, content: m.content }))}
-                  reportNames={uploadedReports.map(r => r.name)}
-                  disabled={messages.length < 2}
-                />
-                <KeyboardShortcutsHelp />
-                <AccessibilitySettings />
-                {conversationId && (
-                  <Badge variant="outline" className="text-xs ml-2">Auto-saving</Badge>
-                )}
+                <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
+                {/* Desktop-only toolbar items */}
+                <div className="hidden sm:flex items-center gap-1">
+                  {conversationId && (
+                    <>
+                      <PinConversation
+                        conversationId={conversationId}
+                        isPinned={pinnedIds.includes(conversationId)}
+                        onTogglePin={handleTogglePin}
+                      />
+                      <ConversationTags
+                        tags={conversationTags.get(conversationId) || []}
+                        onAddTag={handleAddTag}
+                        onRemoveTag={handleRemoveTag}
+                      />
+                    </>
+                  )}
+                  <ChatThemeSelector onThemeChange={setChatTheme} />
+                  <ConversationExport
+                    messages={messages}
+                    title={getCurrentTitle()}
+                    reportNames={uploadedReports.map(r => r.name)}
+                    conversationId={conversationId}
+                  />
+                  <AutoSummarize
+                    messages={messages.map(m => ({ role: m.role, content: m.content }))}
+                    reportNames={uploadedReports.map(r => r.name)}
+                    disabled={messages.length < 2}
+                  />
+                  <KeyboardShortcutsHelp />
+                  <AccessibilitySettings />
+                  {conversationId && (
+                    <Badge variant="outline" className="text-xs ml-2">Auto-saving</Badge>
+                  )}
+                </div>
+                {/* Mobile overflow menu */}
+                <div className="sm:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Report
+                      </DropdownMenuItem>
+                      {uploadedReports.length > 0 && (
+                        <DropdownMenuItem onClick={clearAll}>
+                          <X className="h-4 w-4 mr-2" />
+                          Clear All Reports
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      {conversationId && (
+                        <DropdownMenuItem onClick={() => handleTogglePin(conversationId)}>
+                          <Pin className="h-4 w-4 mr-2" />
+                          {pinnedIds.includes(conversationId) ? 'Unpin' : 'Pin'}
+                        </DropdownMenuItem>
+                      )}
+                      {messages.length > 0 && conversationId && (
+                        <DropdownMenuItem onClick={handleGeneratePDFAttachment} disabled={isGeneratingPDF}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export PDF
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
-            <CardDescription>
+            <CardDescription className="hidden sm:block">
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
                 : 'Ask questions about the uploaded report'}
@@ -1738,8 +1776,8 @@ export default function ReportQA() {
             {/* Messages */}
             <ScrollArea className="flex-1 pr-4 mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-center p-8">
-                  <div className="space-y-2">
+                <div className="h-full flex items-center justify-center text-center p-4 sm:p-8">
+                  <div className="space-y-4">
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
                     <p className="text-muted-foreground">
                       {uploadedReports.length > 0
@@ -1748,6 +1786,36 @@ export default function ReportQA() {
                           : 'Ask a question about the report'
                         : 'Upload reports to start asking questions'}
                     </p>
+                    {/* Mobile upload button - only shown on small screens */}
+                    <div className="lg:hidden space-y-3">
+                      <Button
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4" />
+                        Upload PDF Report
+                      </Button>
+                      {uploadedReports.length > 0 && (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {uploadedReports.map((report) => (
+                            <Badge key={report.name} variant="secondary" className="gap-1 text-xs">
+                              <FileText className="h-3 w-3" />
+                              {report.name.replace('.pdf', '').substring(0, 20)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeReport(report.name);
+                                }}
+                                className="ml-1 hover:text-destructive"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -2051,6 +2119,83 @@ export default function ReportQA() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mobile Reports Panel - floating button for managing uploaded reports on mobile */}
+      <MobileReportsPanel reportCount={uploadedReports.length}>
+        <div className="space-y-4">
+          {/* Upload area */}
+          <div
+            className={cn(
+              "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
+              isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+            )}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {isUploading ? (
+              <div className="space-y-2">
+                <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Processing...</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Tap to upload PDF reports
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Progress */}
+          {uploadProgress.length > 0 && (
+            <div className="space-y-2">
+              {uploadProgress.map((item) => (
+                <UploadProgressItem
+                  key={item.fileName}
+                  fileName={item.fileName}
+                  progress={item.progress}
+                  status={item.status}
+                  error={item.error}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Uploaded Reports */}
+          {uploadedReports.length > 0 && (
+            <div className="space-y-2">
+              {uploadedReports.map((report, index) => (
+                <PDFThumbnail
+                  key={report.name}
+                  fileName={report.name}
+                  content={report.content}
+                  uploadedAt={report.uploadedAt}
+                  fileSizeBytes={report.fileSizeBytes}
+                  totalPages={report.totalPages}
+                  isActive={activeReportIndex === index}
+                  onClick={() => setActiveReportIndex(
+                    activeReportIndex === index ? null : index
+                  )}
+                  onRemove={() => {
+                    removeReport(report.name);
+                    if (activeReportIndex === index) {
+                      setActiveReportIndex(null);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Comparison Badge */}
+          {uploadedReports.length > 1 && activeReportIndex === null && (
+            <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
+              <GitCompare className="h-4 w-4 text-primary" />
+              <span className="text-sm text-primary">Comparison mode active</span>
+            </div>
+          )}
+        </div>
+      </MobileReportsPanel>
 
       {/* History Dialog - Enhanced */}
       <Dialog open={showHistory} onOpenChange={(open) => {
