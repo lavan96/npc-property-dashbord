@@ -303,7 +303,7 @@ NPC Team`
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="overflow-x-auto scrollbar-hide flex-shrink-0 sticky top-0 z-10 bg-background pb-1 max-w-full">
           <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
@@ -325,7 +325,7 @@ NPC Team`
           </TabsList>
         </div>
 
-        <ScrollArea className={isMobile ? "flex-1" : "flex-1 min-h-0 w-full"}>
+        <ScrollArea className="flex-1 min-h-0 w-full">
           <div className="min-w-0 overflow-hidden" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
@@ -763,7 +763,7 @@ NPC Team`
                 View and manage client details, properties, and reports
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
               {modalContent}
             </div>
           </DialogContent>
