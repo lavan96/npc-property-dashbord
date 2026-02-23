@@ -1,17 +1,20 @@
 /**
  * Timezone utilities for the calendar system.
  *
- * PRINCIPLE: All bookings are made in Australia/Sydney wall-clock time.
+ * PRINCIPLE: All bookings are made in the configured booking timezone
+ * (defaulting to Australia/Sydney). Users can change this in Settings.
  * These utilities ensure:
- * 1. Display always shows Sydney time as the primary time
+ * 1. Display always shows the booking timezone as the primary time
  * 2. Optionally shows the user's local time for reference
  * 3. Formatting is consistent across all calendar components
  */
 
-const SYDNEY_TZ = 'Australia/Sydney';
+import { getBookingTimezone, getTimezoneAbbr } from '@/lib/bookingTimezone';
+
+
 
 /**
- * Format a UTC ISO string as Sydney wall-clock time.
+ * Format a UTC ISO string as wall-clock time in the configured booking timezone.
  * This is the PRIMARY display format for all calendar times.
  *
  * @param isoString - UTC ISO timestamp (e.g., from GHL API)
@@ -26,11 +29,12 @@ export function formatInSydney(
     const date = new Date(isoString);
     if (Number.isNaN(date.getTime())) return '—';
 
+    const bookingTz = getBookingTimezone();
     const defaults: Intl.DateTimeFormatOptions = {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
-      timeZone: SYDNEY_TZ,
+      timeZone: bookingTz,
     };
 
     return new Intl.DateTimeFormat('en-AU', { ...defaults, ...options }).format(date);
@@ -40,7 +44,7 @@ export function formatInSydney(
 }
 
 /**
- * Format a UTC ISO string as Sydney time with full date.
+ * Format a UTC ISO string in the booking timezone with full date.
  */
 export function formatDateInSydney(
   isoString: string | undefined | null,
@@ -51,12 +55,13 @@ export function formatDateInSydney(
     const date = new Date(isoString);
     if (Number.isNaN(date.getTime())) return '—';
 
+    const bookingTz = getBookingTimezone();
     const defaults: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      timeZone: SYDNEY_TZ,
+      timeZone: bookingTz,
     };
 
     return new Intl.DateTimeFormat('en-AU', { ...defaults, ...options }).format(date);
@@ -91,47 +96,39 @@ export function formatInLocal(
 }
 
 /**
- * Get the short timezone abbreviation for Sydney at a given date.
- * Returns "AEST" or "AEDT" depending on daylight saving.
+ * Get the short timezone abbreviation for the booking timezone at a given date.
+ * Returns e.g. "AEST", "AEDT", "AWST" depending on the configured timezone and daylight saving.
  */
 export function getSydneyTzAbbr(isoString?: string | null): string {
-  try {
-    const date = isoString ? new Date(isoString) : new Date();
-    const parts = new Intl.DateTimeFormat('en-AU', {
-      timeZone: SYDNEY_TZ,
-      timeZoneName: 'short',
-    }).formatToParts(date);
-
-    const tzPart = parts.find((p) => p.type === 'timeZoneName');
-    return tzPart?.value || 'AEST';
-  } catch {
-    return 'AEST';
-  }
+  const bookingTz = getBookingTimezone();
+  return getTimezoneAbbr(bookingTz, isoString);
 }
 
 /**
- * Check if the user's browser timezone is different from Sydney.
+ * Check if the user's browser timezone is different from the booking timezone.
  * When true, we should show a local time reference.
  */
 export function isNonSydneyTimezone(userTimezone?: string): boolean {
+  const bookingTz = getBookingTimezone();
   const local = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return local !== SYDNEY_TZ;
+  return local !== bookingTz;
 }
 
 /**
- * Get the Sydney date/time parts from a UTC ISO string.
- * Useful for pre-filling form inputs with Sydney wall-clock values.
+ * Get the booking timezone date/time parts from a UTC ISO string.
+ * Useful for pre-filling form inputs with wall-clock values.
  *
- * Returns { dateStr: 'YYYY-MM-DD', timeStr: 'HH:MM' } in Sydney time.
+ * Returns { dateStr: 'YYYY-MM-DD', timeStr: 'HH:MM' } in the booking timezone.
  */
 export function getSydneyDateTimeParts(isoString: string): {
   dateStr: string;
   timeStr: string;
 } {
   const date = new Date(isoString);
+  const bookingTz = getBookingTimezone();
 
   const formatter = new Intl.DateTimeFormat('en-AU', {
-    timeZone: SYDNEY_TZ,
+    timeZone: bookingTz,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

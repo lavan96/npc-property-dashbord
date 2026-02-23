@@ -22,6 +22,7 @@ export default function Settings() {
   const { user } = useAuth();
   const [settings, setSettings] = useState({
     timezone: 'Australia/Sydney',
+    bookingTimezone: 'Australia/Sydney',
     notifications: true,
     autoRefresh: true,
     refreshInterval: 5,
@@ -392,11 +393,44 @@ export default function Settings() {
 
             <Separator />
 
+            {/* Booking Timezone (Source of Truth) */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
-                <h4 className="text-sm font-medium">Timezone</h4>
+                <h4 className="text-sm font-medium">Booking Timezone</h4>
                 <p className="text-xs text-muted-foreground">
-                  For display reference only — all bookings use Sydney time (AEST/AEDT)
+                  Source of truth for all calendar bookings — times are interpreted in this timezone
+                </p>
+              </div>
+              <div className="w-full sm:w-64">
+                <Select
+                  value={settings.bookingTimezone}
+                  onValueChange={(value) => handleSettingChange('bookingTimezone', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select booking timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Australia/Sydney">Sydney (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Melbourne">Melbourne (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Brisbane">Brisbane (AEST)</SelectItem>
+                    <SelectItem value="Australia/Adelaide">Adelaide (ACST/ACDT)</SelectItem>
+                    <SelectItem value="Australia/Perth">Perth (AWST)</SelectItem>
+                    <SelectItem value="Australia/Darwin">Darwin (ACST)</SelectItem>
+                    <SelectItem value="Australia/Hobart">Hobart (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Lord_Howe">Lord Howe Island (LHST/LHDT)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Display Timezone (Reference) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">Display Timezone</h4>
+                <p className="text-xs text-muted-foreground">
+                  Your local timezone for secondary time reference display
                 </p>
                 <p className="text-xs text-muted-foreground/70">
                   Detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}
