@@ -302,6 +302,7 @@ NPC Team`
           <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Send" : "Send Portfolio to Client"}</span>
         </Button>
       </div>
+      <Separator className="my-1" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="overflow-x-auto scrollbar-hide flex-shrink-0 sticky top-0 z-10 bg-background pb-1 max-w-full">
