@@ -847,10 +847,10 @@ export default function Calendar() {
 
       <div className={cn(
         "grid gap-4 md:gap-6 transition-all duration-300",
-        isMobile ? "grid-cols-1" : sidebarCollapsed ? "lg:grid-cols-[1fr_56px]" : "lg:grid-cols-3"
+        isMobile ? "grid-cols-1" : sidebarCollapsed ? "grid-cols-[1fr_auto]" : "lg:grid-cols-3"
       )}>
         {/* Calendar View */}
-        <Card className={isMobile ? '' : 'lg:col-span-2'}>
+        <Card className={isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2'}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -1088,7 +1088,7 @@ export default function Calendar() {
         {!isMobile && (
         <Card className={cn(
           "transition-all duration-300 overflow-hidden",
-          sidebarCollapsed && "w-14"
+          sidebarCollapsed ? "w-16 min-w-16" : "min-w-0"
         )}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between mb-2">
