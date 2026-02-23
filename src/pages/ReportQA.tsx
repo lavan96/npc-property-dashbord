@@ -1610,8 +1610,8 @@ export default function ReportQA() {
 
         {/* Chat Section */}
         <Card className={cn("flex flex-col", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-3 px-3 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
               <div className="flex items-center gap-2">
                 {!showReportsPanel && (
                   <Button
@@ -1674,84 +1674,48 @@ export default function ReportQA() {
                 )}
               </div>
               
-              {/* Action bar */}
-              <div className="flex items-center gap-1">
+              {/* Action bar - scrollable on mobile */}
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-shrink-0">
                 {/* Model Selector */}
                 <ModelSelector
                   selectedModel={selectedModel}
                   onModelChange={setSelectedModel}
                   disabled={isProcessing}
                 />
-                <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
-                {/* Desktop-only toolbar items */}
-                <div className="hidden sm:flex items-center gap-1">
-                  {conversationId && (
-                    <>
-                      <PinConversation
-                        conversationId={conversationId}
-                        isPinned={pinnedIds.includes(conversationId)}
-                        onTogglePin={handleTogglePin}
-                      />
-                      <ConversationTags
-                        tags={conversationTags.get(conversationId) || []}
-                        onAddTag={handleAddTag}
-                        onRemoveTag={handleRemoveTag}
-                      />
-                    </>
-                  )}
-                  <ChatThemeSelector onThemeChange={setChatTheme} />
-                  <ConversationExport
-                    messages={messages}
-                    title={getCurrentTitle()}
-                    reportNames={uploadedReports.map(r => r.name)}
-                    conversationId={conversationId}
-                  />
-                  <AutoSummarize
-                    messages={messages.map(m => ({ role: m.role, content: m.content }))}
-                    reportNames={uploadedReports.map(r => r.name)}
-                    disabled={messages.length < 2}
-                  />
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                {conversationId && (
+                  <>
+                    <PinConversation
+                      conversationId={conversationId}
+                      isPinned={pinnedIds.includes(conversationId)}
+                      onTogglePin={handleTogglePin}
+                    />
+                    <ConversationTags
+                      tags={conversationTags.get(conversationId) || []}
+                      onAddTag={handleAddTag}
+                      onRemoveTag={handleRemoveTag}
+                    />
+                  </>
+                )}
+                <ChatThemeSelector onThemeChange={setChatTheme} />
+                <ConversationExport
+                  messages={messages}
+                  title={getCurrentTitle()}
+                  reportNames={uploadedReports.map(r => r.name)}
+                  conversationId={conversationId}
+                />
+                <AutoSummarize
+                  messages={messages.map(m => ({ role: m.role, content: m.content }))}
+                  reportNames={uploadedReports.map(r => r.name)}
+                  disabled={messages.length < 2}
+                />
+                <span className="hidden sm:inline-flex">
                   <KeyboardShortcutsHelp />
-                  <AccessibilitySettings />
-                  {conversationId && (
-                    <Badge variant="outline" className="text-xs ml-2">Auto-saving</Badge>
-                  )}
-                </div>
-                {/* Mobile overflow menu */}
-                <div className="sm:hidden">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Report
-                      </DropdownMenuItem>
-                      {uploadedReports.length > 0 && (
-                        <DropdownMenuItem onClick={clearAll}>
-                          <X className="h-4 w-4 mr-2" />
-                          Clear All Reports
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      {conversationId && (
-                        <DropdownMenuItem onClick={() => handleTogglePin(conversationId)}>
-                          <Pin className="h-4 w-4 mr-2" />
-                          {pinnedIds.includes(conversationId) ? 'Unpin' : 'Pin'}
-                        </DropdownMenuItem>
-                      )}
-                      {messages.length > 0 && conversationId && (
-                        <DropdownMenuItem onClick={handleGeneratePDFAttachment} disabled={isGeneratingPDF}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Export PDF
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                </span>
+                <AccessibilitySettings />
+                {conversationId && (
+                  <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap hidden sm:inline-flex">Auto-saving</Badge>
+                )}
               </div>
             </div>
             <CardDescription className="hidden sm:block">
