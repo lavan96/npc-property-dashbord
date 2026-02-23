@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -185,6 +186,7 @@ const loadActiveCashFlowTemplate = async (): Promise<CashFlowTemplateConfig> => 
 
 export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated }: CashFlowAnalysisModalProps) {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -3290,14 +3292,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0">
-        <div className="px-6 pt-6 pb-4">
+      <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <div className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
-                <DialogTitle className="text-xl flex items-center gap-2">
-                  <Calculator className="h-5 w-5" />
-                  10-Year Cash Flow Analysis
+                <DialogTitle className="text-lg md:text-xl flex items-center gap-2 flex-wrap">
+                  <Calculator className="h-5 w-5 shrink-0" />
+                  <span className="hidden sm:inline">10-Year Cash Flow Analysis</span>
+                  <span className="sm:hidden">Cash Flow Analysis</span>
                   <Badge 
                     variant={isNewBuild ? "default" : "secondary"}
                     className="ml-2 text-xs"
@@ -3309,7 +3312,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   {report.property_address}
                 </DialogDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {hasChanges && (
                   <Badge variant="outline" className="text-orange-600 border-orange-300">
                     Unsaved Changes
@@ -3398,10 +3401,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
         <Separator />
 
-        <ScrollArea className="flex-1 px-6 py-4">
+        <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
           <div className="space-y-6">
-            {/* Key Metrics Summary */}
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
               <Card>
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -4920,7 +4922,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
           </div>
-        </ScrollArea>
+        </div>
 
         <Separator />
 
