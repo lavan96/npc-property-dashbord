@@ -304,7 +304,7 @@ NPC Team`
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
-        <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide flex-shrink-0 sticky top-0 z-10 bg-background pb-1">
+        <div className="overflow-x-auto scrollbar-hide flex-shrink-0 sticky top-0 z-10 bg-background pb-1 max-w-full">
           <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
