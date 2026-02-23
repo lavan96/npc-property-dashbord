@@ -1190,7 +1190,7 @@ const CallLogs = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedCall && (
-            <Tabs defaultValue="overview" className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
+            <Tabs defaultValue="overview" className="w-full flex flex-col flex-1 min-h-0 overflow-hidden max-w-full">
               <div className={isMobile ? "overflow-x-auto -mx-1 px-1 scrollbar-hide" : ""}>
                 <TabsList className={isMobile 
                   ? "inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5"
@@ -1210,8 +1210,8 @@ const CallLogs = () => {
                 </TabsList>
               </div>
               
-              <ScrollArea className={cn("mt-2", isMobile ? "h-[60vh]" : "flex-1")}>
-                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 overflow-hidden min-w-0 max-w-full", isMobile ? "px-0" : "pr-4")}>
+              <ScrollArea className={cn("mt-2 max-w-full", isMobile ? "h-[60vh]" : "flex-1")}>
+                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 min-w-0", isMobile ? "px-1 max-w-[calc(100vw-56px)] overflow-hidden" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
@@ -1360,15 +1360,15 @@ const CallLogs = () => {
                   )}
 
                   {selectedCall.summary && (
-                    <Card>
+                    <Card className="max-w-full overflow-hidden">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
+                          <FileText className="w-4 h-4 flex-shrink-0" />
                           Summary
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm">{selectedCall.summary}</p>
+                        <p className="text-sm break-words [overflow-wrap:anywhere]">{selectedCall.summary}</p>
                       </CardContent>
                     </Card>
                   )}

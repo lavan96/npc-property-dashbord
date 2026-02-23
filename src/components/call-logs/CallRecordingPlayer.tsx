@@ -163,16 +163,16 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden max-w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <Volume2 className="w-4 h-4" />
+          <Volume2 className="w-4 h-4 flex-shrink-0" />
           Call Recording
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-w-full overflow-hidden">
         {/* WaveSurfer Waveform */}
-        <div className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-white dark:bg-zinc-900 p-2">
+        <div className="relative rounded-lg overflow-hidden border border-border shadow-sm bg-white dark:bg-zinc-900 p-2 max-w-full">
           <div 
             ref={waveformRef} 
             className="w-full min-h-[80px]"
@@ -204,13 +204,13 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => skipTime(-10)}
-              className="h-8 w-8"
+              className="h-8 w-8 flex-shrink-0"
             >
               <SkipBack className="w-4 h-4" />
             </Button>
@@ -219,7 +219,7 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
               size="icon"
               onClick={handlePlayPause}
               disabled={isLoading}
-              className="h-10 w-10 rounded-full"
+              className="h-10 w-10 rounded-full flex-shrink-0"
             >
               {isPlaying ? (
                 <Pause className="w-5 h-5" />
@@ -231,18 +231,18 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
               variant="ghost"
               size="icon"
               onClick={() => skipTime(10)}
-              className="h-8 w-8"
+              className="h-8 w-8 flex-shrink-0"
             >
               <SkipForward className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleMute}
-              className="h-8 w-8"
+              className="h-8 w-8 flex-shrink-0"
             >
               {isMuted ? (
                 <VolumeX className="w-4 h-4" />
@@ -256,16 +256,18 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
               max={1}
               step={0.1}
               onValueChange={handleVolumeChange}
-              className="w-20"
+              className="w-16 sm:w-20 flex-shrink-0"
             />
             <Button
               variant="outline"
               size="sm"
               asChild
+              className="flex-shrink-0"
             >
               <a href={recordingUrl} download target="_blank" rel="noopener noreferrer">
                 <Download className="w-4 h-4 mr-1" />
-                Download
+                <span className="hidden sm:inline">Download</span>
+                <span className="sm:hidden">DL</span>
               </a>
             </Button>
           </div>
