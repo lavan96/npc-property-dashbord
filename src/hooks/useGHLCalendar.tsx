@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { formatInSydney, formatDateInSydney } from '@/lib/timezoneUtils';
 
 export interface GHLCalendar {
   id: string;
@@ -289,7 +290,7 @@ export function useGHLCalendar() {
         addNotification({
           type: 'appointment_rescheduled',
           title: 'Appointment Rescheduled',
-          message: `"${event?.title || 'Appointment'}" has been moved to ${new Date(newStartTime).toLocaleString()}`
+          message: `"${event?.title || 'Appointment'}" has been moved to ${formatDateInSydney(newStartTime, { weekday: undefined })} at ${formatInSydney(newStartTime)}`
         });
         
         // Return undo function if original times were provided
@@ -592,7 +593,7 @@ export function useGHLCalendar() {
         addNotification({
           type: 'appointment_created',
           title: 'Appointment Created',
-          message: `"${payload.title}" scheduled for ${new Date(payload.startTime).toLocaleString()}`
+          message: `"${payload.title}" scheduled for ${formatDateInSydney(payload.startTime, { weekday: undefined })} at ${formatInSydney(payload.startTime)}`
         });
         
         toast({

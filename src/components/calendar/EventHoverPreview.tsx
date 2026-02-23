@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { Clock, MapPin, User, Calendar, FileText, ExternalLink } from 'lucide-react';
+import { Clock, MapPin, User, Calendar, FileText, ExternalLink, Globe } from 'lucide-react';
+import { formatInSydney, formatDateInSydney, getSydneyTzAbbr, isNonSydneyTimezone, formatInLocal } from '@/lib/timezoneUtils';
 import { GHLEvent, GHLContact } from '@/hooks/useGHLCalendar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -154,7 +155,7 @@ export function EventHoverPreview({
             <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
             <div>
               <span className="font-medium">
-                {startTime ? format(startTime, 'h:mm a') : '—'} - {endTime ? format(endTime, 'h:mm a') : '—'}
+                {formatInSydney(event.startTime)} – {formatInSydney(event.endTime)} {getSydneyTzAbbr(event.startTime)}
               </span>
               {duration && (
                 <span className="text-muted-foreground ml-2">
@@ -164,11 +165,19 @@ export function EventHoverPreview({
             </div>
           </div>
 
+          {/* Local time reference for non-Sydney users */}
+          {isNonSydneyTimezone() && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground/70 mb-2 ml-6">
+              <Globe className="h-3 w-3 shrink-0" />
+              Your time: {formatInLocal(event.startTime)} – {formatInLocal(event.endTime)}
+            </div>
+          )}
+
           {/* Date */}
           {startTime && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <Calendar className="h-4 w-4 shrink-0" />
-              {format(startTime, 'EEEE, MMMM d, yyyy')}
+              {formatDateInSydney(event.startTime)}
             </div>
           )}
 

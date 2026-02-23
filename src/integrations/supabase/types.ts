@@ -2186,6 +2186,7 @@ export type Database = {
           password_hash: string
           personal_mailbox: string | null
           role: string
+          timezone: string
           updated_at: string
           username: string
         }
@@ -2198,6 +2199,7 @@ export type Database = {
           password_hash: string
           personal_mailbox?: string | null
           role?: string
+          timezone?: string
           updated_at?: string
           username: string
         }
@@ -2210,6 +2212,7 @@ export type Database = {
           password_hash?: string
           personal_mailbox?: string | null
           role?: string
+          timezone?: string
           updated_at?: string
           username?: string
         }
