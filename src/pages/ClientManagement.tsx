@@ -670,7 +670,7 @@ export default function ClientManagement() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {displayClients.map((client) => (
                 <div key={client.id} className="relative">
-                  <div className="absolute top-3 left-3 z-10">
+                  <div className="absolute left-3 z-10 top-[60px] sm:top-3">
                     <Checkbox
                       checked={selectedClients.includes(client.id)}
                       onCheckedChange={(checked) => handleSelectClient(client.id, !!checked)}
