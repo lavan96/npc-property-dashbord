@@ -404,7 +404,7 @@ export function QuickAddAppointmentModal({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="time">Time *</Label>
+              <Label htmlFor="time">Time * <span className="text-xs text-muted-foreground font-normal">(Sydney time)</span></Label>
               <div className="relative">
                 <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

@@ -295,29 +295,37 @@ export default function Calendar() {
     // Calculate duration
     const duration = differenceInMilliseconds(originalEnd, originalStart);
 
-    // Build new start time
-    let newStart: Date;
+    // Build new start time - interpret as Sydney wall-clock time
+    const { toSydneyISO } = await import('@/lib/sydneyTime');
+    const { formatInSydney } = await import('@/lib/timezoneUtils');
+    
+    let newStartDate: Date;
     if (targetHour !== undefined) {
-      // Dropping on a specific hour (week view or timeline)
-      newStart = new Date(targetDate);
-      newStart.setHours(targetHour, 0, 0, 0);
+      newStartDate = new Date(targetDate);
+      newStartDate.setHours(targetHour, 0, 0, 0);
     } else {
-      // Dropping on a date (month view) - preserve original time
-      newStart = new Date(targetDate);
-      newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
+      newStartDate = new Date(targetDate);
+      newStartDate.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
     }
 
-    const newEnd = new Date(newStart.getTime() + duration);
+    // Convert the visual date/time to Sydney-anchored UTC
+    const dateStr = `${newStartDate.getFullYear()}-${String(newStartDate.getMonth() + 1).padStart(2, '0')}-${String(newStartDate.getDate()).padStart(2, '0')}`;
+    const timeStr = `${String(newStartDate.getHours()).padStart(2, '0')}:${String(newStartDate.getMinutes()).padStart(2, '0')}`;
+    const newStartISO = toSydneyISO(dateStr, timeStr);
+    
+    // Calculate end from duration
+    const endTotalMs = new Date(newStartISO).getTime() + duration;
+    const newEndISO = new Date(endTotalMs).toISOString();
 
     // Check if actually moved
-    if (newStart.getTime() === originalStart.getTime()) {
+    if (newStartISO === event.startTime) {
       return; // No change
     }
 
     const result = await rescheduleEvent(
       event.id,
-      newStart.toISOString(),
-      newEnd.toISOString(),
+      newStartISO,
+      newEndISO,
       event.startTime,
       event.endTime
     );
@@ -325,7 +333,7 @@ export default function Calendar() {
     if (result.success) {
       toast({
         title: 'Event rescheduled',
-        description: `Moved to ${format(newStart, 'MMM d, h:mm a')}`,
+        description: `Moved to ${formatInSydney(newStartISO)}`,
         action: result.undo ? (
           <Button variant="outline" size="sm" onClick={() => result.undo?.()}>
             Undo

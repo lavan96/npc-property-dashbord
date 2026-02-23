@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -395,15 +396,39 @@ export default function Settings() {
               <div className="space-y-1">
                 <h4 className="text-sm font-medium">Timezone</h4>
                 <p className="text-xs text-muted-foreground">
-                  Affects how dates and times are displayed
+                  For display reference only — all bookings use Sydney time (AEST/AEDT)
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Detected: {Intl.DateTimeFormat().resolvedOptions().timeZone}
                 </p>
               </div>
-              <div className="w-full sm:w-48">
-                <Input
+              <div className="w-full sm:w-64">
+                <Select
                   value={settings.timezone}
-                  onChange={(e) => handleSettingChange('timezone', e.target.value)}
-                  placeholder="Australia/Sydney"
-                />
+                  onValueChange={(value) => handleSettingChange('timezone', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Brisbane">Australia/Brisbane (AEST)</SelectItem>
+                    <SelectItem value="Australia/Adelaide">Australia/Adelaide (ACST/ACDT)</SelectItem>
+                    <SelectItem value="Australia/Perth">Australia/Perth (AWST)</SelectItem>
+                    <SelectItem value="Australia/Darwin">Australia/Darwin (ACST)</SelectItem>
+                    <SelectItem value="Australia/Hobart">Australia/Hobart (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Pacific/Auckland">New Zealand (NZST/NZDT)</SelectItem>
+                    <SelectItem value="Asia/Singapore">Singapore (SGT)</SelectItem>
+                    <SelectItem value="Asia/Hong_Kong">Hong Kong (HKT)</SelectItem>
+                    <SelectItem value="Asia/Tokyo">Japan (JST)</SelectItem>
+                    <SelectItem value="Asia/Kolkata">India (IST)</SelectItem>
+                    <SelectItem value="Asia/Dubai">Dubai (GST)</SelectItem>
+                    <SelectItem value="Europe/London">London (GMT/BST)</SelectItem>
+                    <SelectItem value="America/New_York">New York (EST/EDT)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Los Angeles (PST/PDT)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

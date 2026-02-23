@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X, CalendarClock, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X, CalendarClock, RefreshCw, Globe } from 'lucide-react';
 import { format, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
+import { toSydneyISO } from '@/lib/sydneyTime';
+import { formatInSydney, formatDateInSydney, getSydneyTzAbbr, getSydneyDateTimeParts, isNonSydneyTimezone, formatInLocal } from '@/lib/timezoneUtils';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -95,11 +97,15 @@ export function EventDetailsModal({
       setEditNotes(event.notes || '');
       setEditStatus(event.appointmentStatus || event.status || '');
       
-      // Initialize reschedule form with current event times
+      // Initialize reschedule form with current event times in Sydney timezone
+      const sydneyStart = getSydneyDateTimeParts(event.startTime);
+      const sydneyEnd = getSydneyDateTimeParts(event.endTime);
+      setRescheduleDate(sydneyStart.dateStr);
+      setRescheduleTime(sydneyStart.timeStr);
+      
+      // Calculate duration from the actual UTC timestamps
       const startDate = parseISO(event.startTime);
       const endDate = parseISO(event.endTime);
-      setRescheduleDate(format(startDate, 'yyyy-MM-dd'));
-      setRescheduleTime(format(startDate, 'HH:mm'));
       setRescheduleDuration(differenceInMinutes(endDate, startDate));
     }
   }, [event]);
@@ -110,6 +116,8 @@ export function EventDetailsModal({
   const endDate = parseISO(event.endTime);
   const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
   const calendarColor = event.calendarColor || '#3b82f6';
+  const tzAbbr = getSydneyTzAbbr(event.startTime);
+  const showLocalTime = isNonSydneyTimezone();
 
   const contactName = contact?.name || 
     (contact?.firstName || contact?.lastName 
@@ -135,18 +143,21 @@ export function EventDetailsModal({
     
     setIsSaving(true);
     
-    // Build new start time from date and time inputs
-    const [hours, minutes] = rescheduleTime.split(':').map(Number);
-    const newStart = new Date(rescheduleDate);
-    newStart.setHours(hours, minutes, 0, 0);
+    // Convert selected Sydney wall-clock time to correct UTC
+    const newStartISO = toSydneyISO(rescheduleDate, rescheduleTime);
     
-    // Calculate new end time based on duration
-    const newEnd = addMinutes(newStart, rescheduleDuration);
+    // Calculate end time: parse the start, add duration, convert back
+    const [hours, minutes] = rescheduleTime.split(':').map(Number);
+    const endTotalMinutes = hours * 60 + minutes + rescheduleDuration;
+    const endHours = Math.floor(endTotalMinutes / 60) % 24;
+    const endMins = endTotalMinutes % 60;
+    const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+    const newEndISO = toSydneyISO(rescheduleDate, endTimeStr);
     
     const result = await onRescheduleEvent(
       event.id,
-      newStart.toISOString(),
-      newEnd.toISOString(),
+      newStartISO,
+      newEndISO,
       event.startTime,
       event.endTime
     );
@@ -173,10 +184,11 @@ export function EventDetailsModal({
   };
 
   const handleCancelReschedule = () => {
+    const sydneyStart = getSydneyDateTimeParts(event.startTime);
     const startDate = parseISO(event.startTime);
     const endDate = parseISO(event.endTime);
-    setRescheduleDate(format(startDate, 'yyyy-MM-dd'));
-    setRescheduleTime(format(startDate, 'HH:mm'));
+    setRescheduleDate(sydneyStart.dateStr);
+    setRescheduleTime(sydneyStart.timeStr);
     setRescheduleDuration(differenceInMinutes(endDate, startDate));
     setIsRescheduling(false);
   };
@@ -240,7 +252,7 @@ export function EventDetailsModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reschedule-time" className="text-xs">Time</Label>
+                  <Label htmlFor="reschedule-time" className="text-xs">Time <span className="text-muted-foreground font-normal">(Sydney)</span></Label>
                   <Input
                     id="reschedule-time"
                     type="time"
@@ -297,10 +309,16 @@ export function EventDetailsModal({
             <div className="flex items-start gap-3">
               <Calendar className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium">{format(startDate, 'EEEE, MMMM d, yyyy')}</p>
+                <p className="font-medium">{formatDateInSydney(event.startTime)}</p>
                 <p className="text-sm text-muted-foreground">
-                  {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')} ({durationMinutes} min)
+                  {formatInSydney(event.startTime)} – {formatInSydney(event.endTime)} {tzAbbr} ({durationMinutes} min)
                 </p>
+                {showLocalTime && (
+                  <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-0.5">
+                    <Globe className="h-3 w-3" />
+                    Your time: {formatInLocal(event.startTime)} – {formatInLocal(event.endTime)}
+                  </p>
+                )}
               </div>
               {onRescheduleEvent && !isEditing && (
                 <Button
