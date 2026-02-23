@@ -305,8 +305,8 @@ NPC Team`
       <Separator className="my-1" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide flex-shrink-0 sticky top-0 z-10 bg-background pb-1 max-w-full">
-          <TabsList className="inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5">
+        <div className={`flex-shrink-0 sticky top-0 z-10 bg-background pb-1 ${isMobile ? 'overflow-x-auto scrollbar-hide max-w-full' : ''}`}>
+          <TabsList className={`h-auto gap-0.5 p-0.5 ${isMobile ? 'inline-flex w-auto min-w-max' : 'flex flex-wrap w-full'}`}>
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
             <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
