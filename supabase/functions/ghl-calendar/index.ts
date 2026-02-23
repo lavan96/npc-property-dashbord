@@ -351,8 +351,15 @@ serve(async (req) => {
       if (!updateResponse.ok) {
         const errorText = await updateResponse.text();
         console.error('Event update error:', errorText);
+        // Parse GHL error message for better user feedback
+        let ghlMessage = 'Failed to update event';
+        try {
+          const ghlError = JSON.parse(errorText);
+          const msg = ghlError.message;
+          ghlMessage = Array.isArray(msg) ? msg.join(', ') : (msg || ghlMessage);
+        } catch { /* use default */ }
         return new Response(JSON.stringify({
-          error: 'Failed to update event',
+          error: ghlMessage,
           details: errorText,
           success: false
         }), {
@@ -389,11 +396,12 @@ serve(async (req) => {
       console.log(`Deleting event ${eventId} (setting status to cancelled)`);
 
       // GHL does not support a DELETE endpoint for appointments.
-      // The correct approach is to update the appointment status to "cancelled".
+      // The correct approach is to update the appointmentStatus to "cancelled".
+      // NOTE: GHL uses "appointmentStatus" (not "status") for this field.
       const deleteResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments/${eventId}`, {
         method: 'PUT',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' }),
+        body: JSON.stringify({ appointmentStatus: 'cancelled' }),
       });
 
       if (!deleteResponse.ok) {
